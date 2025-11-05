@@ -237,6 +237,36 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.Config) (*sql.DB, e
 		CREATE INDEX IF NOT EXISTS idx_user_traffic_uplink ON user_traffic(uplink);
 		CREATE INDEX IF NOT EXISTS idx_user_traffic_downlink ON user_traffic(downlink);
 		CREATE INDEX IF NOT EXISTS idx_user_dns_domain ON user_dns(domain);
+
+		-- Таблица для головных заданий
+		CREATE TABLE IF NOT EXISTS tasks (
+			id TEXT PRIMARY KEY,
+			operation TEXT NOT NULL,
+			payload TEXT NOT NULL,
+			status TEXT DEFAULT 'pending',
+			created_at INTEGER NOT NULL,
+			completed_at INTEGER,
+			timeout_at INTEGER NOT NULL
+		);
+
+		-- Таблица для дочерних заданий
+		CREATE TABLE IF NOT EXISTS task_nodes (
+			id TEXT PRIMARY KEY,
+			task_id TEXT NOT NULL,
+			node_name TEXT NOT NULL,
+			status TEXT DEFAULT 'pending',
+			error_message TEXT,
+			sent_at INTEGER,
+			completed_at INTEGER,
+			FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+			FOREIGN KEY (node_name) REFERENCES nodes(node_name) ON DELETE CASCADE
+		);
+
+		-- Индексы для таблиц заданий
+		CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+		CREATE INDEX IF NOT EXISTS idx_tasks_timeout ON tasks(timeout_at);
+		CREATE INDEX IF NOT EXISTS idx_task_nodes_task_id ON task_nodes(task_id);
+		CREATE INDEX IF NOT EXISTS idx_task_nodes_status ON task_nodes(status);
     `
 	if _, err = db.Exec(sqlStmt); err != nil {
 		cfg.Logger.Error("Failed to execute SQL script", "dbType", dbType, "error", err)

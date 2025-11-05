@@ -1,5 +1,5 @@
 {
-"remarks": "nl",
+"remarks": "im",
 "log": {
   "dnsLog": false,
   "loglevel": "warning"
@@ -103,7 +103,7 @@
 	  "domainStrategy": "UseIP",
 	  "vnext": [
 		{
-		  "address": "example.com",
+		  "address": "{domain}",
 		  "port": 443,
 		  "users": [
 			{

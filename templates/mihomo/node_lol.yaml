@@ -1,6 +1,6 @@
-  - name: "HAPROXY"
+  - name: "LOL"
     type: vless
-    server: example.com
+    server: {domain}
     port: 443
     uuid: "{user_id}"
     udp: true

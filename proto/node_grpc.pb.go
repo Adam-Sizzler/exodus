@@ -8,9 +8,10 @@ package proto
 
 import (
 	context "context"
+	status "google.golang.org/genproto/googleapis/rpc/status"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
+	status1 "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -26,6 +27,8 @@ const (
 	NodeService_AddUsers_FullMethodName       = "/proto.NodeService/AddUsers"
 	NodeService_DeleteUsers_FullMethodName    = "/proto.NodeService/DeleteUsers"
 	NodeService_SetUserEnabled_FullMethodName = "/proto.NodeService/SetUserEnabled"
+	NodeService_SubmitTask_FullMethodName     = "/proto.NodeService/SubmitTask"
+	NodeService_GetTaskStatus_FullMethodName  = "/proto.NodeService/GetTaskStatus"
 )
 
 // NodeServiceClient is the client API for NodeService service.
@@ -48,6 +51,10 @@ type NodeServiceClient interface {
 	DeleteUsers(ctx context.Context, in *DeleteUsersRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 	// SetUserEnabled enables or disables users on the node.
 	SetUserEnabled(ctx context.Context, in *SetUserEnabledRequest, opts ...grpc.CallOption) (*OperationResponse, error)
+	// SubmitTask submits a task to the node for async processing.
+	SubmitTask(ctx context.Context, in *NodeTask, opts ...grpc.CallOption) (*status.Status, error)
+	// GetTaskStatus retrieves the status of a previously submitted task.
+	GetTaskStatus(ctx context.Context, in *TaskStatusRequest, opts ...grpc.CallOption) (*TaskStatusResponse, error)
 }
 
 type nodeServiceClient struct {
@@ -131,6 +138,26 @@ func (c *nodeServiceClient) SetUserEnabled(ctx context.Context, in *SetUserEnabl
 	return out, nil
 }
 
+func (c *nodeServiceClient) SubmitTask(ctx context.Context, in *NodeTask, opts ...grpc.CallOption) (*status.Status, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(status.Status)
+	err := c.cc.Invoke(ctx, NodeService_SubmitTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nodeServiceClient) GetTaskStatus(ctx context.Context, in *TaskStatusRequest, opts ...grpc.CallOption) (*TaskStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TaskStatusResponse)
+	err := c.cc.Invoke(ctx, NodeService_GetTaskStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NodeServiceServer is the server API for NodeService service.
 // All implementations must embed UnimplementedNodeServiceServer
 // for forward compatibility.
@@ -151,6 +178,10 @@ type NodeServiceServer interface {
 	DeleteUsers(context.Context, *DeleteUsersRequest) (*OperationResponse, error)
 	// SetUserEnabled enables or disables users on the node.
 	SetUserEnabled(context.Context, *SetUserEnabledRequest) (*OperationResponse, error)
+	// SubmitTask submits a task to the node for async processing.
+	SubmitTask(context.Context, *NodeTask) (*status.Status, error)
+	// GetTaskStatus retrieves the status of a previously submitted task.
+	GetTaskStatus(context.Context, *TaskStatusRequest) (*TaskStatusResponse, error)
 	mustEmbedUnimplementedNodeServiceServer()
 }
 
@@ -162,25 +193,31 @@ type NodeServiceServer interface {
 type UnimplementedNodeServiceServer struct{}
 
 func (UnimplementedNodeServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
+	return nil, status1.Errorf(codes.Unimplemented, "method ListUsers not implemented")
 }
 func (UnimplementedNodeServiceServer) GetApiStats(context.Context, *GetApiStatsRequest) (*GetApiStatsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetApiStats not implemented")
+	return nil, status1.Errorf(codes.Unimplemented, "method GetApiStats not implemented")
 }
 func (UnimplementedNodeServiceServer) GetLogData(context.Context, *GetLogDataRequest) (*GetLogDataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLogData not implemented")
+	return nil, status1.Errorf(codes.Unimplemented, "method GetLogData not implemented")
 }
 func (UnimplementedNodeServiceServer) StreamNodeData(grpc.BidiStreamingServer[NodeDataRequest, NodeDataResponse]) error {
-	return status.Errorf(codes.Unimplemented, "method StreamNodeData not implemented")
+	return status1.Errorf(codes.Unimplemented, "method StreamNodeData not implemented")
 }
 func (UnimplementedNodeServiceServer) AddUsers(context.Context, *AddUsersRequest) (*OperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddUsers not implemented")
+	return nil, status1.Errorf(codes.Unimplemented, "method AddUsers not implemented")
 }
 func (UnimplementedNodeServiceServer) DeleteUsers(context.Context, *DeleteUsersRequest) (*OperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteUsers not implemented")
+	return nil, status1.Errorf(codes.Unimplemented, "method DeleteUsers not implemented")
 }
 func (UnimplementedNodeServiceServer) SetUserEnabled(context.Context, *SetUserEnabledRequest) (*OperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetUserEnabled not implemented")
+	return nil, status1.Errorf(codes.Unimplemented, "method SetUserEnabled not implemented")
+}
+func (UnimplementedNodeServiceServer) SubmitTask(context.Context, *NodeTask) (*status.Status, error) {
+	return nil, status1.Errorf(codes.Unimplemented, "method SubmitTask not implemented")
+}
+func (UnimplementedNodeServiceServer) GetTaskStatus(context.Context, *TaskStatusRequest) (*TaskStatusResponse, error) {
+	return nil, status1.Errorf(codes.Unimplemented, "method GetTaskStatus not implemented")
 }
 func (UnimplementedNodeServiceServer) mustEmbedUnimplementedNodeServiceServer() {}
 func (UnimplementedNodeServiceServer) testEmbeddedByValue()                     {}
@@ -318,6 +355,42 @@ func _NodeService_SetUserEnabled_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NodeService_SubmitTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeTask)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServiceServer).SubmitTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NodeService_SubmitTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServiceServer).SubmitTask(ctx, req.(*NodeTask))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NodeService_GetTaskStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TaskStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServiceServer).GetTaskStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NodeService_GetTaskStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServiceServer).GetTaskStatus(ctx, req.(*TaskStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NodeService_ServiceDesc is the grpc.ServiceDesc for NodeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -348,6 +421,14 @@ var NodeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetUserEnabled",
 			Handler:    _NodeService_SetUserEnabled_Handler,
+		},
+		{
+			MethodName: "SubmitTask",
+			Handler:    _NodeService_SubmitTask_Handler,
+		},
+		{
+			MethodName: "GetTaskStatus",
+			Handler:    _NodeService_GetTaskStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

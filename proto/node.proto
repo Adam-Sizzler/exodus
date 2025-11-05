@@ -23,6 +23,11 @@ service NodeService {
   rpc DeleteUsers(DeleteUsersRequest) returns (OperationResponse) {}
   // SetUserEnabled enables or disables users on the node.
   rpc SetUserEnabled(SetUserEnabledRequest) returns (OperationResponse) {}
+
+  // SubmitTask submits a task to the node for async processing.
+  rpc SubmitTask(NodeTask) returns (google.rpc.Status) {}
+  // GetTaskStatus retrieves the status of a previously submitted task.
+  rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse) {}
 }
 
 // Stat represents a single statistic entry.
@@ -120,4 +125,25 @@ message OperationResponse {
   repeated string usernames = 2;
   ListUsersResponse users = 3;
   map<string, string> credentials = 4;
+}
+
+// NodeTask represents a task to be executed on the node.
+message NodeTask {
+  string task_id = 1;
+  string operation = 2;  // add_users, delete_users, set_enabled
+  bytes payload = 3;     // JSON payload with operation data
+}
+
+// TaskStatusRequest requests the status of a task.
+message TaskStatusRequest {
+  string task_id = 1;
+}
+
+// TaskStatusResponse returns the status of a task.
+message TaskStatusResponse {
+  string task_id = 1;
+  string status = 2;  // pending, processing, success, error
+  string error_message = 3;
+  ListUsersResponse users = 4;
+  map<string, string> credentials = 5;
 }

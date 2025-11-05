@@ -18,6 +18,7 @@ import (
 	"v2ray-stat/backend/db"
 	"v2ray-stat/backend/db/manager"
 	"v2ray-stat/backend/grpcclient"
+	"v2ray-stat/backend/tasks"
 	"v2ray-stat/backend/users"
 	"v2ray-stat/common"
 	"v2ray-stat/constant"
@@ -26,7 +27,7 @@ import (
 )
 
 // startAPIServer starts the API server.
-func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, cfg *config.Config, wg *sync.WaitGroup) {
+func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.Config, wg *sync.WaitGroup) {
 	defer wg.Done()
 	server := &http.Server{
 		Addr:    cfg.V2rayStat.Address + ":" + cfg.V2rayStat.Port,
@@ -38,9 +39,17 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, cfg *
 	http.HandleFunc("/api/v1/dns_stats", api.DnsStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/stats", api.StatsHandler(manager, cfg))
 
+	// Legacy endpoints (synchronous, kept for backward compatibility)
 	http.HandleFunc("/api/v1/add_user", api.TokenAuthMiddleware(cfg, api.AddUserHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/set_user_enabled", api.TokenAuthMiddleware(cfg, api.SetUserEnabledHandler(manager, cfg)))
+
+	// Task-based endpoints (asynchronous, recommended)
+	http.HandleFunc("/api/v1/task/add_user", api.TokenAuthMiddleware(cfg, api.AddUserTaskHandler(taskManager, nodeClients, cfg)))
+	http.HandleFunc("/api/v1/task/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserTaskHandler(taskManager, nodeClients, cfg)))
+	http.HandleFunc("/api/v1/task/set_user_enabled", api.TokenAuthMiddleware(cfg, api.SetUserEnabledTaskHandler(taskManager, nodeClients, cfg)))
+	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
+
 	http.HandleFunc("/api/v1/update_ip_limit", api.TokenAuthMiddleware(cfg, api.UpdateIPLimitHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/update_renew", api.TokenAuthMiddleware(cfg, api.UpdateRenewHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/reset_dns_stats", api.TokenAuthMiddleware(cfg, reset_stats.DeleteDNSStatsHandler(manager, cfg)))
@@ -91,6 +100,11 @@ func main() {
 		cfg.Logger.Fatal("Failed to initialize node clients", "error", err)
 	}
 
+	// Initialize task manager and worker
+	taskManager := tasks.NewTaskManager(manager, &cfg)
+	taskWorker := tasks.NewTaskWorker(taskManager, manager, nodeClients, &cfg)
+	taskWorker.Start()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -101,7 +115,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(4)
 
-	go startAPIServer(ctx, manager, &cfg, &wg)
+	go startAPIServer(ctx, manager, taskManager, nodeClients, &cfg, &wg)
 	go grpcclient.StartGrpcClient(ctx, &cfg, manager, &wg)
 	go db.MonitorSubscriptionsAndSync(ctx, manager, fileDB, &cfg, &wg)
 	go users.MonitorNodeData(ctx, manager, nodeClients, &cfg, &wg)
@@ -111,6 +125,9 @@ func main() {
 	<-sigChan
 	cfg.Logger.Info("Received termination signal, saving data")
 	cancel()
+
+	// Stop task worker
+	taskWorker.Stop()
 
 	// Закрываем все gRPC-соединения
 	for _, nc := range nodeClients {

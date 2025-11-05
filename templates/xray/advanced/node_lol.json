@@ -1,5 +1,5 @@
 {
-"remarks": "swe",
+"remarks": "azaza",
 "log": {
   "dnsLog": false,
   "loglevel": "warning"
@@ -109,7 +109,7 @@
 	  "domainStrategy": "UseIP",
 	  "vnext": [
 		{
-		  "address": "swe.example.com",
+		  "address": "{domain}",
 		  "port": 443,
 		  "users": [
 			{

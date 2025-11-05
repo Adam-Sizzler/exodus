@@ -11,6 +11,7 @@ import (
 	"v2ray-stat/node/logprocessor"
 	"v2ray-stat/proto"
 
+	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -20,6 +21,7 @@ type NodeServer struct {
 	proto.UnimplementedNodeServiceServer
 	Cfg          *config.NodeConfig
 	logProcessor *logprocessor.LogProcessor
+	taskManager  *TaskManager
 }
 
 // NewNodeServer creates a new NodeServer instance.
@@ -32,6 +34,7 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 	server := &NodeServer{
 		Cfg:          cfg,
 		logProcessor: processor,
+		taskManager:  NewTaskManager(cfg),
 	}
 	return server, nil
 }
@@ -163,4 +166,42 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			}
 		}
 	}
+}
+
+// SubmitTask submits a task for async processing.
+func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpcstatus.Status, error) {
+	s.Cfg.Logger.Info("Received task submission", "task_id", task.TaskId, "operation", task.Operation)
+
+	// Store task as pending
+	s.taskManager.StoreTask(task.TaskId, TaskStatusPending, "", nil, nil)
+
+	// Process task asynchronously
+	go s.taskManager.ProcessTask(ctx, task, s)
+
+	s.Cfg.Logger.Debug("Task submitted successfully", "task_id", task.TaskId)
+	return &rpcstatus.Status{Code: int32(codes.OK), Message: "task submitted"}, nil
+}
+
+// GetTaskStatus retrieves the status of a task.
+func (s *NodeServer) GetTaskStatus(ctx context.Context, req *proto.TaskStatusRequest) (*proto.TaskStatusResponse, error) {
+	s.Cfg.Logger.Debug("Received task status request", "task_id", req.TaskId)
+
+	result, exists := s.taskManager.GetTask(req.TaskId)
+	if !exists {
+		s.Cfg.Logger.Warn("Task not found", "task_id", req.TaskId)
+		return &proto.TaskStatusResponse{
+			TaskId: req.TaskId,
+			Status: string(TaskStatusError),
+			ErrorMessage: "task not found",
+		}, nil
+	}
+
+	s.Cfg.Logger.Debug("Returning task status", "task_id", req.TaskId, "status", result.Status)
+	return &proto.TaskStatusResponse{
+		TaskId:       result.TaskID,
+		Status:       string(result.Status),
+		ErrorMessage: result.ErrorMessage,
+		Users:        result.Users,
+		Credentials:  result.Credentials,
+	}, nil
 }

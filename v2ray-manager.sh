@@ -401,7 +401,7 @@ update_v2ray_stat_sub() {
   echo "$(date): Starting download of $FILE" >> "$LOG_FILE"
   URL=$(curl -s https://api.github.com/repos/$REPO/releases | \
     jq -r '.[] | select(.prerelease == true or .prerelease == false) | .assets[] | select(.name == "'"$FILE"'") | .browser_download_url' | \
-    head -1)
+    head -1)F9
 
   if [ -z "$URL" ]; then
     echo "$(date): Error: File $FILE not found in any release" >> "$LOG_FILE"
@@ -746,7 +746,7 @@ extract_data() {
 ### ADD USER TO XRAY CONFIGURATION
 ###################################
 add_user_to_xray() {
-  curl -s -X POST http://127.0.0.1:9952/api/v1/add_user -d "user=${USERNAME}&credential=${XRAY_UUID}&inboundTag=vless-in"
+  curl -s -X POST http://127.0.0.1:9243/api/v1/add_user -d "user=${USERNAME}&credential=${XRAY_UUID}&inboundTag=vless-in"
 }
 
 ###################################
@@ -833,7 +833,7 @@ delete_subscription_config() {
 ### DELETE USER FROM XRAY SERVER CONFIG
 ###################################
 delete_from_xray_server() {
-  curl -X DELETE "http://127.0.0.1:9952/api/v1/delete_user?user=${USERNAME}&inboundTag=vless-in"
+  curl -X DELETE "http://127.0.0.1:9243/api/v1/delete_user?user=${USERNAME}&inboundTag=vless-in"
 }
 
 ###################################
@@ -916,7 +916,7 @@ delete_user1() {
 ### DISPLAY NODE LIST FROM API
 ###################################
 display_node_list() {
-  local API_URL="http://127.0.0.1:9952/api/v1/users"
+  local API_URL="http://127.0.0.1:9243/api/v1/users"
   declare -gA node_map
   local counter=0
 
@@ -957,7 +957,7 @@ display_node_list() {
 ### FETCH DNS STATISTICS
 ###################################
 fetch_dns_stats() {
-  local API_URL="http://127.0.0.1:9952/api/v1/dns_stats"
+  local API_URL="http://127.0.0.1:9243/api/v1/dns_stats"
   local selected_nodes=""
   local selected_users=""
   local count=""
@@ -1124,7 +1124,7 @@ fetch_dns_stats() {
 ### FETCH TRAFFIC STATISTICS
 ###################################
 fetch_traffic_stats() {
-  local API_URL="http://127.0.0.1:9952/api/v1/stats"
+  local API_URL="http://127.0.0.1:9243/api/v1/stats"
   local query=""
   local selected_nodes=""
   local selected_users=""
@@ -1359,9 +1359,9 @@ reset_stats_menu() {
       1|2|3)
         # Определяем API-эндпоинт в зависимости от выбора
         case $CHOICE_MENU in
-          1) API_URL="http://127.0.0.1:9952/api/v1/reset_dns_stats"; SUCCESS_MSG="DNS stats records deleted successfully"; ;;
-          2) API_URL="http://127.0.0.1:9952/api/v1/reset_bound_traffic"; SUCCESS_MSG="Traffic stats reset successfully"; ;;
-          3) API_URL="http://127.0.0.1:9952/api/v1/reset_user_traffic"; SUCCESS_MSG="Client traffic stats reset successfully"; ;;
+          1) API_URL="http://127.0.0.1:9243/api/v1/reset_dns_stats"; SUCCESS_MSG="DNS stats records deleted successfully"; ;;
+          2) API_URL="http://127.0.0.1:9243/api/v1/reset_bound_traffic"; SUCCESS_MSG="Traffic stats reset successfully"; ;;
+          3) API_URL="http://127.0.0.1:9243/api/v1/reset_user_traffic"; SUCCESS_MSG="Client traffic stats reset successfully"; ;;
         esac
 
         # Выбор нод
@@ -1442,7 +1442,7 @@ reset_stats_menu() {
 ### DISPLAY USER LIST FROM API
 ###################################
 display_user_list() {
-  local API_URL="http://127.0.0.1:9952/api/v1/users"
+  local API_URL="http://127.0.0.1:9243/api/v1/users"
   local selected_nodes="$1"  # Ожидаем строку нод, разделённых запятыми, или "all"
   local selected_inbound_tag="$2"  # Ожидаем inbound_tag или пустую строку
   declare -gA user_map
@@ -1503,7 +1503,7 @@ display_user_list() {
 ### DISPLAY INBOUND TAG LIST FROM API
 ###################################
 display_inbound_tag_list() {
-  local API_URL="http://127.0.0.1:9952/api/v1/users"
+  local API_URL="http://127.0.0.1:9243/api/v1/users"
   declare -gA inbound_tag_map
   local counter=0
 
@@ -1543,7 +1543,7 @@ display_inbound_tag_list() {
 ### SELECT INBOUND TAG AND ADD USER
 ###################################
 add_user() {
-  local API_URL="http://127.0.0.1:9952/api/v1/add_user"
+  local API_URL="http://127.0.0.1:9243/api/v1/add_user"
   local selected_inbound_tags=""
   local selected_nodes=""
   local usernames=""
@@ -1776,7 +1776,7 @@ add_user() {
 ### DELETE USER
 ###################################
 delete_user() {
-  local API_URL="http://127.0.0.1:9952/api/v1/delete_user"
+  local API_URL="http://127.0.0.1:9243/api/v1/delete_user"
   local selected_inbound_tags=""
   local selected_nodes=""
   local selected_users=""
@@ -2009,7 +2009,7 @@ delete_user() {
 ### TOGGLE USER STATUS
 ###################################
 toggle_user_status() {
-  local API_URL="http://127.0.0.1:9952/api/v1/set_user_enabled"
+  local API_URL="http://127.0.0.1:9243/api/v1/set_user_enabled"
   local selected_inbound_tags=""
   local selected_nodes=""
   local selected_users=""
@@ -2312,7 +2312,7 @@ EOF
 ### CHECK API SERVER AVAILABILITY
 ###################################
 check_api_server() {
-  local API_URL="http://127.0.0.1:9952/api/v1/"
+  local API_URL="http://127.0.0.1:9243/api/v1/"
   curl -s -X GET "$API_URL" > /dev/null
   if [ $? -ne 0 ]; then
     warning "Ошибка: API сервер не запущен. Запустите сервер и попробуйте снова."
