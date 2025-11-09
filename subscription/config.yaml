@@ -3,7 +3,7 @@
 
 # Log Settings
 log:
-  loglevel: info                                          # Logging level: none, error, warn, info, debug, trace. NONE disables logging; each level includes messages from lower levels.
+  loglevel: trace                                          # Logging level: none, error, warn, info, debug, trace. NONE disables logging; each level includes messages from lower levels.
   logmode: inclusive                                      # Log mode: inclusive = this and lower levels; exclusive = only this level
 
 # Timezone Settings 
@@ -14,55 +14,37 @@ v2rs-sub:
   address: 127.0.0.1                                      # Listening address for the subscription server. '127.0.0.1' restricts access to localhost.
   port: 9264                                              # Listening port for the subscription server. Must be between 1 and 65535.
   grpc_port: 9263                                         # Listening port for the gRPC server.
-  # mtls:                                                   # mTLS (mutual TLS) configuration for secure connection to the node.
-  #   cert: /usr/local/etc/v2ray-stat/certs/node.crt        # Path to the client's TLS certificate.
-  #   key: /usr/local/etc/v2ray-stat/certs/node.key         # Path to the client's private key.
-  #   ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt     # Path to the CA certificate for server verification.
 
 # Subscription Settings
 subscription:
-  domains:                                                # Mapping of nodes to domains.
-    rus: "example.com"                                    # Node located in Russia
-    de: "de.example.com"                                  # Node located in Germany
-    us: "us.example.com"                                  # Node located in the United States
-  defaults:                                               # Default settings applied to all users unless overridden.
-    headers:                                              # HTTP headers included in subscription responses.
-      Profile-Title: "base64:U3Vic2NyaXB0aW9u"            # Subscription title (base64-encoded string).
-      Profile-Update-Interval: "12"                       # Subscription update interval (hours).
-      Support-Url: "https://natribu.org/"                 # Support URL.
-      Profile-Web-Page-Url: "https://natribu.org/"        # Profile web page URL.
-      Announce: "COME here (ง ͠° ͟ل͜ ͡°)ง"                   # Custom announcement message.
-    clients: ["xray", "singbox"]                          # Default list of supported clients (e.g., xray, singbox, mihomo).
-    nodes: ["rus"]                                        # Default list of nodes available to users.
-    templates:                                            # Default node-to-template mappings.
+  domains:
+    top: {domain}
+    lol: {domain2}
+  defaults:
+    headers:
+      Profile-Title: "base64:U3Vic2NyaXB0aW9u"
+      Profile-Update-Interval: "12"
+      Support-Url: "https://natribu.org/"
+      Profile-Web-Page-Url: "https://natribu.org/"
+      Announce: "ИДИ сюда (ง ͠° ͟ل͜ ͡°)ง"
+    clients: ["xray"]
+    nodes: ["lol", "top"]
+    templates:
       base:
-        rus: node_rus.base                                # Template for the "rus" node in base mode.
+        rus: node_lol
       advanced:
-        rus: node_rus.json                                # Template for the "rus" node in advanced mode.
-  groups:                                                 # Configuration for user groups with shared settings.
-    free:                                                 # Group for free/standard-tier users.
-      clients: ["xray"]                                   # Supported clients for this group.
-      nodes: ["rus"]                                      # Nodes available to this group.
-      templates:                                          # Node-to-template mappings for this group.
+        rus: node_lol
+        de: node_top
+  groups:
+    premium:
+      clients: ["xray", "singbox", "mihomo"]
+      templates:
         base:
-          rus: node_rus.base64                            # Custom template for "rus" in base mode.
-        advanced: {}                                      # Clears advanced templates (requests to advanced will return 404).
-    premium:                                              # Group for premium-tier users.
-      clients: ["xray", "singbox", "mihomo"]              # Supported clients for this group.
-      nodes: ["rus", "de", "us"]                          # Nodes available to this group.
-      templates:                                          # Node-to-template mappings for this group.
-        base:
-          rus: node_rus.base64                            # Custom template for "rus" in base mode.
-          de: node_de                                     # Template for "de" in base mode.
-          us: node_us.base64                              # Template for "us" in base mode.
+          rus: node_lol
+          top: node_top
         advanced:
-          rus: node_rus                                   # Advanced template for "rus".
-          de: node_de.json                                # Advanced template for "de".
-          us: node_us.json                                # Advanced template for "us".
-  users:                                                  # User-specific settings (override group or default settings).
-    premium:                                              # Group of users inheriting from groups.premium.
-      users: ["adam", "zoi"]                              # List of users in the premium group.
-    free:                                                 # Group of users inheriting from groups.free.
-      users: ["test"]                                     # User "test" inherits settings from the free group.
-      headers:                                            # Custom headers overriding group/default headers.
-        Announce: "Free"                                  # Custom announcement for this user/group.
+          rus: node_lol
+          top: node_top
+  users:
+    premium:
+      users: ["cortez", "myana", "mama"]

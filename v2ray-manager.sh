@@ -401,7 +401,7 @@ update_v2ray_stat_sub() {
   echo "$(date): Starting download of $FILE" >> "$LOG_FILE"
   URL=$(curl -s https://api.github.com/repos/$REPO/releases | \
     jq -r '.[] | select(.prerelease == true or .prerelease == false) | .assets[] | select(.name == "'"$FILE"'") | .browser_download_url' | \
-    head -1)F9
+    head -1)
 
   if [ -z "$URL" ]; then
     echo "$(date): Error: File $FILE not found in any release" >> "$LOG_FILE"

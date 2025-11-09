@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
-
 	"v2ray-stat/subscription/config"
 
 	"github.com/fsnotify/fsnotify"
@@ -48,8 +48,13 @@ func LoadTemplates(cfg *config.Config) error {
 					cfg.Logger.Error("Failed to get relative path", "path", path, "error", err)
 					return err
 				}
-				newTemplates[client][relativePath] = string(content)
-				cfg.Logger.Trace("Loaded template", "client", client, "name", relativePath)
+				// Отрезаем расширение
+				dir, file := filepath.Split(relativePath)
+				ext := filepath.Ext(file)
+				baseFile := strings.TrimSuffix(file, ext)
+				newRelativePath := filepath.Join(dir, baseFile) // ключ без расширения
+				newTemplates[client][newRelativePath] = string(content)
+				cfg.Logger.Trace("Loaded template", "client", client, "name", newRelativePath, "original_file", relativePath)
 			}
 			return nil
 		})
@@ -59,7 +64,6 @@ func LoadTemplates(cfg *config.Config) error {
 		}
 		cfg.Logger.Debug("Reading templates for client", "client", client)
 	}
-
 	mu.Lock()
 	templates = newTemplates
 	mu.Unlock()
@@ -84,7 +88,6 @@ func WatchTemplates(ctx context.Context, cfg *config.Config, wg *sync.WaitGroup)
 	}
 	defer watcher.Close()
 	cfg.Logger.Info("Started watching templates directories")
-
 	clients := []string{"xray", "singbox", "mihomo"}
 	for _, client := range clients {
 		dir := filepath.Join("templates", client)
@@ -117,7 +120,6 @@ func WatchTemplates(ctx context.Context, cfg *config.Config, wg *sync.WaitGroup)
 			return
 		}
 	}
-
 	for {
 		select {
 		case <-ctx.Done():

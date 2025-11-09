@@ -1,0 +1,13 @@
+name: "IM"
+type: vless
+server: {domain}
+port: 443
+network: tcp
+udp: true
+tls: true
+servername: {domain}
+reality-opts: null
+client-fingerprint: chrome
+uuid: "{user_id}"
+packet-encoding: xudp
+flow: none

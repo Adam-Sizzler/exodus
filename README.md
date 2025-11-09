@@ -19,6 +19,7 @@ API для управления пользователями и статисти
   - [Включение/выключение пользователей — PATCH /api/v1/set_user_enabled](#включениевыключение-пользователей)
 - [Примеры конфигурации и включение API в ядрах (Singbox, Xray)](#примеры-конфигурации-и-включение-api-в-ядрах)
 - [Генерация сертификатов](#генерация-сертификатов)
+- [Прямые gRPC запросы к нодам](#прямые-grpc-запросы-к-нодам)
 - [Обновление компонентов v2ray-stat](#обновление-компонентов-v2ray-stat)
 
 ## Обзор
@@ -639,6 +640,139 @@ openssl rsa -in /usr/local/etc/v2ray-stat/certs/node.key -check
 
 - Используйте уникальные пары ключ/сертификат для каждой ноды или централизованно подпишите сертификаты CA.  
 - Храните приватные ключи в защищённом каталоге с ограниченным доступом.
+
+## Прямые gRPC запросы к нодам
+
+Backend использует bidirectional streaming метод `StreamNodeData` для получения статистики от нод. Для отладки и мониторинга можно выполнять прямые gRPC запросы к нодам используя `grpcurl`.
+
+### Подготовка descriptor set
+
+Для работы grpcurl необходимо создать descriptor set файл, так как ноды не поддерживают gRPC reflection API:
+
+```bash
+# Клонировать googleapis (выполнить один раз)
+cd /tmp && git clone --depth 1 https://github.com/googleapis/googleapis.git
+
+# Создать descriptor set
+cd /root/v2ray-stat && protoc \
+  --proto_path=. \
+  --proto_path=/tmp/googleapis \
+  --descriptor_set_out=/tmp/node.protoset \
+  --include_imports \
+  proto/node.proto
+```
+
+### Доступные методы
+
+Сервис `NodeService` предоставляет следующие методы:
+
+| Метод | Описание |
+|-------|----------|
+| `ListUsers` | Получение списка пользователей с ноды |
+| `GetApiStats` | Получение статистики трафика (inbound/outbound/user) |
+| `GetLogData` | Получение обработанных логов (IP адреса, DNS статистика) |
+| `StreamNodeData` | Bidirectional streaming для мониторинга (используется backend) |
+| `AddUsers` | Добавление пользователей на ноду |
+| `DeleteUsers` | Удаление пользователей с ноды |
+| `SetUserEnabled` | Включение/выключение пользователей |
+| `SubmitTask` | Отправка задания на ноду для асинхронного выполнения |
+| `GetTaskStatus` | Получение статуса ранее отправленного задания |
+
+### Примеры запросов
+
+#### Получение статистики трафика (localhost без TLS)
+
+```bash
+grpcurl -plaintext \
+  -protoset /tmp/node.protoset \
+  -d '{}' \
+  localhost:9253 \
+  proto.NodeService/GetApiStats
+```
+
+#### Получение статистики с внешней ноды (с mTLS)
+
+```bash
+grpcurl \
+  -protoset /tmp/node.protoset \
+  -cacert /usr/local/etc/v2ray-stat/certs/node.crt \
+  -cert /usr/local/etc/v2ray-stat/certs/node.crt \
+  -key /usr/local/etc/v2ray-stat/certs/node.key \
+  -d '{}' \
+  79.137.202.204:9253 \
+  proto.NodeService/GetApiStats
+```
+
+#### Получение списка пользователей
+
+```bash
+grpcurl -plaintext \
+  -protoset /tmp/node.protoset \
+  -d '{}' \
+  localhost:9253 \
+  proto.NodeService/ListUsers
+```
+
+#### Получение статуса задания
+
+```bash
+grpcurl -plaintext \
+  -protoset /tmp/node.protoset \
+  -d '{"task_id": "550e8400-e29b-41d4-a716-446655440000"}' \
+  localhost:9253 \
+  proto.NodeService/GetTaskStatus
+```
+
+#### Получение DNS статистики
+
+```bash
+grpcurl -plaintext \
+  -protoset /tmp/node.protoset \
+  -d '{}' \
+  localhost:9253 \
+  proto.NodeService/GetLogData
+```
+
+### Пример ответа GetApiStats
+
+```json
+{
+  "stats": [
+    {
+      "name": "inbound>>>vless-in>>>traffic>>>uplink",
+      "value": "374308607"
+    },
+    {
+      "name": "inbound>>>vless-in>>>traffic>>>downlink",
+      "value": "96540639268"
+    },
+    {
+      "name": "user>>>username>>>traffic>>>uplink",
+      "value": "363697328"
+    },
+    {
+      "name": "user>>>username>>>traffic>>>downlink",
+      "value": "96369251059"
+    },
+    {
+      "name": "outbound>>>direct>>>traffic>>>uplink",
+      "value": "352563528"
+    },
+    {
+      "name": "outbound>>>direct>>>traffic>>>downlink",
+      "value": "96367799657"
+    }
+  ]
+}
+```
+
+### Примечания
+
+- Для локальных нод используйте флаг `-plaintext` (без TLS).
+- Для внешних нод с mTLS укажите пути к сертификатам (`-cacert`, `-cert`, `-key`).
+- Если сервер использует самоподписанные сертификаты, можно добавить `-insecure` для пропуска проверки сертификата (только для отладки).
+- Backend автоматически использует StreamNodeData для постоянного мониторинга нод.
+- Формат статистики: `<type><<<name><<<traffic>>><direction>`, где type = inbound/outbound/user.
 
 ## Обновление компонентов v2ray-stat
 
