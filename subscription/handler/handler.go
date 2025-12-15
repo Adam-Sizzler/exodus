@@ -145,27 +145,20 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	tmpls := templates.GetTemplates()
 	for _, node := range userConfig.IncludeNodes {
 		cfg.Logger.Trace("Processing node for user", "node", node, "user", user)
+
 		// Get template name for the specific mode
 		modeTemplates, modeOk := userConfig.NodeTemplates[mode]
 		if !modeOk || modeTemplates == nil {
 			cfg.Logger.Debug("No templates for mode", "mode", mode, "user", user)
 			continue
 		}
-		// Маппинг для несоответствующих ключей в templates (rus для lol, de для top если top не найден)
-		nodeKey := node
-		if _, ok := modeTemplates[nodeKey]; !ok {
-			if node == "lol" {
-				nodeKey = "rus"
-			} else if node == "top" {
-				nodeKey = "de"
-			}
-		}
-		templateName, ok := modeTemplates[nodeKey]
+		templateName, ok := modeTemplates[node]
 		if !ok || templateName == "" {
-			cfg.Logger.Debug("No template specified for node in mode or empty name", "node", node, "mode", mode, "user", user)
+			cfg.Logger.Warn("No template specified for node in mode", "node", node, "mode", mode, "user", user)
 			continue
 		}
-		cfg.Logger.Trace("Using nodeKey for template lookup", "node", node, "nodeKey", nodeKey, "templateName", templateName)
+		cfg.Logger.Trace("Found template for node", "node", node, "templateName", templateName)
+
 		// Prepend mode-specific directory (base/ or advanced/)
 		templatePath := filepath.Join(mode, templateName)
 		template, ok := tmpls[client][templatePath]

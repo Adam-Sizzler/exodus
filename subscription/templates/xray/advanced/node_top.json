@@ -315,7 +315,7 @@
             "users": [
               {
                 "encryption": "none",
-                "id": "{uuid}"
+                "id": "{user_id}"
               }
             ]
           }

@@ -1,0 +1,53 @@
+# Multistage build for v2ray-stat backend
+FROM golang:1.25-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
+
+WORKDIR /build
+
+# Copy go mod files and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build backend binary
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
+    -o v2ray-stat-backend \
+    ./backend
+
+# Final stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata sqlite-libs
+
+# Create non-root user
+RUN addgroup -g 1000 v2ray && \
+    adduser -D -u 1000 -G v2ray v2ray
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/v2ray-stat-backend /app/
+
+# Create directories for data and certificates
+RUN mkdir -p /app/data /app/certs && \
+    chown -R v2ray:v2ray /app
+
+# Copy default config (will be overridden by volume mount)
+COPY config.yaml /app/config.yaml.example
+
+USER v2ray
+
+# Backend listens on port 9243
+EXPOSE 9243
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9243/ || exit 1
+
+ENTRYPOINT ["/app/v2ray-stat-backend"]

@@ -1,0 +1,54 @@
+# Multistage build for v2ray-stat node
+FROM golang:1.25-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+
+WORKDIR /build
+
+# Copy go mod files and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build node binary
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
+    -o v2ray-stat-node \
+    ./node
+
+# Final stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 v2ray && \
+    adduser -D -u 1000 -G v2ray v2ray
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/v2ray-stat-node /app/
+
+# Create directories for certificates and xray/singbox configs
+RUN mkdir -p /app/certs /app/xray /app/logs && \
+    chown -R v2ray:v2ray /app
+
+# Copy default config
+COPY config.yaml /app/config.yaml.example
+
+USER v2ray
+
+# Node gRPC listens on port 9253
+EXPOSE 9253
+
+# Health check via grpcurl would require additional tools
+# For now, just check if process is running
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD pgrep -f v2ray-stat-node || exit 1
+
+ENTRYPOINT ["/app/v2ray-stat-node"]

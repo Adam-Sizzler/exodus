@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  # Backend service - main API and monitoring
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: v2ray-stat-backend:latest
+    container_name: v2ray-stat-backend
+    restart: unless-stopped
+    ports:
+      - "9243:9243"  # API port
+    volumes:
+      # Configuration file (required)
+      - ./config.yaml:/app/config.yaml:ro
+      
+      # Database persistence
+      - backend-data:/app/data
+      
+      # Certificates for mTLS
+      - ./certs:/app/certs:ro
+      
+      # Logs (optional)
+      - backend-logs:/var/log
+    environment:
+      - TZ=Asia/Bangkok
+    networks:
+      - v2ray-stat-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9243/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - subscription
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Node service - agent for v2ray/xray stats collection
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    image: v2ray-stat-node:latest
+    container_name: v2ray-stat-node
+    restart: unless-stopped
+    ports:
+      - "9253:9253"  # gRPC port
+    volumes:
+      # Configuration file (required)
+      - ./config.yaml:/app/config.yaml:ro
+      
+      # Certificates for mTLS
+      - ./certs:/app/certs:ro
+      
+      # Xray/Singbox configuration directory
+      # Adjust path according to your setup
+      - /usr/local/etc/xray:/app/xray:ro
+      
+      # Access logs from xray/singbox
+      - /usr/local/etc/xray/access.log:/app/logs/access.log:ro
+    environment:
+      - TZ=Asia/Bangkok
+    networks:
+      - v2ray-stat-network
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "v2ray-stat-node"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Subscription service - provides subscription URLs
+  subscription:
+    build:
+      context: .
+      dockerfile: Dockerfile.subscription
+    image: v2ray-stat-subscription:latest
+    container_name: v2ray-stat-subscription
+    restart: unless-stopped
+    ports:
+      - "9264:9264"  # HTTP API port
+      - "9263:9263"  # gRPC port
+    volumes:
+      # Configuration file (required)
+      - ./config.yaml:/app/config.yaml:ro
+      
+      # Certificates for mTLS (if needed)
+      - ./certs:/app/certs:ro
+      
+      # Subscription templates (mounted from host for easy updates)
+      - ./subscription/templates:/app/templates:ro
+    environment:
+      - TZ=Asia/Bangkok
+    networks:
+      - v2ray-stat-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9264/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  v2ray-stat-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # Persistent storage for database
+  backend-data:
+    driver: local
+  
+  # Logs storage (optional)
+  backend-logs:
+    driver: local

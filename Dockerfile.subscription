@@ -1,0 +1,56 @@
+# Multistage build for v2ray-stat subscription
+FROM golang:1.25-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+
+WORKDIR /build
+
+# Copy go mod files and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build subscription binary
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
+    -o v2ray-stat-subscription \
+    ./subscription
+
+# Final stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 v2ray && \
+    adduser -D -u 1000 -G v2ray v2ray
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/v2ray-stat-subscription /app/
+
+# Copy subscription templates
+COPY --chown=v2ray:v2ray subscription/templates /app/templates
+
+# Create certificates directory
+RUN mkdir -p /app/certs && \
+    chown -R v2ray:v2ray /app
+
+# Copy default config
+COPY config.yaml /app/config.yaml.example
+
+USER v2ray
+
+# Subscription HTTP on 9264, gRPC on 9263
+EXPOSE 9264 9263
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9264/ || exit 1
+
+ENTRYPOINT ["/app/v2ray-stat-subscription"]
