@@ -72,6 +72,8 @@ var defaultConfig = NodeConfig{
 		Config:         "/usr/local/etc/xray/config.json",
 		AccessLog:      "/usr/local/etc/xray/access.log",
 		AccessLogRegex: `from (?:tcp|udp):([\d\.]+):\d+ accepted (?:tcp|udp):([\w\.\-]+):\d+ \[[^\]]+\] email: (\S+)`,
+		ApiAddress:     "127.0.0.1", // Default; change to "xray" for Docker
+        ApiPort:        "9953",      // Default Xray API port
 	},
 	Paths: PathsConfig{
 		F2BLog:       "/var/log/v2ray-stat.log",
@@ -139,6 +141,20 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		cfg.Core.Config = defaultConfig.Core.Config
 	}
 
+	if cfg.Core.ApiPort == "" {
+        cfg.Core.ApiPort = defaultConfig.Core.ApiPort
+    } else {
+        portNum, err := strconv.Atoi(cfg.Core.ApiPort)
+        if err != nil || portNum < 1 || portNum > 65535 {
+            cfg.Logger.Warn("Invalid core.api_port, using default", "port", cfg.Core.ApiPort, "default", defaultConfig.Core.ApiPort)
+            cfg.Core.ApiPort = defaultConfig.Core.ApiPort
+        }
+    }
+
+    if cfg.Core.ApiAddress == "" {
+        cfg.Core.ApiAddress = defaultConfig.Core.ApiAddress
+    }
+
 	if cfg.V2rayStat.MTLSConfig != nil {
 		if cfg.V2rayStat.Address != "127.0.0.1" && cfg.V2rayStat.Address != "0.0.0.0" && cfg.V2rayStat.Address != "localhost" {
 			if cfg.V2rayStat.MTLSConfig.Cert == "" || cfg.V2rayStat.MTLSConfig.Key == "" || cfg.V2rayStat.MTLSConfig.CACert == "" {
@@ -161,7 +177,6 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		}
 	}
 
-	// Ensure Features map is initialized
 	if cfg.Features == nil {
 		cfg.Features = make(map[string]bool)
 	}
