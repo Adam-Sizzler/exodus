@@ -2,7 +2,7 @@
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
 WORKDIR /build
 
@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build subscription binary
-RUN CGO_ENABLED=0 GOOS=linux go build \
+RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
     -o v2ray-stat-subscription \
     ./subscription
