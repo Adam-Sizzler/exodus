@@ -40,6 +40,8 @@ type CoreConfig struct {
 	Config         string `yaml:"config"`
 	AccessLog      string `yaml:"access_log"`
 	AccessLogRegex string `yaml:"access_log_regex"`
+	ApiAddress     string `yaml:"api_address"`
+	ApiPort        string `yaml:"api_port"`
 }
 
 // PathsConfig holds paths and logging settings.
