@@ -1,133 +1,93 @@
-version: '3.8'
+x-container: &container
+  restart: ${RESTART_POLICY:-unless-stopped} # Перезапускаться всегда кроме команды завершения или поломки healthcheck
+  # user: ${USER_ID}:${GROUP_ID}               # UID/GID пользователя в контейнере https://dev.to/acro5piano/specifying-user-and-group-in-docker-i2e
+  # cpuset: ${CPUSET:-}                        # Номера ядер ЦП, в которых разрешено выполнение (0-3, 0,1)
+  # cpu_shares: ${CPU_SHARES:-512}             # Доля ЦП (относительный вес, макс. 1024) при распределении между контейнерами
+  # cpus: ${CPUS:-0.5}                         # Сколько ресурсов ЦП может использовать контейнер
+  # mem_limit: ${MEM_LIMIT:-1024m}             # Максимальное значение опертивной памяти
+  # mem_reservation: ${MEM_RESERVATION:-256m}  # Начальное значение опертивной памяти
+  security_opt:
+    - no-new-privileges:true
+  # read_only: true
+  tmpfs:
+    - /tmp:noexec,nosuid,size=50m
+  env_file:
+    - ".env"
+
+x-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: ${LOGGING_MAX_SIZE:-5M}
+    max-file: ${LOGGING_COUNT_FILES:-10}
 
 services:
-  # Backend service - main API and monitoring
+  # V2RAY BACKEND - main management service for v2ray-stat
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    image: v2ray-stat-backend:latest
+    <<: *container
+    image: ghcr.io/adam-sizzler/v2ray-stat-backend:${V2RS_VERSION:-latest}
     container_name: v2ray-stat-backend
-    restart: unless-stopped
-    ports:
-      - "9243:9243"  # API port
     volumes:
-      # Configuration file (required)
-      - ./config.yaml:/app/config.yaml:ro
-      
-      # Database persistence
+      - ${CONFIG_PATH:-./v2rs/config.yaml}:/app/config.yaml:ro
+      - ${CERTS_PATH:-./v2rs/certs}:/app/certs
       - backend-data:/app/data
-      
-      # Certificates for mTLS
-      - ./certs:/app/certs:ro
-      
-      # Logs (optional)
-      - backend-logs:/var/log
-    environment:
-      - TZ=Asia/Bangkok
-    networks:
-      - v2ray-stat-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9243/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      - subscription
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 50M
+    profiles: [backend]
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      <<: *logging
 
-  # Node service - agent for v2ray/xray stats collection
+  # V2RAY NODE - node for processing user traffic
   node:
-    build:
-      context: .
-      dockerfile: Dockerfile.node
-    image: v2ray-stat-node:latest
+    <<: *container
+    image: ghcr.io/adam-sizzler/v2ray-stat-node:${V2RS_VERSION:-latest}
     container_name: v2ray-stat-node
-    restart: unless-stopped
-    ports:
-      - "9253:9253"  # gRPC port
     volumes:
-      # Configuration file (required)
-      - ./config.yaml:/app/config.yaml:ro
-      
-      # Certificates for mTLS
-      - ./certs:/app/certs:ro
-      
-      # Xray/Singbox configuration directory
-      # Adjust path according to your setup
-      - /usr/local/etc/xray:/app/xray:ro
-      
-      # Access logs from xray/singbox
-      - /usr/local/etc/xray/access.log:/app/logs/access.log:ro
-    environment:
-      - TZ=Asia/Bangkok
-    networks:
-      - v2ray-stat-network
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "v2ray-stat-node"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      - ${CONFIG_PATH:-./v2rs/config.yaml}:/app/config.yaml:ro
+      - ${CERTS_PATH:-./v2rs/certs}:/app/certs
+      - ${XRAY_CONFIG_PATH:-./xray/config}:/usr/local/etc/xray
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 50M
+    profiles: [node]
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      <<: *logging
 
-  # Subscription service - provides subscription URLs
+  # V2RAY SUBSCRIPTION - subscription service for users
   subscription:
-    build:
-      context: .
-      dockerfile: Dockerfile.subscription
-    image: v2ray-stat-subscription:latest
+    <<: *container
+    image: ghcr.io/adam-sizzler/v2ray-stat-subscription:${V2RS_VERSION:-latest}
     container_name: v2ray-stat-subscription
-    restart: unless-stopped
-    ports:
-      - "9264:9264"  # HTTP API port
-      - "9263:9263"  # gRPC port
     volumes:
-      # Configuration file (required)
-      - ./config.yaml:/app/config.yaml:ro
-      
-      # Certificates for mTLS (if needed)
-      - ./certs:/app/certs:ro
-      
-      # Subscription templates (mounted from host for easy updates)
-      - ./subscription/templates:/app/templates:ro
-    environment:
-      - TZ=Asia/Bangkok
-    networks:
-      - v2ray-stat-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9264/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      - ${CONFIG_PATH:-./v2rs/config.yaml}:/app/config.yaml:ro
+      - ${CERTS_PATH:-./v2rs/certs}:/app/certs
+      - ./v2rs/subscription/templates:/app/templates:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 50M
+    profiles: [sub]
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      <<: *logging
 
-networks:
-  v2ray-stat-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-
+# Volume for storing Certbot data
 volumes:
-  # Persistent storage for database
+  certificate:
   backend-data:
     driver: local
-  
-  # Logs storage (optional)
-  backend-logs:
-    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-./v2rs/backend/data}
+
+networks:
+  default:
+    driver: ${NETWORK_DRIVER:-bridge}
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:-172.32.0.0/28}
