@@ -43,12 +43,4 @@ COPY config.yaml /app/config.yaml.example
 
 USER v2ray
 
-# Node gRPC listens on port 9253
-EXPOSE 9253
-
-# Health check via grpcurl would require additional tools
-# For now, just check if process is running
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD pgrep -f v2ray-stat-node || exit 1
-
 ENTRYPOINT ["/app/v2ray-stat-node"]
