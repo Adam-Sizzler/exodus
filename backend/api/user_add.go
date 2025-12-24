@@ -29,9 +29,13 @@ type AddUserRequest struct {
 	Nodes      []string `json:"nodes,omitempty"` // Список нод (опционально)
 }
 
-// GetNodesFromConfig returns the list of nodes from the configuration.
+// GetNodesFromConfig returns the list of nodes from the configuration as a slice.
 func GetNodesFromConfig(cfg *config.Config) []config.NodeConfig {
-	return cfg.V2rayStat.Nodes
+	var nodes []config.NodeConfig
+	for _, node := range cfg.Nodes {
+		nodes = append(nodes, node)
+	}
+	return nodes
 }
 
 // validateUsername checks if a username contains only letters, digits, hyphens, or underscores.
@@ -147,7 +151,7 @@ func AddUserHandler(manager *manager.DatabaseManager, cfg *config.Config) http.H
 			cfg.Logger.Debug("Using all nodes from config", "node_count", len(targetNodes))
 		} else {
 			for _, nodeName := range req.Nodes {
-				for _, node := range cfg.V2rayStat.Nodes {
+				for _, node := range cfg.Nodes {
 					if node.NodeName == nodeName {
 						targetNodes = append(targetNodes, node)
 						break

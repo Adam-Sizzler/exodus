@@ -95,7 +95,7 @@ func (nc *NodeClient) Close() error {
 // InitNodeClients initializes gRPC clients for all nodes.
 func InitNodeClients(cfg *config.Config) ([]*NodeClient, error) {
 	var nodeClients []*NodeClient
-	for _, node := range cfg.V2rayStat.Nodes {
+	for _, node := range cfg.Nodes {
 		client, err := NewNodeClient(node, cfg)
 		if err != nil {
 			cfg.Logger.Error("Failed to initialize client for node", "node", node.NodeName, "error", err)
@@ -274,7 +274,7 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.Config) (*sql.DB, e
 		return nil, fmt.Errorf("failed to execute SQL script for %s database: %v", dbType, err)
 	}
 
-	for _, node := range cfg.V2rayStat.Nodes {
+	for _, node := range cfg.Nodes {
 		_, err = db.Exec("INSERT OR IGNORE INTO nodes (node_name, address, port) VALUES (?, ?, ?)", node.NodeName, node.Address, node.Port)
 		if err != nil {
 			cfg.Logger.Error("Failed to insert node", "node_name", node.NodeName, "address", node.Address, "port", node.Port, "error", err)

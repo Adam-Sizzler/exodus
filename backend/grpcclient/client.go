@@ -66,7 +66,7 @@ func connectAndHandle(ctx context.Context, cfg *config.Config, manager *manager.
 	mu.Unlock()
 
 	conn, err := grpc.Dial(
-		cfg.V2rayStat.Subscription.Address+":"+cfg.V2rayStat.Subscription.Port,
+		cfg.Subscription.Address+":"+cfg.Subscription.Port,
 		grpc.WithInsecure(),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                10 * time.Second,

@@ -43,7 +43,7 @@ func TokenAuthMiddleware(cfg *config.Config, next http.HandlerFunc) http.Handler
 		cfg.Logger.Debug("Verifying token for request", "client_ip", clientIP)
 
 		// Allow access if no API token is set
-		if cfg.API.APIToken == "" {
+		if cfg.APIToken == "" {
 			cfg.Logger.Warn("API_TOKEN not set, request allowed", "client_ip", clientIP)
 			next.ServeHTTP(w, r)
 			return
@@ -73,7 +73,7 @@ func TokenAuthMiddleware(cfg *config.Config, next http.HandlerFunc) http.Handler
 			http.Error(w, "Empty token", http.StatusUnauthorized)
 			return
 		}
-		if token != cfg.API.APIToken {
+		if token != cfg.APIToken {
 			cfg.Logger.Warn("Invalid token", "client_ip", clientIP)
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return

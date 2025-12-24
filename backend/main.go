@@ -30,7 +30,7 @@ import (
 func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.Config, wg *sync.WaitGroup) {
 	defer wg.Done()
 	server := &http.Server{
-		Addr:    cfg.V2rayStat.Address + ":" + cfg.V2rayStat.Port,
+		Addr:    cfg.V2RS.Address + ":" + cfg.V2RS.Port,
 		Handler: api.WithServerHeader(http.DefaultServeMux),
 	}
 
@@ -76,11 +76,11 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 }
 
 func main() {
-	cfg, err := config.LoadConfig("config.yaml")
+	cfg, err := config.LoadConfig("config.yml")
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
-	common.InitTimezone(cfg.Timezone, cfg.Logger)
+	common.InitTimezone(cfg.TZ, cfg.Logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -113,12 +113,17 @@ func main() {
 
 	// Готовим wg
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(3)
 
 	go startAPIServer(ctx, manager, taskManager, nodeClients, &cfg, &wg)
-	go grpcclient.StartGrpcClient(ctx, &cfg, manager, &wg)
 	go db.MonitorSubscriptionsAndSync(ctx, manager, fileDB, &cfg, &wg)
 	go users.MonitorNodeData(ctx, manager, nodeClients, &cfg, &wg)
+	if cfg.Subscription != nil {
+		wg.Add(1)
+		go grpcclient.StartGrpcClient(ctx, &cfg, manager, &wg)
+	} else {
+		cfg.Logger.Info("Subscription is disabled, skipping gRPC client")
+	}
 
 	log.Printf("[START] v2ray-stat-backend application %s", constant.Version)
 

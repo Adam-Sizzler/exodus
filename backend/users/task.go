@@ -196,7 +196,7 @@ func MonitorNodeData(ctx context.Context, manager *manager.DatabaseManager, node
 						if err := stream.Send(&proto.NodeDataRequest{
 							Request: &proto.NodeDataRequest_Config{
 								Config: &proto.StreamConfig{
-									IntervalSeconds: int32(cfg.V2rayStat.Monitor.TickerInterval),
+									IntervalSeconds: int32(cfg.Monitor.TickerInterval),
 								},
 							},
 						}); err != nil {
@@ -217,7 +217,7 @@ func MonitorNodeData(ctx context.Context, manager *manager.DatabaseManager, node
 							nodeStates[nc.NodeName].mutex.Unlock()
 							continue
 						}
-						cfg.Logger.Info("Sent initial config", "node_name", nc.NodeName, "interval_seconds", cfg.V2rayStat.Monitor.TickerInterval)
+						cfg.Logger.Info("Sent initial config", "node_name", nc.NodeName, "interval_seconds", cfg.Monitor.TickerInterval)
 
 						// Send initial ListUsers request
 						if err := stream.Send(&proto.NodeDataRequest{

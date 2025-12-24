@@ -178,7 +178,7 @@ func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData
 
 			uplinkOnline := max(sessUplink-previousUplink, 0)
 			downlinkOnline := max(sessDownlink-previousDownlink, 0)
-			rate := (uplinkOnline + downlinkOnline) * 8 / cfg.V2rayStat.Monitor.TickerInterval
+			rate := (uplinkOnline + downlinkOnline) * 8 / cfg.Monitor.TickerInterval
 
 			cfg.Logger.Debug("Updating proxy stats", "node_name", nodeName, "source", source, "rate", rate, "uplink", uplink, "downlink", downlink)
 
@@ -342,12 +342,12 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 
 			uplinkOnline := max(sessUplink-previousUplink, 0)
 			downlinkOnline := max(sessDownlink-previousDownlink, 0)
-			rate := (uplinkOnline + downlinkOnline) * 8 / cfg.V2rayStat.Monitor.TickerInterval
+			rate := (uplinkOnline + downlinkOnline) * 8 / cfg.Monitor.TickerInterval
 
 			var lastSeen int64
 			var updateLastSeen bool
 			userKey := nodeName + ":" + user
-			if rate > cfg.V2rayStat.Monitor.OnlineRateThreshold*1000 {
+			if rate > cfg.Monitor.OnlineRateThreshold*1000 {
 				lastSeen = 0
 				isInactive[userKey] = false
 				updateLastSeen = true

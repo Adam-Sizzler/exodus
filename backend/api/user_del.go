@@ -148,7 +148,7 @@ func DeleteUserHandler(manager *manager.DatabaseManager, cfg *config.Config) htt
 			cfg.Logger.Debug("Using all nodes from config", "node_count", len(targetNodes))
 		} else {
 			for _, nodeName := range req.Nodes {
-				for _, node := range cfg.V2rayStat.Nodes {
+				for _, node := range cfg.Nodes {
 					if node.NodeName == nodeName {
 						targetNodes = append(targetNodes, node)
 						break
