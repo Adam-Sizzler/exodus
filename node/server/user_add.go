@@ -38,7 +38,7 @@ func (s *NodeServer) AddUsers(ctx context.Context, req *proto.AddUsersRequest) (
 
 	// Determine protocol based on configuration
 	var protocol string
-	switch s.Cfg.V2rayStat.Type {
+	switch s.Cfg.Core.Type {
 	case "xray":
 		data, err := os.ReadFile(s.Cfg.Core.Config)
 		if err != nil {
@@ -74,7 +74,7 @@ func (s *NodeServer) AddUsers(ctx context.Context, req *proto.AddUsersRequest) (
 			}
 		}
 	default:
-		return nil, grpcstatus.Errorf(codes.InvalidArgument, "unsupported core type: %s", s.Cfg.V2rayStat.Type)
+		return nil, grpcstatus.Errorf(codes.InvalidArgument, "unsupported core type: %s", s.Cfg.Core.Type)
 	}
 
 	// Generate credentials for each user
@@ -129,7 +129,7 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 		return fmt.Errorf("failed to read config.json: %v", err)
 	}
 
-	proxyType := cfg.V2rayStat.Type
+	proxyType := cfg.Core.Type
 	var configData any
 	var protocol string
 	found := false

@@ -17,7 +17,7 @@ import (
 // DatabaseManager manages sequential database access through prioritized request channels.
 type DatabaseManager struct {
 	db                *sql.DB                  // Private field for database connection
-	cfg               *config.Config           // Configuration for logging
+	cfg               *config.BackendConfig           // Configuration for logging
 	highPriority      chan func(*sql.DB) error // Channel for high-priority requests
 	lowPriority       chan func(*sql.DB) error // Channel for low-priority requests
 	ctx               context.Context          // Context for cancellation
@@ -30,7 +30,7 @@ type DatabaseManager struct {
 }
 
 // NewDatabaseManager creates a new DatabaseManager and starts processing requests.
-func NewDatabaseManager(db *sql.DB, ctx context.Context, workerCount, highPriorityBuffer, lowPriorityBuffer int, cfg *config.Config) (*DatabaseManager, error) {
+func NewDatabaseManager(db *sql.DB, ctx context.Context, workerCount, highPriorityBuffer, lowPriorityBuffer int, cfg *config.BackendConfig) (*DatabaseManager, error) {
 	if workerCount < 1 || highPriorityBuffer < 0 || lowPriorityBuffer < 0 {
 		cfg.Logger.Fatal("Invalid parameters", "workerCount", workerCount, "highPriorityBuffer", highPriorityBuffer, "lowPriorityBuffer", lowPriorityBuffer)
 		return nil, fmt.Errorf("invalid parameters: workerCount=%d, highPriorityBuffer=%d, lowPriorityBuffer=%d", workerCount, highPriorityBuffer, lowPriorityBuffer)

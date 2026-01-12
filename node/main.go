@@ -13,13 +13,13 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadNodeConfig("config.yaml")
+	cfg, err := config.LoadNodeConfig("config.yml")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load node config: %v\n", err)
 		os.Exit(1)
 	}
 
-	common.InitTimezone(cfg.Timezone, cfg.Logger)
+	common.InitTimezone(cfg.TZ, cfg.Logger)
 
 	nodeServer, err := server.NewNodeServer(&cfg)
 	if err != nil {

@@ -30,7 +30,7 @@ type SetUserEnabledRequest struct {
 }
 
 // SetUsersEnabledToNode sends a gRPC request to a node to enable or disable users.
-func SetUsersEnabledToNode(ctx context.Context, node config.NodeConfig, usernames []string, enabled bool, cfg *config.Config) (*proto.ListUsersResponse, error) {
+func SetUsersEnabledToNode(ctx context.Context, node config.NodeConfig, usernames []string, enabled bool, cfg *config.BackendConfig) (*proto.ListUsersResponse, error) {
 	cfg.Logger.Debug("Setting enabled status for users on node", "node_name", node.NodeName, "usernames", usernames, "enabled", enabled)
 
 	nodeClient, err := db.NewNodeClient(node, cfg)
@@ -67,7 +67,7 @@ func SetUsersEnabledToNode(ctx context.Context, node config.NodeConfig, username
 }
 
 // SetUserEnabledHandler handles HTTP PATCH requests for enabling/disabling users on nodes.
-func SetUserEnabledHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func SetUserEnabledHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received SetUserEnabled HTTP request", "method", r.Method)
 

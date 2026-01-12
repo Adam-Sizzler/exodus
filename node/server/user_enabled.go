@@ -51,7 +51,7 @@ func toggleUsersEnabled(cfg *config.NodeConfig, usernames []string, enabled bool
 	}
 	cfg.Logger.Trace("Статус пользователей", "users", usernames, "status", status)
 
-	switch cfg.V2rayStat.Type {
+	switch cfg.Core.Type {
 	case "xray":
 		mainConfigData, err := os.ReadFile(mainConfigPath)
 		if err != nil {

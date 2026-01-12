@@ -18,9 +18,9 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/pires/go-proxyproto v0.8.1 // indirect
 	github.com/sagernet/sing v0.5.1 // indirect
-	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	v2ray.com/core v4.19.1+incompatible // indirect
 	v2ray.com/ext v4.15.0+incompatible // indirect
 )

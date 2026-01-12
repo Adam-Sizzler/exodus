@@ -17,7 +17,7 @@ import (
 
 // EnsureCertificates проверяет наличие сертификатов и генерирует их, если они отсутствуют.
 // Возвращает пути к сертификату и ключу.
-func EnsureCertificates(cfg *config.Config) (certPath, keyPath string, err error) {
+func EnsureCertificates(cfg *config.BackendConfig) (certPath, keyPath string, err error) {
 	// Динамически определяем директорию certs относительно текущей рабочей директории
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -52,7 +52,7 @@ func EnsureCertificates(cfg *config.Config) (certPath, keyPath string, err error
 // GenerateSelfSignedCert генерирует один self-signed сертификат (общий для всех нод).
 // Без SAN, без hostname. Cert может использоваться как CA (self-signed).
 // Сохраняет в файлы certPath и keyPath.
-func GenerateSelfSignedCert(certPath, keyPath string, cfg *config.Config) error {
+func GenerateSelfSignedCert(certPath, keyPath string, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Generating private key")
 	// Генерация приватного ключа
 	priv, err := rsa.GenerateKey(rand.Reader, 4096)

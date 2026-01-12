@@ -22,7 +22,7 @@ var (
 	mu       sync.Mutex
 )
 
-func StartGrpcClient(ctx context.Context, cfg *config.Config, manager *manager.DatabaseManager, wg *sync.WaitGroup) {
+func StartGrpcClient(ctx context.Context, cfg *config.BackendConfig, manager *manager.DatabaseManager, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
 		mu.Lock()
@@ -53,7 +53,7 @@ func StartGrpcClient(ctx context.Context, cfg *config.Config, manager *manager.D
 	}
 }
 
-func connectAndHandle(ctx context.Context, cfg *config.Config, manager *manager.DatabaseManager) {
+func connectAndHandle(ctx context.Context, cfg *config.BackendConfig, manager *manager.DatabaseManager) {
 	localCtx, localCancel := context.WithCancel(ctx)
 	defer localCancel()
 

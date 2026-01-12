@@ -14,34 +14,35 @@ import (
 
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
-	Log       LogConfig       `yaml:"log"`
-	V2rayStat V2rayStatConfig `yaml:"v2rs-node"`
-	Timezone  string          `yaml:"timezone"`
-	Features  map[string]bool `yaml:"features"`
-	Core      CoreConfig      `yaml:"core"`
-	Paths     PathsConfig     `yaml:"paths"`
-	Logger    *logger.Logger
+	Log      LogConfig       `yaml:"log_config"`
+	V2RS     V2RSConfig      `yaml:"node"`
+	TZ       string          `yaml:"TZ"`
+	Features map[string]bool `yaml:"features"`
+	Core     CoreConfig      `yaml:"core"`
+	Paths    PathsConfig     `yaml:"paths"`
+	Logger   *logger.Logger
 }
 
 type LogConfig struct {
-	LogLevel string `yaml:"loglevel"`
-	LogMode  string `yaml:"logmode"`
+	LogLevel string `yaml:"level"`
+	LogMode  string `yaml:"mode"`
 }
 
-type V2rayStatConfig struct {
-	Type       string      `yaml:"type"`
-	Address    string      `yaml:"address"`
-	Port       string      `yaml:"port"`
-	MTLSConfig *MTLSConfig `yaml:"mtls"`
+type V2RSConfig struct {
+	GrpcAddress string      `yaml:"listen_grpc_address"`
+	GrpcPort    string      `yaml:"listen_grpc_port"`
+	GrpcPath    string      `yaml:"path"`
+	MTLSConfig  *MTLSConfig `yaml:"mtls"`
 }
 
 type CoreConfig struct {
+	Type           string `yaml:"type"`
+	ApiGrpcAddress string `yaml:"api_grpc_address"`
+	ApiGrpcPort    string `yaml:"api_grpc_port"`
 	Dir            string `yaml:"dir"`
 	Config         string `yaml:"config"`
 	AccessLog      string `yaml:"access_log"`
 	AccessLogRegex string `yaml:"access_log_regex"`
-	ApiAddress     string `yaml:"api_address"`
-	ApiPort        string `yaml:"api_port"`
 }
 
 // PathsConfig holds paths and logging settings.
@@ -59,23 +60,24 @@ type MTLSConfig struct {
 
 var defaultConfig = NodeConfig{
 	Log: LogConfig{
-		LogLevel: "trace",
+		LogLevel: "none",
 		LogMode:  "inclusive",
 	},
-	V2rayStat: V2rayStatConfig{
-		Type:    "xray",
-		Address: "127.0.0.1",
-		Port:    "10000",
+	TZ: "UTC",
+	V2RS: V2RSConfig{
+		GrpcAddress: "127.0.0.1",
+		GrpcPort:    "9253",
+		GrpcPath:    "",
 	},
-	Timezone: "UTC",
 	Features: make(map[string]bool),
 	Core: CoreConfig{
+		Type:           "xray",
+		ApiGrpcAddress: "127.0.0.1",
+		ApiGrpcPort:    "10812",
 		Dir:            "/usr/local/etc/xray/",
 		Config:         "/usr/local/etc/xray/config.json",
 		AccessLog:      "/usr/local/etc/xray/access.log",
 		AccessLogRegex: `from (?:tcp|udp):([\d\.]+):\d+ accepted (?:tcp|udp):([\w\.\-]+):\d+ \[[^\]]+\] email: (\S+)`,
-		ApiAddress:     "127.0.0.1", // Default; change to "xray" for Docker
-        ApiPort:        "9953",      // Default Xray API port
 	},
 	Paths: PathsConfig{
 		F2BLog:       "/var/log/v2ray-stat.log",
@@ -91,7 +93,7 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	_, err := os.Stat(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cfg.Logger, _ = logger.NewLoggerWithValidation("warn", "inclusive", cfg.Timezone, os.Stderr)
+			cfg.Logger, _ = logger.NewLoggerWithValidation("warn", "inclusive", cfg.TZ, os.Stderr)
 			cfg.Logger.Warn("Configuration file not found, using default values", "file", configFile)
 			return cfg, nil
 		}
@@ -102,29 +104,29 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	if err != nil {
 		return cfg, fmt.Errorf("error reading configuration file %s: %v", configFile, err)
 	}
-	cfg.Logger, _ = logger.NewLoggerWithValidation("info", "inclusive", cfg.Timezone, os.Stderr)
+	cfg.Logger, _ = logger.NewLoggerWithValidation("info", "inclusive", cfg.TZ, os.Stderr)
 	cfg.Logger.Debug("Read configuration file", "file", configFile, "size", len(data))
 
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("error parsing YAML configuration from %s: %v", configFile, err)
 	}
-	cfg.Logger.Debug("Parsed YAML configuration", "address", cfg.V2rayStat.Address, "port", cfg.V2rayStat.Port)
+	cfg.Logger.Debug("Parsed YAML configuration", "address", cfg.V2RS.GrpcAddress, "port", cfg.V2RS.GrpcPort)
 
-	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.Timezone, os.Stderr)
+	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.TZ, os.Stderr)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to initialize logger: %v", err)
 	}
 
-	if cfg.V2rayStat.Type != "xray" && cfg.V2rayStat.Type != "singbox" {
-		cfg.Logger.Warn("Invalid v2ray-stat.type, using default", "type", cfg.V2rayStat.Type, "default", defaultConfig.V2rayStat.Type)
-		cfg.V2rayStat.Type = defaultConfig.V2rayStat.Type
+	if cfg.Core.Type != "xray" && cfg.Core.Type != "singbox" {
+		cfg.Logger.Warn("Invalid v2ray-stat.type, using default", "type", cfg.Core.Type, "default", defaultConfig.Core.Type)
+		cfg.Core.Type = defaultConfig.Core.Type
 	}
 
-	if cfg.V2rayStat.Port != "" {
-		portNum, err := strconv.Atoi(cfg.V2rayStat.Port)
+	if cfg.V2RS.GrpcPort != "" {
+		portNum, err := strconv.Atoi(cfg.V2RS.GrpcPort)
 		if err != nil || portNum < 1 || portNum > 65535 {
-			cfg.Logger.Warn("Invalid v2ray-stat.port, using default", "port", cfg.V2rayStat.Port, "default", defaultConfig.V2rayStat.Port)
-			cfg.V2rayStat.Port = defaultConfig.V2rayStat.Port
+			cfg.Logger.Warn("Invalid v2ray-stat.grpc_port, using default", "port", cfg.V2RS.GrpcPort, "default", defaultConfig.V2RS.GrpcPort)
+			cfg.V2RS.GrpcPort = defaultConfig.V2RS.GrpcPort
 		}
 	}
 
@@ -143,39 +145,39 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		cfg.Core.Config = defaultConfig.Core.Config
 	}
 
-	if cfg.Core.ApiPort == "" {
-        cfg.Core.ApiPort = defaultConfig.Core.ApiPort
-    } else {
-        portNum, err := strconv.Atoi(cfg.Core.ApiPort)
-        if err != nil || portNum < 1 || portNum > 65535 {
-            cfg.Logger.Warn("Invalid core.api_port, using default", "port", cfg.Core.ApiPort, "default", defaultConfig.Core.ApiPort)
-            cfg.Core.ApiPort = defaultConfig.Core.ApiPort
-        }
-    }
+	if cfg.Core.ApiGrpcPort == "" {
+		cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
+	} else {
+		portNum, err := strconv.Atoi(cfg.Core.ApiGrpcPort)
+		if err != nil || portNum < 1 || portNum > 65535 {
+			cfg.Logger.Warn("Invalid core.api_grpc_port, using default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
+			cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
+		}
+	}
 
-    if cfg.Core.ApiAddress == "" {
-        cfg.Core.ApiAddress = defaultConfig.Core.ApiAddress
-    }
+	if cfg.Core.ApiGrpcAddress == "" {
+		cfg.Core.ApiGrpcAddress = defaultConfig.Core.ApiGrpcAddress
+	}
 
-	if cfg.V2rayStat.MTLSConfig != nil {
-		if cfg.V2rayStat.Address != "127.0.0.1" && cfg.V2rayStat.Address != "0.0.0.0" && cfg.V2rayStat.Address != "localhost" {
-			if cfg.V2rayStat.MTLSConfig.Cert == "" || cfg.V2rayStat.MTLSConfig.Key == "" || cfg.V2rayStat.MTLSConfig.CACert == "" {
-				cfg.Logger.Error("Incomplete mTLS configuration for non-localhost address", "address", cfg.V2rayStat.Address)
+	if cfg.V2RS.MTLSConfig != nil {
+		if cfg.V2RS.GrpcAddress != "127.0.0.1" && cfg.V2RS.GrpcAddress != "0.0.0.0" && cfg.V2RS.GrpcAddress != "localhost" {
+			if cfg.V2RS.MTLSConfig.Cert == "" || cfg.V2RS.MTLSConfig.Key == "" || cfg.V2RS.MTLSConfig.CACert == "" {
+				cfg.Logger.Error("Incomplete mTLS configuration for non-localhost address", "address", cfg.V2RS.GrpcAddress)
 				return cfg, fmt.Errorf("incomplete mTLS configuration for non-localhost address")
 			}
-			for _, file := range []string{cfg.V2rayStat.MTLSConfig.Cert, cfg.V2rayStat.MTLSConfig.Key, cfg.V2rayStat.MTLSConfig.CACert} {
+			for _, file := range []string{cfg.V2RS.MTLSConfig.Cert, cfg.V2RS.MTLSConfig.Key, cfg.V2RS.MTLSConfig.CACert} {
 				if _, err := os.Stat(file); os.IsNotExist(err) {
-					cfg.Logger.Error("mTLS certificate file not found for non-localhost address", "file", file, "address", cfg.V2rayStat.Address)
+					cfg.Logger.Error("mTLS certificate file not found for non-localhost address", "file", file, "address", cfg.V2RS.GrpcAddress)
 					return cfg, fmt.Errorf("mTLS certificate file not found: %s", file)
 				}
 			}
 		}
 	}
 
-	if cfg.Timezone != "" {
-		if _, err := time.LoadLocation(cfg.Timezone); err != nil {
-			cfg.Logger.Warn("Invalid timezone value, using default", "timezone", cfg.Timezone)
-			cfg.Timezone = defaultConfig.Timezone
+	if cfg.TZ != "" {
+		if _, err := time.LoadLocation(cfg.TZ); err != nil {
+			cfg.Logger.Warn("Invalid timezone value, using default", "timezone", cfg.TZ)
+			cfg.TZ = defaultConfig.TZ
 		}
 	}
 
@@ -183,6 +185,6 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		cfg.Features = make(map[string]bool)
 	}
 
-	cfg.Logger.Info("Node configuration validated", "address", cfg.V2rayStat.Address, "port", cfg.V2rayStat.Port, "mtls_enabled", cfg.V2rayStat.MTLSConfig != nil)
+	cfg.Logger.Info("Node configuration validated", "address", cfg.V2RS.GrpcAddress, "port", cfg.V2RS.GrpcPort, "mtls_enabled", cfg.V2RS.MTLSConfig != nil)
 	return cfg, nil
 }

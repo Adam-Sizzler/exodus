@@ -15,7 +15,7 @@ import (
 )
 
 // SyncUsersWithNode synchronizes users from multiple nodes with the database.
-func SyncUsersWithNode(ctx context.Context, manager *manager.DatabaseManager, nodeClients []*db.NodeClient, cfg *config.Config) error {
+func SyncUsersWithNode(ctx context.Context, manager *manager.DatabaseManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Starting user synchronization", "node_count", len(nodeClients))
 
 	var wg sync.WaitGroup

@@ -47,4 +47,4 @@ subscription:
           top: node_top
   users:
     premium:
-      users: ["cortez", "myana", "mama"]
+      users: ["cortez", "user", "mama"]

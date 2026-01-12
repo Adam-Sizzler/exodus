@@ -18,7 +18,7 @@ func AppendStats(builder *strings.Builder, content string) {
 	builder.WriteString(content)
 }
 
-func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.Config) (string, error) {
+func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendConfig) (string, error) {
 	columns, err := rows.Columns()
 	if err != nil {
 		cfg.Logger.Error("Failed to get column names", "error", err)

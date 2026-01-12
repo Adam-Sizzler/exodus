@@ -17,14 +17,14 @@ type TaskWorker struct {
 	taskManager *TaskManager
 	dbManager   *manager.DatabaseManager
 	nodeClients []*db.NodeClient
-	cfg         *config.Config
+	cfg         *config.BackendConfig
 	ctx         context.Context
 	cancel      context.CancelFunc
 	wg          sync.WaitGroup
 }
 
 // NewTaskWorker creates a new task worker
-func NewTaskWorker(taskManager *TaskManager, dbManager *manager.DatabaseManager, nodeClients []*db.NodeClient, cfg *config.Config) *TaskWorker {
+func NewTaskWorker(taskManager *TaskManager, dbManager *manager.DatabaseManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig) *TaskWorker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &TaskWorker{
 		taskManager: taskManager,

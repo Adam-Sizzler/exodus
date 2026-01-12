@@ -11,7 +11,7 @@ import (
 )
 
 // resetClientsStats resets traffic statistics in the user_traffic table, optionally filtered by node names.
-func resetClientsStats(manager *manager.DatabaseManager, cfg *config.Config, nodes []string) (int64, error) {
+func resetClientsStats(manager *manager.DatabaseManager, cfg *config.BackendConfig, nodes []string) (int64, error) {
 	var rowsAffected int64
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		cfg.Logger.Debug("Starting transaction for resetting client stats")
@@ -73,7 +73,7 @@ func resetClientsStats(manager *manager.DatabaseManager, cfg *config.Config, nod
 }
 
 // ResetClientsStatsHandler handles HTTP requests to reset client traffic statistics in the user_traffic table.
-func ResetClientsStatsHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func ResetClientsStatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting ResetClientsStatsHandler request processing")
 

@@ -50,7 +50,7 @@ func DeleteUsersFromConfig(cfg *config.NodeConfig, usernames []string, inboundTa
 		return fmt.Errorf("failed to read config.json: %v", err)
 	}
 
-	proxyType := cfg.V2rayStat.Type
+	proxyType := cfg.Core.Type
 	var configData any
 	found := false
 

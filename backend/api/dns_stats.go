@@ -20,7 +20,7 @@ type DnsStat struct {
 }
 
 // getDnsStats executes a query and returns formatted DNS statistics.
-func getDnsStats(manager *manager.DatabaseManager, cfg *config.Config, nodes, users, domain, count string) (string, error) {
+func getDnsStats(manager *manager.DatabaseManager, cfg *config.BackendConfig, nodes, users, domain, count string) (string, error) {
 	// Проверка параметра count
 	countInt, err := strconv.Atoi(count)
 	if err != nil {
@@ -137,7 +137,7 @@ func getDnsStats(manager *manager.DatabaseManager, cfg *config.Config, nodes, us
 }
 
 // DnsStatsHandler handles HTTP requests for DNS statistics.
-func DnsStatsHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func DnsStatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting DnsStatsHandler request processing")
 

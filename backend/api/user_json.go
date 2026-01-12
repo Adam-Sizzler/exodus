@@ -42,7 +42,7 @@ type NodeUsers struct {
 }
 
 // UsersHandler returns a list of users grouped by node from the database in JSON format.
-func UsersHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func UsersHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Начало обработки запроса UsersHandler")
 
@@ -73,7 +73,7 @@ func UsersHandler(manager *manager.DatabaseManager, cfg *config.Config) http.Han
 }
 
 // queryUsers выполняет запрос к базе данных для получения пользователей и возвращает NodeUsers.
-func QueryUsers(ctx context.Context, manager *manager.DatabaseManager, cfg *config.Config) ([]NodeUsers, error) {
+func QueryUsers(ctx context.Context, manager *manager.DatabaseManager, cfg *config.BackendConfig) ([]NodeUsers, error) {
 	var nodeUsers []NodeUsers
 	err := manager.ExecuteLowPriority(func(db *sql.DB) error {
 		cfg.Logger.Debug("Выполнение запроса к таблицам user_traffic, user_data, user_ids и nodes")

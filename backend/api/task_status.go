@@ -9,7 +9,7 @@ import (
 )
 
 // TaskStatusHandler handles requests for task status
-func TaskStatusHandler(taskManager *tasks.TaskManager, cfg *config.Config) http.HandlerFunc {
+func TaskStatusHandler(taskManager *tasks.TaskManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received task status request", "method", r.Method)
 

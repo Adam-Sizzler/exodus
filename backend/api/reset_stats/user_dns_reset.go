@@ -11,7 +11,7 @@ import (
 )
 
 // DeleteDNSStatsHandler deletes records from the user_dns table, optionally filtered by node names.
-func DeleteDNSStatsHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func DeleteDNSStatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting DeleteDNSStatsHandler request processing")
 

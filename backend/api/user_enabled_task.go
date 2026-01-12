@@ -12,7 +12,7 @@ import (
 )
 
 // SetUserEnabledTaskHandler handles HTTP PATCH requests for enabling/disabling users via task system
-func SetUserEnabledTaskHandler(taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.Config) http.HandlerFunc {
+func SetUserEnabledTaskHandler(taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received SetUserEnabled task-based HTTP request", "method", r.Method)
 

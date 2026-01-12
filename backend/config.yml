@@ -3,47 +3,44 @@
 
 # Log Settings
 log_config:
-  level: none  # Logging level: none, error, warn, info, debug, trace
-  mode: inclusive  # Mode: inclusive (this and lower), exclusive (only this)                                  # Log mode: inclusive = this and lower levels; exclusive = only this level
+  level: none                                           # Logging level: none, error, warn, info, debug, trace
+  mode: inclusive                                       # Mode: inclusive (this and lower), exclusive (only this)
 
 # API Settings
 api_token: ""                                           # Token required to access the API endpoints. If empty, access is allowed without authorization. Format: Bearer <token>.
  
 # Timezone Settings 
-TZ: Asia/Bangkok                                    # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
+TZ: Asia/Bangkok                                        # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
 
 backend:
-  listen_address: 127.0.0.1                                      # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
-  listen_port: 9243                                              # TCP port for v2ray-stat API server. Must be between 1 and 65535.
+  listen_address: 127.0.0.1                             # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
+  listen_port: 9243                                     # TCP port for v2ray-stat API server. Must be between 1 and 65535.
 
 # Paths & Logging 
 paths: 
-  database: ./data.db             # Path to the SQLite database for tracking user sessions and usage.
+  database: ./data.db                                   # Path to the SQLite database for tracking user sessions and usage.
 
 monitor:
   ticker_interval: 10                                   # Interval (in seconds) for polling monitored services and users. Recommended: 5–60.
   online_rate_threshold: 0                              # Minimum rate threshold in kilobits per second (kbps) to consider a user online. 0 means any non-zero rate is considered online.
 
-node_metadata:                                                  # List of monitored nodes and their API connection parameters.
-  swe:                                                  # Display name of the node.
-    address: node                                  # Node API endpoint address in host format.
+node_metadata:
+  local:
+    address: 127.0.0.1
     port: 9253                                          # Node API endpoint address in port format.
-  rus:
-    address: 1.2.3.4                                    # Node API endpoint address in host format.
-    port: 9253                                          # Node API endpoint address in port format.
-    mtls:
-      cert: /usr/local/etc/v2ray-stat/certs/node.crt
-      key: /usr/local/etc/v2ray-stat/certs/node.key
-      ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt
-  nl:
-    schema: https
-    address: example.com                                # Node API endpoint address in host format.
-    port: 443                                           # Node API endpoint address in port format.
-    path: 54tgerrfgdf
-    mtls:                                               # mTLS (mutual TLS) configuration for secure connection to the node.
-      cert: /usr/local/etc/v2ray-stat/certs/node.crt    # Path to the client's TLS certificate.
-      key: /usr/local/etc/v2ray-stat/certs/node.key     # Path to the client's private key.
-      ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt # Path to the CA certificate for server verification.
+#  rus:
+#    schema: grpc
+#    address: 1.2.3.4                                   # Node API endpoint address in host format.
+#    port: 9253                                         # Node API endpoint address in port format.
+#    mtls:
+#      cert: /usr/local/etc/v2ray-stat/certs/node.crt
+#      key: /usr/local/etc/v2ray-stat/certs/node.key
+#      ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt
+#  im:
+#    schema: https
+#    address: exampple.com                              # Node API endpoint address in host format.
+#    port: 443                                          # Node API endpoint address in port format.
+#    path: grpcnode
 
 subscription_grpc_connection:
   schema:

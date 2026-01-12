@@ -29,7 +29,7 @@ var (
 )
 
 // LoadIsInactiveFromLastSeen loads user inactivity status from the last_seen field.
-func LoadIsInactiveFromLastSeen(manager *manager.DatabaseManager, cfg *config.Config) error {
+func LoadIsInactiveFromLastSeen(manager *manager.DatabaseManager, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Loading user inactivity status from last_seen")
 	isInactiveLocal := make(map[string]bool)
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
@@ -82,7 +82,7 @@ func convertProtoToApiResponse(protoData *proto.GetApiStatsResponse) *api.ApiRes
 }
 
 // updateProxyStats updates traffic statistics for inbound tags in the database.
-func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData *api.ApiResponse, cfg *config.Config) error {
+func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData *api.ApiResponse, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Starting proxy stats update", "node_name", nodeName)
 
 	currentStats := extractProxyTraffic(apiData)
@@ -217,7 +217,7 @@ func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData
 }
 
 // updateUserStats updates traffic statistics for users in the database.
-func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData *api.ApiResponse, cfg *config.Config) error {
+func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData *api.ApiResponse, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Starting user stats update", "node_name", nodeName)
 
 	currentStats := extractUserTraffic(apiData)
@@ -443,7 +443,7 @@ func splitAndCleanName(name string) []string {
 }
 
 // stringToInt converts a string to an integer.
-func stringToInt(cfg *config.Config, s string) int {
+func stringToInt(cfg *config.BackendConfig, s string) int {
 	result, err := strconv.Atoi(s)
 	if err != nil {
 		cfg.Logger.Warn("Failed to convert string to integer", "string", s, "error", err)

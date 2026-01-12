@@ -39,7 +39,7 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 
 	s.Cfg.Logger.Debug("Starting ListUsers", "main_config_path", mainConfigPath, "disabled_users_path", disabledUsersPath)
 
-	switch s.Cfg.V2rayStat.Type {
+	switch s.Cfg.Core.Type {
 	case "xray":
 		// Process main config
 		data, err := os.ReadFile(mainConfigPath)
@@ -199,8 +199,8 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 		}
 
 	default:
-		s.Cfg.Logger.Error("Unsupported core type", "type", s.Cfg.V2rayStat.Type)
-		return nil, status.Errorf(codes.InvalidArgument, "unsupported core type: %s", s.Cfg.V2rayStat.Type)
+		s.Cfg.Logger.Error("Unsupported core type", "type", s.Cfg.Core.Type)
+		return nil, status.Errorf(codes.InvalidArgument, "unsupported core type: %s", s.Cfg.Core.Type)
 	}
 
 	resp := &proto.ListUsersResponse{

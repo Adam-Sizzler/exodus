@@ -26,7 +26,7 @@ type DeleteUserRequest struct {
 }
 
 // DeleteUsersFromNode sends a gRPC request to a node to delete one or more users.
-func DeleteUsersFromNode(ctx context.Context, node config.NodeConfig, usernames []string, inboundTag string, cfg *config.Config) (*proto.ListUsersResponse, error) {
+func DeleteUsersFromNode(ctx context.Context, node config.NodeConfig, usernames []string, inboundTag string, cfg *config.BackendConfig) (*proto.ListUsersResponse, error) {
 	cfg.Logger.Debug("Deleting users from node", "node_name", node.NodeName, "usernames", usernames, "inbound_tag", inboundTag)
 
 	nodeClient, err := db.NewNodeClient(node, cfg)
@@ -63,7 +63,7 @@ func DeleteUsersFromNode(ctx context.Context, node config.NodeConfig, usernames 
 }
 
 // DeleteUserHandler handles HTTP POST requests for deleting users from nodes.
-func DeleteUserHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func DeleteUserHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received DeleteUser HTTP request", "method", r.Method)
 

@@ -14,7 +14,7 @@ import (
 )
 
 // Config holds the configuration settings for the backend.
-type Config struct {
+type BackendConfig struct {
 	Logger       *logger.Logger
 	Log          LogConfig               `yaml:"log_config"`
 	APIToken     string                  `yaml:"api_token"`
@@ -28,8 +28,8 @@ type Config struct {
 }
 
 type LogConfig struct {
-	Level string `yaml:"level"`
-	Mode  string `yaml:"mode"`
+	LogLevel string `yaml:"level"`
+	LogMode  string `yaml:"mode"`
 }
 
 // V2RSConfig holds v2ray-stat specific settings.
@@ -89,10 +89,10 @@ type StatsSection struct {
 	Columns   []string `yaml:"columns"`
 }
 
-var defaultConfig = Config{
+var defaultConfig = BackendConfig{
 	Log: LogConfig{
-		Level: "none",
-		Mode:  "inclusive",
+		LogLevel: "none",
+		LogMode:  "inclusive",
 	},
 	APIToken: "",
 	TZ:       "",
@@ -122,7 +122,7 @@ var defaultConfig = Config{
 }
 
 // LoadConfig reads configuration from the specified YAML file.
-func LoadConfig(configFile string) (Config, error) {
+func LoadConfig(configFile string) (BackendConfig, error) {
 	cfg := defaultConfig
 
 	_, err := os.Stat(configFile)
@@ -145,7 +145,7 @@ func LoadConfig(configFile string) (Config, error) {
 		return cfg, fmt.Errorf("error parsing YAML configuration from %s: %v", configFile, err)
 	}
 
-	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.Level, cfg.Log.Mode, cfg.TZ, os.Stderr)
+	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.TZ, os.Stderr)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to initialize logger: %v", err)
 	}
@@ -178,9 +178,15 @@ func LoadConfig(configFile string) (Config, error) {
 			cfg.Logger.Warn("Invalid node configuration, skipping", "node_name", name, "address", node.Address, "port", node.Port)
 			continue
 		}
-		if portNum, err := strconv.Atoi(node.Port); err != nil || portNum < 1000 || portNum > 65535 {
+		if portNum, err := strconv.Atoi(node.Port); err != nil || portNum < 1 || portNum > 65535 {
 			cfg.Logger.Warn("Invalid node port, skipping", "node_name", name, "port", node.Port)
 			continue
+		}
+
+		validSchemas := []string{"", "http", "https", "grpc"}
+		if !slices.Contains(validSchemas, node.Schema) {
+			cfg.Logger.Warn("Invalid schema, fallback to insecure", "node_name", name, "port", node.Port)
+			node.Schema = ""
 		}
 		if node.MTLSConfig != nil {
 			if node.MTLSConfig.CACert == "" || node.MTLSConfig.Cert == "" || node.MTLSConfig.Key == "" {

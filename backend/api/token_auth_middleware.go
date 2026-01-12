@@ -9,7 +9,7 @@ import (
 )
 
 // getClientIP retrieves the client IP address from an HTTP request.
-func getClientIP(r *http.Request, cfg *config.Config) string {
+func getClientIP(r *http.Request, cfg *config.BackendConfig) string {
 	cfg.Logger.Debug("Retrieving client IP address", "remote_addr", r.RemoteAddr)
 
 	// Check X-Forwarded-For header first (may contain multiple IPs)
@@ -37,7 +37,7 @@ func getClientIP(r *http.Request, cfg *config.Config) string {
 }
 
 // TokenAuthMiddleware verifies the token in the Authorization header.
-func TokenAuthMiddleware(cfg *config.Config, next http.HandlerFunc) http.HandlerFunc {
+func TokenAuthMiddleware(cfg *config.BackendConfig, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientIP := getClientIP(r, cfg)
 		cfg.Logger.Debug("Verifying token for request", "client_ip", clientIP)

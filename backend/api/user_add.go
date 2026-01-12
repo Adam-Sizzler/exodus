@@ -30,7 +30,7 @@ type AddUserRequest struct {
 }
 
 // GetNodesFromConfig returns the list of nodes from the configuration as a slice.
-func GetNodesFromConfig(cfg *config.Config) []config.NodeConfig {
+func GetNodesFromConfig(cfg *config.BackendConfig) []config.NodeConfig {
 	var nodes []config.NodeConfig
 	for _, node := range cfg.Nodes {
 		nodes = append(nodes, node)
@@ -49,7 +49,7 @@ func validateUsername(username string) bool {
 }
 
 // AddUsersToNode sends a gRPC request to a node to add one or more users.
-func AddUsersToNode(ctx context.Context, node config.NodeConfig, usernames []string, inboundTag string, cfg *config.Config) (*proto.OperationResponse, error) {
+func AddUsersToNode(ctx context.Context, node config.NodeConfig, usernames []string, inboundTag string, cfg *config.BackendConfig) (*proto.OperationResponse, error) {
 	cfg.Logger.Debug("Adding users to node", "node_name", node.NodeName, "usernames", usernames, "inbound_tag", inboundTag)
 
 	nodeClient, err := db.NewNodeClient(node, cfg)
@@ -86,7 +86,7 @@ func AddUsersToNode(ctx context.Context, node config.NodeConfig, usernames []str
 }
 
 // AddUserHandler handles HTTP POST requests for adding users to nodes.
-func AddUserHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func AddUserHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received AddUser HTTP request", "method", r.Method)
 

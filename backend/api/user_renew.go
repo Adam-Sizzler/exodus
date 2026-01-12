@@ -10,7 +10,7 @@ import (
 )
 
 // UpdateRenewHandler updates the renew value for a user in the user_data table.
-func UpdateRenewHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func UpdateRenewHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting UpdateRenewHandler request processing")
 

@@ -63,11 +63,11 @@ type TaskNode struct {
 // TaskManager manages tasks in the database
 type TaskManager struct {
 	dbManager *manager.DatabaseManager
-	cfg       *config.Config
+	cfg       *config.BackendConfig
 }
 
 // NewTaskManager creates a new task manager
-func NewTaskManager(dbManager *manager.DatabaseManager, cfg *config.Config) *TaskManager {
+func NewTaskManager(dbManager *manager.DatabaseManager, cfg *config.BackendConfig) *TaskManager {
 	return &TaskManager{
 		dbManager: dbManager,
 		cfg:       cfg,

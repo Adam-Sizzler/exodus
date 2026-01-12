@@ -66,7 +66,7 @@ func (s *IPStore) CollectAndCleanup(ttl time.Duration) map[string][]string {
 }
 
 // UpdateIPsBatch updates IP addresses for multiple users in a single transaction.
-func UpdateIPsBatch(manager *manager.DatabaseManager, ipUpdates map[string][]string, cfg *config.Config) error {
+func UpdateIPsBatch(manager *manager.DatabaseManager, ipUpdates map[string][]string, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Starting batch IP updates", "users_count", len(ipUpdates))
 	if len(ipUpdates) == 0 {
 		cfg.Logger.Warn("No IP updates to process")
@@ -112,7 +112,7 @@ func UpdateIPsBatch(manager *manager.DatabaseManager, ipUpdates map[string][]str
 }
 
 // UpsertDNSRecordsBatch performs batch updates or inserts for DNS records.
-func UpsertDNSRecordsBatch(manager *manager.DatabaseManager, dnsStats map[string]map[string]int, nodeName string, cfg *config.Config) error {
+func UpsertDNSRecordsBatch(manager *manager.DatabaseManager, dnsStats map[string]map[string]int, nodeName string, cfg *config.BackendConfig) error {
 	cfg.Logger.Debug("Starting batch DNS records update", "node_name", nodeName, "records_count", len(dnsStats))
 	if len(dnsStats) == 0 {
 		cfg.Logger.Warn("No DNS records to update", "node_name", nodeName)

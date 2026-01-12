@@ -17,7 +17,7 @@ func ExecuteTaskBasedOperation(
 	payload map[string]interface{},
 	targetNodes []config.NodeConfig,
 	nodeClients []*db.NodeClient,
-	cfg *config.Config,
+	cfg *config.BackendConfig,
 ) (string, error) {
 	cfg.Logger.Info("Executing task-based operation", "operation", operation, "node_count", len(targetNodes))
 

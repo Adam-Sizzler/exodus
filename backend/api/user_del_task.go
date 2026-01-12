@@ -12,7 +12,7 @@ import (
 )
 
 // DeleteUserTaskHandler handles HTTP POST requests for deleting users via task system
-func DeleteUserTaskHandler(taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.Config) http.HandlerFunc {
+func DeleteUserTaskHandler(taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received DeleteUser task-based HTTP request", "method", r.Method)
 

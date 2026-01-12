@@ -12,7 +12,7 @@ import (
 )
 
 // AddUserTaskHandler handles HTTP POST requests for adding users via task system
-func AddUserTaskHandler(taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.Config) http.HandlerFunc {
+func AddUserTaskHandler(taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received AddUser task-based HTTP request", "method", r.Method)
 

@@ -23,7 +23,7 @@ type Task struct {
 }
 
 // processTask processes a single NodeDataResponse task.
-func processTask(ctx context.Context, manager *manager.DatabaseManager, nodeName string, resp *proto.NodeDataResponse, store *IPStore, cfg *config.Config, nodeClients []*db.NodeClient) error {
+func processTask(ctx context.Context, manager *manager.DatabaseManager, nodeName string, resp *proto.NodeDataResponse, store *IPStore, cfg *config.BackendConfig, nodeClients []*db.NodeClient) error {
 	switch resp.Response.(type) {
 	case *proto.NodeDataResponse_Stats:
 		apiData := convertProtoToApiResponse(resp.GetStats())
@@ -81,7 +81,7 @@ func processTask(ctx context.Context, manager *manager.DatabaseManager, nodeName
 }
 
 // MonitorNodeData manages streaming for traffic stats, users, and log data using a worker pool.
-func MonitorNodeData(ctx context.Context, manager *manager.DatabaseManager, nodeClients []*db.NodeClient, cfg *config.Config, wg *sync.WaitGroup) {
+func MonitorNodeData(ctx context.Context, manager *manager.DatabaseManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done() // сигналим о завершении
 
 	go func() {

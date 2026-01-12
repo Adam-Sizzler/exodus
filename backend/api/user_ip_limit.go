@@ -10,7 +10,7 @@ import (
 )
 
 // updateIPLimit updates the IP limit for a user in the user_data table.
-func updateIPLimit(manager *manager.DatabaseManager, cfg *config.Config, userIdentifier string, ipLimit int) (int64, error) {
+func updateIPLimit(manager *manager.DatabaseManager, cfg *config.BackendConfig, userIdentifier string, ipLimit int) (int64, error) {
 	var rowsAffected int64
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		cfg.Logger.Debug("Starting transaction for IP limit update")
@@ -51,7 +51,7 @@ func updateIPLimit(manager *manager.DatabaseManager, cfg *config.Config, userIde
 }
 
 // UpdateIPLimitHandler handles HTTP requests to update the IP limit for a user in the user_data table.
-func UpdateIPLimitHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func UpdateIPLimitHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting UpdateIPLimitHandler request processing")
 

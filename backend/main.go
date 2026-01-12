@@ -27,7 +27,7 @@ import (
 )
 
 // startAPIServer starts the API server.
-func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.Config, wg *sync.WaitGroup) {
+func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskManager *tasks.TaskManager, nodeClients []*db.NodeClient, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 	server := &http.Server{
 		Addr:    cfg.V2RS.Address + ":" + cfg.V2RS.Port,

@@ -2,8 +2,6 @@ package db
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
 	"fmt"
 	"os"
@@ -12,106 +10,12 @@ import (
 
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db/manager"
-	"v2ray-stat/proto"
 
 	_ "github.com/mattn/go-sqlite3"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-// NodeClient represents a gRPC client for a node.
-type NodeClient struct {
-	NodeName string
-	URL      string
-	Client   proto.NodeServiceClient
-	Conn     *grpc.ClientConn
-}
-
-// NewNodeClient creates a new gRPC client for a node with TLS configuration.
-func NewNodeClient(nodeCfg config.NodeConfig, cfg *config.Config) (*NodeClient, error) {
-	url := fmt.Sprintf("%s:%s", nodeCfg.Address, nodeCfg.Port)
-	var opts []grpc.DialOption
-
-	if nodeCfg.MTLSConfig != nil {
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-
-		if nodeCfg.MTLSConfig.CACert != "" {
-			caCert, err := os.ReadFile(nodeCfg.MTLSConfig.CACert)
-			if err != nil {
-				cfg.Logger.Error("Failed to read CA certificate", "node", nodeCfg.NodeName, "error", err)
-				return nil, fmt.Errorf("failed to read CA cert for node %s: %v", nodeCfg.NodeName, err)
-			}
-			certPool := x509.NewCertPool()
-			if !certPool.AppendCertsFromPEM(caCert) {
-				cfg.Logger.Error("Failed to parse CA certificate", "node", nodeCfg.NodeName)
-				return nil, fmt.Errorf("failed to parse CA cert for node %s", nodeCfg.NodeName)
-			}
-			tlsConfig.RootCAs = certPool
-		}
-
-		if nodeCfg.MTLSConfig.Cert != "" && nodeCfg.MTLSConfig.Key != "" {
-			cert, err := tls.LoadX509KeyPair(nodeCfg.MTLSConfig.Cert, nodeCfg.MTLSConfig.Key)
-			if err != nil {
-				cfg.Logger.Error("Failed to load client certificate", "node", nodeCfg.NodeName, "error", err)
-				return nil, fmt.Errorf("failed to load client certificate for node %s: %v", nodeCfg.NodeName, err)
-			}
-			tlsConfig.Certificates = []tls.Certificate{cert}
-		}
-
-		creds := credentials.NewTLS(tlsConfig)
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-		cfg.Logger.Info("Using mTLS for node", "node", nodeCfg.NodeName)
-	} else {
-		cfg.Logger.Info("Using insecure connection for node", "node", nodeCfg.NodeName)
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	conn, err := grpc.NewClient(url, opts...)
-	if err != nil {
-		cfg.Logger.Error("Failed to connect to node", "node", nodeCfg.NodeName, "url", url, "error", err)
-		return nil, fmt.Errorf("failed to connect to node %s (%s): %v", nodeCfg.NodeName, url, err)
-	}
-
-	client := proto.NewNodeServiceClient(conn)
-	return &NodeClient{
-		NodeName: nodeCfg.NodeName,
-		URL:      url,
-		Client:   client,
-		Conn:     conn,
-	}, nil
-}
-
-// Метод для закрытия соединения
-func (nc *NodeClient) Close() error {
-	if nc.Conn != nil {
-		return nc.Conn.Close()
-	}
-	return nil
-}
-
-// InitNodeClients initializes gRPC clients for all nodes.
-func InitNodeClients(cfg *config.Config) ([]*NodeClient, error) {
-	var nodeClients []*NodeClient
-	for _, node := range cfg.Nodes {
-		client, err := NewNodeClient(node, cfg)
-		if err != nil {
-			cfg.Logger.Error("Failed to initialize client for node", "node", node.NodeName, "error", err)
-			continue
-		}
-		nodeClients = append(nodeClients, client)
-	}
-
-	if len(nodeClients) == 0 {
-		return nil, fmt.Errorf("no node clients initialized")
-	}
-	return nodeClients, nil
-}
-
 // OpenAndInitDB opens and initializes a SQLite database.
-func OpenAndInitDB(dbPath string, dbType string, cfg *config.Config) (*sql.DB, error) {
+func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		cfg.Logger.Error("Failed to open database", "dbType", dbType, "path", dbPath, "error", err)
@@ -286,7 +190,7 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.Config) (*sql.DB, e
 }
 
 // InitDatabase initializes in-memory and file databases.
-func InitDatabase(cfg *config.Config) (memDB, fileDB *sql.DB, err error) {
+func InitDatabase(cfg *config.BackendConfig) (memDB, fileDB *sql.DB, err error) {
 	memDB, err = OpenAndInitDB(":memory:", "in-memory", cfg)
 	if err != nil {
 		return nil, nil, err
@@ -339,7 +243,7 @@ func InitDatabase(cfg *config.Config) (memDB, fileDB *sql.DB, err error) {
 }
 
 // MonitorSubscriptionsAndSync runs periodic subscription checks and database synchronization.
-func MonitorSubscriptionsAndSync(ctx context.Context, manager *manager.DatabaseManager, fileDB *sql.DB, cfg *config.Config, wg *sync.WaitGroup) {
+func MonitorSubscriptionsAndSync(ctx context.Context, manager *manager.DatabaseManager, fileDB *sql.DB, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done() // сигналим о завершении
 
 	cfg.Logger.Debug("Starting subscription and sync monitoring")

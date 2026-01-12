@@ -11,7 +11,7 @@ import (
 )
 
 // resetTrafficStats resets traffic statistics in the bound_traffic table, optionally filtered by node names.
-func resetTrafficStats(manager *manager.DatabaseManager, cfg *config.Config, nodes []string) (int64, error) {
+func resetTrafficStats(manager *manager.DatabaseManager, cfg *config.BackendConfig, nodes []string) (int64, error) {
 	var rowsAffected int64
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		cfg.Logger.Debug("Starting transaction for resetting traffic stats")
@@ -73,7 +73,7 @@ func resetTrafficStats(manager *manager.DatabaseManager, cfg *config.Config, nod
 }
 
 // ResetTrafficStatsHandler handles HTTP requests to reset traffic statistics in the bound_traffic table.
-func ResetTrafficStatsHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func ResetTrafficStatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting ResetTrafficStatsHandler request processing")
 

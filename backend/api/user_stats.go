@@ -12,7 +12,7 @@ import (
 )
 
 // StatsHandler остаётся без изменений
-func StatsHandler(manager *manager.DatabaseManager, cfg *config.Config) http.HandlerFunc {
+func StatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting StatsHandler request processing")
 
@@ -84,7 +84,7 @@ func StatsHandler(manager *manager.DatabaseManager, cfg *config.Config) http.Han
 }
 
 // buildCustomServerStats (без изменений)
-func buildCustomServerStats(builder *strings.Builder, manager *manager.DatabaseManager, cfg *config.Config, nodeParam string, aggregate bool) error {
+func buildCustomServerStats(builder *strings.Builder, manager *manager.DatabaseManager, cfg *config.BackendConfig, nodeParam string, aggregate bool) error {
 	cfg.Logger.Debug("Collecting server statistics", "node", nodeParam, "aggregate", aggregate)
 
 	serverColumnAliases := map[string]string{
@@ -192,7 +192,7 @@ func buildCustomServerStats(builder *strings.Builder, manager *manager.DatabaseM
 }
 
 // buildCustomClientStats collects client statistics with node, user, inbound_tag, and id.
-func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseManager, cfg *config.Config, nodeParam, userParam, sortBy, sortOrder string, aggregate bool) error {
+func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseManager, cfg *config.BackendConfig, nodeParam, userParam, sortBy, sortOrder string, aggregate bool) error {
 	cfg.Logger.Debug("Collecting client statistics", "node", nodeParam, "user", userParam, "aggregate", aggregate)
 
 	clientColumnAliases := map[string]string{
