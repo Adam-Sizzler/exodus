@@ -37,14 +37,27 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
 	client := r.URL.Query().Get("client")
 	user := r.URL.Query().Get("user")
+
 	if client == "" {
-		client = "xray"
+		userAgent := strings.ToLower(r.Header.Get("User-Agent"))
+
+		if strings.Contains(userAgent, "mihomo") ||
+			strings.Contains(userAgent, "clash") ||
+			strings.Contains(userAgent, "flclash") ||
+			strings.Contains(userAgent, "verge") {
+			client = "mihomo"
+		} else {
+			client = "xray"
+		}
 	}
+
 	if mode == "" {
 		mode = "advanced" // Default to JSON/YAML templates
 	}
+
 	cfg := config.GetConfig()
-	cfg.Logger.Debug("Received subscription request", "client", client, "user", user, "mode", mode)
+	cfg.Logger.Debug("Received subscription request", "client", client, "user", user, "mode", mode, "user_agent", r.Header.Get("User-Agent"))
+
 	if user == "" {
 		cfg.Logger.Warn("Missing user parameter in request")
 		http.Error(w, "missing user parameter", http.StatusBadRequest)
@@ -60,6 +73,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid mode, must be 'base' or 'advanced'", http.StatusBadRequest)
 		return
 	}
+
 	userConfig, ok := cfg.Subscription.UserMap[user]
 	if !ok {
 		cfg.Logger.Debug("User not found in UserMap, applying defaults", "user", user)
@@ -180,9 +194,9 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		// Get domain for the node
-		domain, ok := cfg.Subscription.Domains[node]
+		meta, ok := cfg.Subscription.NodeMetadata[node]
 		if !ok {
-			cfg.Logger.Warn("No domain specified for node", "node", node, "user", user)
+			cfg.Logger.Warn("No metadata specified for node", "node", node, "user", user)
 			continue
 		}
 		totalUplink += nodeTraffic.Uplink
@@ -195,9 +209,20 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Replace placeholders
 		configStr := strings.ReplaceAll(template, "{user_id}", userID)
-		configStr = strings.ReplaceAll(configStr, "{domain}", domain)
+		if meta.DomainPlaceholder != "" {
+			configStr = strings.ReplaceAll(configStr, "{domain}", meta.DomainPlaceholder)
+		}
+		if meta.IPPlaceholder != "" {
+			configStr = strings.ReplaceAll(configStr, "{ip}", meta.IPPlaceholder)
+		}
+		if meta.PortPlaceholder != "" {
+			configStr = strings.ReplaceAll(configStr, "{port}", meta.PortPlaceholder)
+		}
+		if meta.RemarkPlaceholder != "" {
+			configStr = strings.ReplaceAll(configStr, "{remark}", meta.RemarkPlaceholder)
+		}
 		configs = append(configs, configStr)
-		cfg.Logger.Trace("Generated config for node", "node", node, "user", user, "domain", domain)
+		cfg.Logger.Trace("Generated config for node", "node", node, "user", user, "domain", meta.DomainPlaceholder)
 	}
 	if len(configs) == 0 {
 		cfg.Logger.Warn("No configurations generated for user", "user", user)

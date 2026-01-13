@@ -63,7 +63,7 @@ var defaultConfig = NodeConfig{
 		LogLevel: "none",
 		LogMode:  "inclusive",
 	},
-	TZ: "UTC",
+	TZ: "",
 	V2RS: V2RSConfig{
 		GrpcAddress: "127.0.0.1",
 		GrpcPort:    "9253",

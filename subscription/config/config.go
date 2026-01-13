@@ -18,32 +18,39 @@ import (
 
 // Config holds the configuration settings for the backend.
 type Config struct {
-	Log          LogConfig          `yaml:"log"`
-	V2RSSub      V2RSSubConfig      `yaml:"v2rs-sub"`
-	Timezone     string             `yaml:"timezone"`
-	Subscription SubscriptionConfig `yaml:"subscription"`
+	Log          LogConfig          `yaml:"log_config"`
+	V2RSSub      V2RSSubConfig      `yaml:"subscription"`
+	TZ           string             `yaml:"TZ"`
+	Subscription SubscriptionConfig `yaml:"sub_config"`
 	Logger       *logger.Logger
 	Ctx          context.Context
 }
 
 type LogConfig struct {
-	LogLevel string `yaml:"loglevel"`
-	LogMode  string `yaml:"logmode"`
+	LogLevel string `yaml:"level"`
+	LogMode  string `yaml:"mode"`
 }
 
 // V2RSSubConfig holds v2rs-sub specific settings.
 type V2RSSubConfig struct {
-	Address  string `yaml:"address"`
-	Port     string `yaml:"port"`
-	GrpcPort string `yaml:"grpc_port"`
+	Address  string `yaml:"listen_address"`
+	Port     string `yaml:"listen_port"`
+	GrpcPort string `yaml:"listen_grpc_port"`
 }
 
 type SubscriptionConfig struct {
-	Domains  map[string]string     `yaml:"domains"`
-	Defaults DefaultsConfig        `yaml:"defaults"`
-	Groups   map[string]UserConfig `yaml:"groups"`
-	Users    map[string]*UserGroup `yaml:"users"`
-	UserMap  map[string]UserConfig
+	NodeMetadata map[string]NodeMeta   `yaml:"node_metadata"`
+	Defaults     DefaultsConfig        `yaml:"defaults"`
+	Groups       map[string]UserConfig `yaml:"groups"`
+	Users        map[string]*UserGroup `yaml:"users"`
+	UserMap      map[string]UserConfig
+}
+
+type NodeMeta struct {
+	RemarkPlaceholder string `yaml:"remark_placeholder"`
+	DomainPlaceholder string `yaml:"domain_placeholder"`
+	IPPlaceholder     string `yaml:"ip_placeholder"`
+	PortPlaceholder   string `yaml:"port_placeholder"`
 }
 
 type DefaultsConfig struct {
@@ -81,7 +88,7 @@ var defaultConfig = Config{
 		Port:     "9954",
 		GrpcPort: "9983",
 	},
-	Timezone: "",
+	TZ: "",
 	Subscription: SubscriptionConfig{
 		Defaults: DefaultsConfig{
 			Clients:       []string{},
@@ -98,13 +105,13 @@ var defaultConfig = Config{
 // LoadConfig reads configuration from the specified YAML file.
 func LoadConfig(configFile string) (Config, error) {
 	cfg := defaultConfig
-	cfg.Logger, _ = logger.NewLoggerWithValidation("debug", "inclusive", cfg.Timezone, os.Stderr)
+	cfg.Logger, _ = logger.NewLoggerWithValidation("debug", "inclusive", cfg.TZ, os.Stderr)
 	cfg.Logger.Trace("Attempting to load config file", "file", configFile)
 
 	_, err := os.Stat(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cfg.Logger, _ = logger.NewLoggerWithValidation("warn", "inclusive", cfg.Timezone, os.Stderr)
+			cfg.Logger, _ = logger.NewLoggerWithValidation("warn", "inclusive", cfg.TZ, os.Stderr)
 			cfg.Logger.Warn("Configuration file not found, using default values", "file", configFile)
 			mu.Lock()
 			config = cfg
@@ -127,7 +134,7 @@ func LoadConfig(configFile string) (Config, error) {
 		return cfg, fmt.Errorf("error parsing YAML configuration from %s: %v", configFile, err)
 	}
 
-	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.Timezone, os.Stderr)
+	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.TZ, os.Stderr)
 	if err != nil {
 		cfg.Logger.Error("Failed to initialize logger", "error", err)
 		return cfg, fmt.Errorf("failed to initialize logger: %v", err)
@@ -146,7 +153,6 @@ func LoadConfig(configFile string) (Config, error) {
 					NodeTemplates: make(map[string]map[string]string),
 					Headers:       make(map[string]string),
 				}
-
 				for mode, templates := range userGroup.NodeTemplates {
 					userConfig.NodeTemplates[mode] = make(map[string]string)
 					maps.Copy(userConfig.NodeTemplates[mode], templates)
@@ -207,20 +213,19 @@ func LoadConfig(configFile string) (Config, error) {
 		}
 	}
 
-	if cfg.Timezone != "" {
-		if _, err := time.LoadLocation(cfg.Timezone); err != nil {
-			cfg.Logger.Warn("Invalid timezone value, using default", "timezone", cfg.Timezone)
-			cfg.Timezone = defaultConfig.Timezone
+	if cfg.TZ != "" {
+		if _, err := time.LoadLocation(cfg.TZ); err != nil {
+			cfg.Logger.Warn("Invalid timezone value, using default", "TZ", cfg.TZ)
+			cfg.TZ = defaultConfig.TZ
 		}
 	}
 
-	for node, domain := range cfg.Subscription.Domains {
-		if domain == "" {
-			cfg.Logger.Warn("Empty domain for node", "node", node)
+	for node, meta := range cfg.Subscription.NodeMetadata {
+		if meta.DomainPlaceholder == "" {
+			cfg.Logger.Warn("Empty domain_placeholder for node", "node", node)
 		}
 	}
 
-	// Validate defaults
 	if len(cfg.Subscription.Defaults.Clients) == 0 {
 		cfg.Logger.Warn("defaults.clients is empty, using empty list")
 	}
@@ -235,13 +240,12 @@ func LoadConfig(configFile string) (Config, error) {
 			if _, ok := templates[node]; !ok {
 				cfg.Logger.Warn("defaults: no template specified for node in mode", "node", node, "mode", mode)
 			}
-			if _, ok := cfg.Subscription.Domains[node]; !ok {
-				cfg.Logger.Warn("defaults: no domain specified for node", "node", node)
+			if _, ok := cfg.Subscription.NodeMetadata[node]; !ok {
+				cfg.Logger.Warn("defaults: no metadata specified for node", "node", node)
 			}
 		}
 	}
 
-	// Validate groups
 	for groupName, group := range cfg.Subscription.Groups {
 		if len(group.Clients) == 0 {
 			cfg.Logger.Warn("group clients is empty", "group", groupName)
@@ -257,14 +261,13 @@ func LoadConfig(configFile string) (Config, error) {
 				if _, ok := templates[node]; !ok {
 					cfg.Logger.Warn("group: no template specified for node in mode", "group", groupName, "node", node, "mode", mode)
 				}
-				if _, ok := cfg.Subscription.Domains[node]; !ok {
-					cfg.Logger.Warn("group: no domain specified for node", "group", groupName, "node", node)
+				if _, ok := cfg.Subscription.NodeMetadata[node]; !ok {
+					cfg.Logger.Warn("group: no metadata specified for node", "group", groupName, "node", node)
 				}
 			}
 		}
 	}
 
-	// Validate user map
 	for userName, user := range cfg.Subscription.UserMap {
 		if user.Group != "" {
 			if _, ok := cfg.Subscription.Groups[user.Group]; !ok {
@@ -285,8 +288,8 @@ func LoadConfig(configFile string) (Config, error) {
 							cfg.Logger.Warn("user: no template specified for node in user config or defaults for mode", "user", userName, "node", node, "mode", mode)
 						}
 					}
-					if _, ok := cfg.Subscription.Domains[node]; !ok {
-						cfg.Logger.Warn("user: no domain specified for node", "user", userName, "node", node)
+					if _, ok := cfg.Subscription.NodeMetadata[node]; !ok {
+						cfg.Logger.Warn("user: no metadata specified for node", "user", userName, "node", node)
 					}
 				}
 			}
@@ -316,7 +319,7 @@ func WatchConfig(ctx context.Context, cfg *Config, wg *sync.WaitGroup) {
 	if cfg.Logger == nil {
 		return
 	}
-	cfg.Logger.Trace("Starting to watch config file", "file", "config.yaml")
+	cfg.Logger.Trace("Starting to watch config file", "file", "config.yml")
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		cfg.Logger.Error("Failed to create config watcher", "error", err)
@@ -324,12 +327,12 @@ func WatchConfig(ctx context.Context, cfg *Config, wg *sync.WaitGroup) {
 	}
 	defer watcher.Close()
 
-	err = watcher.Add("config.yaml")
+	err = watcher.Add("config.yml")
 	if err != nil {
-		cfg.Logger.Error("Failed to add watch for config.yaml", "error", err)
+		cfg.Logger.Error("Failed to add watch for config.yml", "error", err)
 		return
 	}
-	cfg.Logger.Debug("Added watch for config.yaml")
+	cfg.Logger.Debug("Added watch for config.yml")
 
 	for {
 		select {
@@ -342,8 +345,8 @@ func WatchConfig(ctx context.Context, cfg *Config, wg *sync.WaitGroup) {
 				return
 			}
 			if event.Op&(fsnotify.Write|fsnotify.Create) != 0 {
-				cfg.Logger.Info("config.yaml changed, reloading...")
-				if newCfg, err := LoadConfig("config.yaml"); err != nil {
+				cfg.Logger.Info("config.yml changed, reloading...")
+				if newCfg, err := LoadConfig("config.yml"); err != nil {
 					cfg.Logger.Error("Failed to reload config", "error", err)
 				} else {
 					mu.Lock()

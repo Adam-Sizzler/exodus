@@ -52,7 +52,7 @@ func startAPIServer(ctx context.Context, cfg *config.Config, wg *sync.WaitGroup)
 }
 
 func main() {
-	cfg, err := config.LoadConfig("config.yaml")
+	cfg, err := config.LoadConfig("config.yml")
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
@@ -60,7 +60,7 @@ func main() {
 		log.Fatalf("cfg.Logger is nil after LoadConfig")
 	}
 	cfg.Logger.Debug("Global config initialized", "config", fmt.Sprintf("%+v", cfg))
-	common.InitTimezone(cfg.Timezone, cfg.Logger)
+	common.InitTimezone(cfg.TZ, cfg.Logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
