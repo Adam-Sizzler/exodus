@@ -30,6 +30,10 @@ var clientFormats = map[string]struct {
 		Format: "yaml",
 		Header: map[string]string{"Content-Type": "text/yaml"},
 	},
+	"edg": {
+		Format: "json",
+		Header: map[string]string{"Content-Type": "application/json"},
+	},
 }
 
 // SubscriptionHandler handles /api/v1/sub?client=<client>&user=<user>&mode=<mode>.
@@ -41,18 +45,23 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	if client == "" {
 		userAgent := strings.ToLower(r.Header.Get("User-Agent"))
 
-		if strings.Contains(userAgent, "mihomo") ||
-			strings.Contains(userAgent, "clash") ||
-			strings.Contains(userAgent, "flclash") ||
-			strings.Contains(userAgent, "verge") {
+		switch {
+		case strings.Contains(userAgent, "mihomo"),
+			strings.Contains(userAgent, "clash"),
+			strings.Contains(userAgent, "flclash"),
+			strings.Contains(userAgent, "verge"):
 			client = "mihomo"
-		} else {
+
+		case strings.Contains(userAgent, "edg"):
+			client = "xyite"
+
+		default:
 			client = "xray"
 		}
 	}
 
 	if mode == "" {
-		mode = "advanced" // Default to JSON/YAML templates
+		mode = "advanced"
 	}
 
 	cfg := config.GetConfig()
@@ -154,8 +163,10 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg.Logger.Debug("Fetched user IDs", "user", user, "count", len(userIDs))
+
 	var configs []string
 	var totalUplink, totalDownlink, maxSubEnd, maxTrafficCap int64
+
 	tmpls := templates.GetTemplates()
 	for _, node := range userConfig.IncludeNodes {
 		cfg.Logger.Trace("Processing node for user", "node", node, "user", user)
@@ -194,7 +205,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		// Get domain for the node
-		meta, ok := cfg.Subscription.NodeMetadata[node]
+		meta, ok := cfg.NodeMetadata[node]
 		if !ok {
 			cfg.Logger.Warn("No metadata specified for node", "node", node, "user", user)
 			continue

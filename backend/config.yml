@@ -42,7 +42,7 @@ node_metadata:
 #    port: 443                                          # Node API endpoint address in port format.
 #    path: grpcnode
 
-subscription_grpc_connection:
+subscription:
   schema:
   address: 127.0.0.1
   port: 9263

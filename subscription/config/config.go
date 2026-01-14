@@ -18,10 +18,11 @@ import (
 
 // Config holds the configuration settings for the backend.
 type Config struct {
-	Log          LogConfig          `yaml:"log_config"`
-	V2RSSub      V2RSSubConfig      `yaml:"subscription"`
-	TZ           string             `yaml:"TZ"`
-	Subscription SubscriptionConfig `yaml:"sub_config"`
+	Log          LogConfig           `yaml:"log_config"`
+	V2RSSub      V2RSSubConfig       `yaml:"subscription"`
+	TZ           string              `yaml:"TZ"`
+	NodeMetadata map[string]NodeMeta `yaml:"node_metadata"`
+	Subscription SubscriptionConfig  `yaml:"sub_config"`
 	Logger       *logger.Logger
 	Ctx          context.Context
 }
@@ -39,11 +40,10 @@ type V2RSSubConfig struct {
 }
 
 type SubscriptionConfig struct {
-	NodeMetadata map[string]NodeMeta   `yaml:"node_metadata"`
-	Defaults     DefaultsConfig        `yaml:"defaults"`
-	Groups       map[string]UserConfig `yaml:"groups"`
-	Users        map[string]*UserGroup `yaml:"users"`
-	UserMap      map[string]UserConfig
+	Defaults DefaultsConfig        `yaml:"defaults"`
+	Groups   map[string]UserConfig `yaml:"groups"`
+	Users    map[string]*UserGroup `yaml:"users"`
+	UserMap  map[string]UserConfig
 }
 
 type NodeMeta struct {
@@ -88,13 +88,13 @@ var defaultConfig = Config{
 		Port:     "9954",
 		GrpcPort: "9983",
 	},
-	TZ: "",
+	TZ:           "",
+	NodeMetadata: map[string]NodeMeta{},
 	Subscription: SubscriptionConfig{
 		Defaults: DefaultsConfig{
-			Clients:       []string{},
-			IncludeNodes:  []string{},
-			NodeTemplates: map[string]map[string]string{},
-			Headers:       map[string]string{},
+			Clients:      []string{},
+			IncludeNodes: []string{},
+			Headers:      map[string]string{},
 		},
 		Groups:  map[string]UserConfig{},
 		Users:   map[string]*UserGroup{},
@@ -220,7 +220,7 @@ func LoadConfig(configFile string) (Config, error) {
 		}
 	}
 
-	for node, meta := range cfg.Subscription.NodeMetadata {
+	for node, meta := range cfg.NodeMetadata {
 		if meta.DomainPlaceholder == "" {
 			cfg.Logger.Warn("Empty domain_placeholder for node", "node", node)
 		}
@@ -240,7 +240,7 @@ func LoadConfig(configFile string) (Config, error) {
 			if _, ok := templates[node]; !ok {
 				cfg.Logger.Warn("defaults: no template specified for node in mode", "node", node, "mode", mode)
 			}
-			if _, ok := cfg.Subscription.NodeMetadata[node]; !ok {
+			if _, ok := cfg.NodeMetadata[node]; !ok {
 				cfg.Logger.Warn("defaults: no metadata specified for node", "node", node)
 			}
 		}
@@ -261,7 +261,7 @@ func LoadConfig(configFile string) (Config, error) {
 				if _, ok := templates[node]; !ok {
 					cfg.Logger.Warn("group: no template specified for node in mode", "group", groupName, "node", node, "mode", mode)
 				}
-				if _, ok := cfg.Subscription.NodeMetadata[node]; !ok {
+				if _, ok := cfg.NodeMetadata[node]; !ok {
 					cfg.Logger.Warn("group: no metadata specified for node", "group", groupName, "node", node)
 				}
 			}
@@ -288,7 +288,7 @@ func LoadConfig(configFile string) (Config, error) {
 							cfg.Logger.Warn("user: no template specified for node in user config or defaults for mode", "user", userName, "node", node, "mode", mode)
 						}
 					}
-					if _, ok := cfg.Subscription.NodeMetadata[node]; !ok {
+					if _, ok := cfg.NodeMetadata[node]; !ok {
 						cfg.Logger.Warn("user: no metadata specified for node", "user", userName, "node", node)
 					}
 				}

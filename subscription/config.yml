@@ -37,22 +37,22 @@ sub_config:
       Profile-Web-Page-Url: "https://natribu.org/"
       Announce: "ИДИ сюда (ง ͠° ͟ل͜ ͡°)ง"
     clients: ["xray"]
-    nodes: ["lol", "top"]
+    nodes: ["rus", "top"]
     templates:
       base:
-        rus: node_lol
+        rus: node_rus
       advanced:
-        rus: node_lol
+        rus: node_rus
         top: node_top
   groups:
     premium:
       clients: ["xray", "singbox", "mihomo"]
       templates:
         base:
-          rus: node_lol
+          rus: node_rus
           top: node_top
         advanced:
-          rus: node_lol
+          rus: node_rus
           top: node_top
   users:
     premium:
