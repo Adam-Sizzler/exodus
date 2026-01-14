@@ -39,7 +39,7 @@ RUN mkdir -p /app/data /app/certs && \
     chown -R v2ray:v2ray /app
 
 # Copy default config (will be overridden by volume mount)
-COPY config.yaml /app/config.yaml.example
+COPY config.yml /app/config.yml.example
 
 USER v2ray
 

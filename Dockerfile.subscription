@@ -42,7 +42,7 @@ RUN mkdir -p /app/certs && \
     chown -R v2ray:v2ray /app
 
 # Copy default config
-COPY config.yaml /app/config.yaml.example
+COPY config.yml /app/config.yaml.example
 
 USER v2ray
 
