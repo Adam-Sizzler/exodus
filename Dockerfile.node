@@ -39,7 +39,7 @@ RUN mkdir -p /app/certs /app/xray /app/logs && \
     chown -R v2ray:v2ray /app
 
 # Copy default config
-COPY config.yml /app/config.yml.example
+COPY node/config.yml /app/config.yml.example
 
 USER v2ray
 
