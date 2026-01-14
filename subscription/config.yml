@@ -1,9 +1,6 @@
-# v2ray-stat-subscription Configuration File
-# This file specifies paths and settings for the v2ray-stat monitoring application.
-
 # Log Settings
 log_config:
-  level: none                                           # Logging level: none, error, warn, info, debug, trace
+  level: info                                           # Logging level: none, error, warn, info, debug, trace
   mode: inclusive                                       # Mode: inclusive (this and lower), exclusive (only this)
 
 # Timezone Settings 
@@ -11,7 +8,7 @@ TZ: Asia/Bangkok                                        # IANA timezone name (e.
 
 # V2RS-Sub Settings
 subscription:
-  listen_address: 127.0.0.1                                      # Listening address for the subscription server. '127.0.0.1' restricts access to localhost.
+  listen_address: 0.0.0.0                                      # Listening address for the subscription server. '127.0.0.1' restricts access to localhost.
   listen_port: 9264                                              # Listening port for the subscription server. Must be between 1 and 65535.
   listen_grpc_port: 9263                                         # Listening port for the gRPC server.
 

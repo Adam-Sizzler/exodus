@@ -13,20 +13,20 @@ api_token: ""                                           # Token required to acce
 TZ: Asia/Bangkok                                        # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
 
 backend:
-  listen_address: 127.0.0.1                             # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
+  listen_address: 0.0.0.0                             # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
   listen_port: 9243                                     # TCP port for v2ray-stat API server. Must be between 1 and 65535.
 
 # Paths & Logging 
 paths: 
-  database: ./data.db                                   # Path to the SQLite database for tracking user sessions and usage.
+  database: /app/data/data.db                                  # Path to the SQLite database for tracking user sessions and usage.
 
 monitor:
   ticker_interval: 10                                   # Interval (in seconds) for polling monitored services and users. Recommended: 5–60.
-  online_rate_threshold: 0                              # Minimum rate threshold in kilobits per second (kbps) to consider a user online. 0 means any non-zero rate is considered online.
+  online_rate_threshold: 20                              # Minimum rate threshold in kilobits per second (kbps) to consider a user online. 0 means any non-zero rate is considered online.
 
 node_metadata:
   local:
-    address: 127.0.0.1
+    address: node
     port: 9253                                          # Node API endpoint address in port format.
 #  rus:
 #    schema: grpc
@@ -43,19 +43,17 @@ node_metadata:
 #    path: grpcnode
 
 subscription:
-  schema:
-  address: 127.0.0.1
+  address: subscription
   port: 9263
-  path:
   # mtls:                                               # mTLS (mutual TLS) configuration for secure connection to the node.
   #   cert: /usr/local/etc/v2ray-stat/certs/node.crt    # Path to the client's TLS certificate.
   #   key: /usr/local/etc/v2ray-stat/certs/node.key     # Path to the client's private key.
   #   ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt # Path to the CA certificate for server verification.
 
-# Statistics Columns Configuration 
-stats_columns: 
-  server: 
-    sort: rate desc                                       # Sorting rule for server statistics. Format: "<column> <ASC|DESC>". Default: "source ASC". Valid columns: source, rate, uplink, downlink, sess_uplink, sess_downlink.
+# Statistics Columns Configuration
+stats_columns:
+  server:
+    sort: downlink desc                                   # Sorting rule for server statistics. Format: "<column> <ASC|DESC>". Default: "source ASC". Valid columns: source, rate, uplink, downlink, sess_uplink, sess_downlink.
     columns:                                              # List of columns to display in server statistics. If empty, no server statistics are shown.
       - node_name                                         # Node name where the traffic is measured.
       - source                                            # Source of traffic (e.g., IP or hostname).
@@ -64,8 +62,8 @@ stats_columns:
       - downlink                                          # Total downloaded traffic in bytes.
       # - sess_uplink                                     # Session-based uploaded traffic in bytes (reset after reconnect).
       # - sess_downlink                                   # Session-based downloaded traffic in bytes (reset after reconnect).
-  client: 
-    sort: rate desc                                       # Sorting rule for client statistics. Same format and rules as for server stats.
+  client:
+    sort: downlink desc                                       # Sorting rule for client statistics. Same format and rules as for server stats.
     columns:                                              # List of columns to display in client statistics. If empty, no client statistics are shown.
       - node_name                                         # Node name where the client is connected.
       - user                                              # Client username or identifier.
@@ -73,14 +71,14 @@ stats_columns:
       - rate                                              # Current traffic rate in bits per second (bps).
       - uplink                                            # Total uploaded traffic in bytes.
       - downlink                                          # Total downloaded traffic in bytes.
-      - traffic_cap
+      # - traffic_cap
       # - sess_uplink                                     # Session-based uploaded traffic in bytes (reset after reconnect).
       # - sess_downlink                                   # Session-based downloaded traffic in bytes (reset after reconnect).
-      # - enabled                                         # Whether the client is enabled (true/false).
+      # - enabled                                           # Whether the client is enabled (true/false).
       # - created                                         # Timestamp when the client was created.
       # - sub_end                                         # Subscription end date for the client.
       # - renew                                           # Renewal status or date for the client.
       # - id                                              # Unique client identifier (ID).
       # - inbound_tag                                     # Inbound tag associated with the client.
       # - lim_ip                                          # IP limit for the client (number of allowed IPs).
-      # - ips                                             # List of IPs currently used by the client.
+      - ips                                               # List of IPs currently used by the client.
