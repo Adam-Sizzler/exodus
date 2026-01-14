@@ -14,15 +14,15 @@ subscription:
 
 node_metadata:
   rus:
-    remark_plaсeholder: RUSSIAN
-    domain_plaсeholder: example.com
-    ip_plaсeholder: 1.2.3.6
-    port_plaсeholder: 443
+    remark_placeholder: RUSSIAN
+    domain_placeholder: example.com
+    ip_placeholder: 1.2.3.6
+    port_placeholder: 443
   top:
-    remark_plaсeholder: NETHERLAND
-    domain_plaсeholder: theleet.com
-    ip_plaсeholder: 1.2.3.4
-    port_plaсeholder: 8443
+    remark_placeholder: NETHERLAND
+    domain_placeholder: theleet.com
+    ip_placeholder: 1.2.3.4
+    port_placeholder: 8443
 
 # Subscription Settings
 sub_config:
@@ -32,7 +32,7 @@ sub_config:
       Profile-Update-Interval: "12"
       Support-Url: "https://natribu.org/"
       Profile-Web-Page-Url: "https://natribu.org/"
-      Announce: "ИДИ сюда (ง ͠° ͟ل͜ ͡°)ง"
+      Announce: "ИДИ cюда (ง ͠° ͟ل͜ ͡°)ง"
     clients: ["xray"]
     nodes: ["rus", "top"]
     templates:
