@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime/pprof"
 	"sync"
 	"syscall"
@@ -84,6 +85,14 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	dbDir := filepath.Dir(cfg.Paths.Database)
+	if err := os.MkdirAll(dbDir, 0775); err != nil {
+		cfg.Logger.Error("CRITICAL: Permission denied. Cannot create database directory",
+			"path", dbDir,
+			"error", err)
+		os.Exit(1)
+	}
 
 	memDB, fileDB, err := db.InitDatabase(&cfg)
 	if err != nil {

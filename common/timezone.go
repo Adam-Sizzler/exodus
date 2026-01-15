@@ -5,23 +5,18 @@ import (
 	"v2ray-stat/logger"
 )
 
-// timeLocation holds the global timezone.
 var TimeLocation *time.Location
 
-// InitTimezone sets the application's timezone based on the provided timezone string.
-func InitTimezone(timezone string, logger *logger.Logger) {
-	if timezone != "" {
-		loc, err := time.LoadLocation(timezone)
-		if err != nil {
-			logger.Error("Failed to load timezone", "timezone", timezone, "error", err)
-			logger.Info("Falling back to UTC")
-			TimeLocation = time.UTC
-		} else {
-			logger.Info("Timezone set successfully", "timezone", timezone)
-			TimeLocation = loc
-		}
-	} else {
-		logger.Info("No timezone specified, using UTC")
-		TimeLocation = time.UTC
+func InitTimezone(tz string, logger *logger.Logger) {
+	loc, _ := time.LoadLocation(tz)
+	logger.Info("Timezone set successfully", "timezone", tz)
+	TimeLocation = loc
+}
+
+func GetLocalUnix() int64 {
+	now := time.Now()
+	if TimeLocation != nil {
+		now = now.In(TimeLocation)
 	}
+	return now.Unix()
 }

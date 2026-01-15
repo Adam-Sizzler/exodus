@@ -95,7 +95,7 @@ var defaultConfig = BackendConfig{
 		LogMode:  "inclusive",
 	},
 	APIToken: "",
-	TZ:       "",
+	TZ:       "UTC",
 	V2RS: V2RSConfig{
 		Address: "127.0.0.1",
 		Port:    "9243",

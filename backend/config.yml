@@ -3,7 +3,7 @@
 
 # Log Settings
 log_config:
-  level: none                                           # Logging level: none, error, warn, info, debug, trace
+  level: info                                           # Logging level: none, error, warn, info, debug, trace
   mode: inclusive                                       # Mode: inclusive (this and lower), exclusive (only this)
 
 # API Settings
