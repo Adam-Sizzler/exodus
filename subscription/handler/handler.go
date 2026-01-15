@@ -34,6 +34,10 @@ var clientFormats = map[string]struct {
 		Format: "json",
 		Header: map[string]string{"Content-Type": "application/json"},
 	},
+	"unknown": {
+		Format: "json",
+		Header: map[string]string{"Content-Type": "application/json"},
+	},
 }
 
 // SubscriptionHandler handles /api/v1/sub?client=<client>&user=<user>&mode=<mode>.
@@ -262,10 +266,6 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		cfg.Logger.Trace("Prepared base64-encoded config for base mode", "user", user, "client", client)
 
-	} else if client == "singbox" {
-		output = configs[0]
-		cfg.Logger.Debug("Selected single config for singbox", "user", user)
-
 	} else if client == "mihomo" {
 		baseTemplatePath := filepath.Join(mode, "base")
 		baseTemplate, ok := tmpls[client][baseTemplatePath]
@@ -302,6 +302,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		var parsedConfigs []any
 		for _, configStr := range configs {
 			var config any
+
 			if clientFormats[client].Format == "json" {
 				if err := json.Unmarshal([]byte(configStr), &config); err != nil {
 					cfg.Logger.Error("Failed to parse template for client for user", "client", client, "user", user, "error", err)
@@ -320,7 +321,14 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		output = parsedConfigs
+		if client == "singbox" {
+			if len(parsedConfigs) > 1 {
+				cfg.Logger.Warn("Multiple configs for singbox - user first one", "user", user, "count", len(parsedConfigs))
+			}
+			output = parsedConfigs[0]
+		} else {
+			output = parsedConfigs
+		}
 		cfg.Logger.Debug("Parsed configurations for non-mihomo client", "client", client, "count", len(parsedConfigs))
 	}
 	for k, v := range clientFormats[client].Header {
@@ -361,9 +369,6 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cfg.Logger.Debug("Sent JSON response", "user", user)
-
-	case client == "singbox":
-		w.Write([]byte(output.(string)))
 
 	case clientFormats[client].Format == "yaml":
 		if _, err := w.Write([]byte(output.([]string)[0])); err != nil {
