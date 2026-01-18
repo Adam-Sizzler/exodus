@@ -156,7 +156,7 @@ func SyncUsersWithNode(ctx context.Context, manager *manager.DatabaseManager, no
 			}
 			defer stmtDeleteID.Close()
 
-			currentTime := time.Now().In(common.TimeLocation).Unix()
+			currentTime := common.GetLocalUnix()
 			for _, user := range res.users.Users {
 				enabledStr := "false"
 				if user.Enabled {
@@ -174,7 +174,7 @@ func SyncUsersWithNode(ctx context.Context, manager *manager.DatabaseManager, no
 
 				if exists == 0 {
 					// Вставка нового пользователя
-					result, err := stmtInsertUser.Exec(res.nodeName, user.Username, currentTime, currentTime, enabledStr)
+					result, err := stmtInsertUser.Exec(res.nodeName, user.Username, 1, currentTime, enabledStr)
 					if err != nil {
 						return fmt.Errorf("insert user %s: %w", user.Username, err)
 					}

@@ -293,9 +293,19 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 					}
 				case "last_seen":
 					if aggregate {
-						clientCols = append(clientCols, fmt.Sprintf("CASE WHEN MAX(ut.%s) = 0 THEN 'online' ELSE strftime('%%Y-%%m-%%d %%H:%%M', MAX(ut.%s), 'unixepoch') END AS \"%s\"", col, col, alias))
+						clientCols = append(clientCols, fmt.Sprintf(`
+            CASE 
+                WHEN MAX(ut.%[1]s) = 0 THEN 'online'
+                WHEN MAX(ut.%[1]s) = 1 THEN 'never'
+                ELSE strftime('%%Y-%%m-%%d %%H:%%M', MAX(ut.%[1]s), 'unixepoch', 'localtime')
+            END AS "%[2]s"`, col, alias))
 					} else {
-						clientCols = append(clientCols, fmt.Sprintf("CASE WHEN ut.%s = 0 THEN 'online' ELSE strftime('%%Y-%%m-%%d %%H:%%M', ut.%s, 'unixepoch') END AS \"%s\"", col, col, alias))
+						clientCols = append(clientCols, fmt.Sprintf(`
+            CASE 
+                WHEN ut.%[1]s = 0 THEN 'online'
+                WHEN ut.%[1]s = 1 THEN 'never'
+                ELSE strftime('%%Y-%%m-%%d %%H:%%M', ut.%[1]s, 'unixepoch', 'localtime')
+            END AS "%[2]s"`, col, alias))
 					}
 				case "created":
 					if aggregate {
