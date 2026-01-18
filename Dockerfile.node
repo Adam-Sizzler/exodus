@@ -1,8 +1,10 @@
-# Multistage build for v2ray-stat node
+# Multistage build for v2rs node
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+
+ARG VERSION=docker
 
 WORKDIR /build
 
@@ -15,8 +17,8 @@ COPY . .
 
 # Build node binary
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
-    -o v2ray-stat-node \
+    -ldflags="-s -w -X v2ray-stat/constant.Version=${VERSION}" \
+    -o v2rs-node \
     ./node
 
 # Final stage
@@ -32,7 +34,7 @@ RUN addgroup -g 1000 v2ray && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/v2ray-stat-node /app/
+COPY --from=builder /build/v2rs-node /app/
 
 # Create directories for certificates and xray/singbox configs
 RUN mkdir -p /app/certs /app/xray /app/logs && \
@@ -43,4 +45,4 @@ COPY node/config.yml /app/config.yml.example
 
 USER v2ray
 
-ENTRYPOINT ["/app/v2ray-stat-node"]
+ENTRYPOINT ["/app/v2rs-node"]

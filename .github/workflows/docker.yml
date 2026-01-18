@@ -21,6 +21,9 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Fetch tags
+        run: git fetch --tags
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       
@@ -39,7 +42,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/v2ray-stat-${{ matrix.component }}
+            ghcr.io/${{ github.repository_owner }}/v2rs-${{ matrix.component }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest

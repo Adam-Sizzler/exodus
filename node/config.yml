@@ -30,8 +30,8 @@ paths:
 # Core Settings
 core:
   type: xray                                              # Type of proxy core used for statistics. Accepted values: xray, singbox.
-  api_grpc_address: xray                                  # Use Docker service name; change if needed (e.g., to an IP like 172.32.0.x)
-  api_grpc_port: 10812                                         # Matches your Xray config
+  # api_grpc_address: xray                                  # Use Docker service name; change if needed (e.g., to an IP like 172.32.0.x)
+  # api_grpc_port: 10812                                         # Matches your Xray config
   dir: /usr/local/etc/xray/                               # Directory path where the proxy (Xray or Singbox) config files are stored. Must end with a slash (/).
   config: /usr/local/etc/xray/config.json                 # Path to the main configuration file for the proxy core (e.g., Xray or Singbox config).
   access_log: /usr/local/etc/xray/access.log              # Path to the proxy core's access log file for tracking user sessions and IPs.

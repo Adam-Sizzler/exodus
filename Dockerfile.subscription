@@ -1,8 +1,10 @@
-# Multistage build for v2ray-stat subscription
+# Multistage build for v2rs subscription
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
+
+ARG VERSION=docker
 
 WORKDIR /build
 
@@ -15,8 +17,8 @@ COPY . .
 
 # Build subscription binary
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
-    -o v2ray-stat-subscription \
+    -ldflags="-s -w -X v2ray-stat/constant.Version=${VERSION}" \
+    -o v2rs-subscription \
     ./subscription
 
 # Final stage
@@ -32,7 +34,7 @@ RUN addgroup -g 1000 v2ray && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/v2ray-stat-subscription /app/
+COPY --from=builder /build/v2rs-subscription /app/
 
 # Copy subscription templates
 COPY --chown=v2ray:v2ray subscription/templates /app/templates
@@ -46,4 +48,4 @@ COPY subscription/config.yml /app/config.yml.example
 
 USER v2ray
 
-ENTRYPOINT ["/app/v2ray-stat-subscription"]
+ENTRYPOINT ["/app/v2rs-subscription"]

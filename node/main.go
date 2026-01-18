@@ -27,10 +27,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Printf("[START] v2ray-stat-node application %s", constant.Version)
+
 	if err := grpcserver.StartGRPCServer(&cfg, nodeServer); err != nil {
 		cfg.Logger.Error("Failed to start gRPC server", "error", err)
 		os.Exit(1)
 	}
-
-	log.Printf("[START] v2ray-stat-node application %s", constant.Version)
 }

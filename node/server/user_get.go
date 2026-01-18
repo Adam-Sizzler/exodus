@@ -49,23 +49,59 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 		}
 		err = processUsers(data, userMap, s.Cfg, false, func(cfg config.ConfigXray, userMap map[string]*proto.User, isDisabled bool) {
 			for _, inbound := range cfg.Inbounds {
-				if inbound.Protocol != "vless" && inbound.Protocol != "trojan" {
+				switch inbound.Protocol {
+				case "vless":
+					for _, client := range inbound.Settings.Clients {
+						key := makeUserKey(client.Email)
+						if _, exists := userMap[key]; !exists {
+							userMap[key] = &proto.User{
+								Username:   client.Email,
+								IdInbounds: []*proto.IdInbound{},
+								Enabled:    !isDisabled,
+							}
+						}
+						userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+							Id:         client.Password,
+							InboundTag: inbound.Tag,
+						})
+					}
+				case "trojan":
+					for _, client := range inbound.Settings.Clients {
+						key := makeUserKey(client.Email)
+						if _, exists := userMap[key]; !exists {
+							userMap[key] = &proto.User{
+								Username:   client.Email,
+								IdInbounds: []*proto.IdInbound{},
+								Enabled:    !isDisabled,
+							}
+						}
+						userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+							Id:         client.Password,
+							InboundTag: inbound.Tag,
+						})
+					}
+				case "mixed", "socks", "http":
+					if inbound.Settings.Auth != "password" {
+						s.Cfg.Logger.Debug("Skipping inbound with no password auth", "protocol", inbound.Protocol, "tag", inbound.Tag)
+						continue
+					}
+					for _, acc := range inbound.Settings.Accounts {
+						key := makeUserKey(acc.User)
+						if _, exists := userMap[key]; !exists {
+							userMap[key] = &proto.User{
+								Username:   acc.User,
+								IdInbounds: []*proto.IdInbound{},
+								Enabled:    !isDisabled,
+							}
+						}
+						userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+							Id:         acc.Pass,
+							InboundTag: inbound.Tag,
+						})
+					}
+				default:
 					s.Cfg.Logger.Debug("Skipping inbound with unsupported protocol", "protocol", inbound.Protocol, "tag", inbound.Tag)
 					continue
-				}
-				for _, client := range inbound.Settings.Clients {
-					key := makeUserKey(client.Email)
-					if _, exists := userMap[key]; !exists {
-						userMap[key] = &proto.User{
-							Username:   client.Email,
-							IdInbounds: []*proto.IdInbound{},
-							Enabled:    !isDisabled,
-						}
-					}
-					userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
-						Id:         client.ID,
-						InboundTag: inbound.Tag,
-					})
 				}
 			}
 		})
@@ -79,24 +115,62 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 		if err == nil && len(disabledData) > 0 {
 			err = processUsers(disabledData, userMap, s.Cfg, true, func(cfg config.DisabledUsersConfigXray, userMap map[string]*proto.User, isDisabled bool) {
 				for _, inbound := range cfg.Inbounds {
-					if inbound.Protocol != "vless" && inbound.Protocol != "trojan" {
+					switch inbound.Protocol {
+					case "vless":
+						for _, client := range inbound.Settings.Clients {
+							key := makeUserKey(client.Email)
+							if _, exists := userMap[key]; !exists {
+								userMap[key] = &proto.User{
+									Username:   client.Email,
+									IdInbounds: []*proto.IdInbound{},
+									Enabled:    !isDisabled,
+								}
+							}
+							userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+								Id:         client.ID,
+								InboundTag: inbound.Tag,
+							})
+							userMap[key].Enabled = !isDisabled
+						}
+					case "trojan":
+						for _, client := range inbound.Settings.Clients {
+							key := makeUserKey(client.Email)
+							if _, exists := userMap[key]; !exists {
+								userMap[key] = &proto.User{
+									Username:   client.Email,
+									IdInbounds: []*proto.IdInbound{},
+									Enabled:    !isDisabled,
+								}
+							}
+							userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+								Id:         client.Password,
+								InboundTag: inbound.Tag,
+							})
+							userMap[key].Enabled = !isDisabled
+						}
+					case "mixed", "socks", "http":
+						if inbound.Settings.Auth != "password" {
+							s.Cfg.Logger.Debug("Skipping disabled inbound with no password auth", "protocol", inbound.Protocol, "tag", inbound.Tag)
+							continue
+						}
+						for _, acc := range inbound.Settings.Accounts {
+							key := makeUserKey(acc.User)
+							if _, exists := userMap[key]; !exists {
+								userMap[key] = &proto.User{
+									Username:   acc.User,
+									IdInbounds: []*proto.IdInbound{},
+									Enabled:    !isDisabled,
+								}
+							}
+							userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+								Id:         acc.Pass,
+								InboundTag: inbound.Tag,
+							})
+							userMap[key].Enabled = !isDisabled
+						}
+					default:
 						s.Cfg.Logger.Debug("Skipping disabled inbound with unsupported protocol", "protocol", inbound.Protocol, "tag", inbound.Tag)
 						continue
-					}
-					for _, client := range inbound.Settings.Clients {
-						key := makeUserKey(client.Email)
-						if _, exists := userMap[key]; !exists {
-							userMap[key] = &proto.User{
-								Username:   client.Email,
-								IdInbounds: []*proto.IdInbound{},
-								Enabled:    !isDisabled,
-							}
-						}
-						userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
-							Id:         client.ID,
-							InboundTag: inbound.Tag,
-						})
-						userMap[key].Enabled = !isDisabled
 					}
 				}
 			})
@@ -118,59 +192,18 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 		}
 		err = processUsers(data, userMap, s.Cfg, false, func(cfg config.ConfigSingbox, userMap map[string]*proto.User, isDisabled bool) {
 			for _, inbound := range cfg.Inbounds {
-				if inbound.Type != "vless" && inbound.Type != "trojan" {
-					s.Cfg.Logger.Debug("Skipping inbound with unsupported type", "type", inbound.Type, "tag", inbound.Tag)
-					continue
-				}
-				for _, user := range inbound.Users {
-					var id string
-					switch inbound.Type {
-					case "vless":
-						id = user.UUID
-					case "trojan":
-						id = user.Password
-					default:
-						s.Cfg.Logger.Warn("Unexpected protocol in inbound", "type", inbound.Type, "tag", inbound.Tag)
-						continue
-					}
-					key := makeUserKey(user.Name)
-					if _, exists := userMap[key]; !exists {
-						userMap[key] = &proto.User{
-							Username:   user.Name,
-							IdInbounds: []*proto.IdInbound{},
-							Enabled:    !isDisabled,
-						}
-					}
-					userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
-						Id:         id,
-						InboundTag: inbound.Tag,
-					})
-				}
-			}
-		})
-		if err != nil {
-			s.Cfg.Logger.Error("Failed to process Singbox main config", "error", err)
-			return nil, status.Errorf(codes.Internal, "process Singbox main config: %v", err)
-		}
-
-		// Process disabled users
-		disabledData, err := os.ReadFile(disabledUsersPath)
-		if err == nil && len(disabledData) > 0 {
-			err = processUsers(disabledData, userMap, s.Cfg, true, func(cfg config.DisabledUsersConfigSingbox, userMap map[string]*proto.User, isDisabled bool) {
-				for _, inbound := range cfg.Inbounds {
-					if inbound.Type != "vless" && inbound.Type != "trojan" {
-						s.Cfg.Logger.Debug("Skipping disabled inbound with unsupported type", "type", inbound.Type, "tag", inbound.Tag)
-						continue
-					}
+				switch inbound.Type {
+				case "vless", "trojan", "mixed":
 					for _, user := range inbound.Users {
 						var id string
 						switch inbound.Type {
 						case "vless":
 							id = user.UUID
-						case "trojan":
+						case "trojan", "mixed":
 							id = user.Password
-						default:
-							s.Cfg.Logger.Warn("Unexpected protocol in disabled inbound", "type", inbound.Type, "tag", inbound.Tag)
+						}
+						if id == "" {
+							s.Cfg.Logger.Debug("Skipping user without ID/Password", "type", inbound.Type, "tag", inbound.Tag, "name", user.Name)
 							continue
 						}
 						key := makeUserKey(user.Name)
@@ -185,7 +218,54 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 							Id:         id,
 							InboundTag: inbound.Tag,
 						})
-						userMap[key].Enabled = !isDisabled
+					}
+				default:
+					s.Cfg.Logger.Debug("Skipping inbound with unsupported type", "type", inbound.Type, "tag", inbound.Tag)
+					continue
+				}
+			}
+		})
+		if err != nil {
+			s.Cfg.Logger.Error("Failed to process Singbox main config", "error", err)
+			return nil, status.Errorf(codes.Internal, "process Singbox main config: %v", err)
+		}
+
+		// Process disabled users
+		disabledData, err := os.ReadFile(disabledUsersPath)
+		if err == nil && len(disabledData) > 0 {
+			err = processUsers(disabledData, userMap, s.Cfg, true, func(cfg config.DisabledUsersConfigSingbox, userMap map[string]*proto.User, isDisabled bool) {
+				for _, inbound := range cfg.Inbounds {
+					switch inbound.Type {
+					case "vless", "trojan", "mixed":
+						for _, user := range inbound.Users {
+							var id string
+							switch inbound.Type {
+							case "vless":
+								id = user.UUID
+							case "trojan", "mixed":
+								id = user.Password
+							}
+							if id == "" {
+								s.Cfg.Logger.Debug("Skipping disabled user without ID/Password", "type", inbound.Type, "tag", inbound.Tag, "name", user.Name)
+								continue
+							}
+							key := makeUserKey(user.Name)
+							if _, exists := userMap[key]; !exists {
+								userMap[key] = &proto.User{
+									Username:   user.Name,
+									IdInbounds: []*proto.IdInbound{},
+									Enabled:    !isDisabled,
+								}
+							}
+							userMap[key].IdInbounds = append(userMap[key].IdInbounds, &proto.IdInbound{
+								Id:         id,
+								InboundTag: inbound.Tag,
+							})
+							userMap[key].Enabled = !isDisabled
+						}
+					default:
+						s.Cfg.Logger.Debug("Skipping disabled inbound with unsupported type", "type", inbound.Type, "tag", inbound.Tag)
+						continue
 					}
 				}
 			})
@@ -197,12 +277,10 @@ func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest)
 			s.Cfg.Logger.Error("Failed to read Singbox disabled users", "path", disabledUsersPath, "error", err)
 			return nil, status.Errorf(codes.Internal, "read disabled users: %v", err)
 		}
-
 	default:
 		s.Cfg.Logger.Error("Unsupported core type", "type", s.Cfg.Core.Type)
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported core type: %s", s.Cfg.Core.Type)
 	}
-
 	resp := &proto.ListUsersResponse{
 		Users: make([]*proto.User, 0, len(userMap)),
 	}

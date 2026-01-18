@@ -1,8 +1,10 @@
-# Multistage build for v2ray-stat backend
+# Multistage build for v2rs backend
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
+
+ARG VERSION=docker
 
 WORKDIR /build
 
@@ -15,8 +17,8 @@ COPY . .
 
 # Build backend binary
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags="-s -w -X v2ray-stat/constant.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'docker')" \
-    -o v2ray-stat-backend \
+    -ldflags="-s -w -X v2ray-stat/constant.Version=${VERSION}" \
+    -o v2rs-backend \
     ./backend
 
 # Final stage
@@ -32,7 +34,7 @@ RUN addgroup -g 1000 v2ray && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/v2ray-stat-backend /app/
+COPY --from=builder /build/v2rs-backend /app/
 
 # Create directories for data and certificates
 RUN mkdir -p /app/data /app/certs && \
@@ -43,4 +45,4 @@ COPY backend/config.yml /app/config.yml.example
 
 USER v2ray
 
-ENTRYPOINT ["/app/v2ray-stat-backend"]
+ENTRYPOINT ["/app/v2rs-backend"]

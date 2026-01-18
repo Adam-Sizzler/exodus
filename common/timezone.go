@@ -16,7 +16,8 @@ func InitTimezone(tz string, logger *logger.Logger) {
 func GetLocalUnix() int64 {
 	now := time.Now()
 	if TimeLocation != nil {
-		now = now.In(TimeLocation)
+		_, offset := now.In(TimeLocation).Zone()
+		return now.Unix() + int64(offset)
 	}
 	return now.Unix()
 }

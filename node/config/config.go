@@ -145,14 +145,35 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		cfg.Core.Config = defaultConfig.Core.Config
 	}
 
-	if cfg.Core.ApiGrpcPort == "" {
-		cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
+	isDefaultAddr := cfg.Core.ApiGrpcAddress == "" || cfg.Core.ApiGrpcAddress == defaultConfig.Core.ApiGrpcAddress
+	isDefaultPort := cfg.Core.ApiGrpcPort == "" || cfg.Core.ApiGrpcPort == defaultConfig.Core.ApiGrpcPort
+
+	if isDefaultAddr && isDefaultPort {
+		cfg.Logger.Debug("API address/port are default, attempting auto-detection from core config", "file", cfg.Core.Config)
+
+		detAddr, detPort := detectApiPort(cfg.Core.Config)
+		if detPort != "" {
+			cfg.Core.ApiGrpcPort = detPort
+			if detAddr != "" && detAddr != "0.0.0.0" {
+				cfg.Core.ApiGrpcAddress = detAddr
+			}
+			cfg.Logger.Info("Auto-detected API settings", "address", cfg.Core.ApiGrpcAddress, "port", cfg.Core.ApiGrpcPort)
+		}
 	} else {
+		cfg.Logger.Info("Using API settings from config.yml (override active)", "address", cfg.Core.ApiGrpcAddress, "port", cfg.Core.ApiGrpcPort)
+	}
+
+	if cfg.Core.ApiGrpcPort != "" {
 		portNum, err := strconv.Atoi(cfg.Core.ApiGrpcPort)
 		if err != nil || portNum < 1 || portNum > 65535 {
-			cfg.Logger.Warn("Invalid core.api_grpc_port, using default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
+			cfg.Logger.Warn("Invalid API port, falling back to default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
 			cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
 		}
+	}
+
+	if portNum, err := strconv.Atoi(cfg.Core.ApiGrpcPort); err != nil || portNum < 1 || portNum > 65535 {
+		cfg.Logger.Warn("Invalid core.api_grpc_port, using fallback default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
+		cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
 	}
 
 	if cfg.Core.ApiGrpcAddress == "" {

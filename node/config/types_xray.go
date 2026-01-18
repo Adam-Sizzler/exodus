@@ -10,10 +10,18 @@ type XrayClient struct {
 	Password string `json:"password,omitempty"`
 }
 
+type XrayAccount struct {
+	User string `json:"user"`
+	Pass string `json:"pass"`
+}
+
 type XraySettings struct {
-	Clients    []XrayClient `json:"clients"`
-	Decryption *string      `json:"decryption,omitempty"`
-	Address    *string      `json:"address,omitempty"`
+	Clients    []XrayClient  `json:"clients,omitempty"`
+	Accounts   []XrayAccount `json:"accounts,omitempty"`
+	Auth       string        `json:"auth,omitempty"`
+	Udp        bool          `json:"udp,omitempty"`
+	Decryption *string       `json:"decryption,omitempty"`
+	Address    *string       `json:"address,omitempty"`
 }
 
 type XrayInbound struct {

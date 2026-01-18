@@ -3,7 +3,7 @@
 ###################################
 ### GLOBAL CONSTANTS AND VARIABLES
 ###################################
-DIR_V2RAY_STAT="/opt/v2ray-stat"
+DIR_V2RAY_STAT="."
 DIR_XRAY="/usr/local/etc/xray"
 DIR_HAPROXY="/etc/haproxy"
 
@@ -104,24 +104,26 @@ RU[111]="Статистика очищена"
 EU[112]="Error clearing client traffic statistics"
 RU[112]="Ошибка при очистке статистики"
 
-EU[120]="1. Show server statistics"
-RU[120]="1. Показать статистику сервера"
-EU[121]="2. View client DNS queries"
-RU[121]="2. Просмотреть DNS-запросы клиентов"
-EU[122]="3. Reset Xray server statistics"
-RU[122]="3. Сбросить статистику Xray сервера"
-EU[123]="4. Add new client"
-RU[123]="4. Добавить нового клиента"
-EU[124]="5. Delete client"
-RU[124]="5. Удалить клиента"
-EU[125]="6. Enable or disable client"
-RU[125]="6. Включить или отключить клиента"
-EU[126]="7. Set client IP address limit"
-RU[126]="7. Установить лимит IP-адресов для клиента"
-EU[127]="8. Update subscription auto-renewal status"
-RU[127]="8. Обновить статус автопродления подписки"
-EU[128]="9. Change subscription end date"
-RU[128]="9. Изменить дату окончания подписки"
+EU[120]="2. Show client statistics"
+RU[120]="2. Показать статистику клиентов"
+EU[121]="3. View client DNS queries"
+RU[121]="3. Просмотреть DNS-запросы клиентов"
+EU[122]="4. Reset Xray server statistics"
+RU[122]="4. Сбросить статистику Xray сервера"
+EU[123]="5. Add new client"
+RU[123]="5. Добавить нового клиента"
+EU[124]="6. Delete client"
+RU[124]="6. Удалить клиента"
+EU[125]="7. Enable or disable client"
+RU[125]="7. Включить или отключить клиента"
+EU[126]="8. Set client IP address limit"
+RU[126]="8. Установить лимит IP-адресов для клиента"
+EU[127]="9. Update subscription auto-renewal status"
+RU[127]="9. Обновить статус автопродления подписки"
+EU[128]="10. Change subscription end date"
+RU[128]="10. Изменить дату окончания подписки"
+EU[129]="1. Show bound statistics"
+RU[129]="1. Показать статистику подключений"
 EU[131]="Enter 0 to exit (updates every 10 seconds): "
 RU[131]="Введите 0 для выхода (обновление каждые 10 секунд): "
 
@@ -720,23 +722,13 @@ display_v2ray-stat_banner() {
 ### EXTRACT DATA FROM HAPROXY CONFIG
 ###################################
 extract_data() {
-  SUB_JSON_PATH=""
-  for dir in /var/www/*/ ; do
-      dir_name=$(basename "$dir")
-      [ ${#dir_name} -eq 30 ] && SUB_JSON_PATH="$dir_name" && break
-  done
-  if [[ -z "$SUB_JSON_PATH" ]]; then
-    error "Ошибка: директория с длиной имени 30 символов не найдена в /var/www/"
-  fi
-
   local CONFIG_FILE_HAPROXY="${DIR_HAPROXY}/haproxy.cfg"
   detect_external_ip
   CURR_DOMAIN=$(grep -oP 'crt /etc/haproxy/certs/\K[^.]+(?:\.[^.]+)+(?=\.pem)' "$CONFIG_FILE_HAPROXY")
   if [[ -z "$CURR_DOMAIN" ]]; then
-    error "Ошибка: не удалось извлечь домен из haproxy.cfg"
+    warning "Ошибка: не удалось извлечь домен из haproxy.cfg"
   fi
 
-#  echo $SUB_JSON_PATH
 #  echo $CURR_DOMAIN
 #  echo $CONFIG_FILE_HAPROXY
 #  echo $IP4
@@ -759,14 +751,6 @@ configure_xray_client() {
   else
     TEMPLATE_FILE="${DIR_V2RAY_STAT}/repo/conf_template/client-vless-raw-chain.json"
   fi
-
-  cp -r "$TEMPLATE_FILE" "/var/www/${SUB_JSON_PATH}/vless_raw/${USERNAME}.json"
-
-  sed -i \
-    -e "s/IP_TEMP/${IP4}/g" \
-    -e "s/DOMAIN_TEMP/${DOMAIN}/g" \
-    -e "s/UUID_TEMP/${XRAY_UUID}/g" \
-    "/var/www/${SUB_JSON_PATH}/vless_raw/${USERNAME}.json"
 }
 
 ###################################
@@ -792,12 +776,6 @@ add_new_user() {
           continue
         fi
 
-        if [[ -f /var/www/${SUB_JSON_PATH}/vless_raw/${USERNAME}.json ]]; then
-          echo "Файл конфигурации для $USERNAME уже существует. Удалите его или выберите другое имя."
-          echo
-          continue
-        fi
-
         read XRAY_UUID < <(generate_uuid)
 
         add_user_to_xray
@@ -818,15 +796,6 @@ add_new_user() {
         ;;
     esac
   done
-}
-
-###################################
-### DELETE USER SUBSCRIPTION CONFIG
-###################################
-delete_subscription_config() {
-  if [[ -f /var/www/${SUB_JSON_PATH}/vless_raw/${USERNAME}.json ]]; then
-    rm -rf /var/www/${SUB_JSON_PATH}/vless_raw/${USERNAME}.json
-  fi
 }
 
 ##################################
@@ -894,7 +863,6 @@ delete_user1() {
 
               sed -i "/\[\"${USERNAME//\"/\\\"}\"\] = \".*\",/d" "${DIR_HAPROXY}/.auth.lua"
             fi
-            delete_subscription_config
           else
             echo "Некорректный номер: $choice"
           fi
@@ -907,10 +875,6 @@ delete_user1() {
   echo
   done
 }
-
-
-
-
 
 ##################################
 ### DISPLAY NODE LIST FROM API
@@ -1123,8 +1087,147 @@ fetch_dns_stats() {
 ###################################
 ### FETCH TRAFFIC STATISTICS
 ###################################
+fetch_traffic_stats_server() {
+  local API_URL="http://127.0.0.1:9243/api/v1/server_stats"
+  local query=""
+  local selected_nodes=""
+  local sort_by=""
+  local sort_order=""
+
+  # Выбор сортировки
+  while true; do
+    clear
+    display_v2ray-stat_banner
+    tilda "|--------------------------------------------------------------------------|"
+    info " Доступные колонки для сортировки:"
+    echo
+    echo " 1. node_name (Имя ноды)"
+    echo " 2. rate (Скорость)"
+    echo " 3. uplink (Входящий трафик)"
+    echo " 4. downlink (Исходящий трафик)"
+    echo " 5. sess_uplink (Сессионный входящий)"
+    echo " 6. sess_downlink (Сессионный исходящий)"
+    echo
+    warning " $(text 84) " # 0. Previous menu
+    tilda "|--------------------------------------------------------------------------|"
+    reading " $(text 1) " sort_choice
+    if [ -z "$sort_choice" ]; then
+      sort_by=""
+      break
+    fi
+    case $sort_choice in
+      1) sort_by="node_name"; break ;;
+      2) sort_by="rate"; break ;;
+      3) sort_by="uplink"; break ;;
+      4) sort_by="downlink"; break ;;
+      5) sort_by="sess_uplink"; break ;;
+      6) sort_by="sess_downlink"; break ;;
+      0) return ;;
+      *) warning " $(text 33) "; sleep 2 ;;
+    esac
+  done
+
+  # Выбор порядка сортировки
+  if [ -n "$sort_by" ]; then
+    while true; do
+      clear
+      display_v2ray-stat_banner
+      tilda "|--------------------------------------------------------------------------|"
+      info " Выберите порядок сортировки:"
+      echo
+      echo " 1. asc (по возрастанию)"
+      echo " 2. desc (по убыванию)"
+      echo
+      warning " $(text 84) " # 0. Previous menu
+      tilda "|--------------------------------------------------------------------------|"
+      reading " $(text 1) " order_choice
+      if [ -z "$order_choice" ]; then
+        sort_order=""
+        break
+      fi
+      case $order_choice in
+        1) sort_order="asc"; break ;;
+        2) sort_order="desc"; break ;;
+        0) return ;;
+        *) warning " $(text 33) "; sleep 2 ;;
+      esac
+    done
+  fi
+
+  # Выбор нод
+  while true; do
+    clear
+    display_v2ray-stat_banner
+    tilda "|--------------------------------------------------------------------------|"
+    display_node_list
+    if [ $? -ne 0 ]; then
+      info " $(text 85) "
+      read -r
+      return
+    fi
+    tilda "|--------------------------------------------------------------------------|"
+    reading " Введите номера нод через запятую (или Enter для всех): " node_choice
+    if [ -z "$node_choice" ]; then
+      selected_nodes="all"
+      break
+    fi
+    case "$node_choice" in
+      0)
+        return
+        ;;
+      *)
+        IFS=',' read -r -a node_array <<< "$node_choice"
+        valid=true
+        selected_nodes=""
+        for node_num in "${node_array[@]}"; do
+          node_num=$(echo "$node_num" | xargs) # Удаляем пробелы
+          if [ "$node_num" == "1" ]; then
+            selected_nodes="all"
+            break
+          elif [ -n "${node_map[$node_num]}" ]; then
+            selected_nodes="${selected_nodes},${node_map[$node_num]}"
+          else
+            valid=false
+            warning " Неверный номер ноды: $node_num"
+          fi
+        done
+        if [ "$valid" = true ]; then
+          selected_nodes=${selected_nodes#,} # Удаляем начальную запятую
+          break
+        fi
+        sleep 2
+        ;;
+    esac
+  done
+
+
+  # Формируем параметры запроса
+  [ -n "$sort_by" ] && query="sort_by=$sort_by"
+  [ -n "$sort_order" ] && query="$query${query:+&}sort_order=$sort_order"
+  [ "$selected_nodes" != "all" ] && query="$query${query:+&}node=$selected_nodes"
+
+  # Выполнение запроса с обновлением каждые 10 секунд
+  while true; do
+    clear
+    info " Сортировка > ${sort_by:--} | Порядок > ${sort_order:--} | Ноды > ${selected_nodes:-все}"
+    echo
+    # URL-кодирование параметров для корректной передачи
+    encoded_query=$(echo "$query" | sed 's/,/%2C/g')
+    curl -s -X GET "$API_URL${encoded_query:+?$encoded_query}"
+    echo -n "$(text 131) " # Нажмите 0 для выхода или дождитесь обновления (10 секунд)
+    read -t 10 -r sub_choice
+    case "$sub_choice" in
+      0) break ;;
+      *) ;; # Продолжить цикл, если ничего не введено
+    esac
+  done
+}
+
+###################################
+### FETCH TRAFFIC STATISTICS
+###################################
 fetch_traffic_stats() {
-  local API_URL="http://127.0.0.1:9243/api/v1/stats"
+  local API_URL="http://127.0.0.1:9243/api/v1/client_stats"
   local query=""
   local selected_nodes=""
   local selected_users=""
@@ -1727,28 +1830,6 @@ add_user() {
               info " Успех: $message"
               info " Пользователи: $(echo "$response" | jq -r '.usernames | join(", ")')"
               info " Результаты: $(echo "$response" | jq -r '.results | tostring')"
-
-              # Добавление JSON-файла только если SUB_JSON_PATH не пустая и ноды не выбраны (локально)
-              if [ -n "$SUB_JSON_PATH" ] && [ -z "$selected_nodes" ]; then
-                # Предполагаем одну ноду (локальную), берём первый элемент credentials
-                creds_map=$(echo "$response" | jq -r '.credentials | to_entries[0].value')
-                if [ "$creds_map" != "null" ]; then
-                  for username in "${username_array[@]}"; do
-                    username=$(echo "$username" | xargs)
-                    XRAY_UUID=$(echo "$creds_map" | jq -r ".\"$username\"")
-                    if [ "$XRAY_UUID" != "null" ]; then
-                      USERNAME="$username"
-                      DOMAIN="$CURR_DOMAIN"
-                      configure_xray_client
-                      info " JSON-конфиг для $USERNAME добавлен в /var/www/${SUB_JSON_PATH}/vless_raw/"
-                    else
-                      warning " UUID для $username не найден в ответе"
-                    fi
-                  done
-                else
-                  warning " Credentials не найдены в ответе API"
-                fi
-              fi
             else
               warning " Ошибка API: $message"
               warning " Ошибки: $(echo "$response" | jq -r '.errors | tostring')"
@@ -2249,8 +2330,6 @@ toggle_user_status() {
 }
 
 
-
-
 ###################################
 ### XRAY CORE MANAGEMENT MENU
 ###################################
@@ -2260,17 +2339,18 @@ manage_xray_core() {
     extract_data
     display_v2ray-stat_banner
     tilda "|--------------------------------------------------------------------------|"
-    info " $(text 120) "    # 1. Show server statistics
-    info " $(text 121) "    # 2. View client DNS queries
-    info " $(text 122) "    # 3. Reset server statistics
+    info " $(text 129) "    # 1. Show server statistics
+    info " $(text 120) "    # 2. Show client statistics
+    info " $(text 121) "    # 3. View client DNS queries
+    info " $(text 122) "    # 4. Reset server statistics
     echo
-    info " $(text 123) "    # 4. Add new client
-    info " $(text 124) "    # 5. Delete client
-    info " $(text 125) "    # 6. Enable or disable client
+    info " $(text 123) "    # 5. Add new client
+    info " $(text 124) "    # 6. Delete client
+    info " $(text 125) "    # 7. Enable or disable client
     echo
-    info " $(text 126) "    # 7. Set client IP address limit
-    info " $(text 127) "    # 8. Update subscription auto-renewal status
-    info " $(text 128) "    # 9. Change subscription end date
+    info " $(text 126) "    # 8. Set client IP address limit
+    info " $(text 127) "    # 9. Update subscription auto-renewal status
+    info " $(text 128) "    # 10. Change subscription end date
     info " $(text 96) "     # 12. Change interface language
     echo
     warning " $(text 84) "  # 0. Previous menu
@@ -2279,15 +2359,16 @@ manage_xray_core() {
     reading " $(text 1) " CHOICE_MENU
     tilda "$(text 10)"
     case $CHOICE_MENU in
-      1) fetch_traffic_stats ;;
-      2) fetch_dns_stats ;;
-      3) reset_stats_menu ;;
-      4) add_user ;;
-      5) delete_user ;;
-      6) toggle_user_status ;;
-      7) set_user_lim_ip ;;
-      8) update_user_renewal ;;
-      9) adjust_subscription_date ;;
+      1) fetch_traffic_stats_server ;;
+      2) fetch_traffic_stats ;;
+      3) fetch_dns_stats ;;
+      4) reset_stats_menu ;;
+      5) add_user ;;
+      6) delete_user ;;
+      7) toggle_user_status ;;
+      8) set_user_lim_ip ;;
+      9) update_user_renewal ;;
+      10) adjust_subscription_date ;;
       12) configure_language ;;
       0) break ;;
       *) warning " $(text 76) " ;;
@@ -2328,7 +2409,7 @@ main() {
   source "${DIR_V2RAY_STAT}/v2ray.conf"
   load_defaults_from_config
   parse_command_line_args "$@" || display_help_message
-  check_api_server
+#  check_api_server
   verify_root_privileges
   detect_external_ip
   manage_xray_core

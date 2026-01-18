@@ -11,79 +11,135 @@ import (
 	"v2ray-stat/util"
 )
 
-// StatsHandler остаётся без изменений
-func StatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func requireGET(w http.ResponseWriter, r *http.Request, cfg *config.BackendConfig) bool {
+	if r.Method != http.MethodGet {
+		cfg.Logger.Warn("Invalid HTTP method", "method", r.Method)
+		http.Error(w, "Invalid method. Use GET", http.StatusMethodNotAllowed)
+		return false
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	return true
+}
+
+func validateSortParams(
+	sortBy, sortOrder string,
+	validColumns []string,
+	cfg *config.BackendConfig,
+) (string, string, error) {
+	if sortBy != "" && !util.Contains(validColumns, sortBy) {
+		cfg.Logger.Warn("Invalid sort_by", "sort_by", sortBy)
+		return "", "", fmt.Errorf("invalid sort_by: %q (allowed: %v)", sortBy, validColumns)
+	}
+
+	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
+		cfg.Logger.Warn("Invalid sort_order", "sort_order", sortOrder)
+		return "", "", fmt.Errorf("invalid sort_order: %q (must be asc or desc)", sortOrder)
+	}
+
+	return sortBy, sortOrder, nil
+}
+
+func WritePlainResponse(w http.ResponseWriter, text string, cfg *config.BackendConfig) {
+	if text == "" {
+		cfg.Logger.Warn("No statistics available")
+		fmt.Fprintln(w, "No statistics available.")
+		return
+	}
+	cfg.Logger.Debug("Writing response", "length", len(text))
+	fmt.Fprintln(w, text)
+}
+
+func getClientValidSortColumns(aggregate bool) []string {
+	if aggregate {
+		return []string{"user", "last_seen", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink", "created", "inbound_tag", "id", "traffic_cap"}
+	}
+	return []string{"node_name", "user", "last_seen", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink", "created", "inbound_tag", "id", "traffic_cap"}
+}
+
+func getServerValidSortColumns(aggregate bool) []string {
+	if aggregate {
+		return []string{"rate", "uplink", "downlink", "sess_uplink", "sess_downlink"}
+	}
+	return []string{"node_name", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink"}
+}
+
+func ClientStatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting StatsHandler request processing")
 
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-		if r.Method != http.MethodGet {
-			cfg.Logger.Warn("Invalid HTTP method", "method", r.Method)
-			http.Error(w, "Invalid method. Use GET", http.StatusMethodNotAllowed)
+		if !requireGET(w, r, cfg) {
 			return
 		}
 
 		// Получение параметров запроса
-		nodeParam := r.URL.Query().Get("node")
-		userParam := r.URL.Query().Get("user")
+		node := r.URL.Query().Get("node")
+		user := r.URL.Query().Get("user")
 		sortBy := r.URL.Query().Get("sort_by")
 		sortOrder := r.URL.Query().Get("sort_order")
 		aggregate := r.URL.Query().Get("aggregate") == "true"
 
-		// Валидация sort_by
-		validSortColumns := []string{
-			"node_name", "user", "last_seen", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink", "created",
-			"inbound_tag", "id", "traffic_cap",
-		}
-		if aggregate {
-			validSortColumns = []string{
-				"user", "last_seen", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink", "created",
-				"inbound_tag", "id", "traffic_cap",
-			}
-		}
-		if sortBy != "" && !util.Contains(validSortColumns, sortBy) {
-			cfg.Logger.Warn("Invalid sort_by parameter", "sort_by", sortBy)
-			http.Error(w, fmt.Sprintf("Invalid sort_by parameter: %s, must be one of %v", sortBy, validSortColumns), http.StatusBadRequest)
-			return
-		}
-
-		// Валидация sort_order
-		if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
-			cfg.Logger.Warn("Invalid sort_order parameter", "sort_order", sortOrder)
-			http.Error(w, fmt.Sprintf("Invalid sort_order parameter: %s, must be asc or desc", sortOrder), http.StatusBadRequest)
+		validCols := getClientValidSortColumns(aggregate)
+		sortBy, sortOrder, err := validateSortParams(sortBy, sortOrder, validCols, cfg)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		var statsBuilder strings.Builder
-
-		// Построение серверной статистики (без изменений)
-		if err := buildCustomServerStats(&statsBuilder, manager, cfg, nodeParam, aggregate); err != nil {
-			cfg.Logger.Error("Failed to retrieve server statistics", "error", err)
-			http.Error(w, "Error retrieving server statistics", http.StatusInternalServerError)
-			return
-		}
-
-		// Построение клиентской статистики
-		if err := buildCustomClientStats(&statsBuilder, manager, cfg, nodeParam, userParam, sortBy, sortOrder, aggregate); err != nil {
+		if err := buildCustomClientStats(&statsBuilder, manager, cfg, node, user, sortBy, sortOrder, aggregate); err != nil {
 			cfg.Logger.Error("Failed to retrieve client statistics", "error", err)
 			http.Error(w, "Error retrieving client statistics", http.StatusInternalServerError)
 			return
 		}
 
-		if statsBuilder.String() == "" {
-			cfg.Logger.Warn("No statistics available")
-			fmt.Fprintln(w, "No statistics available.")
-			return
-		}
+		WritePlainResponse(w, statsBuilder.String(), cfg)
 
-		cfg.Logger.Debug("Writing response", "response_length", len(statsBuilder.String()))
-		fmt.Fprintln(w, statsBuilder.String())
-		cfg.Logger.Info("API stats: completed successfully", "node", nodeParam, "user", userParam, "sort_by", sortBy, "sort_order", sortOrder, "aggregate", aggregate)
+		cfg.Logger.Info("API stats: completed successfully",
+			"node", node,
+			"user", user,
+			"sort_by", sortBy,
+			"sort_order", sortOrder, "aggregate", aggregate)
 	}
 }
 
-// buildCustomServerStats (без изменений)
+func ServerStatsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cfg.Logger.Debug("Starting StatsHandler request processing")
+
+		if !requireGET(w, r, cfg) {
+			return
+		}
+
+		// Получение параметров запроса
+		node := r.URL.Query().Get("node")
+		sortBy := r.URL.Query().Get("sort_by")
+		sortOrder := r.URL.Query().Get("sort_order")
+		aggregate := r.URL.Query().Get("aggregate") == "true"
+
+		validCols := getServerValidSortColumns(aggregate)
+		sortBy, sortOrder, err := validateSortParams(sortBy, sortOrder, validCols, cfg)
+		if err != nil {
+			http.Error(w, "Invalid sort parameters", http.StatusBadRequest)
+			return
+		}
+
+		var statsBuilder strings.Builder
+		if err := buildCustomServerStats(&statsBuilder, manager, cfg, node, aggregate); err != nil {
+			cfg.Logger.Error("Failed to retrieve server statistics", "error", err)
+			http.Error(w, "Error retrieving server statistics", http.StatusInternalServerError)
+			return
+		}
+
+		WritePlainResponse(w, statsBuilder.String(), cfg)
+
+		cfg.Logger.Info("API stats: completed successfully",
+			"node", node,
+			"sort_by", sortBy,
+			"sort_order", sortOrder, "aggregate", aggregate)
+	}
+}
+
+// buildCustomServerStats
 func buildCustomServerStats(builder *strings.Builder, manager *manager.DatabaseManager, cfg *config.BackendConfig, nodeParam string, aggregate bool) error {
 	cfg.Logger.Debug("Collecting server statistics", "node", nodeParam, "aggregate", aggregate)
 
@@ -164,7 +220,6 @@ func buildCustomServerStats(builder *strings.Builder, manager *manager.DatabaseM
 			}
 			defer rows.Close()
 
-			util.AppendStats(builder, "➤  Server Statistics:\n")
 			serverTable, err := util.FormatTable(rows, trafficAliases, cfg)
 			if err != nil {
 				cfg.Logger.Error("Failed to format server stats table", "error", err)
@@ -287,7 +342,10 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 			clientSortOrder = sortOrder
 		}
 
-		clientQuery := fmt.Sprintf("SELECT %s FROM user_traffic ut LEFT JOIN user_data ud ON ut.user = ud.user LEFT JOIN user_ids uu ON ut.user = uu.user AND ut.node_name = uu.node_name", strings.Join(clientCols, ", "))
+		clientQuery := fmt.Sprintf(`SELECT %s FROM user_traffic ut 
+			LEFT JOIN user_data ud ON ut.user = ud.user 
+			LEFT JOIN (SELECT user, node_name, inbound_tag, MIN(id) AS id FROM user_ids GROUP BY user, node_name) uu 
+				ON ut.user = uu.user AND ut.node_name = uu.node_name`, strings.Join(clientCols, ", "))
 		var whereClauses []string
 		if nodeParam != "" {
 			nodes := strings.Split(nodeParam, ",")
@@ -296,6 +354,7 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 			}
 			whereClauses = append(whereClauses, fmt.Sprintf("ut.node_name IN (%s)", strings.Join(nodes, ", ")))
 		}
+
 		if userParam != "" {
 			users := strings.Split(userParam, ",")
 			for i, user := range users {
@@ -303,13 +362,15 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 			}
 			whereClauses = append(whereClauses, fmt.Sprintf("ut.user IN (%s)", strings.Join(users, ", ")))
 		}
+
 		if len(whereClauses) > 0 {
 			clientQuery += " WHERE " + strings.Join(whereClauses, " AND ")
 		}
+
 		if aggregate {
 			clientQuery += fmt.Sprintf(" GROUP BY ut.user ORDER BY %s %s;", clientSortBy, clientSortOrder)
 		} else {
-			clientQuery += fmt.Sprintf(" ORDER BY %s %s;", clientSortBy, clientSortOrder)
+			clientQuery += fmt.Sprintf(" GROUP BY ut.node_name, ut.user ORDER BY %s %s;", clientSortBy, clientSortOrder)
 		}
 
 		err := manager.ExecuteLowPriority(func(db *sql.DB) error {
@@ -333,11 +394,6 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 			}
 			defer rows.Close()
 
-			if aggregate {
-				util.AppendStats(builder, "➤  Aggregate Client Statistics:\n")
-			} else {
-				util.AppendStats(builder, "➤  Client Statistics:\n")
-			}
 			clientTable, err := util.FormatTable(rows, clientAliases, cfg)
 			if err != nil {
 				cfg.Logger.Error("Failed to format client stats table", "error", err)

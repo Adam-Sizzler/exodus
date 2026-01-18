@@ -38,7 +38,8 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/", api.Answer())
 	http.HandleFunc("/api/v1/users", api.UsersHandler(manager, cfg))
 	http.HandleFunc("/api/v1/dns_stats", api.DnsStatsHandler(manager, cfg))
-	http.HandleFunc("/api/v1/stats", api.StatsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/client_stats", api.ClientStatsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/server_stats", api.ServerStatsHandler(manager, cfg))
 
 	// Legacy endpoints (synchronous, kept for backward compatibility)
 	http.HandleFunc("/api/v1/add_user", api.TokenAuthMiddleware(cfg, api.AddUserHandler(manager, cfg)))
