@@ -230,7 +230,6 @@ func buildCustomServerStats(builder *strings.Builder, manager *manager.DatabaseM
 				util.AppendStats(builder, "No server statistics available.\n")
 			} else {
 				util.AppendStats(builder, serverTable)
-				util.AppendStats(builder, "\n")
 			}
 			return nil
 		})
@@ -366,11 +365,36 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 		if len(whereClauses) > 0 {
 			clientQuery += " WHERE " + strings.Join(whereClauses, " AND ")
 		}
-
-		if aggregate {
-			clientQuery += fmt.Sprintf(" GROUP BY ut.user ORDER BY %s %s;", clientSortBy, clientSortOrder)
+		var orderBy string
+		if clientSortBy == "last_seen" {
+			var lsField string
+			if aggregate {
+				lsField = "MIN(ut.last_seen)"
+				lsDateField := "MAX(ut.last_seen)"
+				if clientSortOrder == "desc" {
+					orderBy = fmt.Sprintf("CASE WHEN %s = 0 THEN 0 ELSE 1 END ASC, %s DESC", lsField, lsDateField)
+				} else { // asc
+					orderBy = fmt.Sprintf("CASE WHEN %s = 0 THEN 1 ELSE 0 END DESC, %s ASC", lsField, lsDateField)
+				}
+			} else {
+				lsField = "ut.last_seen"
+				if clientSortOrder == "desc" {
+					orderBy = fmt.Sprintf("CASE WHEN %s = 0 THEN 0 ELSE 1 END ASC, %s DESC", lsField, lsField)
+				} else { // asc
+					orderBy = fmt.Sprintf("CASE WHEN %s = 0 THEN 1 ELSE 0 END DESC, %s ASC", lsField, lsField)
+				}
+			}
 		} else {
-			clientQuery += fmt.Sprintf(" GROUP BY ut.node_name, ut.user ORDER BY %s %s;", clientSortBy, clientSortOrder)
+			if aggregate {
+				orderBy = fmt.Sprintf("%s %s", clientSortBy, clientSortOrder)
+			} else {
+				orderBy = fmt.Sprintf("%s %s", clientSortBy, clientSortOrder)
+			}
+		}
+		if aggregate {
+			clientQuery += fmt.Sprintf(" GROUP BY ut.user ORDER BY %s;", orderBy)
+		} else {
+			clientQuery += fmt.Sprintf(" GROUP BY ut.node_name, ut.user ORDER BY %s;", orderBy)
 		}
 
 		err := manager.ExecuteLowPriority(func(db *sql.DB) error {
