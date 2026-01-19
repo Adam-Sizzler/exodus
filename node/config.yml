@@ -1,15 +1,15 @@
 # Log Settings
 log_config:
-  level: info                                           # Logging level: none, error, warn, info, debug, trace
-  mode: inclusive                                       # Mode: inclusive (this and lower), exclusive (only this)
+  level: info                                             # Logging level: none, error, warn, info, debug, trace
+  mode: inclusive                                         # Mode: inclusive (this and lower), exclusive (only this)
 
 # Timezone Settings 
-TZ: Asia/Bangkok                                        # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
+TZ: Asia/Bangkok                                          # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
 
 # V2RS-Node Settings
 node:
-  listen_grpc_address: 0.0.0.0                                      # IP address of the proxy core API server. '127.0.0.1' restricts access to localhost.
-  listen_grpc_port: 9253                                              # TCP port for the proxy core API server. Must be between 1 and 65535.
+  listen_grpc_address: 0.0.0.0                            # IP address of the proxy core API server. '127.0.0.1' restricts access to localhost.
+  listen_grpc_port: 9253                                  # TCP port for the proxy core API server. Must be between 1 and 65535.
   #path: grpc_node
 #  mtls:
 #    cert: /usr/local/etc/v2ray-stat/certs/node.crt
@@ -30,11 +30,18 @@ paths:
 # Core Settings
 core:
   type: xray                                              # Type of proxy core used for statistics. Accepted values: xray, singbox.
-  # api_grpc_address: xray                                  # Use Docker service name; change if needed (e.g., to an IP like 172.32.0.x)
-  # api_grpc_port: 10812                                         # Matches your Xray config
+  # api_grpc_address: xray                                # Use Docker service name; change if needed (e.g., to an IP like 172.32.0.x)
+  # api_grpc_port: 10812                                  # Matches your Xray config
   dir: /usr/local/etc/xray/                               # Directory path where the proxy (Xray or Singbox) config files are stored. Must end with a slash (/).
   config: /usr/local/etc/xray/config.json                 # Path to the main configuration file for the proxy core (e.g., Xray or Singbox config).
+  log_source: "journal"                                   # file
+  log_service_name: "xray"                                # Имя systemd юнита
   access_log: /usr/local/etc/xray/access.log              # Path to the proxy core's access log file for tracking user sessions and IPs.
   access_log_regex: 'from (?:tcp|udp):([\d\.]+):\d+ accepted (?:tcp|udp):([\w\.\-]+):\d+ \[[^\]]+\] email: (\S+)' # Regular expression to parse access log. Should extract source IP, destination host, and user email/remark.
+  access_log_map:
+    ip: 1
+    domain: 2
+    user: 3
+    # domain: 0                                           # 0 или пропуск строки означает, что мы не ищем домен
   # access_log: /var/log/haproxy.log
   # access_log_regex: 'login: (\S+); ip: ([0-9\.]+)'      # Alternative regex (e.g., for custom login formats):

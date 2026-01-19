@@ -36,13 +36,16 @@ type V2RSConfig struct {
 }
 
 type CoreConfig struct {
-	Type           string `yaml:"type"`
-	ApiGrpcAddress string `yaml:"api_grpc_address"`
-	ApiGrpcPort    string `yaml:"api_grpc_port"`
-	Dir            string `yaml:"dir"`
-	Config         string `yaml:"config"`
-	AccessLog      string `yaml:"access_log"`
-	AccessLogRegex string `yaml:"access_log_regex"`
+	Type           string      `yaml:"type"`
+	ApiGrpcAddress string      `yaml:"api_grpc_address"`
+	ApiGrpcPort    string      `yaml:"api_grpc_port"`
+	Dir            string      `yaml:"dir"`
+	Config         string      `yaml:"config"`
+	AccessLog      string      `yaml:"access_log"`
+	AccessLogRegex string      `yaml:"access_log_regex"`
+	LogSource      string      `yaml:"log_source"`
+	LogServiceName string      `yaml:"log_service_name"`
+	LogMap         LogFieldMap `yaml:"access_log_map"`
 }
 
 // PathsConfig holds paths and logging settings.
@@ -56,6 +59,12 @@ type MTLSConfig struct {
 	Cert   string `yaml:"cert"`
 	Key    string `yaml:"key"`
 	CACert string `yaml:"ca_cert"`
+}
+
+type LogFieldMap struct {
+	User   int `yaml:"user"`   // Номер группы для Username (email)
+	IP     int `yaml:"ip"`     // Номер группы для IP
+	Domain int `yaml:"domain"` // Номер группы для Domain (SNI/Dest)
 }
 
 var defaultConfig = NodeConfig{
@@ -76,13 +85,19 @@ var defaultConfig = NodeConfig{
 		ApiGrpcPort:    "10812",
 		Dir:            "/usr/local/etc/xray/",
 		Config:         "/usr/local/etc/xray/config.json",
+		LogSource:      "file",
 		AccessLog:      "/usr/local/etc/xray/access.log",
 		AccessLogRegex: `from (?:tcp|udp):([\d\.]+):\d+ accepted (?:tcp|udp):([\w\.\-]+):\d+ \[[^\]]+\] email: (\S+)`,
+		LogMap: LogFieldMap{
+			IP:     1, // Первая скобка ([\d\.]+)
+			Domain: 2, // Вторая скобка ([\w\.\-]+)
+			User:   3, // Третья скобка (\S+)
+		},
 	},
 	Paths: PathsConfig{
 		F2BLog:       "/var/log/v2ray-stat.log",
 		F2BBannedLog: "/var/log/v2ray-stat-banned.log",
-		AuthLua:      "/etc/haproxy/.auth.lua",
+		AuthLua:      "/etc/haproxy/data/users.csv",
 	},
 }
 
@@ -200,6 +215,15 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 			cfg.Logger.Warn("Invalid timezone value, using default", "timezone", cfg.TZ)
 			cfg.TZ = defaultConfig.TZ
 		}
+	}
+
+	if cfg.Core.LogSource != "file" && cfg.Core.LogSource != "journal" {
+		cfg.Logger.Warn("Invalid core.log_source, using default", "source", cfg.Core.LogSource, "default", "file")
+		cfg.Core.LogSource = "file"
+	}
+	if cfg.Core.LogSource == "journal" && cfg.Core.LogServiceName == "" {
+		cfg.Logger.Warn("LogServiceName empty for journal source, falling back to file")
+		cfg.Core.LogSource = "file"
 	}
 
 	if cfg.Features == nil {
