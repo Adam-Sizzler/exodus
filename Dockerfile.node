@@ -2,7 +2,7 @@
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev systemd-dev pkgconfig
+RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
 ARG VERSION=docker
 
@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 FROM alpine:latest
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata systemd-libs
+RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs
 
 # Create non-root user
 RUN addgroup -g 1000 v2ray && \

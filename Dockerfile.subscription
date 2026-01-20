@@ -26,6 +26,7 @@ FROM alpine:latest
 
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata
+# RUN apk add --no-cache ca-certificates tzdata sqlite-libs
 
 # Create non-root user
 RUN addgroup -g 1000 v2ray && \
