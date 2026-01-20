@@ -13,6 +13,7 @@ jobs:
       matrix:
         goos: [linux]
         goarch: [amd64]
+        build_tags: [journald]
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -20,6 +21,7 @@ jobs:
       GOOS: ${{ matrix.goos }}
       GOARCH: ${{ matrix.goarch }}
       CGO_ENABLED: 1
+      BUILD_TAGS: ${{ matrix.build_tags }}
 
     steps:
       - name: Checkout codebase
@@ -28,7 +30,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc libsqlite3-dev libsystemd-dev
+          sudo apt-get install -y gcc libsqlite3-dev
+          if [ "${BUILD_TAGS}" != "nojournald" ]; then
+            sudo apt-get install -y libsystemd-dev
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -55,9 +60,12 @@ jobs:
       - name: Build v2ray-stat-node
         run: |
           VERSION=${{ github.ref_name }}
+          TAG_NAME=${{ matrix.build_tags }}
+          if [ -z "$TAG_NAME" ]; then TAG_NAME="default"; fi
           BINARY_NAME="v2ray-stat-node-${GOOS}-${GOARCH}"
-          echo "Building $BINARY_NAME..."
+          echo "Building $BINARY_NAME with tags: ${{ matrix.build_tags }}..."
           go build -o build_assets/$BINARY_NAME \
+            -tags "${{ matrix.build_tags }}" \
             -trimpath \
             -buildvcs=false \
             -ldflags="-X v2ray-stat/constant.Version=$VERSION -s -w -buildid=" \

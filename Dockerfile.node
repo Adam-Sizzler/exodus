@@ -5,6 +5,7 @@ FROM golang:1.25-alpine AS builder
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
 ARG VERSION=docker
+ARG BUILD_TAGS=nojournald
 
 WORKDIR /build
 
@@ -17,6 +18,7 @@ COPY . .
 
 # Build node binary
 RUN CGO_ENABLED=0 GOOS=linux go build \
+    -tags "${BUILD_TAGS}" \
     -ldflags="-s -w -X v2ray-stat/constant.Version=${VERSION}" \
     -o v2rs-node \
     ./node
