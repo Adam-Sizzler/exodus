@@ -14,11 +14,11 @@ TZ: Asia/Bangkok                                        # IANA timezone name (e.
 
 backend:
   listen_address: 0.0.0.0                             # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
-  listen_port: 9243                                     # TCP port for v2ray-stat API server. Must be between 1 and 65535.
+  listen_port: 9241                                     # TCP port for v2ray-stat API server. Must be between 1 and 65535.
 
 # Paths & Logging 
-paths: 
-  database: /app/data/data.db                                  # Path to the SQLite database for tracking user sessions and usage.
+paths:
+  database: ./data.db                                  # Path to the SQLite database for tracking user sessions and usage.
 
 monitor:
   ticker_interval: 10                                   # Interval (in seconds) for polling monitored services and users. Recommended: 5–60.

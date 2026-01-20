@@ -313,6 +313,7 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 	}
 
 	currentTime := common.GetLocalUnix()
+
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		tx, err := db.BeginTx(context.Background(), nil)
 		if err != nil {

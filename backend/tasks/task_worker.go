@@ -38,7 +38,7 @@ func NewTaskWorker(taskManager *TaskManager, dbManager *manager.DatabaseManager,
 
 // Start starts all worker goroutines
 func (tw *TaskWorker) Start() {
-	tw.cfg.Logger.Info("Starting task workers")
+	tw.cfg.Logger.Debug("Starting task workers")
 
 	// Start task polling worker
 	tw.wg.Add(1)
@@ -48,7 +48,7 @@ func (tw *TaskWorker) Start() {
 	tw.wg.Add(1)
 	go tw.timeoutWorker()
 
-	tw.cfg.Logger.Info("Task workers started")
+	tw.cfg.Logger.Debug("Task workers started")
 }
 
 // Stop stops all worker goroutines

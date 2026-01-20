@@ -21,7 +21,6 @@ import (
 	"v2ray-stat/backend/grpcclient"
 	"v2ray-stat/backend/tasks"
 	"v2ray-stat/backend/users"
-	"v2ray-stat/common"
 	"v2ray-stat/constant"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -82,7 +81,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
-	common.InitTimezone(cfg.TZ, cfg.Logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

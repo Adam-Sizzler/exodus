@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"v2ray-stat/common"
 	"v2ray-stat/logger"
 
 	"gopkg.in/yaml.v3"
@@ -32,7 +33,7 @@ type LogConfig struct {
 	LogMode  string `yaml:"mode"`
 }
 
-// V2RSConfig holds v2ray-stat specific settings.
+// V2RSConfig holds v2rs specific settings.
 type V2RSConfig struct {
 	Address string `yaml:"listen_address"`
 	Port    string `yaml:"listen_port"`
@@ -154,13 +155,15 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 	if cfg.V2RS.Port != "" {
 		portNum, err := strconv.Atoi(cfg.V2RS.Port)
 		if err != nil || portNum < 1 || portNum > 65535 {
-			cfg.Logger.Warn("Invalid v2ray-stat.port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
+			cfg.Logger.Warn("Invalid v2rs.port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
 			cfg.V2RS.Port = defaultConfig.V2RS.Port
 		}
+		cfg.Logger.Warn("Invalid v2rs.port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
+		cfg.Logger.Info("v2rs listen", "address", cfg.V2RS.Address, "port", cfg.V2RS.Port)
 	}
 
 	if cfg.Monitor.TickerInterval < 1 {
-		cfg.Logger.Warn("Invalid v2ray-stat.monitor.ticker_interval, using default", "value", cfg.Monitor.TickerInterval, "default", defaultConfig.Monitor.TickerInterval)
+		cfg.Logger.Warn("Invalid v2rs.monitor.ticker_interval, using default", "value", cfg.Monitor.TickerInterval, "default", defaultConfig.Monitor.TickerInterval)
 		cfg.Monitor.TickerInterval = defaultConfig.Monitor.TickerInterval
 	}
 
@@ -169,6 +172,13 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 			cfg.Logger.Warn("Invalid timezone value, using default", "timezone", cfg.TZ)
 			cfg.TZ = defaultConfig.TZ
 		}
+	}
+
+	if cfg.TZ != "" {
+		common.InitTimezone(cfg.TZ, cfg.Logger)
+	} else {
+		cfg.TZ = "UTC"
+		common.InitTimezone("UTC", cfg.Logger)
 	}
 
 	// Validate nodes
