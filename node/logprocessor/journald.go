@@ -22,7 +22,7 @@ type JournalLogSource struct {
 	wg      sync.WaitGroup
 }
 
-func newJournalLogSource(serviceName string, logger *logger.Logger) (LogSource, error) {
+func NewJournalLogSource(serviceName string, logger *logger.Logger) (LogSource, error) {
 	j, err := sdjournal.NewJournal()
 	if err != nil {
 		logger.Error("Failed to open journald", "error", err)
