@@ -17,8 +17,10 @@ node:
 #    ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt
 
 # Features & Monitoring Options
+service_manager: systemd
+
 features:
-  auth_lua: true                                          # Enables dynamic updates to HAProxy's auth.lua file for credential management.
+  haproxy_auth: true                                          # Enables dynamic updates to HAProxy's auth.lua file for credential management.
   restart: true                                           # Enables automatic restart of services when configuration changes are detected.
 
 # Paths & Logging

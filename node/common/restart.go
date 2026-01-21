@@ -1,19 +1,75 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
+	"time"
+
+	"v2ray-stat/logger"
 	"v2ray-stat/node/config"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 )
 
-// RestartService restarts the specified service using systemctl.
 func RestartService(serviceName string, cfg *config.NodeConfig) error {
-	cfg.Logger.Debug("Restarting service", "service", serviceName)
-	cmd := exec.Command("systemctl", "restart", serviceName)
-	if err := cmd.Run(); err != nil {
-		cfg.Logger.Error("Error while restarting service", "service", serviceName, "error", err)
-		return fmt.Errorf("failed to restart service %s: %v", serviceName, err)
+	mgr, err := NewServiceManager(cfg)
+	if err != nil {
+		return err
 	}
-	cfg.Logger.Info("Service restarted successfully", "service", serviceName)
+	// Создаем контекст с таймаутом, чтобы рестарт не висел вечно
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return mgr.Restart(ctx, serviceName)
+}
+
+type ServiceManager interface {
+	Restart(ctx context.Context, serviceName string) error
+}
+
+func NewServiceManager(cfg *config.NodeConfig) (ServiceManager, error) {
+	switch cfg.ServiceManager {
+	case "docker":
+		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		if err != nil {
+			return nil, err
+		}
+		return &DockerManager{client: cli, logger: cfg.Logger}, nil
+	default:
+		return &SystemdManager{logger: cfg.Logger}, nil
+	}
+}
+
+type DockerManager struct {
+	client *client.Client
+	logger *logger.Logger
+}
+
+func (d *DockerManager) Restart(ctx context.Context, serviceName string) error {
+	containerName := serviceName
+	if serviceName == "sing-box" || serviceName == "singbox" {
+		containerName = "singbox"
+	} else if serviceName == "xray" {
+		containerName = "xray"
+	}
+
+	d.logger.Info("Restarting Docker service", "container", containerName)
+
+	timeout := 10
+	return d.client.ContainerRestart(ctx, containerName, container.StopOptions{Timeout: &timeout})
+}
+
+type SystemdManager struct {
+	logger *logger.Logger
+}
+
+func (s *SystemdManager) Restart(ctx context.Context, serviceName string) error {
+	s.logger.Info("Restarting Systemd service", "service", serviceName)
+	cmd := exec.CommandContext(ctx, "systemctl", "restart", serviceName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("systemctl failed: %s, output: %s", err, string(output))
+	}
 	return nil
 }

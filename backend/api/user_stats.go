@@ -297,14 +297,14 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
             CASE 
                 WHEN MAX(ut.%[1]s) = 0 THEN 'online'
                 WHEN MAX(ut.%[1]s) = 1 THEN 'never'
-                ELSE strftime('%%Y-%%m-%%d %%H:%%M', MAX(ut.%[1]s), 'unixepoch', 'localtime')
+                ELSE strftime('%%Y-%%m-%%d %%H:%%M', MAX(ut.%[1]s), 'unixepoch')
             END AS "%[2]s"`, col, alias))
 					} else {
 						clientCols = append(clientCols, fmt.Sprintf(`
             CASE 
                 WHEN ut.%[1]s = 0 THEN 'online'
                 WHEN ut.%[1]s = 1 THEN 'never'
-                ELSE strftime('%%Y-%%m-%%d %%H:%%M', ut.%[1]s, 'unixepoch', 'localtime')
+                ELSE strftime('%%Y-%%m-%%d %%H:%%M', ut.%[1]s, 'unixepoch')
             END AS "%[2]s"`, col, alias))
 					}
 				case "created":

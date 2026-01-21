@@ -14,13 +14,14 @@ import (
 
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
-	Log      LogConfig       `yaml:"log_config"`
-	V2RS     V2RSConfig      `yaml:"node"`
-	TZ       string          `yaml:"TZ"`
-	Features map[string]bool `yaml:"features"`
-	Core     CoreConfig      `yaml:"core"`
-	Paths    PathsConfig     `yaml:"paths"`
-	Logger   *logger.Logger
+	Log            LogConfig       `yaml:"log_config"`
+	V2RS           V2RSConfig      `yaml:"node"`
+	TZ             string          `yaml:"TZ"`
+	Features       map[string]bool `yaml:"features"`
+	Core           CoreConfig      `yaml:"core"`
+	Paths          PathsConfig     `yaml:"paths"`
+	ServiceManager string          `yaml:"service_manager"`
+	Logger         *logger.Logger
 }
 
 type LogConfig struct {
@@ -52,7 +53,7 @@ type CoreConfig struct {
 type PathsConfig struct {
 	F2BLog       string `yaml:"f2b_log"`
 	F2BBannedLog string `yaml:"f2b_banned_log"`
-	AuthLua      string `yaml:"auth_lua"`
+	HAProxyAuth  string `yaml:"haproxy_auth"`
 }
 
 type MTLSConfig struct {
@@ -97,7 +98,7 @@ var defaultConfig = NodeConfig{
 	Paths: PathsConfig{
 		F2BLog:       "/var/log/v2ray-stat.log",
 		F2BBannedLog: "/var/log/v2ray-stat-banned.log",
-		AuthLua:      "/etc/haproxy/data/users.csv",
+		HAProxyAuth:  "/etc/haproxy/data/users.csv",
 	},
 }
 
@@ -228,6 +229,10 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 
 	if cfg.Features == nil {
 		cfg.Features = make(map[string]bool)
+	}
+
+	if cfg.ServiceManager == "" {
+		cfg.ServiceManager = "systemd"
 	}
 
 	cfg.Logger.Info("Node configuration validated", "address", cfg.V2RS.GrpcAddress, "port", cfg.V2RS.GrpcPort, "mtls_enabled", cfg.V2RS.MTLSConfig != nil)

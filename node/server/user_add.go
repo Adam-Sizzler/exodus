@@ -17,11 +17,10 @@ import (
 
 	"v2ray-stat/node/common"
 	"v2ray-stat/node/config"
-	"v2ray-stat/node/lua"
+	"v2ray-stat/node/haproxy"
 	"v2ray-stat/proto"
 )
 
-// generateRandomPassword generates a random password of the specified length.
 func generateRandomPassword(length int) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
@@ -31,12 +30,10 @@ func generateRandomPassword(length int) (string, error) {
 	return string(b), nil
 }
 
-// AddUsers adds one or more users to the node.
 func (s *NodeServer) AddUsers(ctx context.Context, req *proto.AddUsersRequest) (*proto.OperationResponse, error) {
 	usernames := req.Usernames
 	inboundTag := req.InboundTag
 
-	// Determine protocol based on configuration
 	var protocol string
 	switch s.Cfg.Core.Type {
 	case "xray":
@@ -242,37 +239,37 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 	if cfg.Features["restart"] {
 		serviceName := "xray"
 		if proxyType == "singbox" {
-			serviceName = "sing-box"
+			serviceName = "singbox"
 		}
 		if err := common.RestartService(serviceName, cfg); err != nil {
-			return fmt.Errorf("failed to restart core service: %v", err)
+			cfg.Logger.Error("Failed to restart core service", "service", serviceName, "error", err)
 		}
 	}
 
-	if cfg.Features["auth_lua"] {
-		cfg.Logger.Debug("Adding users to auth.lua", "users", credentials)
+	if cfg.Features["haproxy_auth"] {
+		cfg.Logger.Debug("Updating HAProxy CSV users", "count", len(credentials))
+
+		csvUsers := make(map[string]string)
 		for user, credential := range credentials {
 			var credentialToAdd string
 			if protocol == "trojan" {
 				hash := sha256.Sum224([]byte(credential))
 				credentialToAdd = hex.EncodeToString(hash[:])
-				cfg.Logger.Trace("Hashed credential for trojan", "credential", credentialToAdd)
 			} else {
 				credentialToAdd = credential
-				cfg.Logger.Trace("Using raw credential for vless", "credential", credentialToAdd)
 			}
-			if err := lua.AddUserToAuthLua(cfg, user, credentialToAdd); err != nil {
-				cfg.Logger.Error("Failed to add user to auth.lua", "user", user, "error", err)
-			} else {
-				cfg.Logger.Debug("User added to auth.lua", "user", user)
-			}
+			csvUsers[user] = credentialToAdd
 		}
-		if cfg.Features["restart"] {
-			if err := common.RestartService("haproxy", cfg); err != nil {
-				return fmt.Errorf("failed to restart haproxy: %v", err)
+
+		if err := haproxy.UpdateUsersCSV(cfg, csvUsers, nil); err != nil {
+			cfg.Logger.Error("Failed to update HAProxy CSV", "error", err)
+		} else {
+			if cfg.Features["restart"] {
+				if err := common.RestartService("haproxy", cfg); err != nil {
+					cfg.Logger.Error("Failed to restart haproxy", "error", err)
+				}
 			}
 		}
 	}
-
 	return nil
 }

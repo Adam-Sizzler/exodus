@@ -8,13 +8,13 @@ import (
 
 	"v2ray-stat/node/common"
 	"v2ray-stat/node/config"
-	"v2ray-stat/node/lua"
+	"v2ray-stat/node/haproxy"
 	"v2ray-stat/proto"
 
 	// protobuf
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
-	grpcstatus "google.golang.org/grpc/status" // grpc
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 // DeleteUsers deletes one or more users from the node.
@@ -138,25 +138,22 @@ func DeleteUsersFromConfig(cfg *config.NodeConfig, usernames []string, inboundTa
 	if cfg.Features["restart"] {
 		serviceName := "xray"
 		if proxyType == "singbox" {
-			serviceName = "sing-box"
+			serviceName = "singbox"
 		}
 		if err := common.RestartService(serviceName, cfg); err != nil {
-			return fmt.Errorf("failed to restart core service: %v", err)
+			cfg.Logger.Error("Failed to restart core service (continuing execution)", "service", serviceName, "error", err)
 		}
 	}
 
-	if cfg.Features["auth_lua"] {
-		cfg.Logger.Debug("Deleting users from auth.lua", "users", usernames)
-		for _, user := range usernames {
-			if err := lua.DeleteUserFromAuthLua(cfg, user); err != nil {
-				cfg.Logger.Error("Failed to delete user from auth.lua", "user", user, "error", err)
-			} else {
-				cfg.Logger.Debug("User removed from auth.lua", "user", user)
-			}
-		}
-		if cfg.Features["restart"] {
-			if err := common.RestartService("haproxy", cfg); err != nil {
-				return fmt.Errorf("failed to restart haproxy: %v", err)
+	if cfg.Features["haproxy_auth"] {
+		if err := haproxy.UpdateUsersCSV(cfg, nil, usernames); err != nil {
+			cfg.Logger.Error("Failed to delete users from HAProxy CSV", "error", err)
+		} else {
+			if cfg.Features["restart"] {
+				// Ошибка рестарта haproxy тоже не должна быть фатальной для всей операции
+				if err := common.RestartService("haproxy", cfg); err != nil {
+					cfg.Logger.Error("Failed to restart haproxy (continuing)", "error", err)
+				}
 			}
 		}
 	}
