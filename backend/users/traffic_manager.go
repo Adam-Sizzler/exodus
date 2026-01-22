@@ -48,7 +48,7 @@ func LoadIsInactiveFromLastSeen(manager *manager.DatabaseManager, cfg *config.Ba
 				continue
 			}
 			cfg.Logger.Trace("Processing user", "node_name", nodeName, "user", user, "last_seen", lastSeen)
-			isInactiveLocal[nodeName+":"+user] = lastSeen != 0
+			isInactiveLocal[nodeName+":"+user] = lastSeen <= 1
 		}
 		if err := rows.Err(); err != nil {
 			cfg.Logger.Error("Error iterating rows", "error", err)
@@ -348,8 +348,9 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 			var lastSeen int64
 			var updateLastSeen bool
 			userKey := nodeName + ":" + user
+
 			if rate > cfg.Monitor.OnlineRateThreshold*1000 {
-				lastSeen = 0
+				lastSeen = 1
 				isInactive[userKey] = false
 				updateLastSeen = true
 				cfg.Logger.Debug("User is active", "node_name", nodeName, "user", user)

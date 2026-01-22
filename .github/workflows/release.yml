@@ -44,42 +44,73 @@ jobs:
       - name: Get project dependencies
         run: go mod download
 
+      - name: Calculate build info
+        id: build_info
+        run: |
+          REVISION=$(git rev-parse HEAD)
+          echo "revision=$REVISION" >> $GITHUB_OUTPUT
+          BUILD_TAGS=${{ matrix.build_tags }}
+          if [ -z "$BUILD_TAGS" ]; then BUILD_TAGS="none"; fi
+          echo "build_tags=$BUILD_TAGS" >> $GITHUB_OUTPUT
+          CGO_ENABLED=${CGO_ENABLED:-0}
+          if [ "$CGO_ENABLED" == "1" ]; then CGO_STATUS="enabled"; else CGO_STATUS="disabled"; fi
+          echo "cgo_enabled=$CGO_STATUS" >> $GITHUB_OUTPUT
+
       - name: Build v2ray-stat-backend
         run: |
           VERSION=${{ github.ref_name }}
-          echo "Using version: $VERSION"
-          mkdir -p build_assets
-          BINARY_NAME="v2ray-stat-backend-${GOOS}-${GOARCH}"
-          echo "Building $BINARY_NAME..."
+          REVISION=${{ steps.build_info.outputs.revision }}
+          BUILD_TAGS=${{ steps.build_info.outputs.build_tags }}
+          CGO_ENABLED_STATUS=${{ steps.build_info.outputs.cgo_enabled }}
+          BINARY_NAME="v2rs-backend-${GOOS}-${GOARCH}"
+
           go build -o build_assets/$BINARY_NAME \
             -trimpath \
-            -buildvcs=false \
-            -ldflags="-X v2ray-stat/constant.Version=$VERSION -s -w -buildid=" \
+            -buildvcs=true \
+            -ldflags="-X v2ray-stat/constant.Version=$VERSION \
+                      -X v2ray-stat/constant.Revision=$REVISION \
+                      -X v2ray-stat/constant.BuildTags=$BUILD_TAGS \
+                      -X v2ray-stat/constant.CgoEnabled=$CGO_ENABLED_STATUS \
+                      -s -w -buildid=" \
             -v ./backend/main.go
 
-      - name: Build v2ray-stat-node
+      - name: Build v2rs-node
         run: |
           VERSION=${{ github.ref_name }}
-          TAG_NAME=${{ matrix.build_tags }}
-          if [ -z "$TAG_NAME" ]; then TAG_NAME="default"; fi
-          BINARY_NAME="v2ray-stat-node-${GOOS}-${GOARCH}"
+          REVISION=${{ steps.build_info.outputs.revision }}
+          BUILD_TAGS=${{ steps.build_info.outputs.build_tags }}
+          CGO_ENABLED_STATUS=${{ steps.build_info.outputs.cgo_enabled }}
+          BINARY_NAME="v2rs-node-${GOOS}-${GOARCH}"
+
           echo "Building $BINARY_NAME with tags: ${{ matrix.build_tags }}..."
           go build -o build_assets/$BINARY_NAME \
             -tags "${{ matrix.build_tags }}" \
             -trimpath \
-            -buildvcs=false \
-            -ldflags="-X v2ray-stat/constant.Version=$VERSION -s -w -buildid=" \
+            -buildvcs=true \
+            -ldflags="-X v2ray-stat/constant.Version=$VERSION \
+                      -X v2ray-stat/constant.Revision=$REVISION \
+                      -X v2ray-stat/constant.BuildTags=$BUILD_TAGS \
+                      -X v2ray-stat/constant.CgoEnabled=$CGO_ENABLED_STATUS \
+                      -s -w -buildid=" \
             -v ./node/main.go
 
-      - name: Build v2ray-stat-sub
+      - name: Build v2rs-sub
         run: |
           VERSION=${{ github.ref_name }}
-          BINARY_NAME="v2ray-stat-sub-${GOOS}-${GOARCH}"
+          REVISION=${{ steps.build_info.outputs.revision }}
+          BUILD_TAGS=${{ steps.build_info.outputs.build_tags }}
+          CGO_ENABLED_STATUS=${{ steps.build_info.outputs.cgo_enabled }}
+          BINARY_NAME="v2rs-sub-${GOOS}-${GOARCH}"
+
           echo "Building $BINARY_NAME..."
           go build -o build_assets/$BINARY_NAME \
             -trimpath \
-            -buildvcs=false \
-            -ldflags="-X v2ray-stat/constant.Version=$VERSION -s -w -buildid=" \
+            -buildvcs=true \
+            -ldflags="-X v2ray-stat/constant.Version=$VERSION \
+                      -X v2ray-stat/constant.Revision=$REVISION \
+                      -X v2ray-stat/constant.BuildTags=$BUILD_TAGS \
+                      -X v2ray-stat/constant.CgoEnabled=$CGO_ENABLED_STATUS \
+                      -s -w -buildid=" \
             -v ./subscription/main.go
 
       - name: Copy additional files

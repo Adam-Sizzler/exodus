@@ -284,6 +284,7 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 				if aggregate && col == "node_name" {
 					continue
 				}
+
 				switch col {
 				case "user", "enabled":
 					if aggregate {
@@ -291,40 +292,47 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 					} else {
 						clientCols = append(clientCols, fmt.Sprintf("ut.%s AS \"%s\"", col, alias))
 					}
+
 				case "last_seen":
 					if aggregate {
 						clientCols = append(clientCols, fmt.Sprintf(`
             CASE 
-                WHEN MAX(ut.%[1]s) = 0 THEN 'online'
-                WHEN MAX(ut.%[1]s) = 1 THEN 'never'
+                WHEN MAX(ut.%[1]s) = 1 THEN 'online'
+                WHEN MAX(ut.%[1]s) = 0 THEN 'never'
                 ELSE strftime('%%Y-%%m-%%d %%H:%%M', MAX(ut.%[1]s), 'unixepoch')
             END AS "%[2]s"`, col, alias))
 					} else {
 						clientCols = append(clientCols, fmt.Sprintf(`
             CASE 
-                WHEN ut.%[1]s = 0 THEN 'online'
-                WHEN ut.%[1]s = 1 THEN 'never'
+                WHEN ut.%[1]s = 1 THEN 'online'
+                WHEN ut.%[1]s = 0 THEN 'never'
                 ELSE strftime('%%Y-%%m-%%d %%H:%%M', ut.%[1]s, 'unixepoch')
             END AS "%[2]s"`, col, alias))
 					}
+
 				case "created":
 					if aggregate {
 						clientCols = append(clientCols, fmt.Sprintf("MIN(strftime('%%Y-%%m-%%d %%H:%%M', ut.%s, 'unixepoch')) AS \"%s\"", col, alias))
 					} else {
 						clientCols = append(clientCols, fmt.Sprintf("strftime('%%Y-%%m-%%d %%H:%%M', ut.%s, 'unixepoch') AS \"%s\"", col, alias))
 					}
+
 				case "sub_end":
 					clientCols = append(clientCols, fmt.Sprintf("CASE WHEN ud.%s = 0 THEN 'permanent' ELSE strftime('%%Y-%%m-%%d %%H:%%M', ud.%s, 'unixepoch') END AS \"%s\"", col, col, alias))
+
 				case "renew", "lim_ip", "ips":
 					clientCols = append(clientCols, fmt.Sprintf("ud.%s AS \"%s\"", col, alias))
+
 				case "inbound_tag", "id":
 					if aggregate {
 						clientCols = append(clientCols, fmt.Sprintf("MIN(uu.%s) AS \"%s\"", col, alias))
 					} else {
 						clientCols = append(clientCols, fmt.Sprintf("uu.%s AS \"%s\"", col, alias))
 					}
+
 				case "traffic_cap":
 					clientCols = append(clientCols, fmt.Sprintf("ud.%s AS \"%s\"", col, alias))
+
 				default:
 					if aggregate {
 						clientCols = append(clientCols, fmt.Sprintf("SUM(ut.%s) AS \"%s\"", col, alias))
@@ -336,6 +344,7 @@ func buildCustomClientStats(builder *strings.Builder, manager *manager.DatabaseM
 				cfg.Logger.Warn("Invalid client column ignored", "column", col)
 			}
 		}
+
 		if len(clientCols) == 0 {
 			cfg.Logger.Warn("No valid columns specified for client stats")
 			return nil

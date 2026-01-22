@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -52,6 +53,14 @@ func startAPIServer(ctx context.Context, cfg *config.Config, wg *sync.WaitGroup)
 }
 
 func main() {
+	var versionFlag = flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(constant.GetBuildInfo())
+		os.Exit(0)
+	}
+
 	cfg, err := config.LoadConfig("config.yml")
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)

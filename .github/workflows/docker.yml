@@ -48,7 +48,21 @@ jobs:
             type=raw,value=latest
           flavor: |
             latest=false
-      
+
+      - name: Calculate build info
+        id: build_info
+        run: |
+          REVISION=$(git rev-parse HEAD)
+          echo "revision=$REVISION" >> $GITHUB_OUTPUT
+          BUILD_TAGS=none
+          if [[ "${{ matrix.component }}" == "node" ]]; then
+            BUILD_TAGS="journald"
+          fi
+          echo "build_tags=$BUILD_TAGS" >> $GITHUB_OUTPUT
+          CGO_ENABLED=1
+          CGO_STATUS="enabled"
+          echo "cgo_enabled=$CGO_STATUS" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -61,3 +75,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ github.ref_name }}
+            REVISION=${{ steps.build_info.outputs.revision }}
+            BUILD_TAGS=none
+            CGO_ENABLED_STATUS=enabled

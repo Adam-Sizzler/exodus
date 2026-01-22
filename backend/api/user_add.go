@@ -16,7 +16,6 @@ import (
 	"v2ray-stat/backend/db"
 	"v2ray-stat/backend/db/manager"
 	"v2ray-stat/backend/users"
-	"v2ray-stat/common"
 	"v2ray-stat/proto"
 
 	"google.golang.org/grpc/codes"
@@ -259,7 +258,6 @@ func AddUserHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig)
 					}
 					defer stmtInsertID.Close()
 
-					currentTime := time.Now().In(common.TimeLocation).Unix()
 					for _, user := range res.resp.Users.Users {
 						if slices.Contains(req.Users, user.Username) {
 							enabledStr := "false"
@@ -267,7 +265,7 @@ func AddUserHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig)
 								enabledStr = "true"
 							}
 
-							_, err := stmtUpsertUser.Exec(res.nodeName, user.Username, currentTime, enabledStr)
+							_, err := stmtUpsertUser.Exec(res.nodeName, user.Username, 0, enabledStr)
 							if err != nil {
 								return fmt.Errorf("upsert user %s: %w", user.Username, err)
 							}

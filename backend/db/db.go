@@ -242,45 +242,52 @@ func InitDatabase(cfg *config.BackendConfig) (memDB, fileDB *sql.DB, err error) 
 	return memDB, fileDB, nil
 }
 
-// MonitorSubscriptionsAndSync runs periodic subscription checks and database synchronization.
 func MonitorSubscriptionsAndSync(ctx context.Context, manager *manager.DatabaseManager, fileDB *sql.DB, cfg *config.BackendConfig, wg *sync.WaitGroup) {
-	defer wg.Done() // сигналим о завершении
-
-	cfg.Logger.Debug("Starting subscription and sync monitoring")
 	go func() {
+		defer wg.Done()
+
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
+
+		cfg.Logger.Debug("Starting subscription and sync monitoring")
 
 		for {
 			select {
 			case <-ticker.C:
-				syncCtx, syncCancel := context.WithTimeout(context.Background(), 5*time.Second)
-				if err := manager.SyncDBWithContext(syncCtx, fileDB, "memory to file"); err != nil {
-					cfg.Logger.Error("Failed to synchronize database (memory to file)", "error", err)
-				} else {
-					cfg.Logger.Info("Database synchronized successfully (memory to file)")
-				}
-				syncCancel()
-				if _, err := os.Stat(cfg.Paths.Database); os.IsNotExist(err) {
-					cfg.Logger.Warn("File database does not exist, recreating", "path", cfg.Paths.Database)
-					fileDB, err = OpenAndInitDB(cfg.Paths.Database, "file", cfg)
-					if err != nil {
-						cfg.Logger.Error("Failed to recreate file database", "path", cfg.Paths.Database, "error", err)
-						continue
-					}
-				} else if err != nil {
-					cfg.Logger.Error("Failed to check file database", "path", cfg.Paths.Database, "error", err)
-					continue
-				}
-				if err := manager.SyncDBWithContext(syncCtx, fileDB, "memory to file"); err != nil {
-					cfg.Logger.Error("Failed to synchronize database (memory to file)", "error", err)
-				} else {
-					cfg.Logger.Info("Database synchronized successfully (memory to file)")
-				}
+				fileDB = performSyncCycle(ctx, manager, fileDB, cfg)
+
 			case <-ctx.Done():
 				cfg.Logger.Debug("Stopped subscription and sync monitoring")
 				return
 			}
 		}
 	}()
+}
+
+func performSyncCycle(ctx context.Context, mgr *manager.DatabaseManager, currentFileDB *sql.DB, cfg *config.BackendConfig) *sql.DB {
+	if _, err := os.Stat(cfg.Paths.Database); os.IsNotExist(err) {
+		cfg.Logger.Warn("File database does not exist, recreating", "path", cfg.Paths.Database)
+
+		newDB, err := OpenAndInitDB(cfg.Paths.Database, "file", cfg)
+		if err != nil {
+			cfg.Logger.Error("Failed to recreate file database", "error", err)
+			return currentFileDB
+		}
+
+		if currentFileDB != nil {
+			currentFileDB.Close()
+		}
+		currentFileDB = newDB
+	}
+
+	syncCtx, syncCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer syncCancel()
+
+	if err := mgr.SyncDBWithContext(syncCtx, currentFileDB, "memory to file"); err != nil {
+		cfg.Logger.Error("Failed to synchronize database", "error", err)
+	} else {
+		cfg.Logger.Info("Database synchronized successfully")
+	}
+
+	return currentFileDB
 }

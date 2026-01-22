@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +14,14 @@ import (
 )
 
 func main() {
+	var versionFlag = flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(constant.GetBuildInfo())
+		os.Exit(0)
+	}
+
 	cfg, err := config.LoadNodeConfig("config.yml")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load node config: %v\n", err)
