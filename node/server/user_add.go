@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"time"
 
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
@@ -93,25 +94,39 @@ func (s *NodeServer) AddUsers(ctx context.Context, req *proto.AddUsersRequest) (
 		credentials[user] = credential
 	}
 
-	// Add users to configuration
 	err := AddUsersToConfig(s.Cfg, credentials, inboundTag)
 	if err != nil {
 		s.Cfg.Logger.Error("Failed to add users to config", "error", err)
 		return nil, grpcstatus.Errorf(codes.FailedPrecondition, "failed to add users: %v", err)
 	}
 
-	// Fetch updated user list
-	users, err := s.ListUsers(ctx, &proto.ListUsersRequest{})
+	var listResp *proto.ListUsersResponse
+	maxRetries := 10
+	for i := range maxRetries {
+		listResp, err = s.ListUsers(ctx, &proto.ListUsersRequest{})
+		if err == nil {
+			break
+		}
+
+		s.Cfg.Logger.Warn("Waiting for core service API to become available...", "attempt", i+1, "error", err)
+		select {
+		case <-ctx.Done():
+			return nil, grpcstatus.Errorf(codes.DeadlineExceeded, "timeout waiting for service restart")
+		case <-time.After(1 * time.Second):
+			continue
+		}
+	}
+
 	if err != nil {
-		s.Cfg.Logger.Error("Failed to fetch updated user list", "error", err)
-		return nil, grpcstatus.Errorf(codes.Internal, "failed to fetch updated user list: %v", err)
+		s.Cfg.Logger.Error("Failed to fetch updated user list after retries", "error", err)
+		return nil, grpcstatus.Errorf(codes.Internal, "failed to fetch updated user list after restart: %v", err)
 	}
 
 	s.Cfg.Logger.Info("Users added successfully", "users", usernames, "inbound_tag", inboundTag)
 	return &proto.OperationResponse{
 		Status:      &status.Status{Code: int32(codes.OK), Message: "success"},
 		Usernames:   usernames,
-		Users:       users,
+		Users:       listResp,
 		Credentials: credentials,
 	}, nil
 }
@@ -243,10 +258,11 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 		}
 		if err := common.RestartService(serviceName, cfg); err != nil {
 			cfg.Logger.Error("Failed to restart core service", "service", serviceName, "error", err)
+			return fmt.Errorf("failed to restart core service: %v", err)
 		}
 	}
 
-	if cfg.Features["haproxy_auth"] {
+	if cfg.Features["haproxy"] {
 		cfg.Logger.Debug("Updating HAProxy CSV users", "count", len(credentials))
 
 		csvUsers := make(map[string]string)
@@ -263,10 +279,12 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 
 		if err := haproxy.UpdateUsersCSV(cfg, csvUsers, nil); err != nil {
 			cfg.Logger.Error("Failed to update HAProxy CSV", "error", err)
+			return fmt.Errorf("failed to update HAProxy CSV: %v", err)
 		} else {
 			if cfg.Features["restart"] {
 				if err := common.RestartService("haproxy", cfg); err != nil {
 					cfg.Logger.Error("Failed to restart haproxy", "error", err)
+					return fmt.Errorf("failed to restart haproxy: %v", err)
 				}
 			}
 		}

@@ -18,7 +18,7 @@ func RestartService(serviceName string, cfg *config.NodeConfig) error {
 	if err != nil {
 		return err
 	}
-	// Создаем контекст с таймаутом, чтобы рестарт не висел вечно
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return mgr.Restart(ctx, serviceName)
@@ -48,16 +48,23 @@ type DockerManager struct {
 
 func (d *DockerManager) Restart(ctx context.Context, serviceName string) error {
 	containerName := serviceName
-	if serviceName == "sing-box" || serviceName == "singbox" {
+	switch serviceName {
+	case "sing-box", "singbox":
 		containerName = "singbox"
-	} else if serviceName == "xray" {
+	case "xray":
 		containerName = "xray"
 	}
 
 	d.logger.Info("Restarting Docker service", "container", containerName)
 
 	timeout := 10
-	return d.client.ContainerRestart(ctx, containerName, container.StopOptions{Timeout: &timeout})
+	err := d.client.ContainerRestart(ctx, containerName, container.StopOptions{Timeout: &timeout})
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	return nil
 }
 
 type SystemdManager struct {

@@ -54,13 +54,22 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			strings.Contains(userAgent, "clash"),
 			strings.Contains(userAgent, "flclash"),
 			strings.Contains(userAgent, "verge"):
+
 			client = "mihomo"
 
-		case strings.Contains(userAgent, "sfa"):
+		case strings.Contains(userAgent, "sfa"),
+			strings.Contains(userAgent, "sfi"),
+			strings.Contains(userAgent, "sfm"),
+			strings.Contains(userAgent, "sft"),
+			strings.Contains(userAgent, "karing"),
+			strings.Contains(userAgent, "singbox"),
+			strings.Contains(userAgent, "rabbithole"):
+
 			client = "singbox"
 
 		case strings.Contains(userAgent, "edg"),
 			strings.Contains(userAgent, "telegrambot"):
+
 			client = "unknown"
 
 		default:

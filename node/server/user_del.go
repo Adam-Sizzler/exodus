@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"v2ray-stat/node/common"
 	"v2ray-stat/node/config"
@@ -25,10 +26,25 @@ func (s *NodeServer) DeleteUsers(ctx context.Context, req *proto.DeleteUsersRequ
 		return nil, grpcstatus.Errorf(codes.FailedPrecondition, "failed to delete users: %v", err)
 	}
 
-	// Fetch updated user list
-	users, err := s.ListUsers(ctx, &proto.ListUsersRequest{})
+	var listResp *proto.ListUsersResponse
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		listResp, err = s.ListUsers(ctx, &proto.ListUsersRequest{})
+		if err == nil {
+			break
+		}
+
+		s.Cfg.Logger.Warn("Waiting for core service API to become available after delete...", "attempt", i+1, "error", err)
+		select {
+		case <-ctx.Done():
+			return nil, grpcstatus.Errorf(codes.DeadlineExceeded, "timeout waiting for service restart")
+		case <-time.After(1 * time.Second):
+			continue
+		}
+	}
+
 	if err != nil {
-		s.Cfg.Logger.Error("Failed to fetch updated user list", "error", err)
+		s.Cfg.Logger.Error("Failed to fetch updated user list after retries", "error", err)
 		return nil, grpcstatus.Errorf(codes.Internal, "failed to fetch updated user list: %v", err)
 	}
 
@@ -36,7 +52,7 @@ func (s *NodeServer) DeleteUsers(ctx context.Context, req *proto.DeleteUsersRequ
 	return &proto.OperationResponse{
 		Status:    &status.Status{Code: int32(codes.OK), Message: "success"},
 		Usernames: req.Usernames,
-		Users:     users,
+		Users:     listResp,
 	}, nil
 }
 
@@ -141,18 +157,20 @@ func DeleteUsersFromConfig(cfg *config.NodeConfig, usernames []string, inboundTa
 			serviceName = "singbox"
 		}
 		if err := common.RestartService(serviceName, cfg); err != nil {
-			cfg.Logger.Error("Failed to restart core service (continuing execution)", "service", serviceName, "error", err)
+			cfg.Logger.Error("Failed to restart core service", "service", serviceName, "error", err)
+			return fmt.Errorf("failed to restart core service: %v", err)
 		}
 	}
 
-	if cfg.Features["haproxy_auth"] {
+	if cfg.Features["haproxy"] {
 		if err := haproxy.UpdateUsersCSV(cfg, nil, usernames); err != nil {
 			cfg.Logger.Error("Failed to delete users from HAProxy CSV", "error", err)
+			return fmt.Errorf("failed to delete users HAProxy CSV: %v", err)
 		} else {
 			if cfg.Features["restart"] {
-				// Ошибка рестарта haproxy тоже не должна быть фатальной для всей операции
 				if err := common.RestartService("haproxy", cfg); err != nil {
-					cfg.Logger.Error("Failed to restart haproxy (continuing)", "error", err)
+					cfg.Logger.Error("Failed to restart haproxy", "error", err)
+					return fmt.Errorf("failed to restart haproxy: %v", err)
 				}
 			}
 		}
