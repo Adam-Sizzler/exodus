@@ -3,52 +3,52 @@
 
 # Log Settings
 log_config:
-  level: info                                           # Logging level: none, error, warn, info, debug, trace
-  mode: inclusive                                       # Mode: inclusive (this and lower), exclusive (only this)
+  level: info                                             # Logging level: none, error, warn, info, debug, trace
+  mode: inclusive                                         # Mode: inclusive (this and lower), exclusive (only this)
 
 # API Settings
-api_token: ""                                           # Token required to access the API endpoints. If empty, access is allowed without authorization. Format: Bearer <token>.
+api_token: ""                                             # Token required to access the API endpoints. If empty, access is allowed without authorization. Format: Bearer <token>.
  
 # Timezone Settings 
-TZ: Asia/Bangkok                                        # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
+TZ: Asia/Bangkok                                          # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
 
 backend:
-  listen_address: 0.0.0.0                             # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
-  listen_port: 9241                                     # TCP port for v2ray-stat API server. Must be between 1 and 65535.
+  listen_address: 0.0.0.0                                 # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
+  listen_port: 9243                                       # TCP port for v2ray-stat API server. Must be between 1 and 65535.
 
 # Paths & Logging 
 paths:
-  database: ./data.db                                  # Path to the SQLite database for tracking user sessions and usage.
+  database: ./data.db                                     # Path to the SQLite database for tracking user sessions and usage.
 
 monitor:
-  ticker_interval: 10                                   # Interval (in seconds) for polling monitored services and users. Recommended: 5–60.
-  online_rate_threshold: 20                              # Minimum rate threshold in kilobits per second (kbps) to consider a user online. 0 means any non-zero rate is considered online.
+  ticker_interval: 10                                     # Interval (in seconds) for polling monitored services and users. Recommended: 5–60.
+  online_rate_threshold: 15                               # Minimum rate threshold in kilobits per second (kbps) to consider a user online. 0 means any non-zero rate is considered online.
 
 node_metadata:
   local:
     address: node
-    port: 9253                                          # Node API endpoint address in port format.
+    port: 9253                                            # Node API endpoint address in port format.
 #  rus:
 #    schema: grpc
-#    address: 1.2.3.4                                   # Node API endpoint address in host format.
-#    port: 9253                                         # Node API endpoint address in port format.
+#    address: 1.2.3.4                                     # Node API endpoint address in host format.
+#    port: 9253                                           # Node API endpoint address in port format.
 #    mtls:
 #      cert: /usr/local/etc/v2ray-stat/certs/node.crt
 #      key: /usr/local/etc/v2ray-stat/certs/node.key
 #      ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt
 #  im:
 #    schema: https
-#    address: exampple.com                              # Node API endpoint address in host format.
-#    port: 443                                          # Node API endpoint address in port format.
+#    address: exampple.com                                # Node API endpoint address in host format.
+#    port: 443                                            # Node API endpoint address in port format.
 #    path: grpcnode
 
 subscription:
   address: subscription
   port: 9263
-  # mtls:                                               # mTLS (mutual TLS) configuration for secure connection to the node.
-  #   cert: /usr/local/etc/v2ray-stat/certs/node.crt    # Path to the client's TLS certificate.
-  #   key: /usr/local/etc/v2ray-stat/certs/node.key     # Path to the client's private key.
-  #   ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt # Path to the CA certificate for server verification.
+  # mtls:                                                 # mTLS (mutual TLS) configuration for secure connection to the node.
+  #   cert: /usr/local/etc/v2ray-stat/certs/node.crt      # Path to the client's TLS certificate.
+  #   key: /usr/local/etc/v2ray-stat/certs/node.key       # Path to the client's private key.
+  #   ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt   # Path to the CA certificate for server verification.
 
 # Statistics Columns Configuration
 stats_columns:
@@ -63,7 +63,7 @@ stats_columns:
       # - sess_uplink                                     # Session-based uploaded traffic in bytes (reset after reconnect).
       # - sess_downlink                                   # Session-based downloaded traffic in bytes (reset after reconnect).
   client:
-    sort: downlink desc                                       # Sorting rule for client statistics. Same format and rules as for server stats.
+    sort: downlink desc                                   # Sorting rule for client statistics. Same format and rules as for server stats.
     columns:                                              # List of columns to display in client statistics. If empty, no client statistics are shown.
       - node_name                                         # Node name where the client is connected.
       - user                                              # Client username or identifier.
@@ -74,7 +74,7 @@ stats_columns:
       # - traffic_cap
       # - sess_uplink                                     # Session-based uploaded traffic in bytes (reset after reconnect).
       # - sess_downlink                                   # Session-based downloaded traffic in bytes (reset after reconnect).
-      # - enabled                                           # Whether the client is enabled (true/false).
+      # - enabled                                         # Whether the client is enabled (true/false).
       # - created                                         # Timestamp when the client was created.
       # - sub_end                                         # Subscription end date for the client.
       # - renew                                           # Renewal status or date for the client.

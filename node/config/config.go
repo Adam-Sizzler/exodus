@@ -31,7 +31,7 @@ type LogConfig struct {
 
 type V2RSConfig struct {
 	GrpcAddress string      `yaml:"listen_grpc_address"`
-	GrpcPort    string      `yaml:"listen_grpc_port"`
+	GrpcPort    int         `yaml:"listen_grpc_port"`
 	GrpcPath    string      `yaml:"path"`
 	MTLSConfig  *MTLSConfig `yaml:"mtls"`
 }
@@ -39,7 +39,7 @@ type V2RSConfig struct {
 type CoreConfig struct {
 	Type           string      `yaml:"type"`
 	ApiGrpcAddress string      `yaml:"api_grpc_address"`
-	ApiGrpcPort    string      `yaml:"api_grpc_port"`
+	ApiGrpcPort    int         `yaml:"api_grpc_port"`
 	Dir            string      `yaml:"dir"`
 	Config         string      `yaml:"config"`
 	AccessLog      string      `yaml:"access_log"`
@@ -63,9 +63,9 @@ type MTLSConfig struct {
 }
 
 type LogFieldMap struct {
-	User   int `yaml:"user"`   // Номер группы для Username (email)
-	IP     int `yaml:"ip"`     // Номер группы для IP
-	Domain int `yaml:"domain"` // Номер группы для Domain (SNI/Dest)
+	User   int `yaml:"user"`
+	IP     int `yaml:"ip"`
+	Domain int `yaml:"domain"`
 }
 
 var defaultConfig = NodeConfig{
@@ -76,23 +76,23 @@ var defaultConfig = NodeConfig{
 	TZ: "",
 	V2RS: V2RSConfig{
 		GrpcAddress: "127.0.0.1",
-		GrpcPort:    "9253",
+		GrpcPort:    9253,
 		GrpcPath:    "",
 	},
 	Features: make(map[string]bool),
 	Core: CoreConfig{
 		Type:           "xray",
 		ApiGrpcAddress: "127.0.0.1",
-		ApiGrpcPort:    "10812",
+		ApiGrpcPort:    10812,
 		Dir:            "/usr/local/etc/xray/",
 		Config:         "/usr/local/etc/xray/config.json",
 		LogSource:      "file",
 		AccessLog:      "/usr/local/etc/xray/access.log",
-		AccessLogRegex: `from (?:tcp|udp):([\d\.]+):\d+ accepted (?:tcp|udp):([\w\.\-]+):\d+ \[[^\]]+\] email: (\S+)`,
+		AccessLogRegex: `from (?:[\w]+:)?([\d\.]+):\d+ accepted (?:tcp|udp):\[?([\w\.\-:]+)\]?:\d+ \[[^\]]+\] email: (\S+)`,
 		LogMap: LogFieldMap{
-			IP:     1, // Первая скобка ([\d\.]+)
-			Domain: 2, // Вторая скобка ([\w\.\-]+)
-			User:   3, // Третья скобка (\S+)
+			IP:     1,
+			Domain: 2,
+			User:   3,
 		},
 	},
 	Paths: PathsConfig{
@@ -102,7 +102,6 @@ var defaultConfig = NodeConfig{
 	},
 }
 
-// LoadNodeConfig reads configuration from the specified YAML file and returns a NodeConfig struct.
 func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	cfg := defaultConfig
 
@@ -126,7 +125,6 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("error parsing YAML configuration from %s: %v", configFile, err)
 	}
-	cfg.Logger.Debug("Parsed YAML configuration", "address", cfg.V2RS.GrpcAddress, "port", cfg.V2RS.GrpcPort)
 
 	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.TZ, os.Stderr)
 	if err != nil {
@@ -139,8 +137,7 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	}
 
 	if cfg.V2RS.GrpcPort != "" {
-		portNum, err := strconv.Atoi(cfg.V2RS.GrpcPort)
-		if err != nil || portNum < 1 || portNum > 65535 {
+		if cfg.V2RS.GrpcPort < 1 || cfg.V2RS.GrpcPort > 65535 {
 			cfg.Logger.Warn("Invalid v2ray-stat.grpc_port, using default", "port", cfg.V2RS.GrpcPort, "default", defaultConfig.V2RS.GrpcPort)
 			cfg.V2RS.GrpcPort = defaultConfig.V2RS.GrpcPort
 		}
@@ -180,14 +177,13 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	}
 
 	if cfg.Core.ApiGrpcPort != "" {
-		portNum, err := strconv.Atoi(cfg.Core.ApiGrpcPort)
-		if err != nil || portNum < 1 || portNum > 65535 {
+		if cfg.Core.ApiGrpcPort < 1 || cfg.Core.ApiGrpcPort > 65535 {
 			cfg.Logger.Warn("Invalid API port, falling back to default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
 			cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
 		}
 	}
 
-	if portNum, err := strconv.Atoi(cfg.Core.ApiGrpcPort); err != nil || portNum < 1 || portNum > 65535 {
+	if cfg.Core.ApiGrpcPort < 1 || cfg.Core.ApiGrpcPort > 65535 {
 		cfg.Logger.Warn("Invalid core.api_grpc_port, using fallback default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
 		cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort
 	}

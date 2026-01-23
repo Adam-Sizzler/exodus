@@ -99,7 +99,6 @@ func main() {
 
 	cancel()
 
-	// Ждём завершения горутин
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -111,7 +110,6 @@ func main() {
 		cfg.Logger.Debug("All goroutines completed")
 	case <-time.After(10 * time.Second):
 		cfg.Logger.Warn("Timeout waiting for goroutines to complete, forcing shutdown")
-		// Профилирование горутин при тайм-ауте
 		pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
 	}
 

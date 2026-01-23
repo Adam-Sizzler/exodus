@@ -14,7 +14,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds the configuration settings for the backend.
 type BackendConfig struct {
 	Logger       *logger.Logger
 	Log          LogConfig               `yaml:"log_config"`
@@ -33,62 +32,55 @@ type LogConfig struct {
 	LogMode  string `yaml:"mode"`
 }
 
-// V2RSConfig holds v2rs specific settings.
 type V2RSConfig struct {
 	Address string `yaml:"listen_address"`
-	Port    string `yaml:"listen_port"`
+	Port    int    `yaml:"listen_port"`
 }
 
-// NodeConfig holds configuration for a single node.
 type NodeConfig struct {
 	NodeName   string
 	Schema     string      `yaml:"schema"`
 	Address    string      `yaml:"address"`
-	Port       string      `yaml:"port"`
+	Port       int         `yaml:"port"`
 	Path       string      `yaml:"path"`
 	MTLSConfig *MTLSConfig `yaml:"mtls"`
 }
 
-// SubscriptionConfig holds configuration for a subscription.
 type SubscriptionConnConfig struct {
 	Schema     string      `yaml:"schema"`
 	Address    string      `yaml:"address"`
-	Port       string      `yaml:"port"`
+	Port       int         `yaml:"port"`
 	Path       string      `yaml:"path"`
 	MTLSConfig *MTLSConfig `yaml:"mtls"`
 }
 
-// MTLSConfig holds mTLS configuration.
 type MTLSConfig struct {
 	Cert   string `yaml:"cert"`
 	Key    string `yaml:"key"`
 	CACert string `yaml:"ca_cert"`
 }
 
-// MonitorConfig holds monitoring-related settings.
 type MonitorConfig struct {
 	TickerInterval      int `yaml:"ticker_interval"`
 	OnlineRateThreshold int `yaml:"online_rate_threshold"`
 }
 
-// PathsConfig holds paths settings.
 type PathsConfig struct {
 	Database string `yaml:"database"`
 }
 
-// StatsColumns holds column configuration for stats display.
 type StatsColumns struct {
 	Server StatsSection `yaml:"server"`
 	Client StatsSection `yaml:"client"`
 }
 
-// StatsSection holds columns and sort configuration for a section.
 type StatsSection struct {
 	Sort      string `yaml:"sort"`
 	SortBy    string
 	SortOrder string
 	Columns   []string `yaml:"columns"`
 }
+
 
 var defaultConfig = BackendConfig{
 	Log: LogConfig{
@@ -99,7 +91,7 @@ var defaultConfig = BackendConfig{
 	TZ:       "UTC",
 	V2RS: V2RSConfig{
 		Address: "127.0.0.1",
-		Port:    "9243",
+		Port:    9243,
 	},
 	Paths: PathsConfig{
 		Database: "./data.db",
@@ -122,7 +114,7 @@ var defaultConfig = BackendConfig{
 	},
 }
 
-// LoadConfig reads configuration from the specified YAML file.
+
 func LoadConfig(configFile string) (BackendConfig, error) {
 	cfg := defaultConfig
 
@@ -153,12 +145,10 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 
 	// Validate configuration
 	if cfg.V2RS.Port != "" {
-		portNum, err := strconv.Atoi(cfg.V2RS.Port)
-		if err != nil || portNum < 1 || portNum > 65535 {
+		if cfg.V2RS.Port < 1 || cfg.V2RS.Port > 65535 {
 			cfg.Logger.Warn("Invalid v2rs.port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
 			cfg.V2RS.Port = defaultConfig.V2RS.Port
 		}
-		cfg.Logger.Warn("Invalid v2rs.port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
 		cfg.Logger.Info("v2rs listen", "address", cfg.V2RS.Address, "port", cfg.V2RS.Port)
 	}
 
@@ -181,14 +171,13 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 		common.InitTimezone("UTC", cfg.Logger)
 	}
 
-	// Validate nodes
 	valideNodes := make(map[string]NodeConfig)
 	for name, node := range cfg.Nodes {
 		if name == "" {
 			cfg.Logger.Warn("Invalid node configuration, skipping", "node_name", name, "address", node.Address, "port", node.Port)
 			continue
 		}
-		if portNum, err := strconv.Atoi(node.Port); err != nil || portNum < 1 || portNum > 65535 {
+		if node.Port < 1 || node.Port > 65535 {
 			cfg.Logger.Warn("Invalid node port, skipping", "node_name", name, "port", node.Port)
 			continue
 		}
@@ -221,13 +210,12 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 	}
 	cfg.Nodes = valideNodes
 
-	// Validate subscription
 	if cfg.Subscription != nil {
 		if cfg.Subscription.Address == "" || cfg.Subscription.Port == "" {
 			cfg.Logger.Warn("Invalid subscription configuration, disabling", "address", cfg.Subscription.Address, "port", cfg.Subscription.Port)
 			cfg.Subscription = nil
 		} else {
-			if portNum, err := strconv.Atoi(cfg.Subscription.Port); err != nil || portNum < 1 || portNum > 65535 {
+			if cfg.Subscription.Port < 1 || cfg.Subscription.Port > 65535 {
 				cfg.Logger.Warn("Invalid subscription port, disabling", "port", cfg.Subscription.Port)
 				cfg.Subscription = nil
 			} else {
@@ -254,19 +242,17 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 	}
 
 	if len(cfg.StatsColumns.Server.Columns) == 0 {
-		cfg.StatsColumns.Server.Columns = []string{} // Or set defaults if desired
+		cfg.StatsColumns.Server.Columns = []string{}
 	}
 	if len(cfg.StatsColumns.Client.Columns) == 0 {
 		cfg.StatsColumns.Client.Columns = []string{}
 	}
 
-	// Validate columns
 	validServerColumns := []string{"node_name", "source", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink"}
 	validClientColumns := []string{"node_name", "user", "last_seen", "rate", "uplink", "downlink", "sess_uplink", "sess_downlink", "enabled", "sub_end", "renew", "lim_ip", "ips", "created", "id", "inbound_tag", "traffic_cap"}
 	cfg.StatsColumns.Server.Columns = filterValidColumns(cfg.StatsColumns.Server.Columns, validServerColumns, cfg.Logger, "server")
 	cfg.StatsColumns.Client.Columns = filterValidColumns(cfg.StatsColumns.Client.Columns, validClientColumns, cfg.Logger, "client")
 
-	// Validate sort configuration
 	cfg.StatsColumns.Server.SortBy, cfg.StatsColumns.Server.SortOrder = validateSort("Server", cfg.StatsColumns.Server.Sort, validServerColumns, cfg.Logger)
 	cfg.StatsColumns.Client.SortBy, cfg.StatsColumns.Client.SortOrder = validateSort("Client", cfg.StatsColumns.Client.Sort, validClientColumns, cfg.Logger)
 

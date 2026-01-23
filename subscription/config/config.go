@@ -35,8 +35,8 @@ type LogConfig struct {
 // V2RSSubConfig holds v2rs-sub specific settings.
 type V2RSSubConfig struct {
 	Address  string `yaml:"listen_address"`
-	Port     string `yaml:"listen_port"`
-	GrpcPort string `yaml:"listen_grpc_port"`
+	Port     int    `yaml:"listen_port"`
+	GrpcPort int    `yaml:"listen_grpc_port"`
 }
 
 type SubscriptionConfig struct {
@@ -85,8 +85,8 @@ var defaultConfig = Config{
 	},
 	V2RSSub: V2RSSubConfig{
 		Address:  "127.0.0.1",
-		Port:     "9954",
-		GrpcPort: "9983",
+		Port:     9964,
+		GrpcPort: 9963,
 	},
 	TZ:           "",
 	NodeMetadata: map[string]NodeMeta{},
@@ -196,18 +196,15 @@ func LoadConfig(configFile string) (Config, error) {
 		}
 	}
 
-	// Validate configuration
 	if cfg.V2RSSub.Port != "" {
-		portNum, err := strconv.Atoi(cfg.V2RSSub.Port)
-		if err != nil || portNum < 1 || portNum > 65535 {
+		if cfg.V2RSSub.Port < 1 || cfg.V2RSSub.Port > 65535 {
 			cfg.Logger.Warn("Invalid v2rs-sub.port, using default", "port", cfg.V2RSSub.Port, "default", defaultConfig.V2RSSub.Port)
 			cfg.V2RSSub.Port = defaultConfig.V2RSSub.Port
 		}
 	}
 
 	if cfg.V2RSSub.GrpcPort != "" {
-		portNum, err := strconv.Atoi(cfg.V2RSSub.GrpcPort)
-		if err != nil || portNum < 1 || portNum > 65535 {
+		if cfg.V2RSSub.GrpcPort < 1 || cfg.V2RSSub.GrpcPort > 65535 {
 			cfg.Logger.Warn("Invalid grpc_port, using default", "port", cfg.V2RSSub.GrpcPort, "default", defaultConfig.V2RSSub.GrpcPort)
 			cfg.V2RSSub.GrpcPort = defaultConfig.V2RSSub.GrpcPort
 		}
@@ -299,7 +296,6 @@ func LoadConfig(configFile string) (Config, error) {
 	cfg.Logger.Debug("Configuration validated")
 	cfg.Logger.Info("Configuration loaded successfully", "file", configFile)
 
-	// Update global config
 	mu.Lock()
 	config = cfg
 	mu.Unlock()
