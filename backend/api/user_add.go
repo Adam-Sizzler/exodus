@@ -58,7 +58,7 @@ func AddUsersToNode(ctx context.Context, node config.NodeConfig, usernames []str
 	}
 	defer func() { nodeClient.Client = nil }() // Ensure client is cleaned up
 
-	grpcCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	grpcCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 
 	resp, err := nodeClient.Client.AddUsers(grpcCtx, &proto.AddUsersRequest{
