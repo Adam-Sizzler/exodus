@@ -101,7 +101,11 @@ func (s *NodeServer) AddUsers(ctx context.Context, req *proto.AddUsersRequest) (
 	}
 
 	var listResp *proto.ListUsersResponse
-	maxRetries := 10
+
+	maxRetries := 20
+	retryInterval := 500 * time.Millisecond
+	s.Cfg.Logger.Info("Verifying users via Core API...")
+
 	for i := range maxRetries {
 		listResp, err = s.ListUsers(ctx, &proto.ListUsersRequest{})
 		if err == nil {
@@ -112,17 +116,17 @@ func (s *NodeServer) AddUsers(ctx context.Context, req *proto.AddUsersRequest) (
 		select {
 		case <-ctx.Done():
 			return nil, grpcstatus.Errorf(codes.DeadlineExceeded, "timeout waiting for service restart")
-		case <-time.After(1 * time.Second):
+		case <-time.After(retryInterval):
 			continue
 		}
 	}
 
 	if err != nil {
-		s.Cfg.Logger.Error("Failed to fetch updated user list after retries", "error", err)
-		return nil, grpcstatus.Errorf(codes.Internal, "failed to fetch updated user list after restart: %v", err)
+		s.Cfg.Logger.Error("Failed to verify users after restart", "error", err)
+		return nil, grpcstatus.Errorf(codes.Internal, "users added to config, but failed to verify via API: %v", err)
 	}
 
-	s.Cfg.Logger.Info("Users added successfully", "users", usernames, "inbound_tag", inboundTag)
+	s.Cfg.Logger.Info("Users added and verified successfully", "users", usernames, "inbound_tag", inboundTag)
 	return &proto.OperationResponse{
 		Status:      &status.Status{Code: int32(codes.OK), Message: "success"},
 		Usernames:   usernames,

@@ -63,7 +63,7 @@ func (d *DockerManager) Restart(ctx context.Context, serviceName string) error {
 		return err
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(3 * time.Second)
 	return nil
 }
 

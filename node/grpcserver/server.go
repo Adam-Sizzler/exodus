@@ -43,8 +43,6 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 			Certificates: []tls.Certificate{cert},
 			ClientCAs:    caCertPool,
 			ClientAuth:   tls.RequireAndVerifyClientCert,
-			// Для HTTP/2 обязательно указываем NextProtos, если используем TLS вручную,
-			// но grpc.Creds обычно делает это сам. Оставим стандартную настройку.
 		}
 		creds := credentials.NewTLS(tlsConfig)
 		opts = append(opts, grpc.Creds(creds))
@@ -65,22 +63,15 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		cfg.Logger.Info("gRPC path prefix configured", "prefix", pathPrefix)
 	}
 
-	// Создаем http.Handler, который будет маршрутизатором
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Если задан префикс (для Nginx), проверяем и вырезаем его
 		if pathPrefix != "" && strings.HasPrefix(r.URL.Path, pathPrefix) {
-			// Было: /grpc_node/proto.NodeService/ListUsers
-			// Стало: /proto.NodeService/ListUsers
 			r.URL.Path = strings.TrimPrefix(r.URL.Path, pathPrefix)
-			// Важно: если Nginx передает запрос, он может передавать его как h2c.
 		}
 
-		// Если префикса нет (локальное подключение) или он уже вырезан — передаем в gRPC
-		// Note: Content-Type application/grpc обрабатывается внутри grpcServer
 		grpcServer.ServeHTTP(w, r)
 	})
 
-	addr := fmt.Sprintf("%s:%s", cfg.V2RS.GrpcAddress, cfg.V2RS.GrpcPort)
+	addr := fmt.Sprintf("%s:%d", cfg.V2RS.GrpcAddress, cfg.V2RS.GrpcPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		cfg.Logger.Error("Failed to start listener", "error", err)
@@ -89,9 +80,6 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 
 	cfg.Logger.Info("Starting gRPC server", "address", addr)
 
-	// Запускаем сервер с поддержкой h2c (HTTP/2 Cleartext)
-	// Это критически важно для работы grpc_pass, так как Nginx часто шлет HTTP/2 без шифрования на бэкенд.
-	// H2C обертка позволяет серверу понимать и HTTP/1.1 (если нужно), и HTTP/2, и H2C.
 	h2Server := &http2.Server{}
 	httpServer := &http.Server{
 		Handler: h2c.NewHandler(mainHandler, h2Server),

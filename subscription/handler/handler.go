@@ -53,7 +53,20 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		case strings.Contains(userAgent, "mihomo"),
 			strings.Contains(userAgent, "clash"),
 			strings.Contains(userAgent, "flclash"),
-			strings.Contains(userAgent, "verge"):
+			strings.Contains(userAgent, "flclashx"),
+			strings.Contains(userAgent, "verge"),
+			strings.Contains(userAgent, "clash-verge"),
+			strings.Contains(userAgent, "clash verge"),
+			strings.Contains(userAgent, "koala-clash"),
+			strings.Contains(userAgent, "clash-meta"),
+			strings.Contains(userAgent, "clashmeta"),
+			strings.Contains(userAgent, "merge"),
+			strings.Contains(userAgent, "clashx meta"),
+			strings.Contains(userAgent, "clash-nyanpasu"),
+			strings.Contains(userAgent, "clash.meta"),
+			strings.Contains(userAgent, "prizrak-box"),
+			strings.Contains(userAgent, "rabbithole"),
+			strings.Contains(userAgent, "flowvy"):
 
 			client = "mihomo"
 
@@ -62,8 +75,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			strings.Contains(userAgent, "sfm"),
 			strings.Contains(userAgent, "sft"),
 			strings.Contains(userAgent, "karing"),
-			strings.Contains(userAgent, "singbox"),
-			strings.Contains(userAgent, "rabbithole"):
+			strings.Contains(userAgent, "singbox"):
 
 			client = "singbox"
 

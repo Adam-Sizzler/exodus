@@ -136,7 +136,7 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		cfg.Core.Type = defaultConfig.Core.Type
 	}
 
-	if cfg.V2RS.GrpcPort != "" {
+	if cfg.V2RS.GrpcPort != 0 {
 		if cfg.V2RS.GrpcPort < 1 || cfg.V2RS.GrpcPort > 65535 {
 			cfg.Logger.Warn("Invalid v2ray-stat.grpc_port, using default", "port", cfg.V2RS.GrpcPort, "default", defaultConfig.V2RS.GrpcPort)
 			cfg.V2RS.GrpcPort = defaultConfig.V2RS.GrpcPort
@@ -159,14 +159,15 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 	}
 
 	isDefaultAddr := cfg.Core.ApiGrpcAddress == "" || cfg.Core.ApiGrpcAddress == defaultConfig.Core.ApiGrpcAddress
-	isDefaultPort := cfg.Core.ApiGrpcPort == "" || cfg.Core.ApiGrpcPort == defaultConfig.Core.ApiGrpcPort
+	isDefaultPort := cfg.Core.ApiGrpcPort == 0 || cfg.Core.ApiGrpcPort == defaultConfig.Core.ApiGrpcPort
 
 	if isDefaultAddr && isDefaultPort {
 		cfg.Logger.Debug("API address/port are default, attempting auto-detection from core config", "file", cfg.Core.Config)
 
-		detAddr, detPort := detectApiPort(cfg.Core.Config)
-		if detPort != "" {
-			cfg.Core.ApiGrpcPort = detPort
+		detAddr, detPortStr := detectApiPort(cfg.Core.Config)
+		port, err := strconv.Atoi(detPortStr)
+		if err != nil {
+			cfg.Core.ApiGrpcPort = port
 			if detAddr != "" && detAddr != "0.0.0.0" {
 				cfg.Core.ApiGrpcAddress = detAddr
 			}
@@ -176,7 +177,7 @@ func LoadNodeConfig(configFile string) (NodeConfig, error) {
 		cfg.Logger.Info("Using API settings from config.yml (override active)", "address", cfg.Core.ApiGrpcAddress, "port", cfg.Core.ApiGrpcPort)
 	}
 
-	if cfg.Core.ApiGrpcPort != "" {
+	if cfg.Core.ApiGrpcPort != 0 {
 		if cfg.Core.ApiGrpcPort < 1 || cfg.Core.ApiGrpcPort > 65535 {
 			cfg.Logger.Warn("Invalid API port, falling back to default", "port", cfg.Core.ApiGrpcPort, "default", defaultConfig.Core.ApiGrpcPort)
 			cfg.Core.ApiGrpcPort = defaultConfig.Core.ApiGrpcPort

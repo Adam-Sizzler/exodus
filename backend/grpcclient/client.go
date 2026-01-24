@@ -2,6 +2,7 @@ package grpcclient
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -65,8 +66,9 @@ func connectAndHandle(ctx context.Context, cfg *config.BackendConfig, manager *m
 	}
 	mu.Unlock()
 
+	addr := fmt.Sprintf("%s:%d", cfg.Subscription.Address, cfg.Subscription.Port)
 	conn, err := grpc.Dial(
-		cfg.Subscription.Address+":"+cfg.Subscription.Port,
+		addr,
 		grpc.WithInsecure(),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                10 * time.Second,

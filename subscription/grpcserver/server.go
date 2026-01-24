@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -33,7 +34,8 @@ func StartGrpcServer(ctx context.Context, config *config.Config, wg *sync.WaitGr
 	defer wg.Done()
 	cfg = config
 	cfg.Ctx = ctx
-	lis, err := net.Listen("tcp", ":"+cfg.V2RSSub.GrpcPort)
+
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.V2RSSub.GrpcPort))
 	if err != nil {
 		cfg.Logger.Fatal("Failed to listen gRPC", "port", cfg.V2RSSub.GrpcPort, "error", err)
 	}

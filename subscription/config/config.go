@@ -6,7 +6,6 @@ import (
 	"maps"
 	"os"
 	"slices"
-	"strconv"
 	"sync"
 	"time"
 
@@ -196,14 +195,14 @@ func LoadConfig(configFile string) (Config, error) {
 		}
 	}
 
-	if cfg.V2RSSub.Port != "" {
+	if cfg.V2RSSub.Port != 0 {
 		if cfg.V2RSSub.Port < 1 || cfg.V2RSSub.Port > 65535 {
 			cfg.Logger.Warn("Invalid v2rs-sub.port, using default", "port", cfg.V2RSSub.Port, "default", defaultConfig.V2RSSub.Port)
 			cfg.V2RSSub.Port = defaultConfig.V2RSSub.Port
 		}
 	}
 
-	if cfg.V2RSSub.GrpcPort != "" {
+	if cfg.V2RSSub.GrpcPort != 0 {
 		if cfg.V2RSSub.GrpcPort < 1 || cfg.V2RSSub.GrpcPort > 65535 {
 			cfg.Logger.Warn("Invalid grpc_port, using default", "port", cfg.V2RSSub.GrpcPort, "default", defaultConfig.V2RSSub.GrpcPort)
 			cfg.V2RSSub.GrpcPort = defaultConfig.V2RSSub.GrpcPort

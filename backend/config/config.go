@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -81,7 +80,6 @@ type StatsSection struct {
 	Columns   []string `yaml:"columns"`
 }
 
-
 var defaultConfig = BackendConfig{
 	Log: LogConfig{
 		LogLevel: "none",
@@ -104,7 +102,7 @@ var defaultConfig = BackendConfig{
 	Subscription: &SubscriptionConnConfig{
 		Schema:     "",
 		Address:    "",
-		Port:       "",
+		Port:       0,
 		Path:       "",
 		MTLSConfig: nil,
 	},
@@ -113,7 +111,6 @@ var defaultConfig = BackendConfig{
 		Client: StatsSection{Sort: "last_seen desc", Columns: []string{}},
 	},
 }
-
 
 func LoadConfig(configFile string) (BackendConfig, error) {
 	cfg := defaultConfig
@@ -144,7 +141,7 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 	}
 
 	// Validate configuration
-	if cfg.V2RS.Port != "" {
+	if cfg.V2RS.Port != 0 {
 		if cfg.V2RS.Port < 1 || cfg.V2RS.Port > 65535 {
 			cfg.Logger.Warn("Invalid v2rs.port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
 			cfg.V2RS.Port = defaultConfig.V2RS.Port
@@ -211,7 +208,7 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 	cfg.Nodes = valideNodes
 
 	if cfg.Subscription != nil {
-		if cfg.Subscription.Address == "" || cfg.Subscription.Port == "" {
+		if cfg.Subscription.Address == "" || cfg.Subscription.Port == 0 {
 			cfg.Logger.Warn("Invalid subscription configuration, disabling", "address", cfg.Subscription.Address, "port", cfg.Subscription.Port)
 			cfg.Subscription = nil
 		} else {

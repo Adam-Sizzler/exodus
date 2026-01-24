@@ -26,8 +26,10 @@ import (
 // startAPIServer starts the API server.
 func startAPIServer(ctx context.Context, cfg *config.Config, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	addr := fmt.Sprintf("%s:%d", cfg.V2RSSub.Address, cfg.V2RSSub.Port)
 	server := &http.Server{
-		Addr:    cfg.V2RSSub.Address + ":" + cfg.V2RSSub.Port,
+		Addr:    addr,
 		Handler: api.WithServerHeader(http.DefaultServeMux),
 	}
 
