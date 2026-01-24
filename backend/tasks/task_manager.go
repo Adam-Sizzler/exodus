@@ -20,10 +20,10 @@ import (
 type TaskStatus string
 
 const (
-	TaskStatusPending   TaskStatus = "pending"
-	TaskStatusSuccess   TaskStatus = "success"
-	TaskStatusFailed    TaskStatus = "failed"
-	TaskStatusTimeout   TaskStatus = "timeout"
+	TaskStatusPending    TaskStatus = "pending"
+	TaskStatusSuccess    TaskStatus = "success"
+	TaskStatusFailed     TaskStatus = "failed"
+	TaskStatusTimeout    TaskStatus = "timeout"
 	TaskStatusProcessing TaskStatus = "processing"
 )
 
@@ -31,11 +31,11 @@ const (
 type NodeTaskStatus string
 
 const (
-	NodeTaskStatusPending   NodeTaskStatus = "pending"
-	NodeTaskStatusSent      NodeTaskStatus = "sent"
-	NodeTaskStatusSuccess   NodeTaskStatus = "success"
-	NodeTaskStatusError     NodeTaskStatus = "error"
-	NodeTaskStatusPolling   NodeTaskStatus = "polling"
+	NodeTaskStatusPending NodeTaskStatus = "pending"
+	NodeTaskStatusSent    NodeTaskStatus = "sent"
+	NodeTaskStatusSuccess NodeTaskStatus = "success"
+	NodeTaskStatusError   NodeTaskStatus = "error"
+	NodeTaskStatusPolling NodeTaskStatus = "polling"
 )
 
 // Task represents a parent task
@@ -137,23 +137,28 @@ func (tm *TaskManager) GetTask(ctx context.Context, taskID string) (*Task, error
 	var task Task
 	err := tm.dbManager.ExecuteHighPriority(func(db *sql.DB) error {
 		row := db.QueryRowContext(ctx, `
-			SELECT id, operation, payload, status, created_at, completed_at, timeout_at
-			FROM tasks WHERE id = ?`, taskID)
+            SELECT id, operation, payload, status, created_at, completed_at, timeout_at
+            FROM tasks WHERE id = ?`, taskID)
 
 		var completedAt sql.NullInt64
-		err := row.Scan(&task.ID, &task.Operation, &task.Payload, &task.Status, &task.CreatedAt, &completedAt, &task.TimeoutAt)
+		var createdAtUnix, timeoutAtUnix int64
+		err := row.Scan(&task.ID, &task.Operation, &task.Payload, &task.Status, &createdAtUnix, &completedAt, &timeoutAtUnix)
 		if err != nil {
 			return err
 		}
 
+		task.CreatedAt = time.Unix(createdAtUnix, 0).In(common.TimeLocation)
+		task.TimeoutAt = time.Unix(timeoutAtUnix, 0).In(common.TimeLocation)
 		if completedAt.Valid {
 			t := time.Unix(completedAt.Int64, 0).In(common.TimeLocation)
 			task.CompletedAt = &t
 		}
-
 		return nil
 	})
-	return &task, err
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
 }
 
 // GetTaskNodes retrieves all child tasks for a parent task
