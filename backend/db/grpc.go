@@ -40,7 +40,7 @@ func pathPrefixStreamInterceptor(prefix string) grpc.StreamClientInterceptor {
 }
 
 func NewNodeClient(nodeCfg config.NodeConfig, cfg *config.BackendConfig) (*NodeClient, error) {
-	url := fmt.Sprintf("%s:%s", nodeCfg.Address, nodeCfg.Port)
+	url := fmt.Sprintf("%s:%d", nodeCfg.Address, nodeCfg.Port)
 	var opts []grpc.DialOption
 
 	if nodeCfg.Path != "" {
