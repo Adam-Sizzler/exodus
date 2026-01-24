@@ -27,7 +27,7 @@ type ApiResponse struct {
 
 // GetApiResponse retrieves statistics from the gRPC server for Xray or Singbox.
 func GetApiResponse(cfg *config.NodeConfig) (*ApiResponse, error) {
-	grpcTarget := fmt.Sprintf("%s:%s", cfg.Core.ApiGrpcAddress, cfg.Core.ApiGrpcPort)
+	grpcTarget := fmt.Sprintf("%s:%d", cfg.Core.ApiGrpcAddress, cfg.Core.ApiGrpcPort)
 	cfg.Logger.Debug("Connecting to gRPC server XRAY/SINGBOX", "address", grpcTarget)
 
 	clientConn, err := grpc.NewClient(grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
