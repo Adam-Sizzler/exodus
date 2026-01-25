@@ -174,7 +174,7 @@ func SyncUsersWithNode(ctx context.Context, manager *manager.DatabaseManager, no
 
 				if exists == 0 {
 					// Вставка нового пользователя
-					result, err := stmtInsertUser.Exec(res.nodeName, user.Username, 1, currentTime, enabledStr)
+					result, err := stmtInsertUser.Exec(res.nodeName, user.Username, 0, currentTime, enabledStr)
 					if err != nil {
 						return fmt.Errorf("insert user %s: %w", user.Username, err)
 					}

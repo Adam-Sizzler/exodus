@@ -171,6 +171,30 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 		CREATE INDEX IF NOT EXISTS idx_tasks_timeout ON tasks(timeout_at);
 		CREATE INDEX IF NOT EXISTS idx_task_nodes_task_id ON task_nodes(task_id);
 		CREATE INDEX IF NOT EXISTS idx_task_nodes_status ON task_nodes(status);
+
+		-- История статистики по пользователям
+        CREATE TABLE IF NOT EXISTS daily_user_stats (
+            date       TEXT NOT NULL,
+            user       TEXT NOT NULL,
+            uplink     INTEGER DEFAULT 0,
+            downlink   INTEGER DEFAULT 0,
+            updated_at INTEGER, -- unix timestamp последнего обновления
+            PRIMARY KEY (date, user)
+        );
+
+        -- История статистики по источникам (inbounds)
+        CREATE TABLE IF NOT EXISTS daily_source_stats (
+            date       TEXT NOT NULL,
+            source     TEXT NOT NULL,
+            uplink     INTEGER DEFAULT 0,
+            downlink   INTEGER DEFAULT 0,
+            updated_at INTEGER,
+            PRIMARY KEY (date, source)
+        );
+
+		-- Индексы для истории статистики
+        CREATE INDEX IF NOT EXISTS idx_daily_user_date ON daily_user_stats (date);
+        CREATE INDEX IF NOT EXISTS idx_daily_user_user ON daily_user_stats (user);
     `
 	if _, err = db.Exec(sqlStmt); err != nil {
 		cfg.Logger.Error("Failed to execute SQL script", "dbType", dbType, "error", err)

@@ -26,6 +26,10 @@ var (
 	clientPreviousStatsMutex sync.Mutex                // Global mutex for clientPreviousStats
 	isInactive               = make(map[string]bool)   // node_name:user -> status
 	isInactiveMutex          sync.Mutex
+
+	previousUserSums   = make(map[string][2]int64)
+	previousSourceSums = make(map[string][2]int64)
+	sumsMutex          sync.Mutex
 )
 
 // LoadIsInactiveFromLastSeen loads user inactivity status from the last_seen field.
@@ -194,12 +198,6 @@ func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData
 				nodeName, source, rate, uplink, downlink, sessUplink, sessDownlink,
 				rate, uplink, downlink, sessUplink, sessDownlink)
 
-			// UPDATE bound_traffic
-			// SET rate = ?, uplink = uplink + ?, downlink = downlink + ?, sess_uplink = ?, sess_downlink = ?
-			// WHERE node_name = ? AND source = ? AND EXISTS (
-			// 	SELECT 1 FROM bound_traffic WHERE node_name = ? AND source = ?
-			// )`,
-			// rate, uplink, downlink, sessUplink, sessDownlink, nodeName, source, nodeName, source)
 			if err != nil {
 				return fmt.Errorf("update bound_traffic for %s: %w", source, err)
 			}
@@ -333,11 +331,11 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 			previousDownlink, downlinkExists := previousValues[user+" downlink"]
 
 			if !uplinkExists {
-				cfg.Logger.Warn("Missing previous uplink data", "node_name", nodeName, "user", user)
+				cfg.Logger.Trace("Missing previous uplink data", "node_name", nodeName, "user", user)
 				previousUplink = 0
 			}
 			if !downlinkExists {
-				cfg.Logger.Warn("Missing previous downlink data", "node_name", nodeName, "user", user)
+				cfg.Logger.Trace("Missing previous downlink data", "node_name", nodeName, "user", user)
 				previousDownlink = 0
 			}
 
@@ -361,7 +359,7 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 					updateLastSeen = true
 					cfg.Logger.Debug("User transitioned to inactive state", "node_name", nodeName, "user", user, "last_seen", lastSeen)
 				} else {
-					updateLastSeen = false // Не обновляем last_seen для уже неактивных пользователей
+					updateLastSeen = false
 					cfg.Logger.Debug("User remains inactive, preserving last_seen", "node_name", nodeName, "user", user)
 				}
 			}
@@ -461,3 +459,4 @@ func max(a, b int) int {
 	}
 	return b
 }
+

@@ -150,6 +150,8 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 	var protocol string
 	found := false
 
+	updatedUsers := make(map[string]bool)
+
 	switch proxyType {
 	case "xray":
 		var cfgXray config.ConfigXray
@@ -161,37 +163,41 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 		for i, inbound := range cfgXray.Inbounds {
 			if inbound.Tag == inboundTag {
 				protocol = inbound.Protocol
-				existingCredentials := make(map[string]bool)
-				for _, client := range inbound.Settings.Clients {
-					switch protocol {
-					case "vless":
-						existingCredentials[client.ID] = true
-					case "trojan":
-						existingCredentials[client.Password] = true
-					}
-					if _, exists := credentials[client.Email]; exists {
-						cfg.Logger.Warn("User already exists", "user", client.Email)
-						return fmt.Errorf("user %s already exists", client.Email)
+
+				for j, client := range inbound.Settings.Clients {
+					if newCred, ok := credentials[client.Email]; ok {
+
+						cfg.Logger.Info("User already exists in Xray config, updating credential", "user", client.Email)
+						switch protocol {
+						case "vless":
+							cfgXray.Inbounds[i].Settings.Clients[j].ID = newCred
+						case "trojan":
+							cfgXray.Inbounds[i].Settings.Clients[j].Password = newCred
+						}
+						updatedUsers[client.Email] = true
 					}
 				}
+
 				for user, credential := range credentials {
-					if existingCredentials[credential] {
-						cfg.Logger.Warn("Credential already exists", "credential", credential)
-						return fmt.Errorf("credential %s already exists", credential)
+					if !updatedUsers[user] {
+						newClient := config.XrayClient{Email: user}
+						switch protocol {
+						case "vless":
+							newClient.ID = credential
+						case "trojan":
+							newClient.Password = credential
+						}
+						cfgXray.Inbounds[i].Settings.Clients = append(cfgXray.Inbounds[i].Settings.Clients, newClient)
+						cfg.Logger.Debug("Appending new user to Xray config", "user", user)
 					}
-					newClient := config.XrayClient{Email: user}
-					switch protocol {
-					case "vless":
-						newClient.ID = credential
-					case "trojan":
-						newClient.Password = credential
-					}
-					cfgXray.Inbounds[i].Settings.Clients = append(cfgXray.Inbounds[i].Settings.Clients, newClient)
 				}
+
 				found = true
 				configData = cfgXray
+				break
 			}
 		}
+
 	case "singbox":
 		var cfgSingbox config.ConfigSingbox
 		if err := json.Unmarshal(data, &cfgSingbox); err != nil {
@@ -202,37 +208,40 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 		for i, inbound := range cfgSingbox.Inbounds {
 			if inbound.Tag == inboundTag {
 				protocol = inbound.Type
-				existingCredentials := make(map[string]bool)
-				for _, user := range inbound.Users {
-					switch protocol {
-					case "vless":
-						existingCredentials[user.UUID] = true
-					case "trojan":
-						existingCredentials[user.Password] = true
-					}
-					if _, exists := credentials[user.Name]; exists {
-						cfg.Logger.Warn("User already exists", "user", user.Name)
-						return fmt.Errorf("user %s already exists", user.Name)
+
+				for j, user := range inbound.Users {
+					if newCred, ok := credentials[user.Name]; ok {
+						cfg.Logger.Info("User already exists in Singbox config, updating credential", "user", user.Name)
+						switch protocol {
+						case "vless":
+							cfgSingbox.Inbounds[i].Users[j].UUID = newCred
+						case "trojan":
+							cfgSingbox.Inbounds[i].Users[j].Password = newCred
+						}
+						updatedUsers[user.Name] = true
 					}
 				}
+
 				for user, credential := range credentials {
-					if existingCredentials[credential] {
-						cfg.Logger.Warn("Credential already exists", "credential", credential)
-						return fmt.Errorf("credential %s already exists", credential)
+					if !updatedUsers[user] {
+						newUser := config.SingboxUser{Name: user}
+						switch protocol {
+						case "vless":
+							newUser.UUID = credential
+						case "trojan":
+							newUser.Password = credential
+						}
+						cfgSingbox.Inbounds[i].Users = append(cfgSingbox.Inbounds[i].Users, newUser)
+						cfg.Logger.Debug("Appending new user to Singbox config", "user", user)
 					}
-					newUser := config.SingboxUser{Name: user}
-					switch protocol {
-					case "vless":
-						newUser.UUID = credential
-					case "trojan":
-						newUser.Password = credential
-					}
-					cfgSingbox.Inbounds[i].Users = append(cfgSingbox.Inbounds[i].Users, newUser)
 				}
+
 				found = true
 				configData = cfgSingbox
+				break
 			}
 		}
+
 	default:
 		cfg.Logger.Warn("Unsupported core type", "proxyType", proxyType)
 		return fmt.Errorf("unsupported core type: %s", proxyType)

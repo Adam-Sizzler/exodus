@@ -241,7 +241,7 @@ func AddUserHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig)
 
 					stmtUpsertUser, err := tx.Prepare(`
 						INSERT INTO user_traffic (node_name, user, rate, created, enabled)
-						VALUES (?, ?, 1, ?, ?)
+						VALUES (?, ?, 0, ?, ?)
 						ON CONFLICT(node_name, user) DO UPDATE SET
 							enabled = excluded.enabled,
 							created = excluded.created`)

@@ -3,6 +3,8 @@ package tasks
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -234,7 +236,6 @@ func (tw *TaskWorker) syncUsersFromTaskResponse(nodeName string, resp *proto.Tas
 		tw.cfg.Logger.Debug("No users to sync from task response", "node_name", nodeName)
 		return
 	}
-
 	tw.cfg.Logger.Debug("Syncing users from task response", "node_name", nodeName, "user_count", len(resp.Users.Users))
 
 	err := tw.dbManager.ExecuteHighPriority(func(db *sql.DB) error {
@@ -244,19 +245,29 @@ func (tw *TaskWorker) syncUsersFromTaskResponse(nodeName string, resp *proto.Tas
 		}
 		defer tx.Rollback()
 
+		// 1. Upsert user_traffic — ТОЛЬКО enabled обновляем, created/rate НЕ трогаем
 		stmtUpsertUser, err := tx.Prepare(`
-			INSERT INTO user_traffic (node_name, user, rate, created, enabled)
-			VALUES (?, ?, 0, ?, ?)
-			ON CONFLICT(node_name, user) DO UPDATE SET
-				enabled = excluded.enabled`)
+            INSERT INTO user_traffic (node_name, user, rate, created, enabled)
+            VALUES (?, ?, 0, ?, ?)
+            ON CONFLICT(node_name, user) DO UPDATE SET
+                enabled = excluded.enabled`)
 		if err != nil {
 			return err
 		}
 		defer stmtUpsertUser.Close()
 
+		// 2. DELETE всех старых id для этого user (чтобы заменить UUID)
+		stmtDeleteIDs, err := tx.Prepare(`
+            DELETE FROM user_ids WHERE node_name = ? AND user = ?`)
+		if err != nil {
+			return err
+		}
+		defer stmtDeleteIDs.Close()
+
+		// 3. INSERT новых id (обычный INSERT — после DELETE конфликтов не будет)
 		stmtInsertID, err := tx.Prepare(`
-			INSERT OR IGNORE INTO user_ids (node_name, user, id, inbound_tag)
-			VALUES (?, ?, ?, ?)`)
+            INSERT INTO user_ids (node_name, user, id, inbound_tag)
+            VALUES (?, ?, ?, ?)`)
 		if err != nil {
 			return err
 		}
@@ -269,16 +280,27 @@ func (tw *TaskWorker) syncUsersFromTaskResponse(nodeName string, resp *proto.Tas
 				enabledStr = "true"
 			}
 
+			// Upsert user_traffic — created НЕ обновляется на conflict
 			_, err := stmtUpsertUser.Exec(nodeName, user.Username, currentTime, enabledStr)
 			if err != nil {
-				tw.cfg.Logger.Error("Failed to upsert user", "node_name", nodeName, "user", user.Username, "error", err)
+				tw.cfg.Logger.Error("Failed to upsert user_traffic (only enabled)", "node_name", nodeName, "user", user.Username, "error", err)
 				continue
 			}
 
+			// 1) Удаляем ВСЕ старые UUID для этого пользователя
+			_, err = stmtDeleteIDs.Exec(nodeName, user.Username)
+			if err != nil {
+				tw.cfg.Logger.Error("Failed to delete old user_ids", "node_name", nodeName, "user", user.Username, "error", err)
+				// Продолжаем — возможно, просто нет старых записей
+			}
+
+			// 2) Вставляем НОВЫЕ UUID из ответа ноды
 			for _, ui := range user.IdInbounds {
-				_, err := stmtInsertID.Exec(nodeName, user.Username, ui.Id, ui.InboundTag)
+				_, err = stmtInsertID.Exec(nodeName, user.Username, ui.Id, ui.InboundTag)
 				if err != nil {
-					tw.cfg.Logger.Error("Failed to insert user ID", "node_name", nodeName, "user", user.Username, "id", ui.Id, "error", err)
+					tw.cfg.Logger.Error("Failed to insert new user_id", "node_name", nodeName, "user", user.Username, "new_id", ui.Id, "error", err)
+				} else {
+					tw.cfg.Logger.Info("UUID replaced", "node_name", nodeName, "user", user.Username, "new_uuid", ui.Id, "inbound_tag", ui.InboundTag)
 				}
 			}
 		}
@@ -287,7 +309,9 @@ func (tw *TaskWorker) syncUsersFromTaskResponse(nodeName string, resp *proto.Tas
 	})
 
 	if err != nil {
-		tw.cfg.Logger.Error("Failed to sync users from task response", "node_name", nodeName, "error", err)
+		tw.cfg.Logger.Error("Failed to sync users (UUID replace)", "node_name", nodeName, "error", err)
+	} else {
+		tw.cfg.Logger.Info("UUID replace completed successfully", "node_name", nodeName)
 	}
 }
 
@@ -295,11 +319,90 @@ func (tw *TaskWorker) syncUsersFromTaskResponse(nodeName string, resp *proto.Tas
 func (tw *TaskWorker) syncTaskResults(task Task, taskNodes []TaskNode) {
 	tw.cfg.Logger.Debug("Syncing task results", "task_id", task.ID)
 
+	// Общая логика для всех операций
 	for _, tn := range taskNodes {
 		if tn.Status == NodeTaskStatusSuccess {
 			tw.cfg.Logger.Debug("Task node completed successfully", "task_id", task.ID, "node_name", tn.NodeName)
 		} else if tn.Status == NodeTaskStatusError {
 			tw.cfg.Logger.Warn("Task node failed", "task_id", task.ID, "node_name", tn.NodeName, "error", tn.ErrorMessage)
+		}
+	}
+
+	// Специфическая логика для delete_users: удаление из БД
+	if task.Operation == "delete_users" {
+		// Парсим payload, чтобы получить usernames
+		var payload map[string]interface{}
+		if err := json.Unmarshal([]byte(task.Payload), &payload); err != nil {
+			tw.cfg.Logger.Error("Failed to unmarshal task payload for delete_users", "task_id", task.ID, "error", err)
+			return
+		}
+		usernamesRaw, ok := payload["usernames"]
+		if !ok {
+			tw.cfg.Logger.Error("Payload missing 'usernames' for delete_users", "task_id", task.ID)
+			return
+		}
+		usernames, ok := usernamesRaw.([]interface{})
+		if !ok {
+			tw.cfg.Logger.Error("Invalid 'usernames' format in payload for delete_users", "task_id", task.ID)
+			return
+		}
+		var userList []string
+		for _, u := range usernames {
+			userStr, ok := u.(string)
+			if ok {
+				userList = append(userList, userStr)
+			}
+		}
+		if len(userList) == 0 {
+			tw.cfg.Logger.Warn("No usernames to delete from DB", "task_id", task.ID)
+			return
+		}
+
+		// Удаляем только для success-нод
+		err := tw.dbManager.ExecuteHighPriority(func(db *sql.DB) error {
+			tx, err := db.BeginTx(tw.ctx, nil)
+			if err != nil {
+				return fmt.Errorf("begin transaction for delete_users: %w", err)
+			}
+			defer tx.Rollback()
+
+			stmtDeleteUser, err := tx.Prepare("DELETE FROM user_traffic WHERE node_name = ? AND user = ?")
+			if err != nil {
+				return fmt.Errorf("prepare delete user_traffic stmt: %w", err)
+			}
+			defer stmtDeleteUser.Close()
+
+			stmtDeleteID, err := tx.Prepare("DELETE FROM user_ids WHERE node_name = ? AND user = ?")
+			if err != nil {
+				return fmt.Errorf("prepare delete user_ids stmt: %w", err)
+			}
+			defer stmtDeleteID.Close()
+
+			for _, tn := range taskNodes {
+				if tn.Status != NodeTaskStatusSuccess {
+					continue // Пропускаем failed ноды
+				}
+				for _, user := range userList {
+					_, err := stmtDeleteUser.Exec(tn.NodeName, user)
+					if err != nil {
+						tw.cfg.Logger.Error("Failed to delete from user_traffic", "node_name", tn.NodeName, "user", user, "error", err)
+						continue
+					}
+					_, err = stmtDeleteID.Exec(tn.NodeName, user)
+					if err != nil {
+						tw.cfg.Logger.Error("Failed to delete from user_ids", "node_name", tn.NodeName, "user", user, "error", err)
+						continue
+					}
+					tw.cfg.Logger.Info("Deleted user from DB", "node_name", tn.NodeName, "user", user, "task_id", task.ID)
+				}
+			}
+
+			return tx.Commit()
+		})
+		if err != nil {
+			tw.cfg.Logger.Error("Failed to delete users from DB", "task_id", task.ID, "error", err)
+		} else {
+			tw.cfg.Logger.Info("Users deleted from DB successfully", "task_id", task.ID, "users", userList)
 		}
 	}
 }

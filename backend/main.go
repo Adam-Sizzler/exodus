@@ -38,21 +38,27 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 		Handler: api.WithServerHeader(http.DefaultServeMux),
 	}
 
+	// Full working API endpoints
 	http.HandleFunc("/", api.Answer())
 	http.HandleFunc("/api/v1/users", api.UsersHandler(manager, cfg))
 	http.HandleFunc("/api/v1/dns_stats", api.DnsStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/client_stats", api.ClientStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/server_stats", api.ServerStatsHandler(manager, cfg))
 
-	http.HandleFunc("/api/v1/add_user", api.TokenAuthMiddleware(cfg, api.AddUserHandler(manager, cfg)))
-	http.HandleFunc("/api/v1/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserHandler(manager, cfg)))
+	// Deprecated old endpoints
+	http.HandleFunc("/api/v1/old/add_user", api.TokenAuthMiddleware(cfg, api.AddUserHandler(manager, cfg)))
+	http.HandleFunc("/api/v1/old/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/set_user_enabled", api.TokenAuthMiddleware(cfg, api.SetUserEnabledHandler(manager, cfg)))
 
-	http.HandleFunc("/api/v1/task/add_user", api.TokenAuthMiddleware(cfg, api.AddUserTaskHandler(taskManager, nodeClients, cfg)))
-	http.HandleFunc("/api/v1/task/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserTaskHandler(taskManager, nodeClients, cfg)))
+	// New task-based endpoints
+	http.HandleFunc("/api/v1/history", api.HistoryHandler(manager, cfg))
+	http.HandleFunc("/api/v1/history-text", api.HistoryStatsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/add_user", api.TokenAuthMiddleware(cfg, api.AddUserTaskHandler(taskManager, nodeClients, cfg)))
+	http.HandleFunc("/api/v1/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserTaskHandler(taskManager, nodeClients, cfg)))
 	http.HandleFunc("/api/v1/task/set_user_enabled", api.TokenAuthMiddleware(cfg, api.SetUserEnabledTaskHandler(taskManager, nodeClients, cfg)))
 	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
 
+	// Not working yet
 	http.HandleFunc("/api/v1/update_ip_limit", api.TokenAuthMiddleware(cfg, api.UpdateIPLimitHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/update_renew", api.TokenAuthMiddleware(cfg, api.UpdateRenewHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/reset_dns_stats", api.TokenAuthMiddleware(cfg, reset_stats.DeleteDNSStatsHandler(manager, cfg)))
