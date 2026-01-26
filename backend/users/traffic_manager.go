@@ -26,10 +26,6 @@ var (
 	clientPreviousStatsMutex sync.Mutex                // Global mutex for clientPreviousStats
 	isInactive               = make(map[string]bool)   // node_name:user -> status
 	isInactiveMutex          sync.Mutex
-
-	previousUserSums   = make(map[string][2]int64)
-	previousSourceSums = make(map[string][2]int64)
-	sumsMutex          sync.Mutex
 )
 
 // LoadIsInactiveFromLastSeen loads user inactivity status from the last_seen field.
@@ -209,6 +205,18 @@ func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData
 		cfg.Logger.Error("Failed to update proxy stats", "node_name", nodeName, "error", err)
 		return err
 	}
+
+	// Accumulate diffs after DB update
+	accumMutex.Lock()
+	for source := range uplinkValues {
+		uplink := int64(uplinkValues[source])
+		downlink := int64(downlinkValues[source])
+		accumulatedSourceTraffic[source] = [2]int64{
+			accumulatedSourceTraffic[source][0] + uplink,
+			accumulatedSourceTraffic[source][1] + downlink,
+		}
+	}
+	accumMutex.Unlock()
 
 	cfg.Logger.Debug("Finished proxy stats update", "node_name", nodeName, "entries", len(currentStats))
 	return nil
@@ -400,6 +408,18 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 		return err
 	}
 
+	// Accumulate diffs after DB update
+	accumMutex.Lock()
+	for user := range uplinkValues {
+		uplink := int64(uplinkValues[user])
+		downlink := int64(downlinkValues[user])
+		accumulatedUserTraffic[user] = [2]int64{
+			accumulatedUserTraffic[user][0] + uplink,
+			accumulatedUserTraffic[user][1] + downlink,
+		}
+	}
+	accumMutex.Unlock()
+
 	cfg.Logger.Debug("Finished user stats update", "node_name", nodeName, "entries", len(currentStats))
 	return nil
 }
@@ -459,4 +479,3 @@ func max(a, b int) int {
 	}
 	return b
 }
-

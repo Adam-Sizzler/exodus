@@ -178,7 +178,6 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
             user       TEXT NOT NULL,
             uplink     INTEGER DEFAULT 0,
             downlink   INTEGER DEFAULT 0,
-            updated_at INTEGER, -- unix timestamp последнего обновления
             PRIMARY KEY (date, user)
         );
 
@@ -188,7 +187,6 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
             source     TEXT NOT NULL,
             uplink     INTEGER DEFAULT 0,
             downlink   INTEGER DEFAULT 0,
-            updated_at INTEGER,
             PRIMARY KEY (date, source)
         );
 

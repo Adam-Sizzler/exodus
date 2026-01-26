@@ -3,52 +3,45 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"time"
 	"net/http"
 	"strings"
-
-	"v2ray-stat/common"
-	"v2ray-stat/util"
+	"time"
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db/manager"
+	"v2ray-stat/util"
 )
-
 
 func HistoryStatsHandler(mgr *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cfg.Logger.Debug("Starting HistoryStatsHandler request processing")
-
 		if r.Method != http.MethodGet {
-			http.Error(w, "Invalid method. Use GET", http.StatusMethodNotAllowed)
+			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// Парсинг параметров
-		period := strings.ToLower(r.URL.Query().Get("period"))
-		start := r.URL.Query().Get("start")
-		end := r.URL.Query().Get("end")
+		// Тип: user (по умолчанию) или source
 		histType := strings.ToLower(r.URL.Query().Get("type"))
-		groupBy := strings.ToLower(r.URL.Query().Get("group_by"))
-		name := r.URL.Query().Get("name") // Фильтр по конкретному user/source
-		sum := strings.ToLower(r.URL.Query().Get("sum"))
-		dateFilter := r.URL.Query().Get("date") // Умный поиск по дате
-
-		if histType != "user" && histType != "source" {
+		if histType != "source" {
 			histType = "user"
 		}
-		if groupBy != "date" && groupBy != "hour" {
-			groupBy = "name"
-		}
+
+		// Фильтр по имени (конкретный юзер)
+		filterName := r.URL.Query().Get("name")
+
+		// Умная дата: "2026", "2026-01", "2026-01-26"
+		dateInput := r.URL.Query().Get("date")
+
+		// Режим суммы: если передано sum=1 или sum=true
+		isSumMode := r.URL.Query().Get("sum") == "1" || strings.ToLower(r.URL.Query().Get("sum")) == "true"
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 		var statsBuilder strings.Builder
 
-		err := buildHistoryTableStats(&statsBuilder, mgr, cfg, period, start, end, 
-			histType, groupBy, name, sum, dateFilter)
+		// Вызываем построитель
+		err := buildHistoryTableStats(&statsBuilder, mgr, cfg, histType, filterName, dateInput, isSumMode)
 		if err != nil {
 			cfg.Logger.Error("Failed to build history table", "error", err)
-			fmt.Fprintf(w, "Error retrieving history statistics: %v\n", err)
+			fmt.Fprintf(w, "Error: %v\n", err)
 			return
 		}
 
@@ -64,368 +57,140 @@ func buildHistoryTableStats(
 	builder *strings.Builder,
 	mgr *manager.DatabaseManager,
 	cfg *config.BackendConfig,
-	period, start, end, histType, groupBy, name, sum, dateFilter string,
+	histType, filterName, dateInput string,
+	isSumMode bool,
 ) error {
-	// Определяем таблицу и колонку в зависимости от типа
-	table := "daily_user_stats"
-	nameCol := "user"
-	nameAlias := "User"
+	tableName := "daily_user_stats"
+	colName := "user"
 	if histType == "source" {
-		table = "daily_source_stats"
-		nameCol = "source"
-		nameAlias = "Source"
+		tableName = "daily_source_stats"
+		colName = "source"
 	}
 
-	// Обработка параметра date (умный поиск)
-	dateCondition := ""
-	var dateArgs []interface{}
-	if dateFilter != "" {
-		dateCondition = fmt.Sprintf("date LIKE ?")
-		dateArgs = []interface{}{dateFilter + "%"}
-	} else {
-		// Используем старую логику с периодом
-		dateFrom, dateTo, err := calculateDateRange(period, start, end)
-		if err != nil {
-			return err
-		}
-		dateCondition = "date BETWEEN ? AND ?"
-		dateArgs = []interface{}{dateFrom, dateTo}
+	start, end := resolveSmartDate(dateInput)
+
+	var query string
+	var args []any
+	whereClause := "WHERE date BETWEEN ? AND ?"
+	args = append(args, start, end)
+
+	if filterName != "" {
+		whereClause += fmt.Sprintf(" AND %s = ?", colName)
+		args = append(args, filterName)
 	}
 
-	// Формируем условия WHERE
-	var conditions []string
-	var args []interface{}
-	
-	conditions = append(conditions, dateCondition)
-	args = append(args, dateArgs...)
-	
-	if name != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", nameCol))
-		args = append(args, name)
-	}
-	
-	whereClause := strings.Join(conditions, " AND ")
-	if whereClause == "" {
-		whereClause = "1=1"
-	}
+	// Колонки, которые FormatTable превратит в GiB/Mbps
+	trafficAliases := []string{"Uplink", "Downlink", "Total", "Rate"}
 
-	// Режим SUM
-	if sum == "true" {
-		return mgr.ExecuteHighPriority(func(db *sql.DB) error {
-			// Запрос для суммарной статистики
-			query := fmt.Sprintf(`
+	if isSumMode {
+		// Используем подзапрос, чтобы сначала все сложить, а потом посчитать Rate
+		// Поддержка формата даты YYYY-MM-DD-HH или YYYY-MM-DD HH
+		durationCalc := `(
+			strftime('%s', substr(MAX(date), 1, 10) || ' ' || substr(MAX(date), 12, 2) || ':00:00') - 
+			strftime('%s', substr(MIN(date), 1, 10) || ' ' || substr(MIN(date), 12, 2) || ':00:00') + 3600
+		)`
+
+		query = fmt.Sprintf(`
+			SELECT 
+				Period,
+				%[2]s,
+				(Total * 8.0 / Duration) AS "Rate",
+				Uplink,
+				Downlink,
+				Total
+			FROM (
 				SELECT 
 					MIN(date) || ' - ' || MAX(date) AS "Period",
-					%s AS "%s",
+					%[1]s AS "%[2]s",
 					SUM(uplink) AS "Uplink",
 					SUM(downlink) AS "Downlink",
-					(SUM(uplink) + SUM(downlink)) AS "Total"
-				FROM %s
-				WHERE %s
-				GROUP BY %s
-				ORDER BY "Total" DESC
-			`, nameCol, nameAlias, table, whereClause, nameCol)
+					SUM(uplink + downlink) AS "Total",
+					CAST(%[3]s AS FLOAT) AS "Duration"
+				FROM %[4]s
+				%[5]s
+				GROUP BY %[1]s
+			)
+			ORDER BY Total DESC
+		`, colName, strings.Title(colName), durationCalc, tableName, whereClause)
 
-			rows, err := db.Query(query, args...)
-			if err != nil {
-				return fmt.Errorf("sum query failed: %w", err)
-			}
-			defer rows.Close()
-
-			columns, err := rows.Columns()
-			if err != nil {
-				return fmt.Errorf("failed to get columns: %w", err)
-			}
-
-			// Добавляем колонку для средней скорости
-			columns = append(columns, "Rate_avg")
-			trafficAliases := []string{"Uplink", "Downlink", "Total", "Rate_avg"}
-
-			var data [][]string
-			for rows.Next() {
-				values := make([]interface{}, len(columns)-1) // -1 потому что Rate_avg нет в запросе
-				valuePtrs := make([]interface{}, len(values))
-				for i := range values {
-					valuePtrs[i] = &values[i]
-				}
-
-				if err := rows.Scan(valuePtrs...); err != nil {
-					return fmt.Errorf("failed to scan row: %w", err)
-				}
-
-				row := make([]string, len(columns))
-				var totalBytes int64
-				var durationHours float64
-				
-				for i, val := range values {
-					strVal := ""
-					switch v := val.(type) {
-					case int64:
-						if columns[i] == "Uplink" || columns[i] == "Downlink" {
-							strVal = util.FormatData(float64(v), "byte")
-						} else if columns[i] == "Total" {
-							totalBytes = v
-							strVal = util.FormatData(float64(v), "byte")
-						} else {
-							strVal = fmt.Sprintf("%d", v)
-						}
-					case string:
-						strVal = v
-						// Пытаемся вычислить длительность периода из строки Period
-						if columns[i] == "Period" && v != "" {
-							// Формат: "YYYY-MM-DD HH - YYYY-MM-DD HH"
-							parts := strings.Split(v, " - ")
-							if len(parts) == 2 {
-								startTime, err1 := time.Parse("2006-01-02 15", parts[0])
-								endTime, err2 := time.Parse("2006-01-02 15", parts[1])
-								if err1 == nil && err2 == nil {
-									durationHours = endTime.Sub(startTime).Hours()
-									if durationHours < 1 {
-										durationHours = 1
-									}
-								}
-							}
-						}
-					case nil:
-						strVal = ""
-					default:
-						strVal = fmt.Sprintf("%v", v)
-					}
-					row[i] = strVal
-				}
-
-				// Вычисляем среднюю скорость
-				if durationHours > 0 {
-					// Переводим байты в биты (умножаем на 8) и делим на количество секунд
-					rateBps := float64(totalBytes) * 8 / (durationHours * 3600)
-					row[len(row)-1] = util.FormatData(rateBps, "bps")
-				} else {
-					row[len(row)-1] = "N/A"
-				}
-
-				data = append(data, row)
-			}
-
-			// Форматируем таблицу
-			formatted := formatCustomTable(columns, data, trafficAliases)
-			
-			header := "Summary Statistics\n\n"
-			builder.WriteString(header)
-			if formatted == "" {
-				builder.WriteString("No data found.\n")
-			} else {
-				builder.WriteString(formatted)
-			}
-
-			return nil
-		})
+	} else {
+		// Обычный режим (почасовой)
+		query = fmt.Sprintf(`
+			SELECT 
+				date AS "Date",
+				%[1]s AS "%[2]s",
+				((uplink + downlink) * 8.0 / 3600.0) AS "Rate",
+				uplink AS "Uplink",
+				downlink AS "Downlink",
+				(uplink + downlink) AS "Total"
+			FROM %[3]s
+			%[4]s
+			ORDER BY date ASC
+		`, colName, strings.Title(colName), tableName, whereClause)
 	}
 
-	// Режим детальной статистики
 	return mgr.ExecuteHighPriority(func(db *sql.DB) error {
-		var query string
-		var queryArgs []interface{}
-
-		if groupBy == "date" || groupBy == "hour" {
-			// Детализация по часам
-			query = fmt.Sprintf(`
-				SELECT date AS "Date",
-				       %s AS "%s",
-				       SUM(uplink)   AS "Uplink",
-				       SUM(downlink) AS "Downlink",
-				       (SUM(uplink) + SUM(downlink)) AS "Total"
-				FROM %s
-				WHERE %s
-				GROUP BY date, %s
-				ORDER BY date DESC, "Total" DESC
-			`, nameCol, nameAlias, table, whereClause, nameCol)
-			queryArgs = args
-		} else {
-			// Группировка по имени
-			query = fmt.Sprintf(`
-				SELECT ? || ' to ' || ? AS "Period",
-				       %s AS "%s",
-				       SUM(uplink)   AS "Uplink",
-				       SUM(downlink) AS "Downlink",
-				       (SUM(uplink) + SUM(downlink)) AS "Total"
-				FROM %s
-				WHERE %s
-				GROUP BY %s
-				ORDER BY "Total" DESC
-			`, nameCol, nameAlias, table, whereClause, nameCol)
-			
-			// Получаем фактические даты из данных для отображения периода
-			minMaxQuery := fmt.Sprintf(`
-				SELECT MIN(date), MAX(date) FROM %s WHERE %s
-			`, table, whereClause)
-			
-			var minDate, maxDate string
-			err := db.QueryRow(minMaxQuery, args...).Scan(&minDate, &maxDate)
-			if err != nil && err != sql.ErrNoRows {
-				return fmt.Errorf("failed to get date range: %w", err)
-			}
-			
-			if minDate == "" || maxDate == "" {
-				minDate = "N/A"
-				maxDate = "N/A"
-			}
-			
-			queryArgs = []interface{}{minDate, maxDate}
-			queryArgs = append(queryArgs, args...)
-		}
-
-		rows, err := db.Query(query, queryArgs...)
+		rows, err := db.Query(query, args...)
 		if err != nil {
 			return fmt.Errorf("query failed: %w", err)
 		}
 		defer rows.Close()
 
-		trafficAliases := []string{"Uplink", "Downlink", "Total"}
 		formatted, err := util.FormatTable(rows, trafficAliases, cfg)
 		if err != nil {
 			return fmt.Errorf("format table failed: %w", err)
 		}
 
-		// Добавляем заголовок
-		var header string
-		if name != "" {
-			header = fmt.Sprintf("History for %s: %s\n\n", histType, name)
-		} else {
-			header = fmt.Sprintf("History: %s\n\n", histType)
-		}
-		
-		if dateFilter != "" {
-			header += fmt.Sprintf("Date filter: %s\n\n", dateFilter)
-		}
-		
-		builder.WriteString(header)
-
 		if formatted == "" {
-			builder.WriteString("No data found in this period.\n")
+			builder.WriteString("No data found.\n")
 		} else {
 			builder.WriteString(formatted)
 		}
-
 		return nil
 	})
 }
 
-// Вспомогательная функция для форматирования таблицы с custom данными
-func formatCustomTable(columns []string, data [][]string, trafficColumns []string) string {
-	if len(data) == 0 {
-		return ""
+func resolveSmartDate(inputDate string) (string, string) {
+	inputDate = strings.TrimSpace(inputDate)
+
+	// ВАЖНОЕ ИСПРАВЛЕНИЕ:
+	// Если дата не указана, берем диапазон от "начала времен" до далекого будущего,
+	// чтобы SQL вернул вообще ВСЕ записи.
+	if inputDate == "" {
+		return "0000-01-01 00", "9999-12-31 23"
 	}
 
-	// Вычисляем максимальные ширины колонок
-	maxWidths := make([]int, len(columns))
-	for i, col := range columns {
-		maxWidths[i] = len(col)
+	// Поддержка диапазона через запятую: "2026-01-26 03,2026-01-26 09"
+	if strings.Contains(inputDate, ",") {
+		parts := strings.Split(inputDate, ",")
+		return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 	}
 
-	for _, row := range data {
-		for i, val := range row {
-			if len(val) > maxWidths[i] {
-				maxWidths[i] = len(val)
-			}
+	// 1. Только год: "2026"
+	if len(inputDate) == 4 {
+		return inputDate + "-01-01 00", inputDate + "-12-31 23"
+	}
+
+	// 2. Год и месяц: "2026-01"
+	if len(inputDate) == 7 {
+		t, err := time.Parse("2006-01", inputDate)
+		if err == nil {
+			lastDay := t.AddDate(0, 1, -1).Day()
+			return fmt.Sprintf("%s-01 00", inputDate), fmt.Sprintf("%s-%02d 23", inputDate, lastDay)
 		}
 	}
 
-	var table strings.Builder
-
-	// Заголовок
-	for i, col := range columns {
-		table.WriteString(fmt.Sprintf("%-*s", maxWidths[i]+2, col))
-	}
-	table.WriteString("\n")
-
-	// Разделитель
-	for _, width := range maxWidths {
-		table.WriteString(strings.Repeat("-", width) + "  ")
-	}
-	table.WriteString("\n")
-
-	// Данные
-	for _, row := range data {
-		for i, val := range row {
-			// Выравнивание для числовых колонок
-			if contains(trafficColumns, columns[i]) {
-				table.WriteString(fmt.Sprintf("%*s  ", maxWidths[i], val))
-			} else {
-				table.WriteString(fmt.Sprintf("%-*s", maxWidths[i]+2, val))
-			}
-		}
-		table.WriteString("\n")
+	// 3. Полная дата с часом: "2026-01-26 03" (13 символов)
+	// Важно: в базе используется пробел, а не тире
+	if len(inputDate) == 13 {
+		return inputDate, inputDate
 	}
 
-	return table.String()
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
-// calculateDateRange вычисляет диапазон для hourly статистики
-func calculateDateRange(period, start, end string) (string, string, error) {
-	currentTime := common.GetLocalUnix()
-	now := time.Unix(currentTime, 0)
-	layoutHour := "2006-01-02 15" // YYYY-MM-DD HH
-
-	var fromTime, toTime time.Time
-	if start != "" && end != "" {
-		// Custom интервал: парсим start/end (поддержка YYYY-MM-DD или YYYY-MM-DD HH)
-		var err error
-		fromTime, err = time.Parse("2006-01-02", start)
-		if err != nil {
-			fromTime, err = time.Parse(layoutHour, start)
-			if err != nil {
-				return "", "", fmt.Errorf("invalid start format: %w", err)
-			}
-		} else {
-			// Если только дата, добавляем 00 час
-			fromTime = time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, now.Location())
-		}
-
-		toTime, err = time.Parse("2006-01-02", end)
-		if err != nil {
-			toTime, err = time.Parse(layoutHour, end)
-			if err != nil {
-				return "", "", fmt.Errorf("invalid end format: %w", err)
-			}
-		} else {
-			// Если только дата, добавляем 23 час
-			toTime = time.Date(toTime.Year(), toTime.Month(), toTime.Day(), 23, 0, 0, 0, now.Location())
-		}
-	} else {
-		// Предустановленные периоды
-		switch period {
-		case "hour":
-			fromTime = now.Add(-1 * time.Hour).Truncate(time.Hour)
-			toTime = now.Truncate(time.Hour)
-		case "day":
-			fromTime = now.Add(-24 * time.Hour).Truncate(24 * time.Hour)
-			toTime = now.Truncate(24 * time.Hour)
-		case "week":
-			fromTime = now.AddDate(0, 0, -7).Truncate(24 * time.Hour)
-			toTime = now.Truncate(24 * time.Hour)
-		case "month":
-			fromTime = now.AddDate(0, -1, 0).Truncate(24 * time.Hour)
-			toTime = now.Truncate(24 * time.Hour)
-		case "year":
-			fromTime = now.AddDate(-1, 0, 0).Truncate(24 * time.Hour)
-			toTime = now.Truncate(24 * time.Hour)
-		default:
-			return "", "", fmt.Errorf("invalid period: use 'hour', 'day', 'week', 'month', 'year'")
-		}
+	// 4. Полная дата: "2026-01-26" -> "2026-01-26 00" ... "2026-01-26 23"
+	if len(inputDate) >= 10 {
+		baseDate := inputDate[:10]
+		return baseDate + " 00", baseDate + " 23"
 	}
 
-	if fromTime.After(toTime) {
-		return "", "", fmt.Errorf("start date cannot be after end date")
-	}
-
-	return fromTime.Format(layoutHour), toTime.Format(layoutHour), nil
+	return inputDate, inputDate
 }

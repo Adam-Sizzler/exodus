@@ -21,7 +21,6 @@ func AppendStats(builder *strings.Builder, content string) {
 func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendConfig) (string, error) {
 	columns, err := rows.Columns()
 	if err != nil {
-		cfg.Logger.Error("Failed to get column names", "error", err)
 		return "", fmt.Errorf("failed to get column names: %v", err)
 	}
 
@@ -39,33 +38,26 @@ func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendCon
 		}
 
 		if err := rows.Scan(valuePtrs...); err != nil {
-			cfg.Logger.Error("Failed to scan row", "error", err)
 			return "", fmt.Errorf("failed to scan row: %v", err)
 		}
 
 		row := make([]string, len(columns))
 		for i, val := range values {
 			strVal := ""
+			columnName := columns[i]
+
+			// Преобразуем значение в float64 для универсальности расчетов трафика
+			var floatVal float64
+			isNum := false
 			switch v := val.(type) {
 			case int64:
-				if columns[i] == "created" || columns[i] == "sub_end" {
-					if v == 0 {
-						strVal = ""
-					} else {
-						strVal = time.Unix(v, 0).In(common.TimeLocation).Format("2006-01-02 15:04")
-					}
-				} else if Contains(trafficColumns, columns[i]) {
-					switch columns[i] {
-					case "Rate":
-						strVal = FormatData(float64(v), "bps")
-					case "Uplink", "Downlink", "Sess Up", "Sess Down", "Traffic Cap":
-						strVal = FormatData(float64(v), "byte")
-					default:
-						strVal = fmt.Sprintf("%d", v)
-					}
-				} else {
-					strVal = fmt.Sprintf("%d", v)
-				}
+				floatVal = float64(v)
+				isNum = true
+			case float64:
+				floatVal = v
+				isNum = true
+			case []byte: // SQLite иногда возвращает числа как байты
+				strVal = string(v)
 			case string:
 				strVal = v
 			case nil:
@@ -73,8 +65,26 @@ func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendCon
 			default:
 				strVal = fmt.Sprintf("%v", v)
 			}
+
+			// Если это число и колонка относится к трафику/скорости
+			if isNum && Contains(trafficColumns, columnName) {
+				if columnName == "Rate" {
+					strVal = FormatData(floatVal, "bps")
+				} else {
+					// Добавлен Total и другие возможные колонки
+					strVal = FormatData(floatVal, "byte")
+				}
+			} else if isNum && !Contains(trafficColumns, columnName) {
+				// Обработка дат, если они пришли как int64
+				if (columnName == "created" || columnName == "sub_end" || columnName == "last_seen") && floatVal > 0 {
+					strVal = time.Unix(int64(floatVal), 0).In(common.TimeLocation).Format("2006-01-02 15:04")
+				} else {
+					strVal = fmt.Sprintf("%.0f", floatVal)
+				}
+			}
+
+			// Ограничение длины для таблицы
 			if len(strVal) > 255 {
-				cfg.Logger.Warn("Value too long in column", "column", columns[i], "length", len(strVal))
 				strVal = strVal[:255]
 			}
 			row[i] = strVal
@@ -85,28 +95,26 @@ func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendCon
 		data = append(data, row)
 	}
 
-	if len(data) == 0 {
-		cfg.Logger.Warn("SQL query result is empty")
-	}
-
-	var header strings.Builder
-	for i, col := range columns {
-		header.WriteString(fmt.Sprintf("%-*s", maxWidths[i]+2, col))
-	}
-	header.WriteString("\n")
-
-	var separator strings.Builder
-	for _, width := range maxWidths {
-		separator.WriteString(strings.Repeat("-", width) + "  ")
-	}
-	separator.WriteString("\n")
-
+	// Сборка таблицы
 	var table strings.Builder
-	table.WriteString(header.String())
-	table.WriteString(separator.String())
+
+	// Заголовки
+	for i, col := range columns {
+		table.WriteString(fmt.Sprintf("%-*s", maxWidths[i]+2, col))
+	}
+	table.WriteString("\n")
+
+	// Разделитель
+	for _, width := range maxWidths {
+		table.WriteString(strings.Repeat("-", width) + "  ")
+	}
+	table.WriteString("\n")
+
+	// Данные
 	for _, row := range data {
 		for i, val := range row {
 			if Contains(trafficColumns, columns[i]) {
+				// Числа выравниваем по правому краю для красоты
 				table.WriteString(fmt.Sprintf("%*s  ", maxWidths[i], val))
 			} else {
 				table.WriteString(fmt.Sprintf("%-*s", maxWidths[i]+2, val))
