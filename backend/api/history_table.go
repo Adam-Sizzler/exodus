@@ -2,16 +2,13 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db/manager"
-	"v2ray-stat/common"
-	"v2ray-stat/util"
 )
 
 func HistoryStatsHandler(mgr *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
