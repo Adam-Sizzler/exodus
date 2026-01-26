@@ -13,6 +13,7 @@ import (
 	"v2ray-stat/backend/db/manager"
 )
 
+
 func HistoryStatsHandler(mgr *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Starting HistoryStatsHandler request processing")
