@@ -9,7 +9,6 @@ import (
 
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db/manager"
-	"v2ray-stat/common"
 )
 
 type StatEntry struct {
