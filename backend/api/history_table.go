@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db/manager"
+	"v2ray-stat/common"
 	"v2ray-stat/util"
 )
 
@@ -118,17 +119,14 @@ func buildHistoryTableStats(
 					%s AS "%s",
 					SUM(uplink) AS "Uplink",
 					SUM(downlink) AS "Downlink",
-					(SUM(uplink) + SUM(downlink)) AS "Total",
-					? as "Duration_hours"
+					(SUM(uplink) + SUM(downlink)) AS "Total"
 				FROM %s
 				WHERE %s
 				GROUP BY %s
 				ORDER BY "Total" DESC
 			`, nameCol, nameAlias, table, whereClause, nameCol)
 
-			// Вычисляем количество часов в периоде для расчета средней скорости
-			durationHours := 1.0
-			rows, err := db.Query(query, append([]interface{}{durationHours}, args...)...)
+			rows, err := db.Query(query, args...)
 			if err != nil {
 				return fmt.Errorf("sum query failed: %w", err)
 			}
@@ -156,22 +154,38 @@ func buildHistoryTableStats(
 				}
 
 				row := make([]string, len(columns))
+				var totalBytes int64
+				var durationHours float64
+				
 				for i, val := range values {
 					strVal := ""
 					switch v := val.(type) {
 					case int64:
-						if i == 0 { // Period - строка
-							strVal = v.(string)
-						} else if columns[i] == "Uplink" || columns[i] == "Downlink" || columns[i] == "Total" {
+						if columns[i] == "Uplink" || columns[i] == "Downlink" {
 							strVal = util.FormatData(float64(v), "byte")
-						} else if columns[i] == "Duration_hours" {
-							durationHours = float64(v)
-							strVal = fmt.Sprintf("%.1f", float64(v))
+						} else if columns[i] == "Total" {
+							totalBytes = v
+							strVal = util.FormatData(float64(v), "byte")
 						} else {
 							strVal = fmt.Sprintf("%d", v)
 						}
 					case string:
 						strVal = v
+						// Пытаемся вычислить длительность периода из строки Period
+						if columns[i] == "Period" && v != "" {
+							// Формат: "YYYY-MM-DD HH - YYYY-MM-DD HH"
+							parts := strings.Split(v, " - ")
+							if len(parts) == 2 {
+								startTime, err1 := time.Parse("2006-01-02 15", parts[0])
+								endTime, err2 := time.Parse("2006-01-02 15", parts[1])
+								if err1 == nil && err2 == nil {
+									durationHours = endTime.Sub(startTime).Hours()
+									if durationHours < 1 {
+										durationHours = 1
+									}
+								}
+							}
+						}
 					case nil:
 						strVal = ""
 					default:
@@ -181,25 +195,12 @@ func buildHistoryTableStats(
 				}
 
 				// Вычисляем среднюю скорость
-				if len(values) >= 5 {
-					var totalBytes int64
-					switch v := values[4].(type) { // Total
-					case int64:
-						totalBytes = v
-					case string:
-						// Пытаемся преобразовать строку обратно в число
-						if num, err := strconv.ParseInt(v, 10, 64); err == nil {
-							totalBytes = num
-						}
-					}
-					
-					if durationHours > 0 {
-						// Переводим байты в биты (умножаем на 8) и делим на количество секунд
-						rateBps := float64(totalBytes) * 8 / (durationHours * 3600)
-						row[len(row)-1] = util.FormatData(rateBps, "bps")
-					} else {
-						row[len(row)-1] = "N/A"
-					}
+				if durationHours > 0 {
+					// Переводим байты в биты (умножаем на 8) и делим на количество секунд
+					rateBps := float64(totalBytes) * 8 / (durationHours * 3600)
+					row[len(row)-1] = util.FormatData(rateBps, "bps")
+				} else {
+					row[len(row)-1] = "N/A"
 				}
 
 				data = append(data, row)
@@ -366,4 +367,65 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// calculateDateRange вычисляет диапазон для hourly статистики
+func calculateDateRange(period, start, end string) (string, string, error) {
+	currentTime := common.GetLocalUnix()
+	now := time.Unix(currentTime, 0)
+	layoutHour := "2006-01-02 15" // YYYY-MM-DD HH
+
+	var fromTime, toTime time.Time
+	if start != "" && end != "" {
+		// Custom интервал: парсим start/end (поддержка YYYY-MM-DD или YYYY-MM-DD HH)
+		var err error
+		fromTime, err = time.Parse("2006-01-02", start)
+		if err != nil {
+			fromTime, err = time.Parse(layoutHour, start)
+			if err != nil {
+				return "", "", fmt.Errorf("invalid start format: %w", err)
+			}
+		} else {
+			// Если только дата, добавляем 00 час
+			fromTime = time.Date(fromTime.Year(), fromTime.Month(), fromTime.Day(), 0, 0, 0, 0, now.Location())
+		}
+
+		toTime, err = time.Parse("2006-01-02", end)
+		if err != nil {
+			toTime, err = time.Parse(layoutHour, end)
+			if err != nil {
+				return "", "", fmt.Errorf("invalid end format: %w", err)
+			}
+		} else {
+			// Если только дата, добавляем 23 час
+			toTime = time.Date(toTime.Year(), toTime.Month(), toTime.Day(), 23, 0, 0, 0, now.Location())
+		}
+	} else {
+		// Предустановленные периоды
+		switch period {
+		case "hour":
+			fromTime = now.Add(-1 * time.Hour).Truncate(time.Hour)
+			toTime = now.Truncate(time.Hour)
+		case "day":
+			fromTime = now.Add(-24 * time.Hour).Truncate(24 * time.Hour)
+			toTime = now.Truncate(24 * time.Hour)
+		case "week":
+			fromTime = now.AddDate(0, 0, -7).Truncate(24 * time.Hour)
+			toTime = now.Truncate(24 * time.Hour)
+		case "month":
+			fromTime = now.AddDate(0, -1, 0).Truncate(24 * time.Hour)
+			toTime = now.Truncate(24 * time.Hour)
+		case "year":
+			fromTime = now.AddDate(-1, 0, 0).Truncate(24 * time.Hour)
+			toTime = now.Truncate(24 * time.Hour)
+		default:
+			return "", "", fmt.Errorf("invalid period: use 'hour', 'day', 'week', 'month', 'year'")
+		}
+	}
+
+	if fromTime.After(toTime) {
+		return "", "", fmt.Errorf("start date cannot be after end date")
+	}
+
+	return fromTime.Format(layoutHour), toTime.Format(layoutHour), nil
 }
