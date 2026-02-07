@@ -33,12 +33,17 @@ func HistoryStatsHandler(mgr *manager.DatabaseManager, cfg *config.BackendConfig
 		// Режим суммы: если передано sum=1 или sum=true
 		isSumMode := r.URL.Query().Get("sum") == "1" || strings.ToLower(r.URL.Query().Get("sum")) == "true"
 
+		limit := r.URL.Query().Get("limit")
+		if limit == "" {
+			limit = "500"
+		}
+
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 		var statsBuilder strings.Builder
 
 		// Вызываем построитель
-		err := buildHistoryTableStats(&statsBuilder, mgr, cfg, histType, filterName, dateInput, isSumMode)
+		err := buildHistoryTableStats(&statsBuilder, mgr, cfg, histType, filterName, dateInput, isSumMode, limit)
 		if err != nil {
 			cfg.Logger.Error("Failed to build history table", "error", err)
 			fmt.Fprintf(w, "Error: %v\n", err)
@@ -59,6 +64,7 @@ func buildHistoryTableStats(
 	cfg *config.BackendConfig,
 	histType, filterName, dateInput string,
 	isSumMode bool,
+	limit string,
 ) error {
 	tableName := "daily_user_stats"
 	colName := "user"
@@ -91,13 +97,7 @@ func buildHistoryTableStats(
 		)`
 
 		query = fmt.Sprintf(`
-			SELECT 
-				Period,
-				%[2]s,
-				(Total * 8.0 / Duration) AS "Rate",
-				Uplink,
-				Downlink,
-				Total
+			SELECT Period %[2]s (Total * 8.0 / Duration) AS "Rate", Uplink, Downlink, Total
 			FROM (
 				SELECT 
 					MIN(date) || ' - ' || MAX(date) AS "Period",
@@ -111,7 +111,8 @@ func buildHistoryTableStats(
 				GROUP BY %[1]s
 			)
 			ORDER BY Total DESC
-		`, colName, strings.Title(colName), durationCalc, tableName, whereClause)
+			LIMIT %[6]s
+		`, colName, strings.Title(colName), durationCalc, tableName, whereClause, limit)
 
 	} else {
 		// Обычный режим (почасовой)
@@ -126,7 +127,8 @@ func buildHistoryTableStats(
 			FROM %[3]s
 			%[4]s
 			ORDER BY date ASC
-		`, colName, strings.Title(colName), tableName, whereClause)
+			LIMIT %[5]s
+		`, colName, strings.Title(colName), tableName, whereClause, limit)
 	}
 
 	return mgr.ExecuteHighPriority(func(db *sql.DB) error {

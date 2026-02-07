@@ -51,7 +51,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/set_user_enabled", api.TokenAuthMiddleware(cfg, api.SetUserEnabledHandler(manager, cfg)))
 
 	// New task-based endpoints
-	http.HandleFunc("/api/v1/history", api.HistoryHandler(manager, cfg))
+	http.HandleFunc("/api/v1/history-json", api.HistoryJSONHandler(manager, cfg))
 	http.HandleFunc("/api/v1/history-text", api.HistoryStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/add_user", api.TokenAuthMiddleware(cfg, api.AddUserTaskHandler(taskManager, nodeClients, cfg)))
 	http.HandleFunc("/api/v1/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserTaskHandler(taskManager, nodeClients, cfg)))
