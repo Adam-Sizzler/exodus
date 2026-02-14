@@ -5,16 +5,28 @@ import "fmt"
 // FormatData formats a numerical traffic or speed value.
 func FormatData(value float64, unit string) string {
 	const (
+		gbit = 1_000_000_000
 		mbit = 1_000_000
 		kbit = 1_000
 		GiB  = 1 << 30
 		MiB  = 1 << 20
 		KiB  = 1 << 10
 	)
+	dividers := map[string]float64{
+		"bit":  1,
+		"kbit": kbit,
+		"mbit": mbit,
+		"gbit": gbit,
+		"Byte": 1,
+		"KiB":  KiB,
+		"MiB":  MiB,
+		"GiB":  GiB,
+	}
 
-	switch unit {
-	case "bps":
+	if unit == "bps" {
 		switch {
+		case value >= gbit:
+			return fmt.Sprintf("%.2f Gbps", value/gbit)
 		case value >= mbit:
 			return fmt.Sprintf("%.2f Mbps", value/mbit)
 		case value >= kbit:
@@ -22,7 +34,7 @@ func FormatData(value float64, unit string) string {
 		default:
 			return fmt.Sprintf("%.0f bps", value)
 		}
-	case "byte":
+	} else if unit == "byte" {
 		switch {
 		case value >= GiB:
 			return fmt.Sprintf("%.2f GiB", value/GiB)
@@ -33,7 +45,9 @@ func FormatData(value float64, unit string) string {
 		default:
 			return fmt.Sprintf("%.0f B", value)
 		}
-	default:
-		return fmt.Sprintf("%.0f %s", value, unit)
+	} else if divider, ok := dividers[unit]; ok {
+		return fmt.Sprintf("%.2f %s", value/divider, unit)
+	} else {
+		return fmt.Sprintf("%.0f", value)
 	}
 }

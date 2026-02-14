@@ -60,8 +60,10 @@ type MTLSConfig struct {
 }
 
 type MonitorConfig struct {
-	TickerInterval      int `yaml:"ticker_interval"`
-	OnlineRateThreshold int `yaml:"online_rate_threshold"`
+	TickerInterval      int    `yaml:"ticker_interval"`
+	OnlineRateThreshold int    `yaml:"online_rate_threshold"`
+	RateUnit            string `yaml:"rate_unit"`
+	TrafficUnit         string `yaml:"traffic_unit"`
 }
 
 type PathsConfig struct {
@@ -97,6 +99,8 @@ var defaultConfig = BackendConfig{
 	Monitor: MonitorConfig{
 		TickerInterval:      10,
 		OnlineRateThreshold: 0,
+		RateUnit:            "",
+		TrafficUnit:         "",
 	},
 	Nodes: make(map[string]NodeConfig),
 	Subscription: &SubscriptionConnConfig{
@@ -252,6 +256,16 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 
 	cfg.StatsColumns.Server.SortBy, cfg.StatsColumns.Server.SortOrder = validateSort("Server", cfg.StatsColumns.Server.Sort, validServerColumns, cfg.Logger)
 	cfg.StatsColumns.Client.SortBy, cfg.StatsColumns.Client.SortOrder = validateSort("Client", cfg.StatsColumns.Client.Sort, validClientColumns, cfg.Logger)
+
+	valid_fixed_units := []string{"bit", "kbit", "mbit", "gbit", "Byte", "KiB", "MiB", "GiB"}
+	if cfg.Monitor.RateUnit != "" && !slices.Contains(valid_fixed_units, cfg.Monitor.RateUnit) {
+		cfg.Logger.Warn("Invalid rate_unit, using default (auto)", "value", cfg.Monitor.RateUnit)
+		cfg.Monitor.RateUnit = ""
+	}
+	if cfg.Monitor.TrafficUnit != "" && !slices.Contains(valid_fixed_units, cfg.Monitor.TrafficUnit) {
+		cfg.Logger.Warn("Invalid traffic_unit, using default (auto)", "value", cfg.Monitor.TrafficUnit)
+		cfg.Monitor.TrafficUnit = ""
+	}
 
 	cfg.Logger.Debug("Configuration validated", "nodes_count", len(cfg.Nodes), "subscription_defined", cfg.Subscription != nil)
 	return cfg, nil

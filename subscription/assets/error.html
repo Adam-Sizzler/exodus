@@ -1,0 +1,244 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#161b23">
+  <title>502 Bad Gateway</title>
+  <style>
+    :root {
+      --bg-color: #161b23;
+      --primary: #2dd4bf;
+      --text-main: #ffffff;
+      --text-sec: #8b949e;
+      --glass-bg: rgba(47, 47, 68, 0.12);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --danger: #ff8a8a;
+      --warning: #ffd07a;
+      --ok: #89e1ff;
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-main);
+      background: var(--bg-color);
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse 50% 30% at 20% 10%, rgba(151, 117, 250, 0.14), transparent 60%),
+        radial-gradient(ellipse 40% 35% at 90% 95%, rgba(34, 211, 238, 0.12), transparent 60%),
+        var(--bg-color);
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 56px 56px;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: min(760px, 100%);
+    }
+
+    .card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+      padding: 28px;
+      animation: fade-up 0.35s ease;
+    }
+
+    .pill {
+      display: inline-block;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(58px, 11vw, 110px);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+    }
+
+    h2 {
+      margin: 10px 0 0;
+      font-size: clamp(24px, 4.2vw, 34px);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+    }
+
+    .desc {
+      margin: 14px 0 0;
+      color: var(--text-sec);
+      line-height: 1.55;
+      font-size: 16px;
+      max-width: 64ch;
+    }
+
+    .meta {
+      margin-top: 20px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--text-sec);
+      font-size: 14px;
+      align-items: center;
+    }
+
+    .meta-row code {
+      color: var(--text-main);
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      word-break: break-word;
+    }
+
+    .sev-4xx {
+      color: var(--warning);
+    }
+
+    .sev-5xx {
+      color: var(--danger);
+    }
+
+    .sev-ok {
+      color: var(--ok);
+    }
+
+    @media (max-width: 560px) {
+      .card {
+        padding: 18px;
+      }
+
+    }
+
+    @keyframes fade-up {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <main class="wrap" role="main" aria-live="polite">
+    <section class="card">
+      <div id="errorCategory" class="pill">HTTP Error</div>
+      <h1 id="errorCode" class="sev-ok">500</h1>
+      <h2 id="errorTitle">Unexpected Error</h2>
+      <p id="errorDescription" class="desc">An unknown error occurred while handling the request.</p>
+
+      <div class="meta">
+        <div class="meta-row">Requested URL <code id="errorUri">/</code></div>
+        <div class="meta-row">Generated At <code id="errorTime">-</code></div>
+      </div>
+      <button onclick="history.back()" style="margin-top: 20px; padding: 10px 20px; background: var(--primary); border: none; border-radius: var(--radius); color: var(--text-main); cursor: pointer;">Go Back</button>
+    </section>
+  </main>
+
+  <noscript>
+    <p style="color: var(--danger); text-align: center;">JavaScript is disabled. Error details: Code 500, URI: /</p> <!-- No-JS fallback -->
+  </noscript>
+
+  <script>
+    function initError(code, uri) {
+      var map = {
+        "400": ["Bad Request", "The request could not be understood by the server."],
+        "401": ["Unauthorized", "Authentication is required for this resource."],
+        "403": ["Forbidden", "You do not have permission to access this resource."],
+        "404": ["Not Found", "The requested page or file does not exist."],
+        "405": ["Method Not Allowed", "This HTTP method is not allowed for this endpoint."],
+        "408": ["Request Timeout", "The request took too long and timed out."],
+        "409": ["Conflict", "The request conflicts with the current server state."],
+        "429": ["Too Many Requests", "Rate limit exceeded. Please try again shortly."],
+        "500": ["Internal Server Error", "The server encountered an unexpected condition."],
+        "501": ["Not Implemented", "The server does not support the requested functionality."],
+        "502": ["Bad Gateway", "The upstream service returned an invalid response while handling this request."],
+        "503": ["Service Unavailable", "The service is temporarily unavailable. Please try again later."],
+        "504": ["Gateway Timeout", "The upstream service did not respond in time."],
+        "520": ["Unknown Error", "An unexpected upstream error occurred."]
+      };
+      if (!/^\d{3}$/.test(code)) code = "500";
+      var item = map[code] || ["Unexpected Error", "An unknown error occurred while handling the request."];
+      var codeEl = document.getElementById("errorCode");
+      var titleEl = document.getElementById("errorTitle");
+      var descEl = document.getElementById("errorDescription");
+      var categoryEl = document.getElementById("errorCategory");
+      codeEl.textContent = code;
+      titleEl.textContent = item[0];
+      descEl.textContent = item[1];
+      document.getElementById("errorUri").textContent = uri || window.location.pathname;
+      document.getElementById("errorTime").textContent = new Date().toISOString();
+      document.title = code + " " + item[0];
+      if (code[0] === "4") {
+        categoryEl.textContent = "Client Error";
+        codeEl.className = "sev-4xx";Е
+      } else if (code[0] === "5") {
+        categoryEl.textContent = "Server Error";
+        codeEl.className = "sev-5xx";
+      } else {
+        categoryEl.textContent = "HTTP Error";
+        codeEl.className = "sev-ok";
+      }
+      // Обновляем noscript, если нужно (но скрываем его)
+      var noscriptEl = document.querySelector("noscript");
+      if (noscriptEl) noscriptEl.style.display = "none";
+    }
+    // Fallback: Если переменные не инжектированы сервером, парсим из search
+    if (typeof code !== 'undefined' && typeof uri !== 'undefined') {
+      initError(code, uri);
+    } else {
+      var params = new URLSearchParams(window.location.search);
+      var fallbackCode = (params.get("code") || "500").trim();
+      var fallbackUri = params.get("uri") || params.get("path") || window.location.pathname;
+      initError(fallbackCode, fallbackUri);
+    }
+  </script>
+</body>
+</html>

@@ -23,6 +23,8 @@ paths:
 monitor:
   ticker_interval: 10                                     # Interval (in seconds) for polling monitored services and users. Recommended: 5–60.
   online_rate_threshold: 15                               # Minimum rate threshold in kilobits per second (kbps) to consider a user online. 0 means any non-zero rate is considered online.
+  rate_unit: kbit                                         # If empty → auto-scaling (bps/Kbps/Mbps/Gbps). Set to force fixed speed unit.
+  traffic_unit: KiB                                       # If empty → auto-scaling (Byte/KiB/MiB/GiB). Set to force fixed traffic unit.
 
 node_metadata:
   local:

@@ -1,0 +1,784 @@
+html.is-loading body {
+    opacity: 0;
+}
+/* -------------------------------------------------------------------------- */
+/* 1. VARIABLES & RESET                                                       */
+/* -------------------------------------------------------------------------- */
+:root {
+  /* Основные цвета */
+  --bg-color: #161b23;
+  --primary: #2dd4bf;
+  --text-main: #ffffff;
+  --text-sec: #8b949e;
+
+  /* Эффекты стекла */
+  --glass-bg: rgba(47, 47, 68, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 12px;
+
+  /* Mantine & Размеры */
+  --mantine-radius-lg: 1.6rem; /* 16px */
+  --mantine-spacing-md: 1.6rem;
+  --mantine-header-bg: #161b23cc;
+  
+  /* Цвета Mantine (Cyan/Dark) */
+  --mantine-cyan-light: rgba(34, 184, 207, 0.1);
+  --mantine-cyan-light-hover: rgba(34, 184, 207, 0.15);
+  --mantine-cyan-light-color: #22b8cf;
+  --mantine-color-cyan-3: #66d9e8;
+  --mantine-color-blue-3: #54aeff;
+  --mantine-color-green-3: #4ac26b;
+  --mantine-color-red-3: #ffa8a8;
+  --mantine-color-yellow-3: #d4a72c;
+  --mantine-color-dark-7: #161b22;
+  
+  /* Статусные цвета (User, Status, Expire, Traffic) */
+  --color-user: var(--mantine-color-blue-3);
+  --color-status: var(--mantine-color-green-3);
+  --color-expire: var(--mantine-color-red-3);
+  --color-traffic: var(--mantine-color-yellow-3);
+
+  --mantine-color-blue-light: rgba(5, 80, 174, 0.15);
+  --mantine-color-green-light: rgba(17, 99, 41, 0.15);
+  --mantine-color-red-light: rgba(250, 82, 82, .15);
+  --mantine-color-yellow-light: rgba(125, 78, 0, 0.15);
+
+  --tile-bg-user: rgba(59, 130, 246, 0.1);
+  --tile-bg-status: rgba(34, 197, 94, 0.1);
+  --tile-bg-expire: rgba(239, 68, 68, 0.1);
+  --tile-bg-traffic: rgba(234, 179, 8, 0.1);
+
+  /* Основной шрифт для всей страницы */
+  --mantine-font-family: "Montserrat", sans-serif;
+  
+  /* Шрифт специально для заголовков */
+  --mantine-font-family-headings: "Unbounded", sans-serif;
+
+  /* Перезаписываем вашу старую переменную, если она используется в коде */
+  --font-stack: var(--mantine-font-family);
+}
+
+/* MONTSERRAT - Для основного текста */
+@font-face {
+    font-family: 'Montserrat';
+    src: url('JTUSjIg1_i6t8kCHKm459W1hyzbi-EAA9jha_.woff2') format('woff2'); /* Кириллица */
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; 
+}
+
+@font-face {
+    font-family: 'Montserrat';
+    src: url('JTUSjIg1_i6t8kCHKm459Wlhyw-l_AIctKy.woff2') format('woff2'); /* Латиница */
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC;
+}
+
+/* UNBOUNDED - Для заголовков */
+@font-face {
+    font-family: 'Unbounded';
+    src: url('Yq6W-LOTXCb04q32xlpwv8ZfrxE-C627f1f8.woff2') format('woff2'); /* Кириллица */
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'Unbounded';
+    src: url('Yq6W-LOTXCb04q32xlpwu8Zf-D5afBTBx.woff2') format('woff2'); /* Латиница */
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+html {
+  /* Трюк для удобного REM: 62.5% от 16px = 10px. 
+     Теперь 1rem = 10px, 1.6rem = 16px, 3rem = 30px */
+  font-size: 62.5%; 
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+body {
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out; /* Плавное проявление */
+  margin: 0;
+  padding: 1rem; /* 10px */
+  font-family: var(--mantine-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 1.6rem; /* Базовый размер шрифта 16px */
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom, 2rem);
+}
+/* Применяем Unbounded ко всем заголовкам */
+h1, h2, h3, h4, h5, h6, #headerBrand {
+    font-family: var(--mantine-font-family-headings);
+    font-weight: 600; /* Unbounded лучше смотрится жирным */
+}
+
+/* Если нужно отдельно для названия в шапке */
+.brand span {
+    font-family: var(--mantine-font-family-headings);
+    letter-spacing: -0.02em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2. BACKGROUND EFFECTS                                                      */
+/* -------------------------------------------------------------------------- */
+.bg-blobs {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: 
+    radial-gradient(ellipse 60% 40% at 25% 40%, rgba(151, 117, 250, 0.08), transparent 50%),
+    radial-gradient(ellipse 50% 50% at 85% 85%, rgba(34, 211, 238, 0.06), transparent 50%);
+  z-index: -1;
+  pointer-events: none;
+  animation: moveBlobs 20s ease-in-out infinite alternate;
+}
+
+@keyframes moveBlobs {
+  0% { transform: scale(1) translate(0, 0); filter: hue-rotate(0deg); }
+  50% { transform: scale(1.1) translate(2%, 2%); filter: hue-rotate(15deg); }
+  100% { transform: scale(1) translate(-1%, 3%); filter: hue-rotate(-10deg); }
+}
+
+.bg-grid {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 6rem 6rem;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 3. LAYOUT & HEADER                                                         */
+/* -------------------------------------------------------------------------- */
+.main-container {
+  width: 100%;
+  max-width: 74rem; /* 740px */
+  display: flex;
+  flex-direction: column;
+  gap: 3rem; /* 30px */
+}
+
+.header-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.8rem 3.4rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  /* Компенсация padding body */
+  margin: -1rem -3rem 0 -3rem; 
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 700;
+  font-size: 2.2rem;
+  color: var(--text-main);
+}
+.brand-logo { font-size: 2rem; }
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  width: 4.4rem; 
+  height: 4.4rem;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.support-btn svg { stroke: var(--primary); }
+
+/* -------------------------------------------------------------------------- */
+/* 4. CARDS & SECTIONS                                                        */
+/* -------------------------------------------------------------------------- */
+.card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--mantine-radius-lg);
+  padding: 3.1rem; /* 30px */
+  box-shadow: 0 0.4rem 2rem rgba(0, 0, 0, 0.01);
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+              border-color 0.5s ease, 
+              box-shadow 0.5s ease;
+}
+
+.card:hover {
+  border-color: rgba(45, 212, 191, 0.4);
+  box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.4), 
+              0 0 1.5rem rgba(45, 212, 191, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.6rem;
+}
+.card-header h3 { margin: 0; font-size: 2rem; }
+
+/* Profile Section */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 2.2rem;
+}
+.profile-card:hover {
+  box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.4), 
+              0 0 1.5rem rgba(59, 130, 246, 0.1);
+}
+.status-icon-wrapper {
+  width: 4rem; height: 4rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgb(24, 43, 47) 0%, rgb(21, 34, 37) 100%);
+  border: 1px solid rgba(32, 201, 151, 0.4);
+  box-shadow: rgba(32, 201, 151, 0.15) 0 0 2rem inset;
+  color: var(--mantine-cyan-light-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.status-icon-wrapper svg { width: 2rem; height: 2rem; }
+.profile-info h2 { margin: 0; font-size: 2rem; font-weight: 600; }
+.expire-text { color: var(--text-sec); font-size: 1.4rem; }
+.text-green { color: var(--color-status); }
+
+/* -------------------------------------------------------------------------- */
+/* 5. STATS GRID                                                              */
+/* -------------------------------------------------------------------------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.stat-item {
+  padding: 1rem;
+  border-radius: 0.8rem;
+  display: flex; flex-direction: column;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+}
+
+/* Стилизация отдельных плиток */
+.stat-item:nth-child(1) { background: linear-gradient(135deg,#228be61a,#1c7ed60d); border-color: rgba(34,139,230,.2); }
+.stat-item:nth-child(2) { background: linear-gradient(135deg,#40c0571a,#37b24d0d); border-color: rgba(64,192,87,.2); }
+.stat-item:nth-child(3) { background: linear-gradient(135deg,#fa52521a,#e031310d); border-color: rgba(250,82,82,.2); }
+.stat-item:nth-child(4) { background: linear-gradient(135deg,#fab0051a,#f59f000d); border-color: rgba(250,176,5,.2); }
+
+.stat-label {
+  color: var(--text-sec);
+  display: flex; align-items: center; gap: 0.8rem;
+  font-size: 1.3rem; margin-bottom: 0.4rem;
+}
+.stat-label svg {
+  flex-shrink: 0; opacity: 0.8;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.4rem;
+}
+
+/* Покраска иконок в плитках */
+.stat-item:nth-child(1) .stat-label svg { color: var(--color-user); }
+.stat-item:nth-child(2) .stat-label svg { color: var(--color-status); }
+.stat-item:nth-child(3) .stat-label svg { color: var(--color-expire); }
+.stat-item:nth-child(4) .stat-label svg { color: var(--color-traffic); }
+
+.stat-value { font-weight: 600; font-size: 1.5rem; color: var(--text-main); }
+
+.client-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-bottom: 2.5rem;
+}
+
+.tab-bg-icon {
+  position: absolute;
+  right: -1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6rem;
+  height: 6rem;
+  opacity: 0.1;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-main);
+  z-index: 1;
+  
+  mask-image: linear-gradient(to right, transparent 0%, black 50%, black 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 50%, black 100%);
+}
+
+.tab-bg-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.tab-name {
+  position: relative;
+  z-index: 2;
+  white-space: nowrap;
+  font-family: inherit; 
+}
+
+.tab-btn {
+  position: relative;
+  display: flex; 
+  align-items: center; 
+  justify-content: flex-start;
+  padding: 0 2.2rem;
+  height: 4.8rem;
+  background: #ffffff05;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 0.3rem solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+
+  font-family: var(--mantine-font-family); 
+  font-size: 1.6rem;
+  color: var(--text-sec);
+  font-weight: 600;  
+
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Изменение состояния при наведении или активации */
+.tab-btn:hover .tab-bg-icon {
+  opacity: 0.2;
+  right: -0.8rem; 
+}
+
+.tab-btn.active .tab-bg-icon {
+  opacity: 0.25;
+  right: -0.8rem;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tab-btn.active {
+  background: linear-gradient(90deg, #22d3ee1f, #22d3ee0a);
+  border-color: #22d3ee33;
+  border-left-color: #22b8cf;
+  box-shadow: inset 4px 0 12px -4px #22d3ee4d, 0 0 12px #22d3ee1a;
+  color: var(--mantine-cyan-light-color);
+}
+.tab-btn:last-child:nth-child(odd) {
+  grid-column: span 2;
+}
+
+.featured-dot {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: block;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: #efbf04;
+  border-radius: 50%;
+  box-shadow: 0 0 0.6rem rgba(239, 191, 4, 0.6);
+  z-index: 3;
+}
+.tab-btn.active .featured-dot {
+  background: var(--primary);
+  box-shadow: 0 0 0.8rem var(--primary);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 7. CUSTOM SELECT (Mantine Style)                                           */
+/* -------------------------------------------------------------------------- */
+.custom-select {
+  position: relative;
+  width: 15rem;
+  user-select: none;
+}
+
+.select-trigger {
+  height: 3.6rem;
+  padding: 0 1.2rem;
+  display: flex; align-items: center;
+  gap: 0.8rem;
+  
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.8rem;
+  
+  color: var(--text-sec);
+  font-size: 1.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#selectedIcon svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5px;
+}
+
+.custom-select.active .select-trigger {
+  background: var(--mantine-cyan-light);
+  border-color: var(--mantine-cyan-light-color);
+  color: var(--mantine-cyan-light-color);
+}
+
+.select-options {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0; right: 0;
+  background: rgba(22, 27, 35, 0.95);
+  backdrop-filter: blur(15px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.2rem;
+  overflow: hidden;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.5);
+}
+
+.custom-select.active .select-options {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+.option {
+  padding: 1rem 1.2rem;
+  color: var(--text-sec);
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.option:hover {
+  background: rgba(45, 212, 191, 0.1);
+  color: var(--primary);
+}
+
+.arrow {
+  width: 1.8rem; height: 1.8rem;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+.custom-select.active .arrow { transform: rotate(180deg); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 8. STEPPER                                                                 */
+/* -------------------------------------------------------------------------- */
+.step-item {
+  display: flex;
+  gap: 2rem;
+  padding-bottom: 3.5rem;
+  position: relative;
+}
+.step-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 2.1rem; top: 4.5rem; bottom: 0;
+  width: 1px;
+  background: var(--mantine-cyan-light-color);
+}
+.step-content h4 { margin: 0 0 0.5rem 0; font-size: 1.7rem; }
+.step-content p { 
+  color: var(--text-sec); font-size: 1.5rem; 
+  margin: 0 0 1.5rem 0; line-height: 1.4; 
+}
+
+.step-icon {
+  width: 4.4rem; height: 4.4rem;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+  position: relative;
+  background: linear-gradient(135deg, rgb(34, 36, 55) 0%, rgb(27, 29, 42) 100%);
+  border: 1px solid rgba(151, 117, 250, 0.4);
+  box-shadow: rgba(151, 117, 250, 0.15) 0 0 2rem inset;
+}
+.download-icon { color: #a78bfa; } /* inherit base styles from step-icon */
+.sub-icon {
+  color: #2dd4bf;
+  background: linear-gradient(135deg, rgb(24, 43, 54) 0%, rgb(21, 34, 41) 100%);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  box-shadow: rgba(34, 211, 238, 0.15) 0 0 2rem inset;
+}
+.manual-icon {
+  color: var(--mantine-cyan-light-color);
+  background: linear-gradient(135deg, rgb(24, 43, 47) 0%, rgb(21, 34, 37) 100%);
+  border: 1px solid rgba(32, 201, 151, 0.4);
+  box-shadow: rgba(32, 201, 151, 0.15) 0 0 2rem inset;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 9. BUTTONS                                                                 */
+/* -------------------------------------------------------------------------- */
+.action-area {
+  display: flex; flex-wrap: wrap; gap: 1rem;
+}
+
+/* Отключаем системную подсветку нажатия в мобильных браузерах */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+/* Доступный фокус только для клавиатуры */
+:focus-visible {
+  outline: 2px solid var(--mantine-cyan-light-color);
+  outline-offset: 2px;
+}
+
+.btn {
+  height: 3.6rem;
+  padding: 0 1.8rem;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex; align-items: center;
+  gap: 0.8rem;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  border-radius: 0.8rem;
+  border: 1px solid transparent;
+  transition: background-color 150ms ease, transform 100ms ease;
+  overflow: hidden;
+  font-size: 1.4rem; /* Добавлено для ясности */
+}
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: var(--mantine-cyan-light);
+  color: var(--mantine-color-cyan-3);
+}
+.btn-primary:hover { background: var(--mantine-cyan-light-hover); }
+
+.btn-secondary {
+  background: var(--mantine-cyan-light);
+  color: var(--mantine-color-cyan-3);
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.08); }
+
+.btn-full {
+  width: 100%;
+  height: 5rem;
+  background: rgba(45, 212, 191, 0.08) !important;
+  border: 1px solid rgba(45, 212, 191, 0.2) !important;
+  color: var(--primary) !important;
+  border-radius: 1.4rem !important;
+  font-weight: 700;
+  margin-top: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  gap: 1rem;
+}
+.btn-full:hover {
+  background: rgba(45, 212, 191, 0.2) !important;
+  transform: translateY(-1px);
+}
+.btn-full svg { stroke: #2dd4bf; }
+
+/* -------------------------------------------------------------------------- */
+/* 10. NOTIFICATIONS                                                          */
+/* -------------------------------------------------------------------------- */
+#notificationArea {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  z-index: 9999; 
+  display: flex; flex-direction: column;
+  gap: 1rem;
+  pointer-events: none;
+}
+.notification {
+  position: relative; 
+  background: #18222d;
+  border: 1px solid var(--primary);
+  color: white;
+  padding: 1.5rem 2.5rem;
+  border-radius: 1.2rem;
+  box-shadow: 0 1rem 3rem rgba(0,0,0,0.5);
+  animation: slideIn 0.3s ease forwards;
+  pointer-events: auto;
+  min-width: 20rem;
+  font-size: 1.4rem;
+}
+@keyframes slideIn { 
+  from { transform: translateX(100%); opacity: 0; } 
+  to { transform: translateX(0); opacity: 1; } 
+}
+
+/* -------------------------------------------------------------------------- */
+/* 11. QR MODAL                                                               */
+/* -------------------------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 1000;
+}
+.modal-box {
+  padding: 0 !important; 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 25, 33, 0.95) !important;
+  backdrop-filter: blur(20px);
+  border-radius: 2.4rem !important;
+  overflow: hidden;
+  max-width: 45rem;
+  width: 95%;
+  box-shadow: 0 2.5rem 5rem -1.2rem rgba(0, 0, 0, 0.5);
+}
+.qr-main-card {
+  font-family: var(--mantine-font-family) !important;
+  display: flex; flex-direction: column;
+  padding: 2.2rem;
+  gap: 1.6rem; align-items: center;
+}
+.qr-header {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; margin-bottom: 0.4rem;
+}
+.qr-title {
+  font-family: var(--mantine-font-family-headings) !important;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.close-icon-btn {
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-sec); padding: 0.4rem;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; transition: 0.2s;
+}
+.close-icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.qr-modes-container { display: flex; justify-content: center; width: 100%; }
+.qr-modes {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.4rem;
+  border-radius: 1.2rem;
+  display: flex; gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.mode-btn {
+  font-family: var(--mantine-font-family) !important;
+  flex: 1; 
+  background: transparent; border: none;
+  color: var(--text-sec);
+  padding: 1rem;
+  border-radius: 0.9rem;
+  font-size: 1.3rem; font-weight: 600;
+  cursor: pointer; transition: 0.3s;
+  text-align: center;
+}
+.mode-btn.active {
+  background: rgba(45, 212, 191, 0.1);
+  color: var(--primary);
+}
+
+.qr-display-area {
+  display: flex; justify-content: center; align-items: center;
+  padding: 1rem 0; width: 100%;
+}
+#qrCanvas {
+  max-width: 100%; height: auto !important;
+  filter: drop-shadow(0 0 1.5rem rgba(34, 211, 238, 0.25));
+}
+.qr-instruction {
+  font-family: var(--mantine-font-family-headings) !important;
+  font-size: 1.8rem; 
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.6rem;
+}
+.qr-sub-instruction {
+  font-family: var(--mantine-font-family) !important;
+  font-size: 1.3rem; 
+  color: var(--text-sec);
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 12. MEDIA QUERIES (Consolidated)                                           */
+/* -------------------------------------------------------------------------- */
+
+/* Tablet & Up */
+@media (min-width: 768px) {
+  .header-wrapper {
+    border-radius: 0 0 var(--mantine-radius-lg) var(--mantine-radius-lg);
+  }
+}
+
+/* Mobile: < 480px */
+@media (max-width: 480px) {
+  .card {
+    padding: 1.4rem; /* Уменьшаем паддинг до 14px */
+    border-radius: 1.2rem;
+  }
+  .header-wrapper {
+    padding: 1.2rem 1.6rem;
+    margin: -1rem -1rem 0 -1rem; /* Коррекция под body padding */
+  }
+  .card-header h3 { font-size: 1.8rem; }
+  
+  .action-area { 
+    flex-direction: column; /* Кнопки действий лучше стакать в колонку на узких экранах */
+  }
+  .btn { width: 100%; } /* Кнопки на всю ширину для удобства нажатия пальцем */
+}
+
+/* Опционально: только для экстремально узких экранов (меньше 340px) */
+@media (max-width: 340px) {
+  .stats-grid {
+    grid-template-columns: 1fr; /* Только если экран совсем крошечный */
+  }
+}

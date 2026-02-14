@@ -46,7 +46,6 @@ func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendCon
 			strVal := ""
 			columnName := columns[i]
 
-			// Преобразуем значение в float64 для универсальности расчетов трафика
 			var floatVal float64
 			isNum := false
 			switch v := val.(type) {
@@ -56,7 +55,7 @@ func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendCon
 			case float64:
 				floatVal = v
 				isNum = true
-			case []byte: // SQLite иногда возвращает числа как байты
+			case []byte:
 				strVal = string(v)
 			case string:
 				strVal = v
@@ -68,12 +67,19 @@ func FormatTable(rows *sql.Rows, trafficColumns []string, cfg *config.BackendCon
 
 			// Если это число и колонка относится к трафику/скорости
 			if isNum && Contains(trafficColumns, columnName) {
+				var unit string
 				if columnName == "Rate" {
-					strVal = FormatData(floatVal, "bps")
+					unit = cfg.Monitor.RateUnit
+					if unit == "" {
+						unit = "bps"
+					}
 				} else {
-					// Добавлен Total и другие возможные колонки
-					strVal = FormatData(floatVal, "byte")
+					unit = cfg.Monitor.TrafficUnit
+					if unit == "" {
+						unit = "byte"
+					}
 				}
+				strVal = FormatData(floatVal, unit)
 			} else if isNum && !Contains(trafficColumns, columnName) {
 				// Обработка дат, если они пришли как int64
 				if (columnName == "created" || columnName == "sub_end" || columnName == "last_seen") && floatVal > 0 {

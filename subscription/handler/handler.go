@@ -27,59 +27,66 @@ var clientFormats = map[string]struct {
 	"unknown": {"json", map[string]string{"Content-Type": "application/json"}},
 }
 
+func detectClient(userAgent string) string {
+	switch {
+	case strings.Contains(userAgent, "mihomo"),
+		strings.Contains(userAgent, "clash"),
+		strings.Contains(userAgent, "flclash"),
+		strings.Contains(userAgent, "flclashx"),
+		strings.Contains(userAgent, "verge"),
+		strings.Contains(userAgent, "clash-verge"),
+		strings.Contains(userAgent, "clash verge"),
+		strings.Contains(userAgent, "koala-clash"),
+		strings.Contains(userAgent, "clash-meta"),
+		strings.Contains(userAgent, "clashmeta"),
+		strings.Contains(userAgent, "merge"),
+		strings.Contains(userAgent, "clashx meta"),
+		strings.Contains(userAgent, "clash-nyanpasu"),
+		strings.Contains(userAgent, "clash.meta"),
+		strings.Contains(userAgent, "prizrak-box"),
+		strings.Contains(userAgent, "rabbithole"),
+		strings.Contains(userAgent, "flowvy"):
+		return "mihomo"
+
+	case strings.Contains(userAgent, "sfa"),
+		strings.Contains(userAgent, "sfi"),
+		strings.Contains(userAgent, "sfm"),
+		strings.Contains(userAgent, "sft"),
+		strings.Contains(userAgent, "karing"),
+		strings.Contains(userAgent, "singbox"):
+		return "singbox"
+
+	case strings.Contains(userAgent, "happ"),
+		strings.Contains(userAgent, "v2rayng"),
+		strings.Contains(userAgent, "io.github.saeeddev94.xray"),
+		strings.Contains(userAgent, "v2rayn"):
+		return "xray"
+
+	case strings.Contains(userAgent, "edg"),
+		strings.Contains(userAgent, "telegrambot"):
+		return "unknown"
+
+	default:
+		return "xray"
+	}
+}
+
 func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	mode, client, user := q.Get("mode"), q.Get("client"), q.Get("user")
+	mode, user := q.Get("mode"), q.Get("user")
+	uaOverride := q.Get("ua")
 
 	userAgent := strings.ToLower(r.Header.Get("User-Agent"))
+	if uaOverride != "" {
+		userAgent = strings.ToLower(uaOverride)
+	}
+
 	accept := r.Header.Get("Accept")
 
 	isBrowser := strings.Contains(userAgent, "mozilla/5.0") || strings.Contains(userAgent, "edg")
 	isHtmlRequest := strings.Contains(accept, "text/html")
 
-	if client == "" {
-		switch {
-		case strings.Contains(userAgent, "mihomo"),
-			strings.Contains(userAgent, "clash"),
-			strings.Contains(userAgent, "flclash"),
-			strings.Contains(userAgent, "flclashx"),
-			strings.Contains(userAgent, "verge"),
-			strings.Contains(userAgent, "clash-verge"),
-			strings.Contains(userAgent, "clash verge"),
-			strings.Contains(userAgent, "koala-clash"),
-			strings.Contains(userAgent, "clash-meta"),
-			strings.Contains(userAgent, "clashmeta"),
-			strings.Contains(userAgent, "merge"),
-			strings.Contains(userAgent, "clashx meta"),
-			strings.Contains(userAgent, "clash-nyanpasu"),
-			strings.Contains(userAgent, "clash.meta"),
-			strings.Contains(userAgent, "prizrak-box"),
-			strings.Contains(userAgent, "rabbithole"),
-			strings.Contains(userAgent, "flowvy"):
-			client = "mihomo"
-
-		case strings.Contains(userAgent, "sfa"),
-			strings.Contains(userAgent, "sfi"),
-			strings.Contains(userAgent, "sfm"),
-			strings.Contains(userAgent, "sft"),
-			strings.Contains(userAgent, "karing"),
-			strings.Contains(userAgent, "singbox"):
-			client = "singbox"
-
-		case strings.Contains(userAgent, "happ"),
-			strings.Contains(userAgent, "v2rayng"),
-			strings.Contains(userAgent, "io.github.saeeddev94.xray"),
-			strings.Contains(userAgent, "v2rayn"):
-			client = "xray"
-
-		case strings.Contains(userAgent, "edg"),
-			strings.Contains(userAgent, "telegrambot"):
-			client = "unknown"
-
-		default:
-			client = "xray"
-		}
-	}
+	client := detectClient(userAgent)
 
 	if mode == "" {
 		mode = "advanced"
@@ -90,7 +97,11 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 
 	if user == "" {
 		cfg.Logger.Warn("Missing user parameter in request")
-		http.Error(w, "missing user parameter", http.StatusBadRequest)
+		if isBrowser && isHtmlRequest {
+			serveErrorPage(w, r, http.StatusBadRequest)
+		} else {
+			http.Error(w, "missing user parameter", http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -108,18 +119,27 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 
 	userConfig, ok := cfg.Subscription.UserMap[user]
 	if !ok {
-		cfg.Logger.Debug("User not found in UserMap, applying defaults", "user", user)
-		userConfig = config.UserConfig{
-			Clients:       slices.Clone(cfg.Subscription.Defaults.Clients),
-			IncludeNodes:  slices.Clone(cfg.Subscription.Defaults.IncludeNodes),
-			NodeTemplates: make(map[string]map[string]string),
-			Headers:       make(map[string]string),
+		cfg.Logger.Warn("User not found in UserMap", "user", user)
+		if isBrowser && isHtmlRequest {
+			serveErrorPage(w, r, http.StatusNotFound)
+		} else {
+			http.Error(w, "user not found", http.StatusNotFound)
 		}
-		for mode, templates := range cfg.Subscription.Defaults.NodeTemplates {
-			userConfig.NodeTemplates[mode] = make(map[string]string)
-			maps.Copy(userConfig.NodeTemplates[mode], templates)
-		}
-		maps.Copy(userConfig.Headers, cfg.Subscription.Defaults.Headers)
+		return
+
+		/*
+			userConfig = config.UserConfig{
+				Clients:       slices.Clone(cfg.Subscription.Defaults.Clients),
+				IncludeNodes:  slices.Clone(cfg.Subscription.Defaults.IncludeNodes),
+				NodeTemplates: make(map[string]map[string]string),
+				Headers:       make(map[string]string),
+			}
+			for mode, templates := range cfg.Subscription.Defaults.NodeTemplates {
+				userConfig.NodeTemplates[mode] = make(map[string]string)
+				maps.Copy(userConfig.NodeTemplates[mode], templates)
+			}
+			maps.Copy(userConfig.Headers, cfg.Subscription.Defaults.Headers)
+		*/
 	}
 
 	cfg.Logger.Trace("User config before merging", "user", user, "config", fmt.Sprintf("%+v", userConfig))
@@ -198,9 +218,22 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 
 	userIDs, err := api.GetUserIDs(&cfg, user)
 	if err != nil {
-		cfg.Logger.Error("Failed to fetch user IDs", "user", user, "error", err)
-		http.Error(w, fmt.Sprintf("failed to fetch user IDs: %v", err), http.StatusInternalServerError)
-		return
+		if strings.Contains(err.Error(), "no gRPC connection and no cached data") {
+			cfg.Logger.Warn("Transient gRPC issue, no connection or cache yet", "user", user, "error", err)
+			if isBrowser && isHtmlRequest {
+				serveErrorPage(w, r, http.StatusServiceUnavailable)
+				return
+			}
+			userIDs = []api.UserID{}
+		} else {
+			cfg.Logger.Error("Failed to fetch user IDs", "user", user, "error", err)
+			if isBrowser && isHtmlRequest {
+				serveErrorPage(w, r, http.StatusInternalServerError)
+			} else {
+				http.Error(w, fmt.Sprintf("failed to fetch user IDs: %v", err), http.StatusInternalServerError)
+			}
+			return
+		}
 	}
 
 	cfg.Logger.Debug("Fetched user IDs", "user", user, "count", len(userIDs))
@@ -294,14 +327,18 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		hasAdvanced = true
 	}
 
-	if isBrowser && isHtmlRequest {
-		serveHtmlPage(w, totalUplink, totalDownlink, maxTrafficCap, maxSubEnd, userConfig, hasBase, hasAdvanced)
+	if len(configs) == 0 {
+		cfg.Logger.Warn("No configurations generated for user", "user", user)
+		if isBrowser && isHtmlRequest {
+			serveErrorPage(w, r, http.StatusNotFound)
+		} else {
+			http.Error(w, "no configurations generated", http.StatusNotFound)
+		}
 		return
 	}
 
-	if len(configs) == 0 {
-		cfg.Logger.Warn("No configurations generated for user", "user", user)
-		http.Error(w, "no configurations generated", http.StatusNotFound)
+	if isBrowser && isHtmlRequest {
+		serveHtmlPage(w, totalUplink, totalDownlink, maxTrafficCap, maxSubEnd, userConfig, hasBase, hasAdvanced)
 		return
 	}
 
@@ -479,6 +516,20 @@ func generateConfigsForMode(cfg config.Config, userConfig config.UserConfig, cli
 	return configs
 }
 
+func safeBase64Decode(str string) string {
+	if str == "" {
+		return ""
+	}
+	if strings.Contains(str, "base64:") {
+		str = strings.Split(str, "base64:")[1]
+	}
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(str))
+	if err != nil {
+		return ""
+	}
+	return string(decoded)
+}
+
 func serveHtmlPage(w http.ResponseWriter, uplink int64, downlink int64, trafficCap int64, subEnd int64, userConfig config.UserConfig, hasBase bool, hasAdvanced bool) {
 	cfg := config.GetConfig()
 
@@ -536,16 +587,40 @@ func serveHtmlPage(w http.ResponseWriter, uplink int64, downlink int64, trafficC
 	w.Write([]byte(html))
 }
 
-func safeBase64Decode(str string) string {
-	if str == "" {
-		return ""
-	}
-	if strings.Contains(str, "base64:") {
-		str = strings.Split(str, "base64:")[1]
-	}
-	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(str))
+func serveErrorPage(w http.ResponseWriter, r *http.Request, statusCode int) {
+	cfg := config.GetConfig()
+
+	errorPath := "/app/assets/error.html"
+	errorBytes, err := os.ReadFile(errorPath)
 	if err != nil {
-		return ""
+		cfg.Logger.Error("Failed to read error HTML file", "error", err)
+		http.Error(w, "User not found", statusCode)
+		return
 	}
-	return string(decoded)
+
+	html := string(errorBytes)
+
+	currentUri := r.Header.Get("X-Original-URI")
+	if currentUri == "" {
+		currentUri = r.URL.Path
+		if r.URL.RawQuery != "" {
+			currentUri += "?" + r.URL.RawQuery
+		}
+	}
+
+	escapedUri, _ := json.Marshal(currentUri)
+
+	embedScript := fmt.Sprintf(`
+        <script>
+            var code = %d;
+            var uri = %s;
+            initError(code, uri);
+        </script>
+    `, statusCode, escapedUri)
+
+	html = strings.Replace(html, "</body>", embedScript+"</body>", 1)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(html))
 }
