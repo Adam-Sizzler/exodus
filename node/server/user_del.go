@@ -125,6 +125,26 @@ func DeleteUsersFromConfig(cfg *config.NodeConfig, usernames []string, inboundTa
 					cfgSingbox.Inbounds[i].Users = updatedUsers
 					found = true
 				}
+
+				if cfgSingbox.Experimental != nil {
+					if v2rayAPI, ok := cfgSingbox.Experimental["v2ray_api"].(map[string]any); ok {
+						if stats, ok := v2rayAPI["stats"].(map[string]any); ok {
+							var newStatsUsers []string
+							if usersList, ok := stats["users"].([]any); ok {
+								for _, u := range usersList {
+									if strUser, ok := u.(string); ok {
+										// Добавляем в новый массив только тех, кого НЕТ в списке на удаление (userSet)
+										if !userSet[strUser] {
+											newStatsUsers = append(newStatsUsers, strUser)
+										}
+									}
+								}
+								// Записываем очищенный список обратно
+								stats["users"] = newStatsUsers
+							}
+						}
+					}
+				}
 			}
 		}
 		configData = cfgSingbox

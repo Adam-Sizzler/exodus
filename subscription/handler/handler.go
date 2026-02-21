@@ -119,27 +119,18 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 
 	userConfig, ok := cfg.Subscription.UserMap[user]
 	if !ok {
-		cfg.Logger.Warn("User not found in UserMap", "user", user)
-		if isBrowser && isHtmlRequest {
-			serveErrorPage(w, r, http.StatusNotFound)
-		} else {
-			http.Error(w, "user not found", http.StatusNotFound)
+		cfg.Logger.Debug("Reading defaults parametr", "user", user)
+		userConfig = config.UserConfig{
+			Clients:       slices.Clone(cfg.Subscription.Defaults.Clients),
+			IncludeNodes:  slices.Clone(cfg.Subscription.Defaults.IncludeNodes),
+			NodeTemplates: make(map[string]map[string]string),
+			Headers:       make(map[string]string),
 		}
-		return
-
-		/*
-			userConfig = config.UserConfig{
-				Clients:       slices.Clone(cfg.Subscription.Defaults.Clients),
-				IncludeNodes:  slices.Clone(cfg.Subscription.Defaults.IncludeNodes),
-				NodeTemplates: make(map[string]map[string]string),
-				Headers:       make(map[string]string),
-			}
-			for mode, templates := range cfg.Subscription.Defaults.NodeTemplates {
-				userConfig.NodeTemplates[mode] = make(map[string]string)
-				maps.Copy(userConfig.NodeTemplates[mode], templates)
-			}
-			maps.Copy(userConfig.Headers, cfg.Subscription.Defaults.Headers)
-		*/
+		for mode, templates := range cfg.Subscription.Defaults.NodeTemplates {
+			userConfig.NodeTemplates[mode] = make(map[string]string)
+			maps.Copy(userConfig.NodeTemplates[mode], templates)
+		}
+		maps.Copy(userConfig.Headers, cfg.Subscription.Defaults.Headers)
 	}
 
 	cfg.Logger.Trace("User config before merging", "user", user, "config", fmt.Sprintf("%+v", userConfig))

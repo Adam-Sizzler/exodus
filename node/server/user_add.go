@@ -236,6 +236,39 @@ func AddUsersToConfig(cfg *config.NodeConfig, credentials map[string]string, inb
 					}
 				}
 
+				if cfgSingbox.Experimental != nil {
+					if v2rayAPI, ok := cfgSingbox.Experimental["v2ray_api"].(map[string]any); ok {
+						if stats, ok := v2rayAPI["stats"].(map[string]any); ok {
+							var currentUsers []string
+							// Читаем текущий список, если он существует
+							if usersList, ok := stats["users"].([]any); ok {
+								for _, u := range usersList {
+									if str, ok := u.(string); ok {
+										currentUsers = append(currentUsers, str)
+									}
+								}
+							}
+
+							// Добавляем новых пользователей без дубликатов
+							for user := range credentials {
+								exists := false
+								for _, cu := range currentUsers {
+									if cu == user {
+										exists = true
+										break
+									}
+								}
+								if !exists {
+									currentUsers = append(currentUsers, user)
+									cfg.Logger.Debug("Appending user to experimental stats", "user", user)
+								}
+							}
+							// Перезаписываем обновленный срез строк обратно в map
+							stats["users"] = currentUsers
+						}
+					}
+				}
+
 				found = true
 				configData = cfgSingbox
 				break
