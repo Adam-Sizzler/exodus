@@ -564,6 +564,11 @@ curl -X POST \
   "error": "name is required"
 }
 
+// 400 Bad Request - пустая конфигурация
+{
+  "error": "config is required"
+}
+
 // 409 Conflict - имя занято
 {
   "error": "name already exists"

@@ -14,21 +14,21 @@ import (
 	"github.com/google/uuid"
 )
 
-// ConfigProfile represents a config profile entity for API responses and requests.
+// ConfigProfile represents a config profile entity for API responses.
 type ConfigProfile struct {
-	UUID         string    `json:"uuid"`
-	ViewPosition int       `json:"view_position"`
-	Name         string    `json:"name"`
-	Config       string    `json:"config"` // JSON string for sing-box configuration
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	UUID         string          `json:"uuid"`
+	ViewPosition int             `json:"view_position"`
+	Name         string          `json:"name"`
+	Config       json.RawMessage `json:"config"` // JSON object for sing-box configuration
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
 // ConfigProfileCreateRequest represents a request to create a new config profile.
 type ConfigProfileCreateRequest struct {
-	ViewPosition int    `json:"view_position"`
-	Name         string `json:"name"`
-	Config       string `json:"config"` // JSON string for sing-box configuration
+	ViewPosition int             `json:"view_position"`
+	Name         string          `json:"name"`
+	Config       json.RawMessage `json:"config"` // JSON object for sing-box configuration
 }
 
 // Validate validates the ConfigProfileCreateRequest fields.
@@ -38,12 +38,12 @@ func (r *ConfigProfileCreateRequest) Validate() error {
 	}
 
 	// Validate that config is valid JSON
-	if r.Config == "" {
+	if len(r.Config) == 0 {
 		return fmt.Errorf("config is required")
 	}
 
 	var jsonConfig interface{}
-	if err := json.Unmarshal([]byte(r.Config), &jsonConfig); err != nil {
+	if err := json.Unmarshal(r.Config, &jsonConfig); err != nil {
 		return fmt.Errorf("config must be valid JSON")
 	}
 
@@ -53,9 +53,9 @@ func (r *ConfigProfileCreateRequest) Validate() error {
 // ConfigProfileUpdateRequest represents a partial update request for a config profile.
 // Only provided fields will be updated (PATCH semantics).
 type ConfigProfileUpdateRequest struct {
-	ViewPosition *int    `json:"view_position,omitempty"`
-	Name         *string `json:"name,omitempty"`
-	Config       *string `json:"config,omitempty"` // JSON string for sing-box configuration
+	ViewPosition *int              `json:"view_position,omitempty"`
+	Name         *string           `json:"name,omitempty"`
+	Config       *json.RawMessage  `json:"config,omitempty"` // JSON object for sing-box configuration
 }
 
 // Validate validates the ConfigProfileUpdateRequest fields.
@@ -64,9 +64,9 @@ func (r *ConfigProfileUpdateRequest) Validate() error {
 		return fmt.Errorf("name cannot be empty")
 	}
 
-	if r.Config != nil && *r.Config != "" {
+	if r.Config != nil && len(*r.Config) > 0 {
 		var jsonConfig interface{}
-		if err := json.Unmarshal([]byte(*r.Config), &jsonConfig); err != nil {
+		if err := json.Unmarshal(*r.Config, &jsonConfig); err != nil {
 			return fmt.Errorf("config must be valid JSON")
 		}
 	}
@@ -83,12 +83,13 @@ func (r *ConfigProfileUpdateRequest) HasUpdates() bool {
 func scanConfigProfile(scanner RowScanner) (ConfigProfile, error) {
 	var cp ConfigProfile
 	var viewPosition sql.NullInt64
+	var configStr sql.NullString
 
 	err := scanner.Scan(
 		&cp.UUID,
 		&viewPosition,
 		&cp.Name,
-		&cp.Config,
+		&configStr,
 		&cp.CreatedAt,
 		&cp.UpdatedAt,
 	)
@@ -98,6 +99,10 @@ func scanConfigProfile(scanner RowScanner) (ConfigProfile, error) {
 
 	if viewPosition.Valid {
 		cp.ViewPosition = int(viewPosition.Int64)
+	}
+
+	if configStr.Valid {
+		cp.Config = json.RawMessage(configStr.String)
 	}
 
 	return cp, nil
@@ -222,7 +227,7 @@ func sendConfigProfilesHelp(w http.ResponseWriter) {
 			"uuid":           "Config profile unique identifier (auto-generated)",
 			"name":           "Config profile name (unique)",
 			"view_position":  "Display order position",
-			"config":         "sing-box configuration as JSON string",
+			"config":         "sing-box configuration as JSON object",
 			"created_at":     "Profile creation timestamp",
 			"updated_at":     "Profile last update timestamp",
 		},
@@ -259,6 +264,9 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 	// Generate UUID
 	profileUUID := uuid.New().String()
 
+	// Convert config JSON to string for storage
+	configStr := string(req.Config)
+
 	ctx := r.Context()
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `
@@ -267,7 +275,7 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 			) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
 
 		_, err := db.ExecContext(ctx, query,
-			profileUUID, req.ViewPosition, req.Name, req.Config)
+			profileUUID, req.ViewPosition, req.Name, configStr)
 
 		return err
 	})
@@ -281,7 +289,7 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 		return
 	}
 
-	// Return created profile
+	// Return created profile UUID
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -371,7 +379,7 @@ func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *m
 		add("name", *req.Name)
 	}
 	if req.Config != nil {
-		add("config", *req.Config)
+		add("config", string(*req.Config))
 	}
 
 	if len(clauses) == 0 {
