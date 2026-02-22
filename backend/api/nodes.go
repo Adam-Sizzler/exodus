@@ -22,13 +22,13 @@ type RowScanner interface {
 // Node представляет сущность узла для API
 type Node struct {
 	UUID                    string     `json:"uuid"`
-	ID                      int64      `json:"id,omitempty"`
+	ID                      *int64     `json:"id,omitempty"`
 	Name                    string     `json:"name"`
 	Address                 string     `json:"address"`
 	Port                    *int       `json:"port,omitempty"`
-	APISchema               string     `json:"api_schema"`   // grpc, https, http
-	APIPath                 string     `json:"api_path"`     // путь, например /grpcnode
-	APIMetadata             string     `json:"api_metadata"` // JSON строка с путями к сертификатам
+	APISchema               string     `json:"api_schema"`
+	APIPath                 string     `json:"api_path"`
+	APIMetadata             string     `json:"api_metadata"`
 	ActiveConfigProfileUUID *string    `json:"active_config_profile_uuid,omitempty"`
 	IsConnected             bool       `json:"is_connected"`
 	IsConnecting            bool       `json:"is_connecting"`
@@ -101,11 +101,11 @@ func scanNode(scanner RowScanner) (Node, error) {
 	var n Node
 	var lastStatusChange sql.NullTime
 	var lastStatusMessage, xrayVersion, nodeVersion, providerUUID, activeConfigProfileUUID, tagsJSON sql.NullString
-	var usersOnline, trafficResetDay, notifyPercent, cpuCount, trafficLimitBytes, trafficUsedBytes, port sql.NullInt64
+	var usersOnline, trafficResetDay, notifyPercent, cpuCount, trafficLimitBytes, trafficUsedBytes, port, id sql.NullInt64
 	var cpuModel, totalRam sql.NullString
 
 	err := scanner.Scan(
-		&n.UUID, &n.ID, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &n.APIMetadata, &activeConfigProfileUUID,
+		&n.UUID, &id, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &n.APIMetadata, &activeConfigProfileUUID,
 		&n.IsConnected, &n.IsConnecting, &n.IsDisabled, &lastStatusChange, &lastStatusMessage,
 		&xrayVersion, &nodeVersion, &n.XrayUptime, &usersOnline, &n.ConsumptionMultiplier,
 		&n.IsTrafficTrackingActive, &trafficResetDay, &trafficLimitBytes, &trafficUsedBytes,
@@ -117,6 +117,9 @@ func scanNode(scanner RowScanner) (Node, error) {
 	}
 
 	// Обработка nullable полей
+	if id.Valid {
+		n.ID = &id.Int64
+	}
 	if port.Valid {
 		p := int(port.Int64)
 		n.Port = &p
@@ -187,6 +190,8 @@ func NodesHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) h
 			handleGetNodes(w, r, manager, cfg)
 		case http.MethodPost:
 			handleCreateNode(w, r, manager, cfg)
+		case http.MethodDelete:
+			handleDeleteAllNodes(w, r, manager, cfg)
 		default:
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
 		}
@@ -195,6 +200,12 @@ func NodesHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) h
 
 // handleGetNodes handles GET /api/v1/nodes
 func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	// Check if help requested
+	if r.URL.Query().Has("help") {
+		sendNodesHelp(w)
+		return
+	}
+
 	ctx := r.Context()
 	var nodes []Node
 
@@ -233,6 +244,75 @@ func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *manager.Dat
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{"nodes": nodes, "count": len(nodes)})
+}
+
+// sendNodesHelp returns API documentation
+func sendNodesHelp(w http.ResponseWriter) {
+	help := map[string]interface{}{
+		"description": "V2Ray Nodes Management API",
+		"endpoints": map[string]interface{}{
+			"GET /api/v1/nodes": map[string]interface{}{
+				"description":   "Get all nodes",
+				"query_params":  "?help - show this help message",
+				"response":      "List of all nodes with their statistics",
+			},
+			"GET /api/v1/nodes/{uuid}": map[string]interface{}{
+				"description": "Get single node by UUID",
+			},
+			"POST /api/v1/nodes": map[string]interface{}{
+				"description": "Create a new node",
+				"required_fields": []string{"name", "address", "port", "country_code"},
+				"optional_fields": []string{"api_schema", "api_path", "api_metadata", "is_disabled", "consumption_multiplier", "is_traffic_tracking_active", "traffic_reset_day", "traffic_limit_bytes", "notify_percent", "view_position", "tags"},
+				"example": map[string]interface{}{
+					"name":                     "Germany-Frankfurt-01",
+					"address":                  "192.168.1.100",
+					"port":                     9253,
+					"api_schema":               "grpc",
+					"api_path":                 "",
+					"is_disabled":              false,
+					"consumption_multiplier":   100,
+					"is_traffic_tracking_active": true,
+					"traffic_reset_day":        1,
+					"traffic_limit_bytes":      1099511627776,
+					"notify_percent":           80,
+					"view_position":            10,
+					"country_code":             "DE",
+					"tags":                     []string{"premium", "fast"},
+				},
+			},
+			"PATCH /api/v1/nodes/{uuid}": map[string]interface{}{
+				"description": "Update node (partial update)",
+				"note":        "Send only fields you want to update",
+				"example":     map[string]interface{}{"port": 8443, "is_disabled": true},
+			},
+			"DELETE /api/v1/nodes/{uuid}": map[string]interface{}{
+				"description": "Delete a specific node",
+			},
+		},
+		"response_fields": map[string]string{
+			"uuid":                         "Node unique identifier",
+			"name":                         "Node display name",
+			"address":                      "Node IP address or domain",
+			"port":                         "Node gRPC port",
+			"api_schema":                   "API protocol (grpc, https, http)",
+			"api_path":                     "API endpoint path",
+			"is_connected":                 "Node is currently connected",
+			"is_disabled":                  "Node is administratively disabled",
+			"users_online":                 "Number of active users on this node",
+			"traffic_used_bytes":           "Total traffic used through this node",
+			"traffic_limit_bytes":          "Traffic limit (0 = unlimited)",
+			"consumption_multiplier":       "Traffic multiplier percentage",
+			"is_traffic_tracking_active":   "Traffic tracking enabled",
+			"last_status_message":          "Last connection status message",
+			"last_status_change":           "Last status change timestamp",
+			"country_code":                 "2-letter country code",
+			"tags":                         "Node tags array",
+			"created_at":                   "Node creation timestamp",
+			"updated_at":                   "Node last update timestamp",
+		},
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(help)
 }
 
 // handleCreateNode handles POST /api/v1/nodes
@@ -305,7 +385,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *manager.D
 	})
 }
 
-// NodeByUUIDHandler — GET/PATCH /api/v1/nodes/{uuid}
+// NodeByUUIDHandler — GET/PATCH/DELETE /api/v1/nodes/{uuid}
 func NodeByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/nodes/")
@@ -321,6 +401,8 @@ func NodeByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 			handleGetNode(w, r, manager, cfg, nodeUUID)
 		case http.MethodPatch:
 			handlePatchNode(w, r, manager, cfg, nodeUUID)
+		case http.MethodDelete:
+			handleDeleteNode(w, r, manager, cfg, nodeUUID)
 		default:
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
 		}
@@ -476,6 +558,81 @@ func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *manager.Da
 	handleGetNode(w, r, manager, cfg, nodeUUID) // Возвращаем обновленный объект
 }
 
+// handleDeleteNode handles DELETE /api/v1/nodes/{uuid}
+func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
+	ctx := r.Context()
+	
+	// Get node name for logging
+	var nodeName string
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		return db.QueryRowContext(ctx, "SELECT name FROM nodes WHERE uuid = ?", nodeUUID).Scan(&nodeName)
+	})
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendError(w, http.StatusNotFound, "node not found", nil, cfg)
+		} else {
+			sendError(w, http.StatusInternalServerError, "failed to find node", err, cfg)
+		}
+		return
+	}
+
+	err = manager.ExecuteHighPriority(func(db *sql.DB) error {
+		_, err := db.ExecContext(ctx, "DELETE FROM nodes WHERE uuid = ?", nodeUUID)
+		return err
+	})
+
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to delete node", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("Node deleted", "uuid", nodeUUID, "name", nodeName)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":  "node deleted",
+		"uuid":     nodeUUID,
+		"node_name": nodeName,
+	})
+}
+
+// handleDeleteAllNodes handles DELETE /api/v1/nodes (delete all nodes)
+func handleDeleteAllNodes(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	ctx := r.Context()
+	
+	// Require confirmation
+	if r.URL.Query().Get("confirm") != "true" {
+		sendError(w, http.StatusBadRequest, "confirmation required. Use DELETE /api/v1/nodes?confirm=true", nil, cfg)
+		return
+	}
+
+	var deletedCount int
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		result, err := db.ExecContext(ctx, "DELETE FROM nodes")
+		if err != nil {
+			return err
+		}
+		count, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		deletedCount = int(count)
+		return nil
+	})
+
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to delete nodes", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("All nodes deleted", "count", deletedCount)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "all nodes deleted",
+		"count":   deletedCount,
+	})
+}
+
 // Вспомогательные методы валидации и ошибок
 func (r *NodeUpdateRequest) Validate() error {
 	if r.Name != nil && *r.Name == "" {
@@ -497,4 +654,108 @@ func sendError(w http.ResponseWriter, code int, msg string, err error, cfg *conf
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// formatBytes converts bytes to human readable format
+func formatBytes(bytes int64) string {
+	if bytes == 0 {
+		return "0 B"
+	}
+	const unit = 1024
+	sizes := []string{"B", "KB", "MB", "GB", "TB", "PB"}
+	i := int64(0)
+	for int64(bytes) >= unit && i < int64(len(sizes)-1) {
+		bytes /= unit
+		i++
+	}
+	return fmt.Sprintf("%.2f %s", float64(bytes)/float64(1024), sizes[i])
+}
+
+// NodeSummary represents a simplified node response for frontend
+type NodeSummary struct {
+	UUID           string `json:"uuid"`
+	Name           string `json:"name"`
+	Address        string `json:"address"`
+	Port           int    `json:"port"`
+	APISchema      string `json:"api_schema"`
+	APIPath        string `json:"api_path"`
+	UsersOnline    int    `json:"users_online"`
+	IsActive       bool   `json:"is_active"`
+	IsConnected    bool   `json:"is_connected"`
+	IsDisabled     bool   `json:"is_disabled"`
+	TrafficUsed    string `json:"traffic_used"`
+	TrafficLimit   string `json:"traffic_limit"`
+	TrafficUsedRaw int64  `json:"traffic_used_bytes"`
+	TrafficLimitRaw int64 `json:"traffic_limit_bytes"`
+	CountryCode    string `json:"country_code"`
+	Tags           []string `json:"tags"`
+	LastStatusMsg  string `json:"last_status_message"`
+	CreatedAt      string `json:"created_at"`
+}
+
+// handleGetNodesSummary returns simplified node list for frontend
+func handleGetNodesSummary(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	ctx := r.Context()
+	var summaries []NodeSummary
+
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		query := `
+			SELECT uuid, name, address, port, api_schema, api_path, users_online,
+			       is_connected, is_disabled, traffic_used_bytes, traffic_limit_bytes,
+			       country_code, tags, last_status_message, created_at
+			FROM nodes
+			WHERE is_disabled = 0
+			ORDER BY view_position ASC, name ASC`
+
+		rows, err := db.QueryContext(ctx, query)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var s NodeSummary
+			var tagsJSON string
+			err := rows.Scan(
+				&s.UUID, &s.Name, &s.Address, &s.Port, &s.APISchema, &s.APIPath,
+				&s.UsersOnline, &s.IsConnected, &s.IsDisabled, &s.TrafficUsedRaw,
+				&s.TrafficLimitRaw, &s.CountryCode, &tagsJSON, &s.LastStatusMsg, &s.CreatedAt,
+			)
+			if err != nil {
+				return err
+			}
+
+			s.IsActive = s.IsConnected && !s.IsDisabled
+			s.TrafficUsed = formatBytes(s.TrafficUsedRaw)
+			s.TrafficLimit = formatBytes(s.TrafficLimitRaw)
+
+			if tagsJSON != "" && tagsJSON != "[]" {
+				json.Unmarshal([]byte(tagsJSON), &s.Tags)
+			} else {
+				s.Tags = []string{}
+			}
+
+			summaries = append(summaries, s)
+		}
+		return rows.Err()
+	})
+
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{"nodes": summaries, "count": len(summaries)})
+}
+
+// NodesSummaryHandler returns simplified node list for frontend
+func NodesSummaryHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		handleGetNodesSummary(w, r, manager, cfg)
+	}
 }

@@ -161,7 +161,7 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			provider_uuid TEXT,
 			view_position INTEGER DEFAULT 0,
 			country_code TEXT DEFAULT 'XX',
-			tags TEXT DEFAULT '[]', -- JSON array
+			tags TEXT DEFAULT '[]',
 			cpu_count INTEGER,
 			cpu_model TEXT,
 			total_ram TEXT,

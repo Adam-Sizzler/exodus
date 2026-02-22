@@ -44,6 +44,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/client_stats", api.ClientStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/server_stats", api.ServerStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes", api.NodesHandler(manager, cfg))
+	http.HandleFunc("/api/v1/nodes/summary", api.NodesSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/", api.NodeByUUIDHandler(manager, cfg))
 
 	// Deprecated old endpoints
