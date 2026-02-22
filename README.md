@@ -1,56 +1,447 @@
-# v2ray-stat API
+# v2ray-stat API Documentation
 
-API для управления пользователями и статистикой сервера v2ray-stat.  
-Все запросы по умолчанию отправляются на `http://127.0.0.1:9952`.
+API для управления пользователями, нодами и статистикой в проекте v2ray-stat.
+
+**Base URL:** `http://127.0.0.1:9952`
+
+---
 
 ## Содержание
 
-- [Обзор](#обзор)
-- [Эндпоинты](#эндпоинты)
-  - [Получение списка пользователей по нодам — GET /api/v1/users](#)
-  - [Получение статистики по серверу и клиентам — GET /api/v1/stats](#получение-статистики-по-серверу-и-клиентам)
-  - [Получение DNS-статистики — GET /api/v1/dns_stats](#получение-dns-статистики)
-  - [Добавление пользователей на ноды — POST /api/v1/add_user](#добавление-пользователей-на-ноды)
-  - [Удаление пользователей с нод — POST /api/v1/delete_user](#удаление-пользователей-с-нод)
-  - [Обновление лимита IP — PATCH /api/v1/update_ip_limit](#обновление-лимита-ip)
-  - [Сброс DNS-статистики — POST /api/v1/reset_dns_stats](#сброс-dns-статистики)
-  - [Сброс статистики трафика — POST /api/v1/reset_bound_traffic](#сброс-статистики-трафика)
-  - [Сброс статистики клиентов — POST /api/v1/reset_user_traffic](#сброс-статистики-клиентов)
-  - [Включение/выключение пользователей — PATCH /api/v1/set_user_enabled](#включениевыключение-пользователей)
-- [Примеры конфигурации и включение API в ядрах (Singbox, Xray)](#примеры-конфигурации-и-включение-api-в-ядрах)
-- [Генерация сертификатов](#генерация-сертификатов)
-- [Прямые gRPC запросы к нодам](#прямые-grpc-запросы-к-нодам)
-- [Обновление компонентов v2ray-stat](#обновление-компонентов-v2ray-stat)
+1. [Аутентификация](#аутентификация)
+2. [Nodes API](#nodes-api)
+3. [Users API](#users-api)
+4. [Статистика](#статистика)
+5. [Управление пользователями](#управление-пользователями)
+6. [Сброс статистики](#сброс-статистики)
 
-## Обзор
+---
 
-Этот документ описывает API для сбора статистики и управления пользователями в проекте v2ray-stat. API позволяет:
+## Аутентификация
 
-- Получать список пользователей, сгруппированных по нодам, с их данными и настройками.
-- Получать статистику по серверам, клиентам и DNS-запросам с поддержкой фильтрации и сортировки.
-- Добавлять и удалять пользователей на указанных нодах.
-- Сбрасывать статистику DNS-запросов, трафика и клиентов.
-- Обновлять лимит IP для пользователей.
-- Включать/выключать пользователей на нодах.
-- Настраивать интеграцию и включать API в ядрах (Singbox / Xray).
+Большинство endpoints требуют API токен в заголовке:
 
-## Эндпоинты
-
-### Получение списка пользователей по нодам
-
-**GET /api/v1/users**
-
-Возвращает список пользователей, сгруппированных по нодам, с их данными и настройками из таблиц `user_traffic`, `user_data`, `user_ids` и `nodes`. Ответ содержит информацию о нодах, их адресах и связанных с ними пользователях, включая идентификаторы, статус, статистику трафика и другие параметры.
-
-**Пример запроса**
 ```bash
-curl -X GET "http://127.0.0.1:9952/api/v1/users"
+Authorization: Bearer YOUR_API_TOKEN
 ```
 
-**Параметры запроса**
-Параметры отсутствуют, запрос возвращает полный список пользователей, сгруппированных по нодам.
+---
 
-**Пример ответа**
+## Nodes API
+
+### Получить все ноды
+
+**GET** `/api/v1/nodes`
+
+Возвращает список всех нод с их данными.
+
+**Пример запроса:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/nodes
+```
+
+**Пример ответа:**
+```json
+{
+  "nodes": [
+    {
+      "uuid": "550e8400-e29b-41d4-a716-446655440000",
+      "id": 1,
+      "name": "Node Moscow",
+      "address": "192.168.1.100",
+      "port": 443,
+      "is_connected": true,
+      "is_connecting": false,
+      "is_disabled": false,
+      "last_status_change": "2025-02-22T10:00:00Z",
+      "last_status_message": "Connected",
+      "xray_version": "1.8.16",
+      "node_version": "1.0.0",
+      "xray_uptime": "7d 12h 30m",
+      "users_online": 15,
+      "consumption_multiplier": 1000000000,
+      "is_traffic_tracking_active": true,
+      "traffic_reset_day": 1,
+      "traffic_limit_bytes": 107374182400,
+      "traffic_used_bytes": 53687091200,
+      "notify_percent": 80,
+      "provider_uuid": "660e8400-e29b-41d4-a716-446655440001",
+      "view_position": 1,
+      "country_code": "RU",
+      "tags": ["production", "moscow"],
+      "cpu_count": 4,
+      "cpu_model": "Intel Xeon",
+      "total_ram": "8GB",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-02-22T10:30:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### Получить ноду по UUID
+
+**GET** `/api/v1/nodes/{uuid}`
+
+Возвращает данные одной ноды по UUID.
+
+**Пример запроса:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Пример ответа:**
+```json
+{
+  "node": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "id": 1,
+    "name": "Node Moscow",
+    "address": "192.168.1.100",
+    "port": 443,
+    "is_connected": true,
+    "is_disabled": false,
+    "country_code": "RU",
+    "tags": ["production", "moscow"],
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-02-22T10:30:00Z"
+  }
+}
+```
+
+---
+
+### Обновить ноду (частичное обновление)
+
+**PATCH** `/api/v1/nodes/{uuid}`
+
+Обновляет только указанные поля ноды.
+
+**Пример запроса:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Node Moscow Updated",
+    "is_disabled": false,
+    "tags": ["production", "moscow", "updated"],
+    "country_code": "RU"
+  }' \
+  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Пример ответа:**
+```json
+{
+  "node": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Node Moscow Updated",
+    "is_disabled": false,
+    "tags": ["production", "moscow", "updated"],
+    ...
+  },
+  "message": "node updated successfully"
+}
+```
+
+**Доступные поля для обновления:**
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `name` | string | Имя ноды |
+| `address` | string | IP адрес или домен |
+| `port` | int | Порт (1-65535) |
+| `is_disabled` | boolean | Статус блокировки |
+| `consumption_multiplier` | int64 | Множитель потребления |
+| `is_traffic_tracking_active` | boolean | Отслеживание трафика |
+| `traffic_reset_day` | int | День сброса трафика (1-31) |
+| `traffic_limit_bytes` | int64 | Лимит трафика |
+| `notify_percent` | int | Процент уведомления (0-100) |
+| `provider_uuid` | string | UUID провайдера |
+| `view_position` | int | Позиция отображения |
+| `country_code` | string | Код страны (2 буквы) |
+| `tags` | string[] | Теги |
+
+**Примеры обновлений:**
+
+1. **Обновить настройки трафика:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "is_traffic_tracking_active": true,
+    "traffic_reset_day": 15,
+    "traffic_limit_bytes": 107374182400,
+    "notify_percent": 80
+  }' \
+  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+```
+
+2. **Сбросить поле на NULL:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"provider_uuid": ""}' \
+  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+```
+
+---
+
+## Users API
+
+### Получить всех пользователей
+
+**GET** `/api/v1/users-list`
+
+Возвращает список всех пользователей из таблицы `users`.
+
+**Пример запроса:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/users-list
+```
+
+**Пример ответа:**
+```json
+{
+  "users": [
+    {
+      "t_id": 1,
+      "uuid": "550e8400-e29b-41d4-a716-446655440001",
+      "short_uuid": "abc123",
+      "username": "john_doe",
+      "status": "ACTIVE",
+      "traffic_limit_bytes": 10737418240,
+      "traffic_limit_strategy": "MONTH",
+      "expire_at": "2026-12-31T23:59:59Z",
+      "sub_last_user_agent": "Mozilla/5.0",
+      "sub_last_opened_at": "2025-02-22T10:00:00Z",
+      "last_traffic_reset_at": "2025-02-01T00:00:00Z",
+      "trojan_password": "password123",
+      "vless_uuid": "660e8400-e29b-41d4-a716-446655440002",
+      "ss_password": "sspass456",
+      "description": "Test user",
+      "tag": "premium",
+      "telegram_id": 123456789,
+      "email": "john@example.com",
+      "hwid_device_limit": 3,
+      "external_squad_uuid": null,
+      "last_triggered_threshold": 0,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-02-23T10:00:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### Получить пользователя по UUID
+
+**GET** `/api/v1/users-list/{uuid}`
+
+**Пример запроса:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+```
+
+---
+
+### Создать пользователя
+
+**POST** `/api/v1/users-list/create`
+
+Создаёт нового пользователя в таблице `users`.
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "new_user",
+    "status": "ACTIVE",
+    "traffic_limit_bytes": 10737418240,
+    "traffic_limit_strategy": "MONTH",
+    "expire_at": "2026-12-31T23:59:59Z",
+    "description": "New test user",
+    "tag": "premium",
+    "email": "newuser@example.com",
+    "hwid_device_limit": 3
+  }' \
+  http://localhost:9952/api/v1/users-list/create
+```
+
+**Пример ответа (201 Created):**
+```json
+{
+  "user": {
+    "t_id": 2,
+    "uuid": "770e8400-e29b-41d4-a716-446655440003",
+    "short_uuid": "def456",
+    "username": "new_user",
+    "status": "ACTIVE",
+    "traffic_limit_bytes": 10737418240,
+    "traffic_limit_strategy": "MONTH",
+    "expire_at": "2026-12-31T23:59:59Z",
+    "trojan_password": "a1b2c3d4e5f6g7h8",
+    "vless_uuid": "880e8400-e29b-41d4-a716-446655440004",
+    "ss_password": "x9y8z7w6v5u4t3s2",
+    "description": "New test user",
+    "tag": "premium",
+    "email": "newuser@example.com",
+    "hwid_device_limit": 3,
+    "last_triggered_threshold": 0,
+    "created_at": "2025-02-23T12:00:00Z",
+    "updated_at": "2025-02-23T12:00:00Z"
+  },
+  "message": "user created successfully"
+}
+```
+
+**Обязательные поля:**
+- `username` — уникальное имя (буквы, цифры, `_`, `-`)
+- `status` — один из: `ACTIVE`, `DISABLED`, `LIMITED`, `EXPIRED`
+- `expire_at` — дата истечения в формате ISO 8601 (RFC3339)
+
+**Опциональные поля:**
+- `uuid` — будет сгенерирован автоматически, если не указан
+- `trojan_password` — будет сгенерирован автоматически
+- `vless_uuid` — будет сгенерирован автоматически
+- `ss_password` — будет сгенерирован автоматически
+- `traffic_limit_bytes` — по умолчанию 0
+- `traffic_limit_strategy` — по умолчанию `NO_RESET`
+- `description`, `tag`, `telegram_id`, `email`, `hwid_device_limit`, `external_squad_uuid`
+- `last_triggered_threshold` — по умолчанию 0
+
+**Примеры ошибок:**
+```json
+// 400 Bad Request - неверный username
+{
+  "error": "username can only contain letters, numbers, underscores, and hyphens"
+}
+
+// 400 Bad Request - неверный статус
+{
+  "error": "status must be one of: ACTIVE, DISABLED, LIMITED, EXPIRED"
+}
+
+// 409 Conflict - username занят
+{
+  "error": "username already exists"
+}
+```
+
+---
+
+### Обновить пользователя (частичное обновление)
+
+**PATCH** `/api/v1/users-list/{uuid}`
+
+**Пример запроса:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "DISABLED",
+    "traffic_limit_bytes": 21474836480,
+    "expire_at": "2027-06-30T23:59:59Z"
+  }' \
+  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+```
+
+**Пример ответа:**
+```json
+{
+  "user": {
+    "t_id": 1,
+    "uuid": "550e8400-e29b-41d4-a716-446655440001",
+    "username": "john_doe",
+    "status": "DISABLED",
+    "traffic_limit_bytes": 21474836480,
+    "expire_at": "2027-06-30T23:59:59Z",
+    ...
+  },
+  "message": "user updated successfully"
+}
+```
+
+**Доступные поля для обновления:**
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `status` | string | `ACTIVE`, `DISABLED`, `LIMITED`, `EXPIRED` |
+| `traffic_limit_bytes` | int64 | Лимит трафика (>= 0) |
+| `traffic_limit_strategy` | string | `NO_RESET`, `DAY`, `WEEK`, `MONTH` |
+| `expire_at` | string | Дата в ISO 8601 |
+| `description` | string | Описание |
+| `tag` | string | Тег |
+| `telegram_id` | int64 | Telegram ID |
+| `email` | string | Email |
+| `hwid_device_limit` | int | Лимит устройств (>= 0) |
+| `external_squad_uuid` | string | UUID сквада |
+| `last_triggered_threshold` | int | Процент (0-100) |
+
+**Примеры обновлений:**
+
+1. **Обновить дату истечения и email:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "expire_at": "2026-12-31T23:59:59Z",
+    "email": "updated@example.com"
+  }' \
+  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+```
+
+2. **Обновить стратегию сброса трафика:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "traffic_limit_strategy": "MONTH",
+    "hwid_device_limit": 5
+  }' \
+  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+```
+
+3. **Сбросить поле на NULL:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"description": ""}' \
+  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+```
+
+---
+
+## Статистика
+
+### Получить статистику пользователей
+
+**GET** `/api/v1/users`
+
+Возвращает пользователей, сгруппированных по нодам.
+
+**Пример запроса:**
+```bash
+curl http://localhost:9952/api/v1/users
+```
+
+**Пример ответа:**
 ```json
 [
   {
@@ -63,864 +454,172 @@ curl -X GET "http://127.0.0.1:9952/api/v1/users"
           {
             "inbound_tag": "vless-in",
             "id": "550e8400-e29b-41d4-a716-446655440000"
-          },
-          {
-            "inbound_tag": "trojan-in",
-            "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
           }
         ],
         "rate": "200",
         "enabled": "true",
-        "created": "2025-08-08-12",
-        "sub_end": "2025-09-08-12",
-        "renew": 30,
-        "lim_ip": 5,
-        "ips": "192.168.1.100,192.168.1.101",
         "uplink": 300,
-        "downlink": 400,
-        "sess_uplink": 100,
-        "sess_downlink": 200
-      }
-    ]
-  },
-  {
-    "node_name": "node2",
-    "address": "10.0.0.10",
-    "users": [
-      {
-        "user": "testuser2",
-        "inbounds": [
-          {
-            "inbound_tag": "vless-in",
-            "id": "7c9e6f1e-4b3a-4e5b-9c7d-8e9f0a1b2c3d"
-          }
-        ],
-        "rate": "100",
-        "enabled": "false",
-        "created": "2025-08-08-11",
-        "sub_end": "2025-09-08-11",
-        "renew": 0,
-        "lim_ip": 3,
-        "ips": "10.0.0.100",
-        "uplink": 200,
-        "downlink": 300,
-        "sess_uplink": 50,
-        "sess_downlink": 150
+        "downlink": 400
       }
     ]
   }
 ]
 ```
 
-#### Примечания
+---
 
-- Запрос использует метод GET и не принимает параметров.  
-- Ответ возвращается в формате JSON (application/json; charset=utf-8).  
-- Поля inbounds содержат пары inbound_tag и id (например, UUID для VLESS или пароль для Trojan), если они доступны.  
-- Если для пользователя или ноды отсутствуют данные (например, address, sub_end, ips), они возвращаются как пустые строки или значения по умолчанию.  
-- Если в базе данных нет пользователей, возвращается пустой массив ([]).  
-- Операция выполняется с низким приоритетом для минимизации нагрузки на базу данных.
+### Получить статистику сервера
 
-### Получение статистики по серверу и клиентам
+**GET** `/api/v1/server_stats`
 
-**GET /api/v1/stats**  
-Возвращает статистику по серверу и клиентам. Поддерживает фильтрацию по нодам и пользователям, сортировку и агрегацию. Работа основана на конфигурации `stats_columns` и данных из таблиц `bound_traffic`, `user_traffic`, `user_data` и `user_uuids`.
-
-**Пример запроса**  
+**Пример запроса:**
 ```bash
-curl -X GET "http://127.0.0.1:9952/api/v1/stats?node=node1,node2&user=user1,user2&sort_by=rate&sort_order=desc&aggregate=true"
+curl http://localhost:9952/api/v1/server_stats?node=node1,node2&sort_by=rate&sort_order=desc
 ```
 
-#### Параметры запроса
+---
 
-| Параметр     | Описание                                              |
-|--------------|-------------------------------------------------------|
-| `node`       | Имя узла (или список через запятую) — фильтрация по нодам |
-| `user`       | Имя пользователя (или список через запятую)            |
-| `sort_by`    | Колонка для сортировки (см. поддерживаемые колонки)   |
-| `sort_order` | `asc` или `desc`                                      |
-| `aggregate`  | `true` — агрегировать данные по пользователям/источникам |
+### Получить статистику клиентов
 
-#### Поддерживаемые колонки для сортировки
+**GET** `/api/v1/client_stats`
 
-**Server:**  
-- `node_name` — имя ноды  
-- `source` — источник трафика (IP или hostname)  
-- `rate` — текущий трафик (бит/с)  
-- `uplink` — всего отправлено (байт)  
-- `downlink` — всего получено (байт)  
-- `sess_uplink` — отправлено в текущей сессии (байт)  
-- `sess_downlink` — получено в текущей сессии (байт)  
-
-**Client:**  
-- `node_name` — имя ноды  
-- `user` — имя пользователя  
-- `last_seen` — время последней активности  
-- `rate` — текущий трафик (бит/с)  
-- `uplink` — всего отправлено (байт)  
-- `downlink` — всего получено (байт)  
-- `sess_uplink` — отправлено в текущей сессии (байт)  
-- `sess_downlink` — получено в текущей сессии (байт)  
-- `created` — дата создания пользователя  
-- `inbound_tag` — тег входящего соединения (например, `vless-in`)  
-- `uuid` — уникальный идентификатор пользователя  
-- `sub_end` — дата окончания подписки  
-- `renew` — статус/период автопродления  
-- `lim_ip` — ограничение по количеству IP  
-- `ips` — список IP-адресов  
-- `enabled` — статус активности пользователя  
-
-#### Конфигурация примера (YAML)
-
-```yaml
-stats_columns:
-  server:
-    sort_by: rate
-    sort_order: desc
-    columns:
-      - source
-      - rate
-      - uplink
-      - downlink
-  client:
-    sort_by: user
-    sort_order: asc
-    columns:
-      - user
-      - last_seen
-      - rate
-      - uplink
-      - downlink
-      - inbound_tag
-      - uuid
-```
-
-#### Пример без статистики по серверу
-
-```yaml
-stats_columns:
-  server:
-    columns: []
-  client:
-    columns:
-      - user
-      - rate
-      - uplink
-      - downlink
-      - inbound_tag
-      - uuid
-```
-
-#### Переопределение сортировки через URL
-
+**Пример запроса:**
 ```bash
-curl "http://127.0.0.1:9952/api/v1/stats?sort_by=uuid&sort_order=asc"
+curl http://localhost:9952/api/v1/client_stats?user=user1&sort_by=user&sort_order=asc
 ```
 
-#### Пример ответа
+---
 
-```
-➤ Server Statistics:
-Node    Source         Rate    Uplink    Downlink
-node1   192.168.1.1    500     1000      2000
-node2   10.0.0.1       300     500       1500
+### Получить DNS статистику
 
-➤ Client Statistics:
-Node    User    Last seen         Rate    Uplink    Downlink    Inbound Tag    UUID
-node1   user1   2025-08-08 12:00  200     300       400         vless-in       550e8400-e29b-41d4-a716-446655440000
-node2   user2   2025-08-08 11:30  100     200       300         trojan-in      6ba7b810-9dad-11d1-80b4-00c04fd430c8
-```
+**GET** `/api/v1/dns_stats`
 
-#### Примечания
-
-- Если `columns` в конфигурации пустой — соответствующая часть статистики не отображается.  
-- При агрегации (`aggregate=true`) данные группируются по пользователям (`user`) или источникам (`source`), а `node_name` исключается из результата.  
-- Ответ форматируется как текстовая таблица с псевдонимами колонок (например, `Rate`, `Uplink`, `Inbound Tag`).  
-
-### Получение DNS-статистики
-
-**GET /api/v1/dns_stats**  
-Возвращает статистику DNS-запросов из таблицы `user_dns`. Поддерживает фильтрацию по нодам, пользователям и доменам, а также ограничение количества записей.
-
-**Пример запроса**  
+**Пример запроса:**
 ```bash
-curl -X GET "http://127.0.0.1:9952/api/v1/dns_stats?node=node1,node2&user=user1,user2&domain=example.com&count=20"
+curl "http://localhost:9952/api/v1/dns_stats?node=node1&domain=example.com&count=50"
 ```
 
-#### Параметры запроса
+---
 
-| Параметр | Описание                                                                 |
-|----------|--------------------------------------------------------------------------|
-| `node`   | Имя узла (или список через запятую) — фильтрация по нодам (опционально)   |
-| `user`   | Имя пользователя (или список через запятую) — фильтрация по пользователям (опционально) |
-| `domain` | Часть доменного имени для поиска (поддерживает подстроку, опционально)    |
-| `count`  | Количество возвращаемых записей (по умолчанию 20, максимум 1000)         |
+## Управление пользователями
 
-#### Пример ответа
+### Добавить пользователей на ноды
 
-```
-➤ DNS Query Statistics:
-Node    User    Count    Domain
-node1   user1   150      example.com
-node2   user1   100      sub.example.com
-node1   user2   50       test.com
-```
+**POST** `/api/v1/add_user`
 
-#### Примечания
-
-- Если параметры `node`, `user` или `domain` не указаны, возвращаются все соответствующие записи.  
-- Параметр `count` должен быть положительным числом (1–1000). Если не указан, используется значение по умолчанию (20).  
-- Параметр `domain` поддерживает частичное совпадение (например, `example` найдет `example.com` и `sub.example.com`).  
-- Ответ форматируется как текстовая таблица с колонками: `Node`, `User`, `Count`, `Domain`.
-
-### Добавление пользователей на ноды
-
-**POST /api/v1/add_user**  
-Добавляет пользователей на указанные ноды. Если `nodes` не указан или пустой — пользователи добавляются на все доступные ноды. Пользователи добавляются в таблицу `user_traffic` и конфигурационные файлы нод (Xray/Singbox). После успешного добавления вызывается синхронизация пользователей с нодами через `users.SyncUsersWithNode`.
-
-**Тело запроса (JSON)**  
-- `users` — массив имён пользователей (строки, только буквы, цифры, дефис или подчеркивание)  
-- `inbound_tag` — тег входящего соединения (строка), например `vless-in` или `trojan-in`  
-- `nodes` — массив строк, список нод (опционально)  
-
-**Пример запроса (один пользователь)**  
+**Пример запроса:**
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/add_user -H "Content-Type: application/json" -d '{
-    "users": ["testuser"],
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "users": ["user1", "user2"],
     "inbound_tag": "vless-in",
     "nodes": ["node1", "node2"]
-}'
+  }' \
+  http://localhost:9952/api/v1/add_user
 ```
 
-**Пример запроса (несколько пользователей)**  
+---
+
+### Удалить пользователей с нод
+
+**POST** `/api/v1/delete_user`
+
+**Пример запроса:**
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/add_user -H "Content-Type: application/json" -d '{
-    "users": ["testuser1", "testuser2"],
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "users": ["user1"],
+    "inbound_tag": "vless-in",
+    "nodes": ["node1"]
+  }' \
+  http://localhost:9952/api/v1/delete_user
+```
+
+---
+
+### Включить/выключить пользователей
+
+**PATCH** `/api/v1/set_user_enabled`
+
+**Пример запроса:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "users": ["user1"],
+    "enabled": true,
     "inbound_tag": "vless-in",
     "nodes": ["node1", "node2"]
-}'
+  }' \
+  http://localhost:9952/api/v1/set_user_enabled
 ```
 
-**Пример ответа**  
-```json
-{
-  "message": "users added and synced successfully to all specified nodes",
-  "usernames": ["testuser1", "testuser2"],
-  "results": {
-    "node1": "success",
-    "node2": "success"
-  }
-}
-```
+---
 
-**Пример ответа для Trojan**  
-```json
-{
-  "message": "users added and synced successfully to all specified nodes",
-  "usernames": ["testuser1", "testuser2"],
-  "results": {
-    "node1": "success",
-    "node2": "success"
-  }
-}
-```
+## Сброс статистики
 
-#### Примечания
+### Сброс DNS статистики
 
-- Поля `users` и `inbound_tag` обязательны.  
-- Для протокола `vless` возвращаются UUID в `results`, для `trojan` — сгенерированные пароли.  
-- Если `nodes` не указан, пользователи добавляются на все ноды из конфигурации (`cfg.V2rayStat.Nodes`).  
-- Ответ содержит JSON-объект, где ключи — имена нод, а значения — сгенерированные учетные данные (UUID для VLESS или пароль для Trojan).  
-- Если используется `auth_lua`, учетные данные добавляются в `auth.lua`, а для Trojan применяется SHA224-хеширование пароля.  
+**POST** `/api/v1/reset_dns_stats`
 
-### Удаление пользователей с нод
-
-**POST /api/v1/delete_user**  
-Удаляет пользователей с указанных нод. Если `nodes` не указан или пустой — пользователи удаляются со всех доступных нод. После успешного удаления вызывается синхронизация пользователей с нодами через `users.SyncUsersWithNode`.
-
-**Тело запроса (JSON)**  
-- `users` — массив имён пользователей (строки, только буквы, цифры, дефис или подчеркивание)  
-- `inbound_tag` — тег входящего соединения (строка), например `vless-in` или `trojan-in`  
-- `nodes` — массив строк, список нод (опционально)  
-
-**Пример запроса (один пользователь)**  
+**Пример запроса:**
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/delete_user -H "Content-Type: application/json" -d '{
-    "users": ["testuser"],
-    "inbound_tag": "vless-in",
-    "nodes": ["node1", "node2"]
-}'
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:9952/api/v1/reset_dns_stats?nodes=node1,node2"
 ```
 
-**Пример запроса (несколько пользователей)**  
+---
+
+### Сброс трафика
+
+**POST** `/api/v1/reset_bound_traffic`
+
+**Пример запроса:**
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/delete_user -H "Content-Type: application/json" -d '{
-    "users": ["testuser1", "testuser2"],
-    "inbound_tag": "vless-in",
-    "nodes": ["node1", "node2"]
-}'
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:9952/api/v1/reset_bound_traffic?nodes=node1"
 ```
 
-**Пример ответа**  
-```json
-{
-  "message": "users deleted and synced successfully from all specified nodes",
-  "usernames": ["testuser1", "testuser2"],
-  "results": {
-    "node1": "success",
-    "node2": "success"
-  }
-}
-```
-
-#### Примечания
-
-- Поля `users` и `inbound_tag` обязательны.  
-- Если `nodes` не указан, пользователи удаляются со всех нод из конфигурации (`cfg.V2rayStat.Nodes`).  
-- Если используется `auth_lua`, пользователи удаляются из `auth.lua`.  
-
-### Обновление лимита IP
-
-**PATCH /api/v1/update_ip_limit**  
-Обновляет лимит IP (поле `lim_ip`) для указанного пользователя в таблице `user_data`.
-
-**Тело запроса (JSON)**  
-- `user` — имя пользователя (обязательно, строка, только буквы, цифры, дефис или подчеркивание).  
-- `lim_ip` — новый лимит IP (необязательно, число от 0 до 100, по умолчанию 0).  
-
-**Пример запроса**  
-
-Обновление лимита IP для пользователя:  
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/update_ip_limit -H "Content-Type: application/json" -d '{
-    "user": "test",
-    "lim_ip": 5
-}'
-```
-
-Обновление лимита IP с установкой в 0 (если `lim_ip` не указано):  
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/update_ip_limit -H "Content-Type: application/json" -d '{
-    "user": "test"
-}'
-```
-
-**Пример ответа**  
-```json
-{
-  "message": "IP limit updated successfully",
-  "rows_affected": 1,
-  "user": "test",
-  "lim_ip": 5
-}
-```
-
-#### Примечания
-
-- Запрос использует метод PATCH и принимает параметры `user` и `lim_ip` в формате JSON (`application/json`).  
-- Если `lim_ip` не указано в JSON (`null`), устанавливается значение 0.  
-- Операция выполняется в рамках SQL-транзакции для обеспечения атомарности.  
-- Ответ возвращается в формате JSON (`application/json; charset=utf-8`), включая сообщение об успехе, количество затронутых строк, имя пользователя и новое значение `lim_ip`.
-
-### Сброс DNS-статистики
-
-**POST /api/v1/reset_dns_stats**  
-Сбрасывает статистику DNS-запросов в таблице `user_dns`. Поддерживает фильтрацию по нодам через параметр `nodes` в URL. Если `nodes` не указан, удаляются все записи.
-
-**Параметры запроса (URL)**  
-- `nodes` — список имён нод, разделённых запятыми (опционально). Например: `nodes=node1,node2`.
-
-**Пример запроса**  
-
-Сброс всех записей DNS-статистики:  
-```bash
-curl -X POST http://127.0.0.1:9952/api/v1/reset_dns_stats
-```
-
-Сброс записей для указанных нод:  
-```bash
-curl -X POST "http://127.0.0.1:9952/api/v1/reset_dns_stats?nodes=node1,node2"
-```
-
-**Пример ответа**  
-```json
-{
-  "message": "DNS stats records deleted successfully",
-  "rows_affected": 150
-}
-```
-
-#### Примечания
-
-- Запрос использует метод POST и принимает параметр `nodes` в URL.  
-- Если параметр `nodes` не указан, удаляются все записи в таблице `user_dns`.  
-- Если указаны `nodes`, удаляются только записи, где `node_name` соответствует указанным нодам.  
-- Операция выполняется в рамках SQL-транзакции для обеспечения атомарности.  
-- Ответ возвращается в формате JSON (`application/json; charset=utf-8`), включая сообщение об успехе и количество затронутых строк (`rows_affected`).
-
-### Сброс статистики трафика
-
-**POST /api/v1/reset_bound_traffic**  
-Сбрасывает статистику трафика (поля `uplink` и `downlink`) в таблице `bound_traffic`. Поддерживает фильтрацию по нодам через параметр `nodes` в URL. Если `nodes` не указан, сбрасывается статистика для всех записей.
-
-**Параметры запроса (URL)**  
-- `nodes` — список имён нод, разделённых запятыми (опционально). Например: `nodes=swe,nl,rus`.
-
-**Пример запроса**  
-
-Сброс статистики трафика для всех нод:  
-```bash
-curl -X POST http://127.0.0.1:9952/api/v1/reset_bound_traffic
-```
-
-Сброс статистики трафика для указанных нод:  
-```bash
-curl -X POST "http://127.0.0.1:9952/api/v1/reset_bound_traffic?nodes=swe,nl"
-```
-
-**Пример ответа**  
-```json
-{
-  "message": "Traffic stats reset successfully",
-  "rows_affected": 15
-}
-```
-
-#### Примечания
-
-- Запрос использует метод POST и принимает параметр `nodes` в URL.  
-- Если параметр `nodes` не указан, сбрасываются поля `uplink` и `downlink` для всех записей в таблице `bound_traffic`.  
-- Если указаны `nodes`, сбрасываются поля `uplink` и `downlink` только для записей, где `node_name` соответствует указанным нодам.  
-- Операция выполняется в рамках SQL-транзакции для обеспечения атомарности.  
-- Ответ возвращается в формате JSON (`application/json; charset=utf-8`), включая сообщение об успехе и количество затронутых строк (`rows_affected`).
+---
 
 ### Сброс статистики клиентов
 
-**POST /api/v1/reset_user_traffic**  
-Сбрасывает статистику трафика клиентов (поля `uplink` и `downlink`) в таблице `user_traffic`. Поддерживает фильтрацию по нодам через параметр `nodes` в URL. Если `nodes` не указан, сбрасывается статистика для всех записей.
+**POST** `/api/v1/reset_user_traffic`
 
-**Параметры запроса (URL)**  
-- `nodes` — список имён нод, разделённых запятыми (опционально). Например: `nodes=swe,nl,rus`.
-
-**Пример запроса**  
-
-Сброс статистики клиентов для всех нод:  
+**Пример запроса:**
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/reset_user_traffic
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:9952/api/v1/reset_user_traffic?nodes=node1,node2"
 ```
 
-Сброс статистики клиентов для указанных нод:  
-```bash
-curl -X POST "http://127.0.0.1:9952/api/v1/reset_user_traffic?nodes=swe,nl"
-```
+---
 
-**Пример ответа**  
-```json
-{
-  "message": "Client traffic stats reset successfully",
-  "rows_affected": 39
-}
-```
+## Коды ответов
 
-#### Примечания
+| Код | Описание |
+|-----|----------|
+| 200 | Успешный запрос |
+| 201 | Ресурс создан |
+| 400 | Неверный запрос (валидация) |
+| 401 | Неверный токен |
+| 404 | Ресурс не найден |
+| 405 | Метод не разрешён |
+| 409 | Конфликт (например, username занят) |
+| 500 | Внутренняя ошибка сервера |
 
-- Запрос использует метод POST и принимает параметр `nodes` в URL.  
-- Если параметр `nodes` не указан, сбрасываются поля `uplink` и `downlink` для всех записей в таблице `user_traffic`.  
-- Если указаны `nodes`, сбрасываются поля `uplink` и `downlink` только для записей, где `node_name` соответствует указанным нодам.  
-- Операция выполняется в рамках SQL-транзакции для обеспечения атомарности.  
-- Ответ возвращается в формате JSON (`application/json; charset=utf-8`), включая сообщение об успехе и количество затронутых строк (`rows_affected`).
+---
 
-### Включение/выключение пользователей
+## Примечания
 
-**PATCH /api/v1/set_user_enabled**  
-Включает или выключает пользователей на указанных нодах. Если `nodes` не указан или пустой — изменения применяются ко всем доступным нодам. Операция обновляет статус в базе данных (`user_traffic`) и конфигурационных файлах нод через gRPC. После успешного обновления вызывается синхронизация пользователей с нодами через `users.SyncUsersWithNode`.
-
-**Тело запроса (JSON)**  
-- `users` — массив имён пользователей (обязательно, строки, только буквы, цифры, дефис или подчеркивание).  
-- `enabled` — статус активности (булево: `true` для включения, `false` для выключения).  
-- `inbound_tag` — тег входящего соединения (обязательно, строка, например `vless-in`).  
-- `nodes` — массив строк, список нод (опционально).  
-
-**Пример запроса (один пользователь)**  
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/set_user_enabled -H "Content-Type: application/json" -d '{
-    "users": ["testuser"],
-    "enabled": true,
-    "inbound_tag": "vless-in",
-    "nodes": ["node1", "node2"]
-}'
-```
-
-**Пример запроса (несколько пользователей)**  
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/set_user_enabled -H "Content-Type: application/json" -d '{
-    "users": ["testuser1", "testuser2"],
-    "enabled": true,
-    "inbound_tag": "vless-in",
-    "nodes": ["node1", "node2"]
-}'
-```
-
-**Пример ответа**  
-```json
-{
-  "message": "users enabled status updated and synced successfully to all specified nodes",
-  "usernames": ["testuser1", "testuser2"],
-  "results": {
-    "node1": "success",
-    "node2": "success"
-  }
-}
-```
-
-#### Примечания
-
-- Поля `users` и `inbound_tag` обязательны.  
-- Операция выполняется параллельно для каждой ноды через gRPC с таймаутом 5 секунд.  
-- Для ядра Xray или Singbox статус переключается путём перемещения конфигурации пользователя между основным файлом и файлом `.disabled_users`.  
-- Обновление статуса в базе данных происходит в транзакции (поле `enabled` устанавливается в `"true"` или `"false"`).  
-
-## Примеры конфигурации и включение API в ядрах
-
-Ниже — примеры конфигурации для включения API и статистики в ядрах Singbox и Xray.
-
-### Singbox (пример)
-
-```json
-{
-  "experimental": {
-    "v2ray_api": {
-      "listen": "127.0.0.1:9953",
-      "stats": {
-        "enabled": true,
-        "inbounds": [
-          "trojan-in",
-          "vless-in"
-        ],
-        "outbounds": [
-          "warp",
-          "direct",
-          "IPv4"
-        ],
-        "users": [
-          "user1",
-          "user2"
-        ]
-      }
-    }
-  }
-}
-```
-
-### Xray (пример)
-
-```json
-{
-  "api": {
-    "tag": "api",
-    "listen": "127.0.0.1:9953",
-    "services": [
-      "HandlerService",
-      "StatsService",
-      "ReflectionService"
-    ]
-  }
-}
-```
-
-## Генерация сертификатов
-
-Примеры команд для проверки/просмотра сертификатов:  
-```bash
-openssl x509 -in /usr/local/etc/v2ray-stat/certs/node.crt -text -noout
-openssl rsa -in /usr/local/etc/v2ray-stat/certs/node.key -check
-```
-
-### Рекомендации
-
-- Используйте уникальные пары ключ/сертификат для каждой ноды или централизованно подпишите сертификаты CA.  
-- Храните приватные ключи в защищённом каталоге с ограниченным доступом.
-
-## Прямые gRPC запросы к нодам
-
-Backend использует bidirectional streaming метод `StreamNodeData` для получения статистики от нод. Для отладки и мониторинга можно выполнять прямые gRPC запросы к нодам используя `grpcurl`.
-
-### Подготовка descriptor set
-
-Для работы grpcurl необходимо создать descriptor set файл, так как ноды не поддерживают gRPC reflection API:
-
-```bash
-# Клонировать googleapis (выполнить один раз)
-cd /tmp && git clone --depth 1 https://github.com/googleapis/googleapis.git
-
-# Создать descriptor set
-cd /root/v2ray-stat && protoc \
-  --proto_path=. \
-  --proto_path=/tmp/googleapis \
-  --descriptor_set_out=/tmp/node.protoset \
-  --include_imports \
-  proto/node.proto
-```
-
-### Доступные методы
-
-Сервис `NodeService` предоставляет следующие методы:
-
-| Метод | Описание |
-|-------|----------|
-| `ListUsers` | Получение списка пользователей с ноды |
-| `GetApiStats` | Получение статистики трафика (inbound/outbound/user) |
-| `GetLogData` | Получение обработанных логов (IP адреса, DNS статистика) |
-| `StreamNodeData` | Bidirectional streaming для мониторинга (используется backend) |
-| `AddUsers` | Добавление пользователей на ноду |
-| `DeleteUsers` | Удаление пользователей с ноды |
-| `SetUserEnabled` | Включение/выключение пользователей |
-| `SubmitTask` | Отправка задания на ноду для асинхронного выполнения |
-| `GetTaskStatus` | Получение статуса ранее отправленного задания |
-
-### Примеры запросов
-
-#### Получение статистики трафика (localhost без TLS)
-
-```bash
-grpcurl -plaintext \
-  -protoset /tmp/node.protoset \
-  -d '{}' \
-  localhost:9253 \
-  proto.NodeService/GetApiStats
-```
-
-#### Получение статистики с внешней ноды (с mTLS)
-
-```bash
-grpcurl \
-  -protoset /tmp/node.protoset \
-  -cacert /usr/local/etc/v2ray-stat/certs/node.crt \
-  -cert /usr/local/etc/v2ray-stat/certs/node.crt \
-  -key /usr/local/etc/v2ray-stat/certs/node.key \
-  -d '{}' \
-  79.137.202.204:9253 \
-  proto.NodeService/GetApiStats
-```
-
-#### Получение списка пользователей
-
-```bash
-grpcurl -plaintext \
-  -protoset /tmp/node.protoset \
-  -d '{}' \
-  localhost:9253 \
-  proto.NodeService/ListUsers
-```
-
-#### Получение статуса задания
-
-```bash
-grpcurl -plaintext \
-  -protoset /tmp/node.protoset \
-  -d '{"task_id": "550e8400-e29b-41d4-a716-446655440000"}' \
-  localhost:9253 \
-  proto.NodeService/GetTaskStatus
-```
-
-#### Получение DNS статистики
-
-```bash
-grpcurl -plaintext \
-  -protoset /tmp/node.protoset \
-  -d '{}' \
-  localhost:9253 \
-  proto.NodeService/GetLogData
-```
-
-### Пример ответа GetApiStats
-
-```json
-{
-  "stats": [
-    {
-      "name": "inbound>>>vless-in>>>traffic>>>uplink",
-      "value": "374308607"
-    },
-    {
-      "name": "inbound>>>vless-in>>>traffic>>>downlink",
-      "value": "96540639268"
-    },
-    {
-      "name": "user>>>username>>>traffic>>>uplink",
-      "value": "363697328"
-    },
-    {
-      "name": "user>>>username>>>traffic>>>downlink",
-      "value": "96369251059"
-    },
-    {
-      "name": "outbound>>>direct>>>traffic>>>uplink",
-      "value": "352563528"
-    },
-    {
-      "name": "outbound>>>direct>>>traffic>>>downlink",
-      "value": "96367799657"
-    }
-  ]
-}
-```
-
-### Примечания
-
-- Для локальных нод используйте флаг `-plaintext` (без TLS).
-- Для внешних нод с mTLS укажите пути к сертификатам (`-cacert`, `-cert`, `-key`).
-- Если сервер использует самоподписанные сертификаты, можно добавить `-insecure` для пропуска проверки сертификата (только для отладки).
-- Backend автоматически использует StreamNodeData для постоянного мониторинга нод.
-- Формат статистики: `<type><<<name><<<traffic>>><direction>`, где type = inbound/outbound/user.
-
-## Обновление компонентов v2ray-stat
-
-### Обновление Manager
-
-```bash
-v2ray-manager --update manager
-```
-
-Или вручную:
-```bash
-/usr/local/bin/v2ray-manager --update manager
-```
-
-### Обновление Backend
-
-```bash
-v2ray-manager --update backend
-```
-
-Служба: `v2ray-stat.service`
-
-### Обновление Node
-
-```bash
-v2ray-manager --update node
-```
-
-Служба: `v2ray-stat-node.service`
-
-### Запуск менеджера после обновления
-
-```bash
-v2ray-manager
-```
-
-## Subscription
-
-```yaml
-# Main subscription settings
-subscription:
-  # Mapping of nodes to domains
-  # Key: node name (e.g., "rus"). Value: domain (e.g., "example.com").
-  # An empty domain (e.g., "") will trigger a warning in logs but will not stop execution.
-  domains:
-    rus: "example.com"        # Node in Russia
-    de: "de.example.com"      # Node in Germany
-    us: "us.example.com"      # Node in the USA
-
-  # Default settings
-  # Applied to all users unless overridden in groups or individual settings.
-  defaults:
-    # HTTP headers added to subscription responses
-    # They can be arbitrary strings, including base64 or custom messages.
-    headers:
-      Profile-Title: "base64:U3Vic2NyaXB0aW9u"  # Subscription title in base64
-      Profile-Update-Interval: "12"            # Subscription update interval in hours
-      Support-Url: "https://natribu.org/"      # Support URL
-      Profile-Web-Page-Url: "https://natribu.org/"  # Profile web page URL
-      Announce: "COME here (ง ͠° ͟ل͜ ͡°)ง"    # Custom announcement
-    # List of supported clients
-    # Available values: "xray", "singbox", "mihomo". An empty list will trigger a warning.
-    clients: ["xray", "singbox"]               # Default clients
-    # List of nodes available by default
-    # Refers to domains. An empty list will trigger a warning.
-    nodes: ["rus"]                             # Default node
-    # Configuration templates for base and advanced modes
-    # Key: mode ("base" or "advanced"). Value: map of node->template_file_name.
-    # Files must be located in templates/<client>/<mode>/<file_name>.
-    templates:
-      base:
-        rus: "node_rus.base"       # Template for rus in base mode
-      advanced:
-        rus: "node_rus.json"       # JSON template for rus in advanced mode
-
-  # User groups
-  # Define common settings for groups. Override defaults.
-  # Empty values (e.g., templates: {}, clients: []) clear the corresponding defaults.
-  groups:
-    # Group for free users
-    free:
-      clients: ["xray"]            # Only xray for free users
-      nodes: ["rus"]               # Only the rus node
-      templates:
-        base:
-          rus: "node_rus.base64"   # Custom template for base
-        advanced: {}               # Clear all advanced templates (advanced requests return 404)
-      headers:
-        Announce: "Free access"    # Override announcement
-    # Group for premium users
-    premium:
-      clients: ["xray", "singbox", "mihomo"]  # Full access to all clients
-      nodes: ["rus", "de", "us"]              # Access to all nodes
-      templates:
-        base:
-          rus: "node_rus.base64"   # Custom template for rus
-          de: "node_de.base"       # Template for de
-          us: "node_us.base64"     # Template for us
-        advanced:
-          rus: "node_rus.json"     # JSON for rus
-          de: "node_de.json"       # JSON for de
-          us: "node_us.json"       # JSON for us
-    # Group demonstrating full template clearing
-    no_templates:
-      clients: ["xray", "singbox"]  # Available clients
-      nodes: ["de"]                 # Only the de node
-      templates: {}                 # Full clearing of all templates (base and advanced requests return 404)
-      headers: {}                   # Clear all headers
-
-  # Users and user groups
-  # Format:
-  # - Groups: key = group name, field "users" = list of users, other fields override groups.
-  # - Individual users: key = username, without "users", settings override defaults.
-  users:
-    # Premium group
-    premium:
-      users: ["adam", "zoi"]        # Users inheriting settings from groups.premium
-      headers:
-        Announce: "Premium Group"   # Override announcement for the group
-      templates:
-        base:
-          rus: ""                   # Empty string clears the rus template in base
-    # Free group
-    free:
-      users: ["test"]               # User "test" inherits settings from groups.free
-      headers:
-        Announce: "Free"            # Override announcement for the group
-    # Individual user (not in a group)
-    josh:
-      clients: ["singbox"]          # Only singbox
-      nodes: ["us"]                 # Only the us node
-      templates:
-        advanced:
-          us: "individual_us.json"  # Custom template for advanced
-        base: {}                    # Clear all base templates
-      headers:
-        Custom: "Individual-Value"  # Custom header
-    # User with partial override of the premium group
-    adam:
-      clients: ["xray", "mihomo"]   # Override clients
-      templates:
-        base: {}                    # Clear all base templates (base requests return 404)
-        advanced:
-          de: "adam_de.json"        # Custom template for de
-    # User with full clearing
-    empty_user:
-      clients: []                   # Clear client list
-      nodes: []                     # Clear node list
-      templates: {}                 # Clear all templates
-      headers: {}                   # Clear all headers
-```
+- Все даты в формате ISO 8601 (RFC3339): `2026-12-31T23:59:59Z`
+- UUID в формате: `550e8400-e29b-41d4-a716-446655440000`
+- PATCH запросы обновляют только указанные поля
+- Пустое строковое значение (`""`) в PATCH запросе устанавливает поле в NULL
