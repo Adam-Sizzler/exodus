@@ -53,9 +53,9 @@ func (r *ConfigProfileCreateRequest) Validate() error {
 // ConfigProfileUpdateRequest represents a partial update request for a config profile.
 // Only provided fields will be updated (PATCH semantics).
 type ConfigProfileUpdateRequest struct {
-	ViewPosition *int              `json:"view_position,omitempty"`
-	Name         *string           `json:"name,omitempty"`
-	Config       *json.RawMessage  `json:"config,omitempty"` // JSON object for sing-box configuration
+	ViewPosition *int             `json:"view_position,omitempty"`
+	Name         *string          `json:"name,omitempty"`
+	Config       *json.RawMessage `json:"config,omitempty"` // JSON object for sing-box configuration
 }
 
 // Validate validates the ConfigProfileUpdateRequest fields.
@@ -124,12 +124,6 @@ func ConfigProfilesHandler(manager *manager.DatabaseManager, cfg *config.Backend
 
 // handleGetConfigProfiles handles GET /api/v1/config-profiles
 func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
-	// Check if help requested
-	if r.URL.Query().Has("help") {
-		sendConfigProfilesHelp(w)
-		return
-	}
-
 	ctx := r.Context()
 	var profiles []ConfigProfile
 
@@ -165,86 +159,6 @@ func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, manager *ma
 		"profiles": profiles,
 		"count":    len(profiles),
 	})
-}
-
-// sendConfigProfilesHelp returns API documentation
-func sendConfigProfilesHelp(w http.ResponseWriter) {
-	help := map[string]interface{}{
-		"description": "V2Ray Config Profiles Management API (sing-box JSON configurations)",
-		"endpoints": map[string]interface{}{
-			"GET /api/v1/config-profiles": map[string]interface{}{
-				"description":  "Get all config profiles",
-				"query_params": "?help - show this help message",
-				"response":     "List of all config profiles with their JSON configurations",
-			},
-			"GET /api/v1/config-profiles/{uuid}": map[string]interface{}{
-				"description": "Get single config profile by UUID",
-			},
-			"POST /api/v1/config-profiles": map[string]interface{}{
-				"description":   "Create a new config profile",
-				"required_fields": []string{"name", "config"},
-				"optional_fields": []string{"view_position"},
-				"example": map[string]interface{}{
-					"name":           "default-profile",
-					"view_position":  0,
-					"config": map[string]interface{}{
-						"log": map[string]interface{}{
-							"level": "info",
-						},
-						"dns": map[string]interface{}{
-							"servers": []string{"8.8.8.8", "1.1.1.1"},
-						},
-						"inbounds": []map[string]interface{}{
-							{
-								"type": "mixed",
-								"tag":  "mixed-in",
-								"listen": "0.0.0.0",
-								"listen_port": 2080,
-							},
-						},
-						"outbounds": []map[string]interface{}{
-							{
-								"type": "direct",
-								"tag":  "direct",
-							},
-						},
-						"route": map[string]interface{}{
-							"rules": []map[string]interface{}{},
-						},
-					},
-				},
-			},
-			"PATCH /api/v1/config-profiles/{uuid}": map[string]interface{}{
-				"description": "Update config profile (partial update)",
-				"note":        "Send only fields you want to update",
-				"example":     map[string]interface{}{"name": "updated-profile", "view_position": 5},
-			},
-			"DELETE /api/v1/config-profiles/{uuid}": map[string]interface{}{
-				"description": "Delete a specific config profile",
-			},
-		},
-		"response_fields": map[string]string{
-			"uuid":           "Config profile unique identifier (auto-generated)",
-			"name":           "Config profile name (unique)",
-			"view_position":  "Display order position",
-			"config":         "sing-box configuration as JSON object",
-			"created_at":     "Profile creation timestamp",
-			"updated_at":     "Profile last update timestamp",
-		},
-		"sing_box_config_example": `{
-  "log": { "level": "info" },
-  "dns": { "servers": ["8.8.8.8"] },
-  "inbounds": [
-    { "type": "mixed", "tag": "mixed-in", "listen": "0.0.0.0", "listen_port": 2080 }
-  ],
-  "outbounds": [
-    { "type": "direct", "tag": "direct" }
-  ],
-  "route": { "rules": [] }
-}`,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(help)
 }
 
 // handleCreateConfigProfile handles POST /api/v1/config-profiles

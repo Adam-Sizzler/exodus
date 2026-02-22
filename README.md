@@ -126,7 +126,6 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 **Пример запроса:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Node Moscow Updated",
@@ -173,7 +172,6 @@ curl -X PATCH \
 1. **Обновить настройки трафика:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "is_traffic_tracking_active": true,
@@ -187,7 +185,6 @@ curl -X PATCH \
 2. **Сбросить поле на NULL:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"provider_uuid": ""}' \
   http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
@@ -205,8 +202,7 @@ curl -X PATCH \
 
 **Пример запроса:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:9952/api/v1/users-list
+curl "http://localhost:9952/api/v1/users-list"
 ```
 
 **Пример ответа:**
@@ -251,8 +247,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 **Пример запроса:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+curl "http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001"
 ```
 
 ---
@@ -266,7 +261,6 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 **Пример запроса:**
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "new_user",
@@ -351,7 +345,6 @@ curl -X POST \
 **Пример запроса:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "status": "DISABLED",
@@ -397,7 +390,6 @@ curl -X PATCH \
 1. **Обновить дату истечения и email:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "expire_at": "2026-12-31T23:59:59Z",
@@ -409,7 +401,6 @@ curl -X PATCH \
 2. **Обновить стратегию сброса трафика:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "traffic_limit_strategy": "MONTH",
@@ -421,7 +412,6 @@ curl -X PATCH \
 3. **Сбросить поле на NULL:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"description": ""}' \
   http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
@@ -441,8 +431,7 @@ API для управления конфигурациями sing-box в фор�
 
 **Пример запроса:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:9952/api/v1/config-profiles
+curl "http://localhost:9952/api/v1/config-profiles"
 ```
 
 **Пример ответа:**
@@ -472,8 +461,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 **Пример запроса:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+curl "http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000"
 ```
 
 **Пример ответа:**
@@ -501,7 +489,6 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 **Пример запроса:**
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "default-profile",
@@ -586,7 +573,6 @@ curl -X POST \
 **Пример запроса:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "updated-profile",
@@ -621,7 +607,6 @@ curl -X PATCH \
 1. **Обновить JSON конфигурацию:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "config": {
@@ -638,7 +623,6 @@ curl -X PATCH \
 2. **Обновить позицию отображения:**
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"view_position": 10}' \
   http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
@@ -655,7 +639,6 @@ curl -X PATCH \
 **Пример запроса:**
 ```bash
 curl -X DELETE \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
 ```
 
@@ -721,201 +704,3 @@ curl -X DELETE \
 - `outbounds` — исходящие соединения (direct, block, socks, http, shadowsocks, vmess, vless, trojan)
 - `route` — правила маршрутизации
 - `experimental` — экспериментальные функции (cache_file, clash_api)
-
----
-
-## Статистика
-
-### Получить статистику пользователей
-
-**GET** `/api/v1/users`
-
-Возвращает пользователей, сгруппированных по нодам.
-
-**Пример запроса:**
-```bash
-curl http://localhost:9952/api/v1/users
-```
-
-**Пример ответа:**
-```json
-[
-  {
-    "node_name": "node1",
-    "address": "192.168.1.10",
-    "users": [
-      {
-        "user": "testuser1",
-        "inbounds": [
-          {
-            "inbound_tag": "vless-in",
-            "id": "550e8400-e29b-41d4-a716-446655440000"
-          }
-        ],
-        "rate": "200",
-        "enabled": "true",
-        "uplink": 300,
-        "downlink": 400
-      }
-    ]
-  }
-]
-```
-
----
-
-### Получить статистику сервера
-
-**GET** `/api/v1/server_stats`
-
-**Пример запроса:**
-```bash
-curl http://localhost:9952/api/v1/server_stats?node=node1,node2&sort_by=rate&sort_order=desc
-```
-
----
-
-### Получить статистику клиентов
-
-**GET** `/api/v1/client_stats`
-
-**Пример запроса:**
-```bash
-curl http://localhost:9952/api/v1/client_stats?user=user1&sort_by=user&sort_order=asc
-```
-
----
-
-### Получить DNS статистику
-
-**GET** `/api/v1/dns_stats`
-
-**Пример запроса:**
-```bash
-curl "http://localhost:9952/api/v1/dns_stats?node=node1&domain=example.com&count=50"
-```
-
----
-
-## Управление пользователями
-
-### Добавить пользователей на ноды
-
-**POST** `/api/v1/add_user`
-
-**Пример запроса:**
-```bash
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "users": ["user1", "user2"],
-    "inbound_tag": "vless-in",
-    "nodes": ["node1", "node2"]
-  }' \
-  http://localhost:9952/api/v1/add_user
-```
-
----
-
-### Удалить пользователей с нод
-
-**POST** `/api/v1/delete_user`
-
-**Пример запроса:**
-```bash
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "users": ["user1"],
-    "inbound_tag": "vless-in",
-    "nodes": ["node1"]
-  }' \
-  http://localhost:9952/api/v1/delete_user
-```
-
----
-
-### Включить/выключить пользователей
-
-**PATCH** `/api/v1/set_user_enabled`
-
-**Пример запроса:**
-```bash
-curl -X PATCH \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "users": ["user1"],
-    "enabled": true,
-    "inbound_tag": "vless-in",
-    "nodes": ["node1", "node2"]
-  }' \
-  http://localhost:9952/api/v1/set_user_enabled
-```
-
----
-
-## Сброс статистики
-
-### Сброс DNS статистики
-
-**POST** `/api/v1/reset_dns_stats`
-
-**Пример запроса:**
-```bash
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:9952/api/v1/reset_dns_stats?nodes=node1,node2"
-```
-
----
-
-### Сброс трафика
-
-**POST** `/api/v1/reset_bound_traffic`
-
-**Пример запроса:**
-```bash
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:9952/api/v1/reset_bound_traffic?nodes=node1"
-```
-
----
-
-### Сброс статистики клиентов
-
-**POST** `/api/v1/reset_user_traffic`
-
-**Пример запроса:**
-```bash
-curl -X POST \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:9952/api/v1/reset_user_traffic?nodes=node1,node2"
-```
-
----
-
-## Коды ответов
-
-| Код | Описание |
-|-----|----------|
-| 200 | Успешный запрос |
-| 201 | Ресурс создан |
-| 400 | Неверный запрос (валидация) |
-| 401 | Неверный токен |
-| 404 | Ресурс не найден |
-| 405 | Метод не разрешён |
-| 409 | Конфликт (например, username занят) |
-| 500 | Внутренняя ошибка сервера |
-
----
-
-## Примечания
-
-- Все даты в формате ISO 8601 (RFC3339): `2026-12-31T23:59:59Z`
-- UUID в формате: `550e8400-e29b-41d4-a716-446655440000`
-- PATCH запросы обновляют только указанные поля
-- Пустое строковое значение (`""`) в PATCH запросе устанавливает поле в NULL
