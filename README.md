@@ -1,6 +1,6 @@
 # v2ray-stat API Documentation
 
-API для управления пользователями, нодами и статистикой в проекте v2ray-stat.
+API для управления пользователями, нодами, конфигурациями и статистикой в проекте v2ray-stat.
 
 **Base URL:** `http://127.0.0.1:9952`
 
@@ -11,9 +11,10 @@ API для управления пользователями, нодами и с
 1. [Аутентификация](#аутентификация)
 2. [Nodes API](#nodes-api)
 3. [Users API](#users-api)
-4. [Статистика](#статистика)
-5. [Управление пользователями](#управление-пользователями)
-6. [Сброс статистики](#сброс-статистики)
+4. [Config Profiles API](#config-profiles-api)
+5. [Статистика](#статистика)
+6. [Управление пользователями](#управление-пользователями)
+7. [Сброс статистики](#сброс-статистики)
 
 ---
 
@@ -425,6 +426,296 @@ curl -X PATCH \
   -d '{"description": ""}' \
   http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
 ```
+
+---
+
+## Config Profiles API
+
+API для управления конфигурациями sing-box в формате JSON.
+
+### Получить все конфигурации
+
+**GET** `/api/v1/config-profiles`
+
+Возвращает список всех конфигураций с их JSON данными.
+
+**Пример запроса:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/config-profiles
+```
+
+**Пример ответа:**
+```json
+{
+  "profiles": [
+    {
+      "uuid": "550e8400-e29b-41d4-a716-446655440000",
+      "view_position": 0,
+      "name": "default-profile",
+      "config": "{\"log\":{\"level\":\"info\"},\"dns\":{\"servers\":[\"8.8.8.8\"]},\"inbounds\":[{\"type\":\"mixed\",\"tag\":\"mixed-in\",\"listen\":\"0.0.0.0\",\"listen_port\":2080}],\"outbounds\":[{\"type\":\"direct\",\"tag\":\"direct\"}],\"route\":{\"rules\":[]}}",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-02-23T10:00:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### Получить конфигурацию по UUID
+
+**GET** `/api/v1/config-profiles/{uuid}`
+
+Возвращает данные одной конфигурации по UUID.
+
+**Пример запроса:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Пример ответа:**
+```json
+{
+  "profile": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "view_position": 0,
+    "name": "default-profile",
+    "config": "{\"log\":{\"level\":\"info\"},\"dns\":{\"servers\":[\"8.8.8.8\"]}}",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-02-23T10:00:00Z"
+  }
+}
+```
+
+---
+
+### Создать конфигурацию
+
+**POST** `/api/v1/config-profiles`
+
+Создаёт новую конфигурацию sing-box в таблице `config_profiles`.
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "default-profile",
+    "view_position": 0,
+    "config": {
+      "log": {
+        "level": "info",
+        "timestamp": true
+      },
+      "dns": {
+        "servers": [
+          {"tag": "google", "address": "8.8.8.8"},
+          {"tag": "local", "address": "223.5.5.5", "detour": "direct"}
+        ]
+      },
+      "inbounds": [
+        {
+          "type": "mixed",
+          "tag": "mixed-in",
+          "listen": "0.0.0.0",
+          "listen_port": 2080
+        }
+      ],
+      "outbounds": [
+        {"type": "direct", "tag": "direct"}
+      ],
+      "route": {
+        "rules": [],
+        "auto_detect_interface": true
+      }
+    }
+  }' \
+  http://localhost:9952/api/v1/config-profiles
+```
+
+**Пример ответа (201 Created):**
+```json
+{
+  "message": "config profile created",
+  "uuid": "770e8400-e29b-41d4-a716-446655440003"
+}
+```
+
+**Обязательные поля:**
+- `name` — уникальное имя конфигурации
+- `config` — валидный JSON объект конфигурации sing-box
+
+**Опциональные поля:**
+- `view_position` — позиция отображения (по умолчанию 0)
+
+**Примеры ошибок:**
+```json
+// 400 Bad Request - неверный JSON
+{
+  "error": "config must be valid JSON"
+}
+
+// 400 Bad Request - отсутствует имя
+{
+  "error": "name is required"
+}
+
+// 409 Conflict - имя занято
+{
+  "error": "name already exists"
+}
+```
+
+---
+
+### Обновить конфигурацию (частичное обновление)
+
+**PATCH** `/api/v1/config-profiles/{uuid}`
+
+Обновляет только указанные поля конфигурации.
+
+**Пример запроса:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "updated-profile",
+    "view_position": 5
+  }' \
+  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Пример ответа:**
+```json
+{
+  "profile": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "view_position": 5,
+    "name": "updated-profile",
+    "config": "{\"log\":{\"level\":\"info\"},\"dns\":{\"servers\":[\"8.8.8.8\"]}}",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-02-23T12:00:00Z"
+  }
+}
+```
+
+**Доступные поля для обновления:**
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `name` | string | Имя конфигурации (уникальное) |
+| `view_position` | int | Позиция отображения |
+| `config` | object | sing-box конфигурация JSON |
+
+**Примеры обновлений:**
+
+1. **Обновить JSON конфигурацию:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "log": {"level": "debug"},
+      "dns": {"servers": ["1.1.1.1", "8.8.8.8"]},
+      "inbounds": [{"type": "mixed", "tag": "mixed-in", "listen": "0.0.0.0", "listen_port": 2080}],
+      "outbounds": [{"type": "direct", "tag": "direct"}],
+      "route": {"rules": []}
+    }
+  }' \
+  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+```
+
+2. **Обновить позицию отображения:**
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"view_position": 10}' \
+  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+```
+
+---
+
+### Удалить конфигурацию
+
+**DELETE** `/api/v1/config-profiles/{uuid}`
+
+Удаляет конфигурацию по UUID.
+
+**Пример запроса:**
+```bash
+curl -X DELETE \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "config profile deleted",
+  "uuid": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "default-profile"
+}
+```
+
+---
+
+## Структура sing-box конфигурации
+
+Базовая структура конфигурации sing-box:
+
+```json
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {"tag": "google", "address": "8.8.8.8"},
+      {"tag": "local", "address": "223.5.5.5", "detour": "direct"}
+    ],
+    "rules": [
+      {"outbound": "any", "server": "google"}
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "0.0.0.0",
+      "listen_port": 2080,
+      "users": []
+    }
+  ],
+  "outbounds": [
+    {"type": "direct", "tag": "direct"},
+    {"type": "block", "tag": "block"}
+  ],
+  "route": {
+    "rules": [
+      {"ip_is_private": true, "outbound": "direct"}
+    ],
+    "auto_detect_interface": true
+  },
+  "experimental": {
+    "cache_file": {"enabled": true}
+  }
+}
+```
+
+**Основные секции:**
+- `log` — настройки логирования
+- `dns` — DNS серверы и правила
+- `inbounds` — входящие соединения (mixed, socks, http, shadowsocks, vmess, vless, trojan)
+- `outbounds` — исходящие соединения (direct, block, socks, http, shadowsocks, vmess, vless, trojan)
+- `route` — правила маршрутизации
+- `experimental` — экспериментальные функции (cache_file, clash_api)
 
 ---
 

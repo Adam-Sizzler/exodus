@@ -137,23 +137,6 @@ func MonitorNodeData(ctx context.Context, manager *manager.DatabaseManager, node
 			nodeStates[nc.NodeName] = &nodeState{isConnected: false}
 		}
 
-		// Start the hourly aggregation ticker inside the monitor
-		aggTicker := time.NewTicker(10 * time.Minute)
-		defer aggTicker.Stop()
-		go func() {
-			for {
-				select {
-				case <-aggTicker.C:
-					if err := aggregateHourlyStats(manager, cfg); err != nil {
-						cfg.Logger.Error("Hourly aggregation failed", "error", err)
-					}
-				case <-ctx.Done():
-					cfg.Logger.Debug("Stopped hourly aggregation in MonitorNodeData")
-					return
-				}
-			}
-		}()
-
 		for _, nc := range nodeClients {
 			go func(nc *db.NodeClient) {
 				defer nodeWG.Done()

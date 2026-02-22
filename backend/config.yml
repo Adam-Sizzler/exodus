@@ -26,24 +26,6 @@ monitor:
   rate_unit: kbit                                         # If empty → auto-scaling (bps/Kbps/Mbps/Gbps). Set to force fixed speed unit.
   traffic_unit: KiB                                       # If empty → auto-scaling (Byte/KiB/MiB/GiB). Set to force fixed traffic unit.
 
-node_metadata:
-  local:
-    address: node
-    port: 9253                                            # Node API endpoint address in port format.
-#  rus:
-#    schema: grpc
-#    address: 1.2.3.4                                     # Node API endpoint address in host format.
-#    port: 9253                                           # Node API endpoint address in port format.
-#    mtls:
-#      cert: /usr/local/etc/v2ray-stat/certs/node.crt
-#      key: /usr/local/etc/v2ray-stat/certs/node.key
-#      ca_cert: /usr/local/etc/v2ray-stat/certs/node.crt
-#  im:
-#    schema: https
-#    address: exampple.com                                # Node API endpoint address in host format.
-#    port: 443                                            # Node API endpoint address in port format.
-#    path: grpcnode
-
 subscription:
   address: subscription
   port: 9263

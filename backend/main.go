@@ -48,6 +48,8 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/users-list", api.UsersAPIHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/", api.UserByUUIDHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/create", api.UsersCreateHandler(manager, cfg))
+	http.HandleFunc("/api/v1/config-profiles", api.ConfigProfilesHandler(manager, cfg))
+	http.HandleFunc("/api/v1/config-profiles/", api.ConfigProfileByUUIDHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
 

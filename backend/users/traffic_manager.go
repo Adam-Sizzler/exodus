@@ -206,18 +206,6 @@ func updateProxyStats(manager *manager.DatabaseManager, nodeName string, apiData
 		return err
 	}
 
-	// Accumulate diffs after DB update
-	accumMutex.Lock()
-	for source := range uplinkValues {
-		uplink := int64(uplinkValues[source])
-		downlink := int64(downlinkValues[source])
-		accumulatedSourceTraffic[source] = [2]int64{
-			accumulatedSourceTraffic[source][0] + uplink,
-			accumulatedSourceTraffic[source][1] + downlink,
-		}
-	}
-	accumMutex.Unlock()
-
 	cfg.Logger.Debug("Finished proxy stats update", "node_name", nodeName, "entries", len(currentStats))
 	return nil
 }
@@ -407,18 +395,6 @@ func updateUserStats(manager *manager.DatabaseManager, nodeName string, apiData 
 		cfg.Logger.Error("Failed to update user stats", "node_name", nodeName, "error", err)
 		return err
 	}
-
-	// Accumulate diffs after DB update
-	accumMutex.Lock()
-	for user := range uplinkValues {
-		uplink := int64(uplinkValues[user])
-		downlink := int64(downlinkValues[user])
-		accumulatedUserTraffic[user] = [2]int64{
-			accumulatedUserTraffic[user][0] + uplink,
-			accumulatedUserTraffic[user][1] + downlink,
-		}
-	}
-	accumMutex.Unlock()
 
 	cfg.Logger.Debug("Finished user stats update", "node_name", nodeName, "entries", len(currentStats))
 	return nil
