@@ -47,8 +47,6 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/nodes/", api.NodeByUUIDHandler(manager, cfg))
 
 	// Deprecated old endpoints
-	http.HandleFunc("/api/v1/old/add_user", api.TokenAuthMiddleware(cfg, api.AddUserHandler(manager, cfg)))
-	http.HandleFunc("/api/v1/old/delete_user", api.TokenAuthMiddleware(cfg, api.DeleteUserHandler(manager, cfg)))
 	http.HandleFunc("/api/v1/set_user_enabled", api.TokenAuthMiddleware(cfg, api.SetUserEnabledHandler(manager, cfg)))
 
 	// New task-based endpoints
@@ -120,9 +118,11 @@ func main() {
 		cfg.Logger.Fatal("Failed to create DatabaseManager", "error", err)
 	}
 
+	// Node clients are now managed dynamically by NodeMonitor
+	// Legacy InitNodeClients returns empty slice
 	nodeClients, err := db.InitNodeClients(&cfg)
 	if err != nil {
-		cfg.Logger.Fatal("Failed to initialize node clients", "error", err)
+		cfg.Logger.Debug("InitNodeClients returned", "error", err)
 	}
 
 	// Initialize task manager and worker
@@ -130,16 +130,19 @@ func main() {
 	taskWorker := tasks.NewTaskWorker(taskManager, manager, nodeClients, &cfg)
 	taskWorker.Start()
 
+	// Create and start node monitor (dynamically manages nodes from DB)
+	nodeMonitor := users.NewNodeMonitor(manager, &cfg)
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Готовим wg
+	// Prepare wg
 	var wg sync.WaitGroup
 	wg.Add(3)
 
 	go startAPIServer(ctx, manager, taskManager, nodeClients, &cfg, &wg)
 	go db.MonitorSubscriptionsAndSync(ctx, manager, fileDB, &cfg, &wg)
-	go users.MonitorNodeData(ctx, manager, nodeClients, &cfg, &wg)
+	go nodeMonitor.Start(ctx, &wg)
 	if cfg.Subscription != nil {
 		wg.Add(1)
 		go grpcclient.StartGrpcClient(ctx, &cfg, manager, &wg)
@@ -155,6 +158,9 @@ func main() {
 
 	// Stop task worker
 	taskWorker.Stop()
+
+	// Stop node monitor
+	nodeMonitor.Stop()
 
 	// Закрываем все gRPC-соединения
 	for _, nc := range nodeClients {

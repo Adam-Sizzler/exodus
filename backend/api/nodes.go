@@ -56,6 +56,25 @@ type Node struct {
 	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
+// NodeCreateRequest — структура для создания ноды (POST)
+type NodeCreateRequest struct {
+	Name                    string   `json:"name"`
+	Address                 string   `json:"address"`
+	Port                    int      `json:"port"`
+	APISchema               string   `json:"api_schema"`
+	APIPath                 string   `json:"api_path"`
+	APIMetadata             string   `json:"api_metadata"`
+	IsDisabled              bool     `json:"is_disabled"`
+	ConsumptionMultiplier   int64    `json:"consumption_multiplier"`
+	IsTrafficTrackingActive bool     `json:"is_traffic_tracking_active"`
+	TrafficResetDay         int      `json:"traffic_reset_day"`
+	TrafficLimitBytes       int64    `json:"traffic_limit_bytes"`
+	NotifyPercent           int      `json:"notify_percent"`
+	ViewPosition            int      `json:"view_position"`
+	CountryCode             string   `json:"country_code"`
+	Tags                    []string `json:"tags"`
+}
+
 // NodeUpdateRequest — структура для частичного обновления (PATCH)
 type NodeUpdateRequest struct {
 	Name                    *string   `json:"name,omitempty"`
@@ -160,53 +179,130 @@ func scanNode(scanner RowScanner) (Node, error) {
 	return n, nil
 }
 
-// NodesHandler — GET /api/v1/nodes
+// NodesHandler — GET/POST /api/v1/nodes
 func NodesHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetNodes(w, r, manager, cfg)
+		case http.MethodPost:
+			handleCreateNode(w, r, manager, cfg)
+		default:
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
-			return
 		}
+	}
+}
 
-		ctx := r.Context()
-		var nodes []Node
+// handleGetNodes handles GET /api/v1/nodes
+func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	ctx := r.Context()
+	var nodes []Node
 
-		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
-			query := `
-				SELECT 
-					uuid, id, name, address, port, api_schema, api_path, api_metadata, active_config_profile_uuid,
-					is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-					xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
-					is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-					notify_percent, provider_uuid, view_position, country_code, tags,
-					cpu_count, cpu_model, total_ram, created_at, updated_at
-				FROM nodes
-				ORDER BY view_position ASC, name ASC`
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		query := `
+			SELECT
+				uuid, id, name, address, port, api_schema, api_path, api_metadata, active_config_profile_uuid,
+				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
+				xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
+				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
+				notify_percent, provider_uuid, view_position, country_code, tags,
+				cpu_count, cpu_model, total_ram, created_at, updated_at
+			FROM nodes
+			ORDER BY view_position ASC, name ASC`
 
-			rows, err := db.QueryContext(ctx, query)
+		rows, err := db.QueryContext(ctx, query)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			n, err := scanNode(rows)
 			if err != nil {
 				return err
 			}
-			defer rows.Close()
-
-			for rows.Next() {
-				n, err := scanNode(rows)
-				if err != nil {
-					return err
-				}
-				nodes = append(nodes, n)
-			}
-			return rows.Err()
-		})
-
-		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
-			return
+			nodes = append(nodes, n)
 		}
+		return rows.Err()
+	})
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(w).Encode(map[string]interface{}{"nodes": nodes, "count": len(nodes)})
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		return
 	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{"nodes": nodes, "count": len(nodes)})
+}
+
+// handleCreateNode handles POST /api/v1/nodes
+func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	var req NodeCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+
+	// Validate required fields
+	if req.Name == "" {
+		sendError(w, http.StatusBadRequest, "name is required", nil, cfg)
+		return
+	}
+	if req.Address == "" {
+		sendError(w, http.StatusBadRequest, "address is required", nil, cfg)
+		return
+	}
+	if req.Port < 1 || req.Port > 65535 {
+		sendError(w, http.StatusBadRequest, "invalid port", nil, cfg)
+		return
+	}
+	if len(req.CountryCode) != 2 {
+		sendError(w, http.StatusBadRequest, "country_code must be 2 letters", nil, cfg)
+		return
+	}
+
+	// Generate UUID
+	nodeUUID := uuid.New().String()
+
+	// Marshal tags to JSON
+	tagsJSON, err := json.Marshal(req.Tags)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to marshal tags", err, cfg)
+		return
+	}
+
+	ctx := r.Context()
+	err = manager.ExecuteHighPriority(func(db *sql.DB) error {
+		query := `
+			INSERT INTO nodes (
+				uuid, name, address, port, api_schema, api_path, api_metadata,
+				is_disabled, consumption_multiplier, is_traffic_tracking_active,
+				traffic_reset_day, traffic_limit_bytes, notify_percent,
+				view_position, country_code, tags,
+				created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+
+		_, err := db.ExecContext(ctx, query,
+			nodeUUID, req.Name, req.Address, req.Port, req.APISchema, req.APIPath, req.APIMetadata,
+			req.IsDisabled, req.ConsumptionMultiplier, req.IsTrafficTrackingActive,
+			req.TrafficResetDay, req.TrafficLimitBytes, req.NotifyPercent,
+			req.ViewPosition, req.CountryCode, string(tagsJSON))
+
+		return err
+	})
+
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to create node", err, cfg)
+		return
+	}
+
+	// Return created node
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "node created",
+		"uuid":    nodeUUID,
+	})
 }
 
 // NodeByUUIDHandler — GET/PATCH /api/v1/nodes/{uuid}
@@ -353,12 +449,27 @@ func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *manager.Da
 	query := fmt.Sprintf("UPDATE nodes SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", strings.Join(clauses, ", "))
 
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
-		_, err := db.ExecContext(r.Context(), query, args...)
-		return err
+		result, err := db.ExecContext(r.Context(), query, args...)
+		if err != nil {
+			return err
+		}
+		// Check if any row was actually updated
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return sql.ErrNoRows
+		}
+		return nil
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+		if err == sql.ErrNoRows {
+			sendError(w, http.StatusNotFound, "node not found", nil, cfg)
+		} else {
+			sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+		}
 		return
 	}
 

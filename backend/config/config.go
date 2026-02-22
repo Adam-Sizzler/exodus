@@ -172,7 +172,7 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 		common.InitTimezone("UTC", cfg.Logger)
 	}
 
-	valideNodes := make(map[string]NodeConfig)
+	validatedNodes := make(map[string]NodeConfig)
 	for name, node := range cfg.Nodes {
 		if name == "" {
 			cfg.Logger.Warn("Invalid node configuration, skipping", "node_name", name, "address", node.Address, "port", node.Port)
@@ -207,9 +207,16 @@ func LoadConfig(configFile string) (BackendConfig, error) {
 			}
 		}
 		node.NodeName = name
-		valideNodes[name] = node
+		validatedNodes[name] = node
 	}
-	cfg.Nodes = valideNodes
+	cfg.Nodes = validatedNodes
+
+	if len(cfg.Nodes) > 0 {
+		cfg.Logger.Info("Legacy nodes configured in config.yml", "count", len(cfg.Nodes))
+		cfg.Logger.Warn("Legacy node configuration from config.yml is deprecated. Please use the web UI to manage nodes.")
+	} else {
+		cfg.Logger.Info("No nodes configured in config.yml - nodes will be loaded from database")
+	}
 
 	if cfg.Subscription != nil {
 		if cfg.Subscription.Address == "" || cfg.Subscription.Port == 0 {

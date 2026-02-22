@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"v2ray-stat/backend/config"
+	"v2ray-stat/backend/db/manager"
 	"v2ray-stat/proto"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -54,7 +57,7 @@ func NewNodeClient(nodeCfg config.NodeConfig, cfg *config.BackendConfig) (*NodeC
 
 	if useTLS {
 		tlsConfig := &tls.Config{
-			ServerName: nodeCfg.Address, // Важно для SNI (Nginx требует правильный хост)
+			ServerName: nodeCfg.Address,
 		}
 
 		if nodeCfg.MTLSConfig != nil {
@@ -77,9 +80,6 @@ func NewNodeClient(nodeCfg config.NodeConfig, cfg *config.BackendConfig) (*NodeC
 				}
 				tlsConfig.Certificates = []tls.Certificate{cert}
 			}
-		} else {
-			// Обычный HTTPS (Public Trusted CA, например Let's Encrypt)
-			// Оставляем RootCAs nil, Go использует системные
 		}
 
 		creds := credentials.NewTLS(tlsConfig)
@@ -88,8 +88,6 @@ func NewNodeClient(nodeCfg config.NodeConfig, cfg *config.BackendConfig) (*NodeC
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	// Создаем подключение
-	// grpc.NewClient
 	conn, err := grpc.NewClient(url, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to node %s: %v", nodeCfg.NodeName, err)
@@ -103,7 +101,6 @@ func NewNodeClient(nodeCfg config.NodeConfig, cfg *config.BackendConfig) (*NodeC
 	}, nil
 }
 
-// Метод для закрытия соединения
 func (nc *NodeClient) Close() error {
 	if nc.Conn != nil {
 		return nc.Conn.Close()
@@ -111,20 +108,139 @@ func (nc *NodeClient) Close() error {
 	return nil
 }
 
-// InitNodeClients initializes gRPC clients for all nodes.
+// InitNodeClients initializes gRPC clients from config (legacy, returns empty slice).
 func InitNodeClients(cfg *config.BackendConfig) ([]*NodeClient, error) {
-	var nodeClients []*NodeClient
-	for _, node := range cfg.Nodes {
-		client, err := NewNodeClient(node, cfg)
+	// Nodes are now loaded exclusively from database
+	return []*NodeClient{}, nil
+}
+
+// DBNode represents a node loaded from database.
+type DBNode struct {
+	UUID                    string
+	Name                    string
+	Address                 string
+	Port                    int
+	APISchema               string
+	APIPath                 string
+	APIMetadata             string
+	IsDisabled              bool
+	ConsumptionMultiplier   int64
+	IsTrafficTrackingActive bool
+	TrafficResetDay         int
+	TrafficLimitBytes       int64
+	NotifyPercent           int
+	ViewPosition            int
+	CountryCode             string
+	Tags                    []string
+}
+
+// LoadNodesFromDB loads all active nodes from the database.
+func LoadNodesFromDB(manager *manager.DatabaseManager, cfg *config.BackendConfig) ([]DBNode, error) {
+	var nodes []DBNode
+
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		query := `
+			SELECT uuid, name, address, port, api_schema, api_path, api_metadata,
+			       is_disabled, consumption_multiplier, is_traffic_tracking_active,
+			       traffic_reset_day, traffic_limit_bytes, notify_percent,
+			       view_position, country_code, tags
+			FROM nodes
+			WHERE is_disabled = 0
+			ORDER BY view_position ASC, name ASC`
+
+		rows, err := db.Query(query)
 		if err != nil {
-			cfg.Logger.Error("Failed to initialize client for node", "node", node.NodeName, "error", err)
-			continue
+			return fmt.Errorf("query nodes: %w", err)
 		}
-		nodeClients = append(nodeClients, client)
+		defer rows.Close()
+
+		for rows.Next() {
+			var n DBNode
+			var port sql.NullInt64
+			var apiSchema, apiPath, apiMetadata, countryCode, tagsJSON sql.NullString
+			var consumptionMultiplier, trafficLimitBytes, trafficResetDay, notifyPercent, viewPosition sql.NullInt64
+			var isTrafficTrackingActive sql.NullBool
+
+			err := rows.Scan(
+				&n.UUID, &n.Name, &n.Address, &port, &apiSchema, &apiPath, &apiMetadata,
+				&n.IsDisabled, &consumptionMultiplier, &isTrafficTrackingActive,
+				&trafficResetDay, &trafficLimitBytes, &notifyPercent, &viewPosition,
+				&countryCode, &tagsJSON,
+			)
+			if err != nil {
+				return fmt.Errorf("scan node: %w", err)
+			}
+
+			// Handle nullable fields
+			if port.Valid {
+				n.Port = int(port.Int64)
+			} else {
+				n.Port = 8080
+			}
+			if apiSchema.Valid {
+				n.APISchema = apiSchema.String
+			} else {
+				n.APISchema = "http"
+			}
+			if apiPath.Valid {
+				n.APIPath = apiPath.String
+			} else {
+				n.APIPath = "/api"
+			}
+			if apiMetadata.Valid {
+				n.APIMetadata = apiMetadata.String
+			} else {
+				n.APIMetadata = "{}"
+			}
+			if consumptionMultiplier.Valid {
+				n.ConsumptionMultiplier = consumptionMultiplier.Int64
+			} else {
+				n.ConsumptionMultiplier = 100
+			}
+			if isTrafficTrackingActive.Valid {
+				n.IsTrafficTrackingActive = isTrafficTrackingActive.Bool
+			} else {
+				n.IsTrafficTrackingActive = true
+			}
+			if trafficResetDay.Valid {
+				n.TrafficResetDay = int(trafficResetDay.Int64)
+			} else {
+				n.TrafficResetDay = 1
+			}
+			if trafficLimitBytes.Valid {
+				n.TrafficLimitBytes = trafficLimitBytes.Int64
+			}
+			if notifyPercent.Valid {
+				n.NotifyPercent = int(notifyPercent.Int64)
+			} else {
+				n.NotifyPercent = 80
+			}
+			if viewPosition.Valid {
+				n.ViewPosition = int(viewPosition.Int64)
+			}
+			if countryCode.Valid {
+				n.CountryCode = countryCode.String
+			}
+
+			// Parse tags JSON
+			if tagsJSON.Valid && tagsJSON.String != "" {
+				if err := json.Unmarshal([]byte(tagsJSON.String), &n.Tags); err != nil {
+					n.Tags = []string{}
+				}
+			} else {
+				n.Tags = []string{}
+			}
+
+			nodes = append(nodes, n)
+		}
+
+		return rows.Err()
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	if len(nodeClients) == 0 {
-		return nil, fmt.Errorf("no node clients initialized")
-	}
-	return nodeClients, nil
+	cfg.Logger.Info("Loaded nodes from database", "count", len(nodes))
+	return nodes, nil
 }
