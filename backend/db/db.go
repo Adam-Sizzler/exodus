@@ -136,8 +136,8 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 		CREATE TABLE IF NOT EXISTS nodes (
 			uuid TEXT PRIMARY KEY,
 			id INTEGER UNIQUE,
-			name TEXT UNIQUE NOT NULL,
-			address TEXT UNIQUE NOT NULL,
+			name TEXT NOT NULL,
+			address TEXT NOT NULL,
 			port INTEGER,
 			api_schema TEXT DEFAULT 'grpc',
     		api_path TEXT DEFAULT '',
@@ -170,7 +170,37 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			FOREIGN KEY (active_config_profile_uuid) REFERENCES config_profiles(uuid) ON DELETE SET NULL,
 			FOREIGN KEY (provider_uuid) REFERENCES infra_providers(uuid) ON DELETE SET NULL
 		);
-		CREATE INDEX IF NOT EXISTS idx_nodes_id ON nodes(id);
+		CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name);
+		CREATE INDEX IF NOT EXISTS idx_nodes_address ON nodes(address);
+
+		-- ==========================================
+		-- TASKS & TASK NODES
+		-- ==========================================
+
+		CREATE TABLE IF NOT EXISTS tasks (
+			id TEXT PRIMARY KEY,
+			operation TEXT NOT NULL,
+			payload TEXT,
+			status TEXT NOT NULL DEFAULT 'pending',
+			created_at INTEGER NOT NULL,
+			completed_at INTEGER,
+			timeout_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+		CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at);
+
+		CREATE TABLE IF NOT EXISTS task_nodes (
+			id TEXT PRIMARY KEY,
+			task_id TEXT NOT NULL,
+			node_name TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'pending',
+			error_message TEXT,
+			sent_at INTEGER,
+			completed_at INTEGER,
+			FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+		);
+		CREATE INDEX IF NOT EXISTS idx_task_nodes_task_id ON task_nodes(task_id);
+		CREATE INDEX IF NOT EXISTS idx_task_nodes_status ON task_nodes(status);
 
 		CREATE TABLE IF NOT EXISTS infra_billing_nodes (
 			uuid TEXT PRIMARY KEY,

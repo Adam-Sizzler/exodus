@@ -64,6 +64,9 @@ func NewNodeMonitor(manager *manager.DatabaseManager, cfg *config.BackendConfig)
 func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	// Store global context
+	nm.globalCtx = ctx
+
 	// Initialize cancel function for Stop()
 	nm.globalCancel = func() {
 		// Cancel all node contexts
