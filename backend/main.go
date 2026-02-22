@@ -16,7 +16,6 @@ import (
 
 	"v2ray-stat/backend/api"
 	"v2ray-stat/backend/api/reset_stats"
-	"v2ray-stat/backend/certgen"
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db"
 	"v2ray-stat/backend/db/manager"
@@ -44,6 +43,8 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/dns_stats", api.DnsStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/client_stats", api.ClientStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/server_stats", api.ServerStatsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/nodes", api.NodesHandler(manager, cfg))
+	http.HandleFunc("/api/v1/nodes/", api.NodeByUUIDHandler(manager, cfg))
 
 	// Deprecated old endpoints
 	http.HandleFunc("/api/v1/old/add_user", api.TokenAuthMiddleware(cfg, api.AddUserHandler(manager, cfg)))
@@ -131,9 +132,6 @@ func main() {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Проверяем и генерируем сертификаты, если они отсутствуют
-	certgen.EnsureCertificates(&cfg)
 
 	// Готовим wg
 	var wg sync.WaitGroup
