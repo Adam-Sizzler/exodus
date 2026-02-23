@@ -47,77 +47,105 @@ func ConfigProfilesWithInboundsHandler(manager *manager.DatabaseManager, cfg *co
 		var profiles []ConfigProfileWithInbounds
 
 		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
-			// Get all config profiles
-			query := `
+			// First, get all config profiles
+			profileQuery := `
 				SELECT uuid, view_position, name, config, created_at, updated_at
 				FROM config_profiles
 				ORDER BY view_position ASC, name ASC`
 
-			rows, err := db.QueryContext(ctx, query)
+			profileRows, err := db.QueryContext(ctx, profileQuery)
 			if err != nil {
 				return err
 			}
-			defer rows.Close()
+			defer profileRows.Close()
 
-			for rows.Next() {
-				var cp ConfigProfileWithInbounds
+			// Store profiles temporarily
+			type tempProfile struct {
+				UUID         string
+				ViewPosition int
+				Name         string
+				Config       json.RawMessage
+				CreatedAt    time.Time
+				UpdatedAt    time.Time
+			}
+			var tempProfiles []tempProfile
+
+			for profileRows.Next() {
+				var tp tempProfile
 				var viewPosition sql.NullInt64
 				var configStr sql.NullString
 
-				if err := rows.Scan(&cp.UUID, &viewPosition, &cp.Name, &configStr, &cp.CreatedAt, &cp.UpdatedAt); err != nil {
+				if err := profileRows.Scan(&tp.UUID, &viewPosition, &tp.Name, &configStr, &tp.CreatedAt, &tp.UpdatedAt); err != nil {
 					return err
 				}
 
 				if viewPosition.Valid {
-					cp.ViewPosition = int(viewPosition.Int64)
+					tp.ViewPosition = int(viewPosition.Int64)
 				}
 				if configStr.Valid {
-					cp.Config = json.RawMessage(configStr.String)
+					tp.Config = json.RawMessage(configStr.String)
 				}
 
-				// Get inbounds for this profile
-				inboundQuery := `
-					SELECT uuid, tag, type, network, security, port, raw_inbound
-					FROM config_profile_inbounds
-					WHERE profile_uuid = ?
-					ORDER BY tag`
+				tempProfiles = append(tempProfiles, tp)
+			}
+			profileRows.Close()
 
-				inboundRows, err := db.QueryContext(ctx, inboundQuery, cp.UUID)
-				if err != nil {
+			// Get ALL inbounds in a single query
+			inboundQuery := `
+				SELECT uuid, profile_uuid, tag, type, network, security, port, raw_inbound
+				FROM config_profile_inbounds
+				ORDER BY profile_uuid, tag`
+
+			inboundRows, err := db.QueryContext(ctx, inboundQuery)
+			if err != nil {
+				return err
+			}
+			defer inboundRows.Close()
+
+			// Group inbounds by profile_uuid
+			inboundsByProfile := make(map[string][]InboundInfo)
+			for inboundRows.Next() {
+				var inbound InboundInfo
+				var profileUUID string
+				var network, security sql.NullString
+				var port sql.NullInt64
+				var rawInbound string
+
+				if err := inboundRows.Scan(&inbound.UUID, &profileUUID, &inbound.Tag, &inbound.Type, &network, &security, &port, &rawInbound); err != nil {
 					return err
 				}
 
-				for inboundRows.Next() {
-					var inbound InboundInfo
-					var network, security sql.NullString
-					var port sql.NullInt64
-					var rawInbound string
-
-					if err := inboundRows.Scan(&inbound.UUID, &inbound.Tag, &inbound.Type, &network, &security, &port, &rawInbound); err != nil {
-						inboundRows.Close()
-						return err
-					}
-
-					if network.Valid {
-						inbound.Network = &network.String
-					}
-					if security.Valid {
-						inbound.Security = &security.String
-					}
-					if port.Valid {
-						p := int(port.Int64)
-						inbound.Port = &p
-					}
-					inbound.RawInbound = json.RawMessage(rawInbound)
-
-					cp.Inbounds = append(cp.Inbounds, inbound)
+				if network.Valid {
+					inbound.Network = &network.String
 				}
-				inboundRows.Close()
+				if security.Valid {
+					inbound.Security = &security.String
+				}
+				if port.Valid {
+					p := int(port.Int64)
+					inbound.Port = &p
+				}
+				inbound.RawInbound = json.RawMessage(rawInbound)
 
+				inboundsByProfile[profileUUID] = append(inboundsByProfile[profileUUID], inbound)
+			}
+			inboundRows.Close()
+
+			// Combine profiles with their inbounds
+			for _, tp := range tempProfiles {
+				cp := ConfigProfileWithInbounds{
+					UUID:         tp.UUID,
+					ViewPosition: tp.ViewPosition,
+					Name:         tp.Name,
+					Config:       tp.Config,
+					Inbounds:     inboundsByProfile[tp.UUID],
+					CreatedAt:    tp.CreatedAt,
+					UpdatedAt:    tp.UpdatedAt,
+				}
 				profiles = append(profiles, cp)
 			}
 
-			return rows.Err()
+			return nil
 		})
 
 		if err != nil {
@@ -161,7 +189,7 @@ func SquadDetailsHandler(manager *manager.DatabaseManager, cfg *config.BackendCo
 		}
 
 		ctx := r.Context()
-		
+
 		// Extract UUID from path
 		path := r.URL.Path
 		lastSlash := 0
@@ -201,7 +229,7 @@ func SquadDetailsHandler(manager *manager.DatabaseManager, cfg *config.BackendCo
 				squad.ViewPosition = int(viewPosition.Int64)
 			}
 
-			// Get inbounds for this squad
+			// Get inbounds for this squad using JOIN
 			inboundQuery := `
 				SELECT i.uuid, i.tag, i.type, i.network, i.security, i.port, i.raw_inbound
 				FROM internal_squad_inbounds si
@@ -209,19 +237,19 @@ func SquadDetailsHandler(manager *manager.DatabaseManager, cfg *config.BackendCo
 				WHERE si.internal_squad_uuid = ?
 				ORDER BY i.tag`
 
-			inboundRows, err := db.QueryContext(ctx, inboundQuery, squadUUID)
+			rows, err := db.QueryContext(ctx, inboundQuery, squadUUID)
 			if err != nil {
 				return err
 			}
-			defer inboundRows.Close()
+			defer rows.Close()
 
-			for inboundRows.Next() {
+			for rows.Next() {
 				var inbound InboundInfo
 				var network, security sql.NullString
 				var port sql.NullInt64
 				var rawInbound string
 
-				if err := inboundRows.Scan(&inbound.UUID, &inbound.Tag, &inbound.Type, &network, &security, &port, &rawInbound); err != nil {
+				if err := rows.Scan(&inbound.UUID, &inbound.Tag, &inbound.Type, &network, &security, &port, &rawInbound); err != nil {
 					return err
 				}
 

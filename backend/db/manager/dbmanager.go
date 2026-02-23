@@ -196,12 +196,12 @@ func (m *DatabaseManager) ExecuteWithTimeout(fn func(*sql.DB) error, priority bo
 
 // ExecuteHighPriority executes a high-priority database request.
 func (m *DatabaseManager) ExecuteHighPriority(fn func(*sql.DB) error) error {
-	return m.ExecuteWithTimeout(fn, true, 1*time.Second, 3*time.Second)
+	return m.ExecuteWithTimeout(fn, true, 5*time.Second, 10*time.Second)
 }
 
 // ExecuteLowPriority executes a low-priority database request.
 func (m *DatabaseManager) ExecuteLowPriority(fn func(*sql.DB) error) error {
-	return m.ExecuteWithTimeout(fn, false, 2*time.Second, 5*time.Second)
+	return m.ExecuteWithTimeout(fn, false, 5*time.Second, 15*time.Second)
 }
 
 // SyncDBWithContext synchronizes the manager's database with the target database.
