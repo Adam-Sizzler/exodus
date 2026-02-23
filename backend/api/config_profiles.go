@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,18 @@ type ConfigProfile struct {
 	Config       json.RawMessage `json:"config"` // JSON object for sing-box configuration
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
+}
+
+// ConfigProfileInbound represents an inbound extracted from config profile.
+type ConfigProfileInbound struct {
+	UUID           string          `json:"uuid"`
+	ProfileUUID    string          `json:"profile_uuid"`
+	Tag            string          `json:"tag"`
+	Type           string          `json:"type"`
+	Network        *string         `json:"network,omitempty"`
+	Security       *string         `json:"security,omitempty"`
+	Port           *int            `json:"port,omitempty"`
+	RawInbound     json.RawMessage `json:"raw_inbound"`
 }
 
 // ConfigProfileCreateRequest represents a request to create a new config profile.
@@ -190,7 +203,12 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 
 		_, err := db.ExecContext(ctx, query,
 			profileUUID, req.ViewPosition, req.Name, configStr)
+		if err != nil {
+			return err
+		}
 
+		// Sync inbounds after creating profile
+		_, err = syncConfigProfileInbounds(ctx, db, profileUUID, req.Config, cfg)
 		return err
 	})
 
@@ -304,8 +322,15 @@ func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *m
 	args = append(args, profileUUID)
 	query := fmt.Sprintf("UPDATE config_profiles SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", strings.Join(clauses, ", "))
 
+	ctx := r.Context()
+	configChanged := req.Config != nil
+	var newConfig json.RawMessage
+	if configChanged {
+		newConfig = *req.Config
+	}
+
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
-		result, err := db.ExecContext(r.Context(), query, args...)
+		result, err := db.ExecContext(ctx, query, args...)
 		if err != nil {
 			return err
 		}
@@ -315,6 +340,12 @@ func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *m
 		}
 		if rowsAffected == 0 {
 			return sql.ErrNoRows
+		}
+
+		// Sync inbounds if config was updated
+		if configChanged {
+			_, err = syncConfigProfileInbounds(ctx, db, profileUUID, newConfig, cfg)
+			return err
 		}
 		return nil
 	})
@@ -370,4 +401,161 @@ func handleDeleteConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 		"uuid":    profileUUID,
 		"name":    profileName,
 	})
+}
+
+// parseConfigInbounds extracts inbounds from a config JSON and returns them as ConfigProfileInbound structs.
+// The tag field is used as the unique identifier for inbounds within a profile.
+func parseConfigInbounds(profileUUID string, configJSON json.RawMessage) ([]ConfigProfileInbound, error) {
+	// Parse the config JSON to extract inbounds
+	var configData map[string]interface{}
+	if err := json.Unmarshal(configJSON, &configData); err != nil {
+		return nil, fmt.Errorf("failed to parse config JSON: %w", err)
+	}
+
+	// Get inbounds array
+	inboundsRaw, ok := configData["inbounds"]
+	if !ok {
+		// No inbounds in config, return empty slice
+		return []ConfigProfileInbound{}, nil
+	}
+
+	inboundsArray, ok := inboundsRaw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("inbounds must be an array")
+	}
+
+	var inbounds []ConfigProfileInbound
+	seenTags := make(map[string]bool)
+
+	for _, inboundRaw := range inboundsArray {
+		inboundMap, ok := inboundRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Extract tag (required, unique within profile)
+		tagRaw, ok := inboundMap["tag"]
+		if !ok {
+			continue // Skip inbounds without tag
+		}
+		tag, ok := tagRaw.(string)
+		if !ok || tag == "" {
+			continue
+		}
+
+		// Check for duplicate tags within the same profile
+		if seenTags[tag] {
+			continue // Skip duplicate tags, keep first occurrence
+		}
+		seenTags[tag] = true
+
+		// Extract type/protocol
+		typeStr := ""
+		if typeRaw, ok := inboundMap["type"].(string); ok {
+			typeStr = typeRaw
+		} else if protocolRaw, ok := inboundMap["protocol"].(string); ok {
+			typeStr = protocolRaw
+		}
+
+		// Extract network
+		var network *string
+		if networkRaw, ok := inboundMap["network"].(string); ok && networkRaw != "" {
+			network = &networkRaw
+		}
+
+		// Extract security
+		var security *string
+		if securityRaw, ok := inboundMap["security"].(string); ok && securityRaw != "" {
+			security = &securityRaw
+		}
+
+		// Extract port
+		var port *int
+		if portRaw, ok := inboundMap["listen_port"].(float64); ok {
+			p := int(portRaw)
+			port = &p
+		} else if portRaw, ok := inboundMap["port"].(float64); ok {
+			p := int(portRaw)
+			port = &p
+		}
+
+		// Convert inbound back to JSON for raw_inbound storage
+		rawInbound, err := json.Marshal(inboundMap)
+		if err != nil {
+			continue
+		}
+
+		inbounds = append(inbounds, ConfigProfileInbound{
+			UUID:        uuid.New().String(),
+			ProfileUUID: profileUUID,
+			Tag:         tag,
+			Type:        typeStr,
+			Network:     network,
+			Security:    security,
+			Port:        port,
+			RawInbound:  rawInbound,
+		})
+	}
+
+	return inbounds, nil
+}
+
+// syncConfigProfileInbounds synchronizes inbounds for a config profile.
+// It performs:
+// 1. Delete existing inbounds for the profile (CASCADE handles related tables)
+// 2. Parse new inbounds from config JSON
+// 3. Insert new inbounds
+// Returns the number of inbounds synced.
+func syncConfigProfileInbounds(ctx context.Context, db *sql.DB, profileUUID string, configJSON json.RawMessage, cfg *config.BackendConfig) (int, error) {
+	// Parse inbounds from config
+	inbounds, err := parseConfigInbounds(profileUUID, configJSON)
+	if err != nil {
+		cfg.Logger.Error("Failed to parse config inbounds", "profile_uuid", profileUUID, "error", err)
+		return 0, fmt.Errorf("failed to parse inbounds: %w", err)
+	}
+
+	// Delete existing inbounds for this profile (CASCADE handles related tables)
+	_, err = db.ExecContext(ctx, "DELETE FROM config_profile_inbounds WHERE profile_uuid = ?", profileUUID)
+	if err != nil {
+		cfg.Logger.Error("Failed to delete existing inbounds", "profile_uuid", profileUUID, "error", err)
+		return 0, fmt.Errorf("failed to delete existing inbounds: %w", err)
+	}
+
+	// Insert new inbounds
+	for _, inbound := range inbounds {
+		query := `
+			INSERT INTO config_profile_inbounds (
+				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+
+		var networkVal, securityVal interface{}
+		if inbound.Network != nil {
+			networkVal = *inbound.Network
+		}
+		if inbound.Security != nil {
+			securityVal = *inbound.Security
+		}
+		var portVal interface{}
+		if inbound.Port != nil {
+			portVal = *inbound.Port
+		}
+
+		_, err := db.ExecContext(ctx, query,
+			inbound.UUID,
+			inbound.ProfileUUID,
+			inbound.Tag,
+			inbound.Type,
+			networkVal,
+			securityVal,
+			portVal,
+			inbound.RawInbound,
+		)
+		if err != nil {
+			cfg.Logger.Error("Failed to insert inbound", "profile_uuid", profileUUID, "tag", inbound.Tag, "error", err)
+			return 0, fmt.Errorf("failed to insert inbound %s: %w", inbound.Tag, err)
+		}
+	}
+
+	cfg.Logger.Debug("Synced config profile inbounds", "profile_uuid", profileUUID, "inbounds_count", len(inbounds))
+	return len(inbounds), nil
 }

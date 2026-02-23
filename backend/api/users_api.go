@@ -586,7 +586,7 @@ func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig
 	}
 }
 
-// UserByUUIDHandler handles GET /api/v1/users-list/{uuid} and PATCH /api/v1/users-list/{uuid} requests.
+// UserByUUIDHandler handles GET /api/v1/users-list/{uuid}, PATCH /api/v1/users-list/{uuid}, and DELETE /api/v1/users-list/{uuid} requests.
 func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received UserByUUID HTTP request", "method", r.Method, "path", r.URL.Path)
@@ -623,12 +623,14 @@ func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 			handleGetUser(w, r, manager, cfg, ctx, userUUID)
 		case http.MethodPatch:
 			handlePatchUser(w, r, manager, cfg, ctx, userUUID)
+		case http.MethodDelete:
+			handleDeleteUser(w, r, manager, cfg, ctx, userUUID)
 		default:
 			cfg.Logger.Warn("Invalid HTTP method", "method", r.Method)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			json.NewEncoder(w).Encode(map[string]string{
-				"error": "method not allowed, use GET or PATCH",
+				"error": "method not allowed, use GET, PATCH or DELETE",
 			})
 		}
 	}
@@ -951,5 +953,76 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user":    updatedUser,
 		"message": "user updated successfully",
+	})
+}
+
+// handleDeleteUser handles DELETE request for deleting a user.
+func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
+	// Get user info for logging before deletion
+	var username string
+	var userTID int64
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		query := "SELECT t_id, username FROM users WHERE uuid = ?"
+		return db.QueryRowContext(ctx, query, userUUID).Scan(&userTID, &username)
+	})
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			cfg.Logger.Warn("User not found for deletion", "uuid", userUUID)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "user not found",
+			})
+			return
+		}
+
+		cfg.Logger.Error("Failed to fetch user for deletion", "uuid", userUUID, "error", err)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "failed to fetch user",
+		})
+		return
+	}
+
+	// Delete user (CASCADE will handle related records)
+	err = manager.ExecuteHighPriority(func(db *sql.DB) error {
+		query := "DELETE FROM users WHERE uuid = ?"
+		result, err := db.ExecContext(ctx, query, userUUID)
+		if err != nil {
+			return fmt.Errorf("failed to delete user: %w", err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("failed to get rows affected: %w", err)
+		}
+
+		if rowsAffected == 0 {
+			return fmt.Errorf("user not found")
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		cfg.Logger.Error("Failed to delete user", "uuid", userUUID, "error", err)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "failed to delete user",
+		})
+		return
+	}
+
+	cfg.Logger.Info("User deleted successfully", "uuid", userUUID, "username", username, "t_id", userTID)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":  "user deleted successfully",
+		"uuid":     userUUID,
+		"username": username,
+		"t_id":     userTID,
 	})
 }

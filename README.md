@@ -419,9 +419,91 @@ curl -X PATCH \
 
 ---
 
+### Удалить пользователя
+
+**DELETE** `/api/v1/users-list/{uuid}`
+
+Удаляет пользователя по UUID. Связанные записи в других таблицах удаляются автоматически через CASCADE.
+
+**Пример запроса:**
+```bash
+curl -X DELETE \
+  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "user deleted successfully",
+  "uuid": "550e8400-e29b-41d4-a716-446655440001",
+  "username": "john_doe",
+  "t_id": 1
+}
+```
+
+**Примеры ошибок:**
+```json
+// 404 Not Found - пользователь не найден
+{
+  "error": "user not found"
+}
+
+// 500 Internal Server Error - ошибка при удалении
+{
+  "error": "failed to delete user"
+}
+```
+
+---
+
 ## Config Profiles API
 
 API для управления конфигурациями sing-box в формате JSON.
+
+### Автоматическая синхронизация Inbounds
+
+При создании или обновлении конфигурации через API, система **автоматически извлекает все inbounds** из JSON конфигурации и сохраняет их в таблицу `config_profile_inbounds`.
+
+**Как это работает:**
+1. Вы отправляете JSON конфигурации с массивом `inbounds`
+2. Система парсит каждый inbound и извлекает:
+   - `tag` — уникальный идентификатор inbound в рамках профиля (обязательно)
+   - `type` или `protocol` — тип протокола
+   - `network` — сеть (tcp, udp, и т.д.)
+   - `security` — безопасность (tls, reality, и т.д.)
+   - `port` или `listen_port` — порт
+   - Полный JSON inbound сохраняется в `raw_inbound`
+3. Все inbounds с одинаковым `tag` в рамках одного профиля автоматически заменяются
+4. При удалении конфигурации все связанные inbounds удаляются автоматически через CASCADE
+
+**Пример JSON конфигурации:**
+```json
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {
+      "tag": "Shadowsocks",
+      "type": "shadowsocks",
+      "listen": "0.0.0.0",
+      "listen_port": 1234,
+      "network": "tcp,udp"
+    },
+    {
+      "tag": "VLESS-Reality",
+      "type": "vless",
+      "listen": "0.0.0.0",
+      "listen_port": 1235,
+      "network": "tcp",
+      "security": "tls"
+    }
+  ],
+  "outbounds": [{"type": "direct", "tag": "direct"}]
+}
+```
+
+После создания конфигурации с таким JSON, в таблице `config_profile_inbounds` появятся две записи с соответствующими данными.
+
+---
 
 ### Получить все конфигурации
 
@@ -648,6 +730,192 @@ curl -X DELETE \
   "message": "config profile deleted",
   "uuid": "550e8400-e29b-41d4-a716-446655440000",
   "name": "default-profile"
+}
+```
+
+---
+
+## Internal Squads API
+
+API для управления внутренними сквадами (internal squads).
+
+### Получить все сквады
+
+**GET** `/api/v1/internal-squads`
+
+Возвращает список всех внутренних сквадов.
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9952/api/v1/internal-squads"
+```
+
+**Пример ответа:**
+```json
+{
+  "squads": [
+    {
+      "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "view_position": 1,
+      "name": "Default-Squad",
+      "created_at": "2026-02-23T14:11:28.074Z",
+      "updated_at": "2026-02-23T14:11:28.074Z"
+    },
+    {
+      "uuid": "b542c59d-f22d-4b90-921f-5759797dfd52",
+      "view_position": 2,
+      "name": "squad-not-default",
+      "created_at": "2026-02-23T14:27:19.332Z",
+      "updated_at": "2026-02-23T14:27:19.331Z"
+    }
+  ],
+  "count": 2
+}
+```
+
+---
+
+### Получить сквад по UUID
+
+**GET** `/api/v1/internal-squads/{uuid}`
+
+Возвращает данные одного сквада по UUID.
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9952/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f"
+```
+
+**Пример ответа:**
+```json
+{
+  "squad": {
+    "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+    "view_position": 1,
+    "name": "Default-Squad",
+    "created_at": "2026-02-23T14:11:28.074Z",
+    "updated_at": "2026-02-23T14:11:28.074Z"
+  }
+}
+```
+
+---
+
+### Создать сквад
+
+**POST** `/api/v1/internal-squads`
+
+Создаёт новый внутренний сквад.
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-squad",
+    "view_position": 3
+  }' \
+  http://localhost:9952/api/v1/internal-squads
+```
+
+**Пример ответа (201 Created):**
+```json
+{
+  "message": "internal squad created",
+  "uuid": "c7f8a9b0-1234-5678-9abc-def012345678"
+}
+```
+
+**Обязательные поля:**
+- `name` — уникальное имя сквада
+
+**Опциональные поля:**
+- `view_position` — позиция отображения (по умолчанию 0)
+
+**Примеры ошибок:**
+```json
+// 400 Bad Request - отсутствует имя
+{
+  "error": "name is required"
+}
+
+// 409 Conflict - имя занято
+{
+  "error": "name already exists"
+}
+```
+
+---
+
+### Обновить сквад (частичное обновление)
+
+**PATCH** `/api/v1/internal-squads/{uuid}`
+
+Обновляет только указанные поля сквада.
+
+**Пример запроса:**
+```bash
+curl -X PATCH \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "updated-squad",
+    "view_position": 5
+  }' \
+  http://localhost:9952/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
+```
+
+**Пример ответа:**
+```json
+{
+  "squad": {
+    "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+    "view_position": 5,
+    "name": "updated-squad",
+    "created_at": "2026-02-23T14:11:28.074Z",
+    "updated_at": "2026-02-23T14:30:00Z"
+  }
+}
+```
+
+**Доступные поля для обновления:**
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `name` | string | Имя сквада (уникальное) |
+| `view_position` | int | Позиция отображения |
+
+---
+
+### Удалить сквад
+
+**DELETE** `/api/v1/internal-squads/{uuid}`
+
+Удаляет сквад по UUID. Связанные записи в `internal_squad_inbounds` и `internal_squad_members` удаляются автоматически через CASCADE.
+
+**Пример запроса:**
+```bash
+curl -X DELETE \
+  http://localhost:9952/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "internal squad deleted",
+  "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+  "name": "Default-Squad"
+}
+```
+
+**Примеры ошибок:**
+```json
+// 404 Not Found - сквад не найден
+{
+  "error": "internal squad not found"
+}
+
+// 500 Internal Server Error - ошибка при удалении
+{
+  "error": "failed to delete internal squad"
 }
 ```
 

@@ -50,6 +50,17 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/users-list/create", api.UsersCreateHandler(manager, cfg))
 	http.HandleFunc("/api/v1/config-profiles", api.ConfigProfilesHandler(manager, cfg))
 	http.HandleFunc("/api/v1/config-profiles/", api.ConfigProfileByUUIDHandler(manager, cfg))
+	http.HandleFunc("/api/v1/internal-squads", api.InternalSquadsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/internal-squads/", api.InternalSquadByUUIDHandler(manager, cfg))
+
+	// Squad bindings and queries
+	http.HandleFunc("/api/v1/inbound-assignments", api.InboundAssignmentsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/squad-inbounds", api.SquadInboundsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/squad-members", api.SquadMembersHandler(manager, cfg))
+	http.HandleFunc("/api/v1/config-profiles-with-inbounds", api.ConfigProfilesWithInboundsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/squad-details/", api.SquadDetailsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/squads-summary", api.AllSquadsSummaryHandler(manager, cfg))
+	http.HandleFunc("/api/v1/nodes-with-config", api.NodesWithConfigHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
 
