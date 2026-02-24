@@ -1,30 +1,19 @@
 # v2ray-stat API Documentation
 
-API для управления пользователями, нодами, конфигурациями и статистикой в проекте v2ray-stat.
+API для управления пользователями, нодами, конфигурациями, сквадами и статистикой в проекте v2ray-stat.
 
-**Base URL:** `http://127.0.0.1:9952`
+**Base URL:** `http://127.0.0.1:9243`
 
 ---
 
 ## Содержание
 
-1. [Аутентификация](#аутентификация)
-2. [Nodes API](#nodes-api)
-3. [Users API](#users-api)
-4. [Config Profiles API](#config-profiles-api)
-5. [Статистика](#статистика)
-6. [Управление пользователями](#управление-пользователями)
-7. [Сброс статистики](#сброс-статистики)
-
----
-
-## Аутентификация
-
-Большинство endpoints требуют API токен в заголовке:
-
-```bash
-Authorization: Bearer YOUR_API_TOKEN
-```
+1. [Nodes API](#nodes-api)
+2. [Users API](#users-api)
+3. [Config Profiles API](#config-profiles-api)
+4. [Internal Squads API](#internal-squads-api)
+5. [Squad Bindings API](#squad-bindings-api)
+6. [Extended Query API](#extended-query-api)
 
 ---
 
@@ -38,8 +27,7 @@ Authorization: Bearer YOUR_API_TOKEN
 
 **Пример запроса:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:9952/api/v1/nodes
+curl http://localhost:9243/api/v1/nodes
 ```
 
 **Пример ответа:**
@@ -92,8 +80,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 **Пример запроса:**
 ```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+curl http://localhost:9243/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Пример ответа:**
@@ -133,7 +120,7 @@ curl -X PATCH \
     "tags": ["production", "moscow", "updated"],
     "country_code": "RU"
   }' \
-  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Пример ответа:**
@@ -179,7 +166,7 @@ curl -X PATCH \
     "traffic_limit_bytes": 107374182400,
     "notify_percent": 80
   }' \
-  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
 ```
 
 2. **Сбросить поле на NULL:**
@@ -187,7 +174,7 @@ curl -X PATCH \
 curl -X PATCH \
   -H "Content-Type: application/json" \
   -d '{"provider_uuid": ""}' \
-  http://localhost:9952/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ---
@@ -202,7 +189,7 @@ curl -X PATCH \
 
 **Пример запроса:**
 ```bash
-curl "http://localhost:9952/api/v1/users-list"
+curl "http://localhost:9243/api/v1/users-list"
 ```
 
 **Пример ответа:**
@@ -247,7 +234,7 @@ curl "http://localhost:9952/api/v1/users-list"
 
 **Пример запроса:**
 ```bash
-curl "http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001"
+curl "http://localhost:9243/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001"
 ```
 
 ---
@@ -273,7 +260,7 @@ curl -X POST \
     "email": "newuser@example.com",
     "hwid_device_limit": 3
   }' \
-  http://localhost:9952/api/v1/users-list/create
+  http://localhost:9243/api/v1/users-list/create
 ```
 
 **Пример ответа (201 Created):**
@@ -351,7 +338,7 @@ curl -X PATCH \
     "traffic_limit_bytes": 21474836480,
     "expire_at": "2027-06-30T23:59:59Z"
   }' \
-  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+  http://localhost:9243/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
 ```
 
 **Пример ответа:**
@@ -395,7 +382,7 @@ curl -X PATCH \
     "expire_at": "2026-12-31T23:59:59Z",
     "email": "updated@example.com"
   }' \
-  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+  http://localhost:9243/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
 ```
 
 2. **Обновить стратегию сброса трафика:**
@@ -406,7 +393,7 @@ curl -X PATCH \
     "traffic_limit_strategy": "MONTH",
     "hwid_device_limit": 5
   }' \
-  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+  http://localhost:9243/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
 ```
 
 3. **Сбросить поле на NULL:**
@@ -414,7 +401,7 @@ curl -X PATCH \
 curl -X PATCH \
   -H "Content-Type: application/json" \
   -d '{"description": ""}' \
-  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+  http://localhost:9243/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
 ```
 
 ---
@@ -428,7 +415,7 @@ curl -X PATCH \
 **Пример запроса:**
 ```bash
 curl -X DELETE \
-  http://localhost:9952/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
+  http://localhost:9243/api/v1/users-list/550e8400-e29b-41d4-a716-446655440001
 ```
 
 **Пример ответа:**
@@ -513,7 +500,7 @@ API для управления конфигурациями sing-box в фор�
 
 **Пример запроса:**
 ```bash
-curl "http://localhost:9952/api/v1/config-profiles"
+curl "http://localhost:9243/api/v1/config-profiles"
 ```
 
 **Пример ответа:**
@@ -543,7 +530,7 @@ curl "http://localhost:9952/api/v1/config-profiles"
 
 **Пример запроса:**
 ```bash
-curl "http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000"
+curl "http://localhost:9243/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000"
 ```
 
 **Пример ответа:**
@@ -603,7 +590,7 @@ curl -X POST \
       }
     }
   }' \
-  http://localhost:9952/api/v1/config-profiles
+  http://localhost:9243/api/v1/config-profiles
 ```
 
 **Пример ответа (201 Created):**
@@ -660,7 +647,7 @@ curl -X PATCH \
     "name": "updated-profile",
     "view_position": 5
   }' \
-  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Пример ответа:**
@@ -699,7 +686,7 @@ curl -X PATCH \
       "route": {"rules": []}
     }
   }' \
-  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
 ```
 
 2. **Обновить позицию отображения:**
@@ -707,7 +694,7 @@ curl -X PATCH \
 curl -X PATCH \
   -H "Content-Type: application/json" \
   -d '{"view_position": 10}' \
-  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ---
@@ -721,7 +708,7 @@ curl -X PATCH \
 **Пример запроса:**
 ```bash
 curl -X DELETE \
-  http://localhost:9952/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
+  http://localhost:9243/api/v1/config-profiles/550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Пример ответа:**
@@ -747,7 +734,7 @@ API для управления внутренними сквадами (interna
 
 **Пример запроса:**
 ```bash
-curl "http://localhost:9952/api/v1/internal-squads"
+curl "http://localhost:9243/api/v1/internal-squads"
 ```
 
 **Пример ответа:**
@@ -783,7 +770,7 @@ curl "http://localhost:9952/api/v1/internal-squads"
 
 **Пример запроса:**
 ```bash
-curl "http://localhost:9952/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f"
+curl "http://localhost:9243/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f"
 ```
 
 **Пример ответа:**
@@ -815,7 +802,7 @@ curl -X POST \
     "name": "my-squad",
     "view_position": 3
   }' \
-  http://localhost:9952/api/v1/internal-squads
+  http://localhost:9243/api/v1/internal-squads
 ```
 
 **Пример ответа (201 Created):**
@@ -861,7 +848,7 @@ curl -X PATCH \
     "name": "updated-squad",
     "view_position": 5
   }' \
-  http://localhost:9952/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
+  http://localhost:9243/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
 ```
 
 **Пример ответа:**
@@ -894,7 +881,7 @@ curl -X PATCH \
 **Пример запроса:**
 ```bash
 curl -X DELETE \
-  http://localhost:9952/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
+  http://localhost:9243/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
 ```
 
 **Пример ответа:**
@@ -972,3 +959,341 @@ curl -X DELETE \
 - `outbounds` — исходящие соединения (direct, block, socks, http, shadowsocks, vmess, vless, trojan)
 - `route` — правила маршрутизации
 - `experimental` — экспериментальные функции (cache_file, clash_api)
+
+---
+
+## Internal Squads API
+
+API для управления внутренними сквадами (internal squads) — группами пользователей с общими inbound'ами.
+
+### Получить все сквады
+
+**GET** `/api/v1/internal-squads`
+
+Возвращает список всех внутренних сквадов.
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9243/api/v1/internal-squads"
+```
+
+**Пример ответа:**
+```json
+{
+  "squads": [
+    {
+      "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "view_position": 1,
+      "name": "Default-Squad",
+      "created_at": "2026-02-23T14:11:28.074Z",
+      "updated_at": "2026-02-23T14:11:28.074Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### Получить сквад по UUID
+
+**GET** `/api/v1/internal-squads/{uuid}`
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9243/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f"
+```
+
+---
+
+### Создать сквад
+
+**POST** `/api/v1/internal-squads`
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-squad", "view_position": 3}' \
+  http://localhost:9243/api/v1/internal-squads
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "internal squad created",
+  "uuid": "c7f8a9b0-1234-5678-9abc-def012345678"
+}
+```
+
+---
+
+### Обновить сквад
+
+**PATCH** `/api/v1/internal-squads/{uuid}`
+
+**Пример запроса:**
+```bash
+curl -X PATCH \
+  -H "Content-Type: application/json" \
+  -d '{"name": "updated-squad", "view_position": 5}' \
+  http://localhost:9243/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
+```
+
+---
+
+### Удалить сквад
+
+**DELETE** `/api/v1/internal-squads/{uuid}`
+
+Удаляет сквад. Связанные записи в `internal_squad_inbounds` и `internal_squad_members` удаляются автоматически (CASCADE).
+
+**Пример запроса:**
+```bash
+curl -X DELETE http://localhost:9243/api/v1/internal-squads/2ef69520-9dc4-44f7-a492-c709fc34c41f
+```
+
+---
+
+## Squad Bindings API
+
+API для управления связями между сквадами, inbound'ами и пользователями.
+
+### Получить/Установить inbounds сквада
+
+**GET** `/api/v1/squad-inbounds?squad_uuid={uuid}`
+
+Возвращает список inbound'ов, назначенных скваду.
+
+**Пример ответа:**
+```json
+{
+  "squad_inbounds": [
+    {"internal_squad_uuid": "...", "inbound_uuid": "..."}
+  ],
+  "count": 2
+}
+```
+
+---
+
+**POST** `/api/v1/squad-inbounds`
+
+Заменяет все inbounds сквада на новые.
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+    "inbound_uuids": [
+      "d6b23f11-42f9-45fa-bd58-6fb6c6f6c39b",
+      "c2506029-9f32-48c2-b4ff-0dbd0fdfa340"
+    ]
+  }' \
+  http://localhost:9243/api/v1/squad-inbounds
+```
+
+---
+
+### Получить/Установить участников сквада
+
+**GET** `/api/v1/squad-members?squad_uuid={uuid}`
+
+Возвращает список участников сквада.
+
+**Пример ответа:**
+```json
+{
+  "squad_members": [
+    {"internal_squad_uuid": "...", "user_id": 3, "username": "username"}
+  ],
+  "count": 1
+}
+```
+
+---
+
+**POST** `/api/v1/squad-members`
+
+Заменяет всех участников сквада на новых.
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+    "user_ids": [2, 3]
+  }' \
+  http://localhost:9243/api/v1/squad-members
+```
+
+---
+
+### Получить/Установить inbounds ноды
+
+**GET** `/api/v1/inbound-assignments?node_uuid={uuid}`
+
+Возвращает список inbound'ов, назначенных ноде.
+
+---
+
+**POST** `/api/v1/inbound-assignments`
+
+Заменяет все inbounds ноды на новые.
+
+**Пример запроса:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "node_uuid": "c452a932-3cb0-4940-977c-f12b9f506c6b",
+    "inbound_uuids": ["..."]
+  }' \
+  http://localhost:9243/api/v1/inbound-assignments
+```
+
+---
+
+## Extended Query API
+
+API для получения агрегированных данных для UI.
+
+### Config Profiles с Inbounds
+
+**GET** `/api/v1/config-profiles-with-inbounds`
+
+Возвращает все конфигурации с распарсенными inbounds. Используйте для отображения списка доступных inbounds при редактировании сквадов.
+
+**Пример ответа:**
+```json
+{
+  "profiles": [
+    {
+      "uuid": "90a48ee6-544a-4a64-8aa1-fc095663834e",
+      "name": "Config-test-profile",
+      "view_position": 2,
+      "config": {...},
+      "inbounds": [
+        {
+          "uuid": "d6b23f11-42f9-45fa-bd58-6fb6c6f6c39b",
+          "tag": "Shadowsocks_162897",
+          "type": "shadowsocks",
+          "port": 1234,
+          "raw_inbound": {...}
+        }
+      ],
+      "created_at": "2026-02-23T14:30:23.053Z",
+      "updated_at": "2026-02-23T14:33:56.714Z"
+    }
+  ],
+  "count": 2
+}
+```
+
+**Важно:** При создании или обновлении конфигурации через `POST` или `PATCH /api/v1/config-profiles`, inbounds автоматически парсятся и сохраняются в таблицу `config_profile_inbounds`.
+
+---
+
+### Squad Details
+
+**GET** `/api/v1/squad-details/{uuid}`
+
+Возвращает полную информацию о скваде: название, inbounds и участников.
+
+**Пример ответа:**
+```json
+{
+  "squad": {
+    "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+    "name": "Default-Squad",
+    "view_position": 1,
+    "inbounds": [...],
+    "members": [
+      {"user_id": 3, "username": "username"}
+    ],
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+---
+
+### Squads Summary
+
+**GET** `/api/v1/squads-summary`
+
+Возвращает краткую информацию о всех сквадах с количеством участников и inbounds.
+
+**Пример ответа:**
+```json
+{
+  "squads": [
+    {
+      "uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "name": "Default-Squad",
+      "view_position": 1,
+      "members_count": 1,
+      "inbounds_count": 2
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### Nodes с Config Profiles
+
+**GET** `/api/v1/nodes-with-config`
+
+Возвращает ноды с информацией о назначенной конфигурации.
+
+**Пример ответа:**
+```json
+{
+  "nodes": [
+    {
+      "uuid": "c452a932-3cb0-4940-977c-f12b9f506c6b",
+      "id": 1,
+      "name": "NODE_TEST",
+      "address": "192.168.1.1",
+      "port": 2222,
+      "active_config_profile_uuid": "2fbf0ff5-b23b-4e12-b3d7-ecf82fa2d6c6",
+      "config_profile_name": "TEST_PROFILES",
+      "is_connected": false,
+      "is_disabled": false,
+      "view_position": 1,
+      "country_code": "AL",
+      "tags": "[]"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+## Сводная таблица endpoints
+
+| Категория | Endpoint | Методы | Описание |
+|-----------|----------|--------|----------|
+| **Config Profiles** | `/api/v1/config-profiles` | GET, POST | Список/создание профилей |
+| | `/api/v1/config-profiles/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить |
+| | `/api/v1/config-profiles-with-inbounds` | GET | Профили с inbounds |
+| **Nodes** | `/api/v1/nodes` | GET | Список нод |
+| | `/api/v1/nodes/{uuid}` | GET, PATCH | Получить/обновить ноду |
+| | `/api/v1/nodes-with-config` | GET | Ноды с конфигами |
+| | `/api/v1/inbound-assignments` | GET, POST | Inbounds нод |
+| **Squads** | `/api/v1/internal-squads` | GET, POST | Список/создание сквадов |
+| | `/api/v1/internal-squads/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить |
+| | `/api/v1/squads-summary` | GET | Краткая информация |
+| | `/api/v1/squad-details/{uuid}` | GET | Полная информация |
+| **Squad Bindings** | `/api/v1/squad-inbounds` | GET, POST | Inbounds сквада |
+| | `/api/v1/squad-members` | GET, POST | Участники сквада |
+| **Users** | `/api/v1/users-list` | GET | Список пользователей |
+| | `/api/v1/users-list/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить |
+| | `/api/v1/users-list/create` | POST | Создать пользователя |
