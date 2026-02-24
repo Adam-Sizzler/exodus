@@ -480,3 +480,77 @@ func NodesWithConfigHandler(manager *manager.DatabaseManager, cfg *config.Backen
 		})
 	}
 }
+
+// ==================== INBOUNDS WITH PROFILES (FOR UI) ====================
+
+// InboundWithProfile represents an inbound with its profile info for UI display.
+type InboundWithProfile struct {
+	ProfileUUID string `json:"profile_uuid"`
+	ProfileName string `json:"profile_name"`
+	InboundUUID string `json:"inbound_uuid"`
+	InboundTag  string `json:"inbound_tag"`
+	InboundType string `json:"inbound_type"`
+	InboundPort *int   `json:"inbound_port,omitempty"`
+}
+
+// InboundsWithProfilesHandler handles GET /api/v1/inbounds-with-profiles
+func InboundsWithProfilesHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx := r.Context()
+		var inbounds []InboundWithProfile
+
+		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+			query := `
+				SELECT 
+					p.uuid AS profile_uuid,
+					p.name AS profile_name,
+					i.uuid AS inbound_uuid,
+					i.tag AS inbound_tag,
+					i.type AS inbound_type,
+					i.port AS inbound_port
+				FROM config_profile_inbounds i
+				JOIN config_profiles p ON p.uuid = i.profile_uuid
+				ORDER BY p.name, i.tag`
+
+			rows, err := db.QueryContext(ctx, query)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var ib InboundWithProfile
+				var port sql.NullInt64
+
+				if err := rows.Scan(&ib.ProfileUUID, &ib.ProfileName, &ib.InboundUUID, &ib.InboundTag, &ib.InboundType, &port); err != nil {
+					return err
+				}
+
+				if port.Valid {
+					p := int(port.Int64)
+					ib.InboundPort = &p
+				}
+
+				inbounds = append(inbounds, ib)
+			}
+
+			return rows.Err()
+		})
+
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to fetch inbounds with profiles", err, cfg)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"inbounds": inbounds,
+			"count":    len(inbounds),
+		})
+	}
+}

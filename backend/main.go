@@ -62,6 +62,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/squad-details/", api.SquadDetailsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/squads-summary", api.AllSquadsSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes-with-config", api.NodesWithConfigHandler(manager, cfg))
+	http.HandleFunc("/api/v1/inbounds-with-profiles", api.InboundsWithProfilesHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
 

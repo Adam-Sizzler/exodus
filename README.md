@@ -1158,11 +1158,23 @@ API для управления связями между сквадами, inbo
 
 Возвращает список inbound'ов, назначенных скваду.
 
+**Пример запроса:**
+```bash
+curl "http://localhost:9243/api/v1/squad-inbounds?squad_uuid=2ef69520-9dc4-44f7-a492-c709fc34c41f"
+```
+
 **Пример ответа:**
 ```json
 {
   "squad_inbounds": [
-    {"internal_squad_uuid": "...", "inbound_uuid": "..."}
+    {
+      "internal_squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "inbound_uuid": "f866a7de-119d-4666-8e5e-9c88b85af1e0"
+    },
+    {
+      "internal_squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "inbound_uuid": "c57380fd-af68-4f95-9423-10861089e379"
+    }
   ],
   "count": 2
 }
@@ -1172,7 +1184,7 @@ API для управления связями между сквадами, inbo
 
 **POST** `/api/v1/squad-inbounds`
 
-Заменяет все inbounds сквада на новые.
+Заменяет все inbounds сквада на новые. Отправьте список UUID inbound'ов, которые должны быть привязаны к скваду.
 
 **Пример запроса:**
 ```bash
@@ -1181,11 +1193,73 @@ curl -X POST \
   -d '{
     "squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
     "inbound_uuids": [
-      "d6b23f11-42f9-45fa-bd58-6fb6c6f6c39b",
-      "c2506029-9f32-48c2-b4ff-0dbd0fdfa340"
+      "f866a7de-119d-4666-8e5e-9c88b85af1e0",
+      "c57380fd-af68-4f95-9423-10861089e379",
+      "10091d1e-2abd-48e2-860d-d75313b65aa9"
     ]
   }' \
   http://localhost:9243/api/v1/squad-inbounds
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "squad inbounds updated",
+  "squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+  "inbounds_count": 3
+}
+```
+
+**Ошибки:**
+```json
+// 400 Bad Request - squad_uuid не указан
+{
+  "error": "squad_uuid is required"
+}
+
+// 400 Bad Request - неверный формат UUID
+{
+  "error": "invalid squad_uuid format"
+}
+
+// 400 Bad Request - inbound не найден
+{
+  "error": "inbound not found: f866a7de-119d-4666-8e5e-9c88b85af1e0"
+}
+
+// 404 Not Found - сквад не найден
+{
+  "error": "squad not found"
+}
+```
+
+**Примеры использования:**
+
+1. **Привязать 2 inbound к скваду:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "squad_uuid": "UUID-СКВАДА",
+    "inbound_uuids": ["UUID-INBOUND-1", "UUID-INBOUND-2"]
+  }' \
+  http://localhost:9243/api/v1/squad-inbounds
+```
+
+2. **Очистить все inbound у сквада:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "squad_uuid": "UUID-СКВАДА",
+    "inbound_uuids": []
+  }' \
+  http://localhost:9243/api/v1/squad-inbounds
+```
+
+3. **Получить текущие привязки:**
+```bash
+curl "http://localhost:9243/api/v1/squad-inbounds?squad_uuid=UUID-СКВАДА"
 ```
 
 ---
@@ -1194,15 +1268,29 @@ curl -X POST \
 
 **GET** `/api/v1/squad-members?squad_uuid={uuid}`
 
-Возвращает список участников сквада.
+Возвращает список участников сквада с их username.
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9243/api/v1/squad-members?squad_uuid=2ef69520-9dc4-44f7-a492-c709fc34c41f"
+```
 
 **Пример ответа:**
 ```json
 {
   "squad_members": [
-    {"internal_squad_uuid": "...", "user_id": 3, "username": "username"}
+    {
+      "internal_squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "user_id": 1,
+      "username": "user_alpha"
+    },
+    {
+      "internal_squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+      "user_id": 2,
+      "username": "user_beta"
+    }
   ],
-  "count": 1
+  "count": 2
 }
 ```
 
@@ -1210,7 +1298,7 @@ curl -X POST \
 
 **POST** `/api/v1/squad-members`
 
-Заменяет всех участников сквада на новых.
+Заменяет всех участников сквада на новых. Отправьте список ID пользователей (t_id из таблицы users).
 
 **Пример запроса:**
 ```bash
@@ -1218,9 +1306,41 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -d '{
     "squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
-    "user_ids": [2, 3]
+    "user_ids": [1, 2, 3]
   }' \
   http://localhost:9243/api/v1/squad-members
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "squad members updated",
+  "squad_uuid": "2ef69520-9dc4-44f7-a492-c709fc34c41f",
+  "members_count": 3
+}
+```
+
+**Ошибки:**
+```json
+// 400 Bad Request - squad_uuid не указан
+{
+  "error": "squad_uuid is required"
+}
+
+// 400 Bad Request - неверный user_id
+{
+  "error": "invalid user_id: 0"
+}
+
+// 400 Bad Request - пользователь не найден
+{
+  "error": "user not found: 999"
+}
+
+// 404 Not Found - сквад не найден
+{
+  "error": "squad not found"
+}
 ```
 
 ---
@@ -1230,6 +1350,30 @@ curl -X POST \
 **GET** `/api/v1/inbound-assignments?node_uuid={uuid}`
 
 Возвращает список inbound'ов, назначенных ноде.
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9243/api/v1/inbound-assignments?node_uuid=c452a932-3cb0-4940-977c-f12b9f506c6b"
+```
+
+**Пример ответа:**
+```json
+{
+  "assignments": [
+    {
+      "config_profile_inbound_uuid": "c57380fd-af68-4f95-9423-10861089e379",
+      "node_uuid": "c452a932-3cb0-4940-977c-f12b9f506c6b",
+      "created_at": "2026-02-24T10:00:00Z"
+    },
+    {
+      "config_profile_inbound_uuid": "73f20963-1cb8-4488-9c07-badad67a67aa",
+      "node_uuid": "c452a932-3cb0-4940-977c-f12b9f506c6b",
+      "created_at": "2026-02-24T10:00:00Z"
+    }
+  ],
+  "count": 2
+}
+```
 
 ---
 
@@ -1243,9 +1387,68 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -d '{
     "node_uuid": "c452a932-3cb0-4940-977c-f12b9f506c6b",
-    "inbound_uuids": ["..."]
+    "inbound_uuids": [
+      "c57380fd-af68-4f95-9423-10861089e379",
+      "73f20963-1cb8-4488-9c07-badad67a67aa"
+    ]
   }' \
   http://localhost:9243/api/v1/inbound-assignments
+```
+
+**Пример ответа:**
+```json
+{
+  "message": "inbound assignments updated",
+  "node_uuid": "c452a932-3cb0-4940-977c-f12b9f506c6b",
+  "inbounds_count": 2
+}
+```
+
+**Ошибки:**
+```json
+// 400 Bad Request - node_uuid не указан
+{
+  "error": "node_uuid is required"
+}
+
+// 400 Bad Request - inbound не найден
+{
+  "error": "inbound not found: UUID"
+}
+
+// 404 Not Found - нода не найдена
+{
+  "error": "node not found"
+}
+```
+
+**Примеры использования:**
+
+1. **Привязать inbound к ноде:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "node_uuid": "UUID-НОДЫ",
+    "inbound_uuids": ["UUID-INBOUND-1", "UUID-INBOUND-2"]
+  }' \
+  http://localhost:9243/api/v1/inbound-assignments
+```
+
+2. **Очистить все inbound у ноды:**
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "node_uuid": "UUID-НОДЫ",
+    "inbound_uuids": []
+  }' \
+  http://localhost:9243/api/v1/inbound-assignments
+```
+
+3. **Получить текущие привязки:**
+```bash
+curl "http://localhost:9243/api/v1/inbound-assignments?node_uuid=UUID-НОДЫ"
 ```
 
 ---

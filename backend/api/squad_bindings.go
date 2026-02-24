@@ -128,9 +128,9 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 
 	ctx := r.Context()
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
-		// Verify node exists
-		var nodeID int64
-		err := db.QueryRowContext(ctx, "SELECT id FROM nodes WHERE uuid = ?", req.NodeUUID).Scan(&nodeID)
+		// Verify node exists by checking UUID
+		var exists int
+		err := db.QueryRowContext(ctx, "SELECT 1 FROM nodes WHERE uuid = ?", req.NodeUUID).Scan(&exists)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return fmt.Errorf("node not found")
@@ -147,8 +147,8 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 		// Insert new assignments
 		for _, inboundUUID := range req.InboundUUIDs {
 			// Verify inbound exists
-			var inboundID string
-			err := db.QueryRowContext(ctx, "SELECT uuid FROM config_profile_inbounds WHERE uuid = ?", inboundUUID).Scan(&inboundID)
+			var inboundExists int
+			err := db.QueryRowContext(ctx, "SELECT 1 FROM config_profile_inbounds WHERE uuid = ?", inboundUUID).Scan(&inboundExists)
 			if err != nil {
 				if err == sql.ErrNoRows {
 					return fmt.Errorf("inbound not found: %s", inboundUUID)
@@ -332,7 +332,7 @@ func handleSetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *man
 
 			_, err = db.ExecContext(ctx,
 				"INSERT INTO internal_squad_inbounds (internal_squad_uuid, inbound_uuid) VALUES (?, ?)",
-				inboundUUID, req.SquadUUID)
+				req.SquadUUID, inboundUUID)
 			if err != nil {
 				return fmt.Errorf("failed to insert inbound: %w", err)
 			}
