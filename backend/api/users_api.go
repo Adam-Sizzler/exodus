@@ -1026,3 +1026,72 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *manager.D
 		"t_id":     userTID,
 	})
 }
+
+// ==================== USERS LIST SUMMARY (FOR UI SELECTION) ====================
+
+// UserSummary represents a brief user info for selection UI.
+type UserSummary struct {
+	TID      int64  `json:"t_id"`
+	UUID     string `json:"uuid"`
+	Username string `json:"username"`
+	Email    string `json:"email,omitempty"`
+	Tag      string `json:"tag,omitempty"`
+	Status   string `json:"status"`
+}
+
+// UsersListSummaryHandler handles GET /api/v1/users-list/summary
+func UsersListSummaryHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx := r.Context()
+		var users []UserSummary
+
+		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+			query := `
+				SELECT t_id, uuid, username, email, tag, status
+				FROM users
+				ORDER BY t_id ASC`
+
+			rows, err := db.QueryContext(ctx, query)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var u UserSummary
+				var email, tag sql.NullString
+
+				if err := rows.Scan(&u.TID, &u.UUID, &u.Username, &email, &tag, &u.Status); err != nil {
+					return err
+				}
+
+				if email.Valid {
+					u.Email = email.String
+				}
+				if tag.Valid {
+					u.Tag = tag.String
+				}
+
+				users = append(users, u)
+			}
+
+			return rows.Err()
+		})
+
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to fetch users summary", err, cfg)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"users": users,
+			"count": len(users),
+		})
+	}
+}

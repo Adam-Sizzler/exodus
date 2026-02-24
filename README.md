@@ -8,12 +8,105 @@ API для управления пользователями, нодами, ко
 
 ## Содержание
 
-1. [Nodes API](#nodes-api)
-2. [Users API](#users-api)
-3. [Config Profiles API](#config-profiles-api)
-4. [Internal Squads API](#internal-squads-api)
-5. [Squad Bindings API](#squad-bindings-api)
-6. [Extended Query API](#extended-query-api)
+1. [Quick Start — Как создать ноду](#quick-start--как-создать-ноду)
+2. [Nodes API](#nodes-api)
+3. [Users API](#users-api)
+4. [Config Profiles API](#config-profiles-api)
+5. [Internal Squads API](#internal-squads-api)
+6. [Squad Bindings API](#squad-bindings-api)
+7. [Extended Query API](#extended-query-api)
+8. [Сводная таблица endpoints](#сводная-таблица-endpoints)
+
+---
+
+## Quick Start — Как создать ноду
+
+### Шаг 1: Создание ноды через API
+
+Отправьте POST-запрос на эндпоинт `/api/v1/nodes`:
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Germany-Frankfurt-01",
+    "address": "192.168.1.100",
+    "port": 9253,
+    "api_schema": "grpc",
+    "api_path": "",
+    "is_disabled": false,
+    "consumption_multiplier": 100,
+    "is_traffic_tracking_active": true,
+    "traffic_reset_day": 1,
+    "traffic_limit_bytes": 1099511627776,
+    "notify_percent": 80,
+    "view_position": 1,
+    "country_code": "DE",
+    "tags": ["premium", "fast"]
+  }' \
+  http://localhost:9243/api/v1/nodes
+```
+
+**Ответ при успешном создании:**
+```json
+{
+  "message": "node created",
+  "uuid": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+### Шаг 2: Проверка созданной ноды
+
+Получите список всех нод или конкретную ноду по UUID:
+
+```bash
+# Получить все ноды
+curl http://localhost:9243/api/v1/nodes
+
+# Получить конкретную ноду
+curl http://localhost:9243/api/v1/nodes/550e8400-e29b-41d4-a716-446655440000
+```
+
+### Шаг 3: Настройка подключения ноды
+
+После создания ноды, backend автоматически попытается подключиться к ней через gRPC. Убедитесь, что:
+
+1. **Node-компонент запущен** на указанном адресе и порту
+2. **gRPC сервер доступен** на порту, указанном в поле `port`
+3. **Сетевой доступ** между backend и node разрешён
+
+### Параметры для создания ноды
+
+| Поле | Тип | Обязательное | Описание | Пример |
+|------|-----|--------------|----------|--------|
+| `name` | string | ✅ | Имя ноды (уникальное) | `"Germany-Frankfurt-01"` |
+| `address` | string | ✅ | IP адрес или домен | `"192.168.1.100"` |
+| `port` | int | ✅ | gRPC порт (1-65535) | `9253` |
+| `api_schema` | string | ❌ | Протокол API | `"grpc"`, `"https"`, `"http"` |
+| `api_path` | string | ❌ | Путь API endpoint | `""` |
+| `is_disabled` | boolean | ❌ | Административная блокировка | `false` |
+| `consumption_multiplier` | int64 | ❌ | Множитель трафика (100 = 1x) | `100` |
+| `is_traffic_tracking_active` | boolean | ❌ | Отслеживание трафика | `true` |
+| `traffic_reset_day` | int | ❌ | День сброса (1-31) | `1` |
+| `traffic_limit_bytes` | int64 | ❌ | Лимит трафика (0 = безлим) | `1099511627776` |
+| `notify_percent` | int | ❌ | Процент уведомления | `80` |
+| `view_position` | int | ❌ | Позиция отображения | `1` |
+| `country_code` | string | ✅ | Код страны (2 буквы) | `"DE"` |
+| `tags` | string[] | ❌ | Теги ноды | `["premium", "fast"]` |
+
+### Минимальный запрос для создания
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My-Node",
+    "address": "192.168.1.100",
+    "port": 9253,
+    "country_code": "US"
+  }' \
+  http://localhost:9243/api/v1/nodes
+```
 
 ---
 
@@ -1277,6 +1370,44 @@ API для получения агрегированных данных для U
 
 ---
 
+### Краткий список пользователей (для UI)
+
+**GET** `/api/v1/users-list/summary`
+
+Возвращает краткий список пользователей для отображения в UI при выборе участников сквада.
+
+**Пример запроса:**
+```bash
+curl "http://localhost:9243/api/v1/users-list/summary"
+```
+
+**Пример ответа:**
+```json
+{
+  "users": [
+    {
+      "t_id": 1,
+      "uuid": "550e8400-e29b-41d4-a716-446655440001",
+      "username": "user_alpha",
+      "email": "alpha@example.com",
+      "tag": "premium",
+      "status": "ACTIVE"
+    },
+    {
+      "t_id": 2,
+      "uuid": "660e8400-e29b-41d4-a716-446655440002",
+      "username": "user_beta",
+      "email": "beta@example.com",
+      "tag": "standard",
+      "status": "ACTIVE"
+    }
+  ],
+  "count": 2
+}
+```
+
+---
+
 ## Сводная таблица endpoints
 
 | Категория | Endpoint | Методы | Описание |
@@ -1284,9 +1415,10 @@ API для получения агрегированных данных для U
 | **Config Profiles** | `/api/v1/config-profiles` | GET, POST | Список/создание профилей |
 | | `/api/v1/config-profiles/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить |
 | | `/api/v1/config-profiles-with-inbounds` | GET | Профили с inbounds |
-| **Nodes** | `/api/v1/nodes` | GET | Список нод |
-| | `/api/v1/nodes/{uuid}` | GET, PATCH | Получить/обновить ноду |
+| **Nodes** | `/api/v1/nodes` | GET, POST | Список/создание нод |
+| | `/api/v1/nodes/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить ноду |
 | | `/api/v1/nodes-with-config` | GET | Ноды с конфигами |
+| | `/api/v1/nodes/summary` | GET | Краткий список нод |
 | | `/api/v1/inbound-assignments` | GET, POST | Inbounds нод |
 | **Squads** | `/api/v1/internal-squads` | GET, POST | Список/создание сквадов |
 | | `/api/v1/internal-squads/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить |
@@ -1294,6 +1426,7 @@ API для получения агрегированных данных для U
 | | `/api/v1/squad-details/{uuid}` | GET | Полная информация |
 | **Squad Bindings** | `/api/v1/squad-inbounds` | GET, POST | Inbounds сквада |
 | | `/api/v1/squad-members` | GET, POST | Участники сквада |
-| **Users** | `/api/v1/users-list` | GET | Список пользователей |
+| **Users** | `/api/v1/users-list` | GET | Полный список пользователей |
+| | `/api/v1/users-list/summary` | GET | Краткий список для UI |
 | | `/api/v1/users-list/{uuid}` | GET, PATCH, DELETE | Получить/обновить/удалить |
 | | `/api/v1/users-list/create` | POST | Создать пользователя |

@@ -46,6 +46,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/nodes/summary", api.NodesSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/", api.NodeByUUIDHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list", api.UsersAPIHandler(manager, cfg))
+	http.HandleFunc("/api/v1/users-list/summary", api.UsersListSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/", api.UserByUUIDHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/create", api.UsersCreateHandler(manager, cfg))
 	http.HandleFunc("/api/v1/config-profiles", api.ConfigProfilesHandler(manager, cfg))
