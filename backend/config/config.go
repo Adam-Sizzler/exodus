@@ -24,6 +24,13 @@ type BackendConfig struct {
 	Subscription *SubscriptionConnConfig `yaml:"subscription"`
 	StatsColumns StatsColumns            `yaml:"stats_columns"`
 	Nodes        map[string]NodeConfig   `yaml:"node_metadata"`
+	CORS         CORSConfig              `yaml:"cors"`
+}
+
+type CORSConfig struct {
+	AllowedOrigins []string `yaml:"allowed_origins"`
+	AllowedMethods []string `yaml:"allowed_methods"`
+	AllowedHeaders []string `yaml:"allowed_headers"`
 }
 
 type LogConfig struct {
@@ -113,6 +120,11 @@ var defaultConfig = BackendConfig{
 	StatsColumns: StatsColumns{
 		Server: StatsSection{Sort: "source asc", Columns: []string{}},
 		Client: StatsSection{Sort: "last_seen desc", Columns: []string{}},
+	},
+	CORS: CORSConfig{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "Authorization", "X-API-Token"},
 	},
 }
 

@@ -393,18 +393,18 @@ func AllSquadsSummaryHandler(manager *manager.DatabaseManager, cfg *config.Backe
 
 // NodeWithConfig represents a node with its config profile info.
 type NodeWithConfig struct {
-	UUID                     string  `json:"uuid"`
-	ID                       int64   `json:"id"`
-	Name                     string  `json:"name"`
-	Address                  string  `json:"address"`
-	Port                     int     `json:"port"`
-	ActiveConfigProfileUUID  *string `json:"active_config_profile_uuid,omitempty"`
-	ConfigProfileName        *string `json:"config_profile_name,omitempty"`
-	IsConnected              bool    `json:"is_connected"`
-	IsDisabled               bool    `json:"is_disabled"`
-	ViewPosition             int     `json:"view_position"`
-	CountryCode              string  `json:"country_code"`
-	Tags                     string  `json:"tags"` // JSON array
+	UUID                     string   `json:"uuid"`
+	ID                       *int64   `json:"id,omitempty"`
+	Name                     string   `json:"name"`
+	Address                  string   `json:"address"`
+	Port                     int      `json:"port"`
+	ActiveConfigProfileUUID  *string  `json:"active_config_profile_uuid,omitempty"`
+	ConfigProfileName        *string  `json:"config_profile_name,omitempty"`
+	IsConnected              bool     `json:"is_connected"`
+	IsDisabled               bool     `json:"is_disabled"`
+	ViewPosition             int      `json:"view_position"`
+	CountryCode              string   `json:"country_code"`
+	Tags                     []string `json:"tags"` // JSON array
 }
 
 // NodesWithConfigHandler handles GET /api/v1/nodes-with-config
@@ -420,7 +420,7 @@ func NodesWithConfigHandler(manager *manager.DatabaseManager, cfg *config.Backen
 
 		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 			query := `
-				SELECT 
+				SELECT
 					n.uuid,
 					n.id,
 					n.name,
@@ -445,13 +445,19 @@ func NodesWithConfigHandler(manager *manager.DatabaseManager, cfg *config.Backen
 
 			for rows.Next() {
 				var node NodeWithConfig
+				var id sql.NullInt64
 				var activeConfigProfileUUID, configProfileName sql.NullString
-				var tags string
+				var tagsJSON sql.NullString
 
-				if err := rows.Scan(&node.UUID, &node.ID, &node.Name, &node.Address, &node.Port,
+				if err := rows.Scan(&node.UUID, &id, &node.Name, &node.Address, &node.Port,
 					&activeConfigProfileUUID, &configProfileName, &node.IsConnected, &node.IsDisabled,
-					&node.ViewPosition, &node.CountryCode, &tags); err != nil {
+					&node.ViewPosition, &node.CountryCode, &tagsJSON); err != nil {
 					return err
+				}
+
+				// Handle nullable id field
+				if id.Valid {
+					node.ID = &id.Int64
 				}
 
 				if activeConfigProfileUUID.Valid && activeConfigProfileUUID.String != "" {
@@ -460,7 +466,18 @@ func NodesWithConfigHandler(manager *manager.DatabaseManager, cfg *config.Backen
 						node.ConfigProfileName = &configProfileName.String
 					}
 				}
-				node.Tags = tags
+				
+				// Parse tags JSON string to array
+				if tagsJSON.Valid && tagsJSON.String != "" {
+					var tags []string
+					if err := json.Unmarshal([]byte(tagsJSON.String), &tags); err == nil {
+						node.Tags = tags
+					} else {
+						node.Tags = []string{}
+					}
+				} else {
+					node.Tags = []string{}
+				}
 
 				nodes = append(nodes, node)
 			}

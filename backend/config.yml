@@ -8,15 +8,31 @@ log_config:
 
 # API Settings
 api_token: ""                                             # Token required to access the API endpoints. If empty, access is allowed without authorization. Format: Bearer <token>.
- 
-# Timezone Settings 
+
+# Timezone Settings
 TZ: Asia/Bangkok                                          # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
 
 backend:
   listen_address: 0.0.0.0                                 # IP address of the v2ray-stat API server. 127.0.0.1 means it is accessible only locally (localhost).
   listen_port: 9243                                       # TCP port for v2ray-stat API server. Must be between 1 and 65535.
 
-# Paths & Logging 
+# CORS Settings (Cross-Origin Resource Sharing)
+cors:
+  allowed_origins:
+    - "*"                                                 # Use "*" to allow all origins, or specify domains like "https://yourdomain.com"
+  # allowed_methods:                                      # Optional: defaults to GET, POST, PUT, PATCH, DELETE, OPTIONS
+  #   - GET
+  #   - POST
+  #   - PUT
+  #   - PATCH
+  #   - DELETE
+  #   - OPTIONS
+  # allowed_headers:                                      # Optional: defaults to Content-Type, Authorization, X-API-Token
+  #   - Content-Type
+  #   - Authorization
+  #   - X-API-Token
+
+# Paths & Logging
 paths:
   database: ./data.db                                     # Path to the SQLite database for tracking user sessions and usage.
 

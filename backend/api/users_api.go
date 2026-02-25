@@ -40,7 +40,7 @@ type UserEntity struct {
 	TelegramID             *int64     `json:"telegram_id,omitempty"`
 	Email                  *string    `json:"email,omitempty"`
 	HwidDeviceLimit        *int       `json:"hwid_device_limit,omitempty"`
-	ExternalSquadUUID      *string    `json:"external_squad_uuid,omitempty"`
+	InternalSquadUUID      *string    `json:"internal_squad_uuid,omitempty"`
 	LastTriggeredThreshold int        `json:"last_triggered_threshold"`
 	CreatedAt              time.Time  `json:"created_at"`
 	UpdatedAt              time.Time  `json:"updated_at"`
@@ -62,7 +62,7 @@ type UserCreateRequest struct {
 	TelegramID             *int64  `json:"telegram_id,omitempty"`
 	Email                  *string `json:"email,omitempty"`
 	HwidDeviceLimit        *int    `json:"hwid_device_limit,omitempty"`
-	ExternalSquadUUID      *string `json:"external_squad_uuid,omitempty"`
+	InternalSquadUUID      *string `json:"internal_squad_uuid,omitempty"`
 	LastTriggeredThreshold int     `json:"last_triggered_threshold"`          // Default: 0
 }
 
@@ -149,7 +149,7 @@ type UserUpdateRequest struct {
 	TelegramID             *int64  `json:"telegram_id,omitempty"`
 	Email                  *string `json:"email,omitempty"`
 	HwidDeviceLimit        *int    `json:"hwid_device_limit,omitempty"`
-	ExternalSquadUUID      *string `json:"external_squad_uuid,omitempty"`
+	InternalSquadUUID      *string `json:"internal_squad_uuid,omitempty"`
 	LastTriggeredThreshold *int    `json:"last_triggered_threshold,omitempty"`
 }
 
@@ -256,21 +256,22 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 		}
 
 		// Insert user into database
+		var userTID int64
 		err = manager.ExecuteHighPriority(func(db *sql.DB) error {
 			query := `
 				INSERT INTO users (
 					uuid, short_uuid, username, status, traffic_limit_bytes,
 					traffic_limit_strategy, expire_at, trojan_password, vless_uuid, ss_password,
 					description, tag, telegram_id, email, hwid_device_limit,
-					external_squad_uuid, last_triggered_threshold, created_at, updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+					last_triggered_threshold, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 			`
 
 			result, err := db.ExecContext(ctx, query,
 				*userUUID, shortUUID, req.Username, req.Status, req.TrafficLimitBytes,
 				req.TrafficLimitStrategy, expireAt.Format("2006-01-02 15:04:05"), *trojanPassword, *vlessUUID, *ssPassword,
 				req.Description, req.Tag, req.TelegramID, req.Email, req.HwidDeviceLimit,
-				req.ExternalSquadUUID, req.LastTriggeredThreshold,
+				req.LastTriggeredThreshold,
 			)
 			if err != nil {
 				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -279,13 +280,18 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 				return fmt.Errorf("failed to insert user: %w", err)
 			}
 
-			rowsAffected, err := result.RowsAffected()
+			userTID, err = result.LastInsertId()
 			if err != nil {
-				return fmt.Errorf("failed to get rows affected: %w", err)
+				return fmt.Errorf("failed to get last insert id: %w", err)
 			}
 
-			if rowsAffected == 0 {
-				return fmt.Errorf("failed to create user")
+			// Handle internal squad assignment
+			if req.InternalSquadUUID != nil && *req.InternalSquadUUID != "" {
+				squadQuery := `INSERT INTO internal_squad_members (internal_squad_uuid, user_id) VALUES (?, ?)`
+				_, err = db.ExecContext(ctx, squadQuery, *req.InternalSquadUUID, userTID)
+				if err != nil {
+					return fmt.Errorf("failed to assign squad: %w", err)
+				}
 			}
 
 			return nil
@@ -318,18 +324,19 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 		err = manager.ExecuteHighPriority(func(db *sql.DB) error {
 			query := `
 				SELECT 
-					t_id, uuid, short_uuid, username, status, traffic_limit_bytes,
-					traffic_limit_strategy, expire_at, sub_last_user_agent, sub_last_opened_at,
-					last_traffic_reset_at, sub_revoked_at, trojan_password, vless_uuid,
-					ss_password, description, tag, telegram_id, email, hwid_device_limit,
-					external_squad_uuid, last_triggered_threshold, created_at, updated_at
-				FROM users
-				WHERE uuid = ?
+					u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+					u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
+					u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid,
+					u.ss_password, u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit,
+					ism.internal_squad_uuid, u.last_triggered_threshold, u.created_at, u.updated_at
+				FROM users u
+				LEFT JOIN internal_squad_members ism ON u.t_id = ism.user_id
+				WHERE u.uuid = ?
 			`
 
 			row := db.QueryRowContext(ctx, query, *userUUID)
 
-			var subLastUserAgent, description, tag, email, externalSquadUUID sql.NullString
+			var subLastUserAgent, description, tag, email, internalSquadUUID sql.NullString
 			var subLastOpenedAt, lastTrafficResetAt, subRevokedAt sql.NullTime
 			var telegramID, hwidDeviceLimit sql.NullInt64
 
@@ -338,7 +345,7 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 				&createdUser.TrafficLimitStrategy, &createdUser.ExpireAt, &subLastUserAgent, &subLastOpenedAt,
 				&lastTrafficResetAt, &subRevokedAt, &createdUser.TrojanPassword, &createdUser.VlessUUID,
 				&createdUser.SSPassword, &description, &tag, &telegramID, &email, &hwidDeviceLimit,
-				&createdUser.ExternalSquadUUID, &createdUser.LastTriggeredThreshold, &createdUser.CreatedAt, &createdUser.UpdatedAt,
+				&internalSquadUUID, &createdUser.LastTriggeredThreshold, &createdUser.CreatedAt, &createdUser.UpdatedAt,
 			)
 
 			if err != nil {
@@ -375,8 +382,8 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 				hdl := int(hwidDeviceLimit.Int64)
 				createdUser.HwidDeviceLimit = &hdl
 			}
-			if externalSquadUUID.Valid {
-				createdUser.ExternalSquadUUID = &externalSquadUUID.String
+			if internalSquadUUID.Valid {
+				createdUser.InternalSquadUUID = &internalSquadUUID.String
 			}
 
 			return nil
@@ -464,7 +471,7 @@ func (r *UserUpdateRequest) HasUpdates() bool {
 		r.TelegramID != nil ||
 		r.Email != nil ||
 		r.HwidDeviceLimit != nil ||
-		r.ExternalSquadUUID != nil ||
+		r.InternalSquadUUID != nil ||
 		r.LastTriggeredThreshold != nil
 }
 
@@ -486,13 +493,14 @@ func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig
 		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 			query := `
 				SELECT 
-					t_id, uuid, short_uuid, username, status, traffic_limit_bytes,
-					traffic_limit_strategy, expire_at, sub_last_user_agent, sub_last_opened_at,
-					last_traffic_reset_at, sub_revoked_at, trojan_password, vless_uuid,
-					ss_password, description, tag, telegram_id, email, hwid_device_limit,
-					external_squad_uuid, last_triggered_threshold, created_at, updated_at
-				FROM users
-				ORDER BY t_id ASC
+					u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+					u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
+					u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid,
+					u.ss_password, u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit,
+					ism.internal_squad_uuid, u.last_triggered_threshold, u.created_at, u.updated_at
+				FROM users u
+				LEFT JOIN internal_squad_members ism ON u.t_id = ism.user_id
+				ORDER BY u.t_id ASC
 			`
 
 			rows, err := db.QueryContext(ctx, query)
@@ -503,7 +511,7 @@ func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig
 
 			for rows.Next() {
 				var u UserEntity
-				var subLastUserAgent, description, tag, email, externalSquadUUID sql.NullString
+				var subLastUserAgent, description, tag, email, internalSquadUUID sql.NullString
 				var subLastOpenedAt, lastTrafficResetAt, subRevokedAt sql.NullTime
 				var telegramID, hwidDeviceLimit sql.NullInt64
 
@@ -512,7 +520,7 @@ func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig
 					&u.TrafficLimitStrategy, &u.ExpireAt, &subLastUserAgent, &subLastOpenedAt,
 					&lastTrafficResetAt, &subRevokedAt, &u.TrojanPassword, &u.VlessUUID,
 					&u.SSPassword, &description, &tag, &telegramID, &email, &hwidDeviceLimit,
-					&u.ExternalSquadUUID, &u.LastTriggeredThreshold, &u.CreatedAt, &u.UpdatedAt,
+					&internalSquadUUID, &u.LastTriggeredThreshold, &u.CreatedAt, &u.UpdatedAt,
 				)
 				if err != nil {
 					return fmt.Errorf("failed to scan user row: %w", err)
@@ -548,8 +556,8 @@ func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig
 					hdl := int(hwidDeviceLimit.Int64)
 					u.HwidDeviceLimit = &hdl
 				}
-				if externalSquadUUID.Valid {
-					u.ExternalSquadUUID = &externalSquadUUID.String
+				if internalSquadUUID.Valid {
+					u.InternalSquadUUID = &internalSquadUUID.String
 				}
 
 				users = append(users, u)
@@ -596,7 +604,7 @@ func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 		userUUID := strings.TrimSpace(path)
 
 		if userUUID == "" {
-			cfg.Logger.Warn("Missing user UUID in path")
+			cfg.Logger.Warn("Missing user UUID in path", "path", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{
@@ -605,9 +613,11 @@ func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 			return
 		}
 
+		cfg.Logger.Debug("Processing request for user", "uuid", userUUID, "method", r.Method)
+
 		// Validate UUID format
 		if _, err := uuid.Parse(userUUID); err != nil {
-			cfg.Logger.Warn("Invalid user UUID format", "uuid", userUUID)
+			cfg.Logger.Warn("Invalid user UUID format", "uuid", userUUID, "error", err)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{
@@ -620,13 +630,16 @@ func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 
 		switch r.Method {
 		case http.MethodGet:
+			cfg.Logger.Debug("Handling GET request for user", "uuid", userUUID)
 			handleGetUser(w, r, manager, cfg, ctx, userUUID)
 		case http.MethodPatch:
+			cfg.Logger.Debug("Handling PATCH request for user", "uuid", userUUID)
 			handlePatchUser(w, r, manager, cfg, ctx, userUUID)
 		case http.MethodDelete:
+			cfg.Logger.Debug("Handling DELETE request for user", "uuid", userUUID)
 			handleDeleteUser(w, r, manager, cfg, ctx, userUUID)
 		default:
-			cfg.Logger.Warn("Invalid HTTP method", "method", r.Method)
+			cfg.Logger.Warn("Invalid HTTP method for user endpoint", "method", r.Method, "uuid", userUUID)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			json.NewEncoder(w).Encode(map[string]string{
@@ -638,23 +651,26 @@ func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 
 // handleGetUser handles GET request for a single user.
 func handleGetUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
+	cfg.Logger.Debug("Fetching user details", "uuid", userUUID)
+	
 	var user UserEntity
 
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `
-			SELECT 
-				t_id, uuid, short_uuid, username, status, traffic_limit_bytes,
-				traffic_limit_strategy, expire_at, sub_last_user_agent, sub_last_opened_at,
-				last_traffic_reset_at, sub_revoked_at, trojan_password, vless_uuid,
-				ss_password, description, tag, telegram_id, email, hwid_device_limit,
-				external_squad_uuid, last_triggered_threshold, created_at, updated_at
-			FROM users
-			WHERE uuid = ?
+			SELECT
+				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+				u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
+				u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid,
+				u.ss_password, u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit,
+				ism.internal_squad_uuid, u.last_triggered_threshold, u.created_at, u.updated_at
+			FROM users u
+			LEFT JOIN internal_squad_members ism ON u.t_id = ism.user_id
+			WHERE u.uuid = ?
 		`
 
 		row := db.QueryRowContext(ctx, query, userUUID)
 
-		var subLastUserAgent, description, tag, email, externalSquadUUID sql.NullString
+		var subLastUserAgent, description, tag, email, internalSquadUUID sql.NullString
 		var subLastOpenedAt, lastTrafficResetAt, subRevokedAt sql.NullTime
 		var telegramID, hwidDeviceLimit sql.NullInt64
 
@@ -663,7 +679,7 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, manager *manager.Data
 			&user.TrafficLimitStrategy, &user.ExpireAt, &subLastUserAgent, &subLastOpenedAt,
 			&lastTrafficResetAt, &subRevokedAt, &user.TrojanPassword, &user.VlessUUID,
 			&user.SSPassword, &description, &tag, &telegramID, &email, &hwidDeviceLimit,
-			&user.ExternalSquadUUID, &user.LastTriggeredThreshold, &user.CreatedAt, &user.UpdatedAt,
+			&internalSquadUUID, &user.LastTriggeredThreshold, &user.CreatedAt, &user.UpdatedAt,
 		)
 
 		if err == sql.ErrNoRows {
@@ -703,8 +719,8 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, manager *manager.Data
 			hdl := int(hwidDeviceLimit.Int64)
 			user.HwidDeviceLimit = &hdl
 		}
-		if externalSquadUUID.Valid {
-			user.ExternalSquadUUID = &externalSquadUUID.String
+		if internalSquadUUID.Valid {
+			user.InternalSquadUUID = &internalSquadUUID.String
 		}
 
 		return nil
@@ -739,10 +755,12 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, manager *manager.Data
 
 // handlePatchUser handles PATCH request for partial user update.
 func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
+	cfg.Logger.Debug("Starting user update", "uuid", userUUID, "method", r.Method, "path", r.URL.Path)
+	
 	// Parse JSON request body
 	var req UserUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		cfg.Logger.Error("Failed to parse JSON request", "error", err)
+		cfg.Logger.Error("Failed to parse JSON request", "uuid", userUUID, "error", err)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -750,10 +768,12 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 		})
 		return
 	}
+	
+	cfg.Logger.Debug("Parsed update request", "uuid", userUUID, "internal_squad_uuid", req.InternalSquadUUID)
 
 	// Check if any fields are provided
 	if !req.HasUpdates() {
-		cfg.Logger.Warn("No update fields provided in PATCH request")
+		cfg.Logger.Warn("No update fields provided in PATCH request", "uuid", userUUID)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -764,7 +784,7 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 
 	// Validate request
 	if err := req.Validate(); err != nil {
-		cfg.Logger.Warn("Validation failed for user update", "error", err)
+		cfg.Logger.Warn("Validation failed for user update", "uuid", userUUID, "error", err)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -815,7 +835,6 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 		{req.TelegramID != nil, func() { addField("telegram_id", *req.TelegramID) }},
 		{req.Email != nil, func() { addNullableField("email", req.Email) }},
 		{req.HwidDeviceLimit != nil, func() { addField("hwid_device_limit", *req.HwidDeviceLimit) }},
-		{req.ExternalSquadUUID != nil, func() { addNullableField("external_squad_uuid", req.ExternalSquadUUID) }},
 		{req.LastTriggeredThreshold != nil, func() { addField("last_triggered_threshold", *req.LastTriggeredThreshold) }},
 	}
 
@@ -830,24 +849,73 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 	args = append(args, userUUID)
 
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
-		query := fmt.Sprintf(`
-			UPDATE users 
-			SET %s, updated_at = CURRENT_TIMESTAMP
-			WHERE uuid = $%d
-		`, strings.Join(updateClauses, ", "), argIndex)
+		// 1. Update users table if there are changes
+		if len(updateClauses) > 0 {
+			query := fmt.Sprintf(`
+				UPDATE users 
+				SET %s, updated_at = CURRENT_TIMESTAMP
+				WHERE uuid = $%d
+			`, strings.Join(updateClauses, ", "), argIndex)
 
-		result, err := db.ExecContext(ctx, query, args...)
-		if err != nil {
-			return fmt.Errorf("failed to update user: %w", err)
+			result, err := db.ExecContext(ctx, query, args...)
+			if err != nil {
+				return fmt.Errorf("failed to update user: %w", err)
+			}
+
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				return fmt.Errorf("failed to get rows affected: %w", err)
+			}
+
+			if rowsAffected == 0 {
+				return fmt.Errorf("user not found")
+			}
 		}
 
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("failed to get rows affected: %w", err)
-		}
+		// 2. Handle internal squad assignment if provided
+		if req.InternalSquadUUID != nil {
+			cfg.Logger.Debug("Processing squad assignment", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID)
+			
+			// Get t_id first
+			var tID int64
+			err := db.QueryRowContext(ctx, "SELECT t_id FROM users WHERE uuid = ?", userUUID).Scan(&tID)
+			if err != nil {
+				cfg.Logger.Error("Failed to get user t_id for squad assignment", "uuid", userUUID, "error", err)
+				return fmt.Errorf("failed to get user t_id: %w", err)
+			}
+			cfg.Logger.Debug("Got user t_id", "uuid", userUUID, "t_id", tID)
 
-		if rowsAffected == 0 {
-			return fmt.Errorf("user not found")
+			// Delete existing squad assignments
+			_, err = db.ExecContext(ctx, "DELETE FROM internal_squad_members WHERE user_id = ?", tID)
+			if err != nil {
+				cfg.Logger.Error("Failed to clear existing squad assignments", "uuid", userUUID, "t_id", tID, "error", err)
+				return fmt.Errorf("failed to clear existing squad assignments: %w", err)
+			}
+			cfg.Logger.Debug("Cleared existing squad assignments", "uuid", userUUID, "t_id", tID)
+
+			// Add new assignment if provided and not empty
+			if *req.InternalSquadUUID != "" {
+				// First verify the squad exists
+				var squadExists bool
+				err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM internal_squads WHERE uuid = ?)", *req.InternalSquadUUID).Scan(&squadExists)
+				if err != nil {
+					cfg.Logger.Error("Failed to check squad existence", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID, "error", err)
+					return fmt.Errorf("failed to verify squad exists: %w", err)
+				}
+				cfg.Logger.Debug("Squad existence check", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID, "exists", squadExists)
+				
+				if !squadExists {
+					cfg.Logger.Error("Squad does not exist", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID)
+					return fmt.Errorf("squad does not exist: %s", *req.InternalSquadUUID)
+				}
+				
+				_, err = db.ExecContext(ctx, "INSERT INTO internal_squad_members (internal_squad_uuid, user_id) VALUES (?, ?)", *req.InternalSquadUUID, tID)
+				if err != nil {
+					cfg.Logger.Error("Failed to assign new squad", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID, "t_id", tID, "error", err)
+					return fmt.Errorf("failed to assign new squad: %w", err)
+				}
+				cfg.Logger.Info("Squad assigned successfully", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID)
+			}
 		}
 
 		return nil
@@ -864,7 +932,8 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 			return
 		}
 
-		cfg.Logger.Error("Failed to update user", "uuid", userUUID, "error", err)
+		// Log detailed error information
+		cfg.Logger.Error("Failed to update user", "uuid", userUUID, "error", err, "error_type", fmt.Sprintf("%T", err))
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -880,18 +949,19 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 	err = manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `
 			SELECT
-				t_id, uuid, short_uuid, username, status, traffic_limit_bytes,
-				traffic_limit_strategy, expire_at, sub_last_user_agent, sub_last_opened_at,
-				last_traffic_reset_at, sub_revoked_at, trojan_password, vless_uuid,
-				ss_password, description, tag, telegram_id, email, hwid_device_limit,
-				external_squad_uuid, last_triggered_threshold, created_at, updated_at
-			FROM users
-			WHERE uuid = ?
+				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+				u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
+				u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid,
+				u.ss_password, u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit,
+				ism.internal_squad_uuid, u.last_triggered_threshold, u.created_at, u.updated_at
+			FROM users u
+			LEFT JOIN internal_squad_members ism ON u.t_id = ism.user_id
+			WHERE u.uuid = ?
 		`
 
 		row := db.QueryRowContext(ctx, query, userUUID)
 
-		var subLastUserAgent, description, tag, email, externalSquadUUID sql.NullString
+		var subLastUserAgent, description, tag, email, internalSquadUUID sql.NullString
 		var subLastOpenedAt, lastTrafficResetAt, subRevokedAt sql.NullTime
 		var telegramID, hwidDeviceLimit sql.NullInt64
 
@@ -900,7 +970,7 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 			&updatedUser.TrafficLimitStrategy, &updatedUser.ExpireAt, &subLastUserAgent, &subLastOpenedAt,
 			&lastTrafficResetAt, &subRevokedAt, &updatedUser.TrojanPassword, &updatedUser.VlessUUID,
 			&updatedUser.SSPassword, &description, &tag, &telegramID, &email, &hwidDeviceLimit,
-			&updatedUser.ExternalSquadUUID, &updatedUser.LastTriggeredThreshold, &updatedUser.CreatedAt, &updatedUser.UpdatedAt,
+			&internalSquadUUID, &updatedUser.LastTriggeredThreshold, &updatedUser.CreatedAt, &updatedUser.UpdatedAt,
 		)
 
 		if err != nil {
@@ -937,8 +1007,8 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 			hdl := int(hwidDeviceLimit.Int64)
 			updatedUser.HwidDeviceLimit = &hdl
 		}
-		if externalSquadUUID.Valid {
-			updatedUser.ExternalSquadUUID = &externalSquadUUID.String
+		if internalSquadUUID.Valid {
+			updatedUser.InternalSquadUUID = &internalSquadUUID.String
 		}
 
 		return nil
@@ -958,6 +1028,8 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 
 // handleDeleteUser handles DELETE request for deleting a user.
 func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
+	cfg.Logger.Debug("Starting user deletion", "uuid", userUUID)
+	
 	// Get user info for logging before deletion
 	var username string
 	var userTID int64

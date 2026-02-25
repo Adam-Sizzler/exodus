@@ -33,7 +33,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.V2RS.Port)
 	server := &http.Server{
 		Addr:    addr,
-		Handler: api.WithServerHeader(http.DefaultServeMux),
+		Handler: api.WithCORS(cfg, api.WithServerHeader(http.DefaultServeMux)),
 	}
 
 	// Full working API endpoints
