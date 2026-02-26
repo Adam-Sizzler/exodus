@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"v2ray-stat/backend/api"
 	"v2ray-stat/common"
 	"v2ray-stat/constant"
 	"v2ray-stat/subscription/config"
@@ -21,6 +20,16 @@ import (
 	"v2ray-stat/subscription/handler"
 	"v2ray-stat/subscription/templates"
 )
+
+// WithServerHeader adds a Server header to all responses.
+func WithServerHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHeader := fmt.Sprintf("MuxCloud/%s (WebServer)", constant.Version)
+		w.Header().Set("Server", serverHeader)
+		w.Header().Set("X-Powered-By", "MuxCloud")
+		next.ServeHTTP(w, r)
+	})
+}
 
 func LoggingMiddleware(cfg *config.Config, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +73,7 @@ func startAPIServer(ctx context.Context, cfg *config.Config, wg *sync.WaitGroup)
 	mux.HandleFunc("/api/v1/sub", handler.SubscriptionHandler)
 
 	// Оборачиваем все в логгер и стандартные заголовки
-	finalHandler := LoggingMiddleware(cfg, api.WithServerHeader(mux))
+	finalHandler := LoggingMiddleware(cfg, WithServerHeader(mux))
 
 	server := &http.Server{
 		Addr:    addr,

@@ -198,6 +198,40 @@ func NodesHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) h
 	}
 }
 
+// NodesReorderHandler handles POST /api/v1/nodes/reorder
+func NodesReorderHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req ViewPositionReorderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+		if err := req.Validate(); err != nil {
+			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			return
+		}
+
+		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+			return applyViewPositionReorder(r.Context(), db, "nodes", req.OrderedUUIDs, cfg)
+		})
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to reorder nodes", err, cfg)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "nodes reordered",
+			"count":   len(req.OrderedUUIDs),
+		})
+	}
+}
+
 // handleGetNodes handles GET /api/v1/nodes
 func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
 	// Check if help requested
@@ -252,32 +286,32 @@ func sendNodesHelp(w http.ResponseWriter) {
 		"description": "V2Ray Nodes Management API",
 		"endpoints": map[string]interface{}{
 			"GET /api/v1/nodes": map[string]interface{}{
-				"description":   "Get all nodes",
-				"query_params":  "?help - show this help message",
-				"response":      "List of all nodes with their statistics",
+				"description":  "Get all nodes",
+				"query_params": "?help - show this help message",
+				"response":     "List of all nodes with their statistics",
 			},
 			"GET /api/v1/nodes/{uuid}": map[string]interface{}{
 				"description": "Get single node by UUID",
 			},
 			"POST /api/v1/nodes": map[string]interface{}{
-				"description": "Create a new node",
+				"description":     "Create a new node",
 				"required_fields": []string{"name", "address", "port", "country_code"},
 				"optional_fields": []string{"api_schema", "api_path", "api_metadata", "is_disabled", "consumption_multiplier", "is_traffic_tracking_active", "traffic_reset_day", "traffic_limit_bytes", "notify_percent", "view_position", "tags"},
 				"example": map[string]interface{}{
-					"name":                     "Germany-Frankfurt-01",
-					"address":                  "192.168.1.100",
-					"port":                     9253,
-					"api_schema":               "grpc",
-					"api_path":                 "",
-					"is_disabled":              false,
-					"consumption_multiplier":   100,
+					"name":                       "Germany-Frankfurt-01",
+					"address":                    "192.168.1.100",
+					"port":                       9253,
+					"api_schema":                 "grpc",
+					"api_path":                   "",
+					"is_disabled":                false,
+					"consumption_multiplier":     100,
 					"is_traffic_tracking_active": true,
-					"traffic_reset_day":        1,
-					"traffic_limit_bytes":      1099511627776,
-					"notify_percent":           80,
-					"view_position":            10,
-					"country_code":             "DE",
-					"tags":                     []string{"premium", "fast"},
+					"traffic_reset_day":          1,
+					"traffic_limit_bytes":        1099511627776,
+					"notify_percent":             80,
+					"view_position":              10,
+					"country_code":               "DE",
+					"tags":                       []string{"premium", "fast"},
 				},
 			},
 			"PATCH /api/v1/nodes/{uuid}": map[string]interface{}{
@@ -290,25 +324,25 @@ func sendNodesHelp(w http.ResponseWriter) {
 			},
 		},
 		"response_fields": map[string]string{
-			"uuid":                         "Node unique identifier",
-			"name":                         "Node display name",
-			"address":                      "Node IP address or domain",
-			"port":                         "Node gRPC port",
-			"api_schema":                   "API protocol (grpc, https, http)",
-			"api_path":                     "API endpoint path",
-			"is_connected":                 "Node is currently connected",
-			"is_disabled":                  "Node is administratively disabled",
-			"users_online":                 "Number of active users on this node",
-			"traffic_used_bytes":           "Total traffic used through this node",
-			"traffic_limit_bytes":          "Traffic limit (0 = unlimited)",
-			"consumption_multiplier":       "Traffic multiplier percentage",
-			"is_traffic_tracking_active":   "Traffic tracking enabled",
-			"last_status_message":          "Last connection status message",
-			"last_status_change":           "Last status change timestamp",
-			"country_code":                 "2-letter country code",
-			"tags":                         "Node tags array",
-			"created_at":                   "Node creation timestamp",
-			"updated_at":                   "Node last update timestamp",
+			"uuid":                       "Node unique identifier",
+			"name":                       "Node display name",
+			"address":                    "Node IP address or domain",
+			"port":                       "Node gRPC port",
+			"api_schema":                 "API protocol (grpc, https, http)",
+			"api_path":                   "API endpoint path",
+			"is_connected":               "Node is currently connected",
+			"is_disabled":                "Node is administratively disabled",
+			"users_online":               "Number of active users on this node",
+			"traffic_used_bytes":         "Total traffic used through this node",
+			"traffic_limit_bytes":        "Traffic limit (0 = unlimited)",
+			"consumption_multiplier":     "Traffic multiplier percentage",
+			"is_traffic_tracking_active": "Traffic tracking enabled",
+			"last_status_message":        "Last connection status message",
+			"last_status_change":         "Last status change timestamp",
+			"country_code":               "2-letter country code",
+			"tags":                       "Node tags array",
+			"created_at":                 "Node creation timestamp",
+			"updated_at":                 "Node last update timestamp",
 		},
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -561,13 +595,13 @@ func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *manager.Da
 // handleDeleteNode handles DELETE /api/v1/nodes/{uuid}
 func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
 	ctx := r.Context()
-	
+
 	// Get node name for logging
 	var nodeName string
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		return db.QueryRowContext(ctx, "SELECT name FROM nodes WHERE uuid = ?", nodeUUID).Scan(&nodeName)
 	})
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendError(w, http.StatusNotFound, "node not found", nil, cfg)
@@ -590,8 +624,8 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *manager.D
 	cfg.Logger.Info("Node deleted", "uuid", nodeUUID, "name", nodeName)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":  "node deleted",
-		"uuid":     nodeUUID,
+		"message":   "node deleted",
+		"uuid":      nodeUUID,
 		"node_name": nodeName,
 	})
 }
@@ -599,8 +633,49 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *manager.D
 // handleDeleteAllNodes handles DELETE /api/v1/nodes (delete all nodes)
 func handleDeleteAllNodes(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
 	ctx := r.Context()
-	
-	// Require confirmation
+
+	if rawUUIDs := r.URL.Query().Get("uuids"); rawUUIDs != "" {
+		uuids, err := parseUUIDCSV(rawUUIDs)
+		if err != nil {
+			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			return
+		}
+
+		deleted := 0
+		err = manager.ExecuteHighPriority(func(db *sql.DB) error {
+			tx, err := db.BeginTx(ctx, nil)
+			if err != nil {
+				return err
+			}
+			for _, id := range uuids {
+				res, execErr := tx.ExecContext(ctx, "DELETE FROM nodes WHERE uuid = ?", id)
+				if execErr != nil {
+					_ = tx.Rollback()
+					return execErr
+				}
+				rowsAffected, rowsErr := res.RowsAffected()
+				if rowsErr != nil {
+					_ = tx.Rollback()
+					return rowsErr
+				}
+				deleted += int(rowsAffected)
+			}
+			return tx.Commit()
+		})
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to delete selected nodes", err, cfg)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "selected nodes deleted",
+			"count":   deleted,
+		})
+		return
+	}
+
+	// Require confirmation for full delete.
 	if r.URL.Query().Get("confirm") != "true" {
 		sendError(w, http.StatusBadRequest, "confirmation required. Use DELETE /api/v1/nodes?confirm=true", nil, cfg)
 		return
@@ -673,24 +748,24 @@ func formatBytes(bytes int64) string {
 
 // NodeSummary represents a simplified node response for frontend
 type NodeSummary struct {
-	UUID           string `json:"uuid"`
-	Name           string `json:"name"`
-	Address        string `json:"address"`
-	Port           int    `json:"port"`
-	APISchema      string `json:"api_schema"`
-	APIPath        string `json:"api_path"`
-	UsersOnline    int    `json:"users_online"`
-	IsActive       bool   `json:"is_active"`
-	IsConnected    bool   `json:"is_connected"`
-	IsDisabled     bool   `json:"is_disabled"`
-	TrafficUsed    string `json:"traffic_used"`
-	TrafficLimit   string `json:"traffic_limit"`
-	TrafficUsedRaw int64  `json:"traffic_used_bytes"`
-	TrafficLimitRaw int64 `json:"traffic_limit_bytes"`
-	CountryCode    string `json:"country_code"`
-	Tags           []string `json:"tags"`
-	LastStatusMsg  string `json:"last_status_message"`
-	CreatedAt      string `json:"created_at"`
+	UUID            string   `json:"uuid"`
+	Name            string   `json:"name"`
+	Address         string   `json:"address"`
+	Port            int      `json:"port"`
+	APISchema       string   `json:"api_schema"`
+	APIPath         string   `json:"api_path"`
+	UsersOnline     int      `json:"users_online"`
+	IsActive        bool     `json:"is_active"`
+	IsConnected     bool     `json:"is_connected"`
+	IsDisabled      bool     `json:"is_disabled"`
+	TrafficUsed     string   `json:"traffic_used"`
+	TrafficLimit    string   `json:"traffic_limit"`
+	TrafficUsedRaw  int64    `json:"traffic_used_bytes"`
+	TrafficLimitRaw int64    `json:"traffic_limit_bytes"`
+	CountryCode     string   `json:"country_code"`
+	Tags            []string `json:"tags"`
+	LastStatusMsg   string   `json:"last_status_message"`
+	CreatedAt       string   `json:"created_at"`
 }
 
 // handleGetNodesSummary returns simplified node list for frontend

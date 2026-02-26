@@ -40,7 +40,7 @@ func (r *InternalSquadCreateRequest) Validate() error {
 // InternalSquadUpdateRequest represents a partial update request for an internal squad.
 // Only provided fields will be updated (PATCH semantics).
 type InternalSquadUpdateRequest struct {
-	ViewPosition *int   `json:"view_position,omitempty"`
+	ViewPosition *int    `json:"view_position,omitempty"`
 	Name         *string `json:"name,omitempty"`
 }
 
@@ -91,6 +91,40 @@ func InternalSquadsHandler(manager *manager.DatabaseManager, cfg *config.Backend
 		default:
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
 		}
+	}
+}
+
+// InternalSquadsReorderHandler handles POST /api/v1/internal-squads/reorder
+func InternalSquadsReorderHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req ViewPositionReorderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+		if err := req.Validate(); err != nil {
+			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			return
+		}
+
+		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+			return applyViewPositionReorder(r.Context(), db, "internal_squads", req.OrderedUUIDs, cfg)
+		})
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to reorder internal squads", err, cfg)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "internal squads reordered",
+			"count":   len(req.OrderedUUIDs),
+		})
 	}
 }
 

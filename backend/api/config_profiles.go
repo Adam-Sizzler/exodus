@@ -27,14 +27,14 @@ type ConfigProfile struct {
 
 // ConfigProfileInbound represents an inbound extracted from config profile.
 type ConfigProfileInbound struct {
-	UUID           string          `json:"uuid"`
-	ProfileUUID    string          `json:"profile_uuid"`
-	Tag            string          `json:"tag"`
-	Type           string          `json:"type"`
-	Network        *string         `json:"network,omitempty"`
-	Security       *string         `json:"security,omitempty"`
-	Port           *int            `json:"port,omitempty"`
-	RawInbound     json.RawMessage `json:"raw_inbound"`
+	UUID        string          `json:"uuid"`
+	ProfileUUID string          `json:"profile_uuid"`
+	Tag         string          `json:"tag"`
+	Type        string          `json:"type"`
+	Network     *string         `json:"network,omitempty"`
+	Security    *string         `json:"security,omitempty"`
+	Port        *int            `json:"port,omitempty"`
+	RawInbound  json.RawMessage `json:"raw_inbound"`
 }
 
 // ConfigProfileCreateRequest represents a request to create a new config profile.
@@ -132,6 +132,40 @@ func ConfigProfilesHandler(manager *manager.DatabaseManager, cfg *config.Backend
 		default:
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
 		}
+	}
+}
+
+// ConfigProfilesReorderHandler handles POST /api/v1/config-profiles/reorder
+func ConfigProfilesReorderHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req ViewPositionReorderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+		if err := req.Validate(); err != nil {
+			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			return
+		}
+
+		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+			return applyViewPositionReorder(r.Context(), db, "config_profiles", req.OrderedUUIDs, cfg)
+		})
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "failed to reorder config profiles", err, cfg)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "config profiles reordered",
+			"count":   len(req.OrderedUUIDs),
+		})
 	}
 }
 

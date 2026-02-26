@@ -48,22 +48,22 @@ type UserEntity struct {
 
 // UserCreateRequest represents a request to create a new user.
 type UserCreateRequest struct {
-	UUID                   *string `json:"uuid,omitempty"`                    // Optional, will be generated if not provided
-	Username               string  `json:"username"`                          // Required, unique
-	Status                 string  `json:"status"`                            // Required: ACTIVE, DISABLED, LIMITED, EXPIRED
-	TrafficLimitBytes      int64   `json:"traffic_limit_bytes"`               // Default: 0
-	TrafficLimitStrategy   string  `json:"traffic_limit_strategy"`            // Default: NO_RESET
-	ExpireAt               string  `json:"expire_at"`                         // Required: ISO 8601 format
-	TrojanPassword         *string `json:"trojan_password,omitempty"`         // Optional, will be generated if not provided
-	VlessUUID              *string `json:"vless_uuid,omitempty"`              // Optional, will be generated if not provided
-	SSPassword             *string `json:"ss_password,omitempty"`             // Optional, will be generated if not provided
+	UUID                   *string `json:"uuid,omitempty"`            // Optional, will be generated if not provided
+	Username               string  `json:"username"`                  // Required, unique
+	Status                 string  `json:"status"`                    // Required: ACTIVE, DISABLED, LIMITED, EXPIRED
+	TrafficLimitBytes      int64   `json:"traffic_limit_bytes"`       // Default: 0
+	TrafficLimitStrategy   string  `json:"traffic_limit_strategy"`    // Default: NO_RESET
+	ExpireAt               string  `json:"expire_at"`                 // Required: ISO 8601 format
+	TrojanPassword         *string `json:"trojan_password,omitempty"` // Optional, will be generated if not provided
+	VlessUUID              *string `json:"vless_uuid,omitempty"`      // Optional, will be generated if not provided
+	SSPassword             *string `json:"ss_password,omitempty"`     // Optional, will be generated if not provided
 	Description            *string `json:"description,omitempty"`
 	Tag                    *string `json:"tag,omitempty"`
 	TelegramID             *int64  `json:"telegram_id,omitempty"`
 	Email                  *string `json:"email,omitempty"`
 	HwidDeviceLimit        *int    `json:"hwid_device_limit,omitempty"`
 	InternalSquadUUID      *string `json:"internal_squad_uuid,omitempty"`
-	LastTriggeredThreshold int     `json:"last_triggered_threshold"`          // Default: 0
+	LastTriggeredThreshold int     `json:"last_triggered_threshold"` // Default: 0
 }
 
 // Validate validates the UserCreateRequest fields.
@@ -71,13 +71,13 @@ func (r *UserCreateRequest) Validate() error {
 	if r.Username == "" {
 		return fmt.Errorf("username is required")
 	}
-	
+
 	// Validate username format (alphanumeric, underscore, hyphen)
 	validUsername := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString
 	if !validUsername(r.Username) {
 		return fmt.Errorf("username can only contain letters, numbers, underscores, and hyphens")
 	}
-	
+
 	if r.Status == "" {
 		return fmt.Errorf("status is required")
 	}
@@ -92,14 +92,14 @@ func (r *UserCreateRequest) Validate() error {
 	if !valid {
 		return fmt.Errorf("status must be one of: ACTIVE, DISABLED, LIMITED, EXPIRED")
 	}
-	
+
 	if r.ExpireAt == "" {
 		return fmt.Errorf("expire_at is required")
 	}
 	if _, err := time.Parse(time.RFC3339, r.ExpireAt); err != nil {
 		return fmt.Errorf("expire_at must be in ISO 8601 format (RFC3339)")
 	}
-	
+
 	if r.TrafficLimitStrategy == "" {
 		r.TrafficLimitStrategy = "NO_RESET"
 	} else {
@@ -115,25 +115,25 @@ func (r *UserCreateRequest) Validate() error {
 			return fmt.Errorf("traffic_limit_strategy must be one of: NO_RESET, DAY, WEEK, MONTH")
 		}
 	}
-	
+
 	if r.TrafficLimitBytes < 0 {
 		return fmt.Errorf("traffic_limit_bytes must be non-negative")
 	}
-	
+
 	if r.HwidDeviceLimit != nil && *r.HwidDeviceLimit < 0 {
 		return fmt.Errorf("hwid_device_limit must be non-negative")
 	}
-	
+
 	if r.LastTriggeredThreshold < 0 || r.LastTriggeredThreshold > 100 {
 		return fmt.Errorf("last_triggered_threshold must be between 0 and 100")
 	}
-	
+
 	if r.Email != nil && *r.Email != "" {
 		if !strings.Contains(*r.Email, "@") {
 			return fmt.Errorf("email must be a valid email address")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -475,15 +475,21 @@ func (r *UserUpdateRequest) HasUpdates() bool {
 		r.LastTriggeredThreshold != nil
 }
 
-// UsersAPIHandler handles GET /api/v1/users-list requests.
+// UsersAPIHandler handles GET/DELETE /api/v1/users-list requests.
 // Note: This is separate from the existing /api/v1/users endpoint.
 func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Received UsersAPI HTTP request", "method", r.Method, "path", r.URL.Path)
 
-		if r.Method != http.MethodGet {
-			cfg.Logger.Warn("Invalid HTTP method", "method", r.Method, "expected", http.MethodGet)
-			http.Error(w, `{"error": "method not allowed, use GET"}`, http.StatusMethodNotAllowed)
+		switch r.Method {
+		case http.MethodGet:
+			// continue below
+		case http.MethodDelete:
+			handleDeleteUsersBulk(w, r, manager, cfg)
+			return
+		default:
+			cfg.Logger.Warn("Invalid HTTP method", "method", r.Method, "expected", "GET or DELETE")
+			http.Error(w, `{"error": "method not allowed, use GET or DELETE"}`, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -594,6 +600,46 @@ func UsersAPIHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig
 	}
 }
 
+// UsersReorderHandler handles POST /api/v1/users-list/reorder
+func UsersReorderHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req ViewPositionReorderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON"})
+			return
+		}
+		if err := req.Validate(); err != nil {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+
+		err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+			return applyViewPositionReorder(r.Context(), db, "users", req.OrderedUUIDs, cfg)
+		})
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "failed to reorder users"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "users reordered",
+			"count":   len(req.OrderedUUIDs),
+		})
+	}
+}
+
 // UserByUUIDHandler handles GET /api/v1/users-list/{uuid}, PATCH /api/v1/users-list/{uuid}, and DELETE /api/v1/users-list/{uuid} requests.
 func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -652,7 +698,7 @@ func UserByUUIDHandler(manager *manager.DatabaseManager, cfg *config.BackendConf
 // handleGetUser handles GET request for a single user.
 func handleGetUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
 	cfg.Logger.Debug("Fetching user details", "uuid", userUUID)
-	
+
 	var user UserEntity
 
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
@@ -756,7 +802,7 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, manager *manager.Data
 // handlePatchUser handles PATCH request for partial user update.
 func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
 	cfg.Logger.Debug("Starting user update", "uuid", userUUID, "method", r.Method, "path", r.URL.Path)
-	
+
 	// Parse JSON request body
 	var req UserUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -768,7 +814,7 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 		})
 		return
 	}
-	
+
 	cfg.Logger.Debug("Parsed update request", "uuid", userUUID, "internal_squad_uuid", req.InternalSquadUUID)
 
 	// Check if any fields are provided
@@ -875,7 +921,7 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 		// 2. Handle internal squad assignment if provided
 		if req.InternalSquadUUID != nil {
 			cfg.Logger.Debug("Processing squad assignment", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID)
-			
+
 			// Get t_id first
 			var tID int64
 			err := db.QueryRowContext(ctx, "SELECT t_id FROM users WHERE uuid = ?", userUUID).Scan(&tID)
@@ -903,12 +949,12 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 					return fmt.Errorf("failed to verify squad exists: %w", err)
 				}
 				cfg.Logger.Debug("Squad existence check", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID, "exists", squadExists)
-				
+
 				if !squadExists {
 					cfg.Logger.Error("Squad does not exist", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID)
 					return fmt.Errorf("squad does not exist: %s", *req.InternalSquadUUID)
 				}
-				
+
 				_, err = db.ExecContext(ctx, "INSERT INTO internal_squad_members (internal_squad_uuid, user_id) VALUES (?, ?)", *req.InternalSquadUUID, tID)
 				if err != nil {
 					cfg.Logger.Error("Failed to assign new squad", "uuid", userUUID, "squad_uuid", *req.InternalSquadUUID, "t_id", tID, "error", err)
@@ -1029,7 +1075,7 @@ func handlePatchUser(w http.ResponseWriter, r *http.Request, manager *manager.Da
 // handleDeleteUser handles DELETE request for deleting a user.
 func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig, ctx context.Context, userUUID string) {
 	cfg.Logger.Debug("Starting user deletion", "uuid", userUUID)
-	
+
 	// Get user info for logging before deletion
 	var username string
 	var userTID int64
@@ -1096,6 +1142,53 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *manager.D
 		"uuid":     userUUID,
 		"username": username,
 		"t_id":     userTID,
+	})
+}
+
+func handleDeleteUsersBulk(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	rawUUIDs := r.URL.Query().Get("uuids")
+	uuids, err := parseUUIDCSV(rawUUIDs)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	var deleted int64
+	err = manager.ExecuteHighPriority(func(db *sql.DB) error {
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range uuids {
+			res, execErr := tx.ExecContext(r.Context(), "DELETE FROM users WHERE uuid = ?", id)
+			if execErr != nil {
+				_ = tx.Rollback()
+				return execErr
+			}
+			rows, rowsErr := res.RowsAffected()
+			if rowsErr != nil {
+				_ = tx.Rollback()
+				return rowsErr
+			}
+			deleted += rows
+		}
+
+		return tx.Commit()
+	})
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "failed to delete selected users"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "selected users deleted",
+		"count":   deleted,
 	})
 }
 

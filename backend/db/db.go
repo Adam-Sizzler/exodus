@@ -25,7 +25,7 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 	db.SetMaxIdleConns(1)
 
 	var tableCount int
-	err = db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='v2rs-settings'").Scan(&tableCount)
+	err = db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='v2raystat_settings'").Scan(&tableCount)
 	if err != nil {
 		cfg.Logger.Error("Failed to check table existence", "dbType", dbType, "error", err)
 		db.Close()
@@ -282,8 +282,8 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			sni TEXT,
 			host TEXT,
 			alpn TEXT,
-			fingerprint TEXT,
-			security_layer TEXT DEFAULT 'DEFAULT',
+				fingerprint TEXT,
+				security_layer TEXT DEFAULT 'DEFAULT',
 			xhttp_extra_params TEXT,
 			mux_params TEXT,
 			sockopt_params TEXT,
@@ -387,7 +387,7 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			t_id INTEGER PRIMARY KEY AUTOINCREMENT,
 			uuid TEXT UNIQUE NOT NULL,
 			short_uuid TEXT UNIQUE NOT NULL,
-			username TEXT UNIQUE NOT NULL,
+				username TEXT UNIQUE NOT NULL,
 			status TEXT DEFAULT 'ACTIVE',
 			traffic_limit_bytes INTEGER DEFAULT 0,
 			traffic_limit_strategy TEXT DEFAULT 'NO_RESET',

@@ -33,19 +33,26 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.V2RS.Port)
 	server := &http.Server{
 		Addr:    addr,
-		Handler: api.WithCORS(cfg, api.WithServerHeader(http.DefaultServeMux)),
+		Handler: api.WithCORS(cfg, http.DefaultServeMux),
 	}
 
 	// Full working API endpoints
-	http.HandleFunc("/", api.Answer())
 	http.HandleFunc("/api/v1/users", api.UsersHandler(manager, cfg))
 	http.HandleFunc("/api/v1/client_stats", api.ClientStatsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/server_stats", api.ServerStatsHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/nodes", api.NodesHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/summary", api.NodesSummaryHandler(manager, cfg))
+	http.HandleFunc("/api/v1/nodes/reorder", api.NodesReorderHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/", api.NodeByUUIDHandler(manager, cfg))
+	http.HandleFunc("/api/v1/config-profiles/reorder", api.ConfigProfilesReorderHandler(manager, cfg))
+	http.HandleFunc("/api/v1/internal-squads/reorder", api.InternalSquadsReorderHandler(manager, cfg))
+	http.HandleFunc("/api/v1/hosts/reorder", api.HostsReorderHandler(manager, cfg))
+	http.HandleFunc("/api/v1/hosts", api.HostsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/hosts/", api.HostByUUIDHandler(manager, cfg))
+	http.HandleFunc("/api/v1/hosts-to-nodes", api.HostNodeAssignmentsHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list", api.UsersAPIHandler(manager, cfg))
+	http.HandleFunc("/api/v1/users-list/reorder", api.UsersReorderHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/summary", api.UsersListSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/", api.UserByUUIDHandler(manager, cfg))
 	http.HandleFunc("/api/v1/users-list/create", api.UsersCreateHandler(manager, cfg))
