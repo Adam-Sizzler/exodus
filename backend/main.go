@@ -36,11 +36,6 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 		Handler: api.WithCORS(cfg, http.DefaultServeMux),
 	}
 
-	// Full working API endpoints
-	http.HandleFunc("/api/v1/users", api.UsersHandler(manager, cfg))
-	http.HandleFunc("/api/v1/client_stats", api.ClientStatsHandler(manager, cfg))
-	http.HandleFunc("/api/v1/server_stats", api.ServerStatsHandler(manager, cfg))
-
 	http.HandleFunc("/api/v1/nodes", api.NodesHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/summary", api.NodesSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/reorder", api.NodesReorderHandler(manager, cfg))
@@ -70,6 +65,11 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/squads-summary", api.AllSquadsSummaryHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes-with-config", api.NodesWithConfigHandler(manager, cfg))
 	http.HandleFunc("/api/v1/inbounds-with-profiles", api.InboundsWithProfilesHandler(manager, cfg))
+	http.HandleFunc("/api/v1/subscription-settings", api.SubscriptionSettingsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/subscription-settings/", api.SubscriptionSettingsByUUIDHandler(manager, cfg))
+	http.HandleFunc("/api/v1/templates/reorder", api.SubscriptionTemplatesReorderHandler(manager, cfg))
+	http.HandleFunc("/api/v1/templates", api.SubscriptionTemplatesHandler(manager, cfg))
+	http.HandleFunc("/api/v1/templates/", api.SubscriptionTemplateByUUIDHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
 

@@ -523,10 +523,8 @@ func InitDatabase(cfg *config.BackendConfig) (memDB, fileDB *sql.DB, err error) 
 		}
 	}()
 
-	fileExists := true
 	if _, err := os.Stat(cfg.Paths.Database); os.IsNotExist(err) {
 		cfg.Logger.Warn("File database does not exist, will create new", "path", cfg.Paths.Database)
-		fileExists = false
 	} else if err != nil {
 		cfg.Logger.Error("Failed to check file database", "path", cfg.Paths.Database, "error", err)
 		return nil, nil, fmt.Errorf("error checking file database: %v", err)
@@ -542,22 +540,25 @@ func InitDatabase(cfg *config.BackendConfig) (memDB, fileDB *sql.DB, err error) 
 		}
 	}()
 
-	if fileExists {
-		var tableCount int
-		err = fileDB.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='user_traffic'").Scan(&tableCount)
-		if err == nil && tableCount > 0 {
-			tempManager, err := manager.NewDatabaseManager(fileDB, context.Background(), 1, 300, 500, cfg)
-			if err != nil {
-				cfg.Logger.Error("Failed to create temporary DatabaseManager", "error", err)
-				return nil, nil, fmt.Errorf("failed to create temporary DatabaseManager: %v", err)
-			}
-			syncCtx, syncCancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer syncCancel()
-			if err = tempManager.SyncDBWithContext(syncCtx, memDB, "file to memory"); err != nil {
-				cfg.Logger.Error("Failed to synchronize database (file to memory)", "error", err)
-			}
-			tempManager.Close()
+	if err = ensureDefaultSubscriptionData(fileDB, cfg); err != nil {
+		cfg.Logger.Error("Failed to ensure default subscription data", "error", err)
+		return nil, nil, fmt.Errorf("failed to ensure default subscription data: %w", err)
+	}
+
+	var tableCount int
+	err = fileDB.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='user_traffic'").Scan(&tableCount)
+	if err == nil && tableCount > 0 {
+		tempManager, err := manager.NewDatabaseManager(fileDB, context.Background(), 1, 300, 500, cfg)
+		if err != nil {
+			cfg.Logger.Error("Failed to create temporary DatabaseManager", "error", err)
+			return nil, nil, fmt.Errorf("failed to create temporary DatabaseManager: %v", err)
 		}
+		syncCtx, syncCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer syncCancel()
+		if err = tempManager.SyncDBWithContext(syncCtx, memDB, "file to memory"); err != nil {
+			cfg.Logger.Error("Failed to synchronize database (file to memory)", "error", err)
+		}
+		tempManager.Close()
 	}
 
 	cfg.Logger.Debug("Database initialization completed", "in-memory", true, "file", true)

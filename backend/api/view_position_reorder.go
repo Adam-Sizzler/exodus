@@ -99,7 +99,7 @@ func applyViewPositionReorder(ctx context.Context, db *sql.DB, tableName string,
 
 func isAllowedReorderTable(tableName string) bool {
 	switch tableName {
-	case "hosts", "config_profiles", "internal_squads", "nodes", "users":
+	case "hosts", "config_profiles", "internal_squads", "nodes", "users", "subscription_templates":
 		return true
 	default:
 		return false
