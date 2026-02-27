@@ -72,6 +72,8 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/templates/", api.SubscriptionTemplateByUUIDHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
+	http.HandleFunc("/api/health", api.HealthHandler())
+	http.HandleFunc("/api/v1/health", api.HealthHandler())
 
 	cfg.Logger.Debug("Starting API server", "address", server.Addr)
 
