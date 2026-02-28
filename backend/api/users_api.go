@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -153,6 +155,11 @@ type UserUpdateRequest struct {
 	LastTriggeredThreshold *int    `json:"last_triggered_threshold,omitempty"`
 }
 
+var (
+	errUsernameAlreadyExists = errors.New("username already exists")
+	errShortUUIDCollision    = errors.New("short_uuid collision")
+)
+
 // generateRandomString generates a random hex string of specified length.
 func generateRandomString(length int) (string, error) {
 	bytes := make([]byte, length)
@@ -160,6 +167,16 @@ func generateRandomString(length int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes)[:length], nil
+}
+
+// generateSubscriptionShortUUID generates a URL-safe short id for subscription links.
+// 12 random bytes produce 16 chars in base64 RawURL encoding, e.g. "xefMxk3ScgY5xhoe".
+func generateSubscriptionShortUUID() (string, error) {
+	bytes := make([]byte, 12)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
 }
 
 // UsersCreateHandler handles POST /api/v1/users-list requests.
@@ -205,7 +222,16 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 			userUUID = &newUUID
 		}
 
-		shortUUID := uuid.New().String()[:8]
+		shortUUID, err := generateSubscriptionShortUUID()
+		if err != nil {
+			cfg.Logger.Error("Failed to generate short_uuid", "error", err)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "failed to generate short_uuid",
+			})
+			return
+		}
 
 		trojanPassword := req.TrojanPassword
 		if trojanPassword == nil || *trojanPassword == "" {
@@ -257,53 +283,92 @@ func UsersCreateHandler(manager *manager.DatabaseManager, cfg *config.BackendCon
 
 		// Insert user into database
 		var userTID int64
-		err = manager.ExecuteHighPriority(func(db *sql.DB) error {
-			query := `
-				INSERT INTO users (
-					uuid, short_uuid, username, status, traffic_limit_bytes,
-					traffic_limit_strategy, expire_at, trojan_password, vless_uuid, ss_password,
-					description, tag, telegram_id, email, hwid_device_limit,
-					last_triggered_threshold, created_at, updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-			`
+		const maxShortUUIDAttempts = 5
+		for attempt := 0; attempt < maxShortUUIDAttempts; attempt++ {
+			err = manager.ExecuteHighPriority(func(db *sql.DB) error {
+				query := `
+					INSERT INTO users (
+						uuid, short_uuid, username, status, traffic_limit_bytes,
+						traffic_limit_strategy, expire_at, trojan_password, vless_uuid, ss_password,
+						description, tag, telegram_id, email, hwid_device_limit,
+						last_triggered_threshold, created_at, updated_at
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+				`
 
-			result, err := db.ExecContext(ctx, query,
-				*userUUID, shortUUID, req.Username, req.Status, req.TrafficLimitBytes,
-				req.TrafficLimitStrategy, expireAt.Format("2006-01-02 15:04:05"), *trojanPassword, *vlessUUID, *ssPassword,
-				req.Description, req.Tag, req.TelegramID, req.Email, req.HwidDeviceLimit,
-				req.LastTriggeredThreshold,
-			)
-			if err != nil {
-				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-					return fmt.Errorf("username already exists")
-				}
-				return fmt.Errorf("failed to insert user: %w", err)
-			}
-
-			userTID, err = result.LastInsertId()
-			if err != nil {
-				return fmt.Errorf("failed to get last insert id: %w", err)
-			}
-
-			// Handle internal squad assignment
-			if req.InternalSquadUUID != nil && *req.InternalSquadUUID != "" {
-				squadQuery := `INSERT INTO internal_squad_members (internal_squad_uuid, user_id) VALUES (?, ?)`
-				_, err = db.ExecContext(ctx, squadQuery, *req.InternalSquadUUID, userTID)
+				result, err := db.ExecContext(ctx, query,
+					*userUUID, shortUUID, req.Username, req.Status, req.TrafficLimitBytes,
+					req.TrafficLimitStrategy, expireAt.Format("2006-01-02 15:04:05"), *trojanPassword, *vlessUUID, *ssPassword,
+					req.Description, req.Tag, req.TelegramID, req.Email, req.HwidDeviceLimit,
+					req.LastTriggeredThreshold,
+				)
 				if err != nil {
-					return fmt.Errorf("failed to assign squad: %w", err)
+					msg := err.Error()
+					if strings.Contains(msg, "UNIQUE constraint failed: users.username") {
+						return errUsernameAlreadyExists
+					}
+					if strings.Contains(msg, "UNIQUE constraint failed: users.short_uuid") {
+						return errShortUUIDCollision
+					}
+					if strings.Contains(msg, "UNIQUE constraint failed") {
+						return fmt.Errorf("failed to insert user: %w", err)
+					}
+					return fmt.Errorf("failed to insert user: %w", err)
 				}
+
+				userTID, err = result.LastInsertId()
+				if err != nil {
+					return fmt.Errorf("failed to get last insert id: %w", err)
+				}
+
+				// Handle internal squad assignment
+				if req.InternalSquadUUID != nil && *req.InternalSquadUUID != "" {
+					squadQuery := `INSERT INTO internal_squad_members (internal_squad_uuid, user_id) VALUES (?, ?)`
+					_, err = db.ExecContext(ctx, squadQuery, *req.InternalSquadUUID, userTID)
+					if err != nil {
+						return fmt.Errorf("failed to assign squad: %w", err)
+					}
+				}
+
+				return nil
+			})
+
+			if err == nil {
+				break
 			}
 
-			return nil
-		})
+			if errors.Is(err, errShortUUIDCollision) {
+				shortUUID, err = generateSubscriptionShortUUID()
+				if err != nil {
+					cfg.Logger.Error("Failed to regenerate short_uuid", "error", err)
+					w.Header().Set("Content-Type", "application/json; charset=utf-8")
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(map[string]string{
+						"error": "failed to generate short_uuid",
+					})
+					return
+				}
+				continue
+			}
+
+			break
+		}
 
 		if err != nil {
-			if err.Error() == "username already exists" {
+			if errors.Is(err, errUsernameAlreadyExists) {
 				cfg.Logger.Warn("Username already exists", "username", req.Username)
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(http.StatusConflict)
 				json.NewEncoder(w).Encode(map[string]string{
 					"error": "username already exists",
+				})
+				return
+			}
+			if errors.Is(err, errShortUUIDCollision) {
+				cfg.Logger.Error("Failed to create user due to short_uuid collisions", "username", req.Username)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": "failed to generate unique short_uuid",
 				})
 				return
 			}

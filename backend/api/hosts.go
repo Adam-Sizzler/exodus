@@ -116,6 +116,11 @@ type HostNodeAssignmentRequest struct {
 	NodeUUIDs []string `json:"node_uuids"`
 }
 
+type HostNodeAssignmentDeleteRequest struct {
+	HostUUID  string   `json:"host_uuid"`
+	NodeUUIDs []string `json:"node_uuids"`
+}
+
 func scanHost(scanner RowScanner) (Host, error) {
 	var h Host
 	var viewPosition sql.NullInt64
@@ -733,7 +738,7 @@ func handleDeleteAllHosts(w http.ResponseWriter, r *http.Request, manager *manag
 	json.NewEncoder(w).Encode(map[string]interface{}{"message": "all hosts deleted", "count": deleted})
 }
 
-// HostNodeAssignmentsHandler handles GET/POST /api/v1/hosts-to-nodes.
+// HostNodeAssignmentsHandler handles GET/POST/DELETE /api/v1/hosts-to-nodes.
 func HostNodeAssignmentsHandler(manager *manager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -741,6 +746,8 @@ func HostNodeAssignmentsHandler(manager *manager.DatabaseManager, cfg *config.Ba
 			handleGetHostNodeAssignments(w, r, manager, cfg)
 		case http.MethodPost:
 			handleSetHostNodeAssignments(w, r, manager, cfg)
+		case http.MethodDelete:
+			handleDeleteHostNodeAssignments(w, r, manager, cfg)
 		default:
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		}
@@ -749,9 +756,16 @@ func HostNodeAssignmentsHandler(manager *manager.DatabaseManager, cfg *config.Ba
 
 func handleGetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
 	hostUUID := strings.TrimSpace(r.URL.Query().Get("host_uuid"))
+	nodeUUID := strings.TrimSpace(r.URL.Query().Get("node_uuid"))
 	if hostUUID != "" {
 		if _, err := uuid.Parse(hostUUID); err != nil {
 			sendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
+			return
+		}
+	}
+	if nodeUUID != "" {
+		if _, err := uuid.Parse(nodeUUID); err != nil {
+			sendError(w, http.StatusBadRequest, "invalid node_uuid", nil, cfg)
 			return
 		}
 	}
@@ -760,9 +774,17 @@ func handleGetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := "SELECT host_uuid, node_uuid FROM hosts_to_nodes"
 		args := []interface{}{}
+		conditions := make([]string, 0, 2)
 		if hostUUID != "" {
-			query += " WHERE host_uuid = ?"
+			conditions = append(conditions, "host_uuid = ?")
 			args = append(args, hostUUID)
+		}
+		if nodeUUID != "" {
+			conditions = append(conditions, "node_uuid = ?")
+			args = append(args, nodeUUID)
+		}
+		if len(conditions) > 0 {
+			query += " WHERE " + strings.Join(conditions, " AND ")
 		}
 		query += " ORDER BY host_uuid, node_uuid"
 
@@ -796,6 +818,7 @@ func handleSetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
+	req.NodeUUIDs = dedupeStrings(req.NodeUUIDs)
 
 	if _, err := uuid.Parse(req.HostUUID); err != nil {
 		sendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
@@ -839,6 +862,120 @@ func handleSetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 		"host_uuid":   req.HostUUID,
 		"nodes_count": len(req.NodeUUIDs),
 	})
+}
+
+func handleDeleteHostNodeAssignments(w http.ResponseWriter, r *http.Request, manager *manager.DatabaseManager, cfg *config.BackendConfig) {
+	var req HostNodeAssignmentDeleteRequest
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+	}
+
+	if req.HostUUID == "" {
+		req.HostUUID = strings.TrimSpace(r.URL.Query().Get("host_uuid"))
+	}
+	if len(req.NodeUUIDs) == 0 {
+		nodeUUIDs, err := parseOptionalUUIDCSV(r.URL.Query().Get("node_uuids"))
+		if err != nil {
+			sendError(w, http.StatusBadRequest, "invalid node_uuids query parameter", err, cfg)
+			return
+		}
+		req.NodeUUIDs = nodeUUIDs
+	}
+	req.NodeUUIDs = dedupeStrings(req.NodeUUIDs)
+
+	if _, err := uuid.Parse(req.HostUUID); err != nil {
+		sendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
+		return
+	}
+	for _, nodeUUID := range req.NodeUUIDs {
+		if _, err := uuid.Parse(nodeUUID); err != nil {
+			sendError(w, http.StatusBadRequest, "invalid node UUID in node_uuids", nil, cfg)
+			return
+		}
+	}
+
+	var deletedCount int64
+	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
+		if len(req.NodeUUIDs) == 0 {
+			result, err := db.ExecContext(r.Context(), "DELETE FROM hosts_to_nodes WHERE host_uuid = ?", req.HostUUID)
+			if err != nil {
+				return err
+			}
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			deletedCount = rowsAffected
+			return nil
+		}
+
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		for _, nodeUUID := range req.NodeUUIDs {
+			result, execErr := tx.ExecContext(
+				r.Context(),
+				"DELETE FROM hosts_to_nodes WHERE host_uuid = ? AND node_uuid = ?",
+				req.HostUUID,
+				nodeUUID,
+			)
+			if execErr != nil {
+				_ = tx.Rollback()
+				return execErr
+			}
+			rowsAffected, rowsErr := result.RowsAffected()
+			if rowsErr != nil {
+				_ = tx.Rollback()
+				return rowsErr
+			}
+			deletedCount += rowsAffected
+		}
+
+		return tx.Commit()
+	})
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "failed to delete host-node assignments", err, cfg)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":       "host-node assignments deleted",
+		"host_uuid":     req.HostUUID,
+		"deleted_count": deletedCount,
+		"all_nodes":     len(req.NodeUUIDs) == 0,
+	})
+}
+
+func parseOptionalUUIDCSV(raw string) ([]string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	return parseUUIDCSV(raw)
+}
+
+func dedupeStrings(values []string) []string {
+	if len(values) < 2 {
+		return values
+	}
+
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+
+	return out
 }
 
 func normalizeNullableString(s *string) interface{} {
