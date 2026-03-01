@@ -19,6 +19,10 @@ type SubscriptionSettings struct {
 	ProfileTitle                string    `json:"profile_title"`
 	SupportLink                 string    `json:"support_link"`
 	ProfileUpdateInterval       int       `json:"profile_update_interval"`
+	Address                     string    `json:"address"`
+	Port                        int       `json:"port"`
+	APISchema                   string    `json:"api_schema"`
+	APIPath                     string    `json:"api_path"`
 	HappAnnounce                string    `json:"happ_announce"`
 	HappRouting                 string    `json:"happ_routing"`
 	CreatedAt                   time.Time `json:"created_at"`
@@ -37,6 +41,10 @@ type SubscriptionSettingsUpdateRequest struct {
 	ProfileTitle                *string `json:"profile_title,omitempty"`
 	SupportLink                 *string `json:"support_link,omitempty"`
 	ProfileUpdateInterval       *int    `json:"profile_update_interval,omitempty"`
+	Address                     *string `json:"address,omitempty"`
+	Port                        *int    `json:"port,omitempty"`
+	APISchema                   *string `json:"api_schema,omitempty"`
+	APIPath                     *string `json:"api_path,omitempty"`
 	HappAnnounce                *string `json:"happ_announce,omitempty"`
 	HappRouting                 *string `json:"happ_routing,omitempty"`
 	IsProfileWebpageURLEnabled  *bool   `json:"is_profile_webpage_url_enabled,omitempty"`
@@ -58,6 +66,20 @@ func (r *SubscriptionSettingsUpdateRequest) Validate() error {
 	}
 	if r.ProfileUpdateInterval != nil && *r.ProfileUpdateInterval < 1 {
 		return fmt.Errorf("profile_update_interval must be >= 1")
+	}
+	if r.Address != nil && strings.TrimSpace(*r.Address) == "" {
+		return fmt.Errorf("address cannot be empty")
+	}
+	if r.Port != nil && (*r.Port < 1 || *r.Port > 65535) {
+		return fmt.Errorf("port must be between 1 and 65535")
+	}
+	if r.APISchema != nil {
+		schema := strings.ToLower(strings.TrimSpace(*r.APISchema))
+		switch schema {
+		case "grpc", "http", "https":
+		default:
+			return fmt.Errorf("api_schema must be one of: grpc, http, https")
+		}
 	}
 	if r.CustomResponseHeaders != nil && strings.TrimSpace(*r.CustomResponseHeaders) != "" {
 		if !json.Valid([]byte(*r.CustomResponseHeaders)) {
@@ -86,6 +108,10 @@ func (r *SubscriptionSettingsUpdateRequest) HasUpdates() bool {
 	return r.ProfileTitle != nil ||
 		r.SupportLink != nil ||
 		r.ProfileUpdateInterval != nil ||
+		r.Address != nil ||
+		r.Port != nil ||
+		r.APISchema != nil ||
+		r.APIPath != nil ||
 		r.HappAnnounce != nil ||
 		r.HappRouting != nil ||
 		r.IsProfileWebpageURLEnabled != nil ||
@@ -100,6 +126,8 @@ func (r *SubscriptionSettingsUpdateRequest) HasUpdates() bool {
 
 func scanSubscriptionSettings(scanner RowScanner) (SubscriptionSettings, error) {
 	var s SubscriptionSettings
+	var address, apiSchema, apiPath sql.NullString
+	var port sql.NullInt64
 	var happAnnounce, happRouting sql.NullString
 	var customResponseHeaders, responseRules, hwidSettings, customRemarks sql.NullString
 	var isProfileWebpageURLEnabled, serveJSONAtBaseSubscription, isShowCustomRemarks, randomizeHosts sql.NullBool
@@ -109,6 +137,10 @@ func scanSubscriptionSettings(scanner RowScanner) (SubscriptionSettings, error) 
 		&s.ProfileTitle,
 		&s.SupportLink,
 		&s.ProfileUpdateInterval,
+		&address,
+		&port,
+		&apiSchema,
+		&apiPath,
 		&happAnnounce,
 		&happRouting,
 		&s.CreatedAt,
@@ -128,6 +160,20 @@ func scanSubscriptionSettings(scanner RowScanner) (SubscriptionSettings, error) 
 
 	if happAnnounce.Valid {
 		s.HappAnnounce = happAnnounce.String
+	}
+	if address.Valid {
+		s.Address = address.String
+	}
+	if port.Valid {
+		s.Port = int(port.Int64)
+	}
+	if apiSchema.Valid {
+		s.APISchema = apiSchema.String
+	} else {
+		s.APISchema = "grpc"
+	}
+	if apiPath.Valid {
+		s.APIPath = apiPath.String
 	}
 	if happRouting.Valid {
 		s.HappRouting = happRouting.String
@@ -195,6 +241,7 @@ func handleGetSubscriptionSettings(w http.ResponseWriter, r *http.Request, manag
 		row := db.QueryRowContext(r.Context(), `
 			SELECT
 				uuid, profile_title, support_link, profile_update_interval,
+				address, port, api_schema, api_path,
 				happ_announce, happ_routing, created_at, updated_at,
 				is_profile_webpage_url_enabled, serve_json_at_base_subscription,
 				is_show_custom_remarks, custom_response_headers, randomize_hosts,
@@ -225,6 +272,7 @@ func handleGetSubscriptionSettingsByUUID(w http.ResponseWriter, r *http.Request,
 		row := db.QueryRowContext(r.Context(), `
 			SELECT
 				uuid, profile_title, support_link, profile_update_interval,
+				address, port, api_schema, api_path,
 				happ_announce, happ_routing, created_at, updated_at,
 				is_profile_webpage_url_enabled, serve_json_at_base_subscription,
 				is_show_custom_remarks, custom_response_headers, randomize_hosts,
@@ -280,6 +328,18 @@ func handlePatchSubscriptionSettings(w http.ResponseWriter, r *http.Request, man
 	}
 	if req.ProfileUpdateInterval != nil {
 		add("profile_update_interval", *req.ProfileUpdateInterval)
+	}
+	if req.Address != nil {
+		add("address", strings.TrimSpace(*req.Address))
+	}
+	if req.Port != nil {
+		add("port", *req.Port)
+	}
+	if req.APISchema != nil {
+		add("api_schema", strings.ToLower(strings.TrimSpace(*req.APISchema)))
+	}
+	if req.APIPath != nil {
+		add("api_path", strings.TrimSpace(*req.APIPath))
 	}
 	if req.HappAnnounce != nil {
 		add("happ_announce", *req.HappAnnounce)

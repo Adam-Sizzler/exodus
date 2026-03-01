@@ -28,7 +28,6 @@ type Node struct {
 	Port                    *int       `json:"port,omitempty"`
 	APISchema               string     `json:"api_schema"`
 	APIPath                 string     `json:"api_path"`
-	APIMetadata             string     `json:"api_metadata"`
 	ActiveConfigProfileUUID *string    `json:"active_config_profile_uuid,omitempty"`
 	IsConnected             bool       `json:"is_connected"`
 	IsConnecting            bool       `json:"is_connecting"`
@@ -63,7 +62,6 @@ type NodeCreateRequest struct {
 	Port                    int      `json:"port"`
 	APISchema               string   `json:"api_schema"`
 	APIPath                 string   `json:"api_path"`
-	APIMetadata             string   `json:"api_metadata"`
 	IsDisabled              bool     `json:"is_disabled"`
 	ConsumptionMultiplier   int64    `json:"consumption_multiplier"`
 	IsTrafficTrackingActive bool     `json:"is_traffic_tracking_active"`
@@ -82,7 +80,6 @@ type NodeUpdateRequest struct {
 	Port                    *int      `json:"port,omitempty"`
 	APISchema               *string   `json:"api_schema,omitempty"`
 	APIPath                 *string   `json:"api_path,omitempty"`
-	APIMetadata             *string   `json:"api_metadata,omitempty"`
 	ActiveConfigProfileUUID *string   `json:"active_config_profile_uuid,omitempty"`
 	IsDisabled              *bool     `json:"is_disabled,omitempty"`
 	ConsumptionMultiplier   *int64    `json:"consumption_multiplier,omitempty"`
@@ -105,7 +102,7 @@ func scanNode(scanner RowScanner) (Node, error) {
 	var cpuModel, totalRam sql.NullString
 
 	err := scanner.Scan(
-		&n.UUID, &id, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &n.APIMetadata, &activeConfigProfileUUID,
+		&n.UUID, &id, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &activeConfigProfileUUID,
 		&n.IsConnected, &n.IsConnecting, &n.IsDisabled, &lastStatusChange, &lastStatusMessage,
 		&xrayVersion, &nodeVersion, &n.XrayUptime, &usersOnline, &n.ConsumptionMultiplier,
 		&n.IsTrafficTrackingActive, &trafficResetDay, &trafficLimitBytes, &trafficUsedBytes,
@@ -246,7 +243,7 @@ func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *manager.Dat
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `
 			SELECT
-				uuid, id, name, address, port, api_schema, api_path, api_metadata, active_config_profile_uuid,
+				uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
@@ -296,7 +293,7 @@ func sendNodesHelp(w http.ResponseWriter) {
 			"POST /api/v1/nodes": map[string]interface{}{
 				"description":     "Create a new node",
 				"required_fields": []string{"name", "address", "port", "country_code"},
-				"optional_fields": []string{"api_schema", "api_path", "api_metadata", "is_disabled", "consumption_multiplier", "is_traffic_tracking_active", "traffic_reset_day", "traffic_limit_bytes", "notify_percent", "view_position", "tags"},
+				"optional_fields": []string{"api_schema", "api_path", "is_disabled", "consumption_multiplier", "is_traffic_tracking_active", "traffic_reset_day", "traffic_limit_bytes", "notify_percent", "view_position", "tags"},
 				"example": map[string]interface{}{
 					"name":                       "Germany-Frankfurt-01",
 					"address":                    "192.168.1.100",
@@ -389,15 +386,15 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *manager.D
 	err = manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `
 			INSERT INTO nodes (
-				uuid, name, address, port, api_schema, api_path, api_metadata,
+				uuid, name, address, port, api_schema, api_path,
 				is_disabled, consumption_multiplier, is_traffic_tracking_active,
 				traffic_reset_day, traffic_limit_bytes, notify_percent,
 				view_position, country_code, tags,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
 
 		_, err := db.ExecContext(ctx, query,
-			nodeUUID, req.Name, req.Address, req.Port, req.APISchema, req.APIPath, req.APIMetadata,
+			nodeUUID, req.Name, req.Address, req.Port, req.APISchema, req.APIPath,
 			req.IsDisabled, req.ConsumptionMultiplier, req.IsTrafficTrackingActive,
 			req.TrafficResetDay, req.TrafficLimitBytes, req.NotifyPercent,
 			req.ViewPosition, req.CountryCode, string(tagsJSON))
@@ -447,7 +444,7 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, manager *manager.Data
 	var node Node
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `SELECT 
-					uuid, id, name, address, port, api_schema, api_path, api_metadata, active_config_profile_uuid,
+					uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
 					is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 					xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
 					is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
@@ -508,9 +505,6 @@ func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *manager.Da
 	}
 	if req.APIPath != nil {
 		add("api_path", *req.APIPath)
-	}
-	if req.APIMetadata != nil {
-		add("api_metadata", *req.APIMetadata)
 	}
 	if req.IsDisabled != nil {
 		add("is_disabled", *req.IsDisabled)

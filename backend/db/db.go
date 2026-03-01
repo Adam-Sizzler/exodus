@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"v2ray-stat/backend/config"
 	"v2ray-stat/backend/db/manager"
-
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -33,6 +33,16 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 	}
 	if tableCount > 0 {
 		cfg.Logger.Debug("Tables already exist", "dbType", dbType)
+		if err := applySchemaMigrations(db, cfg); err != nil {
+			cfg.Logger.Error("Failed to apply schema migrations", "dbType", dbType, "error", err)
+			db.Close()
+			return nil, fmt.Errorf("failed to apply schema migrations for %s database: %v", dbType, err)
+		}
+		if err := ensurePanelAuthDefaults(db, cfg); err != nil {
+			cfg.Logger.Error("Failed to ensure panel auth defaults", "dbType", dbType, "error", err)
+			db.Close()
+			return nil, fmt.Errorf("failed to ensure panel auth defaults for %s database: %v", dbType, err)
+		}
 		return db, nil
 	}
 
@@ -62,9 +72,20 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			username TEXT UNIQUE NOT NULL,
 			password_hash TEXT NOT NULL,
 			role TEXT NOT NULL,
+			session_ttl_minutes INTEGER NOT NULL DEFAULT 60,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
+
+		CREATE TABLE IF NOT EXISTS admin_sessions (
+			session_token TEXT PRIMARY KEY,
+			admin_uuid TEXT NOT NULL,
+			expires_at INTEGER NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (admin_uuid) REFERENCES admin(uuid) ON DELETE CASCADE
+		);
+		CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_uuid ON admin_sessions(admin_uuid);
+		CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at ON admin_sessions(expires_at);
 
 		CREATE TABLE IF NOT EXISTS passkeys (
 			id TEXT PRIMARY KEY,
@@ -141,7 +162,6 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			port INTEGER,
 			api_schema TEXT DEFAULT 'grpc',
     		api_path TEXT DEFAULT '',
-		    api_metadata TEXT DEFAULT '{}',
 			active_config_profile_uuid TEXT,
 			is_connected BOOLEAN DEFAULT 0,
 			is_connecting BOOLEAN DEFAULT 0,
@@ -476,6 +496,10 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 			profile_title TEXT NOT NULL,
 			support_link TEXT NOT NULL,
 			profile_update_interval INTEGER NOT NULL,
+			address TEXT NOT NULL DEFAULT '',
+			port INTEGER NOT NULL DEFAULT 9263,
+			api_schema TEXT NOT NULL DEFAULT 'grpc',
+			api_path TEXT NOT NULL DEFAULT '',
 			is_profile_webpage_url_enabled BOOLEAN DEFAULT 1,
 			serve_json_at_base_subscription BOOLEAN DEFAULT 0,
 			happ_announce TEXT,
@@ -507,8 +531,290 @@ func OpenAndInitDB(dbPath string, dbType string, cfg *config.BackendConfig) (*sq
 		return nil, fmt.Errorf("failed to execute SQL script for %s database: %v", dbType, err)
 	}
 
+	if err = applySchemaMigrations(db, cfg); err != nil {
+		cfg.Logger.Error("Failed to apply schema migrations", "dbType", dbType, "error", err)
+		db.Close()
+		return nil, fmt.Errorf("failed to apply schema migrations for %s database: %v", dbType, err)
+	}
+	if err = ensurePanelAuthDefaults(db, cfg); err != nil {
+		cfg.Logger.Error("Failed to ensure panel auth defaults", "dbType", dbType, "error", err)
+		db.Close()
+		return nil, fmt.Errorf("failed to ensure panel auth defaults for %s database: %v", dbType, err)
+	}
+
 	cfg.Logger.Debug("Database initialized", "dbType", dbType)
 	return db, nil
+}
+
+func applySchemaMigrations(db *sql.DB, cfg *config.BackendConfig) error {
+	if err := ensureSubscriptionSettingsConnectionColumns(db); err != nil {
+		return fmt.Errorf("ensure subscription_settings connection columns: %w", err)
+	}
+	if err := ensureAdminSessionTTLColumn(db); err != nil {
+		return fmt.Errorf("ensure admin.session_ttl_minutes column: %w", err)
+	}
+	if err := ensureAdminSessionsTable(db); err != nil {
+		return fmt.Errorf("ensure admin_sessions table: %w", err)
+	}
+	if err := ensureNodesWithoutAPIMetadata(db, cfg); err != nil {
+		return fmt.Errorf("remove nodes.api_metadata: %w", err)
+	}
+	return nil
+}
+
+func ensureSubscriptionSettingsConnectionColumns(db *sql.DB) error {
+	columns := []struct {
+		name string
+		def  string
+	}{
+		{name: "address", def: "address TEXT NOT NULL DEFAULT ''"},
+		{name: "port", def: "port INTEGER NOT NULL DEFAULT 9263"},
+		{name: "api_schema", def: "api_schema TEXT NOT NULL DEFAULT 'grpc'"},
+		{name: "api_path", def: "api_path TEXT NOT NULL DEFAULT ''"},
+	}
+
+	for _, column := range columns {
+		exists, err := columnExists(db, "subscription_settings", column.name)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+
+		if _, err := db.Exec(fmt.Sprintf("ALTER TABLE subscription_settings ADD COLUMN %s", column.def)); err != nil {
+			return fmt.Errorf("add column %s to subscription_settings: %w", column.name, err)
+		}
+	}
+
+	return nil
+}
+
+func ensureAdminSessionTTLColumn(db *sql.DB) error {
+	exists, err := columnExists(db, "admin", "session_ttl_minutes")
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if _, err := db.Exec("ALTER TABLE admin ADD COLUMN session_ttl_minutes INTEGER NOT NULL DEFAULT 60"); err != nil {
+			return fmt.Errorf("add column session_ttl_minutes to admin: %w", err)
+		}
+	}
+
+	if _, err := db.Exec("UPDATE admin SET session_ttl_minutes = 60 WHERE session_ttl_minutes IS NULL OR session_ttl_minutes <= 0"); err != nil {
+		return fmt.Errorf("normalize admin.session_ttl_minutes defaults: %w", err)
+	}
+	return nil
+}
+
+func ensureAdminSessionsTable(db *sql.DB) error {
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS admin_sessions (
+			session_token TEXT PRIMARY KEY,
+			admin_uuid TEXT NOT NULL,
+			expires_at INTEGER NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (admin_uuid) REFERENCES admin(uuid) ON DELETE CASCADE
+		)`); err != nil {
+		return fmt.Errorf("create admin_sessions table: %w", err)
+	}
+	if _, err := db.Exec("CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_uuid ON admin_sessions(admin_uuid)"); err != nil {
+		return fmt.Errorf("create idx_admin_sessions_admin_uuid: %w", err)
+	}
+	if _, err := db.Exec("CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at ON admin_sessions(expires_at)"); err != nil {
+		return fmt.Errorf("create idx_admin_sessions_expires_at: %w", err)
+	}
+	return nil
+}
+
+func ensurePanelAuthDefaults(db *sql.DB, _ *config.BackendConfig) error {
+	if err := ensureRemnawaveSettingsDefaultRow(db); err != nil {
+		return fmt.Errorf("ensure remnawave_settings default row: %w", err)
+	}
+	if err := ensureAdminSessionTTLDefaults(db); err != nil {
+		return fmt.Errorf("ensure admin session_ttl_minutes defaults: %w", err)
+	}
+	return nil
+}
+
+func ensureRemnawaveSettingsDefaultRow(db *sql.DB) error {
+	var exists int
+	if err := db.QueryRow("SELECT COUNT(*) FROM remnawave_settings WHERE id = 1").Scan(&exists); err != nil {
+		return fmt.Errorf("check remnawave_settings row: %w", err)
+	}
+	if exists > 0 {
+		return nil
+	}
+
+	passkeySettings := `{"rpId":null,"origin":null,"enabled":false}`
+	oauth2Settings := `{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]}}`
+	tgAuthSettings := `{"enabled":false,"adminIds":[],"botToken":null}`
+	passwordSettings := `{"enabled":true}`
+	brandingSettings := `{"title":"V2RayStat","logoUrl":null}`
+
+	if _, err := db.Exec(`
+		INSERT INTO remnawave_settings (
+			id, passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings
+		) VALUES (1, ?, ?, ?, ?, ?)
+	`, passkeySettings, oauth2Settings, tgAuthSettings, passwordSettings, brandingSettings); err != nil {
+		return fmt.Errorf("insert default remnawave_settings row: %w", err)
+	}
+
+	return nil
+}
+
+func ensureAdminSessionTTLDefaults(db *sql.DB) error {
+	_, err := db.Exec("UPDATE admin SET session_ttl_minutes = 60 WHERE session_ttl_minutes IS NULL OR session_ttl_minutes <= 0")
+	return err
+}
+
+func ensureNodesWithoutAPIMetadata(db *sql.DB, cfg *config.BackendConfig) error {
+	exists, err := columnExists(db, "nodes", "api_metadata")
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	if _, err := db.Exec("ALTER TABLE nodes DROP COLUMN api_metadata"); err == nil {
+		cfg.Logger.Info("Dropped nodes.api_metadata column using ALTER TABLE")
+		return nil
+	}
+
+	cfg.Logger.Warn("ALTER TABLE DROP COLUMN failed, rebuilding nodes table without api_metadata")
+	return rebuildNodesTableWithoutAPIMetadata(db)
+}
+
+func rebuildNodesTableWithoutAPIMetadata(db *sql.DB) (err error) {
+	if _, err = db.Exec("PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
+	}
+	defer func() {
+		_, _ = db.Exec("PRAGMA foreign_keys = ON")
+	}()
+
+	tx, err := db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return fmt.Errorf("begin nodes rebuild transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if _, err = tx.Exec("DROP TABLE IF EXISTS nodes_new"); err != nil {
+		return fmt.Errorf("drop stale nodes_new table: %w", err)
+	}
+
+	if _, err = tx.Exec(`
+		CREATE TABLE nodes_new (
+			uuid TEXT PRIMARY KEY,
+			id INTEGER UNIQUE,
+			name TEXT NOT NULL,
+			address TEXT NOT NULL,
+			port INTEGER,
+			api_schema TEXT DEFAULT 'grpc',
+			api_path TEXT DEFAULT '',
+			active_config_profile_uuid TEXT,
+			is_connected BOOLEAN DEFAULT 0,
+			is_connecting BOOLEAN DEFAULT 0,
+			is_disabled BOOLEAN DEFAULT 0,
+			last_status_change DATETIME,
+			last_status_message TEXT,
+			xray_version TEXT,
+			node_version TEXT,
+			xray_uptime TEXT DEFAULT '0',
+			users_online INTEGER DEFAULT 0,
+			consumption_multiplier INTEGER DEFAULT 1000000000,
+			is_traffic_tracking_active BOOLEAN DEFAULT 0,
+			traffic_reset_day INTEGER DEFAULT 1,
+			traffic_limit_bytes INTEGER DEFAULT 0,
+			traffic_used_bytes INTEGER DEFAULT 0,
+			notify_percent INTEGER DEFAULT 0,
+			provider_uuid TEXT,
+			view_position INTEGER DEFAULT 0,
+			country_code TEXT DEFAULT 'XX',
+			tags TEXT DEFAULT '[]',
+			cpu_count INTEGER,
+			cpu_model TEXT,
+			total_ram TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (active_config_profile_uuid) REFERENCES config_profiles(uuid) ON DELETE SET NULL,
+			FOREIGN KEY (provider_uuid) REFERENCES infra_providers(uuid) ON DELETE SET NULL
+		)`); err != nil {
+		return fmt.Errorf("create nodes_new: %w", err)
+	}
+
+	if _, err = tx.Exec(`
+		INSERT INTO nodes_new (
+			uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
+			is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
+			xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
+			is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
+			notify_percent, provider_uuid, view_position, country_code, tags,
+			cpu_count, cpu_model, total_ram, created_at, updated_at
+		)
+		SELECT
+			uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
+			is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
+			xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
+			is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
+			notify_percent, provider_uuid, view_position, country_code, tags,
+			cpu_count, cpu_model, total_ram, created_at, updated_at
+		FROM nodes`); err != nil {
+		return fmt.Errorf("copy data to nodes_new: %w", err)
+	}
+
+	if _, err = tx.Exec("DROP TABLE nodes"); err != nil {
+		return fmt.Errorf("drop old nodes table: %w", err)
+	}
+
+	if _, err = tx.Exec("ALTER TABLE nodes_new RENAME TO nodes"); err != nil {
+		return fmt.Errorf("rename nodes_new to nodes: %w", err)
+	}
+
+	if _, err = tx.Exec("CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name)"); err != nil {
+		return fmt.Errorf("create idx_nodes_name: %w", err)
+	}
+	if _, err = tx.Exec("CREATE INDEX IF NOT EXISTS idx_nodes_address ON nodes(address)"); err != nil {
+		return fmt.Errorf("create idx_nodes_address: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit nodes rebuild transaction: %w", err)
+	}
+
+	return nil
+}
+
+func columnExists(db *sql.DB, tableName, columnName string) (bool, error) {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
+	if err != nil {
+		return false, fmt.Errorf("query table info for %s: %w", tableName, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notNull, pk int
+		var defaultValue sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notNull, &defaultValue, &pk); err != nil {
+			return false, fmt.Errorf("scan table info for %s: %w", tableName, err)
+		}
+		if strings.EqualFold(name, columnName) {
+			return true, nil
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("iterate table info for %s: %w", tableName, err)
+	}
+
+	return false, nil
 }
 
 // InitDatabase initializes in-memory and file databases.

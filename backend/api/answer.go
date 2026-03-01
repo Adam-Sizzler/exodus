@@ -31,7 +31,7 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 			allowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 		}
 		if len(allowedHeaders) == 0 {
-			allowedHeaders = []string{"Content-Type", "Authorization", "X-API-Token"}
+			allowedHeaders = []string{"Content-Type", "Authorization", "X-API-Token", "Cookie"}
 		}
 		
 		origin := r.Header.Get("Origin")
@@ -52,6 +52,7 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 		if allowOrigin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 		}
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		
 		w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
 		w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))

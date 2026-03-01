@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/v2ray/v2ray-core v4.15.0+incompatible
 	github.com/xtls/xray-core v1.8.16
+	golang.org/x/crypto v0.46.0
 	golang.org/x/net v0.48.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516
 	google.golang.org/grpc v1.77.0

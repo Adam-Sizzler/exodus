@@ -27,10 +27,11 @@ cors:
   #   - PATCH
   #   - DELETE
   #   - OPTIONS
-  # allowed_headers:                                      # Optional: defaults to Content-Type, Authorization, X-API-Token
+  # allowed_headers:                                      # Optional: defaults to Content-Type, Authorization, X-API-Token, Cookie
   #   - Content-Type
   #   - Authorization
   #   - X-API-Token
+  #   - Cookie
 
 # Paths & Logging
 paths:

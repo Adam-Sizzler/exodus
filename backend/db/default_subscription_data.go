@@ -263,15 +263,20 @@ func ensureDefaultSubscriptionSettings(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 		INSERT INTO subscription_settings (
 			uuid, profile_title, support_link, profile_update_interval,
+			address, port, api_schema, api_path,
 			is_profile_webpage_url_enabled, serve_json_at_base_subscription,
 			happ_announce, happ_routing, is_show_custom_remarks,
 			custom_remarks, custom_response_headers, randomize_hosts,
 			response_rules, hwid_settings
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		uuid.NewString(),
 		"v2raystat",
 		"https://github.com",
 		12,
+		"",
+		9263,
+		"grpc",
+		"",
 		true,
 		false,
 		"",

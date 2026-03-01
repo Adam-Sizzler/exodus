@@ -33,8 +33,18 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.V2RS.Port)
 	server := &http.Server{
 		Addr:    addr,
-		Handler: api.WithCORS(cfg, http.DefaultServeMux),
+		Handler: api.WithCORS(cfg, api.WithPanelAuth(manager, cfg, http.DefaultServeMux)),
 	}
+
+	http.HandleFunc("/api/v1/auth/bootstrap", api.AuthBootstrapHandler(manager, cfg))
+	http.HandleFunc("/api/v1/auth/setup", api.AuthSetupHandler(manager, cfg))
+	http.HandleFunc("/api/v1/auth/login", api.AuthLoginHandler(manager, cfg))
+	http.HandleFunc("/api/v1/auth/logout", api.AuthLogoutHandler(manager, cfg))
+	http.HandleFunc("/api/v1/auth/me", api.AuthMeHandler(manager, cfg))
+
+	http.HandleFunc("/api/v1/panel/settings", api.PanelSettingsHandler(manager, cfg))
+	http.HandleFunc("/api/v1/panel/api-tokens", api.PanelAPITokensHandler(manager, cfg))
+	http.HandleFunc("/api/v1/panel/api-tokens/", api.PanelAPITokenByUUIDHandler(manager, cfg))
 
 	http.HandleFunc("/api/v1/nodes", api.NodesHandler(manager, cfg))
 	http.HandleFunc("/api/v1/nodes/summary", api.NodesSummaryHandler(manager, cfg))
@@ -71,7 +81,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 	http.HandleFunc("/api/v1/templates", api.SubscriptionTemplatesHandler(manager, cfg))
 	http.HandleFunc("/api/v1/templates/", api.SubscriptionTemplateByUUIDHandler(manager, cfg))
 
-	http.HandleFunc("/api/v1/task_status", api.TokenAuthMiddleware(cfg, api.TaskStatusHandler(taskManager, cfg)))
+	http.HandleFunc("/api/v1/task_status", api.TaskStatusHandler(taskManager, cfg))
 	http.HandleFunc("/api/health", api.HealthHandler())
 	http.HandleFunc("/api/v1/health", api.HealthHandler())
 
@@ -96,6 +106,7 @@ func startAPIServer(ctx context.Context, manager *manager.DatabaseManager, taskM
 
 func main() {
 	var versionFlag = flag.Bool("version", false, "Show version information")
+	var resetAdminPasswordFlag = flag.Bool("reset-admin-password", false, "Interactively reset admin credentials and exit")
 	flag.Parse()
 
 	if *versionFlag {
@@ -107,6 +118,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
+
+	if *resetAdminPasswordFlag {
+		if err := runAdminCredentialReset(&cfg); err != nil {
+			cfg.Logger.Error("Failed to reset admin credentials", "error", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	fmt.Println("Hint: run backend with --reset-admin-password for emergency admin credential reset.")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

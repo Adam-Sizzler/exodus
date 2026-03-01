@@ -124,7 +124,7 @@ var defaultConfig = BackendConfig{
 	CORS: CORSConfig{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Authorization", "X-API-Token"},
+		AllowedHeaders: []string{"Content-Type", "Authorization", "X-API-Token", "Cookie"},
 	},
 }
 

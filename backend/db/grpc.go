@@ -122,7 +122,6 @@ type DBNode struct {
 	Port                    int
 	APISchema               string
 	APIPath                 string
-	APIMetadata             string
 	IsDisabled              bool
 	ConsumptionMultiplier   int64
 	IsTrafficTrackingActive bool
@@ -140,7 +139,7 @@ func LoadNodesFromDB(manager *manager.DatabaseManager, cfg *config.BackendConfig
 
 	err := manager.ExecuteHighPriority(func(db *sql.DB) error {
 		query := `
-			SELECT uuid, name, address, port, api_schema, api_path, api_metadata,
+			SELECT uuid, name, address, port, api_schema, api_path,
 			       is_disabled, consumption_multiplier, is_traffic_tracking_active,
 			       traffic_reset_day, traffic_limit_bytes, notify_percent,
 			       view_position, country_code, tags
@@ -157,12 +156,12 @@ func LoadNodesFromDB(manager *manager.DatabaseManager, cfg *config.BackendConfig
 		for rows.Next() {
 			var n DBNode
 			var port sql.NullInt64
-			var apiSchema, apiPath, apiMetadata, countryCode, tagsJSON sql.NullString
+			var apiSchema, apiPath, countryCode, tagsJSON sql.NullString
 			var consumptionMultiplier, trafficLimitBytes, trafficResetDay, notifyPercent, viewPosition sql.NullInt64
 			var isTrafficTrackingActive sql.NullBool
 
 			err := rows.Scan(
-				&n.UUID, &n.Name, &n.Address, &port, &apiSchema, &apiPath, &apiMetadata,
+				&n.UUID, &n.Name, &n.Address, &port, &apiSchema, &apiPath,
 				&n.IsDisabled, &consumptionMultiplier, &isTrafficTrackingActive,
 				&trafficResetDay, &trafficLimitBytes, &notifyPercent, &viewPosition,
 				&countryCode, &tagsJSON,
@@ -186,11 +185,6 @@ func LoadNodesFromDB(manager *manager.DatabaseManager, cfg *config.BackendConfig
 				n.APIPath = apiPath.String
 			} else {
 				n.APIPath = "/api"
-			}
-			if apiMetadata.Valid {
-				n.APIMetadata = apiMetadata.String
-			} else {
-				n.APIMetadata = "{}"
 			}
 			if consumptionMultiplier.Valid {
 				n.ConsumptionMultiplier = consumptionMultiplier.Int64
