@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        component: [backend, subscription, node]
+        component: [panel, subscription, node]
     
     steps:
       - name: Checkout code
@@ -42,7 +42,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/v2rs-${{ matrix.component }}
+            ghcr.io/${{ github.repository_owner }}/v2ray-stat-${{ matrix.component }}
           tags: |
             type=ref,event=tag
             type=raw,value=latest
@@ -55,9 +55,6 @@ jobs:
           REVISION=$(git rev-parse HEAD)
           echo "revision=$REVISION" >> $GITHUB_OUTPUT
           BUILD_TAGS=none
-          if [[ "${{ matrix.component }}" == "node" ]]; then
-            BUILD_TAGS="journald"
-          fi
           echo "build_tags=$BUILD_TAGS" >> $GITHUB_OUTPUT
           CGO_ENABLED=1
           CGO_STATUS="enabled"
@@ -76,5 +73,5 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ steps.build_info.outputs.revision }}
-            BUILD_TAGS=none
-            CGO_ENABLED_STATUS=enabled
+            BUILD_TAGS=${{ steps.build_info.outputs.build_tags }}
+            CGO_ENABLED_STATUS=${{ steps.build_info.outputs.cgo_enabled }}

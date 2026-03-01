@@ -6,7 +6,7 @@ RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sql
 
 ARG VERSION=unknown
 ARG REVISION=unknown
-ARG BUILD_TAGS=nojournald
+ARG BUILD_TAGS=none
 ARG CGO_ENABLED_STATUS=enabled
 
 WORKDIR /build
@@ -31,7 +31,7 @@ RUN CGO_ENABLED=1 \
                 -X v2ray-stat/constant.BuildTags=${BUILD_TAGS} \
                 -X v2ray-stat/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
     -o v2rs-node \
-    ./node
+    ./backend/node
 
 # Final stage
 FROM alpine:latest
@@ -53,7 +53,7 @@ RUN mkdir -p /app/certs /app/xray /app/logs && \
     chown -R v2ray:v2ray /app
 
 # Copy default config
-COPY node/config.yml /app/config.yml.example
+COPY backend/node/config.yml /app/config.yml.example
 
 USER v2ray
 

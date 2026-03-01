@@ -1,0 +1,41 @@
+# V2RS Configuration File
+# This file specifies settings for the V2RS panel backend.
+
+# Log Settings
+log_config:
+  level: info                                             # Logging level: none, error, warn, info, debug, trace
+  mode: inclusive                                         # Mode: inclusive (this and lower), exclusive (only this)
+
+# Timezone Settings
+TZ: Asia/Bangkok                                          # IANA timezone name (e.g., Europe/Amsterdam, Asia/Singapore). If empty, uses TZ environment variable or UTC.
+
+backend:
+  listen_address: 0.0.0.0                                 # IP address of the V2RS API server. 127.0.0.1 means it is accessible only locally (localhost).
+  listen_port: 9243                                       # TCP port for V2RS API server. Must be between 1 and 65535.
+
+# Panel UI Settings
+panel:
+  static_dir: ./ui                                       # Path to built frontend (Vite dist). Default: ./ui
+  allow_insecure_http: true                             # false = HTTPS required. Set true for локальный тест.
+  trusted_proxies: []                                    # CIDR list (e.g. 127.0.0.1/32, 10.0.0.0/8) to trust X-Forwarded-Proto.
+  # web_port: 9242                                       # Optional web port override (normally via WEB_PORT env).
+  # trusted_proxies:
+  #   - 127.0.0.1/32
+
+# CORS Settings (Cross-Origin Resource Sharing)
+cors:
+  allowed_origins: []                                    # Example: ["https://panel.example.com"]
+  # allowed_methods:                                      # Optional: defaults to GET, POST, PUT, PATCH, DELETE, OPTIONS
+  #   - GET
+  #   - POST
+  #   - PUT
+  #   - PATCH
+  #   - DELETE
+  #   - OPTIONS
+  # allowed_headers:                                      # Optional: defaults to Content-Type, Authorization, X-API-Token, Cookie
+  #   - Content-Type
+  #   - Authorization
+  #   - X-API-Token
+  #   - Cookie
+
+# Database/Redis are configured via environment variables (DATABASE_URL, REDIS_HOST, REDIS_PORT).

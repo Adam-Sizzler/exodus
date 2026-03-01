@@ -1,93 +1,127 @@
-x-container: &container
-  restart: ${RESTART_POLICY:-unless-stopped} # Перезапускаться всегда кроме команды завершения или поломки healthcheck
-  # user: ${USER_ID}:${GROUP_ID}               # UID/GID пользователя в контейнере https://dev.to/acro5piano/specifying-user-and-group-in-docker-i2e
-  # cpuset: ${CPUSET:-}                        # Номера ядер ЦП, в которых разрешено выполнение (0-3, 0,1)
-  # cpu_shares: ${CPU_SHARES:-512}             # Доля ЦП (относительный вес, макс. 1024) при распределении между контейнерами
-  # cpus: ${CPUS:-0.5}                         # Сколько ресурсов ЦП может использовать контейнер
-  # mem_limit: ${MEM_LIMIT:-1024m}             # Максимальное значение опертивной памяти
-  # mem_reservation: ${MEM_RESERVATION:-256m}  # Начальное значение опертивной памяти
-  security_opt:
-    - no-new-privileges:true
-  # read_only: true
-  tmpfs:
-    - /tmp:noexec,nosuid,size=50m
-  env_file:
-    - ".env"
+x-common: &common
+  ulimits:
+    nofile:
+      soft: 1048576
+      hard: 1048576
+  restart: always
+  networks:
+    - v2rs-network
 
 x-logging: &logging
-  driver: "json-file"
-  options:
-    max-size: ${LOGGING_MAX_SIZE:-5M}
-    max-file: ${LOGGING_COUNT_FILES:-10}
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: 5
+
+x-env: &env
+  env_file: .env
 
 services:
-  # V2RAY BACKEND - main management service for v2ray-stat
-  backend:
-    <<: *container
-    image: ghcr.io/adam-sizzler/v2ray-stat-backend:${V2RS_VERSION:-latest}
-    container_name: v2ray-stat-backend
+  v2rs:
+    build:
+      context: .
+      dockerfile: Dockerfile.panel
+      args:
+        - VERSION=${VERSION:-latest}
+    image: v2rs:${VERSION:-latest}
+    container_name: v2rs
+    hostname: v2rs
+    <<: [*common, *logging, *env]
+    ports:
+      - 127.0.0.1:9242:${WEB_PORT:-9242}
+      - 127.0.0.1:9243:${BACKEND_PORT:-9243}
     volumes:
-      - ${CONFIG_PATH:-./v2rs/config.yaml}:/app/config.yaml:ro
-      - ${CERTS_PATH:-./v2rs/certs}:/app/certs
-      - backend-data:/app/data
-    deploy:
-      resources:
-        limits:
-          cpus: '0.4'
-          memory: 50M
-    profiles: [backend]
-    logging:
-      <<: *logging
+      - ./backend/panel/config.yml:/app/config.yml:ro
+      - panel-data:/app/data
+    depends_on:
+      v2rs-db:
+        condition: service_healthy
+      v2rs-redis:
+        condition: service_healthy
 
-  # V2RAY NODE - node for processing user traffic
-  node:
-    <<: *container
-    image: ghcr.io/adam-sizzler/v2ray-stat-node:${V2RS_VERSION:-latest}
-    container_name: v2ray-stat-node
+  v2rs-node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+      args:
+        - VERSION=${VERSION:-latest}
+    image: v2rs-node:${VERSION:-latest}
+    container_name: v2rs-node
+    hostname: v2rs-node
+    <<: [*common, *logging]
+    ports:
+      - "9253:9253"
     volumes:
-      - ${CONFIG_PATH:-./v2rs/config.yaml}:/app/config.yaml:ro
-      - ${CERTS_PATH:-./v2rs/certs}:/app/certs
-      - ${XRAY_CONFIG_PATH:-./xray/config}:/usr/local/etc/xray
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 50M
-    profiles: [node]
-    logging:
-      <<: *logging
+      - ./backend/node/config.yml:/app/config.yml:ro
+      - ./xray:/app/xray:ro
+      - ./xray/access.log:/app/logs/access.log:ro
 
-  # V2RAY SUBSCRIPTION - subscription service for users
-  subscription:
-    <<: *container
-    image: ghcr.io/adam-sizzler/v2ray-stat-subscription:${V2RS_VERSION:-latest}
-    container_name: v2ray-stat-subscription
+  v2rs-subscription:
+    build:
+      context: .
+      dockerfile: Dockerfile.subscription
+      args:
+        - VERSION=${VERSION:-latest}
+    image: v2rs-subscription:${VERSION:-latest}
+    container_name: v2rs-subscription
+    hostname: v2rs-subscription
+    <<: [*common, *logging]
+    ports:
+      - "9264:9264"
+      - "9263:9263"
     volumes:
-      - ${CONFIG_PATH:-./v2rs/config.yaml}:/app/config.yaml:ro
-      - ${CERTS_PATH:-./v2rs/certs}:/app/certs
-      - ./v2rs/subscription/templates:/app/templates:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 50M
-    profiles: [sub]
-    logging:
-      <<: *logging
+      - ./backend/subscription/config.yml:/app/config.yml:ro
+      - ./backend/subscription/templates:/app/templates:ro
 
-# Volume for storing Certbot data
-volumes:
-  certificate:
-  backend-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DATA_PATH:-./v2rs/backend/data}
+  v2rs-db:
+    image: postgres:17.6
+    container_name: v2rs-db
+    hostname: v2rs-db
+    <<: [*common, *logging, *env]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - TZ=UTC
+    ports:
+      - 127.0.0.1:6868:5432
+    volumes:
+      - v2rs-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 3s
+      timeout: 10s
+      retries: 3
+
+  v2rs-redis:
+    image: valkey/valkey:8.1-alpine
+    container_name: v2rs-redis
+    hostname: v2rs-redis
+    <<: [*common, *logging]
+    command: >
+      valkey-server
+      --save ""
+      --appendonly no
+      --maxmemory-policy noeviction
+      --loglevel warning
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 3
 
 networks:
-  default:
-    driver: ${NETWORK_DRIVER:-bridge}
-    ipam:
-      config:
-        - subnet: ${DOCKER_SUBNET:-172.32.0.0/28}
+  v2rs-network:
+    name: v2rs-network
+    driver: bridge
+    external: false
+
+volumes:
+  panel-data:
+    name: panel-data
+    driver: local
+  v2rs-db-data:
+    name: v2rs-db-data
+    driver: local
+    external: false

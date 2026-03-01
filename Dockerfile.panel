@@ -1,0 +1,65 @@
+# Multistage build for v2rs panel (frontend + backend)
+FROM node:20-alpine AS panel-ui
+WORKDIR /ui
+COPY front/panel/package*.json ./
+RUN npm ci
+COPY front/panel/ ./
+RUN npm run build
+
+FROM golang:1.25-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+
+ARG VERSION=unknown
+ARG REVISION=unknown
+ARG BUILD_TAGS=none
+ARG CGO_ENABLED_STATUS=enabled
+
+WORKDIR /build
+
+# Copy go mod files and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build panel backend binary
+RUN CGO_ENABLED=1 \
+    GOOS=linux \
+    go build \
+        -tags "${BUILD_TAGS}" \
+        -trimpath \
+        -buildvcs=true \
+        -ldflags="-s -w \
+                -X v2ray-stat/constant.Version=${VERSION} \
+                -X v2ray-stat/constant.Revision=${REVISION} \
+                -X v2ray-stat/constant.BuildTags=${BUILD_TAGS} \
+                -X v2ray-stat/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
+    -o v2rs-panel \
+    ./backend/panel
+
+# Final stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/v2rs-panel /app/
+
+# Copy built frontend
+COPY --from=panel-ui /ui/dist /app/ui
+
+# Create directories for data and certificates
+RUN mkdir -p /app/data /app/certs
+
+# Copy default config (will be overridden by volume mount)
+COPY backend/panel/config.yml /app/config.yml.example
+
+EXPOSE 9242 9243
+
+ENTRYPOINT ["/app/v2rs-panel"]
