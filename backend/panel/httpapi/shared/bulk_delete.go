@@ -1,4 +1,4 @@
-package api
+package shared
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func parseUUIDCSV(raw string) ([]string, error) {
+func ParseUUIDCSV(raw string) ([]string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, fmt.Errorf("uuids query parameter is required")

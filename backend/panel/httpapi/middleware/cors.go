@@ -1,4 +1,4 @@
-package api
+package middleware
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 // Otherwise, only origins in the list are allowed.
 func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cfg != nil && !cfg.Panel.AllowInsecureHTTP && !isSecureRequest(r, cfg) && !isHealthPath(r.URL.Path) {
+		if cfg != nil && !cfg.Panel.AllowInsecureHTTP && !IsSecureRequest(r, cfg) && !isHealthPath(r.URL.Path) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUpgradeRequired)
 			_, _ = w.Write([]byte(`{"error":"https_required","message":"panel requires HTTPS"}`))
@@ -84,7 +84,7 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 	})
 }
 
-func isSecureRequest(r *http.Request, cfg *config.BackendConfig) bool {
+func IsSecureRequest(r *http.Request, cfg *config.BackendConfig) bool {
 	if r.TLS != nil {
 		return true
 	}

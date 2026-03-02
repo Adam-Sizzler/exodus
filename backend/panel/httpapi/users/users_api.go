@@ -1,4 +1,4 @@
-package api
+package users
 
 import (
 	"context"
@@ -16,9 +16,10 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // UserEntity represents a user entity from the users table for API responses and requests.
@@ -678,7 +679,7 @@ func UsersReorderHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 			return
 		}
 
-		var req ViewPositionReorderRequest
+		var req shared.ViewPositionReorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadRequest)
@@ -693,7 +694,7 @@ func UsersReorderHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 		}
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return applyViewPositionReorder(r.Context(), db, "users", req.OrderedUUIDs, cfg)
+			return shared.ApplyViewPositionReorder(r.Context(), db, "users", req.OrderedUUIDs, cfg)
 		})
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1217,7 +1218,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 func handleDeleteUsersBulk(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	rawUUIDs := r.URL.Query().Get("uuids")
-	uuids, err := parseUUIDCSV(rawUUIDs)
+	uuids, err := shared.ParseUUIDCSV(rawUUIDs)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
@@ -1319,7 +1320,7 @@ func UsersListSummaryHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 		})
 
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to fetch users summary", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch users summary", err, cfg)
 			return
 		}
 

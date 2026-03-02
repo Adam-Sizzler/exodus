@@ -1,4 +1,4 @@
-package api
+package panelsettings
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 	"v2ray-stat/backend/panel/security"
 
 	"github.com/google/uuid"
@@ -34,14 +35,14 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			settings, err := loadPanelSettings(manager)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings", "error", err)
-				writeJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
 				return
 			}
-			writeJSON(w, http.StatusOK, PanelSettingsResponse{Settings: settings})
+			shared.WriteJSON(w, http.StatusOK, PanelSettingsResponse{Settings: settings})
 		case http.MethodPatch, http.MethodPut:
 			var payload map[string]json.RawMessage
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 				return
 			}
 
@@ -65,7 +66,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 					continue
 				}
 				if !json.Valid(raw) {
-					writeJSONError(w, http.StatusBadRequest, "invalid JSON value for "+key)
+					shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON value for "+key)
 					return
 				}
 				setClauses = append(setClauses, column+" = ?")
@@ -73,7 +74,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			}
 
 			if len(setClauses) == 0 {
-				writeJSONError(w, http.StatusBadRequest, "no valid fields provided")
+				shared.WriteJSONError(w, http.StatusBadRequest, "no valid fields provided")
 				return
 			}
 
@@ -101,19 +102,19 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			})
 			if err != nil {
 				cfg.Logger.Error("Failed to update panel settings", "error", err)
-				writeJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
 				return
 			}
 
 			settings, err := loadPanelSettings(manager)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings after update", "error", err)
-				writeJSONError(w, http.StatusInternalServerError, "failed to load updated panel settings")
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated panel settings")
 				return
 			}
-			writeJSON(w, http.StatusOK, PanelSettingsResponse{Settings: settings})
+			shared.WriteJSON(w, http.StatusOK, PanelSettingsResponse{Settings: settings})
 		default:
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
@@ -125,10 +126,10 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			tokens, err := loadAPITokens(manager)
 			if err != nil {
 				cfg.Logger.Error("Failed to load api tokens", "error", err)
-				writeJSONError(w, http.StatusInternalServerError, "failed to load api tokens")
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load api tokens")
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{
+			shared.WriteJSON(w, http.StatusOK, map[string]any{
 				"tokens": tokens,
 				"count":  len(tokens),
 			})
@@ -137,19 +138,19 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 				TokenName string `json:"token_name"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 				return
 			}
 			tokenName := strings.TrimSpace(payload.TokenName)
 			if tokenName == "" {
-				writeJSONError(w, http.StatusBadRequest, "token_name is required")
+				shared.WriteJSONError(w, http.StatusBadRequest, "token_name is required")
 				return
 			}
 
 			tokenValue, err := security.GenerateRandomToken(64)
 			if err != nil {
 				cfg.Logger.Error("Failed to generate api token", "error", err)
-				writeJSONError(w, http.StatusInternalServerError, "failed to generate api token")
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to generate api token")
 				return
 			}
 
@@ -168,17 +169,17 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			})
 			if err != nil {
 				cfg.Logger.Error("Failed to insert api token", "error", err)
-				writeJSONError(w, http.StatusInternalServerError, "failed to save api token")
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to save api token")
 				return
 			}
 
 			// Return full token only in create response.
-			writeJSON(w, http.StatusCreated, map[string]any{
+			shared.WriteJSON(w, http.StatusCreated, map[string]any{
 				"token":   record,
 				"message": "api token created",
 			})
 		default:
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
@@ -186,13 +187,13 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		tokenUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/v1/panel/api-tokens/"))
 		if _, err := uuid.Parse(tokenUUID); err != nil {
-			writeJSONError(w, http.StatusBadRequest, "invalid token UUID")
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid token UUID")
 			return
 		}
 
@@ -211,15 +212,15 @@ func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 		})
 		if err != nil {
 			cfg.Logger.Error("Failed to delete api token", "uuid", tokenUUID, "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to delete api token")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete api token")
 			return
 		}
 		if rowsAffected == 0 {
-			writeJSONError(w, http.StatusNotFound, "api token not found")
+			shared.WriteJSONError(w, http.StatusNotFound, "api token not found")
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]any{
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"message": "api token deleted",
 			"uuid":    tokenUUID,
 		})

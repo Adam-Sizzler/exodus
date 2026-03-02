@@ -1,4 +1,4 @@
-package api
+package squads
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -58,7 +59,7 @@ func (r *InternalSquadUpdateRequest) HasUpdates() bool {
 }
 
 // scanInternalSquad scans a row into an InternalSquad struct.
-func scanInternalSquad(scanner RowScanner) (InternalSquad, error) {
+func scanInternalSquad(scanner shared.RowScanner) (InternalSquad, error) {
 	var squad InternalSquad
 	var viewPosition sql.NullInt64
 
@@ -102,21 +103,21 @@ func InternalSquadsReorderHandler(manager *dbmanager.DatabaseManager, cfg *confi
 			return
 		}
 
-		var req ViewPositionReorderRequest
+		var req shared.ViewPositionReorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
 		if err := req.Validate(); err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return applyViewPositionReorder(r.Context(), db, "internal_squads", req.OrderedUUIDs, cfg)
+			return shared.ApplyViewPositionReorder(r.Context(), db, "internal_squads", req.OrderedUUIDs, cfg)
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to reorder internal squads", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder internal squads", err, cfg)
 			return
 		}
 
@@ -156,7 +157,7 @@ func handleGetInternalSquads(w http.ResponseWriter, r *http.Request, manager *db
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch internal squads", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squads", err, cfg)
 		return
 	}
 
@@ -171,13 +172,13 @@ func handleGetInternalSquads(w http.ResponseWriter, r *http.Request, manager *db
 func handleCreateInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req InternalSquadCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	// Validate required fields
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -199,10 +200,10 @@ func handleCreateInternalSquad(w http.ResponseWriter, r *http.Request, manager *
 
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			sendError(w, http.StatusConflict, "name already exists", err, cfg)
+			shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
 			return
 		}
-		sendError(w, http.StatusInternalServerError, "failed to create internal squad", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to create internal squad", err, cfg)
 		return
 	}
 
@@ -222,7 +223,7 @@ func InternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 		squadUUID := strings.TrimSpace(path)
 
 		if _, err := uuid.Parse(squadUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
 
@@ -252,9 +253,9 @@ func handleGetInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbm
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch internal squad", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squad", err, cfg)
 		}
 		return
 	}
@@ -266,17 +267,17 @@ func handleGetInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbm
 func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
 	var req InternalSquadUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
 	if !req.HasUpdates() {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -297,7 +298,7 @@ func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	if len(clauses) == 0 {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -321,12 +322,12 @@ func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *d
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
 		} else {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-				sendError(w, http.StatusConflict, "name already exists", err, cfg)
+				shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
 			} else {
-				sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+				shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
 			}
 		}
 		return
@@ -346,9 +347,9 @@ func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, manager *
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to find internal squad", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to find internal squad", err, cfg)
 		}
 		return
 	}
@@ -359,7 +360,7 @@ func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, manager *
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete internal squad", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete internal squad", err, cfg)
 		return
 	}
 

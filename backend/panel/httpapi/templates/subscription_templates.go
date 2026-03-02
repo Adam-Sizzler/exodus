@@ -1,4 +1,4 @@
-package api
+package templates
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -83,7 +84,7 @@ func (r *SubscriptionTemplateUpdateRequest) HasUpdates() bool {
 	return r.TemplateYAML != nil || r.TemplateJSON != nil || r.Name != nil || r.ViewPosition != nil
 }
 
-func scanSubscriptionTemplate(scanner RowScanner) (SubscriptionTemplate, error) {
+func scanSubscriptionTemplate(scanner shared.RowScanner) (SubscriptionTemplate, error) {
 	var t SubscriptionTemplate
 	var templateYAML, templateJSON sql.NullString
 	var viewPosition sql.NullInt64
@@ -135,21 +136,21 @@ func SubscriptionTemplatesReorderHandler(manager *dbmanager.DatabaseManager, cfg
 			return
 		}
 
-		var req ViewPositionReorderRequest
+		var req shared.ViewPositionReorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
 		if err := req.Validate(); err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return applyViewPositionReorder(r.Context(), db, "subscription_templates", req.OrderedUUIDs, cfg)
+			return shared.ApplyViewPositionReorder(r.Context(), db, "subscription_templates", req.OrderedUUIDs, cfg)
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to reorder templates", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder templates", err, cfg)
 			return
 		}
 
@@ -165,7 +166,7 @@ func SubscriptionTemplateByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *
 	return func(w http.ResponseWriter, r *http.Request) {
 		templateUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/v1/templates/"))
 		if _, err := uuid.Parse(templateUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
 
@@ -215,7 +216,7 @@ func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, mana
 		return rows.Err()
 	})
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch templates", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch templates", err, cfg)
 		return
 	}
 
@@ -242,9 +243,9 @@ func handleGetSubscriptionTemplateByUUID(w http.ResponseWriter, r *http.Request,
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "template not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch template", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch template", err, cfg)
 		}
 		return
 	}
@@ -256,15 +257,15 @@ func handleGetSubscriptionTemplateByUUID(w http.ResponseWriter, r *http.Request,
 func handlePatchSubscriptionTemplate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, templateUUID string) {
 	var req SubscriptionTemplateUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 	if !req.HasUpdates() {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -307,11 +308,11 @@ func handlePatchSubscriptionTemplate(w http.ResponseWriter, r *http.Request, man
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "template not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
 		} else if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			sendError(w, http.StatusConflict, "name already exists", err, cfg)
+			shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
 		}
 		return
 	}
@@ -322,11 +323,11 @@ func handlePatchSubscriptionTemplate(w http.ResponseWriter, r *http.Request, man
 func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SubscriptionTemplateCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -359,9 +360,9 @@ func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			sendError(w, http.StatusConflict, "template with this name already exists for template_type", err, cfg)
+			shared.SendError(w, http.StatusConflict, "template with this name already exists for template_type", err, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to create template", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to create template", err, cfg)
 		}
 		return
 	}
@@ -377,9 +378,9 @@ func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "template not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to find template", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to find template", err, cfg)
 		}
 		return
 	}
@@ -389,7 +390,7 @@ func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 		return execErr
 	})
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete template", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete template", err, cfg)
 		return
 	}
 

@@ -217,6 +217,118 @@ rules:
 const defaultResponseRules = `{"rules":[{"name":"Browser Subscription","enabled":true,"operator":"AND","conditions":[{"value":"text/html","operator":"CONTAINS","headerName":"accept","caseSensitive":true}],"description":"System critical: do not delete or disable this rule.","responseType":"BROWSER"},{"name":"Mihomo Clients","enabled":true,"operator":"AND","conditions":[{"value":"^(?:FlClash|FlClashX|Flowvy|[Cc]lash-[Vv]erge|[Kk]oala-[Cc]lash|[Cc]lash-?[Mm]eta|[Mm]urge|[Cc]lashX [Mm]eta|[Mm]ihomo|[Cc]lash-nyanpasu|clash.meta|prizrak-box)","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Response with generated YAML config (Mihomo Template)","responseType":"MIHOMO"},{"name":"Stash (iOS, macOS)","enabled":true,"operator":"AND","conditions":[{"value":"^stash","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Response with generated YAML config (Stash Template)","responseType":"STASH"},{"name":"Sing-box clients","enabled":true,"operator":"AND","conditions":[{"value":"^sfa|sfi|sfm|sft|karing|singbox|rabbithole","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Resonse with generated JSON config (Singbox template)","responseType":"SINGBOX"},{"name":"Clash Core Clients","enabled":true,"operator":"AND","conditions":[{"value":"^clash","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Response with generated YAML config (Clash Template)","responseType":"CLASH"},{"name":"Fallback Base64","enabled":true,"operator":"AND","conditions":[],"description":"System critical: do not delete or disable this rule.","responseType":"XRAY_BASE64"}],"version":"1"}`
 const defaultHWIDSettings = `{"enabled":false,"maxDevicesAnnounce":null,"fallbackDeviceLimit":999}`
 const defaultCustomRemarks = `{"emptyHosts":["→ v2rs","→ No hosts found","→ Check Hosts tab","→ Check Internal Squads tab"],"expiredUsers":["⌛ Subscription expired","Contact support"],"limitedUsers":["🚧 Subscription limited","Contact support"],"disabledUsers":["🚫 Subscription disabled","Contact support"],"HWIDNotSupported":["App not supported"],"HWIDMaxDevicesExceeded":["Limit of devices reached"]}`
+const defaultSubpageConfigUUID = "00000000-0000-0000-0000-000000000000"
+const defaultSubscriptionPageConfig = `{
+  "version": "1",
+  "locales": ["en", "ru"],
+  "brandingSettings": {
+    "title": "Subscription",
+    "logoUrl": "",
+    "supportUrl": "https://github.com"
+  },
+  "uiConfig": {
+    "subscriptionInfoBlockType": "expanded",
+    "installationGuidesBlockType": "cards"
+  },
+  "baseSettings": {
+    "metaTitle": "Subscription",
+    "metaDescription": "Subscription",
+    "showConnectionKeys": false,
+    "hideGetLinkButton": false
+  },
+  "baseTranslations": {
+    "installationGuideHeader": { "en": "Installation Guide", "ru": "Инструкция по установке" },
+    "connectionKeysHeader": { "en": "Connection Keys", "ru": "Ключи подключения" },
+    "linkCopied": { "en": "Link Copied", "ru": "Ссылка скопирована" },
+    "linkCopiedToClipboard": { "en": "Link copied to clipboard", "ru": "Ссылка скопирована в буфер" },
+    "getLink": { "en": "Get Link", "ru": "Получить ссылку" },
+    "scanQrCode": { "en": "Scan QR Code", "ru": "Сканировать QR-код" },
+    "scanQrCodeDescription": { "en": "Scan QR code with your client", "ru": "Отсканируйте QR-код в приложении" },
+    "copyLink": { "en": "Copy Link", "ru": "Скопировать ссылку" },
+    "name": { "en": "Name", "ru": "Имя" },
+    "status": { "en": "Status", "ru": "Статус" },
+    "active": { "en": "Active", "ru": "Активен" },
+    "inactive": { "en": "Inactive", "ru": "Неактивен" },
+    "expires": { "en": "Expires", "ru": "Истекает" },
+    "bandwidth": { "en": "Bandwidth", "ru": "Трафик" },
+    "scanToImport": { "en": "Scan to Import", "ru": "Сканировать для импорта" },
+    "expiresIn": { "en": "Expires In", "ru": "Истекает через" },
+    "expired": { "en": "Expired", "ru": "Истек" },
+    "unknown": { "en": "Unknown", "ru": "Неизвестно" },
+    "indefinitely": { "en": "Indefinitely", "ru": "Бессрочно" }
+  },
+  "svgLibrary": {
+    "default": "<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 24 24\\"><circle cx=\\"12\\" cy=\\"12\\" r=\\"10\\" fill=\\"currentColor\\"/></svg>"
+  },
+  "platforms": {
+    "android": {
+      "displayName": { "en": "Android", "ru": "Android" },
+      "svgIconKey": "default",
+      "apps": [
+        {
+          "name": "V2RayNG",
+          "svgIconKey": "default",
+          "featured": true,
+          "blocks": [
+            {
+              "svgIconKey": "default",
+              "svgIconColor": "blue",
+              "title": { "en": "Install the app", "ru": "Установите приложение" },
+              "description": { "en": "Download and install the client.", "ru": "Скачайте и установите клиент." },
+              "buttons": [
+                {
+                  "link": "https://play.google.com/store/apps/details?id=com.v2ray.ang",
+                  "type": "external",
+                  "text": { "en": "Download", "ru": "Скачать" },
+                  "svgIconKey": "default"
+                },
+                {
+                  "link": "{{SUBSCRIPTION_LINK}}",
+                  "type": "subscriptionLink",
+                  "text": { "en": "Get Link", "ru": "Получить ссылку" },
+                  "svgIconKey": "default"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ios": {
+      "displayName": { "en": "iOS", "ru": "iOS" },
+      "svgIconKey": "default",
+      "apps": [
+        {
+          "name": "Stash",
+          "svgIconKey": "default",
+          "featured": true,
+          "blocks": [
+            {
+              "svgIconKey": "default",
+              "svgIconColor": "green",
+              "title": { "en": "Install the app", "ru": "Установите приложение" },
+              "description": { "en": "Download and install the client.", "ru": "Скачайте и установите клиент." },
+              "buttons": [
+                {
+                  "link": "https://apps.apple.com/app/stash/id1596063349",
+                  "type": "external",
+                  "text": { "en": "Download", "ru": "Скачать" },
+                  "svgIconKey": "default"
+                },
+                {
+                  "link": "{{SUBSCRIPTION_LINK}}",
+                  "type": "subscriptionLink",
+                  "text": { "en": "Get Link", "ru": "Получить ссылку" },
+                  "svgIconKey": "default"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}`
 
 // SeedDefaults inserts base settings and templates if they do not exist.
 func SeedDefaults(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig) error {
@@ -238,6 +350,10 @@ func SeedDefaults(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig
 		return err
 	}
 	if err := ensureDefaultTemplates(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if err := ensureDefaultSubscriptionPageConfig(tx); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
@@ -348,6 +464,27 @@ func ensureDefaultTemplates(tx *sql.Tx) error {
 		); err != nil {
 			return fmt.Errorf("insert template %s: %w", tmpl.templateType, err)
 		}
+	}
+
+	return nil
+}
+
+func ensureDefaultSubscriptionPageConfig(tx *sql.Tx) error {
+	var count int
+	if err := tx.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM subscription_page_config`).Scan(&count); err != nil {
+		return fmt.Errorf("count subscription_page_config: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
+	query := dbutil.Rebind(`
+		INSERT INTO subscription_page_config (
+			uuid, view_position, name, config
+		) VALUES (?, ?, ?, ?)
+	`)
+	if _, err := tx.ExecContext(context.Background(), query, defaultSubpageConfigUUID, 1, "Default", defaultSubscriptionPageConfig); err != nil {
+		return fmt.Errorf("insert default subscription_page_config: %w", err)
 	}
 
 	return nil

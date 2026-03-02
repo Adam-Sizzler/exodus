@@ -1,4 +1,4 @@
-package api
+package subscription
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -124,7 +125,7 @@ func (r *SubscriptionSettingsUpdateRequest) HasUpdates() bool {
 		r.CustomRemarks != nil
 }
 
-func scanSubscriptionSettings(scanner RowScanner) (SubscriptionSettings, error) {
+func scanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, error) {
 	var s SubscriptionSettings
 	var address, apiSchema, apiPath sql.NullString
 	var port sql.NullInt64
@@ -220,7 +221,7 @@ func SubscriptionSettingsByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *
 	return func(w http.ResponseWriter, r *http.Request) {
 		settingsUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/v1/subscription-settings/"))
 		if _, err := uuid.Parse(settingsUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
 
@@ -255,9 +256,9 @@ func handleGetSubscriptionSettings(w http.ResponseWriter, r *http.Request, manag
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "subscription settings not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "subscription settings not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch subscription settings", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription settings", err, cfg)
 		}
 		return
 	}
@@ -285,9 +286,9 @@ func handleGetSubscriptionSettingsByUUID(w http.ResponseWriter, r *http.Request,
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "subscription settings not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "subscription settings not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch subscription settings", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription settings", err, cfg)
 		}
 		return
 	}
@@ -299,17 +300,17 @@ func handleGetSubscriptionSettingsByUUID(w http.ResponseWriter, r *http.Request,
 func handlePatchSubscriptionSettings(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, settingsUUID string) {
 	var req SubscriptionSettingsUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
 	if !req.HasUpdates() {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -391,9 +392,9 @@ func handlePatchSubscriptionSettings(w http.ResponseWriter, r *http.Request, man
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "subscription settings not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "subscription settings not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
 		}
 		return
 	}

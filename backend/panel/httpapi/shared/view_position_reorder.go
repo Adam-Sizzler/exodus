@@ -1,4 +1,4 @@
-package api
+package shared
 
 import (
 	"context"
@@ -54,7 +54,7 @@ var uuidParse = func(v string) (string, error) {
 	return v, nil
 }
 
-func applyViewPositionReorder(ctx context.Context, db dbmanager.DBExecutor, tableName string, orderedUUIDs []string, cfg *config.BackendConfig) error {
+func ApplyViewPositionReorder(ctx context.Context, db dbmanager.DBExecutor, tableName string, orderedUUIDs []string, cfg *config.BackendConfig) error {
 	if !isAllowedReorderTable(tableName) {
 		return fmt.Errorf("unsupported table for reorder")
 	}

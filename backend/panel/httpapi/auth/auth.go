@@ -1,4 +1,4 @@
-package api
+package auth
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/middleware"
+	"v2ray-stat/backend/panel/httpapi/shared"
 	"v2ray-stat/backend/panel/security"
 
 	"github.com/google/uuid"
@@ -91,7 +93,7 @@ func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 
 		principal, err := authenticateRequest(r, manager, cfg)
 		if err != nil {
-			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -105,6 +107,9 @@ func isPublicAPIPath(path string) bool {
 	case "/api/health", "/api/v1/health", "/api/v1/auth/login", "/api/v1/auth/bootstrap", "/api/v1/auth/setup":
 		return true
 	default:
+		if strings.HasPrefix(path, "/api/sub/") || path == "/api/sub" {
+			return true
+		}
 		return false
 	}
 }
@@ -227,18 +232,18 @@ func resolveToken(token string, manager *dbmanager.DatabaseManager, cfg *config.
 func AuthBootstrapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		brandingSettings, passwordSettings, defaultUsername, hasAdmin, err := getBootstrapData(manager)
 		if err != nil {
 			cfg.Logger.Error("Failed to load auth bootstrap data", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to load auth bootstrap data")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load auth bootstrap data")
 			return
 		}
 
-		writeJSON(w, http.StatusOK, BootstrapResponse{
+		shared.WriteJSON(w, http.StatusOK, BootstrapResponse{
 			BrandingSettings:   brandingSettings,
 			PasswordSettings:   passwordSettings,
 			DefaultUsername:    defaultUsername,
@@ -250,20 +255,20 @@ func AuthBootstrapHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		var req SetupRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 			return
 		}
 
 		username := strings.TrimSpace(req.Username)
 		password := strings.TrimSpace(req.Password)
 		if username == "" || password == "" {
-			writeJSONError(w, http.StatusBadRequest, "username and password are required")
+			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
 		}
 
@@ -275,7 +280,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		passwordHash, err := security.HashPassword(password)
 		if err != nil {
 			cfg.Logger.Error("Failed to hash setup password", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to create admin account")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin account")
 			return
 		}
 
@@ -283,7 +288,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		sessionToken, err := security.GenerateRandomToken(48)
 		if err != nil {
 			cfg.Logger.Error("Failed to generate setup session token", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to create admin session")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin session")
 			return
 		}
 		expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
@@ -311,16 +316,16 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return execErr
 		})
 		if errors.Is(err, errAdminAlreadyConfigured) {
-			writeJSONError(w, http.StatusConflict, "admin account already exists")
+			shared.WriteJSONError(w, http.StatusConflict, "admin account already exists")
 			return
 		}
 		if err != nil {
 			cfg.Logger.Error("Failed to create initial admin account", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
 			return
 		}
 
-		secureCookie := isSecureRequest(r, cfg)
+		secureCookie := middleware.IsSecureRequest(r, cfg)
 		http.SetCookie(w, &http.Cookie{
 			Name:     sessionCookieName,
 			Value:    sessionToken,
@@ -338,7 +343,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			passwordSettings = defaultPasswordSettings()
 		}
 
-		writeJSON(w, http.StatusCreated, LoginResponse{
+		shared.WriteJSON(w, http.StatusCreated, LoginResponse{
 			Admin: AuthAdminInfo{
 				UUID:              adminUUID,
 				Username:          username,
@@ -356,20 +361,20 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 			return
 		}
 
 		username := strings.TrimSpace(req.Username)
 		password := strings.TrimSpace(req.Password)
 		if username == "" || password == "" {
-			writeJSONError(w, http.StatusBadRequest, "username and password are required")
+			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
 		}
 
@@ -405,18 +410,18 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		})
 		if err != nil {
 			cfg.Logger.Error("Failed to read admin credentials", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
 		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
-			writeJSONError(w, http.StatusUnauthorized, "invalid username or password")
+			shared.WriteJSONError(w, http.StatusUnauthorized, "invalid username or password")
 			return
 		}
 
 		sessionToken, err := security.GenerateRandomToken(48)
 		if err != nil {
 			cfg.Logger.Error("Failed to generate session token", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to create session")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create session")
 			return
 		}
 
@@ -433,11 +438,11 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return execErr
 		}); err != nil {
 			cfg.Logger.Error("Failed to persist admin session", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to persist session")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to persist session")
 			return
 		}
 
-		secureCookie := isSecureRequest(r, cfg)
+		secureCookie := middleware.IsSecureRequest(r, cfg)
 		http.SetCookie(w, &http.Cookie{
 			Name:     sessionCookieName,
 			Value:    sessionToken,
@@ -455,7 +460,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			passwordSettings = defaultPasswordSettings()
 		}
 
-		writeJSON(w, http.StatusOK, LoginResponse{
+		shared.WriteJSON(w, http.StatusOK, LoginResponse{
 			Admin: AuthAdminInfo{
 				UUID:              adminUUID,
 				Username:          username,
@@ -473,13 +478,13 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		principal, ok := CurrentAuthPrincipal(r.Context())
 		if !ok || principal == nil || principal.TokenType != "session" {
-			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -509,11 +514,11 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 		})
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+				shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
 			cfg.Logger.Error("Failed to load auth me payload", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, "failed to load current session")
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load current session")
 			return
 		}
 
@@ -524,7 +529,7 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			passwordSettings = defaultPasswordSettings()
 		}
 
-		writeJSON(w, http.StatusOK, LoginResponse{
+		shared.WriteJSON(w, http.StatusOK, LoginResponse{
 			Admin:            adminInfo,
 			ExpiresAt:        expiresAt,
 			BrandingSettings: brandingSettings,
@@ -537,7 +542,7 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 func AuthLogoutHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
@@ -557,7 +562,7 @@ func AuthLogoutHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 			}
 		}
 
-		secureCookie := isSecureRequest(r, cfg)
+		secureCookie := middleware.IsSecureRequest(r, cfg)
 		http.SetCookie(w, &http.Cookie{
 			Name:     sessionCookieName,
 			Value:    "",
@@ -569,7 +574,7 @@ func AuthLogoutHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 			MaxAge:   -1,
 		})
 
-		writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+		shared.WriteJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 	}
 }
 
@@ -639,14 +644,4 @@ func defaultPasswordSettings() map[string]any {
 	return map[string]any{
 		"enabled": true,
 	}
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
-}
-
-func writeJSONError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
 }

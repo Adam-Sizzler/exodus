@@ -17,12 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"v2ray-stat/backend/panel/api"
 	"v2ray-stat/backend/panel/config"
 	"v2ray-stat/backend/panel/db"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi"
+	"v2ray-stat/backend/panel/httpapi/middleware"
+	users "v2ray-stat/backend/panel/nodes"
 	"v2ray-stat/backend/panel/redisqueue"
-	"v2ray-stat/backend/panel/users"
 	"v2ray-stat/constant"
 )
 
@@ -31,61 +32,10 @@ func startAPIServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 	defer wg.Done()
 
 	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.V2RS.Port)
-	mux := http.NewServeMux()
 	server := &http.Server{
 		Addr:    addr,
-		Handler: api.WithCORS(cfg, api.WithPanelAuth(manager, cfg, mux)),
+		Handler: httpapi.NewAPIHandler(manager, cfg),
 	}
-
-	mux.HandleFunc("/api/v1/auth/bootstrap", api.AuthBootstrapHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/auth/setup", api.AuthSetupHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/auth/login", api.AuthLoginHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/auth/logout", api.AuthLogoutHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/auth/me", api.AuthMeHandler(manager, cfg))
-
-	mux.HandleFunc("/api/v1/panel/settings", api.PanelSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/panel/api-tokens", api.PanelAPITokensHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/panel/api-tokens/", api.PanelAPITokenByUUIDHandler(manager, cfg))
-
-	mux.HandleFunc("/api/v1/nodes", api.NodesHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/nodes/summary", api.NodesSummaryHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/nodes/reorder", api.NodesReorderHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/nodes/", api.NodeByUUIDHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/config-profiles/reorder", api.ConfigProfilesReorderHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/internal-squads/reorder", api.InternalSquadsReorderHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/hosts/reorder", api.HostsReorderHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/hosts", api.HostsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/hosts/", api.HostByUUIDHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/hosts-to-nodes", api.HostNodeAssignmentsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/users-list", api.UsersAPIHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/users-list/reorder", api.UsersReorderHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/users-list/summary", api.UsersListSummaryHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/users-list/", api.UserByUUIDHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/users-list/create", api.UsersCreateHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/config-profiles", api.ConfigProfilesHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/config-profiles/", api.ConfigProfileByUUIDHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/internal-squads", api.InternalSquadsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/internal-squads/", api.InternalSquadByUUIDHandler(manager, cfg))
-
-	// Squad bindings and queries
-	mux.HandleFunc("/api/v1/inbound-assignments", api.InboundAssignmentsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/squad-inbounds", api.SquadInboundsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/squad-members", api.SquadMembersHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/config-profiles-with-inbounds", api.ConfigProfilesWithInboundsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/squad-details/", api.SquadDetailsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/squads-summary", api.AllSquadsSummaryHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/nodes-with-config", api.NodesWithConfigHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/inbounds-with-profiles", api.InboundsWithProfilesHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/subscription-settings", api.SubscriptionSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/subscription-settings/", api.SubscriptionSettingsByUUIDHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/templates/reorder", api.SubscriptionTemplatesReorderHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/templates", api.SubscriptionTemplatesHandler(manager, cfg))
-	mux.HandleFunc("/api/v1/templates/", api.SubscriptionTemplateByUUIDHandler(manager, cfg))
-
-	mux.HandleFunc("/api/health", api.HealthHandler())
-	mux.HandleFunc("/api/v1/health", api.HealthHandler())
-
-	mux.Handle("/api/", http.NotFoundHandler())
 
 	cfg.Logger.Debug("Starting API server", "address", server.Addr)
 
@@ -168,7 +118,7 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: api.WithCORS(cfg, mux),
+		Handler: middleware.WithCORS(cfg, mux),
 	}
 
 	cfg.Logger.Debug("Starting web server", "address", server.Addr)

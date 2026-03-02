@@ -1,4 +1,4 @@
-package api
+package health
 
 import (
 	"encoding/json"

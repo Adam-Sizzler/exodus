@@ -1,4 +1,4 @@
-package api
+package squads
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -25,7 +26,7 @@ type ConfigProfileInboundToNode struct {
 
 // InboundAssignmentRequest represents a request to assign inbounds to a node.
 type InboundAssignmentRequest struct {
-	NodeUUID   string   `json:"node_uuid"`
+	NodeUUID     string   `json:"node_uuid"`
 	InboundUUIDs []string `json:"inbound_uuids"`
 }
 
@@ -101,7 +102,7 @@ func handleGetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch inbound assignments", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch inbound assignments", err, cfg)
 		return
 	}
 
@@ -117,12 +118,12 @@ func handleGetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req InboundAssignmentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -169,22 +170,22 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 
 	if err != nil {
 		if err.Error() == "node not found" {
-			sendError(w, http.StatusNotFound, "node not found", err, cfg)
+			shared.SendError(w, http.StatusNotFound, "node not found", err, cfg)
 			return
 		}
 		if strings.Contains(err.Error(), "inbound not found") {
-			sendError(w, http.StatusBadRequest, err.Error(), err, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), err, cfg)
 			return
 		}
-		sendError(w, http.StatusInternalServerError, "failed to set inbound assignments", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to set inbound assignments", err, cfg)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":       "inbound assignments updated",
-		"node_uuid":     req.NodeUUID,
+		"message":        "inbound assignments updated",
+		"node_uuid":      req.NodeUUID,
 		"inbounds_count": len(req.InboundUUIDs),
 	})
 }
@@ -193,13 +194,13 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 
 // InternalSquadInbound represents a binding between a squad and an inbound.
 type InternalSquadInbound struct {
-	InternalSquadUUID string    `json:"internal_squad_uuid"`
-	InboundUUID       string    `json:"inbound_uuid"`
+	InternalSquadUUID string `json:"internal_squad_uuid"`
+	InboundUUID       string `json:"inbound_uuid"`
 }
 
 // SquadInboundsRequest represents a request to set inbounds for a squad.
 type SquadInboundsRequest struct {
-	SquadUUID   string   `json:"squad_uuid"`
+	SquadUUID    string   `json:"squad_uuid"`
 	InboundUUIDs []string `json:"inbound_uuids"`
 }
 
@@ -275,7 +276,7 @@ func handleGetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbm
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch squad inbounds", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad inbounds", err, cfg)
 		return
 	}
 
@@ -291,12 +292,12 @@ func handleGetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbm
 func handleSetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SquadInboundsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -343,14 +344,14 @@ func handleSetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbm
 
 	if err != nil {
 		if err.Error() == "squad not found" {
-			sendError(w, http.StatusNotFound, "squad not found", err, cfg)
+			shared.SendError(w, http.StatusNotFound, "squad not found", err, cfg)
 			return
 		}
 		if strings.Contains(err.Error(), "inbound not found") {
-			sendError(w, http.StatusBadRequest, err.Error(), err, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), err, cfg)
 			return
 		}
-		sendError(w, http.StatusInternalServerError, "failed to set squad inbounds", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to set squad inbounds", err, cfg)
 		return
 	}
 
@@ -452,7 +453,7 @@ func handleGetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbma
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch squad members", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad members", err, cfg)
 		return
 	}
 
@@ -468,12 +469,12 @@ func handleGetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbma
 func handleSetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SquadMembersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -520,22 +521,22 @@ func handleSetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbma
 
 	if err != nil {
 		if err.Error() == "squad not found" {
-			sendError(w, http.StatusNotFound, "squad not found", err, cfg)
+			shared.SendError(w, http.StatusNotFound, "squad not found", err, cfg)
 			return
 		}
 		if strings.Contains(err.Error(), "user not found") {
-			sendError(w, http.StatusBadRequest, err.Error(), err, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), err, cfg)
 			return
 		}
-		sendError(w, http.StatusInternalServerError, "failed to set squad members", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to set squad members", err, cfg)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":     "squad members updated",
-		"squad_uuid":  req.SquadUUID,
+		"message":       "squad members updated",
+		"squad_uuid":    req.SquadUUID,
 		"members_count": len(req.UserIDs),
 	})
 }

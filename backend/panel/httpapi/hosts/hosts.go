@@ -1,4 +1,4 @@
-package api
+package hosts
 
 import (
 	"database/sql"
@@ -9,6 +9,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -121,7 +122,7 @@ type HostNodeAssignmentDeleteRequest struct {
 	NodeUUIDs []string `json:"node_uuids"`
 }
 
-func scanHost(scanner RowScanner) (Host, error) {
+func scanHost(scanner shared.RowScanner) (Host, error) {
 	var h Host
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
@@ -338,21 +339,21 @@ func HostsReorderHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 			return
 		}
 
-		var req ViewPositionReorderRequest
+		var req shared.ViewPositionReorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
 		if err := req.Validate(); err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return applyViewPositionReorder(r.Context(), db, "hosts", req.OrderedUUIDs, cfg)
+			return shared.ApplyViewPositionReorder(r.Context(), db, "hosts", req.OrderedUUIDs, cfg)
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to reorder hosts", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder hosts", err, cfg)
 			return
 		}
 
@@ -400,7 +401,7 @@ func handleGetHosts(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
 
@@ -411,12 +412,12 @@ func handleGetHosts(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req HostCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -463,7 +464,7 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to create host", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to create host", err, cfg)
 		return
 	}
 
@@ -477,7 +478,7 @@ func HostByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	return func(w http.ResponseWriter, r *http.Request) {
 		hostUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/v1/hosts/"))
 		if _, err := uuid.Parse(hostUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
 
@@ -518,9 +519,9 @@ func handleGetHost(w http.ResponseWriter, r *http.Request, manager *dbmanager.Da
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "host not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "host not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch host", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch host", err, cfg)
 		}
 		return
 	}
@@ -532,15 +533,15 @@ func handleGetHost(w http.ResponseWriter, r *http.Request, manager *dbmanager.Da
 func handlePatchHost(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, hostUUID string) {
 	var req HostUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 	if !req.HasUpdates() {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -615,7 +616,7 @@ func handlePatchHost(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 	addNullable("config_profile_inbound_uuid", req.ConfigProfileInboundUUID)
 
 	if len(clauses) == 0 {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -638,9 +639,9 @@ func handlePatchHost(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "host not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "host not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
 		}
 		return
 	}
@@ -665,9 +666,9 @@ func handleDeleteHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	})
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "host not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "host not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to delete host", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to delete host", err, cfg)
 		}
 		return
 	}
@@ -678,9 +679,9 @@ func handleDeleteHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 func handleDeleteAllHosts(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	if rawUUIDs := r.URL.Query().Get("uuids"); rawUUIDs != "" {
-		uuids, err := parseUUIDCSV(rawUUIDs)
+		uuids, err := shared.ParseUUIDCSV(rawUUIDs)
 		if err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
@@ -706,7 +707,7 @@ func handleDeleteAllHosts(w http.ResponseWriter, r *http.Request, manager *dbman
 			return tx.Commit()
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to delete selected hosts", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to delete selected hosts", err, cfg)
 			return
 		}
 
@@ -716,7 +717,7 @@ func handleDeleteAllHosts(w http.ResponseWriter, r *http.Request, manager *dbman
 	}
 
 	if r.URL.Query().Get("confirm") != "true" {
-		sendError(w, http.StatusBadRequest, "confirmation required. use DELETE /api/v1/hosts?confirm=true", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "confirmation required. use DELETE /api/v1/hosts?confirm=true", nil, cfg)
 		return
 	}
 
@@ -730,7 +731,7 @@ func handleDeleteAllHosts(w http.ResponseWriter, r *http.Request, manager *dbman
 		return err
 	})
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete hosts", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete hosts", err, cfg)
 		return
 	}
 
@@ -759,13 +760,13 @@ func handleGetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 	nodeUUID := strings.TrimSpace(r.URL.Query().Get("node_uuid"))
 	if hostUUID != "" {
 		if _, err := uuid.Parse(hostUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
 			return
 		}
 	}
 	if nodeUUID != "" {
 		if _, err := uuid.Parse(nodeUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid node_uuid", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid node_uuid", nil, cfg)
 			return
 		}
 	}
@@ -804,7 +805,7 @@ func handleGetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 		return rows.Err()
 	})
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch host-node assignments", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch host-node assignments", err, cfg)
 		return
 	}
 
@@ -815,18 +816,18 @@ func handleGetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 func handleSetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req HostNodeAssignmentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 	req.NodeUUIDs = dedupeStrings(req.NodeUUIDs)
 
 	if _, err := uuid.Parse(req.HostUUID); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
 		return
 	}
 	for _, nodeUUID := range req.NodeUUIDs {
 		if _, err := uuid.Parse(nodeUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid node UUID in node_uuids", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid node UUID in node_uuids", nil, cfg)
 			return
 		}
 	}
@@ -852,7 +853,7 @@ func handleSetHostNodeAssignments(w http.ResponseWriter, r *http.Request, manage
 		return tx.Commit()
 	})
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to set host-node assignments", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to set host-node assignments", err, cfg)
 		return
 	}
 
@@ -868,7 +869,7 @@ func handleDeleteHostNodeAssignments(w http.ResponseWriter, r *http.Request, man
 	var req HostNodeAssignmentDeleteRequest
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
 	}
@@ -879,7 +880,7 @@ func handleDeleteHostNodeAssignments(w http.ResponseWriter, r *http.Request, man
 	if len(req.NodeUUIDs) == 0 {
 		nodeUUIDs, err := parseOptionalUUIDCSV(r.URL.Query().Get("node_uuids"))
 		if err != nil {
-			sendError(w, http.StatusBadRequest, "invalid node_uuids query parameter", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid node_uuids query parameter", err, cfg)
 			return
 		}
 		req.NodeUUIDs = nodeUUIDs
@@ -887,12 +888,12 @@ func handleDeleteHostNodeAssignments(w http.ResponseWriter, r *http.Request, man
 	req.NodeUUIDs = dedupeStrings(req.NodeUUIDs)
 
 	if _, err := uuid.Parse(req.HostUUID); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid host_uuid", nil, cfg)
 		return
 	}
 	for _, nodeUUID := range req.NodeUUIDs {
 		if _, err := uuid.Parse(nodeUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid node UUID in node_uuids", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid node UUID in node_uuids", nil, cfg)
 			return
 		}
 	}
@@ -939,7 +940,7 @@ func handleDeleteHostNodeAssignments(w http.ResponseWriter, r *http.Request, man
 		return tx.Commit()
 	})
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete host-node assignments", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete host-node assignments", err, cfg)
 		return
 	}
 
@@ -957,7 +958,7 @@ func parseOptionalUUIDCSV(raw string) ([]string, error) {
 	if raw == "" {
 		return nil, nil
 	}
-	return parseUUIDCSV(raw)
+	return shared.ParseUUIDCSV(raw)
 }
 
 func dedupeStrings(values []string) []string {

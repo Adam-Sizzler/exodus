@@ -1,4 +1,4 @@
-package api
+package squads
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
 	"v2ray-stat/backend/panel/dbutil"
+	"v2ray-stat/backend/panel/httpapi/shared"
 )
 
 // ==================== CONFIG PROFILES WITH INBOUNDS (FOR UI) ====================
@@ -150,7 +151,7 @@ func ConfigProfilesWithInboundsHandler(manager *dbmanager.DatabaseManager, cfg *
 		})
 
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to fetch config profiles with inbounds", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles with inbounds", err, cfg)
 			return
 		}
 
@@ -203,7 +204,7 @@ func SquadDetailsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 		squadUUID := path[lastSlash+1:]
 
 		if squadUUID == "" {
-			sendError(w, http.StatusBadRequest, "squad UUID is required", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "squad UUID is required", nil, cfg)
 			return
 		}
 
@@ -296,10 +297,10 @@ func SquadDetailsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 
 		if err != nil {
 			if err.Error() == "squad not found" {
-				sendError(w, http.StatusNotFound, "squad not found", nil, cfg)
+				shared.SendError(w, http.StatusNotFound, "squad not found", nil, cfg)
 				return
 			}
-			sendError(w, http.StatusInternalServerError, "failed to fetch squad details", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad details", err, cfg)
 			return
 		}
 
@@ -378,7 +379,7 @@ func AllSquadsSummaryHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 		})
 
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to fetch squads summary", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch squads summary", err, cfg)
 			return
 		}
 
@@ -481,7 +482,7 @@ func NodesWithConfigHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		})
 
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to fetch nodes with config", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes with config", err, cfg)
 			return
 		}
 
@@ -555,7 +556,7 @@ func InboundsWithProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config
 		})
 
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to fetch inbounds with profiles", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch inbounds with profiles", err, cfg)
 			return
 		}
 

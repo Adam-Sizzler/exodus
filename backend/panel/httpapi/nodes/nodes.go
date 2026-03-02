@@ -1,4 +1,4 @@
-package api
+package nodes
 
 import (
 	"database/sql"
@@ -11,15 +11,11 @@ import (
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
 	"v2ray-stat/backend/panel/dbutil"
-	"v2ray-stat/backend/panel/users"
+	"v2ray-stat/backend/panel/httpapi/shared"
+	users "v2ray-stat/backend/panel/nodes"
 
 	"github.com/google/uuid"
 )
-
-// RowScanner позволяет использовать одну функцию сканирования для sql.Rows и sql.Row
-type RowScanner interface {
-	Scan(dest ...interface{}) error
-}
 
 // Node представляет сущность узла для API
 type Node struct {
@@ -96,7 +92,7 @@ type NodeUpdateRequest struct {
 }
 
 // scanNode — вспомогательная функция, убирающая дублирование Scan во всем файле
-func scanNode(scanner RowScanner) (Node, error) {
+func scanNode(scanner shared.RowScanner) (Node, error) {
 	var n Node
 	var lastStatusChange sql.NullTime
 	var lastStatusMessage, xrayVersion, nodeVersion, providerUUID, activeConfigProfileUUID sql.NullString
@@ -204,21 +200,21 @@ func NodesReorderHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 			return
 		}
 
-		var req ViewPositionReorderRequest
+		var req shared.ViewPositionReorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
 		if err := req.Validate(); err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return applyViewPositionReorder(r.Context(), db, "nodes", req.OrderedUUIDs, cfg)
+			return shared.ApplyViewPositionReorder(r.Context(), db, "nodes", req.OrderedUUIDs, cfg)
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to reorder nodes", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder nodes", err, cfg)
 			return
 		}
 
@@ -270,7 +266,7 @@ func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
 		return
 	}
 
@@ -351,25 +347,25 @@ func sendNodesHelp(w http.ResponseWriter) {
 func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req NodeCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	// Validate required fields
 	if req.Name == "" {
-		sendError(w, http.StatusBadRequest, "name is required", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "name is required", nil, cfg)
 		return
 	}
 	if req.Address == "" {
-		sendError(w, http.StatusBadRequest, "address is required", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "address is required", nil, cfg)
 		return
 	}
 	if req.Port < 1 || req.Port > 65535 {
-		sendError(w, http.StatusBadRequest, "invalid port", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid port", nil, cfg)
 		return
 	}
 	if len(req.CountryCode) != 2 {
-		sendError(w, http.StatusBadRequest, "country_code must be 2 letters", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "country_code must be 2 letters", nil, cfg)
 		return
 	}
 	if strings.TrimSpace(req.APISchema) == "" {
@@ -379,7 +375,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	switch req.APISchema {
 	case "grpc", "grpcs", "https", "http", "tls":
 	default:
-		sendError(w, http.StatusBadRequest, "api_schema must be one of: grpc, grpcs, https, http, tls", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "api_schema must be one of: grpc, grpcs, https, http, tls", nil, cfg)
 		return
 	}
 
@@ -412,7 +408,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to create node", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to create node", err, cfg)
 		return
 	}
 
@@ -434,7 +430,7 @@ func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		nodeUUID := strings.TrimSpace(path)
 
 		if _, err := uuid.Parse(nodeUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
 
@@ -470,9 +466,9 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.Da
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "node not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "node not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch node", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch node", err, cfg)
 		}
 		return
 	}
@@ -484,12 +480,12 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.Da
 func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
 	var req NodeUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -561,7 +557,7 @@ func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 	}
 
 	if len(clauses) == 0 {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -586,9 +582,9 @@ func handlePatchNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "node not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "node not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
 		}
 		return
 	}
@@ -610,9 +606,9 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "node not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "node not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to find node", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to find node", err, cfg)
 		}
 		return
 	}
@@ -623,7 +619,7 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete node", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete node", err, cfg)
 		return
 	}
 
@@ -643,9 +639,9 @@ func handleDeleteAllNodes(w http.ResponseWriter, r *http.Request, manager *dbman
 	ctx := r.Context()
 
 	if rawUUIDs := r.URL.Query().Get("uuids"); rawUUIDs != "" {
-		uuids, err := parseUUIDCSV(rawUUIDs)
+		uuids, err := shared.ParseUUIDCSV(rawUUIDs)
 		if err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
@@ -671,7 +667,7 @@ func handleDeleteAllNodes(w http.ResponseWriter, r *http.Request, manager *dbman
 			return tx.Commit()
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to delete selected nodes", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to delete selected nodes", err, cfg)
 			return
 		}
 
@@ -687,7 +683,7 @@ func handleDeleteAllNodes(w http.ResponseWriter, r *http.Request, manager *dbman
 
 	// Require confirmation for full delete.
 	if r.URL.Query().Get("confirm") != "true" {
-		sendError(w, http.StatusBadRequest, "confirmation required. Use DELETE /api/v1/nodes?confirm=true", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "confirmation required. Use DELETE /api/v1/nodes?confirm=true", nil, cfg)
 		return
 	}
 
@@ -706,7 +702,7 @@ func handleDeleteAllNodes(w http.ResponseWriter, r *http.Request, manager *dbman
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete nodes", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete nodes", err, cfg)
 		return
 	}
 
@@ -740,30 +736,6 @@ func (r *NodeUpdateRequest) Validate() error {
 		}
 	}
 	return nil
-}
-
-func sendError(w http.ResponseWriter, code int, msg string, err error, cfg *config.BackendConfig) {
-	if err != nil {
-		cfg.Logger.Error(msg, "error", err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
-}
-
-// formatBytes converts bytes to human readable format
-func formatBytes(bytes int64) string {
-	if bytes == 0 {
-		return "0 B"
-	}
-	const unit = 1024
-	sizes := []string{"B", "KB", "MB", "GB", "TB", "PB"}
-	i := int64(0)
-	for int64(bytes) >= unit && i < int64(len(sizes)-1) {
-		bytes /= unit
-		i++
-	}
-	return fmt.Sprintf("%.2f %s", float64(bytes)/float64(1024), sizes[i])
 }
 
 // NodeSummary represents a simplified node response for frontend
@@ -821,8 +793,8 @@ func handleGetNodesSummary(w http.ResponseWriter, r *http.Request, manager *dbma
 			}
 
 			s.IsActive = s.IsConnected && !s.IsDisabled
-			s.TrafficUsed = formatBytes(s.TrafficUsedRaw)
-			s.TrafficLimit = formatBytes(s.TrafficLimitRaw)
+			s.TrafficUsed = shared.FormatBytes(s.TrafficUsedRaw)
+			s.TrafficLimit = shared.FormatBytes(s.TrafficLimitRaw)
 
 			if len(tags) > 0 {
 				s.Tags = tags.Slice()
@@ -836,7 +808,7 @@ func handleGetNodesSummary(w http.ResponseWriter, r *http.Request, manager *dbma
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
 		return
 	}
 

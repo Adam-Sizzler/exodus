@@ -1,4 +1,4 @@
-package api
+package configprofiles
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -93,7 +94,7 @@ func (r *ConfigProfileUpdateRequest) HasUpdates() bool {
 }
 
 // scanConfigProfile scans a row into a ConfigProfile struct.
-func scanConfigProfile(scanner RowScanner) (ConfigProfile, error) {
+func scanConfigProfile(scanner shared.RowScanner) (ConfigProfile, error) {
 	var cp ConfigProfile
 	var viewPosition sql.NullInt64
 	var configStr sql.NullString
@@ -143,21 +144,21 @@ func ConfigProfilesReorderHandler(manager *dbmanager.DatabaseManager, cfg *confi
 			return
 		}
 
-		var req ViewPositionReorderRequest
+		var req shared.ViewPositionReorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
 		if err := req.Validate(); err != nil {
-			sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return applyViewPositionReorder(r.Context(), db, "config_profiles", req.OrderedUUIDs, cfg)
+			return shared.ApplyViewPositionReorder(r.Context(), db, "config_profiles", req.OrderedUUIDs, cfg)
 		})
 		if err != nil {
-			sendError(w, http.StatusInternalServerError, "failed to reorder config profiles", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder config profiles", err, cfg)
 			return
 		}
 
@@ -197,7 +198,7 @@ func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, manager *db
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, cfg)
 		return
 	}
 
@@ -212,13 +213,13 @@ func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, manager *db
 func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req ConfigProfileCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	// Validate required fields
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -248,10 +249,10 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			sendError(w, http.StatusConflict, "name already exists", err, cfg)
+			shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
 			return
 		}
-		sendError(w, http.StatusInternalServerError, "failed to create config profile", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to create config profile", err, cfg)
 		return
 	}
 
@@ -271,7 +272,7 @@ func ConfigProfileByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 		profileUUID := strings.TrimSpace(path)
 
 		if _, err := uuid.Parse(profileUUID); err != nil {
-			sendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
 
@@ -301,9 +302,9 @@ func handleGetConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbm
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, cfg)
 		}
 		return
 	}
@@ -315,17 +316,17 @@ func handleGetConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbm
 func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
 	var req ConfigProfileUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		sendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
 	if !req.HasUpdates() {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -349,7 +350,7 @@ func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	if len(clauses) == 0 {
-		sendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
 	}
 
@@ -386,12 +387,12 @@ func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *d
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
 		} else {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-				sendError(w, http.StatusConflict, "name already exists", err, cfg)
+				shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
 			} else {
-				sendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+				shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
 			}
 		}
 		return
@@ -411,9 +412,9 @@ func handleDeleteConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
 		} else {
-			sendError(w, http.StatusInternalServerError, "failed to find config profile", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to find config profile", err, cfg)
 		}
 		return
 	}
@@ -424,7 +425,7 @@ func handleDeleteConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 	})
 
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "failed to delete config profile", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete config profile", err, cfg)
 		return
 	}
 
