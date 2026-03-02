@@ -6,6 +6,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/dbutil"
 )
 
 // DBNode represents a node loaded from database.
@@ -51,7 +52,7 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 			var n DBNode
 			var port sql.NullInt64
 			var apiSchema, apiPath, countryCode sql.NullString
-			var tags []string
+			var tags dbutil.StringArray
 			var consumptionMultiplier, trafficLimitBytes, trafficResetDay, notifyPercent, viewPosition sql.NullInt64
 			var isTrafficTrackingActive sql.NullBool
 
@@ -110,8 +111,8 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 				n.CountryCode = countryCode.String
 			}
 
-			if tags != nil {
-				n.Tags = tags
+			if len(tags) > 0 {
+				n.Tags = tags.Slice()
 			} else {
 				n.Tags = []string{}
 			}

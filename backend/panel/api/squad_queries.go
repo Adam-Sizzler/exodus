@@ -9,6 +9,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/dbutil"
 )
 
 // ==================== CONFIG PROFILES WITH INBOUNDS (FOR UI) ====================
@@ -447,7 +448,7 @@ func NodesWithConfigHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 				var node NodeWithConfig
 				var id sql.NullInt64
 				var activeConfigProfileUUID, configProfileName sql.NullString
-				var tags []string
+				var tags dbutil.StringArray
 
 				if err := rows.Scan(&node.UUID, &id, &node.Name, &node.Address, &node.Port,
 					&activeConfigProfileUUID, &configProfileName, &node.IsConnected, &node.IsDisabled,
@@ -467,8 +468,8 @@ func NodesWithConfigHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 					}
 				}
 
-				if tags != nil {
-					node.Tags = tags
+				if len(tags) > 0 {
+					node.Tags = tags.Slice()
 				} else {
 					node.Tags = []string{}
 				}

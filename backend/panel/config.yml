@@ -15,7 +15,6 @@ backend:
 
 # Panel UI Settings
 panel:
-  static_dir: ./ui                                       # Path to built frontend (Vite dist). Default: ./ui
   allow_insecure_http: true                             # false = HTTPS required. Set true for локальный тест.
   trusted_proxies: []                                    # CIDR list (e.g. 127.0.0.1/32, 10.0.0.0/8) to trust X-Forwarded-Proto.
   # web_port: 9242                                       # Optional web port override (normally via WEB_PORT env).

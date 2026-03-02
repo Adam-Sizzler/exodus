@@ -10,6 +10,7 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/dbutil"
 	"v2ray-stat/backend/panel/users"
 
 	"github.com/google/uuid"
@@ -101,7 +102,7 @@ func scanNode(scanner RowScanner) (Node, error) {
 	var lastStatusMessage, xrayVersion, nodeVersion, providerUUID, activeConfigProfileUUID sql.NullString
 	var usersOnline, trafficResetDay, notifyPercent, cpuCount, trafficLimitBytes, trafficUsedBytes, port, id sql.NullInt64
 	var cpuModel, totalRam sql.NullString
-	var tags []string
+	var tags dbutil.StringArray
 
 	err := scanner.Scan(
 		&n.UUID, &id, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &activeConfigProfileUUID,
@@ -170,8 +171,8 @@ func scanNode(scanner RowScanner) (Node, error) {
 		n.TotalRAM = &totalRam.String
 	}
 
-	if tags != nil {
-		n.Tags = tags
+	if len(tags) > 0 {
+		n.Tags = tags.Slice()
 	} else {
 		n.Tags = []string{}
 	}
@@ -809,7 +810,7 @@ func handleGetNodesSummary(w http.ResponseWriter, r *http.Request, manager *dbma
 
 		for rows.Next() {
 			var s NodeSummary
-			var tags []string
+			var tags dbutil.StringArray
 			err := rows.Scan(
 				&s.UUID, &s.Name, &s.Address, &s.Port, &s.APISchema, &s.APIPath,
 				&s.UsersOnline, &s.IsConnected, &s.IsDisabled, &s.TrafficUsedRaw,
@@ -823,8 +824,8 @@ func handleGetNodesSummary(w http.ResponseWriter, r *http.Request, manager *dbma
 			s.TrafficUsed = formatBytes(s.TrafficUsedRaw)
 			s.TrafficLimit = formatBytes(s.TrafficLimitRaw)
 
-			if tags != nil {
-				s.Tags = tags
+			if len(tags) > 0 {
+				s.Tags = tags.Slice()
 			} else {
 				s.Tags = []string{}
 			}

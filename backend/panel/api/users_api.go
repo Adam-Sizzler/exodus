@@ -17,6 +17,7 @@ import (
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/google/uuid"
 )
 
@@ -295,14 +296,23 @@ func UsersCreateHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendC
 					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 				`
 
-				result, err := db.ExecContext(ctx, query,
+				err := db.QueryRowContext(ctx, query+` RETURNING t_id`,
 					*userUUID, shortUUID, req.Username, req.Status, req.TrafficLimitBytes,
 					req.TrafficLimitStrategy, expireAt.Format("2006-01-02 15:04:05"), *trojanPassword, *vlessUUID, *ssPassword,
 					req.Description, req.Tag, req.TelegramID, req.Email, req.HwidDeviceLimit,
 					req.LastTriggeredThreshold,
-				)
+				).Scan(&userTID)
 				if err != nil {
 					msg := err.Error()
+					var pgErr *pgconn.PgError
+					if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+						switch pgErr.ConstraintName {
+						case "users_username_key":
+							return errUsernameAlreadyExists
+						case "users_short_uuid_key":
+							return errShortUUIDCollision
+						}
+					}
 					if strings.Contains(msg, "UNIQUE constraint failed: users.username") {
 						return errUsernameAlreadyExists
 					}
@@ -313,11 +323,6 @@ func UsersCreateHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendC
 						return fmt.Errorf("failed to insert user: %w", err)
 					}
 					return fmt.Errorf("failed to insert user: %w", err)
-				}
-
-				userTID, err = result.LastInsertId()
-				if err != nil {
-					return fmt.Errorf("failed to get last insert id: %w", err)
 				}
 
 				// Handle internal squad assignment
