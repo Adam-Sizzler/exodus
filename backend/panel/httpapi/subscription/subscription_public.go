@@ -121,13 +121,71 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
-	// Build response type
-	responseType := matchResponseRules(settings.ResponseRules, r.Header)
+	headersForMatch := r.Header.Clone()
+	headersForMatch.Set("x-remnawave-injected-short-uuid", shortUUID)
 	if clientType != "" {
-		responseType = mapClientTypeToResponseType(clientType)
+		headersForMatch.Set("x-remnawave-injected-client-type", clientType)
 	}
 
-	if responseType == responseTypeXrayBase64 && settings.Raw.ServeJSONAtBaseSubscription {
+	matchResult := matchResponseRulesDetailed(settings.ResponseRules, headersForMatch, clientType)
+	if !matchResult.Matched || matchResult.ResponseType == "" {
+		shared.SendError(w, http.StatusForbidden, "forbidden", nil, cfg)
+		return
+	}
+
+	responseType := matchResult.ResponseType
+	if responseType == "" {
+		responseType = defaultResponseType
+	}
+
+	var extraHeaders map[string]string
+	var overrideTemplateName string
+	ignoreServeJsonAtBaseSubscription := false
+
+	if matchResult.MatchedRule != nil && matchResult.MatchedRule.ResponseModifications != nil {
+		mods := matchResult.MatchedRule.ResponseModifications
+		if len(mods.Headers) > 0 {
+			if mods.ApplyHeadersToEnd {
+				extraHeaders = map[string]string{}
+				for _, header := range mods.Headers {
+					extraHeaders[header.Key] = header.Value
+				}
+			} else {
+				for _, header := range mods.Headers {
+					w.Header().Set(header.Key, header.Value)
+				}
+			}
+		}
+		if mods.SubscriptionTemplate != nil {
+			overrideTemplateName = strings.TrimSpace(*mods.SubscriptionTemplate)
+		}
+		if mods.IgnoreServeJsonAtBaseSubscription {
+			ignoreServeJsonAtBaseSubscription = true
+		}
+	}
+
+	switch responseType {
+	case responseTypeBlock:
+		shared.SendError(w, http.StatusForbidden, "forbidden", nil, cfg)
+		return
+	case responseTypeStatus404:
+		http.NotFound(w, r)
+		return
+	case responseTypeStatus451:
+		http.Error(w, "Unavailable For Legal Reasons", http.StatusUnavailableForLegalReasons)
+		return
+	case responseTypeSocketDrop:
+		if hj, ok := w.(http.Hijacker); ok {
+			conn, _, err := hj.Hijack()
+			if err == nil {
+				_ = conn.Close()
+				return
+			}
+		}
+		return
+	}
+
+	if responseType == responseTypeXrayBase64 && settings.Raw.ServeJSONAtBaseSubscription && !ignoreServeJsonAtBaseSubscription {
 		if isJsonSubscriptionSupported(r.Header.Get("User-Agent")) {
 			responseType = responseTypeXrayJSON
 		}
@@ -140,6 +198,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 			return
 		}
 		response := buildSubscriptionInfoResponse(user, settings, hosts)
+		for key, value := range extraHeaders {
+			w.Header().Set(key, value)
+		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(response)
 		return
@@ -156,6 +217,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	hwidHeaders := extractHwidHeaders(r)
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
 	headers := buildSubscriptionHeaders(user, settings, isHapp)
+	for key, value := range extraHeaders {
+		headers[key] = value
+	}
 
 	if settings.HwidSettings.Enabled {
 		allowed, maxReached, notSupported := checkHwidDeviceLimit(ctx, manager, user, hwidHeaders, settings.HwidSettings)
@@ -194,6 +258,13 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 
 	templateType := responseTypeToTemplateType(responseType)
 	templateData, _ := getSubscriptionTemplate(ctx, manager, templateType)
+	if overrideTemplateName != "" {
+		if overrideType, overrideData, err := getSubscriptionTemplateByName(ctx, manager, overrideTemplateName); err == nil {
+			if strings.EqualFold(overrideType, templateType) && len(overrideData) > 0 {
+				templateData = overrideData
+			}
+		}
+	}
 
 	subscription, err := generateSubscriptionContent(responseType, templateData, filteredHosts, user)
 	if err != nil {
@@ -218,8 +289,10 @@ func mapClientTypeToResponseType(clientType string) string {
 		return responseTypeClash
 	case "singbox":
 		return responseTypeSingbox
+	case "xray-json":
+		return responseTypeXrayJSON
 	default:
-		return responseTypeXrayBase64
+		return responseTypeBlock
 	}
 }
 

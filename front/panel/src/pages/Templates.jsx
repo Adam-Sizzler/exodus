@@ -7,6 +7,32 @@ import ConfirmActionModal from '../components/ConfirmActionModal';
 
 const TEMPLATE_TYPES = ['XRAY_JSON', 'MIHOMO', 'STASH', 'CLASH', 'SINGBOX'];
 const JSON_TEMPLATE_TYPES = new Set(['XRAY_JSON', 'SINGBOX']);
+const decodeTemplateYaml = (encoded) => {
+  if (!encoded) return '';
+  try {
+    return decodeURIComponent(escape(window.atob(encoded)));
+  } catch {
+    try {
+      return window.atob(encoded);
+    } catch {
+      return '';
+    }
+  }
+};
+
+const encodeTemplateYaml = (value) => {
+  if (!value) return '';
+  try {
+    return window.btoa(unescape(encodeURIComponent(value)));
+  } catch {
+    try {
+      return window.btoa(value);
+    } catch {
+      return '';
+    }
+  }
+};
+
 const TEMPLATE_TYPE_LABELS = {
   XRAY_JSON: 'Xray JSON',
   MIHOMO: 'Mihomo',
@@ -44,8 +70,9 @@ function Templates({ activeTemplateType }) {
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const data = await templatesApi.getAll(currentTemplateType);
-      setTemplates(data.templates || []);
+      const data = await templatesApi.getAll();
+      const list = data.response?.templates || [];
+      setTemplates(list.filter((tpl) => tpl.templateType === currentTemplateType));
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to load templates');
@@ -115,18 +142,20 @@ function Templates({ activeTemplateType }) {
     setShowModal(true);
   };
 
-  const handleEdit = (template) => {
-    setEditingTemplate(template);
+  const handleEdit = async (template) => {
+    const detail = await templatesApi.getById(template.uuid);
+    const fullTemplate = detail.response || template;
+    setEditingTemplate(fullTemplate);
     setTemplateName(template.name || '');
     if (isJSONType) {
       try {
-        setJsonValue(formatJSON(template.template_json || '{}'));
+        setJsonValue(formatJSON(JSON.stringify(template.templateJson || {}, null, 2)));
       } catch (err) {
-        setJsonValue(template.template_json || '{}');
+        setJsonValue(JSON.stringify(template.templateJson || {}, null, 2));
       }
       setYamlValue('');
     } else {
-      setYamlValue(template.template_yaml || '');
+      setYamlValue(decodeTemplateYaml(template.encodedTemplateYaml));
       setJsonValue('');
     }
     setShowModal(true);
@@ -174,7 +203,7 @@ function Templates({ activeTemplateType }) {
       return;
     }
     try {
-      await templatesApi.update(template.uuid, { name: trimmed });
+      await templatesApi.update({ uuid: template.uuid, name: trimmed });
       setOpenMenuUUID(null);
       await loadTemplates();
     } catch (err) {
@@ -185,22 +214,41 @@ function Templates({ activeTemplateType }) {
   const handleSave = async (event) => {
     event.preventDefault();
 
+    let parsedJson = null;
+    if (isJSONType) {
+      try {
+        parsedJson = jsonValue?.trim() ? JSON.parse(jsonValue) : {};
+      } catch (err) {
+        alert(`Invalid JSON: ${err.message}`);
+        return;
+      }
+    }
+
     const payload = {
       name: templateName.trim(),
-      template_yaml: isJSONType ? '' : yamlValue,
-      template_json: isJSONType ? jsonValue : '',
+      templateType: currentTemplateType,
+      templateJson: isJSONType ? parsedJson : undefined,
+      encodedTemplateYaml: !isJSONType ? encodeTemplateYaml(yamlValue) : undefined,
     };
 
     try {
       setSaving(true);
       if (editingTemplate) {
-        await templatesApi.update(editingTemplate.uuid, payload);
+        await templatesApi.update({ uuid: editingTemplate.uuid, ...payload });
       } else {
-        await templatesApi.create({
-          ...payload,
-          template_type: currentTemplateType,
-          view_position: templateCount,
+        const created = await templatesApi.create({
+          name: payload.name,
+          templateType: currentTemplateType,
         });
+        const createdTemplate = created.response;
+        if (createdTemplate && (payload.templateJson || payload.encodedTemplateYaml)) {
+          await templatesApi.update({
+            uuid: createdTemplate.uuid,
+            name: payload.name,
+            templateJson: payload.templateJson,
+            encodedTemplateYaml: payload.encodedTemplateYaml,
+          });
+        }
       }
       setShowModal(false);
       await loadTemplates();
@@ -216,13 +264,13 @@ function Templates({ activeTemplateType }) {
       setTemplateName(editingTemplate.name || '');
       if (isJSONType) {
         try {
-          setJsonValue(formatJSON(editingTemplate.template_json || '{}'));
+          setJsonValue(formatJSON(JSON.stringify(editingTemplate.templateJson || {}, null, 2)));
         } catch (err) {
-          setJsonValue(editingTemplate.template_json || '{}');
+          setJsonValue(JSON.stringify(editingTemplate.templateJson || {}, null, 2));
         }
         setYamlValue('');
       } else {
-        setYamlValue(editingTemplate.template_yaml || '');
+        setYamlValue(decodeTemplateYaml(editingTemplate.encodedTemplateYaml));
         setJsonValue('');
       }
       return;
@@ -323,7 +371,7 @@ function Templates({ activeTemplateType }) {
     setDragIndex(null);
 
     try {
-      await templatesApi.reorder(reordered.map((template) => template.uuid));
+      await templatesApi.reorder(reordered.map((template, index) => ({ uuid: template.uuid, viewPosition: index + 1 })));
       setTemplates((prev) => prev.map((item, index) => ({ ...item, view_position: index })));
     } catch (err) {
       alert(`Failed to reorder templates: ${err.message}`);

@@ -6,12 +6,12 @@ import SharedRichTable from '../components/SharedRichTable';
 import SideDrawerPanel from '../components/SideDrawerPanel';
 
 const SECURITY_LAYER_OPTIONS = [
-  { value: 'none', label: 'По умолчанию' },
-  { value: 'tls', label: 'TLS' },
-  { value: 'reality', label: 'Reality' },
+  { value: 'DEFAULT', label: 'По умолчанию' },
+  { value: 'TLS', label: 'TLS' },
+  { value: 'NONE', label: 'Без TLS' },
 ];
-const FINGERPRINT_OPTIONS = ['chrome', 'firefox', 'safari', 'ios', 'android', 'edge', '360', 'qq', 'random', 'randomized'];
-const ALPN_OPTIONS = ['h3', 'h2', 'http/1.1'];
+const FINGERPRINT_OPTIONS = ['chrome', 'firefox', 'safari', 'ios', 'android', 'edge', 'qq', 'random', 'randomized'];
+const ALPN_OPTIONS = ['h3', 'h2', 'http/1.1', 'h2,http/1.1', 'h3,h2,http/1.1', 'h3,h2'];
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30, 50, 100];
 
 const HOST_COLUMNS = [
@@ -171,7 +171,7 @@ const defaultHostForm = () => ({
   host: '',
   alpn: '',
   fingerprint: '',
-  security_layer: 'none',
+  security_layer: 'DEFAULT',
   xhttp_extra_params: '',
   mux_params: '',
   sockopt_params: '',
@@ -186,6 +186,8 @@ const defaultHostForm = () => ({
   is_hidden: false,
   override_sni_from_address: false,
   nodes: [],
+  excluded_internal_squads: [],
+  exclude_from_subscription_types: [],
 });
 
 const toNullable = (value) => {
@@ -194,11 +196,11 @@ const toNullable = (value) => {
 };
 
 const normalizeSecurityLayer = (value) => {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '').trim().toUpperCase();
   if (SECURITY_LAYER_OPTIONS.some((item) => item.value === normalized)) {
     return normalized;
   }
-  return 'none';
+  return 'DEFAULT';
 };
 
 const toCountryFlag = (countryCode) => {
@@ -209,21 +211,69 @@ const toCountryFlag = (countryCode) => {
   return Array.from(code).map((char) => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
 };
 
-const buildHostNodeMap = (assignments = []) => {
+const buildHostNodeMap = (hostsList = []) => {
   const map = new Map();
-  assignments.forEach((assignment) => {
-    const hostUUID = assignment.host_uuid;
-    const nodeUUID = assignment.node_uuid;
-    if (!hostUUID || !nodeUUID) {
+  hostsList.forEach((host) => {
+    if (!host?.uuid) {
       return;
     }
-    if (!map.has(hostUUID)) {
-      map.set(hostUUID, new Set());
-    }
-    map.get(hostUUID).add(nodeUUID);
+    map.set(host.uuid, new Set(host.nodes || []));
   });
   return map;
 };
+
+const toJSONString = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (err) {
+    return String(value);
+  }
+};
+
+const parseJSONInput = (value, label) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch (err) {
+    throw new Error(`Некорректный JSON в поле ${label}`);
+  }
+};
+
+const mapApiHostToUi = (host) => ({
+  uuid: host.uuid,
+  view_position: host.viewPosition ?? 0,
+  remark: host.remark ?? '',
+  tag: host.tag ?? '',
+  address: host.address ?? '',
+  port: host.port ?? 443,
+  config_profile_uuid: host.inbound?.configProfileUuid ?? '',
+  config_profile_inbound_uuid: host.inbound?.configProfileInboundUuid ?? '',
+  path: host.path ?? '',
+  sni: host.sni ?? '',
+  host: host.host ?? '',
+  alpn: host.alpn ?? '',
+  fingerprint: host.fingerprint ?? '',
+  security_layer: normalizeSecurityLayer(host.securityLayer),
+  xhttp_extra_params: toJSONString(host.xHttpExtraParams),
+  mux_params: toJSONString(host.muxParams),
+  sockopt_params: toJSONString(host.sockoptParams),
+  is_disabled: !!host.isDisabled,
+  server_description: host.serverDescription ?? '',
+  vless_route_id: host.vlessRouteId === null || host.vlessRouteId === undefined ? '' : String(host.vlessRouteId),
+  allow_insecure: !!host.allowInsecure,
+  shuffle_host: !!host.shuffleHost,
+  mihomo_x25519: !!host.mihomoX25519,
+  xray_json_template_uuid: host.xrayJsonTemplateUuid ?? '',
+  keep_sni_blank: !!host.keepSniBlank,
+  is_hidden: !!host.isHidden,
+  override_sni_from_address: !!host.overrideSniFromAddress,
+  nodes: Array.isArray(host.nodes) ? host.nodes : [],
+  excluded_internal_squads: Array.isArray(host.excludedInternalSquads) ? host.excludedInternalSquads : [],
+  exclude_from_subscription_types: Array.isArray(host.excludeFromSubscriptionTypes) ? host.excludeFromSubscriptionTypes : [],
+});
 
 function Hosts() {
   const [hosts, setHosts] = useState([]);
@@ -305,12 +355,10 @@ function Hosts() {
   const loadHosts = async () => {
     try {
       setLoading(true);
-      const [hostsData, assignmentsData] = await Promise.all([
-        hostsApi.getAll(),
-        hostsApi.getNodeAssignments(),
-      ]);
-      setHosts(hostsData.hosts || []);
-      setHostNodesMap(buildHostNodeMap(assignmentsData.assignments || []));
+      const hostsData = await hostsApi.getAll();
+      const mappedHosts = (hostsData.response || []).map(mapApiHostToUi);
+      setHosts(mappedHosts);
+      setHostNodesMap(buildHostNodeMap(mappedHosts));
       setSelectedHostUUIDs(new Set());
       setError(null);
     } catch (err) {
@@ -391,6 +439,8 @@ function Hosts() {
     is_hidden: !!host.is_hidden,
     override_sni_from_address: !!host.override_sni_from_address,
     nodes: [...nodeUUIDs],
+    excluded_internal_squads: Array.isArray(host.excluded_internal_squads) ? host.excluded_internal_squads : [],
+    exclude_from_subscription_types: Array.isArray(host.exclude_from_subscription_types) ? host.exclude_from_subscription_types : [],
   });
 
   const openCreate = () => {
@@ -427,41 +477,63 @@ function Hosts() {
       const normalized = String(value).trim();
       return normalized === '' ? null : normalized;
     };
+    const toStringOrEmpty = (value) => String(value ?? '');
 
-    return {
-      view_position: Number(formData.view_position) || 0,
-      remark: String(formData.remark || '').trim(),
+    const inbound = (() => {
+      const configProfileUuid = toNull(formData.config_profile_uuid);
+      const configProfileInboundUuid = toNull(formData.config_profile_inbound_uuid);
+      if (!configProfileUuid || !configProfileInboundUuid) return null;
+      return {
+        configProfileUuid,
+        configProfileInboundUuid,
+      };
+    })();
+
+    const payload = {
+      remark: String(formData.remark || ''),
       tag: toNull(formData.tag),
       address: String(formData.address || '').trim(),
       port: Number(formData.port),
-      config_profile_uuid: toNull(formData.config_profile_uuid),
-      config_profile_inbound_uuid: toNull(formData.config_profile_inbound_uuid),
-      path: toNull(formData.path),
-      sni: toNull(formData.sni),
-      host: toNull(formData.host),
+      path: toStringOrEmpty(formData.path),
+      sni: toStringOrEmpty(formData.sni),
+      host: toStringOrEmpty(formData.host),
       alpn: toNull(formData.alpn),
       fingerprint: toNull(formData.fingerprint),
-      security_layer: String(formData.security_layer || 'none').toLowerCase(),
-      xhttp_extra_params: toNull(formData.xhttp_extra_params),
-      mux_params: toNull(formData.mux_params),
-      sockopt_params: toNull(formData.sockopt_params),
-      is_disabled: !!formData.is_disabled,
-      server_description: toNull(formData.server_description),
-      vless_route_id: formData.vless_route_id === '' ? null : Number(formData.vless_route_id),
-      allow_insecure: !!formData.allow_insecure,
-      shuffle_host: !!formData.shuffle_host,
-      mihomo_x25519: !!formData.mihomo_x25519,
-      xray_json_template_uuid: toNull(formData.xray_json_template_uuid),
-      keep_sni_blank: !!formData.keep_sni_blank,
-      is_hidden: !!formData.is_hidden,
-      override_sni_from_address: !!formData.override_sni_from_address,
+      securityLayer: normalizeSecurityLayer(formData.security_layer),
+      xHttpExtraParams: parseJSONInput(formData.xhttp_extra_params, 'xhttp_extra_params'),
+      muxParams: parseJSONInput(formData.mux_params, 'mux_params'),
+      sockoptParams: parseJSONInput(formData.sockopt_params, 'sockopt_params'),
+      isDisabled: !!formData.is_disabled,
+      serverDescription: toNull(formData.server_description),
+      vlessRouteId: formData.vless_route_id === '' ? null : Number(formData.vless_route_id),
+      allowInsecure: !!formData.allow_insecure,
+      shuffleHost: !!formData.shuffle_host,
+      mihomoX25519: !!formData.mihomo_x25519,
+      xrayJsonTemplateUuid: toNull(formData.xray_json_template_uuid),
+      keepSniBlank: !!formData.keep_sni_blank,
+      isHidden: !!formData.is_hidden,
+      overrideSniFromAddress: !!formData.override_sni_from_address,
+      nodes: Array.from(new Set((formData.nodes || []).filter(Boolean))),
+      excludedInternalSquads: Array.from(new Set((formData.excluded_internal_squads || []).filter(Boolean))),
+      excludeFromSubscriptionTypes: Array.from(new Set((formData.exclude_from_subscription_types || []).filter(Boolean))),
     };
+
+    if (inbound) {
+      payload.inbound = inbound;
+    }
+
+    return payload;
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const payload = normalizePayload();
-    const selectedNodeUUIDs = Array.from(new Set((formData.nodes || []).filter(Boolean)));
+    let payload;
+    try {
+      payload = normalizePayload();
+    } catch (err) {
+      alert(err.message || 'Некорректные данные');
+      return;
+    }
 
     if (!payload.remark) {
       alert('Поле Remark обязательно');
@@ -475,23 +547,19 @@ function Hosts() {
       alert('Порт должен быть в диапазоне 1..65535');
       return;
     }
+    const profileSelected = String(formData.config_profile_uuid || '').trim();
+    const inboundSelected = String(formData.config_profile_inbound_uuid || '').trim();
+    if (!profileSelected || !inboundSelected) {
+      alert('Выберите Config Profile и Inbound');
+      return;
+    }
 
     try {
       setSavingHost(true);
-      let hostUUID = editingHost?.uuid;
       if (editingHost) {
-        await hostsApi.update(editingHost.uuid, payload);
+        await hostsApi.update({ uuid: editingHost.uuid, ...payload });
       } else {
-        const created = await hostsApi.create(payload);
-        hostUUID = created.uuid;
-      }
-
-      if (hostUUID) {
-        if (selectedNodeUUIDs.length === 0) {
-          await hostsApi.deleteNodeAssignments(hostUUID);
-        } else {
-          await hostsApi.setNodeAssignments(hostUUID, selectedNodeUUIDs);
-        }
+        await hostsApi.create(payload);
       }
 
       setShowModal(false);
@@ -591,7 +659,7 @@ function Hosts() {
       case 'nodes':
         return String(resolveHostNodes(host.uuid) || '').toLowerCase();
       case 'securityLayer':
-        return String(host.security_layer || 'none').toLowerCase();
+        return String(host.security_layer || 'DEFAULT').toUpperCase();
       case 'allowInsecure':
         return host.allow_insecure ? 1 : 0;
       case 'isHidden':
@@ -702,7 +770,7 @@ function Hosts() {
       case 'nodes':
         return <td key={column.key} title={resolveHostNodes(host.uuid)}>{resolveHostNodes(host.uuid)}</td>;
       case 'securityLayer':
-        return <td key={column.key} className="users-cell-center users-cell-mono">{(host.security_layer || 'none').toUpperCase()}</td>;
+        return <td key={column.key} className="users-cell-center users-cell-mono">{(host.security_layer || 'DEFAULT').toUpperCase()}</td>;
       case 'allowInsecure':
         return <td key={column.key} className="users-cell-center">{host.allow_insecure ? 'Да' : 'Нет'}</td>;
       case 'isHidden':

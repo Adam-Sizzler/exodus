@@ -2,20 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { subscriptionSettingsApi } from '../api';
 
 const EMPTY_FORM = {
-  profile_title: '',
-  support_link: '',
-  profile_update_interval: 12,
-  address: '',
-  port: 9263,
-  api_schema: 'grpc',
-  api_path: '',
-  happ_announce: '',
-  happ_routing: '',
-  is_profile_webpage_url_enabled: true,
-  serve_json_at_base_subscription: false,
-  is_show_custom_remarks: true,
-  randomize_hosts: false,
-  response_rules: '{}',
+  profileTitle: '',
+  supportLink: '',
+  profileUpdateInterval: 12,
+  happAnnounce: '',
+  happRouting: '',
+  isProfileWebpageUrlEnabled: true,
+  serveJsonAtBaseSubscription: false,
+  isShowCustomRemarks: true,
+  randomizeHosts: false,
+  responseRules: '{}',
 };
 
 const DEFAULT_HWID_SETTINGS = {
@@ -23,8 +19,6 @@ const DEFAULT_HWID_SETTINGS = {
   fallbackDeviceLimit: 999,
   maxDevicesAnnounce: '',
 };
-
-const SUBSCRIPTION_API_SCHEMAS = ['grpc', 'https', 'http'];
 
 const REMARK_GROUPS = [
   {
@@ -73,7 +67,18 @@ const nextRowId = () => {
 };
 
 const parseJsonObject = (value, fallback = {}) => {
-  if (!value || typeof value !== 'string') {
+  if (!value) {
+    return fallback;
+  }
+
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return fallback;
+    }
+    return value;
+  }
+
+  if (typeof value !== 'string') {
     return fallback;
   }
 
@@ -143,7 +148,7 @@ const buildCustomRemarksJson = (remarks) => {
     payload[group.key] = list.map((entry) => String(entry ?? ''));
   });
 
-  return JSON.stringify(payload);
+  return payload;
 };
 
 const buildCustomHeadersJson = (rows) => {
@@ -157,19 +162,19 @@ const buildCustomHeadersJson = (rows) => {
     payload[key] = String(row.value ?? '');
   });
 
-  return JSON.stringify(payload);
+  return payload;
 };
 
 const buildHwidSettingsJson = (hwidSettings) => {
   const limit = Number(hwidSettings.fallbackDeviceLimit);
-  return JSON.stringify({
+  return {
     enabled: !!hwidSettings.enabled,
     fallbackDeviceLimit:
       Number.isFinite(limit) && limit >= 0 ? limit : DEFAULT_HWID_SETTINGS.fallbackDeviceLimit,
     maxDevicesAnnounce: hwidSettings.maxDevicesAnnounce.trim()
       ? hwidSettings.maxDevicesAnnounce.trim()
       : null,
-  });
+  };
 };
 
 function SubscriptionSettings() {
@@ -189,29 +194,25 @@ function SubscriptionSettings() {
     try {
       setLoading(true);
       const data = await subscriptionSettingsApi.get();
-      const next = data.settings;
+      const next = data.response;
 
       setSettings(next);
       setFormData({
-        profile_title: next.profile_title ?? '',
-        support_link: next.support_link ?? '',
-        profile_update_interval: Number(next.profile_update_interval ?? 12),
-        address: next.address ?? '',
-        port: Number(next.port ?? 9263),
-        api_schema: String(next.api_schema ?? 'grpc').toLowerCase(),
-        api_path: next.api_path ?? '',
-        happ_announce: next.happ_announce ?? '',
-        happ_routing: next.happ_routing ?? '',
-        is_profile_webpage_url_enabled: !!next.is_profile_webpage_url_enabled,
-        serve_json_at_base_subscription: !!next.serve_json_at_base_subscription,
-        is_show_custom_remarks: !!next.is_show_custom_remarks,
-        randomize_hosts: !!next.randomize_hosts,
-        response_rules: next.response_rules ?? '{}',
+        profileTitle: next.profileTitle ?? '',
+        supportLink: next.supportLink ?? '',
+        profileUpdateInterval: Number(next.profileUpdateInterval ?? 12),
+        happAnnounce: next.happAnnounce ?? '',
+        happRouting: next.happRouting ?? '',
+        isProfileWebpageUrlEnabled: !!next.isProfileWebpageUrlEnabled,
+        serveJsonAtBaseSubscription: !!next.serveJsonAtBaseSubscription,
+        isShowCustomRemarks: !!next.isShowCustomRemarks,
+        randomizeHosts: !!next.randomizeHosts,
+        responseRules: next.responseRules ? JSON.stringify(next.responseRules, null, 2) : '{}',
       });
 
-      setHwidSettings(parseHwidSettings(next.hwid_settings ?? '{}'));
-      setRemarks(parseCustomRemarks(next.custom_remarks ?? '{}'));
-      setCustomHeaders(parseCustomHeaders(next.custom_response_headers ?? '{}'));
+      setHwidSettings(parseHwidSettings(next.hwidSettings ?? {}));
+      setRemarks(parseCustomRemarks(next.customRemarks ?? {}));
+      setCustomHeaders(parseCustomHeaders(next.customResponseHeaders ?? {}));
 
       setError(null);
     } catch (err) {
@@ -271,33 +272,20 @@ function SubscriptionSettings() {
       return;
     }
 
-    if (!formData.profile_title.trim()) {
+    if (!formData.profileTitle.trim()) {
       alert('Поле "Заголовок профиля" обязательно');
       return;
     }
 
-    if (!formData.support_link.trim()) {
+    if (!formData.supportLink.trim()) {
       alert('Поле "Ссылка на поддержку" обязательно');
       return;
     }
 
-    if (!Number.isFinite(Number(formData.profile_update_interval)) || Number(formData.profile_update_interval) < 1) {
+    if (!Number.isFinite(Number(formData.profileUpdateInterval)) || Number(formData.profileUpdateInterval) < 1) {
       alert('Интервал авто-обновления должен быть не меньше 1 часа');
       return;
     }
-    if (!formData.address.trim()) {
-      alert('Поле "Address" обязательно');
-      return;
-    }
-    if (!Number.isFinite(Number(formData.port)) || Number(formData.port) < 1 || Number(formData.port) > 65535) {
-      alert('Поле "Port" должно быть в диапазоне 1-65535');
-      return;
-    }
-    if (!SUBSCRIPTION_API_SCHEMAS.includes(String(formData.api_schema ?? '').toLowerCase())) {
-      alert('Поле "API Schema" должно быть одним из: grpc, https, http');
-      return;
-    }
-
     const usedHeaderKeys = new Set();
     for (const row of customHeaders) {
       const key = row.key.trim();
@@ -312,31 +300,36 @@ function SubscriptionSettings() {
       usedHeaderKeys.add(normalized);
     }
 
+    let parsedRules = null;
+    try {
+      parsedRules = formData.responseRules?.trim() ? JSON.parse(formData.responseRules) : null;
+    } catch (err) {
+      alert(`Невалидный JSON в правилах ответа: ${err.message}`);
+      return;
+    }
+
     const payload = {
-      profile_title: formData.profile_title.trim(),
-      support_link: formData.support_link.trim(),
-      profile_update_interval: Number(formData.profile_update_interval),
-      address: formData.address.trim(),
-      port: Number(formData.port),
-      api_schema: String(formData.api_schema).toLowerCase(),
-      api_path: formData.api_path.trim(),
-      happ_announce: formData.happ_announce,
-      happ_routing: formData.happ_routing,
-      is_profile_webpage_url_enabled: !!formData.is_profile_webpage_url_enabled,
-      serve_json_at_base_subscription: !!formData.serve_json_at_base_subscription,
-      is_show_custom_remarks: !!formData.is_show_custom_remarks,
-      randomize_hosts: !!formData.randomize_hosts,
-      response_rules: String(formData.response_rules ?? '{}'),
-      custom_response_headers: buildCustomHeadersJson(customHeaders),
-      hwid_settings: buildHwidSettingsJson(hwidSettings),
-      custom_remarks: buildCustomRemarksJson(remarks),
+      uuid: settings.uuid,
+      profileTitle: formData.profileTitle.trim(),
+      supportLink: formData.supportLink.trim(),
+      profileUpdateInterval: Number(formData.profileUpdateInterval),
+      happAnnounce: formData.happAnnounce?.trim() ? formData.happAnnounce.trim() : null,
+      happRouting: formData.happRouting?.trim() ? formData.happRouting.trim() : null,
+      isProfileWebpageUrlEnabled: !!formData.isProfileWebpageUrlEnabled,
+      serveJsonAtBaseSubscription: !!formData.serveJsonAtBaseSubscription,
+      isShowCustomRemarks: !!formData.isShowCustomRemarks,
+      randomizeHosts: !!formData.randomizeHosts,
+      responseRules: parsedRules,
+      customResponseHeaders: buildCustomHeadersJson(customHeaders),
+      hwidSettings: buildHwidSettingsJson(hwidSettings),
+      customRemarks: buildCustomRemarksJson(remarks),
     };
 
     try {
       setSaving(true);
-      const data = await subscriptionSettingsApi.update(settings.uuid, payload);
-      if (data.settings) {
-        setSettings(data.settings);
+      const data = await subscriptionSettingsApi.update(payload);
+      if (data.response) {
+        setSettings(data.response);
       }
       await loadSettings();
       setSaveSuccess('Настройки сохранены');
@@ -387,15 +380,6 @@ function SubscriptionSettings() {
           Информация о подписке
         </button>
         <button
-          className={`subscription-tab ${activeTab === 'connection' ? 'active' : ''}`}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'connection'}
-          onClick={() => setActiveTab('connection')}
-        >
-          Подключение
-        </button>
-        <button
           className={`subscription-tab ${activeTab === 'remarks' ? 'active' : ''}`}
           type="button"
           role="tab"
@@ -441,8 +425,8 @@ function SubscriptionSettings() {
                   className="subscription-field-input"
                   type="text"
                   placeholder="Введите заголовок профиля"
-                  value={formData.profile_title}
-                  onChange={(e) => setField('profile_title', e.target.value)}
+                  value={formData.profileTitle}
+                  onChange={(e) => setField('profileTitle', e.target.value)}
                 />
               </div>
 
@@ -454,8 +438,8 @@ function SubscriptionSettings() {
                   type="number"
                   min="1"
                   placeholder="12"
-                  value={formData.profile_update_interval}
-                  onChange={(e) => setField('profile_update_interval', e.target.value)}
+                  value={formData.profileUpdateInterval}
+                  onChange={(e) => setField('profileUpdateInterval', e.target.value)}
                 />
               </div>
 
@@ -466,8 +450,8 @@ function SubscriptionSettings() {
                   className="subscription-field-input"
                   type="text"
                   placeholder="https://support.example.com"
-                  value={formData.support_link}
-                  onChange={(e) => setField('support_link', e.target.value)}
+                  value={formData.supportLink}
+                  onChange={(e) => setField('supportLink', e.target.value)}
                 />
               </div>
             </div>
@@ -482,8 +466,8 @@ function SubscriptionSettings() {
               <label className="subscription-check">
                 <input
                   type="checkbox"
-                  checked={formData.serve_json_at_base_subscription}
-                  onChange={(e) => setField('serve_json_at_base_subscription', e.target.checked)}
+                  checked={formData.serveJsonAtBaseSubscription}
+                  onChange={(e) => setField('serveJsonAtBaseSubscription', e.target.checked)}
                 />
                 <div>
                   <span className="subscription-check-title">Использовать JSON в базовой подписке</span>
@@ -494,8 +478,8 @@ function SubscriptionSettings() {
               <label className="subscription-check">
                 <input
                   type="checkbox"
-                  checked={formData.randomize_hosts}
-                  onChange={(e) => setField('randomize_hosts', e.target.checked)}
+                  checked={formData.randomizeHosts}
+                  onChange={(e) => setField('randomizeHosts', e.target.checked)}
                 />
                 <div>
                   <span className="subscription-check-title">Перемешивать хосты</span>
@@ -506,8 +490,8 @@ function SubscriptionSettings() {
               <label className="subscription-check">
                 <input
                   type="checkbox"
-                  checked={formData.is_profile_webpage_url_enabled}
-                  onChange={(e) => setField('is_profile_webpage_url_enabled', e.target.checked)}
+                  checked={formData.isProfileWebpageUrlEnabled}
+                  onChange={(e) => setField('isProfileWebpageUrlEnabled', e.target.checked)}
                 />
                 <div>
                   <span className="subscription-check-title">URL страницы профиля</span>
@@ -518,8 +502,8 @@ function SubscriptionSettings() {
               <label className="subscription-check">
                 <input
                   type="checkbox"
-                  checked={formData.is_show_custom_remarks}
-                  onChange={(e) => setField('is_show_custom_remarks', e.target.checked)}
+                  checked={formData.isShowCustomRemarks}
+                  onChange={(e) => setField('isShowCustomRemarks', e.target.checked)}
                 />
                 <div>
                   <span className="subscription-check-title">Отображать кастомные примечания</span>
@@ -598,8 +582,8 @@ function SubscriptionSettings() {
                   className="subscription-field-input subscription-field-textarea"
                   rows={3}
                   placeholder="Введите announce-сообщение"
-                  value={formData.happ_announce}
-                  onChange={(e) => setField('happ_announce', e.target.value)}
+                  value={formData.happAnnounce}
+                  onChange={(e) => setField('happAnnounce', e.target.value)}
                 />
               </div>
 
@@ -610,8 +594,8 @@ function SubscriptionSettings() {
                   className="subscription-field-input subscription-field-textarea"
                   rows={4}
                   placeholder="happ://routing/add/..."
-                  value={formData.happ_routing}
-                  onChange={(e) => setField('happ_routing', e.target.value)}
+                  value={formData.happRouting}
+                  onChange={(e) => setField('happRouting', e.target.value)}
                 />
               </div>
             </div>
@@ -619,70 +603,7 @@ function SubscriptionSettings() {
         </div>
       ) : null}
 
-      {settings && activeTab === 'connection' ? (
-        <section className="subscription-card">
-          <header className="subscription-card-header">
-            <h3 className="subscription-card-title">Подключение к сервису подписки</h3>
-            <p className="subscription-card-desc">Настройки адреса и транспорта для связи с subscription service.</p>
-          </header>
-          <div className="subscription-card-body">
-            <div className="subscription-field">
-              <label className="subscription-field-label" htmlFor="subscription-connection-address">Address</label>
-              <input
-                id="subscription-connection-address"
-                className="subscription-field-input"
-                type="text"
-                placeholder="subscription.local"
-                value={formData.address}
-                onChange={(e) => setField('address', e.target.value)}
-              />
-            </div>
 
-            <div className="subscription-inline-row subscription-inline-row-2cols">
-              <div className="subscription-field">
-                <label className="subscription-field-label" htmlFor="subscription-connection-port">Port</label>
-                <input
-                  id="subscription-connection-port"
-                  className="subscription-field-input"
-                  type="number"
-                  min="1"
-                  max="65535"
-                  placeholder="9263"
-                  value={formData.port}
-                  onChange={(e) => setField('port', e.target.value)}
-                />
-              </div>
-
-              <div className="subscription-field">
-                <label className="subscription-field-label" htmlFor="subscription-connection-schema">API Schema</label>
-                <select
-                  id="subscription-connection-schema"
-                  className="subscription-field-input"
-                  value={formData.api_schema}
-                  onChange={(e) => setField('api_schema', e.target.value)}
-                >
-                  {SUBSCRIPTION_API_SCHEMAS.map((schema) => (
-                    <option key={schema} value={schema}>
-                      {schema}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="subscription-field">
-              <label className="subscription-field-label" htmlFor="subscription-connection-api-path">API Path</label>
-              <input
-                id="subscription-connection-api-path"
-                className="subscription-field-input"
-                type="text"
-                placeholder="/"
-                value={formData.api_path}
-                onChange={(e) => setField('api_path', e.target.value)}
-              />
-            </div>
-          </div>
-        </section>
       ) : null}
 
       {settings && activeTab === 'remarks' ? (

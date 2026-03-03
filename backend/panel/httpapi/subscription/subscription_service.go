@@ -18,6 +18,8 @@ import (
 	dbmanager "v2ray-stat/backend/panel/db/manager"
 	"v2ray-stat/backend/panel/dbutil"
 	"v2ray-stat/backend/panel/httpapi/shared"
+	subscriptionresponserules "v2ray-stat/backend/panel/httpapi/subscription-response-rules"
+	subscriptionsettings "v2ray-stat/backend/panel/httpapi/subscription-settings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -30,6 +32,10 @@ const (
 	responseTypeStash      = "STASH"
 	responseTypeClash      = "CLASH"
 	responseTypeSingbox    = "SINGBOX"
+	responseTypeBlock      = "BLOCK"
+	responseTypeStatus404  = "STATUS_CODE_404"
+	responseTypeStatus451  = "STATUS_CODE_451"
+	responseTypeSocketDrop = "SOCKET_DROP"
 )
 
 var defaultResponseType = responseTypeXrayBase64
@@ -38,10 +44,10 @@ const defaultSubpageConfigUUID = "00000000-0000-0000-0000-000000000000"
 
 // SubscriptionSettingsParsed contains subscription settings with parsed JSON fields.
 type SubscriptionSettingsParsed struct {
-	Raw SubscriptionSettings
+	Raw subscriptionsettings.SubscriptionSettings
 
 	CustomResponseHeaders map[string]string
-	ResponseRules         *ResponseRulesConfig
+	ResponseRules         *subscriptionresponserules.Config
 	HwidSettings          HwidSettings
 	CustomRemarks         CustomRemarks
 }
@@ -59,26 +65,6 @@ type CustomRemarks struct {
 	EmptyHosts             []string `json:"emptyHosts"`
 	HWIDMaxDevicesExceeded []string `json:"HWIDMaxDevicesExceeded"`
 	HWIDNotSupported       []string `json:"HWIDNotSupported"`
-}
-
-type ResponseRulesConfig struct {
-	Version string         `json:"version"`
-	Rules   []ResponseRule `json:"rules"`
-}
-
-type ResponseRule struct {
-	Name         string              `json:"name"`
-	Enabled      bool                `json:"enabled"`
-	Operator     string              `json:"operator"`
-	Conditions   []ResponseCondition `json:"conditions"`
-	ResponseType string              `json:"responseType"`
-}
-
-type ResponseCondition struct {
-	HeaderName    string `json:"headerName"`
-	Operator      string `json:"operator"`
-	Value         string `json:"value"`
-	CaseSensitive bool   `json:"caseSensitive"`
 }
 
 type SubscriptionUser struct {
@@ -232,7 +218,7 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
             LIMIT 1
         `)
 
-		settings, err := scanSubscriptionSettings(row)
+		settings, err := subscriptionsettings.ScanSubscriptionSettings(row)
 		if err != nil {
 			return err
 		}
@@ -253,7 +239,7 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
 	}
 
 	if strings.TrimSpace(parsed.Raw.ResponseRules) != "" {
-		var rules ResponseRulesConfig
+		var rules subscriptionresponserules.Config
 		if err := json.Unmarshal([]byte(parsed.Raw.ResponseRules), &rules); err == nil {
 			parsed.ResponseRules = &rules
 		}
@@ -614,90 +600,16 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	return h, nil
 }
 
-func matchResponseRules(rules *ResponseRulesConfig, headers http.Header) string {
-	if rules == nil || len(rules.Rules) == 0 {
-		return defaultResponseType
+func matchResponseRules(rules *subscriptionresponserules.Config, headers http.Header) string {
+	result := matchResponseRulesDetailed(rules, headers, "")
+	if result.Matched && result.ResponseType != "" {
+		return result.ResponseType
 	}
-
-	normalizedHeaders := map[string]string{}
-	for key, values := range headers {
-		if len(values) > 0 {
-			normalizedHeaders[strings.ToLower(key)] = values[0]
-		}
-	}
-
-	for _, rule := range rules.Rules {
-		if !rule.Enabled {
-			continue
-		}
-
-		if len(rule.Conditions) == 0 {
-			return strings.ToUpper(rule.ResponseType)
-		}
-
-		op := strings.ToUpper(strings.TrimSpace(rule.Operator))
-		if op == "" {
-			op = "AND"
-		}
-
-		matched := op == "AND"
-		for _, cond := range rule.Conditions {
-			if op == "AND" {
-				if !evalCondition(cond, normalizedHeaders) {
-					matched = false
-					break
-				}
-			} else {
-				if evalCondition(cond, normalizedHeaders) {
-					matched = true
-					break
-				}
-				matched = false
-			}
-		}
-
-		if matched {
-			return strings.ToUpper(rule.ResponseType)
-		}
-	}
-
 	return defaultResponseType
 }
 
-func evalCondition(cond ResponseCondition, headers map[string]string) bool {
-	headerName := strings.ToLower(strings.TrimSpace(cond.HeaderName))
-	value := headers[headerName]
-	operator := strings.ToUpper(strings.TrimSpace(cond.Operator))
-
-	checkValue := value
-	checkTarget := cond.Value
-	if !cond.CaseSensitive {
-		checkValue = strings.ToLower(checkValue)
-		checkTarget = strings.ToLower(checkTarget)
-	}
-
-	switch operator {
-	case "CONTAINS":
-		return strings.Contains(checkValue, checkTarget)
-	case "REGEX":
-		re, err := regexp.Compile(checkTarget)
-		if err != nil {
-			return false
-		}
-		return re.MatchString(checkValue)
-	case "EQUALS":
-		return checkValue == checkTarget
-	case "STARTS_WITH":
-		return strings.HasPrefix(checkValue, checkTarget)
-	case "ENDS_WITH":
-		return strings.HasSuffix(checkValue, checkTarget)
-	case "EXISTS", "NOT_EMPTY":
-		return strings.TrimSpace(value) != ""
-	case "NOT_EXISTS", "EMPTY":
-		return strings.TrimSpace(value) == ""
-	default:
-		return false
-	}
+func matchResponseRulesDetailed(rules *subscriptionresponserules.Config, headers http.Header, overrideClientType string) subscriptionresponserules.MatchResult {
+	return subscriptionresponserules.MatchRulesDetailed(rules, headers, overrideClientType, mapClientTypeToResponseType, defaultResponseType)
 }
 
 func extractHwidHeaders(r *http.Request) *HwidHeaders {
@@ -815,9 +727,22 @@ func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseM
 }
 
 func isJsonSubscriptionSupported(userAgent string) bool {
-	ua := strings.ToLower(userAgent)
-	if strings.Contains(ua, "v2rayng") || strings.Contains(ua, "v2rayn") || strings.Contains(ua, "hiddify") || strings.Contains(ua, "happ") {
-		return true
+	if userAgent == "" {
+		return false
+	}
+	clients := []*regexp.Regexp{
+		regexp.MustCompile(`^[Ss]treisand`),
+		regexp.MustCompile(`^Happ/`),
+		regexp.MustCompile(`^ktor-client`),
+		regexp.MustCompile(`^V2Box`),
+		regexp.MustCompile(`^io\\.github\\.saeeddev94\\.xray/`),
+		regexp.MustCompile(`^v2rayNG/(\\d+\\.\\d+\\.\\d+)`),
+		regexp.MustCompile(`^v2rayN/(\\d+\\.\\d+\\.\\d+)`),
+	}
+	for _, re := range clients {
+		if re.MatchString(userAgent) {
+			return true
+		}
 	}
 	return false
 }
@@ -1558,6 +1483,40 @@ func getSubscriptionTemplate(ctx context.Context, manager *dbmanager.DatabaseMan
 		return nil, err
 	}
 	return templateData, nil
+}
+
+func getSubscriptionTemplateByName(ctx context.Context, manager *dbmanager.DatabaseManager, name string) (string, []byte, error) {
+	var templateType string
+	var templateData []byte
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		row := db.QueryRowContext(ctx, `
+            SELECT template_type, template_yaml, template_json
+            FROM subscription_templates
+            WHERE name = ?
+            LIMIT 1
+        `, name)
+
+		var templateYAML sql.NullString
+		var templateJSON sql.NullString
+		if err := row.Scan(&templateType, &templateYAML, &templateJSON); err != nil {
+			return err
+		}
+
+		if templateType == responseTypeXrayJSON || templateType == responseTypeSingbox {
+			if templateJSON.Valid {
+				templateData = []byte(templateJSON.String)
+			}
+		} else {
+			if templateYAML.Valid {
+				templateData = []byte(templateYAML.String)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	return templateType, templateData, nil
 }
 
 func responseTypeToTemplateType(responseType string) string {

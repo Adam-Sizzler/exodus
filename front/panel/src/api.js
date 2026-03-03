@@ -240,58 +240,50 @@ export const usersApi = {
 
 // Hosts API
 export const hostsApi = {
-  getAll: () => apiRequest('/api/v1/hosts', { method: 'GET' }),
-  getById: (uuid) => apiRequest(`/api/v1/hosts/${uuid}`, { method: 'GET' }),
-  create: (data) => apiRequest('/api/v1/hosts', {
+  getAll: () => apiRequest('/api/hosts', { method: 'GET' }),
+  getById: (uuid) => apiRequest(`/api/hosts/${uuid}`, { method: 'GET' }),
+  create: (data) => apiRequest('/api/hosts', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  update: (uuid, data) => apiRequest(`/api/v1/hosts/${uuid}`, {
+  update: (data) => apiRequest('/api/hosts', {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
-  delete: (uuid) => apiRequest(`/api/v1/hosts/${uuid}`, {
+  delete: (uuid) => apiRequest(`/api/hosts/${uuid}`, {
     method: 'DELETE',
   }),
-  deleteMany: (uuids) => apiRequest(`/api/v1/hosts?uuids=${encodeURIComponent(uuids.join(','))}`, {
-    method: 'DELETE',
-  }),
-  getNodeAssignments: (hostUuid = '', nodeUuid = '') => {
-    const params = new URLSearchParams();
-    if (hostUuid) {
-      params.set('host_uuid', hostUuid);
-    }
-    if (nodeUuid) {
-      params.set('node_uuid', nodeUuid);
-    }
-    const query = params.toString();
-    return apiRequest(`/api/v1/hosts-to-nodes${query ? `?${query}` : ''}`, { method: 'GET' });
-  },
-  setNodeAssignments: (hostUuid, nodeUuids) => apiRequest('/api/v1/hosts-to-nodes', {
+  deleteMany: (uuids) => apiRequest('/api/hosts/bulk/delete', {
     method: 'POST',
-    body: JSON.stringify({
-      host_uuid: hostUuid,
-      node_uuids: nodeUuids,
-    }),
+    body: JSON.stringify({ uuids }),
   }),
-  deleteNodeAssignments: (hostUuid, nodeUuids = []) => apiRequest('/api/v1/hosts-to-nodes', {
-    method: 'DELETE',
-    body: JSON.stringify({
-      host_uuid: hostUuid,
-      node_uuids: nodeUuids,
-    }),
-  }),
-  reorder: (orderedUuids) => apiRequest('/api/v1/hosts/reorder', {
+  bulkEnable: (uuids) => apiRequest('/api/hosts/bulk/enable', {
     method: 'POST',
-    body: JSON.stringify({ ordered_uuids: orderedUuids }),
+    body: JSON.stringify({ uuids }),
   }),
+  bulkDisable: (uuids) => apiRequest('/api/hosts/bulk/disable', {
+    method: 'POST',
+    body: JSON.stringify({ uuids }),
+  }),
+  setInbound: (uuids, configProfileUuid, configProfileInboundUuid) => apiRequest('/api/hosts/bulk/set-inbound', {
+    method: 'POST',
+    body: JSON.stringify({ uuids, configProfileUuid, configProfileInboundUuid }),
+  }),
+  setPort: (uuids, port) => apiRequest('/api/hosts/bulk/set-port', {
+    method: 'POST',
+    body: JSON.stringify({ uuids, port }),
+  }),
+  reorder: (items) => apiRequest('/api/hosts/actions/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ hosts: items }),
+  }),
+  getTags: () => apiRequest('/api/hosts/tags', { method: 'GET' }),
 };
 
 // Subscription settings API
 export const subscriptionSettingsApi = {
-  get: () => apiRequest('/api/v1/subscription-settings', { method: 'GET' }),
-  getById: (uuid) => apiRequest(`/api/v1/subscription-settings/${uuid}`, { method: 'GET' }),
-  update: (uuid, data) => apiRequest(`/api/v1/subscription-settings/${uuid}`, {
+  get: () => apiRequest('/api/subscription-settings', { method: 'GET' }),
+  update: (data) => apiRequest('/api/subscription-settings', {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
@@ -299,28 +291,23 @@ export const subscriptionSettingsApi = {
 
 // Subscription templates API
 export const templatesApi = {
-  getAll: (templateType) =>
-    apiRequest(
-      templateType
-        ? `/api/v1/templates?template_type=${encodeURIComponent(templateType)}`
-        : '/api/v1/templates',
-      { method: 'GET' }
-    ),
-  getById: (uuid) => apiRequest(`/api/v1/templates/${uuid}`, { method: 'GET' }),
-  create: (data) => apiRequest('/api/v1/templates', {
+  getAll: () =>
+    apiRequest('/api/subscription-templates', { method: 'GET' }),
+  getById: (uuid) => apiRequest(`/api/subscription-templates/${uuid}`, { method: 'GET' }),
+  create: (data) => apiRequest('/api/subscription-templates', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  update: (uuid, data) => apiRequest(`/api/v1/templates/${uuid}`, {
+  update: (data) => apiRequest('/api/subscription-templates', {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
-  delete: (uuid) => apiRequest(`/api/v1/templates/${uuid}`, {
+  delete: (uuid) => apiRequest(`/api/subscription-templates/${uuid}`, {
     method: 'DELETE',
   }),
-  reorder: (orderedUuids) => apiRequest('/api/v1/templates/reorder', {
+  reorder: (items) => apiRequest('/api/subscription-templates/actions/reorder', {
     method: 'POST',
-    body: JSON.stringify({ ordered_uuids: orderedUuids }),
+    body: JSON.stringify({ items }),
   }),
 };
 
