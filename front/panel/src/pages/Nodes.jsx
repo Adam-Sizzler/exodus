@@ -44,6 +44,14 @@ const NODE_COLUMNS = [
     minWidth: 110,
   },
   {
+    key: 'apiPath',
+    label: 'API Path',
+    sortable: true,
+    defaultVisible: false,
+    defaultWidth: 180,
+    minWidth: 140,
+  },
+  {
     key: 'country',
     label: 'Страна',
     sortable: true,
@@ -157,6 +165,42 @@ const NODE_COLUMNS = [
   },
 ];
 
+const mapApiNodeToUi = (node) => ({
+  uuid: node.uuid,
+  name: node.name ?? '',
+  address: node.address ?? '',
+  port: node.port ?? null,
+  api_schema: node.apiSchema ?? 'grpc',
+  api_path: node.apiPath ?? '',
+  is_connected: !!node.isConnected,
+  is_connecting: !!node.isConnecting,
+  is_disabled: !!node.isDisabled,
+  last_status_change: node.lastStatusChange ?? null,
+  last_status_message: node.lastStatusMessage ?? null,
+  xray_version: node.xrayVersion ?? null,
+  node_version: node.nodeVersion ?? null,
+  xray_uptime: node.xrayUptime ?? '',
+  is_traffic_tracking_active: !!node.isTrafficTrackingActive,
+  traffic_reset_day: node.trafficResetDay ?? null,
+  traffic_limit_bytes: node.trafficLimitBytes ?? 0,
+  traffic_used_bytes: node.trafficUsedBytes ?? 0,
+  notify_percent: node.notifyPercent ?? 0,
+  users_online: node.usersOnline ?? 0,
+  view_position: node.viewPosition ?? 0,
+  country_code: node.countryCode ?? 'XX',
+  consumption_multiplier: node.consumptionMultiplier ?? 1,
+  tags: Array.isArray(node.tags) ? node.tags : [],
+  cpu_count: node.cpuCount ?? null,
+  cpu_model: node.cpuModel ?? null,
+  total_ram: node.totalRam ?? null,
+  created_at: node.createdAt ?? null,
+  updated_at: node.updatedAt ?? null,
+  active_config_profile_uuid: node.configProfile?.activeConfigProfileUuid ?? null,
+  active_inbounds: Array.isArray(node.configProfile?.activeInbounds) ? node.configProfile.activeInbounds : [],
+  provider_uuid: node.providerUuid ?? null,
+  provider: node.provider ?? null,
+});
+
 function Nodes() {
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -192,40 +236,8 @@ function Nodes() {
 
   const fetchNodes = async () => {
     try {
-      const [withConfigResult, fullResult] = await Promise.allSettled([
-        nodesApi.getAllWithConfig(),
-        nodesApi.getAll(),
-      ]);
-
-      const withConfigNodes = withConfigResult.status === 'fulfilled' && Array.isArray(withConfigResult.value?.nodes)
-        ? withConfigResult.value.nodes
-        : [];
-      const fullNodes = fullResult.status === 'fulfilled' && Array.isArray(fullResult.value?.nodes)
-        ? fullResult.value.nodes
-        : [];
-
-      let list = [];
-      if (withConfigNodes.length > 0 && fullNodes.length > 0) {
-        const withConfigByUuid = new Map(
-          withConfigNodes
-            .filter((node) => Boolean(node?.uuid))
-            .map((node) => [node.uuid, node]),
-        );
-
-        list = fullNodes.map((node) => ({
-          ...(withConfigByUuid.get(node.uuid) || {}),
-          ...node,
-        }));
-
-        const mergedUuids = new Set(list.map((node) => node.uuid));
-        withConfigNodes.forEach((node) => {
-          if (!mergedUuids.has(node.uuid)) {
-            list.push(node);
-          }
-        });
-      } else {
-        list = withConfigNodes.length > 0 ? withConfigNodes : fullNodes;
-      }
+      const data = await nodesApi.getAll();
+      const list = Array.isArray(data?.response) ? data.response.map(mapApiNodeToUi) : [];
 
       setNodes(list);
       setSelectedNodeUUIDs((prev) => {
@@ -249,12 +261,23 @@ function Nodes() {
     setModalOpen(true);
   };
 
-  const handleSave = async (nodeData) => {
+  const handleSave = async ({ payload, desiredDisabled }) => {
     try {
       if (editingNode) {
-        await nodesApi.update(editingNode.uuid, nodeData);
+        await nodesApi.update({ uuid: editingNode.uuid, ...payload });
+        if (typeof desiredDisabled === 'boolean' && desiredDisabled !== Boolean(editingNode.is_disabled)) {
+          if (desiredDisabled) {
+            await nodesApi.disable(editingNode.uuid);
+          } else {
+            await nodesApi.enable(editingNode.uuid);
+          }
+        }
       } else {
-        await nodesApi.create(nodeData);
+        const created = await nodesApi.create(payload);
+        const createdUUID = created?.response?.uuid;
+        if (createdUUID && desiredDisabled) {
+          await nodesApi.disable(createdUUID);
+        }
       }
       setModalOpen(false);
       fetchNodes();
@@ -269,7 +292,7 @@ function Nodes() {
     if (!confirm(`Delete ${selectedNodeUUIDs.size} selected node(s)?`)) return;
 
     try {
-      await nodesApi.deleteMany(Array.from(selectedNodeUUIDs));
+      await Promise.all(Array.from(selectedNodeUUIDs).map((uuid) => nodesApi.delete(uuid)));
       await fetchNodes();
     } catch (err) {
       console.error('Error deleting selected nodes:', err);
@@ -403,6 +426,8 @@ function Nodes() {
         return String(`${node.address || ''}:${node.port || ''}`).toLowerCase();
       case 'apiSchema':
         return getNodeApiSchema(node);
+      case 'apiPath':
+        return String(node.api_path || '').toLowerCase();
       case 'country':
         return String(node.country_code || '').toLowerCase();
       case 'usersOnline':
@@ -446,6 +471,7 @@ function Nodes() {
         node.name,
         node.address,
         getNodeApiSchema(node),
+        node.api_path,
         node.country_code,
         node.config_profile_name,
         node.active_config_profile_uuid,
@@ -535,6 +561,8 @@ function Nodes() {
         return <td key={column.key} className="users-cell-mono">{node.address || '—'}:{node.port || '80'}</td>;
       case 'apiSchema':
         return <td key={column.key} className="users-cell-center users-cell-mono">{getNodeApiSchema(node) || '—'}</td>;
+      case 'apiPath':
+        return <td key={column.key} className="users-cell-mono">{node.api_path || '—'}</td>;
       case 'country':
         return <td key={column.key} className="users-cell-center">{countryFlag ? `${countryFlag} ${node.country_code}` : (node.country_code || '—')}</td>;
       case 'usersOnline':

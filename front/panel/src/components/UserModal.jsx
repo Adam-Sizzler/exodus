@@ -50,6 +50,13 @@ const getInboundSecurity = (inbound) => {
 
 const createDefaultSelectedSquads = (user) => {
   const next = new Set();
+  if (Array.isArray(user?.active_internal_squads)) {
+    user.active_internal_squads.forEach((squad) => {
+      if (squad?.uuid) {
+        next.add(squad.uuid);
+      }
+    });
+  }
   if (user?.internal_squad_uuid) {
     next.add(user.internal_squad_uuid);
   }

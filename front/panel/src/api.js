@@ -82,75 +82,112 @@ export const configProfilesApi = {
   // Get all config profiles with inbounds
   getAllWithInbounds: async () => {
     try {
-      return await apiRequest('/api/v1/config-profiles-with-inbounds', { method: 'GET' });
+      const data = await apiRequest('/api/config-profiles', { method: 'GET' });
+      return {
+        profiles: Array.isArray(data?.response?.configProfiles) ? data.response.configProfiles : [],
+        response: data?.response,
+      };
     } catch (err) {
       // Fallback to regular profiles endpoint
-      return await apiRequest('/api/v1/config-profiles', { method: 'GET' });
+      return await apiRequest('/api/v1/config-profiles-with-inbounds', { method: 'GET' });
     }
   },
 
   // Get all config profiles
-  getAll: () => apiRequest('/api/v1/config-profiles', { method: 'GET' }),
+  getAll: () => apiRequest('/api/config-profiles', { method: 'GET' }),
 
   // Get single config profile by UUID
-  getById: (uuid) => apiRequest(`/api/v1/config-profiles/${uuid}`, { method: 'GET' }),
+  getById: (uuid) => apiRequest(`/api/config-profiles/${uuid}`, { method: 'GET' }),
 
   // Create new config profile
-  create: (data) => apiRequest('/api/v1/config-profiles', {
+  create: (data) => apiRequest('/api/config-profiles', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
   // Update config profile (partial update)
-  update: (uuid, data) => apiRequest(`/api/v1/config-profiles/${uuid}`, {
+  update: (uuid, data) => apiRequest('/api/config-profiles', {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ uuid, ...data }),
   }),
 
   // Delete config profile
-  delete: (uuid) => apiRequest(`/api/v1/config-profiles/${uuid}`, {
+  delete: (uuid) => apiRequest(`/api/config-profiles/${uuid}`, {
     method: 'DELETE',
   }),
-  reorder: (orderedUuids) => apiRequest('/api/v1/config-profiles/reorder', {
+  reorder: (items) => apiRequest('/api/config-profiles/actions/reorder', {
     method: 'POST',
-    body: JSON.stringify({ ordered_uuids: orderedUuids }),
+    body: JSON.stringify({ items }),
+  }),
+};
+
+export const configProfileSnippetsApi = {
+  getAll: () => apiRequest('/api/config-profiles/snippets', { method: 'GET' }),
+  create: (data) => apiRequest('/api/config-profiles/snippets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (data) => apiRequest('/api/config-profiles/snippets', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (name) => apiRequest('/api/config-profiles/snippets', {
+    method: 'DELETE',
+    body: JSON.stringify({ name }),
   }),
 };
 
 // Nodes API
 export const nodesApi = {
-  // Get nodes with config profile info (fallback to regular nodes if not available)
-  getAllWithConfig: async () => {
-    try {
-      return await apiRequest('/api/v1/nodes-with-config', { method: 'GET' });
-    } catch (err) {
-      // Fallback to regular nodes endpoint
-      return await apiRequest('/api/v1/nodes', { method: 'GET' });
-    }
-  },
-
-  getAll: () => apiRequest('/api/v1/nodes', { method: 'GET' }),
-  getById: (uuid) => apiRequest(`/api/v1/nodes/${uuid}`, { method: 'GET' }),
-  create: (data) => apiRequest('/api/v1/nodes', {
+  getAll: () => apiRequest('/api/nodes', { method: 'GET' }),
+  getById: (uuid) => apiRequest(`/api/nodes/${uuid}`, { method: 'GET' }),
+  create: (data) => apiRequest('/api/nodes', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  update: (uuid, data) => apiRequest(`/api/v1/nodes/${uuid}`, {
+  update: (data) => apiRequest('/api/nodes', {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
-  delete: (uuid) => apiRequest(`/api/v1/nodes/${uuid}`, {
+  delete: (uuid) => apiRequest(`/api/nodes/${uuid}`, {
     method: 'DELETE',
   }),
-  deleteMany: (uuids) => apiRequest(`/api/v1/nodes?uuids=${encodeURIComponent(uuids.join(','))}`, {
-    method: 'DELETE',
-  }),
-  reorder: (orderedUuids) => apiRequest('/api/v1/nodes/reorder', {
+  enable: (uuid) => apiRequest(`/api/nodes/${uuid}/actions/enable`, {
     method: 'POST',
-    body: JSON.stringify({ ordered_uuids: orderedUuids }),
   }),
-
-  // Inbound assignments for nodes
+  disable: (uuid) => apiRequest(`/api/nodes/${uuid}/actions/disable`, {
+    method: 'POST',
+  }),
+  restart: (uuid) => apiRequest(`/api/nodes/${uuid}/actions/restart`, {
+    method: 'POST',
+  }),
+  resetTraffic: (uuid) => apiRequest(`/api/nodes/${uuid}/actions/reset-traffic`, {
+    method: 'POST',
+  }),
+  restartAll: (forceRestart = false) => apiRequest('/api/nodes/actions/restart-all', {
+    method: 'POST',
+    body: JSON.stringify({ forceRestart }),
+  }),
+  deleteMany: (uuids, action = 'DISABLE') => apiRequest('/api/nodes/bulk-actions', {
+    method: 'POST',
+    body: JSON.stringify({ uuids, action }),
+  }),
+  bulkAction: (uuids, action) => apiRequest('/api/nodes/bulk-actions', {
+    method: 'POST',
+    body: JSON.stringify({ uuids, action }),
+  }),
+  profileModification: (uuids, configProfile) => apiRequest('/api/nodes/bulk-actions/profile-modification', {
+    method: 'POST',
+    body: JSON.stringify({ uuids, configProfile }),
+  }),
+  reorder: (items) => apiRequest('/api/nodes/actions/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ nodes: items }),
+  }),
+  getTags: () => apiRequest('/api/nodes/tags', { method: 'GET' }),
+  getAllWithConfig: async () => {
+    return await apiRequest('/api/nodes', { method: 'GET' });
+  },
   getInboundAssignments: (nodeUuid) => apiRequest(`/api/v1/inbound-assignments?node_uuid=${nodeUuid}`, { method: 'GET' }),
   setInboundAssignments: (nodeUuid, inboundUuids) => apiRequest('/api/v1/inbound-assignments', {
     method: 'POST',
@@ -158,6 +195,9 @@ export const nodesApi = {
       node_uuid: nodeUuid,
       inbound_uuids: inboundUuids,
     }),
+  }),
+  deleteManyLegacy: (uuids) => apiRequest(`/api/v1/nodes?uuids=${encodeURIComponent(uuids.join(','))}`, {
+    method: 'DELETE',
   }),
 };
 
@@ -216,26 +256,28 @@ export const squadsApi = {
 
 // Users API
 export const usersApi = {
-  getAll: () => apiRequest('/api/v1/users-list', { method: 'GET' }),
-  getById: (uuid) => apiRequest(`/api/v1/users-list/${uuid}`, { method: 'GET' }),
-  create: (data) => apiRequest('/api/v1/users-list/create', {
+  getAll: () => apiRequest('/api/users', { method: 'GET' }),
+  getById: (uuid) => apiRequest(`/api/users/${uuid}`, { method: 'GET' }),
+  create: (data) => apiRequest('/api/users', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  update: (uuid, data) => apiRequest(`/api/v1/users-list/${uuid}`, {
+  update: (uuid, data) => apiRequest('/api/users', {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ uuid, ...data }),
   }),
-  delete: (uuid) => apiRequest(`/api/v1/users-list/${uuid}`, {
+  delete: (uuid) => apiRequest(`/api/users/${uuid}`, {
     method: 'DELETE',
   }),
-  deleteMany: (uuids) => apiRequest(`/api/v1/users-list?uuids=${encodeURIComponent(uuids.join(','))}`, {
-    method: 'DELETE',
-  }),
-  reorder: (orderedUuids) => apiRequest('/api/v1/users-list/reorder', {
+  deleteMany: (uuids) => apiRequest('/api/users/bulk/delete', {
     method: 'POST',
-    body: JSON.stringify({ ordered_uuids: orderedUuids }),
+    body: JSON.stringify({ uuids }),
   }),
+  enable: (uuid) => apiRequest(`/api/users/${uuid}/actions/enable`, { method: 'POST' }),
+  disable: (uuid) => apiRequest(`/api/users/${uuid}/actions/disable`, { method: 'POST' }),
+  resetTraffic: (uuid) => apiRequest(`/api/users/${uuid}/actions/reset-traffic`, { method: 'POST' }),
+  revokeSubscription: (uuid) => apiRequest(`/api/users/${uuid}/actions/revoke`, { method: 'POST' }),
+  getTags: () => apiRequest('/api/users/tags', { method: 'GET' }),
 };
 
 // Hosts API

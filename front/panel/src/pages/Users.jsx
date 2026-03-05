@@ -237,6 +237,46 @@ const USER_COLUMNS = [
   },
 ];
 
+const mapApiUserToUi = (user) => {
+  const activeInternalSquads = Array.isArray(user.activeInternalSquads) ? user.activeInternalSquads : [];
+  const userTraffic = user.userTraffic || {};
+
+  return {
+    uuid: user.uuid,
+    t_id: user.id ?? null,
+    short_uuid: user.shortUuid ?? '',
+    username: user.username ?? '',
+    status: user.status ?? 'ACTIVE',
+    traffic_limit_bytes: user.trafficLimitBytes ?? 0,
+    traffic_limit_strategy: user.trafficLimitStrategy ?? 'NO_RESET',
+    expire_at: user.expireAt ?? null,
+    telegram_id: user.telegramId ?? null,
+    email: user.email ?? null,
+    description: user.description ?? null,
+    tag: user.tag ?? null,
+    hwid_device_limit: user.hwidDeviceLimit ?? null,
+    external_squad_uuid: user.externalSquadUuid ?? null,
+    trojan_password: user.trojanPassword ?? '',
+    vless_uuid: user.vlessUuid ?? '',
+    ss_password: user.ssPassword ?? '',
+    last_triggered_threshold: user.lastTriggeredThreshold ?? 0,
+    sub_revoked_at: user.subRevokedAt ?? null,
+    sub_last_user_agent: user.subLastUserAgent ?? null,
+    sub_last_opened_at: user.subLastOpenedAt ?? null,
+    last_traffic_reset_at: user.lastTrafficResetAt ?? null,
+    created_at: user.createdAt ?? null,
+    updated_at: user.updatedAt ?? null,
+    subscription_url: user.subscriptionUrl ?? null,
+    active_internal_squads: activeInternalSquads,
+    internal_squad_uuid: activeInternalSquads[0]?.uuid ?? null,
+    used_traffic_bytes: userTraffic.usedTrafficBytes ?? 0,
+    lifetime_used_traffic_bytes: userTraffic.lifetimeUsedTrafficBytes ?? 0,
+    online_at: userTraffic.onlineAt ?? null,
+    first_connected_at: userTraffic.firstConnectedAt ?? null,
+    last_connected_node_uuid: userTraffic.lastConnectedNodeUuid ?? null,
+  };
+};
+
 function Users() {
   const [users, setUsers] = useState([]);
   const [squadNamesByUuid, setSquadNamesByUuid] = useState({});
@@ -288,7 +328,9 @@ function Users() {
         throw usersResult.reason;
       }
 
-      const usersList = Array.isArray(usersResult.value?.users) ? usersResult.value.users : [];
+      const usersList = Array.isArray(usersResult.value?.response?.users)
+        ? usersResult.value.response.users.map(mapApiUserToUi)
+        : [];
       setUsers(usersList);
       setSelectedUserUUIDs((prev) => {
         const valid = new Set(usersList.map((user) => user.uuid));
@@ -323,119 +365,27 @@ function Users() {
     setModalOpen(true);
   };
 
-  const extractUserIdentity = (payload) => {
-    const candidates = [payload, payload?.user, payload?.data, payload?.result].filter(Boolean);
-    for (const candidate of candidates) {
-      const userId = candidate?.t_id ?? candidate?.user_id ?? candidate?.id;
-      const userUuid = candidate?.uuid ?? null;
-      if (userId !== undefined && userId !== null) {
-        return { userId, userUuid };
-      }
-      if (userUuid) {
-        return { userId: null, userUuid };
-      }
-    }
-    return { userId: null, userUuid: null };
-  };
-
-  const resolveSavedUserIdentity = async (responseData, fallbackUser, username) => {
-    const fallbackId = fallbackUser?.t_id ?? fallbackUser?.user_id ?? null;
-    const fallbackUuid = fallbackUser?.uuid ?? null;
-    if (fallbackId !== null && fallbackId !== undefined) {
-      return { userId: fallbackId, userUuid: fallbackUuid };
-    }
-
-    const fromResponse = extractUserIdentity(responseData);
-    if (fromResponse.userId !== null && fromResponse.userId !== undefined) {
-      return fromResponse;
-    }
-
-    if (fromResponse.userUuid) {
-      try {
-        const userDetails = await usersApi.getById(fromResponse.userUuid);
-        const details = extractUserIdentity(userDetails);
-        if (details.userId !== null && details.userId !== undefined) {
-          return details;
-        }
-      } catch (err) {
-        console.warn('Failed to resolve user id by uuid:', err);
-      }
-    }
-
-    const normalizedUsername = String(username || '').trim();
-    if (!normalizedUsername) {
-      return { userId: null, userUuid: fromResponse.userUuid || fallbackUuid };
-    }
-
-    const allUsersResponse = await usersApi.getAll();
-    const usersList = Array.isArray(allUsersResponse?.users) ? allUsersResponse.users : [];
-    const exactMatches = usersList.filter((item) => item?.username === normalizedUsername);
-    const userCandidate = exactMatches[exactMatches.length - 1] || null;
-
-    if (!userCandidate) {
-      return { userId: null, userUuid: fromResponse.userUuid || fallbackUuid };
-    }
-
-    const userId = userCandidate.t_id ?? userCandidate.user_id ?? null;
-    return {
-      userId,
-      userUuid: userCandidate.uuid ?? fromResponse.userUuid ?? fallbackUuid,
-    };
-  };
-
-  const syncInternalSquadMemberships = async (userId, selectedInternalSquadUuids) => {
-    const squadsResponse = await squadsApi.getAllSummary();
-    const squadsList = Array.isArray(squadsResponse?.squads) ? squadsResponse.squads : [];
-    const selectedSet = new Set((selectedInternalSquadUuids || []).filter(Boolean).map((value) => String(value)));
-
-    const numericUserId = Number(userId);
-    const targetUserId = Number.isFinite(numericUserId) ? numericUserId : userId;
-    const targetUserKey = String(targetUserId);
-
-    for (const squad of squadsList) {
-      const membersResponse = await squadsApi.getMembers(squad.uuid);
-      const currentIds = Array.isArray(membersResponse?.squad_members)
-        ? membersResponse.squad_members
-          .map((member) => member?.user_id ?? member?.t_id)
-          .filter((value) => value !== undefined && value !== null)
-        : [];
-
-      const hasUser = currentIds.some((value) => String(value) === targetUserKey);
-      const shouldHaveUser = selectedSet.has(String(squad.uuid));
-
-      if (hasUser === shouldHaveUser) {
-        continue;
-      }
-
-      const nextIds = shouldHaveUser
-        ? Array.from(new Set([...currentIds, targetUserId]))
-        : currentIds.filter((value) => String(value) !== targetUserKey);
-
-      await squadsApi.setMembers(squad.uuid, nextIds);
-    }
-  };
-
   const handleSave = async (userData, options = {}) => {
     const { selectedInternalSquadUuids } = options;
-    try {
-      let saveResponse;
-      if (editingUser) {
-        saveResponse = await usersApi.update(editingUser.uuid, userData);
-      } else {
-        saveResponse = await usersApi.create(userData);
-      }
+    const payload = {
+      username: userData.username,
+      status: userData.status,
+      trafficLimitBytes: Number(userData.traffic_limit_bytes) || 0,
+      trafficLimitStrategy: userData.traffic_limit_strategy || 'NO_RESET',
+      expireAt: userData.expire_at,
+      description: userData.description ?? null,
+      tag: userData.tag ?? null,
+      telegramId: userData.telegram_id ?? null,
+      email: userData.email ?? null,
+      hwidDeviceLimit: userData.hwid_device_limit ?? null,
+      activeInternalSquads: Array.isArray(selectedInternalSquadUuids) ? selectedInternalSquadUuids : [],
+    };
 
-      if (Array.isArray(selectedInternalSquadUuids)) {
-        try {
-          const { userId } = await resolveSavedUserIdentity(saveResponse, editingUser, userData.username);
-          if (userId === null || userId === undefined) {
-            throw new Error('Не удалось определить идентификатор пользователя');
-          }
-          await syncInternalSquadMemberships(userId, selectedInternalSquadUuids);
-        } catch (membershipErr) {
-          console.error('Error syncing user internal squads:', membershipErr);
-          alert(`Пользователь сохранен, но привязка к внутренним сквадам не выполнена: ${membershipErr.message}`);
-        }
+    try {
+      if (editingUser) {
+        await usersApi.update(editingUser.uuid, payload);
+      } else {
+        await usersApi.create(payload);
       }
 
       setModalOpen(false);
@@ -529,6 +479,9 @@ function Users() {
   };
 
   const getInternalSquadLabel = (user) => {
+    if (Array.isArray(user.active_internal_squads) && user.active_internal_squads.length > 0) {
+      return user.active_internal_squads.map((squad) => squad?.name || squad?.uuid).filter(Boolean).join(', ');
+    }
     if (!user.internal_squad_uuid) return null;
     return squadNamesByUuid[user.internal_squad_uuid] || user.internal_squad_uuid.slice(0, 8);
   };
@@ -589,6 +542,8 @@ function Users() {
   };
 
   const getSubscriptionUrl = (shortUuid) => {
+    const matched = users.find((item) => item.short_uuid === shortUuid);
+    if (matched?.subscription_url) return matched.subscription_url;
     if (!shortUuid) return null;
     return `/api/v1/sub?mode=advanced&user=${encodeURIComponent(String(shortUuid))}`;
   };

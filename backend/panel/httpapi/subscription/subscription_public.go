@@ -122,9 +122,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	headersForMatch := r.Header.Clone()
-	headersForMatch.Set("x-remnawave-injected-short-uuid", shortUUID)
+	headersForMatch.Set("x-v2ray-stat-injected-short-uuid", shortUUID)
 	if clientType != "" {
-		headersForMatch.Set("x-remnawave-injected-client-type", clientType)
+		headersForMatch.Set("x-v2ray-stat-injected-client-type", clientType)
 	}
 
 	matchResult := matchResponseRulesDetailed(settings.ResponseRules, headersForMatch, clientType)

@@ -429,8 +429,8 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			return
 		}
 	}
-	if req.XrayJSONTemplateUUID.Set && req.XrayJSONTemplateUUID.Value != nil && *req.XrayJSONTemplateUUID.Value != "" {
-		if err := ensureXrayJSONTemplate(r.Context(), manager, *req.XrayJSONTemplateUUID.Value); err != nil {
+	if req.XrayJSONTemplateUUID != nil && *req.XrayJSONTemplateUUID != "" {
+		if err := ensureXrayJSONTemplate(r.Context(), manager, *req.XrayJSONTemplateUUID); err != nil {
 			switch {
 			case errors.Is(err, errTemplateNotFound):
 				shared.SendError(w, http.StatusBadRequest, "subscription template not found", nil, cfg)
@@ -568,8 +568,8 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			}
 		}
 	}
-	if req.XrayJSONTemplateUUID != nil && *req.XrayJSONTemplateUUID != "" {
-		if err := ensureXrayJSONTemplate(r.Context(), manager, *req.XrayJSONTemplateUUID); err != nil {
+	if req.XrayJSONTemplateUUID.Set && req.XrayJSONTemplateUUID.Value != nil && *req.XrayJSONTemplateUUID.Value != "" {
+		if err := ensureXrayJSONTemplate(r.Context(), manager, *req.XrayJSONTemplateUUID.Value); err != nil {
 			switch {
 			case errors.Is(err, errTemplateNotFound):
 				shared.SendError(w, http.StatusBadRequest, "subscription template not found", nil, cfg)

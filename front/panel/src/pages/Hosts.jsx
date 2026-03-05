@@ -222,6 +222,13 @@ const buildHostNodeMap = (hostsList = []) => {
   return map;
 };
 
+const mapApiNodeToOption = (node) => ({
+  uuid: node.uuid,
+  name: node.name ?? '',
+  address: node.address ?? '',
+  country_code: node.countryCode ?? 'XX',
+});
+
 const toJSONString = (value) => {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
@@ -372,7 +379,8 @@ function Hosts() {
   const loadNodes = async () => {
     try {
       const data = await nodesApi.getAll();
-      setNodes(data.nodes || []);
+      const list = Array.isArray(data?.response) ? data.response.map(mapApiNodeToOption) : [];
+      setNodes(list);
     } catch (err) {
       console.error('Failed to load nodes:', err);
       setNodes([]);

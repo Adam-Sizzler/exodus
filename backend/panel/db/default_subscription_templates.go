@@ -331,8 +331,8 @@ rules:
     },
     "cache_file": {
       "enabled": true,
-      "path": "remnawave.db",
-      "cache_id": "remnawave",
+      "path": "v2ray-stat.db",
+      "cache_id": "v2ray-stat",
       "store_fakeip": true
     }
   }

@@ -55,7 +55,7 @@ const REMARK_GROUPS = [
     key: 'emptyHosts',
     title: 'Отсутствуют хосты',
     tone: 'blue',
-    defaults: ['→ Remnawave', '→ No hosts found', '→ Check Hosts tab', '→ Check Internal Squads tab'],
+    defaults: ['→ v2ray-stat', '→ No hosts found', '→ Check Hosts tab', '→ Check Internal Squads tab'],
   },
 ];
 
@@ -601,9 +601,6 @@ function SubscriptionSettings() {
             </div>
           </section>
         </div>
-      ) : null}
-
-
       ) : null}
 
       {settings && activeTab === 'remarks' ? (

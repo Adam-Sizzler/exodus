@@ -248,9 +248,9 @@ func SubscriptionSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionSettingsRemnawave(w, r, manager, cfg)
+			handleGetSubscriptionSettingsV2RS(w, r, manager, cfg)
 		case http.MethodPatch:
-			handlePatchSubscriptionSettingsRemnawave(w, r, manager, cfg)
+			handlePatchSubscriptionSettingsV2RS(w, r, manager, cfg)
 		default:
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		}
@@ -307,7 +307,7 @@ func handleGetSubscriptionSettings(w http.ResponseWriter, r *http.Request, manag
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"settings": settings})
 }
 
-func handleGetSubscriptionSettingsRemnawave(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleGetSubscriptionSettingsV2RS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var settings SubscriptionSettings
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(r.Context(), `
@@ -340,7 +340,7 @@ func handleGetSubscriptionSettingsRemnawave(w http.ResponseWriter, r *http.Reque
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": apiSettings})
 }
 
-func handlePatchSubscriptionSettingsRemnawave(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handlePatchSubscriptionSettingsV2RS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SubscriptionSettingsUpdateRequestAPI
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)

@@ -41,8 +41,8 @@ type NodeUsers struct {
 	Users   []User `json:"users"`
 }
 
-// UsersHandler returns a list of users grouped by node from the database in JSON format.
-func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+// LegacyUsersNodeViewHandler returns a legacy node-grouped users view.
+func LegacyUsersNodeViewHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Начало обработки запроса UsersHandler")
 

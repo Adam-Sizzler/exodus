@@ -62,16 +62,16 @@ function Dashboard() {
     try {
       const [usersData, nodesData] = await Promise.all([
         usersApi.getAll().catch(() => ({ users: [] })),
-        nodesApi.getAllWithConfig().catch(() => ({ nodes: [] })),
+        nodesApi.getAllWithConfig().catch(() => ({ response: [] })),
       ]);
 
       const users = usersData.users || [];
-      const nodes = nodesData.nodes || [];
+      const nodes = Array.isArray(nodesData?.response) ? nodesData.response : [];
 
       const totalUsers = users.length;
       const activeUsers = users.filter((u) => u.status === 'ACTIVE').length;
       const totalUpload = 0;
-      const totalDownload = nodes.reduce((sum, node) => sum + (node.traffic_used_bytes || 0), 0);
+      const totalDownload = nodes.reduce((sum, node) => sum + (node.trafficUsedBytes || 0), 0);
 
       setStats({ totalUsers, activeUsers, totalUpload, totalDownload, totalNodes: nodes.length });
       setLoading(false);

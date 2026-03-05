@@ -31,7 +31,15 @@ function ConfigProfiles() {
     try {
       setLoading(true);
       const data = await configProfilesApi.getAll();
-      setProfiles(data.profiles || []);
+      const nextProfiles = Array.isArray(data?.response?.configProfiles)
+        ? data.response.configProfiles.map((profile) => ({
+          ...profile,
+          view_position: profile.viewPosition ?? 0,
+          created_at: profile.createdAt ?? null,
+          updated_at: profile.updatedAt ?? null,
+        }))
+        : [];
+      setProfiles(nextProfiles);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -318,7 +326,12 @@ function ConfigProfiles() {
     setDragIndex(null);
 
     try {
-      await configProfilesApi.reorder(reordered.map((profile) => profile.uuid));
+      await configProfilesApi.reorder(
+        reordered.map((profile, index) => ({
+          uuid: profile.uuid,
+          viewPosition: index,
+        }))
+      );
       setProfiles((prev) => prev.map((profile, index) => ({ ...profile, view_position: index })));
     } catch (err) {
       alert(`Failed to reorder profiles: ${err.message}`);

@@ -216,7 +216,7 @@ function Settings() {
     <div className="settings-layout">
       <div className="card settings-card">
         <div className="card-header">
-          <h2 className="card-title">Настройки Remnawave</h2>
+          <h2 className="card-title">Настройки v2ray-stat</h2>
         </div>
         <form className="card-body settings-form-grid" onSubmit={saveSettings}>
           <div className="settings-column">

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,118 +12,71 @@ import (
 
 	"v2ray-stat/backend/panel/config"
 	dbmanager "v2ray-stat/backend/panel/db/manager"
+	"v2ray-stat/backend/panel/dbutil"
 	"v2ray-stat/backend/panel/httpapi/shared"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// ConfigProfile represents a config profile entity for API responses.
-type ConfigProfile struct {
-	UUID         string          `json:"uuid"`
-	ViewPosition int             `json:"view_position"`
-	Name         string          `json:"name"`
-	Config       json.RawMessage `json:"config"` // JSON object for sing-box configuration
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
-}
+var errConfigProfileNotFound = errors.New("config profile not found")
 
-// ConfigProfileInbound represents an inbound extracted from config profile.
 type ConfigProfileInbound struct {
-	UUID        string          `json:"uuid"`
-	ProfileUUID string          `json:"profile_uuid"`
-	Tag         string          `json:"tag"`
-	Type        string          `json:"type"`
-	Network     *string         `json:"network,omitempty"`
-	Security    *string         `json:"security,omitempty"`
-	Port        *int            `json:"port,omitempty"`
-	RawInbound  json.RawMessage `json:"raw_inbound"`
+	UUID         string          `json:"uuid"`
+	ProfileUUID  string          `json:"profileUuid"`
+	Tag          string          `json:"tag"`
+	Type         string          `json:"type"`
+	Network      *string         `json:"network"`
+	Security     *string         `json:"security"`
+	Port         *int            `json:"port"`
+	RawInbound   json.RawMessage `json:"rawInbound"`
+	ActiveSquads []string        `json:"activeSquads"`
 }
 
-// ConfigProfileCreateRequest represents a request to create a new config profile.
-type ConfigProfileCreateRequest struct {
-	ViewPosition int             `json:"view_position"`
-	Name         string          `json:"name"`
-	Config       json.RawMessage `json:"config"` // JSON object for sing-box configuration
+type ConfigProfileNode struct {
+	UUID        string `json:"uuid"`
+	Name        string `json:"name"`
+	CountryCode string `json:"countryCode"`
 }
 
-// Validate validates the ConfigProfileCreateRequest fields.
-func (r *ConfigProfileCreateRequest) Validate() error {
-	if r.Name == "" {
-		return fmt.Errorf("name is required")
-	}
-
-	// Validate that config is valid JSON
-	if len(r.Config) == 0 {
-		return fmt.Errorf("config is required")
-	}
-
-	var jsonConfig interface{}
-	if err := json.Unmarshal(r.Config, &jsonConfig); err != nil {
-		return fmt.Errorf("config must be valid JSON")
-	}
-
-	return nil
+type ConfigProfile struct {
+	UUID         string                `json:"uuid"`
+	ViewPosition int                   `json:"viewPosition"`
+	Name         string                `json:"name"`
+	Config       json.RawMessage       `json:"config"`
+	Inbounds     []ConfigProfileInbound `json:"inbounds"`
+	Nodes        []ConfigProfileNode   `json:"nodes"`
+	CreatedAt    time.Time             `json:"createdAt"`
+	UpdatedAt    time.Time             `json:"updatedAt"`
 }
 
-// ConfigProfileUpdateRequest represents a partial update request for a config profile.
-// Only provided fields will be updated (PATCH semantics).
-type ConfigProfileUpdateRequest struct {
-	ViewPosition *int             `json:"view_position,omitempty"`
-	Name         *string          `json:"name,omitempty"`
-	Config       *json.RawMessage `json:"config,omitempty"` // JSON object for sing-box configuration
+type configProfileRecord struct {
+	UUID         string
+	ViewPosition int
+	Name         string
+	Config       json.RawMessage
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
-// Validate validates the ConfigProfileUpdateRequest fields.
-func (r *ConfigProfileUpdateRequest) Validate() error {
-	if r.Name != nil && *r.Name == "" {
-		return fmt.Errorf("name cannot be empty")
-	}
-
-	if r.Config != nil && len(*r.Config) > 0 {
-		var jsonConfig interface{}
-		if err := json.Unmarshal(*r.Config, &jsonConfig); err != nil {
-			return fmt.Errorf("config must be valid JSON")
-		}
-	}
-
-	return nil
+type createConfigProfileRequest struct {
+	Name   string          `json:"name"`
+	Config json.RawMessage `json:"config"`
 }
 
-// HasUpdates checks if any field is set for update.
-func (r *ConfigProfileUpdateRequest) HasUpdates() bool {
-	return r.ViewPosition != nil || r.Name != nil || r.Config != nil
+type updateConfigProfileRequest struct {
+	UUID   string           `json:"uuid"`
+	Name   *string          `json:"name,omitempty"`
+	Config *json.RawMessage `json:"config,omitempty"`
 }
 
-// scanConfigProfile scans a row into a ConfigProfile struct.
-func scanConfigProfile(scanner shared.RowScanner) (ConfigProfile, error) {
-	var cp ConfigProfile
-	var viewPosition sql.NullInt64
-	var configStr sql.NullString
-
-	err := scanner.Scan(
-		&cp.UUID,
-		&viewPosition,
-		&cp.Name,
-		&configStr,
-		&cp.CreatedAt,
-		&cp.UpdatedAt,
-	)
-	if err != nil {
-		return cp, err
-	}
-
-	if viewPosition.Valid {
-		cp.ViewPosition = int(viewPosition.Int64)
-	}
-
-	if configStr.Valid {
-		cp.Config = json.RawMessage(configStr.String)
-	}
-
-	return cp, nil
+type reorderConfigProfilesRequest struct {
+	Items []struct {
+		UUID         string `json:"uuid"`
+		ViewPosition int    `json:"viewPosition"`
+	} `json:"items"`
 }
 
-// ConfigProfilesHandler handles GET/POST /api/v1/config-profiles
 func ConfigProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -130,467 +84,735 @@ func ConfigProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			handleGetConfigProfiles(w, r, manager, cfg)
 		case http.MethodPost:
 			handleCreateConfigProfile(w, r, manager, cfg)
+		case http.MethodPatch:
+			handleUpdateConfigProfile(w, r, manager, cfg)
 		default:
-			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-// ConfigProfilesReorderHandler handles POST /api/v1/config-profiles/reorder
-func ConfigProfilesReorderHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req shared.ViewPositionReorderRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-			return
-		}
-		if err := req.Validate(); err != nil {
-			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-			return
-		}
-
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return shared.ApplyViewPositionReorder(r.Context(), db, "config_profiles", req.OrderedUUIDs, cfg)
-		})
-		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to reorder config profiles", err, cfg)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"message": "config profiles reordered",
-			"count":   len(req.OrderedUUIDs),
-		})
-	}
-}
-
-// handleGetConfigProfiles handles GET /api/v1/config-profiles
-func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	ctx := r.Context()
-	var profiles []ConfigProfile
-
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		query := `
-			SELECT uuid, view_position, name, config, created_at, updated_at
-			FROM config_profiles
-			ORDER BY view_position ASC, name ASC`
-
-		rows, err := db.QueryContext(ctx, query)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			cp, err := scanConfigProfile(rows)
-			if err != nil {
-				return err
-			}
-			profiles = append(profiles, cp)
-		}
-		return rows.Err()
-	})
-
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, cfg)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"profiles": profiles,
-		"count":    len(profiles),
-	})
-}
-
-// handleCreateConfigProfile handles POST /api/v1/config-profiles
-func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	var req ConfigProfileCreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-		return
-	}
-
-	// Validate required fields
-	if err := req.Validate(); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		return
-	}
-
-	// Generate UUID
-	profileUUID := uuid.New().String()
-
-	// Convert config JSON to string for storage
-	configStr := string(req.Config)
-
-	ctx := r.Context()
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		query := `
-			INSERT INTO config_profiles (
-				uuid, view_position, name, config, created_at, updated_at
-			) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-
-		_, err := db.ExecContext(ctx, query,
-			profileUUID, req.ViewPosition, req.Name, configStr)
-		if err != nil {
-			return err
-		}
-
-		// Sync inbounds after creating profile
-		_, err = syncConfigProfileInbounds(ctx, db, profileUUID, req.Config, cfg)
-		return err
-	})
-
-	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
-			return
-		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to create config profile", err, cfg)
-		return
-	}
-
-	// Return created profile UUID
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "config profile created",
-		"uuid":    profileUUID,
-	})
-}
-
-// ConfigProfileByUUIDHandler handles GET/PATCH/DELETE /api/v1/config-profiles/{uuid}
 func ConfigProfileByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/config-profiles/")
-		profileUUID := strings.TrimSpace(path)
-
+		path := trimConfigProfilesPath(r.URL.Path, "/")
+		if path == "" {
+			http.NotFound(w, r)
+			return
+		}
+		parts := strings.Split(path, "/")
+		profileUUID := parts[0]
 		if _, err := uuid.Parse(profileUUID); err != nil {
 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			return
+		}
+
+		if len(parts) == 2 && r.Method == http.MethodGet {
+			switch parts[1] {
+			case "inbounds":
+				handleGetConfigProfileInbounds(w, r, manager, cfg, profileUUID)
+			case "computed-config":
+				handleGetComputedConfigProfile(w, r, manager, cfg, profileUUID)
+			default:
+				http.NotFound(w, r)
+			}
+			return
+		}
+
+		if len(parts) != 1 {
+			http.NotFound(w, r)
 			return
 		}
 
 		switch r.Method {
 		case http.MethodGet:
 			handleGetConfigProfile(w, r, manager, cfg, profileUUID)
-		case http.MethodPatch:
-			handlePatchConfigProfile(w, r, manager, cfg, profileUUID)
 		case http.MethodDelete:
 			handleDeleteConfigProfile(w, r, manager, cfg, profileUUID)
 		default:
-			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func handleGetConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
-	var profile ConfigProfile
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		query := `SELECT uuid, view_position, name, config, created_at, updated_at
-				  FROM config_profiles WHERE uuid = ?`
-		row := db.QueryRowContext(r.Context(), query, profileUUID)
-		var scanErr error
-		profile, scanErr = scanConfigProfile(row)
-		return scanErr
-	})
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
-		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, cfg)
+func ConfigProfilesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
 		}
+
+		path := trimConfigProfilesPath(r.URL.Path, "/actions/")
+		switch path {
+		case "reorder":
+			handleReorderConfigProfiles(w, r, manager, cfg)
+		default:
+			http.NotFound(w, r)
+		}
+	}
+}
+
+func ConfigProfilesInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		handleGetAllInbounds(w, r, manager, cfg)
+	}
+}
+
+func trimConfigProfilesPath(path string, suffix string) string {
+	for _, prefix := range []string{"/api/config-profiles", "/api/v1/config-profiles"} {
+		if strings.HasPrefix(path, prefix+suffix) {
+			return strings.Trim(strings.TrimPrefix(path, prefix+suffix), "/")
+		}
+	}
+	return strings.Trim(path, "/")
+}
+
+func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	records, err := getAllConfigProfileRecords(r.Context(), manager)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, cfg)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{"profile": profile})
+	response, err := buildConfigProfileResponses(r.Context(), manager, records)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to build config profiles response", err, cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"total":          len(response),
+			"configProfiles": response,
+		},
+	})
 }
 
-func handlePatchConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
-	var req ConfigProfileUpdateRequest
+func handleGetConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
+	record, err := getConfigProfileRecordByUUID(r.Context(), manager, profileUUID)
+	if err != nil {
+		if errors.Is(err, errConfigProfileNotFound) {
+			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, cfg)
+		return
+	}
+
+	response, err := buildConfigProfileResponses(r.Context(), manager, []configProfileRecord{record})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, cfg)
+		return
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
+}
+
+func handleGetComputedConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
+	handleGetConfigProfile(w, r, manager, cfg, profileUUID)
+}
+
+func handleGetConfigProfileInbounds(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
+	if _, err := getConfigProfileRecordByUUID(r.Context(), manager, profileUUID); err != nil {
+		if errors.Is(err, errConfigProfileNotFound) {
+			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, cfg)
+		return
+	}
+
+	inbounds, err := getConfigProfileInboundsMap(r.Context(), manager, []string{profileUUID})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile inbounds", err, cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"total":    len(inbounds[profileUUID]),
+			"inbounds": inbounds[profileUUID],
+		},
+	})
+}
+
+func handleGetAllInbounds(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	records, err := getAllConfigProfileRecords(r.Context(), manager)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, cfg)
+		return
+	}
+	profileUUIDs := make([]string, 0, len(records))
+	for _, record := range records {
+		profileUUIDs = append(profileUUIDs, record.UUID)
+	}
+	inboundsMap, err := getConfigProfileInboundsMap(r.Context(), manager, profileUUIDs)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch inbounds", err, cfg)
+		return
+	}
+	all := make([]ConfigProfileInbound, 0)
+	for _, profileUUID := range profileUUIDs {
+		all = append(all, inboundsMap[profileUUID]...)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"total":    len(all),
+			"inbounds": all,
+		},
+	})
+}
+
+func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req createConfigProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
-
-	if err := req.Validate(); err != nil {
+	if err := validateCreateConfigProfileRequest(req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
-	if !req.HasUpdates() {
-		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+	profileUUID := uuid.NewString()
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		if _, err := tx.ExecContext(r.Context(), `
+			INSERT INTO config_profiles (uuid, name, config, created_at, updated_at)
+			VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`, profileUUID, strings.TrimSpace(req.Name), req.Config); err != nil {
+			_ = tx.Rollback()
+			return mapConfigProfileWriteError(err)
+		}
+
+		if _, err := syncConfigProfileInbounds(r.Context(), tx, profileUUID, req.Config, cfg); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		return tx.Commit()
+	})
+	if err != nil {
+		handleConfigProfileWriteError(w, err, cfg)
 		return
 	}
 
-	var clauses []string
-	var args []interface{}
+	handleGetConfigProfile(w, r, manager, cfg, profileUUID)
+}
 
-	// Dynamic clause building
-	add := func(col string, val interface{}) {
-		clauses = append(clauses, fmt.Sprintf("%s = ?", col))
-		args = append(args, val)
-	}
-
-	if req.ViewPosition != nil {
-		add("view_position", *req.ViewPosition)
-	}
-	if req.Name != nil {
-		add("name", *req.Name)
-	}
-	if req.Config != nil {
-		add("config", string(*req.Config))
-	}
-
-	if len(clauses) == 0 {
-		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+func handleUpdateConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req updateConfigProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
-
-	args = append(args, profileUUID)
-	query := fmt.Sprintf("UPDATE config_profiles SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", strings.Join(clauses, ", "))
-
-	ctx := r.Context()
-	configChanged := req.Config != nil
-	var newConfig json.RawMessage
-	if configChanged {
-		newConfig = *req.Config
+	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+		return
+	}
+	if err := validateUpdateConfigProfileRequest(req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
 	}
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, err := db.ExecContext(ctx, query, args...)
+		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
 		}
-		rowsAffected, err := result.RowsAffected()
+
+		clauses := make([]string, 0)
+		args := make([]any, 0)
+		add := func(column string, value any) {
+			clauses = append(clauses, fmt.Sprintf("%s = ?", column))
+			args = append(args, value)
+		}
+
+		if req.Name != nil {
+			add("name", strings.TrimSpace(*req.Name))
+		}
+		if req.Config != nil {
+			add("config", *req.Config)
+		}
+
+		if len(clauses) == 0 {
+			_ = tx.Rollback()
+			return fmt.Errorf("no fields to update")
+		}
+
+		args = append(args, req.UUID)
+		result, err := tx.ExecContext(r.Context(), fmt.Sprintf(`
+			UPDATE config_profiles
+			SET %s, updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = ?
+		`, strings.Join(clauses, ", ")), args...)
 		if err != nil {
+			_ = tx.Rollback()
+			return mapConfigProfileWriteError(err)
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			_ = tx.Rollback()
 			return err
 		}
-		if rowsAffected == 0 {
-			return sql.ErrNoRows
+		if rows == 0 {
+			_ = tx.Rollback()
+			return errConfigProfileNotFound
 		}
 
-		// Sync inbounds if config was updated
-		if configChanged {
-			_, err = syncConfigProfileInbounds(ctx, db, profileUUID, newConfig, cfg)
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
-		} else {
-			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-				shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
-			} else {
-				shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+		if req.Config != nil {
+			if _, err := syncConfigProfileInbounds(r.Context(), tx, req.UUID, *req.Config, cfg); err != nil {
+				_ = tx.Rollback()
+				return err
 			}
 		}
+
+		return tx.Commit()
+	})
+	if err != nil {
+		handleConfigProfileWriteError(w, err, cfg)
 		return
 	}
 
-	handleGetConfigProfile(w, r, manager, cfg, profileUUID) // Return updated profile
+	handleGetConfigProfile(w, r, manager, cfg, req.UUID)
 }
 
 func handleDeleteConfigProfile(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, profileUUID string) {
-	ctx := r.Context()
-
-	// Get profile name for logging
-	var profileName string
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, "SELECT name FROM config_profiles WHERE uuid = ?", profileUUID).Scan(&profileName)
-	})
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
-		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to find config profile", err, cfg)
+		result, err := db.ExecContext(r.Context(), `DELETE FROM config_profiles WHERE uuid = ?`, profileUUID)
+		if err != nil {
+			return err
 		}
-		return
-	}
-
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(ctx, "DELETE FROM config_profiles WHERE uuid = ?", profileUUID)
-		return err
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			return errConfigProfileNotFound
+		}
+		return nil
 	})
-
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete config profile", err, cfg)
+		handleConfigProfileWriteError(w, err, cfg)
 		return
 	}
-
-	cfg.Logger.Info("Config profile deleted", "uuid", profileUUID, "name", profileName)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "config profile deleted",
-		"uuid":    profileUUID,
-		"name":    profileName,
-	})
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
-// parseConfigInbounds extracts inbounds from a config JSON and returns them as ConfigProfileInbound structs.
-// The tag field is used as the unique identifier for inbounds within a profile.
+func handleReorderConfigProfiles(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req reorderConfigProfilesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if len(req.Items) == 0 {
+		shared.SendError(w, http.StatusBadRequest, "items cannot be empty", nil, cfg)
+		return
+	}
+	for _, item := range req.Items {
+		if _, err := uuid.Parse(item.UUID); err != nil {
+			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			return
+		}
+	}
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+		for _, item := range req.Items {
+			if _, err := tx.ExecContext(r.Context(), `UPDATE config_profiles SET view_position = ? WHERE uuid = ?`, item.ViewPosition, item.UUID); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(r.Context(), `SELECT setval('config_profiles_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM config_profiles) + 1)`); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		return tx.Commit()
+	})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to reorder config profiles", err, cfg)
+		return
+	}
+
+	handleGetConfigProfiles(w, r, manager, cfg)
+}
+
+func validateCreateConfigProfileRequest(req createConfigProfileRequest) error {
+	name := strings.TrimSpace(req.Name)
+	if len(name) < 2 || len(name) > 30 {
+		return fmt.Errorf("name must be between 2 and 30 characters")
+	}
+	if len(req.Config) == 0 {
+		return fmt.Errorf("config is required")
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal(req.Config, &parsed); err != nil {
+		return fmt.Errorf("config must be valid JSON")
+	}
+	return nil
+}
+
+func validateUpdateConfigProfileRequest(req updateConfigProfileRequest) error {
+	if req.Name == nil && req.Config == nil {
+		return fmt.Errorf("no fields to update")
+	}
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if len(name) < 2 || len(name) > 30 {
+			return fmt.Errorf("name must be between 2 and 30 characters")
+		}
+	}
+	if req.Config != nil {
+		var parsed map[string]any
+		if err := json.Unmarshal(*req.Config, &parsed); err != nil {
+			return fmt.Errorf("config must be valid JSON")
+		}
+	}
+	return nil
+}
+
+func getAllConfigProfileRecords(ctx context.Context, manager *dbmanager.DatabaseManager) ([]configProfileRecord, error) {
+	records := make([]configProfileRecord, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT uuid, view_position, name, config, created_at, updated_at
+			FROM config_profiles
+			ORDER BY view_position ASC, name ASC
+		`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			record, scanErr := scanConfigProfileRecord(rows)
+			if scanErr != nil {
+				return scanErr
+			}
+			records = append(records, record)
+		}
+		return rows.Err()
+	})
+	return records, err
+}
+
+func getConfigProfileRecordByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, profileUUID string) (configProfileRecord, error) {
+	var record configProfileRecord
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		row := db.QueryRowContext(ctx, `
+			SELECT uuid, view_position, name, config, created_at, updated_at
+			FROM config_profiles
+			WHERE uuid = ?
+		`, profileUUID)
+		var scanErr error
+		record, scanErr = scanConfigProfileRecord(row)
+		if errors.Is(scanErr, sql.ErrNoRows) {
+			return errConfigProfileNotFound
+		}
+		return scanErr
+	})
+	return record, err
+}
+
+func scanConfigProfileRecord(scanner shared.RowScanner) (configProfileRecord, error) {
+	var record configProfileRecord
+	var viewPosition sql.NullInt64
+	var configRaw []byte
+	if err := scanner.Scan(&record.UUID, &viewPosition, &record.Name, &configRaw, &record.CreatedAt, &record.UpdatedAt); err != nil {
+		return record, err
+	}
+	if viewPosition.Valid {
+		record.ViewPosition = int(viewPosition.Int64)
+	}
+	record.Config = json.RawMessage(configRaw)
+	return record, nil
+}
+
+func buildConfigProfileResponses(ctx context.Context, manager *dbmanager.DatabaseManager, records []configProfileRecord) ([]ConfigProfile, error) {
+	profileUUIDs := make([]string, 0, len(records))
+	for _, record := range records {
+		profileUUIDs = append(profileUUIDs, record.UUID)
+	}
+
+	inboundsMap, err := getConfigProfileInboundsMap(ctx, manager, profileUUIDs)
+	if err != nil {
+		return nil, err
+	}
+	nodesMap, err := getConfigProfileNodesMap(ctx, manager, profileUUIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]ConfigProfile, 0, len(records))
+	for _, record := range records {
+		response = append(response, ConfigProfile{
+			UUID:         record.UUID,
+			ViewPosition: record.ViewPosition,
+			Name:         record.Name,
+			Config:       record.Config,
+			Inbounds:     inboundsMap[record.UUID],
+			Nodes:        nodesMap[record.UUID],
+			CreatedAt:    record.CreatedAt,
+			UpdatedAt:    record.UpdatedAt,
+		})
+	}
+	return response, nil
+}
+
+func getConfigProfileInboundsMap(ctx context.Context, manager *dbmanager.DatabaseManager, profileUUIDs []string) (map[string][]ConfigProfileInbound, error) {
+	result := make(map[string][]ConfigProfileInbound, len(profileUUIDs))
+	if len(profileUUIDs) == 0 {
+		return result, nil
+	}
+
+	activeSquadsByInbound := make(map[string][]string)
+	if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT isi.inbound_uuid, isi.internal_squad_uuid
+			FROM internal_squad_inbounds isi
+			JOIN config_profile_inbounds cpi ON cpi.uuid = isi.inbound_uuid
+			WHERE cpi.profile_uuid = ANY(?)
+		`, profileUUIDs)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var inboundUUID, squadUUID string
+			if err := rows.Scan(&inboundUUID, &squadUUID); err != nil {
+				return err
+			}
+			activeSquadsByInbound[inboundUUID] = append(activeSquadsByInbound[inboundUUID], squadUUID)
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
+	}
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT uuid, profile_uuid, tag, type, network, security, port, raw_inbound
+			FROM config_profile_inbounds
+			WHERE profile_uuid = ANY(?)
+			ORDER BY tag ASC
+		`, profileUUIDs)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var (
+				item     ConfigProfileInbound
+				network  sql.NullString
+				security sql.NullString
+				port     sql.NullInt64
+				raw      []byte
+			)
+			if err := rows.Scan(&item.UUID, &item.ProfileUUID, &item.Tag, &item.Type, &network, &security, &port, &raw); err != nil {
+				return err
+			}
+			if network.Valid {
+				item.Network = &network.String
+			}
+			if security.Valid {
+				item.Security = &security.String
+			}
+			if port.Valid {
+				value := int(port.Int64)
+				item.Port = &value
+			}
+			item.RawInbound = json.RawMessage(raw)
+			item.ActiveSquads = dedupeStrings(activeSquadsByInbound[item.UUID])
+			result[item.ProfileUUID] = append(result[item.ProfileUUID], item)
+		}
+		return rows.Err()
+	})
+
+	return result, err
+}
+
+func getConfigProfileNodesMap(ctx context.Context, manager *dbmanager.DatabaseManager, profileUUIDs []string) (map[string][]ConfigProfileNode, error) {
+	result := make(map[string][]ConfigProfileNode, len(profileUUIDs))
+	if len(profileUUIDs) == 0 {
+		return result, nil
+	}
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT active_config_profile_uuid, uuid, name, country_code
+			FROM nodes
+			WHERE active_config_profile_uuid = ANY(?)
+			ORDER BY view_position ASC, name ASC
+		`, profileUUIDs)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var profileUUID string
+			var node ConfigProfileNode
+			if err := rows.Scan(&profileUUID, &node.UUID, &node.Name, &node.CountryCode); err != nil {
+				return err
+			}
+			result[profileUUID] = append(result[profileUUID], node)
+		}
+		return rows.Err()
+	})
+
+	return result, err
+}
+
+func handleConfigProfileWriteError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {
+	switch {
+	case errors.Is(err, errConfigProfileNotFound):
+		shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+	case strings.Contains(err.Error(), "no fields to update"):
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+	default:
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			shared.SendError(w, http.StatusConflict, "config profile name already exists or inbound tags are not unique", nil, cfg)
+			return
+		}
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			shared.SendError(w, http.StatusConflict, "config profile name already exists or inbound tags are not unique", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to write config profile", err, cfg)
+	}
+}
+
+func mapConfigProfileWriteError(err error) error {
+	return err
+}
+
 func parseConfigInbounds(profileUUID string, configJSON json.RawMessage) ([]ConfigProfileInbound, error) {
-	// Parse the config JSON to extract inbounds
-	var configData map[string]interface{}
+	var configData map[string]any
 	if err := json.Unmarshal(configJSON, &configData); err != nil {
 		return nil, fmt.Errorf("failed to parse config JSON: %w", err)
 	}
 
-	// Get inbounds array
 	inboundsRaw, ok := configData["inbounds"]
 	if !ok {
-		// No inbounds in config, return empty slice
 		return []ConfigProfileInbound{}, nil
 	}
-
-	inboundsArray, ok := inboundsRaw.([]interface{})
+	inboundsArray, ok := inboundsRaw.([]any)
 	if !ok {
 		return nil, fmt.Errorf("inbounds must be an array")
 	}
 
-	var inbounds []ConfigProfileInbound
-	seenTags := make(map[string]bool)
+	seenTags := make(map[string]struct{})
+	result := make([]ConfigProfileInbound, 0, len(inboundsArray))
 
 	for _, inboundRaw := range inboundsArray {
-		inboundMap, ok := inboundRaw.(map[string]interface{})
+		inboundMap, ok := inboundRaw.(map[string]any)
 		if !ok {
 			continue
 		}
 
-		// Extract tag (required, unique within profile)
-		tagRaw, ok := inboundMap["tag"]
-		if !ok {
-			continue // Skip inbounds without tag
-		}
-		tag, ok := tagRaw.(string)
-		if !ok || tag == "" {
+		tag, _ := inboundMap["tag"].(string)
+		if strings.TrimSpace(tag) == "" {
 			continue
 		}
-
-		// Check for duplicate tags within the same profile
-		if seenTags[tag] {
-			continue // Skip duplicate tags, keep first occurrence
+		if _, ok := seenTags[tag]; ok {
+			continue
 		}
-		seenTags[tag] = true
+		seenTags[tag] = struct{}{}
 
-		// Extract type/protocol
-		typeStr := ""
-		if typeRaw, ok := inboundMap["type"].(string); ok {
-			typeStr = typeRaw
-		} else if protocolRaw, ok := inboundMap["protocol"].(string); ok {
-			typeStr = protocolRaw
+		item := ConfigProfileInbound{
+			UUID:        uuid.NewString(),
+			ProfileUUID: profileUUID,
+			Tag:         tag,
+			ActiveSquads: []string{},
 		}
-
-		// Extract network
-		var network *string
-		if networkRaw, ok := inboundMap["network"].(string); ok && networkRaw != "" {
-			network = &networkRaw
+		if typeValue, ok := inboundMap["type"].(string); ok {
+			item.Type = typeValue
+		} else if protocolValue, ok := inboundMap["protocol"].(string); ok {
+			item.Type = protocolValue
 		}
-
-		// Extract security
-		var security *string
-		if securityRaw, ok := inboundMap["security"].(string); ok && securityRaw != "" {
-			security = &securityRaw
+		if networkValue, ok := inboundMap["network"].(string); ok && networkValue != "" {
+			item.Network = &networkValue
 		}
-
-		// Extract port
-		var port *int
-		if portRaw, ok := inboundMap["listen_port"].(float64); ok {
-			p := int(portRaw)
-			port = &p
-		} else if portRaw, ok := inboundMap["port"].(float64); ok {
-			p := int(portRaw)
-			port = &p
+		if securityValue, ok := inboundMap["security"].(string); ok && securityValue != "" {
+			item.Security = &securityValue
 		}
-
-		// Convert inbound back to JSON for raw_inbound storage
+		if portValue, ok := inboundMap["listen_port"].(float64); ok {
+			p := int(portValue)
+			item.Port = &p
+		} else if portValue, ok := inboundMap["port"].(float64); ok {
+			p := int(portValue)
+			item.Port = &p
+		}
 		rawInbound, err := json.Marshal(inboundMap)
 		if err != nil {
 			continue
 		}
-
-		inbounds = append(inbounds, ConfigProfileInbound{
-			UUID:        uuid.New().String(),
-			ProfileUUID: profileUUID,
-			Tag:         tag,
-			Type:        typeStr,
-			Network:     network,
-			Security:    security,
-			Port:        port,
-			RawInbound:  rawInbound,
-		})
+		item.RawInbound = rawInbound
+		result = append(result, item)
 	}
 
-	return inbounds, nil
+	return result, nil
 }
 
-// syncConfigProfileInbounds synchronizes inbounds for a config profile.
-// It performs:
-// 1. Delete existing inbounds for the profile (CASCADE handles related tables)
-// 2. Parse new inbounds from config JSON
-// 3. Insert new inbounds
-// Returns the number of inbounds synced.
-func syncConfigProfileInbounds(ctx context.Context, db dbmanager.DBExecutor, profileUUID string, configJSON json.RawMessage, cfg *config.BackendConfig) (int, error) {
-	// Parse inbounds from config
+func syncConfigProfileInbounds(ctx context.Context, db dbmanager.TxExecutor, profileUUID string, configJSON json.RawMessage, cfg *config.BackendConfig) (int, error) {
 	inbounds, err := parseConfigInbounds(profileUUID, configJSON)
 	if err != nil {
-		cfg.Logger.Error("Failed to parse config inbounds", "profile_uuid", profileUUID, "error", err)
-		return 0, fmt.Errorf("failed to parse inbounds: %w", err)
+		return 0, err
 	}
 
-	// Delete existing inbounds for this profile (CASCADE handles related tables)
-	_, err = db.ExecContext(ctx, "DELETE FROM config_profile_inbounds WHERE profile_uuid = ?", profileUUID)
-	if err != nil {
-		cfg.Logger.Error("Failed to delete existing inbounds", "profile_uuid", profileUUID, "error", err)
-		return 0, fmt.Errorf("failed to delete existing inbounds: %w", err)
+	if _, err := db.ExecContext(ctx, `DELETE FROM config_profile_inbounds WHERE profile_uuid = ?`, profileUUID); err != nil {
+		return 0, err
 	}
 
-	// Insert new inbounds
 	for _, inbound := range inbounds {
-		query := `
-			INSERT INTO config_profile_inbounds (
-				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-
-		var networkVal, securityVal interface{}
+		var networkVal, securityVal, portVal any
 		if inbound.Network != nil {
 			networkVal = *inbound.Network
 		}
 		if inbound.Security != nil {
 			securityVal = *inbound.Security
 		}
-		var portVal interface{}
 		if inbound.Port != nil {
 			portVal = *inbound.Port
 		}
 
-		_, err := db.ExecContext(ctx, query,
-			inbound.UUID,
-			inbound.ProfileUUID,
-			inbound.Tag,
-			inbound.Type,
-			networkVal,
-			securityVal,
-			portVal,
-			inbound.RawInbound,
-		)
-		if err != nil {
-			cfg.Logger.Error("Failed to insert inbound", "profile_uuid", profileUUID, "tag", inbound.Tag, "error", err)
-			return 0, fmt.Errorf("failed to insert inbound %s: %w", inbound.Tag, err)
+		if _, err := db.ExecContext(ctx, `
+			INSERT INTO config_profile_inbounds (
+				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`, inbound.UUID, inbound.ProfileUUID, inbound.Tag, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound); err != nil {
+			return 0, err
 		}
 	}
 
-	cfg.Logger.Debug("Synced config profile inbounds", "profile_uuid", profileUUID, "inbounds_count", len(inbounds))
+	if cfg != nil && cfg.Logger != nil {
+		cfg.Logger.Debug("Synced config profile inbounds", "profile_uuid", profileUUID, "inbounds_count", len(inbounds))
+	}
 	return len(inbounds), nil
 }
+
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+func _unused(_ context.Context, _ dbutil.StringArray) {}

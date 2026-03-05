@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { configProfilesApi } from '../api';
 import AppSelect from './AppSelect';
 
-const API_SCHEMAS = ['http', 'https', 'grpc'];
-
 const parseConfigProfileInbounds = (profile) => {
   if (!profile || typeof profile !== 'object') {
     return [];
@@ -37,7 +35,7 @@ const DEFAULT_FORM_DATA = {
   api_schema: 'grpc',
   api_path: '',
   is_disabled: false,
-  consumption_multiplier: 100,
+  consumption_multiplier: 1,
   is_traffic_tracking_active: true,
   traffic_reset_day: 1,
   traffic_limit_bytes: 0,
@@ -45,6 +43,7 @@ const DEFAULT_FORM_DATA = {
   country_code: '',
   tags: [],
   active_config_profile_uuid: '',
+  active_inbound_uuids: [],
   provider_uuid: ''
 };
 
@@ -73,7 +72,7 @@ const buildFormDataFromNode = (node) => {
     api_schema: node.api_schema ?? 'grpc',
     api_path: node.api_path ?? '',
     is_disabled: Boolean(node.is_disabled),
-    consumption_multiplier: node.consumption_multiplier ?? 100,
+    consumption_multiplier: node.consumption_multiplier ?? 1,
     is_traffic_tracking_active: node.is_traffic_tracking_active ?? true,
     traffic_reset_day: node.traffic_reset_day ?? 1,
     traffic_limit_bytes: node.traffic_limit_bytes ?? 0,
@@ -81,6 +80,7 @@ const buildFormDataFromNode = (node) => {
     country_code: node.country_code ?? '',
     tags: parseTags(node.tags),
     active_config_profile_uuid: node.active_config_profile_uuid ?? '',
+    active_inbound_uuids: Array.isArray(node.active_inbounds) ? node.active_inbounds.map((inbound) => inbound.uuid).filter(Boolean) : [],
     provider_uuid: node.provider_uuid ?? ''
   };
 };
@@ -133,44 +133,79 @@ function NodeModal({ node, onClose, onSave }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const profileUuid = String(formData.active_config_profile_uuid || '').trim();
+    const activeInbounds = (formData.active_inbound_uuids || []).filter(Boolean);
 
-    const submitData = { ...formData };
-    if (submitData.active_config_profile_uuid === '') {
-      submitData.active_config_profile_uuid = null;
+    if (!profileUuid) {
+      alert('Выберите config profile');
+      return;
     }
-    if (submitData.provider_uuid === '') {
-      submitData.provider_uuid = null;
+    if (activeInbounds.length === 0) {
+      alert('Выберите хотя бы один inbound');
+      return;
     }
 
-    let payload = submitData;
+    const normalizedPayload = {
+      name: String(formData.name || '').trim(),
+      address: String(formData.address || '').trim(),
+      port: Number(formData.port) > 0 ? Number(formData.port) : undefined,
+      apiSchema: String(formData.api_schema || '').trim() || 'grpc',
+      apiPath: String(formData.api_path || '').trim(),
+      isTrafficTrackingActive: !!formData.is_traffic_tracking_active,
+      trafficLimitBytes: Math.max(0, Number(formData.traffic_limit_bytes) || 0),
+      notifyPercent: Math.max(0, Math.min(100, Number(formData.notify_percent) || 0)),
+      trafficResetDay: Math.max(1, Math.min(31, Number(formData.traffic_reset_day) || 1)),
+      countryCode: String(formData.country_code || '').trim().toUpperCase() || 'XX',
+      consumptionMultiplier: Number(formData.consumption_multiplier) || 0,
+      configProfile: {
+        activeConfigProfileUuid: profileUuid,
+        activeInbounds,
+      },
+      providerUuid: String(formData.provider_uuid || '').trim() || null,
+      tags: parseTags(formData.tags).map((tag) => tag.toUpperCase()),
+    };
+
+    let payload = { ...normalizedPayload };
     if (node) {
+      const previousInboundUUIDs = Array.isArray(node.active_inbounds) ? node.active_inbounds.map((inbound) => inbound.uuid).filter(Boolean) : [];
+      const previousPayload = {
+        name: node.name ?? '',
+        address: node.address ?? '',
+        port: node.port ?? undefined,
+        apiSchema: node.api_schema ?? 'grpc',
+        apiPath: node.api_path ?? '',
+        isTrafficTrackingActive: node.is_traffic_tracking_active ?? true,
+        trafficLimitBytes: node.traffic_limit_bytes ?? 0,
+        notifyPercent: node.notify_percent ?? 0,
+        trafficResetDay: node.traffic_reset_day ?? 1,
+        countryCode: node.country_code ?? 'XX',
+        consumptionMultiplier: node.consumption_multiplier ?? 1,
+        configProfile: {
+          activeConfigProfileUuid: node.active_config_profile_uuid ?? '',
+          activeInbounds: previousInboundUUIDs,
+        },
+        providerUuid: node.provider_uuid ?? null,
+        tags: parseTags(node.tags).map((tag) => tag.toUpperCase()),
+      };
+
       payload = {};
-      Object.keys(submitData).forEach((key) => {
-        let previousValue = node[key];
-        if (key === 'is_traffic_tracking_active' && previousValue === undefined) {
-          previousValue = true;
-        }
-        if (key === 'tags') {
-          previousValue = parseTags(previousValue);
-        }
-        if (key === 'active_config_profile_uuid' || key === 'provider_uuid') {
-          previousValue = previousValue || null;
-        }
-
-        const currentValue = submitData[key];
-        const changed = Array.isArray(currentValue)
-          ? JSON.stringify(currentValue) !== JSON.stringify(previousValue)
-          : currentValue !== previousValue;
-
+      Object.entries(normalizedPayload).forEach(([key, value]) => {
+        const previousValue = previousPayload[key];
+        const changed = typeof value === 'object' && value !== null
+          ? JSON.stringify(value) !== JSON.stringify(previousValue)
+          : value !== previousValue;
         if (changed) {
-          payload[key] = currentValue;
+          payload[key] = value;
         }
       });
     }
 
     try {
       setSavingNode(true);
-      await onSave(payload);
+      await onSave({
+        payload,
+        desiredDisabled: !!formData.is_disabled,
+      });
     } finally {
       setSavingNode(false);
     }
@@ -200,7 +235,32 @@ function NodeModal({ node, onClose, onSave }) {
   }, [selectedProfileInbounds]);
 
   const handleProfileChangeClick = () => {
-    // intentionally empty by request
+    // keep button for current layout
+  };
+
+  const handleProfileSelect = (profileUUID) => {
+    const nextProfile = configProfiles.find((profile) => profile.uuid === profileUUID) || null;
+    const nextInbounds = parseConfigProfileInbounds(nextProfile).map((inbound) => inbound.uuid).filter(Boolean);
+    setFormData((prev) => ({
+      ...prev,
+      active_config_profile_uuid: profileUUID,
+      active_inbound_uuids: nextInbounds,
+    }));
+  };
+
+  const handleInboundToggle = (inboundUUID, checked) => {
+    setFormData((prev) => {
+      const current = new Set(prev.active_inbound_uuids || []);
+      if (checked) {
+        current.add(inboundUUID);
+      } else {
+        current.delete(inboundUUID);
+      }
+      return {
+        ...prev,
+        active_inbound_uuids: Array.from(current),
+      };
+    });
   };
 
   return (
@@ -266,32 +326,27 @@ function NodeModal({ node, onClose, onSave }) {
                     />
                   </div>
 
-                  <div className="user-create-inline-row">
-                    <div className="form-group">
-                      <label className="form-label">Порт</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={formData.port}
-                        onChange={(event) => handleChange('port', parseInt(event.target.value, 10) || 0)}
-                        min="1"
-                        max="65535"
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label className="form-label">Порт</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.port}
+                      onChange={(event) => handleChange('port', parseInt(event.target.value, 10) || 0)}
+                      min="1"
+                      max="65535"
+                    />
+                  </div>
 
-                    <div className="form-group">
-                      <label className="form-label">API Schema</label>
-                      <AppSelect
-                        value={formData.api_schema}
-                        onChange={(event) => handleChange('api_schema', event.target.value)}
-                      >
-                        {API_SCHEMAS.map((schema) => (
-                          <option key={schema} value={schema}>
-                            {schema}
-                          </option>
-                        ))}
-                      </AppSelect>
-                    </div>
+                  <div className="form-group">
+                    <label className="form-label">API Schema</label>
+                    <input
+                      type="text"
+                      className="form-input monospace-field"
+                      value={formData.api_schema}
+                      onChange={(event) => handleChange('api_schema', event.target.value)}
+                      placeholder="grpc"
+                    />
                   </div>
 
                   <div className="form-group">
@@ -301,7 +356,7 @@ function NodeModal({ node, onClose, onSave }) {
                       className="form-input monospace-field"
                       value={formData.api_path}
                       onChange={(event) => handleChange('api_path', event.target.value)}
-                      placeholder="/api/v1"
+                      placeholder="/grpc"
                     />
                   </div>
 
@@ -411,6 +466,44 @@ function NodeModal({ node, onClose, onSave }) {
                       <p className="node-profile-empty">Профиль не выбран</p>
                     )}
                   </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Config Profile</label>
+                    <AppSelect
+                      value={formData.active_config_profile_uuid}
+                      onChange={(event) => handleProfileSelect(event.target.value)}
+                    >
+                      <option value="">Выберите профиль</option>
+                      {configProfiles.map((profile) => (
+                        <option key={profile.uuid} value={profile.uuid}>
+                          {profile.name}
+                        </option>
+                      ))}
+                    </AppSelect>
+                  </div>
+
+                  {selectedProfileInbounds.length > 0 ? (
+                    <div className="form-group">
+                      <label className="form-label">Active Inbounds</label>
+                      <div className="node-profile-pill-list">
+                        {selectedProfileInbounds.map((inbound) => {
+                          const inboundUUID = inbound?.uuid;
+                          const inboundLabel = inbound?.tag || inboundUUID || 'Inbound';
+                          const checked = (formData.active_inbound_uuids || []).includes(inboundUUID);
+                          return (
+                            <label key={inboundUUID} className="form-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(event) => handleInboundToggle(inboundUUID, event.target.checked)}
+                              />
+                              <span>{inboundLabel}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
 
                   <button type="button" className="node-profile-edit-btn" onClick={handleProfileChangeClick}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
