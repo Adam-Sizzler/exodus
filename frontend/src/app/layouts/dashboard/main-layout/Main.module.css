@@ -1,0 +1,149 @@
+.sidebarWrapper {
+    z-index: 200;
+    margin-left: 0.75rem;
+    margin-bottom: 0.75rem;
+    margin-top: 0.75rem;
+    height: calc(
+        100dvh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+
+    background: linear-gradient(
+        135deg,
+        var(--mantine-color-dark-8) 0%,
+        var(--mantine-color-dark-7) 100%
+    );
+
+    box-shadow:
+        0 1px 1px hsl(0deg 0% 0% / 0.075),
+        0 2px 2px hsl(0deg 0% 0% / 0.075),
+        0 4px 4px hsl(0deg 0% 0% / 0.075),
+        0 8px 8px hsl(0deg 0% 0% / 0.075),
+        0 16px 16px hsl(0deg 0% 0% / 0.075);
+
+    border-radius: var(--mantine-radius-lg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    @supports (padding: env(safe-area-inset-top)) {
+        top: env(safe-area-inset-top);
+    }
+}
+
+.sidebarWrapperClosedDesktop {
+    margin-left: 0;
+    box-shadow: none;
+}
+
+.sidebarWrapperClosedMobile {
+    margin-left: 0;
+    box-shadow: none;
+}
+
+.sidebarWrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: var(--mantine-radius-lg);
+    background: light-dark(
+        radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 20% 20%, rgba(6, 182, 212, 0.1) 0%, transparent 50%)
+    );
+    pointer-events: none;
+    z-index: -1;
+}
+
+.logoWrapper {
+    padding: var(--mantine-spacing-md) var(--mantine-spacing-xl) var(--mantine-spacing-xs)
+        var(--mantine-spacing-xl);
+}
+
+.header {
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    background-color: transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    @supports (padding: env(safe-area-inset-top)) {
+        top: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        height: calc(64px + env(safe-area-inset-top, 0px));
+        z-index: 10;
+    }
+}
+
+.logoSection {
+    position: relative;
+    padding-bottom: var(--mantine-spacing-xs);
+    border-bottom: 1px solid light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.06));
+}
+
+.logoSection::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: var(--mantine-spacing-md);
+    right: var(--mantine-spacing-md);
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(6, 182, 212, 0.3) 50%,
+        transparent 100%
+    );
+}
+
+.footerSection {
+    position: relative;
+    padding-bottom: 0px;
+    margin-bottom: 0px;
+    border-top: 1px solid light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.06));
+    margin-bottom: var(--mantine-spacing-md);
+}
+
+.footerSection::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: var(--mantine-spacing-md);
+    right: var(--mantine-spacing-md);
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(6, 182, 212, 0.3) 50%,
+        transparent 100%
+    );
+}
+
+.scrollArea {
+    position: relative;
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        black 20px,
+        black calc(100% - 20px),
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        black 20px,
+        black calc(100% - 20px),
+        transparent 100%
+    );
+}
+
+@keyframes fadein {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.appShellFadeIn {
+    animation: fadein 0.2s ease-out;
+}

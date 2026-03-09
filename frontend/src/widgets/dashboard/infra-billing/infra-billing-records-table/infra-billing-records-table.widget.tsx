@@ -1,0 +1,153 @@
+import {
+    ActionIcon,
+    ActionIconGroup,
+    Box,
+    Button,
+    Group,
+    Stack,
+    Text,
+    Tooltip
+} from '@mantine/core'
+import { TbCreditCard, TbPlus, TbRefresh } from 'react-icons/tb'
+import { useTranslation } from 'node_modules/react-i18next'
+import { DataTable } from 'mantine-datatable'
+import { useHotkeys } from '@mantine/hooks'
+import { useMemo, useState } from 'react'
+import { PiEmpty } from 'react-icons/pi'
+import { modals } from '@mantine/modals'
+
+import {
+    useDeleteInfraBillingHistoryRecord,
+    useGetInfraBillingHistoryRecords
+} from '@shared/api/hooks'
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { DataTableShared } from '@shared/ui/table'
+
+import { getInfraBillingRecordsColumns } from './use-infra-billing-records-columns'
+
+const PAGE_SIZE = 50
+
+export function InfraBillingRecordsTableWidget() {
+    const [page, setPage] = useState(1)
+
+    const {
+        data: infraBillingRecords,
+        isFetching: infraBillingRecordsLoading,
+        refetch: refetchInfraBillingRecords
+    } = useGetInfraBillingHistoryRecords({
+        query: {
+            start: (page - 1) * PAGE_SIZE,
+            size: PAGE_SIZE
+        }
+    })
+    const openModalWithData = useModalsStoreOpenWithData()
+    const { t } = useTranslation()
+
+    const handleOpenModal = () => {
+        openModalWithData(MODALS.CREATE_INFRA_BILLING_RECORD_DRAWER, undefined)
+    }
+
+    useHotkeys([['mod + K', handleOpenModal]])
+
+    const memoizedInfraBillingRecords = useMemo(() => infraBillingRecords, [infraBillingRecords])
+
+    const { mutate: deleteInfraBillingRecord } = useDeleteInfraBillingHistoryRecord({
+        mutationFns: {
+            onSuccess: () => {
+                refetchInfraBillingRecords()
+            }
+        }
+    })
+
+    const handleDeleteInfraBillingRecord = (uuid: string) =>
+        modals.openConfirmModal({
+            title: t('common.confirm-action'),
+            children: t('common.confirm-action-description'),
+            labels: {
+                confirm: t('common.delete'),
+                cancel: t('common.cancel')
+            },
+
+            centered: true,
+            confirmProps: { color: 'red' },
+            onConfirm: () => {
+                deleteInfraBillingRecord({
+                    route: {
+                        uuid
+                    }
+                })
+            }
+        })
+
+    return (
+        <DataTableShared.Container shadow="lg">
+            <DataTableShared.Title
+                actions={
+                    <Group grow preventGrowOverflow={false} wrap="wrap">
+                        <ActionIconGroup>
+                            <Tooltip label={t('common.refresh')} withArrow>
+                                <ActionIcon
+                                    loading={infraBillingRecordsLoading}
+                                    onClick={() => {
+                                        refetchInfraBillingRecords()
+                                    }}
+                                    size="input-md"
+                                    variant="light"
+                                >
+                                    <TbRefresh size="24px" />
+                                </ActionIcon>
+                            </Tooltip>
+                        </ActionIconGroup>
+
+                        <ActionIconGroup>
+                            <Tooltip label={t('common.create')} withArrow>
+                                <ActionIcon
+                                    color="teal"
+                                    onClick={handleOpenModal}
+                                    size="input-md"
+                                    variant="light"
+                                >
+                                    <TbPlus size="24px" />
+                                </ActionIcon>
+                            </Tooltip>
+                        </ActionIconGroup>
+                    </Group>
+                }
+                icon={<TbCreditCard size={24} />}
+                title={t('infra-billing-records-table.widget.infra-billing-records')}
+            />
+            <DataTable
+                borderRadius="sm"
+                columns={getInfraBillingRecordsColumns(handleDeleteInfraBillingRecord, t)}
+                emptyState={
+                    <Stack align="center" gap="xs">
+                        <Box mb={4} p={4}>
+                            <PiEmpty size={36} strokeWidth={1.5} />
+                        </Box>
+                        <Text c="dimmed" size="sm">
+                            {t('infra-billing-records-table.widget.no-billing-records-found')}
+                        </Text>
+                        <Button
+                            onClick={handleOpenModal}
+                            style={{ pointerEvents: 'all' }}
+                            variant="light"
+                        >
+                            {t('common.create')}
+                        </Button>
+                    </Stack>
+                }
+                fetching={infraBillingRecordsLoading}
+                height={600}
+                onPageChange={(page) => {
+                    setPage(page)
+                }}
+                page={page}
+                records={memoizedInfraBillingRecords?.records ?? []}
+                recordsPerPage={PAGE_SIZE}
+                totalRecords={memoizedInfraBillingRecords?.total ?? 0}
+                withColumnBorders
+                withTableBorder={false}
+            />
+        </DataTableShared.Container>
+    )
+}

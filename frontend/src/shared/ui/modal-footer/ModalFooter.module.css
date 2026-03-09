@@ -1,0 +1,13 @@
+.footer {
+    width: calc(100% + 2 * var(--mantine-spacing-sm));
+    margin-left: calc(-1 * var(--mantine-spacing-sm));
+    bottom: -1px;
+    background: rgba(22, 27, 35, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: none;
+    padding-left: var(--mantine-spacing-sm);
+    padding-right: var(--mantine-spacing-sm);
+    padding-top: var(--mantine-spacing-sm) !important;
+    padding-bottom: var(--mantine-spacing-sm) !important;
+    border-radius: 0;
+}

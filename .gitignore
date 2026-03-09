@@ -3,7 +3,7 @@ certs/
 *.log
 *.tmp
 *.md
-
-data.db
+*.key
+*.pem
 
 !README.md

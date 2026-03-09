@@ -1,0 +1,760 @@
+package system
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"math/big"
+	"net/http"
+	"os"
+	"runtime"
+	"runtime/debug"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
+
+	"v2ray-stat/backend/config"
+	dbmanager "v2ray-stat/backend/db/manager"
+	"v2ray-stat/backend/httpapi/shared"
+	"v2ray-stat/constant"
+)
+
+type usageRange struct {
+	start time.Time
+	end   time.Time
+}
+
+type bandwidthStat struct {
+	Current    string `json:"current"`
+	Difference string `json:"difference"`
+	Previous   string `json:"previous"`
+}
+
+type nodesMetricsResponse struct {
+	Nodes []any `json:"nodes"`
+}
+
+func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		version, backendSHA, branch, buildTime := readBuildMetadata()
+		if version == "" || version == "unknown" {
+			version = constant.Version
+		}
+		version = normalizeVersion(version)
+
+		frontendSHA := strings.TrimSpace(os.Getenv("V2RS_FRONTEND_COMMIT"))
+		if frontendSHA == "" {
+			frontendSHA = backendSHA
+		}
+		buildNumber := strings.TrimSpace(os.Getenv("V2RS_BUILD_NUMBER"))
+		if buildNumber == "" {
+			buildNumber = "unknown"
+		}
+
+		backendCommitURL := buildCommitURL(backendSHA)
+		frontendCommitURL := buildCommitURL(frontendSHA)
+
+		payload := map[string]any{
+			"response": map[string]any{
+				"version": version,
+				"build": map[string]string{
+					"time":   buildTime,
+					"number": buildNumber,
+				},
+				"git": map[string]any{
+					"backend": map[string]string{
+						"commitSha": backendSHA,
+						"branch":    branch,
+						"commitUrl": backendCommitURL,
+					},
+					"frontend": map[string]string{
+						"commitSha": frontendSHA,
+						"commitUrl": frontendCommitURL,
+					},
+				},
+			},
+		}
+
+		cfg.Logger.Trace("System metadata requested", "remote_addr", r.RemoteAddr, "version", version)
+		shared.WriteJSON(w, http.StatusOK, payload)
+	}
+}
+
+func normalizeVersion(value string) string {
+	candidates := []string{value, constant.Version}
+	for _, raw := range candidates {
+		normalized, ok := normalizeVersionCandidate(raw)
+		if ok {
+			return normalized
+		}
+	}
+
+	rev := strings.TrimSpace(constant.Revision)
+	if rev != "" && rev != "unknown" {
+		short := rev
+		if len(short) > 12 {
+			short = short[:12]
+		}
+		return "0.0.0-" + short
+	}
+	return "0.0.0"
+}
+
+func normalizeVersionCandidate(value string) (string, bool) {
+	raw := strings.TrimSpace(value)
+	if raw == "" {
+		return "", false
+	}
+	if strings.EqualFold(raw, "latest") || strings.EqualFold(raw, "unknown") || raw == "(devel)" {
+		return "", false
+	}
+
+	v := raw
+	if strings.HasPrefix(v, "v") || strings.HasPrefix(v, "V") {
+		v = v[1:]
+	}
+	if isSemverLike(v) {
+		return v, true
+	}
+	return "", false
+}
+
+func isSemverLike(v string) bool {
+	parts := strings.SplitN(v, "-", 2)
+	core := parts[0]
+	coreParts := strings.Split(core, ".")
+	if len(coreParts) != 3 {
+		return false
+	}
+	for _, p := range coreParts {
+		if p == "" {
+			return false
+		}
+		for _, r := range p {
+			if !unicode.IsDigit(r) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		cpuCores := runtime.NumCPU()
+		physicalCores := detectPhysicalCores(cpuCores)
+		mem := readMemStats()
+		uptime := readUptimeSeconds()
+		timestamp := time.Now().UnixMilli()
+
+		statusCounts, totalUsers, err := readUsersStatusStats(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read users stats", err, cfg)
+			return
+		}
+
+		onlineStats, err := readOnlineStats(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read online stats", err, cfg)
+			return
+		}
+
+		totalOnline, err := readTotalOnlineOnNodes(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes online stats", err, cfg)
+			return
+		}
+
+		lifetimeBytes, err := readLifetimeTrafficBytes(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read lifetime traffic", err, cfg)
+			return
+		}
+
+		payload := map[string]any{
+			"response": map[string]any{
+				"cpu": map[string]int{
+					"cores":         cpuCores,
+					"physicalCores": physicalCores,
+				},
+				"memory": map[string]int64{
+					"total":     mem.total,
+					"free":      mem.free,
+					"used":      mem.used,
+					"active":    mem.active,
+					"available": mem.available,
+				},
+				"uptime":    uptime,
+				"timestamp": timestamp,
+				"users": map[string]any{
+					"statusCounts": statusCounts,
+					"totalUsers":   totalUsers,
+				},
+				"onlineStats": map[string]int64{
+					"lastDay":     onlineStats.lastDay,
+					"lastWeek":    onlineStats.lastWeek,
+					"neverOnline": onlineStats.neverOnline,
+					"onlineNow":   onlineStats.onlineNow,
+				},
+				"nodes": map[string]any{
+					"totalOnline":        totalOnline,
+					"totalBytesLifetime": lifetimeBytes,
+				},
+			},
+		}
+
+		cfg.Logger.Trace("System stats requested", "remote_addr", r.RemoteAddr, "total_users", totalUsers)
+		shared.WriteJSON(w, http.StatusOK, payload)
+	}
+}
+
+func BandwidthStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		tz := strings.TrimSpace(r.URL.Query().Get("tz"))
+		loc := resolveLocation(tz, cfg.TZ)
+		now := time.Now().In(loc)
+
+		lastTwoDays, err := readUsageComparison(r.Context(), manager, getLastTwoDaysRanges(now))
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read last two days bandwidth", err, cfg)
+			return
+		}
+		lastSevenDays, err := readUsageComparison(r.Context(), manager, getLastSevenDaysRanges(now))
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read last seven days bandwidth", err, cfg)
+			return
+		}
+		last30Days, err := readUsageComparison(r.Context(), manager, getLast30DaysRanges(now))
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read last 30 days bandwidth", err, cfg)
+			return
+		}
+		calendarMonth, err := readUsageComparison(r.Context(), manager, getCalendarMonthRanges(now))
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read calendar month bandwidth", err, cfg)
+			return
+		}
+		currentYear, err := readUsageComparison(r.Context(), manager, getCalendarYearRanges(now))
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read current year bandwidth", err, cfg)
+			return
+		}
+
+		payload := map[string]any{
+			"response": map[string]any{
+				"bandwidthLastTwoDays":   lastTwoDays,
+				"bandwidthLastSevenDays": lastSevenDays,
+				"bandwidthLast30Days":    last30Days,
+				"bandwidthCalendarMonth": calendarMonth,
+				"bandwidthCurrentYear":   currentYear,
+			},
+		}
+
+		cfg.Logger.Trace("System bandwidth stats requested", "remote_addr", r.RemoteAddr, "tz", loc.String())
+		shared.WriteJSON(w, http.StatusOK, payload)
+	}
+}
+
+func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		// Go backend has no PM2 runtime. Keep contract-compatible empty array.
+		payload := map[string]any{
+			"response": map[string]any{
+				"pm2Stats": []any{},
+			},
+		}
+		cfg.Logger.Trace("System health requested", "remote_addr", r.RemoteAddr)
+		shared.WriteJSON(w, http.StatusOK, payload)
+	}
+}
+
+func NodesStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		type nodeDayStat struct {
+			NodeName   string `json:"nodeName"`
+			Date       string `json:"date"`
+			TotalBytes string `json:"totalBytes"`
+		}
+
+		stats := make([]nodeDayStat, 0)
+		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+			rows, err := db.QueryContext(r.Context(), `
+				SELECT
+					n.name AS node_name,
+					DATE_TRUNC('day', nu.created_at)::date AS date,
+					COALESCE(SUM(nu.total_bytes), 0)::text AS total_bytes
+				FROM nodes_usage_history nu
+				JOIN nodes n ON nu.node_uuid = n.uuid
+				WHERE nu.created_at >= NOW() - INTERVAL '7 days'
+				GROUP BY n.name, DATE_TRUNC('day', nu.created_at)::date
+				ORDER BY date ASC
+			`)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var (
+					name       string
+					date       time.Time
+					totalBytes string
+				)
+				if err := rows.Scan(&name, &date, &totalBytes); err != nil {
+					return err
+				}
+				stats = append(stats, nodeDayStat{
+					NodeName:   name,
+					Date:       date.UTC().Format(time.RFC3339),
+					TotalBytes: totalBytes,
+				})
+			}
+			return rows.Err()
+		})
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", err, cfg)
+			return
+		}
+
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{
+				"lastSevenDays": stats,
+			},
+		})
+	}
+}
+
+func NodesMetricsHandler(cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": nodesMetricsResponse{
+				Nodes: []any{},
+			},
+		})
+	}
+}
+
+type memStats struct {
+	total     int64
+	free      int64
+	used      int64
+	active    int64
+	available int64
+}
+
+type onlineStats struct {
+	onlineNow   int64
+	lastDay     int64
+	lastWeek    int64
+	neverOnline int64
+}
+
+func readUsersStatusStats(ctx context.Context, manager *dbmanager.DatabaseManager) (map[string]int64, int64, error) {
+	statusCounts := map[string]int64{
+		"ACTIVE":   0,
+		"DISABLED": 0,
+		"LIMITED":  0,
+		"EXPIRED":  0,
+	}
+	var total int64
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT status, COUNT(*)
+			FROM users
+			WHERE status IN ('ACTIVE', 'DISABLED', 'LIMITED', 'EXPIRED')
+			GROUP BY status
+		`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var status string
+			var count int64
+			if err := rows.Scan(&status, &count); err != nil {
+				return err
+			}
+			statusCounts[status] = count
+			total += count
+		}
+		return rows.Err()
+	})
+
+	return statusCounts, total, err
+}
+
+func readOnlineStats(ctx context.Context, manager *dbmanager.DatabaseManager) (onlineStats, error) {
+	nowUTC := time.Now().UTC()
+	thresholdOnline := nowUTC.Add(-30 * time.Second)
+	thresholdDay := nowUTC.Add(-24 * time.Hour)
+	thresholdWeek := nowUTC.Add(-7 * 24 * time.Hour)
+
+	stats := onlineStats{}
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT
+				COUNT(t_id) FILTER (WHERE online_at >= ?) AS online_now,
+				COUNT(t_id) FILTER (WHERE online_at >= ?) AS last_day,
+				COUNT(t_id) FILTER (WHERE online_at >= ?) AS last_week,
+				COUNT(t_id) FILTER (WHERE online_at IS NULL) AS never_online
+			FROM user_traffic
+		`, thresholdOnline, thresholdDay, thresholdWeek).Scan(
+			&stats.onlineNow,
+			&stats.lastDay,
+			&stats.lastWeek,
+			&stats.neverOnline,
+		)
+	})
+
+	return stats, err
+}
+
+func readTotalOnlineOnNodes(ctx context.Context, manager *dbmanager.DatabaseManager) (int64, error) {
+	var total int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(users_online), 0)
+			FROM nodes
+			WHERE is_connected = TRUE
+		`).Scan(&total)
+	})
+	return total, err
+}
+
+func readLifetimeTrafficBytes(ctx context.Context, manager *dbmanager.DatabaseManager) (string, error) {
+	var total string
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(total_bytes), 0)::text
+			FROM nodes_usage_history
+		`).Scan(&total)
+	})
+	return total, err
+}
+
+func readUsageComparison(ctx context.Context, manager *dbmanager.DatabaseManager, ranges [2]usageRange) (bandwidthStat, error) {
+	previousBytes, err := readUsageBytesByRange(ctx, manager, ranges[0])
+	if err != nil {
+		return bandwidthStat{}, err
+	}
+	currentBytes, err := readUsageBytesByRange(ctx, manager, ranges[1])
+	if err != nil {
+		return bandwidthStat{}, err
+	}
+
+	difference := new(big.Int).Sub(currentBytes, previousBytes)
+
+	return bandwidthStat{
+		Current:    formatBigBytes(currentBytes),
+		Previous:   formatBigBytes(previousBytes),
+		Difference: formatBigBytes(difference),
+	}, nil
+}
+
+func readUsageBytesByRange(ctx context.Context, manager *dbmanager.DatabaseManager, dtRange usageRange) (*big.Int, error) {
+	var totalText string
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(total_bytes), 0)::text
+			FROM nodes_usage_history
+			WHERE created_at >= ? AND created_at <= ?
+		`, dtRange.start, dtRange.end).Scan(&totalText)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result, ok := new(big.Int).SetString(strings.TrimSpace(totalText), 10)
+	if !ok {
+		return nil, fmt.Errorf("invalid bigint value: %s", totalText)
+	}
+	return result, nil
+}
+
+func getLastTwoDaysRanges(now time.Time) [2]usageRange {
+	today := dayRange(now, 0)
+	yesterday := dayRange(now, 1)
+	return [2]usageRange{yesterday, today}
+}
+
+func getLastSevenDaysRanges(now time.Time) [2]usageRange {
+	currentStart := startOfDay(now.AddDate(0, 0, -6))
+	currentEnd := endOfDay(now)
+	previousEnd := currentStart.Add(-time.Nanosecond)
+	previousStart := startOfDay(previousEnd.AddDate(0, 0, -6))
+
+	return [2]usageRange{
+		{start: previousStart.UTC(), end: previousEnd.UTC()},
+		{start: currentStart.UTC(), end: currentEnd.UTC()},
+	}
+}
+
+func getLast30DaysRanges(now time.Time) [2]usageRange {
+	currentStart := startOfDay(now.AddDate(0, 0, -29))
+	currentEnd := endOfDay(now)
+	previousEnd := currentStart.Add(-time.Nanosecond)
+	previousStart := startOfDay(previousEnd.AddDate(0, 0, -29))
+
+	return [2]usageRange{
+		{start: previousStart.UTC(), end: previousEnd.UTC()},
+		{start: currentStart.UTC(), end: currentEnd.UTC()},
+	}
+}
+
+func getCalendarMonthRanges(now time.Time) [2]usageRange {
+	currentStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	currentEnd := endOfDay(now)
+
+	previousMonthNow := now.AddDate(0, -1, 0)
+	previousStart := time.Date(previousMonthNow.Year(), previousMonthNow.Month(), 1, 0, 0, 0, 0, now.Location())
+	previousEnd := currentStart.Add(-time.Nanosecond)
+
+	return [2]usageRange{
+		{start: previousStart.UTC(), end: previousEnd.UTC()},
+		{start: currentStart.UTC(), end: currentEnd.UTC()},
+	}
+}
+
+func getCalendarYearRanges(now time.Time) [2]usageRange {
+	currentStart := time.Date(now.Year(), time.January, 1, 0, 0, 0, 0, now.Location())
+	currentEnd := endOfDay(now)
+	previousStart := time.Date(now.Year()-1, time.January, 1, 0, 0, 0, 0, now.Location())
+	previousEnd := currentStart.Add(-time.Nanosecond)
+
+	return [2]usageRange{
+		{start: previousStart.UTC(), end: previousEnd.UTC()},
+		{start: currentStart.UTC(), end: currentEnd.UTC()},
+	}
+}
+
+func dayRange(now time.Time, subtractDays int) usageRange {
+	target := now.AddDate(0, 0, -subtractDays)
+	start := startOfDay(target).UTC()
+	end := endOfDay(target).UTC()
+	return usageRange{start: start, end: end}
+}
+
+func startOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+func endOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), t.Location())
+}
+
+func resolveLocation(requestTZ, defaultTZ string) *time.Location {
+	tz := strings.TrimSpace(requestTZ)
+	if tz == "" {
+		tz = strings.TrimSpace(defaultTZ)
+	}
+	if tz == "" {
+		return time.UTC
+	}
+
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}
+
+func readBuildMetadata() (version string, commitSHA string, branch string, buildTime string) {
+	version = "unknown"
+	commitSHA = "unknown"
+	branch = "unknown"
+	buildTime = "unknown"
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			version = info.Main.Version
+		}
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				if setting.Value != "" {
+					commitSHA = setting.Value
+				}
+			case "vcs.branch":
+				if setting.Value != "" {
+					branch = setting.Value
+				}
+			case "vcs.time":
+				if setting.Value != "" {
+					buildTime = setting.Value
+				}
+			}
+		}
+	}
+
+	if commitSHA == "unknown" && constant.Revision != "" && constant.Revision != "unknown" {
+		commitSHA = constant.Revision
+	}
+
+	return version, commitSHA, branch, buildTime
+}
+
+func buildCommitURL(sha string) string {
+	trimmed := strings.TrimSpace(sha)
+	if trimmed == "" || trimmed == "unknown" {
+		return "unknown"
+	}
+	return "https://github.com/v2ray-stat/v2ray-stat/commit/" + trimmed
+}
+
+func readMemStats() memStats {
+	result := memStats{}
+	file, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return result
+	}
+	defer file.Close()
+
+	values := map[string]int64{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		fields := strings.Fields(strings.TrimSpace(parts[1]))
+		if len(fields) == 0 {
+			continue
+		}
+		amountKB, err := strconv.ParseInt(fields[0], 10, 64)
+		if err != nil {
+			continue
+		}
+		values[key] = amountKB * 1024
+	}
+
+	result.total = values["MemTotal"]
+	result.free = values["MemFree"]
+	result.available = values["MemAvailable"]
+	result.active = values["Active"]
+	result.used = result.total - result.free
+	if result.used < 0 {
+		result.used = 0
+	}
+
+	return result
+}
+
+func readUptimeSeconds() int64 {
+	data, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return 0
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) == 0 {
+		return 0
+	}
+	value, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return 0
+	}
+	return int64(value)
+}
+
+func detectPhysicalCores(fallback int) int {
+	file, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		return fallback
+	}
+	defer file.Close()
+
+	physicalCoresByPackage := map[string]struct{}{}
+	scanner := bufio.NewScanner(file)
+
+	var packageID, coreID string
+	flush := func() {
+		if packageID != "" && coreID != "" {
+			physicalCoresByPackage[packageID+":"+coreID] = struct{}{}
+		}
+		packageID = ""
+		coreID = ""
+	}
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			flush()
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		switch key {
+		case "physical id":
+			packageID = value
+		case "core id":
+			coreID = value
+		}
+	}
+	flush()
+
+	if len(physicalCoresByPackage) == 0 {
+		return fallback
+	}
+	return len(physicalCoresByPackage)
+}
+
+func formatBigBytes(value *big.Int) string {
+	if value == nil || value.Sign() == 0 {
+		return "0 B"
+	}
+
+	sign := ""
+	abs := new(big.Int).Set(value)
+	if abs.Sign() < 0 {
+		sign = "-"
+		abs.Abs(abs)
+	}
+
+	byteFloat, _ := new(big.Float).SetInt(abs).Float64()
+	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
+	idx := 0
+	for byteFloat >= 1024 && idx < len(units)-1 {
+		byteFloat /= 1024
+		idx++
+	}
+
+	return fmt.Sprintf("%s%.2f %s", sign, byteFloat, units[idx])
+}

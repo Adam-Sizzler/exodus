@@ -1,20 +1,42 @@
 # Multistage build for v2rs panel (frontend + backend)
 FROM node:20-alpine AS panel-ui
 WORKDIR /ui
-COPY front/panel/package*.json ./
-RUN npm ci
-COPY front/panel/ ./
-RUN npm run build
+ENV NODE_OPTIONS=--max-old-space-size=4096
+ARG XRAY_WASM_URL=https://remnawave.github.io/xray-monaco-editor/main.wasm
+ARG XRAY_SCHEMA_URL=https://remnawave.github.io/xray-monaco-editor/xray.schema.json
+ARG XRAY_SCHEMA_CN_URL=https://remnawave.github.io/xray-monaco-editor/xray.schema.cn.json
+COPY frontend/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY frontend/ ./
+RUN mkdir -p /ui/public/assets
+RUN if [ -n "$XRAY_WASM_URL" ]; then \
+      wget -qO /ui/public/assets/main.wasm "$XRAY_WASM_URL"; \
+    fi
+RUN if [ -n "$XRAY_SCHEMA_URL" ]; then \
+      wget -qO /ui/public/assets/xray.schema.json "$XRAY_SCHEMA_URL"; \
+    fi
+RUN if [ -n "$XRAY_SCHEMA_CN_URL" ]; then \
+      wget -qO /ui/public/assets/xray.schema.cn.json "$XRAY_SCHEMA_CN_URL"; \
+    fi
+RUN if [ -f /ui/public/assets/main.wasm ]; then \
+      magic="$(od -An -t x1 -N 4 /ui/public/assets/main.wasm | tr -d ' \n')"; \
+      [ "$magic" = "0061736d" ] || { echo "Invalid WASM magic for main.wasm: $magic"; exit 1; }; \
+      echo "WASM artifact attached: /ui/public/assets/main.wasm"; \
+    else \
+      echo "WARN: /ui/public/assets/main.wasm is missing. Xray validator will be disabled in UI."; \
+    fi
+COPY config/env/frontend.env /ui/.env
+RUN npm run cb
 
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+RUN apk add --no-cache git ca-certificates tzdata
 
-ARG VERSION=unknown
+ARG VERSION=latest
 ARG REVISION=unknown
 ARG BUILD_TAGS=none
-ARG CGO_ENABLED_STATUS=enabled
+ARG CGO_ENABLED_STATUS=disabled
 
 WORKDIR /build
 
@@ -26,19 +48,19 @@ RUN go mod download
 COPY . .
 
 # Build panel backend binary
-RUN CGO_ENABLED=1 \
+RUN CGO_ENABLED=0 \
     GOOS=linux \
     go build \
-        -tags "${BUILD_TAGS}" \
+        -tags "none" \
         -trimpath \
         -buildvcs=true \
         -ldflags="-s -w \
-                -X v2ray-stat/constant.Version=${VERSION} \
-                -X v2ray-stat/constant.Revision=${REVISION} \
-                -X v2ray-stat/constant.BuildTags=${BUILD_TAGS} \
-                -X v2ray-stat/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
-    -o v2rs-panel \
-    ./backend/panel
+                -X 'v2ray-stat/constant.Version=${VERSION}' \
+                -X 'v2ray-stat/constant.Revision=${REVISION}' \
+                -X 'v2ray-stat/constant.BuildTags=none' \
+                -X 'v2ray-stat/constant.CgoEnabled=0'" \
+    -o v2rs \
+    ./backend
 
 # Final stage
 FROM alpine:latest
@@ -49,17 +71,15 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/v2rs-panel /app/
+COPY --from=builder /build/v2rs /app/
 
 # Copy built frontend
 COPY --from=panel-ui /ui/dist /app/ui
+COPY --from=builder /usr/local/go/lib/wasm/wasm_exec.js /app/ui/assets/wasm_exec.js
 
 # Create directories for data and certificates
 RUN mkdir -p /app/data /app/certs
 
-# Copy default config (will be overridden by volume mount)
-COPY backend/panel/config.yml /app/config.yml.example
-
 EXPOSE 9242 9243
 
-ENTRYPOINT ["/app/v2rs-panel"]
+ENTRYPOINT ["/app/v2rs"]
