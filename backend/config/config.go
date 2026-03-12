@@ -27,6 +27,7 @@ type BackendConfig struct {
 
 type PanelConfig struct {
 	StaticDir         string
+	BasePath          string
 	AllowInsecureHTTP bool
 	TrustedProxies    []string
 	WebPort           int
@@ -61,7 +62,7 @@ var defaultConfig = BackendConfig{
 		LogLevel: "warn",
 		LogMode:  "inclusive",
 	},
-	TZ:       "UTC",
+	TZ: "UTC",
 	V2RS: V2RSConfig{
 		Address: "0.0.0.0",
 		Port:    9243,
@@ -75,6 +76,7 @@ var defaultConfig = BackendConfig{
 	},
 	Panel: PanelConfig{
 		StaticDir:         "/app/ui",
+		BasePath:          "/",
 		AllowInsecureHTTP: false,
 		TrustedProxies:    []string{},
 		WebPort:           9242,
@@ -173,6 +175,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Logger.Warn("Invalid APP_PORT value, ignoring", "value", value)
 		}
 	}
+	if value := envFirst("APP_BASE_PATH"); value != "" {
+		cfg.Panel.BasePath = value
+	}
 
 	if value := envFirst("V2RS_ALLOW_INSECURE_HTTP"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
@@ -214,6 +219,10 @@ func normalizePanelConfig(cfg *BackendConfig) {
 	if strings.TrimSpace(cfg.Panel.StaticDir) == "" {
 		cfg.Panel.StaticDir = defaultConfig.Panel.StaticDir
 	}
+	if strings.TrimSpace(cfg.Panel.BasePath) == "" {
+		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
+	}
+	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
 	if cfg.Panel.WebPort < 1 || cfg.Panel.WebPort > 65535 {
 		cfg.Panel.WebPort = defaultConfig.Panel.WebPort
 	}
@@ -272,6 +281,20 @@ func splitCSV(input string) []string {
 		}
 	}
 	return result
+}
+
+func normalizeBasePath(input string) string {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" || trimmed == "/" {
+		return "/"
+	}
+
+	cleaned := strings.Trim(trimmed, "/")
+	if cleaned == "" {
+		return "/"
+	}
+
+	return "/" + cleaned + "/"
 }
 
 func envFirst(keys ...string) string {

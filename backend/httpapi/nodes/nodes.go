@@ -335,7 +335,7 @@ func NodesTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 }
 
 func trimNodesPath(path string, suffix string) string {
-	for _, prefix := range []string{"/api/nodes", "/api/v1/nodes"} {
+	for _, prefix := range []string{"/api/nodes"} {
 		if strings.HasPrefix(path, prefix+suffix) {
 			return strings.Trim(strings.TrimPrefix(path, prefix+suffix), "/")
 		}
@@ -463,6 +463,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	node, err := getNodeByUUID(r.Context(), manager, nodeUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created node", err, cfg)
@@ -601,6 +602,7 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	node, err := getNodeByUUID(r.Context(), manager, req.UUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated node", err, cfg)
@@ -639,6 +641,7 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -678,6 +681,7 @@ func handleEnableNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	sendUpdatedNodeResponse(w, r, manager, cfg, nodeUUID)
 }
 
@@ -719,6 +723,7 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	sendUpdatedNodeResponse(w, r, manager, cfg, nodeUUID)
 }
 
@@ -738,6 +743,7 @@ func handleRestartNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -806,6 +812,7 @@ func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, manager *dbma
 
 	_ = req
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -889,6 +896,7 @@ func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, manag
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -932,6 +940,7 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, manager *dbm
 	}
 
 	monitor.RequestNodeSync()
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 

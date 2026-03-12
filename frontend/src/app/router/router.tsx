@@ -33,6 +33,7 @@ import { ErrorBoundaryHoc } from '@shared/hocs/error-boundary'
 import { ErrorPageComponent } from '@pages/errors/5xx-error'
 import { AuthGuard } from '@shared/hocs/guards/auth-guard'
 import { LoginPage } from '@pages/auth/login'
+import { APP_BASE_PATH } from '@shared/constants/base-path'
 
 import { MainLayout } from '../layouts/dashboard/main-layout/main.layout'
 import { ROUTES } from '../../shared/constants'
@@ -159,7 +160,10 @@ const router = createBrowserRouter(
                 <Route element={<NotFoundPageComponent />} path="*" />
             </Route>
         </Route>
-    )
+    ),
+    {
+        basename: APP_BASE_PATH || undefined
+    }
 )
 
 export function Router() {

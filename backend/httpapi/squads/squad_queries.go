@@ -37,7 +37,7 @@ type InboundInfo struct {
 	RawInbound json.RawMessage `json:"raw_inbound"`
 }
 
-// ConfigProfilesWithInboundsHandler handles GET /api/v1/config-profiles-with-inbounds
+// ConfigProfilesWithInboundsHandler handles GET /api/config-profiles-with-inbounds
 func ConfigProfilesWithInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -182,7 +182,7 @@ type SquadMemberInfo struct {
 	Username string `json:"username"`
 }
 
-// SquadDetailsHandler handles GET /api/v1/squad-details/{uuid}
+// SquadDetailsHandler handles GET /api/squad-details/{uuid}
 func SquadDetailsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -322,7 +322,7 @@ type SquadSummary struct {
 	InboundsCount int    `json:"inbounds_count"`
 }
 
-// AllSquadsSummaryHandler handles GET /api/v1/squads-summary
+// AllSquadsSummaryHandler handles GET /api/squads-summary
 func AllSquadsSummaryHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -409,7 +409,7 @@ type NodeWithConfig struct {
 	Tags                    []string `json:"tags"` // JSON array
 }
 
-// NodesWithConfigHandler handles GET /api/v1/nodes-with-config
+// NodesWithConfigHandler handles GET /api/nodes-with-config
 func NodesWithConfigHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -506,7 +506,7 @@ type InboundWithProfile struct {
 	InboundPort *int   `json:"inbound_port,omitempty"`
 }
 
-// InboundsWithProfilesHandler handles GET /api/v1/inbounds-with-profiles
+// InboundsWithProfilesHandler handles GET /api/inbounds-with-profiles
 func InboundsWithProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

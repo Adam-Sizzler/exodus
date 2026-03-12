@@ -14,6 +14,7 @@ dotenv.config({ path: `${__dirname}/../config/env/frontend.env` })
 dotenv.config({ path: `${__dirname}/.env`, override: true })
 
 export default defineConfig({
+    base: './',
     plugins: [
         react(),
         tsconfigPaths(),

@@ -24,6 +24,7 @@ import { useHotkeys } from '@mantine/hooks'
 import { useState } from 'react'
 
 import { HappLogo, MihomoLogo, SingboxLogo, StashLogo, XrayLogo } from '@shared/ui/logos'
+import { withBasePath } from '@shared/constants/base-path'
 import { ROUTES } from '@shared/constants'
 import { Logo } from '@shared/ui'
 
@@ -247,7 +248,7 @@ export const useMenuSections = (): MenuItem[] => {
             section: [
                 {
                     name: 'Queues Viewer',
-                    href: '/api/queues',
+                    href: withBasePath('/api/queues'),
                     icon: PiAirTrafficControlDuotone,
                     id: 'queues-viewer',
                     newTab: true

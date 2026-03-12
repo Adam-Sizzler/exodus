@@ -1,3 +1,5 @@
+import { withBasePath } from '@shared/constants/base-path'
+
 export const app = {
     name: 'Remnawave Dashboard',
     githubRepo: 'https://github.com/remnawave/backend',
@@ -6,9 +8,9 @@ export const app = {
     githubOrg: 'https://github.com/remnawave',
     githubDonation: 'https://github.com/remnawave/backend#donation',
     configEditor: {
-        wasmUrl: '/assets/main.wasm',
-        wasmJsUrl: '/assets/wasm_exec.js',
-        jsonSchemaUrl: '/assets/singbox.schema.json',
-        jsonSchemaCnUrl: '/assets/singbox.schema.json'
+        wasmUrl: withBasePath('/assets/main.wasm'),
+        wasmJsUrl: withBasePath('/assets/wasm_exec.js'),
+        jsonSchemaUrl: withBasePath('/assets/singbox.schema.json'),
+        jsonSchemaCnUrl: withBasePath('/assets/singbox.schema.json')
     }
 }

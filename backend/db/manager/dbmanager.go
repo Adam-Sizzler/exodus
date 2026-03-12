@@ -213,8 +213,8 @@ func (m *DatabaseManager) processRequest(req func(DBExecutor) error, workerID in
 	if err := req(m.db); err != nil {
 		m.cfg.Logger.Error("Failed to execute request", "workerID", workerID, "priority", priority, "error", err)
 	}
-	m.cfg.Logger.Debug("Processed request", "workerID", workerID, "priority", priority, "duration", time.Since(start))
-	m.cfg.Logger.Debug("Processed request counts", "highPriority", atomic.LoadUint64(&m.highPriorityCount), "lowPriority", atomic.LoadUint64(&m.lowPriorityCount))
+	m.cfg.Logger.Trace("Processed request", "workerID", workerID, "priority", priority, "duration", time.Since(start))
+	m.cfg.Logger.Trace("Processed request counts", "highPriority", atomic.LoadUint64(&m.highPriorityCount), "lowPriority", atomic.LoadUint64(&m.lowPriorityCount))
 }
 
 // executeOnce executes a database request once with timeout handling.
@@ -235,7 +235,7 @@ func (m *DatabaseManager) executeOnce(fn func(DBExecutor) error, priority bool, 
 	}
 
 	// Log channel status before sending request
-	m.cfg.Logger.Debug("Channel status before sending request",
+	m.cfg.Logger.Trace("Channel status before sending request",
 		"priority", priorityStr,
 		"tasks", len(requestChan),
 		"capacity", cap(requestChan))
@@ -251,7 +251,7 @@ func (m *DatabaseManager) executeOnce(fn func(DBExecutor) error, priority bool, 
 		errChan <- err
 		return err
 	}:
-		m.cfg.Logger.Debug("Request sent to channel", "priority", priorityStr)
+		m.cfg.Logger.Trace("Request sent to channel", "priority", priorityStr)
 	case <-m.ctx.Done():
 		m.cfg.Logger.Warn("Context canceled while sending request", "priority", priorityStr)
 		return m.ctx.Err()
@@ -290,7 +290,7 @@ func (m *DatabaseManager) ExecuteWithTimeout(fn func(DBExecutor) error, priority
 	const maxRetries = 3
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if err := m.executeOnce(fn, priority, sendTimeout, waitTimeout); err == nil {
-			m.cfg.Logger.Debug("Request executed successfully", "attempt", attempt, "priority", priority)
+			m.cfg.Logger.Trace("Request executed successfully", "attempt", attempt, "priority", priority)
 			return nil
 		} else if isRetryableError(err) {
 			m.cfg.Logger.Warn("Retryable error, attempting retry", "attempt", attempt, "maxRetries", maxRetries, "error", err)

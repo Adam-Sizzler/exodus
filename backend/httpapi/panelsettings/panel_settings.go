@@ -198,10 +198,7 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 
 func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tokenUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/v1/api-tokens/"))
-		if tokenUUID == r.URL.Path {
-			tokenUUID = strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tokens/"))
-		}
+		tokenUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tokens/"))
 		if tokenUUID == "" {
 			switch r.Method {
 			case http.MethodGet, http.MethodPost:

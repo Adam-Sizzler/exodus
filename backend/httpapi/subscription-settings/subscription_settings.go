@@ -257,25 +257,6 @@ func SubscriptionSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config
 	}
 }
 
-func SubscriptionSettingsByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		settingsUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/v1/subscription-settings/"))
-		if _, err := uuid.Parse(settingsUUID); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			handleGetSubscriptionSettingsByUUID(w, r, manager, cfg, settingsUUID)
-		case http.MethodPatch:
-			handlePatchSubscriptionSettings(w, r, manager, cfg, settingsUUID)
-		default:
-			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
-		}
-	}
-}
-
 func handleGetSubscriptionSettings(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var settings SubscriptionSettings
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {

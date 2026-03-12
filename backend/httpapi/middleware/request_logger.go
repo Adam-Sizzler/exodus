@@ -42,14 +42,23 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 			statusCode = http.StatusOK
 		}
 
-		cfg.Logger.Trace("HTTP request",
+		durationMs := time.Since(start).Milliseconds()
+
+		cfg.Logger.Debug("HTTP request",
+			"component", component,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", statusCode,
+			"duration_ms", durationMs,
+		)
+		cfg.Logger.Trace("HTTP request details",
 			"component", component,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"query", r.URL.RawQuery,
 			"status", statusCode,
 			"bytes", lrw.bytes,
-			"duration_ms", time.Since(start).Milliseconds(),
+			"duration_ms", durationMs,
 			"remote_addr", r.RemoteAddr,
 			"user_agent", r.UserAgent(),
 			"x_forwarded_for", r.Header.Get("X-Forwarded-For"),

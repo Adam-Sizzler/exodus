@@ -13,6 +13,7 @@ import (
 	"v2ray-stat/backend/config"
 	dbmanager "v2ray-stat/backend/db/manager"
 	"v2ray-stat/backend/httpapi/shared"
+	monitor "v2ray-stat/backend/nodes"
 
 	"github.com/google/uuid"
 )
@@ -69,9 +70,10 @@ func (r *InternalSquadCreateRequest) Validate() error {
 // InternalSquadUpdateRequest represents a partial update request for an internal squad.
 // Only provided fields will be updated (PATCH semantics).
 type InternalSquadUpdateRequest struct {
-	UUID         string  `json:"uuid,omitempty"`
-	ViewPosition *int    `json:"viewPosition,omitempty"`
-	Name         *string `json:"name,omitempty"`
+	UUID         string   `json:"uuid,omitempty"`
+	ViewPosition *int     `json:"viewPosition,omitempty"`
+	Name         *string  `json:"name,omitempty"`
+	Inbounds     []string `json:"inbounds,omitempty"`
 }
 
 // Validate validates the InternalSquadUpdateRequest fields.
@@ -79,12 +81,17 @@ func (r *InternalSquadUpdateRequest) Validate() error {
 	if r.Name != nil && *r.Name == "" {
 		return fmt.Errorf("name cannot be empty")
 	}
+	for _, inboundUUID := range r.Inbounds {
+		if _, err := uuid.Parse(strings.TrimSpace(inboundUUID)); err != nil {
+			return fmt.Errorf("invalid inbound UUID format")
+		}
+	}
 	return nil
 }
 
 // HasUpdates checks if any field is set for update.
 func (r *InternalSquadUpdateRequest) HasUpdates() bool {
-	return r.ViewPosition != nil || r.Name != nil
+	return r.ViewPosition != nil || r.Name != nil || r.Inbounds != nil
 }
 
 // scanInternalSquad scans a row into an InternalSquad struct.
@@ -110,7 +117,7 @@ func scanInternalSquad(scanner shared.RowScanner) (InternalSquad, error) {
 	return squad, nil
 }
 
-// InternalSquadsHandler handles GET/POST /api/v1/internal-squads
+// InternalSquadsHandler handles GET/POST /api/internal-squads
 func InternalSquadsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -138,7 +145,7 @@ func InternalSquadsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 	}
 }
 
-// InternalSquadsReorderHandler handles POST /api/v1/internal-squads/reorder
+// InternalSquadsReorderHandler handles POST /api/internal-squads/reorder
 func InternalSquadsReorderHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -190,7 +197,7 @@ func InternalSquadsReorderHandler(manager *dbmanager.DatabaseManager, cfg *confi
 	}
 }
 
-// handleGetInternalSquads handles GET /api/v1/internal-squads
+// handleGetInternalSquads handles GET /api/internal-squads
 func handleGetInternalSquads(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	ctx := r.Context()
 	var squads []InternalSquad
@@ -241,7 +248,7 @@ func handleGetInternalSquads(w http.ResponseWriter, r *http.Request, manager *db
 	})
 }
 
-// handleCreateInternalSquad handles POST /api/v1/internal-squads
+// handleCreateInternalSquad handles POST /api/internal-squads
 func handleCreateInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req InternalSquadCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -293,10 +300,12 @@ func handleCreateInternalSquad(w http.ResponseWriter, r *http.Request, manager *
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
+	cfg.Logger.Info("Internal squad created", "uuid", squadUUID, "name", req.Name)
+	monitor.RequestNodeDeploy(true)
 	json.NewEncoder(w).Encode(map[string]interface{}{"response": response})
 }
 
-// InternalSquadByUUIDHandler handles GET/PATCH/DELETE /api/v1/internal-squads/{uuid}
+// InternalSquadByUUIDHandler handles GET/PATCH/DELETE /api/internal-squads/{uuid}
 func InternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		squadUUID := strings.TrimSpace(trimInternalSquadsPath(r.URL.Path))
@@ -344,7 +353,7 @@ func InternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 }
 
 func trimInternalSquadsPath(path string) string {
-	for _, prefix := range []string{"/api/internal-squads/", "/api/v1/internal-squads/"} {
+	for _, prefix := range []string{"/api/internal-squads/"} {
 		if strings.HasPrefix(path, prefix) {
 			return strings.Trim(strings.TrimPrefix(path, prefix), "/")
 		}
@@ -381,6 +390,15 @@ func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
+	effectiveSquadUUID := strings.TrimSpace(squadUUID)
+	if effectiveSquadUUID == "" {
+		effectiveSquadUUID = strings.TrimSpace(req.UUID)
+	}
+	if _, err := uuid.Parse(effectiveSquadUUID); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+		return
+	}
+
 	if err := req.Validate(); err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
@@ -407,25 +425,81 @@ func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *d
 		add("name", *req.Name)
 	}
 
-	if len(clauses) == 0 {
-		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
-		return
+	query := ""
+	if len(clauses) > 0 {
+		args = append(args, effectiveSquadUUID)
+		query = fmt.Sprintf("UPDATE internal_squads SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", strings.Join(clauses, ", "))
 	}
 
-	args = append(args, squadUUID)
-	query := fmt.Sprintf("UPDATE internal_squads SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", strings.Join(clauses, ", "))
-
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, err := db.ExecContext(r.Context(), query, args...)
+		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
 		}
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return err
+
+		if len(clauses) > 0 {
+			result, err := tx.ExecContext(r.Context(), query, args...)
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+			if rowsAffected == 0 {
+				_ = tx.Rollback()
+				return sql.ErrNoRows
+			}
+		} else {
+			var exists int
+			if err := tx.QueryRowContext(r.Context(), `SELECT 1 FROM internal_squads WHERE uuid = ?`, effectiveSquadUUID).Scan(&exists); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
 		}
-		if rowsAffected == 0 {
-			return sql.ErrNoRows
+
+		if req.Inbounds != nil {
+			if _, err := tx.ExecContext(r.Context(), `DELETE FROM internal_squad_inbounds WHERE internal_squad_uuid = ?`, effectiveSquadUUID); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+
+			seen := make(map[string]struct{}, len(req.Inbounds))
+			for _, inboundUUID := range req.Inbounds {
+				cleanInboundUUID := strings.TrimSpace(inboundUUID)
+				if cleanInboundUUID == "" {
+					continue
+				}
+				if _, ok := seen[cleanInboundUUID]; ok {
+					continue
+				}
+				seen[cleanInboundUUID] = struct{}{}
+
+				var inboundExists int
+				if err := tx.QueryRowContext(r.Context(), `SELECT 1 FROM config_profile_inbounds WHERE uuid = ?`, cleanInboundUUID).Scan(&inboundExists); err != nil {
+					_ = tx.Rollback()
+					if err == sql.ErrNoRows {
+						return fmt.Errorf("inbound not found")
+					}
+					return err
+				}
+
+				if _, err := tx.ExecContext(
+					r.Context(),
+					`INSERT INTO internal_squad_inbounds (internal_squad_uuid, inbound_uuid) VALUES (?, ?)`,
+					effectiveSquadUUID,
+					cleanInboundUUID,
+				); err != nil {
+					_ = tx.Rollback()
+					return err
+				}
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
 		}
 		return nil
 	})
@@ -433,6 +507,8 @@ func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *d
 	if err != nil {
 		if err == sql.ErrNoRows {
 			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+		} else if strings.Contains(strings.ToLower(err.Error()), "inbound not found") {
+			shared.SendError(w, http.StatusBadRequest, "one or more inbounds not found", err, cfg)
 		} else {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 				shared.SendError(w, http.StatusConflict, "name already exists", err, cfg)
@@ -443,7 +519,16 @@ func handlePatchInternalSquad(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
-	handleGetInternalSquad(w, r, manager, cfg, squadUUID) // Return updated squad
+	cfg.Logger.Info(
+		"Internal squad updated",
+		"uuid", effectiveSquadUUID,
+		"name_updated", req.Name != nil,
+		"view_position_updated", req.ViewPosition != nil,
+		"inbounds_updated", req.Inbounds != nil,
+		"inbounds_count", len(req.Inbounds),
+	)
+	monitor.RequestNodeDeploy(true)
+	handleGetInternalSquad(w, r, manager, cfg, effectiveSquadUUID) // Return updated squad
 }
 
 func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
@@ -476,6 +561,7 @@ func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, manager *
 
 	cfg.Logger.Info("Internal squad deleted", "uuid", squadUUID, "name", squadName)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	monitor.RequestNodeDeploy(true)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"response": map[string]any{
 			"isDeleted": true,

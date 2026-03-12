@@ -34,6 +34,7 @@ services:
     environment:
       - APP_PORT=${APP_PORT:-9242}
       - BACKEND_PORT=${BACKEND_PORT:-9243}
+      - APP_BASE_PATH=${APP_BASE_PATH:-/panel}
     ports:
       - 127.0.0.1:${APP_PORT:-9242}:${APP_PORT:-9242}
       - 127.0.0.1:${BACKEND_PORT:-9243}:${BACKEND_PORT:-9243}

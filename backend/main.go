@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -61,6 +62,12 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 	defer wg.Done()
 
 	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.Panel.WebPort)
+	panelBasePath := cfg.Panel.BasePath
+	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
+	if panelBasePathNoTrailing == "" {
+		panelBasePathNoTrailing = "/"
+	}
+
 	targetURL, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", cfg.V2RS.Port))
 	if err != nil {
 		cfg.Logger.Fatal("Failed to parse backend URL", "error", err)
@@ -86,20 +93,55 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		proxy.ServeHTTP(w, r)
-	})
-
 	uiDir := cfg.Panel.StaticDir
 	indexPath := filepath.Join(uiDir, "index.html")
 	staticFS := http.FileServer(http.Dir(uiDir))
 	if _, err := os.Stat(indexPath); err != nil {
 		cfg.Logger.Warn("Panel UI index not found; static UI disabled", "path", indexPath, "error", err)
 	}
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") {
+		requestPath := r.URL.Path
+
+		if panelBasePath != "/" && requestPath == panelBasePathNoTrailing {
+			http.Redirect(w, r, panelBasePath, http.StatusPermanentRedirect)
+			return
+		}
+
+		if !strings.HasPrefix(requestPath, panelBasePath) {
 			http.NotFound(w, r)
 			return
+		}
+
+		relativePath := strings.TrimPrefix(requestPath, panelBasePath)
+		if strings.HasPrefix(relativePath, "api/") {
+			proxyReq := r.Clone(r.Context())
+			proxyReq.URL.Path = "/" + relativePath
+			proxyReq.URL.RawPath = ""
+			proxy.ServeHTTP(w, proxyReq)
+			return
+		}
+
+		if relativePath == "app-config.js" {
+			serveAppConfigJS(w, panelBasePathNoTrailing)
+			return
+		}
+
+		cleanPath := filepath.Clean(relativePath)
+		if strings.HasPrefix(cleanPath, "..") {
+			http.NotFound(w, r)
+			return
+		}
+
+		if cleanPath != "." && cleanPath != "" {
+			targetPath := filepath.Join(uiDir, cleanPath)
+			if info, err := os.Stat(targetPath); err == nil && !info.IsDir() {
+				staticReq := r.Clone(r.Context())
+				staticReq.URL.Path = "/" + cleanPath
+				staticReq.URL.RawPath = ""
+				staticFS.ServeHTTP(w, staticReq)
+				return
+			}
 		}
 
 		if _, err := os.Stat(indexPath); err != nil {
@@ -107,13 +149,7 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 			return
 		}
 
-		requestPath := filepath.Clean(strings.TrimPrefix(r.URL.Path, "/"))
-		targetPath := filepath.Join(uiDir, requestPath)
-		if info, err := os.Stat(targetPath); err == nil && !info.IsDir() {
-			staticFS.ServeHTTP(w, r)
-			return
-		}
-		http.ServeFile(w, r, indexPath)
+		servePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
 	})
 
 	server := &http.Server{
@@ -137,6 +173,43 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		cfg.Logger.Error("Error shutting down web server", "error", err)
 	}
+}
+
+func serveAppConfigJS(w http.ResponseWriter, basePath string) {
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = fmt.Fprintf(
+		w,
+		"window.__V2RS_RUNTIME__={basePath:%q};\n",
+		basePath,
+	)
+}
+
+func servePanelIndex(w http.ResponseWriter, indexPath string, basePathWithSlash, basePath string) {
+	indexBytes, err := os.ReadFile(indexPath)
+	if err != nil {
+		http.Error(w, "panel index not found", http.StatusNotFound)
+		return
+	}
+
+	injected := fmt.Sprintf(
+		"<base href=\"%s\" />\n<script>window.__V2RS_RUNTIME__={basePath:%q};</script>",
+		html.EscapeString(basePathWithSlash),
+		basePath,
+	)
+
+	page := string(indexBytes)
+	// Normalize accidental ".//" asset prefixes from the built index template.
+	page = strings.ReplaceAll(page, ".//", "./")
+	if strings.Contains(page, "<head>") {
+		page = strings.Replace(page, "<head>", "<head>\n"+injected, 1)
+	} else {
+		page = injected + page
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(page))
 }
 
 func main() {

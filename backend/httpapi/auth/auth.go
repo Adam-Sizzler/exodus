@@ -111,12 +111,11 @@ func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 
 func isPublicAPIPath(path string) bool {
 	switch path {
-	case "/api/health", "/api/v1/health",
-		"/api/v1/auth/login", "/api/v1/auth/bootstrap", "/api/v1/auth/setup",
+	case "/api/health",
 		"/api/auth/status", "/api/auth/login", "/api/auth/register",
 		"/api/auth/oauth2/authorize", "/api/auth/oauth2/callback", "/api/auth/oauth2/tg/callback",
 		"/api/auth/passkey/authentication/options", "/api/auth/passkey/authentication/verify",
-		"/api/system/metadata", "/api/v1/system/metadata":
+		"/api/system/metadata":
 		return true
 	default:
 		if strings.HasPrefix(path, "/api/sub/") || path == "/api/sub" {

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Image } from '@mantine/core'
 
 import { useGetAuthStatus } from '@shared/api/hooks/auth/auth.query.hooks'
+import { withBasePath } from '@shared/constants/base-path'
 import { ROUTES } from '@shared/constants'
 
 import classes from './sidebar.module.css'
@@ -21,7 +22,7 @@ export const SidebarLogoShared = () => {
             <Image
                 alt="logo"
                 className={classes.fadeIn}
-                fallbackSrc="/favicons/logo.svg"
+                fallbackSrc={withBasePath('/favicons/logo.svg')}
                 fit="contain"
                 onClick={handleClick}
                 src={authStatus.branding.logoUrl}

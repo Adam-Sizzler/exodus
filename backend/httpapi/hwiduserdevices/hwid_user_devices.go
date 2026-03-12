@@ -112,46 +112,6 @@ func HWIDUserDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 	}
 }
 
-func HWIDDeviceByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/hwid-user-devices/")
-		path = strings.Trim(path, "/")
-
-		if _, err := uuid.Parse(path); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			handleGetHWIDDeviceByUUID(w, r, manager, cfg, path)
-		case http.MethodDelete:
-			handleDeleteHWIDDevice(w, r, manager, cfg, path)
-		default:
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-		}
-	}
-}
-
-func HWIDUserDevicesByUserUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/api/v1/hwid-user-devices/user/")
-		path = strings.Trim(path, "/")
-
-		if _, err := uuid.Parse(path); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			handleGetHWIDDevicesByUserUUID(w, r, manager, cfg, path)
-		default:
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-		}
-	}
-}
-
 func HWIDCheckHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

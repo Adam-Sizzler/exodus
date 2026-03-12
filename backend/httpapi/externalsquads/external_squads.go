@@ -172,7 +172,7 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 }
 
 func trimExternalSquadsPath(path string) string {
-	for _, prefix := range []string{"/api/external-squads/", "/api/v1/external-squads/"} {
+	for _, prefix := range []string{"/api/external-squads/"} {
 		if strings.HasPrefix(path, prefix) {
 			return strings.Trim(strings.TrimPrefix(path, prefix), "/")
 		}

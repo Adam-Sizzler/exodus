@@ -37,6 +37,8 @@ type NodeMonitor struct {
 
 	// Manual sync trigger
 	syncNow chan struct{}
+	// Manual deploy trigger
+	deployNow chan bool
 }
 
 type nodeState struct {
@@ -74,10 +76,11 @@ func pathPrefixStreamInterceptor(prefix string) grpc.StreamClientInterceptor {
 // NewNodeMonitor creates a new NodeMonitor.
 func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) *NodeMonitor {
 	return &NodeMonitor{
-		manager: manager,
-		cfg:     cfg,
-		nodes:   make(map[string]*nodeState),
-		syncNow: make(chan struct{}, 1),
+		manager:   manager,
+		cfg:       cfg,
+		nodes:     make(map[string]*nodeState),
+		syncNow:   make(chan struct{}, 1),
+		deployNow: make(chan bool, 1),
 	}
 }
 
@@ -115,6 +118,9 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 		case <-nm.syncNow:
 			nm.cfg.Logger.Debug("Node monitor manual sync requested")
 			nm.syncNodes()
+		case restart := <-nm.deployNow:
+			nm.cfg.Logger.Info("Node monitor deploy requested", "restart", restart)
+			nm.deployToConnectedNodes(restart)
 		case <-syncTicker.C:
 			nm.syncNodes()
 		}
@@ -488,6 +494,31 @@ func (nm *NodeMonitor) RequestSync() {
 	select {
 	case nm.syncNow <- struct{}{}:
 	default:
+	}
+}
+
+// RequestDeploy triggers config deploy to connected nodes (non-blocking).
+func (nm *NodeMonitor) RequestDeploy(restart bool) {
+	if nm == nil {
+		return
+	}
+	if nm.cfg != nil && nm.cfg.Logger != nil {
+		nm.cfg.Logger.Debug("Node deploy requested", "restart", restart)
+	}
+	select {
+	case nm.deployNow <- restart:
+		if nm.cfg != nil && nm.cfg.Logger != nil {
+			nm.cfg.Logger.Trace("Node deploy enqueued", "restart", restart)
+		}
+	default:
+		select {
+		case <-nm.deployNow:
+		default:
+		}
+		nm.deployNow <- restart
+		if nm.cfg != nil && nm.cfg.Logger != nil {
+			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart)
+		}
 	}
 }
 

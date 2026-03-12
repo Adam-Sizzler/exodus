@@ -11,6 +11,7 @@ import (
 	"v2ray-stat/backend/config"
 	dbmanager "v2ray-stat/backend/db/manager"
 	"v2ray-stat/backend/httpapi/shared"
+	monitor "v2ray-stat/backend/nodes"
 
 	"github.com/google/uuid"
 )
@@ -46,7 +47,7 @@ func (r *InboundAssignmentRequest) Validate() error {
 	return nil
 }
 
-// InboundAssignmentsHandler handles GET/POST /api/v1/inbound-assignments
+// InboundAssignmentsHandler handles GET/POST /api/inbound-assignments
 func InboundAssignmentsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -60,7 +61,7 @@ func InboundAssignmentsHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 	}
 }
 
-// handleGetInboundAssignments handles GET /api/v1/inbound-assignments?node_uuid={uuid}
+// handleGetInboundAssignments handles GET /api/inbound-assignments?node_uuid={uuid}
 func handleGetInboundAssignments(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	ctx := r.Context()
 	nodeUUID := r.URL.Query().Get("node_uuid")
@@ -113,7 +114,7 @@ func handleGetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 	})
 }
 
-// handleSetInboundAssignments handles POST /api/v1/inbound-assignments
+// handleSetInboundAssignments handles POST /api/inbound-assignments
 // Replaces all inbounds for a node with the provided list.
 func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req InboundAssignmentRequest
@@ -183,6 +184,7 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, manager
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+	monitor.RequestNodeDeploy(true)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":        "inbound assignments updated",
 		"node_uuid":      req.NodeUUID,
@@ -220,7 +222,7 @@ func (r *SquadInboundsRequest) Validate() error {
 	return nil
 }
 
-// SquadInboundsHandler handles GET/POST /api/v1/squad-inbounds
+// SquadInboundsHandler handles GET/POST /api/squad-inbounds
 func SquadInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -234,7 +236,7 @@ func SquadInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 	}
 }
 
-// handleGetSquadInbounds handles GET /api/v1/squad-inbounds?squad_uuid={uuid}
+// handleGetSquadInbounds handles GET /api/squad-inbounds?squad_uuid={uuid}
 func handleGetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	ctx := r.Context()
 	squadUUID := r.URL.Query().Get("squad_uuid")
@@ -287,7 +289,7 @@ func handleGetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbm
 	})
 }
 
-// handleSetSquadInbounds handles POST /api/v1/squad-inbounds
+// handleSetSquadInbounds handles POST /api/squad-inbounds
 // Replaces all inbounds for a squad with the provided list.
 func handleSetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SquadInboundsRequest
@@ -357,6 +359,7 @@ func handleSetSquadInbounds(w http.ResponseWriter, r *http.Request, manager *dbm
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+	monitor.RequestNodeDeploy(true)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":        "squad inbounds updated",
 		"squad_uuid":     req.SquadUUID,
@@ -395,7 +398,7 @@ func (r *SquadMembersRequest) Validate() error {
 	return nil
 }
 
-// SquadMembersHandler handles GET/POST /api/v1/squad-members
+// SquadMembersHandler handles GET/POST /api/squad-members
 func SquadMembersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -409,7 +412,7 @@ func SquadMembersHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 	}
 }
 
-// handleGetSquadMembers handles GET /api/v1/squad-members?squad_uuid={uuid}
+// handleGetSquadMembers handles GET /api/squad-members?squad_uuid={uuid}
 func handleGetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	ctx := r.Context()
 	squadUUID := r.URL.Query().Get("squad_uuid")
@@ -464,7 +467,7 @@ func handleGetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbma
 	})
 }
 
-// handleSetSquadMembers handles POST /api/v1/squad-members
+// handleSetSquadMembers handles POST /api/squad-members
 // Replaces all members for a squad with the provided list.
 func handleSetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SquadMembersRequest
@@ -534,6 +537,7 @@ func handleSetSquadMembers(w http.ResponseWriter, r *http.Request, manager *dbma
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+	monitor.RequestNodeDeploy(true)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":       "squad members updated",
 		"squad_uuid":    req.SquadUUID,

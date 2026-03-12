@@ -2,6 +2,7 @@ import LanguageDetector from 'i18next-browser-languagedetector/cjs'
 import { initReactI18next } from 'node_modules/react-i18next'
 import HttpApi from 'i18next-http-backend'
 import i18n from 'i18next'
+import { withBasePath } from '@shared/constants/base-path'
 
 i18n.use(initReactI18next)
     .use(LanguageDetector)
@@ -18,7 +19,7 @@ i18n.use(initReactI18next)
         load: 'languageOnly',
         preload: ['en', 'ru', 'fa', 'zh'],
         backend: {
-            loadPath: '/locales/{{lng}}/{{ns}}.json'
+            loadPath: withBasePath('/locales/{{lng}}/{{ns}}.json')
         },
         interpolation: {
             escapeValue: false

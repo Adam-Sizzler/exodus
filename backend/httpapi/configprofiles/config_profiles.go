@@ -14,6 +14,7 @@ import (
 	dbmanager "v2ray-stat/backend/db/manager"
 	"v2ray-stat/backend/dbutil"
 	"v2ray-stat/backend/httpapi/shared"
+	monitor "v2ray-stat/backend/nodes"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -171,7 +172,7 @@ func ConfigProfilesInboundsHandler(manager *dbmanager.DatabaseManager, cfg *conf
 }
 
 func trimConfigProfilesPath(path string, suffix string) string {
-	for _, prefix := range []string{"/api/config-profiles", "/api/v1/config-profiles"} {
+	for _, prefix := range []string{"/api/config-profiles"} {
 		if strings.HasPrefix(path, prefix+suffix) {
 			return strings.Trim(strings.TrimPrefix(path, prefix+suffix), "/")
 		}
@@ -312,6 +313,7 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 		return
 	}
 
+	monitor.RequestNodeDeploy(true)
 	handleGetConfigProfile(w, r, manager, cfg, profileUUID)
 }
 
@@ -389,6 +391,7 @@ func handleUpdateConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 		return
 	}
 
+	monitor.RequestNodeDeploy(true)
 	handleGetConfigProfile(w, r, manager, cfg, req.UUID)
 }
 
@@ -411,6 +414,7 @@ func handleDeleteConfigProfile(w http.ResponseWriter, r *http.Request, manager *
 		handleConfigProfileWriteError(w, err, cfg)
 		return
 	}
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 

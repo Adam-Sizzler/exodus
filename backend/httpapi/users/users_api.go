@@ -19,6 +19,7 @@ import (
 	"v2ray-stat/backend/config"
 	dbmanager "v2ray-stat/backend/db/manager"
 	"v2ray-stat/backend/httpapi/shared"
+	monitor "v2ray-stat/backend/nodes"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -318,7 +319,7 @@ func UsersTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 }
 
 func trimUsersPath(path string, suffix string) string {
-	for _, prefix := range []string{"/api/users", "/api/v1/users-list"} {
+	for _, prefix := range []string{"/api/users"} {
 		if strings.HasPrefix(path, prefix+suffix) {
 			return strings.Trim(strings.TrimPrefix(path, prefix+suffix), "/")
 		}
@@ -476,6 +477,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
 }
 
@@ -613,6 +615,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
 }
 
@@ -640,6 +643,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -663,6 +667,7 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 		return
 	}
 
+	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -671,6 +676,7 @@ func handleEnableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		handleUserActionError(w, err, cfg, "failed to enable user")
 		return
 	}
+	monitor.RequestNodeDeploy(true)
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
@@ -679,6 +685,7 @@ func handleDisableUser(w http.ResponseWriter, r *http.Request, manager *dbmanage
 		handleUserActionError(w, err, cfg, "failed to disable user")
 		return
 	}
+	monitor.RequestNodeDeploy(true)
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
@@ -746,6 +753,7 @@ func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, manage
 		handleUserWriteError(w, err, cfg)
 		return
 	}
+	monitor.RequestNodeDeploy(true)
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 

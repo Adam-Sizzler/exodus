@@ -1,3 +1,5 @@
+import { withBasePath } from '@shared/constants/base-path'
+
 /**
  * Create a URL with query parameters and route parameters
  *
@@ -25,10 +27,11 @@ export function createUrl(
     queryParams?: Record<string, number | string | undefined>,
     routeParams?: Record<string, number | string | undefined>
 ) {
-    const url = Object.entries(routeParams ?? {}).reduce(
+    const resolvedUrl = Object.entries(routeParams ?? {}).reduce(
         (acc, [key, value]) => acc.replaceAll(`:${key}`, String(value)),
         base
     )
+    const url = withBasePath(resolvedUrl)
 
     if (!queryParams) return url
 
