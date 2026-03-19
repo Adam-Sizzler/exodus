@@ -1,0 +1,11 @@
+services:
+  cerberus-subscription-page:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      - APP_PORT_SUB=${APP_PORT_SUB:-3010}
+    ports:
+      - '127.0.0.1:${APP_PORT_SUB:-3010}:${APP_PORT_SUB:-3010}'

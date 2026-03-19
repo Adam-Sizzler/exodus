@@ -1,0 +1,1 @@
+{"version":3,"file":"providers.contants.d.ts","sourceRoot":"","sources":["../../../../constants/oauth2/providers.contants.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,gBAAgB;;;;;CAKnB,CAAC;AAEX,MAAM,MAAM,gBAAgB,GAAG,CAAC,MAAM,OAAO,gBAAgB,CAAC,CAAC,MAAM,CAAC,CAAC;AACvE,MAAM,MAAM,oBAAoB,GAAG,CAAC,OAAO,gBAAgB,CAAC,CAAC,MAAM,OAAO,gBAAgB,CAAC,CAAC;AAC5F,eAAO,MAAM,uBAAuB,mDAAkC,CAAC"}
