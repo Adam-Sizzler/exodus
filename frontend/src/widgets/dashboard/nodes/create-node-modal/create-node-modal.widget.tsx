@@ -1,5 +1,5 @@
 import { em, Group, Modal, Progress, Stack, Transition } from '@mantine/core'
-import { CreateNodeCommand } from '@remnawave/backend-contract'
+import { CreateNodeCommand } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useMediaQuery } from '@mantine/hooks'

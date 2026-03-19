@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/shared"
-	monitor "v2ray-stat/backend/nodes"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/shared"
+	monitor "cerberus/backend/nodes"
 
 	"github.com/google/uuid"
 )

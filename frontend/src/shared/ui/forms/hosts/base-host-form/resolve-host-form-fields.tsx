@@ -1,4 +1,4 @@
-import { ExternalSquadHostOverridesSchema } from '@remnawave/backend-contract'
+import { ExternalSquadHostOverridesSchema } from '@cerberus/backend-contract'
 import { ActionIcon, HoverCard, px, Stack, Text } from '@mantine/core'
 import { PiIdentificationBadge } from 'react-icons/pi'
 import { HiQuestionMarkCircle } from 'react-icons/hi'

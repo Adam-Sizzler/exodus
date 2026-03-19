@@ -1,9 +1,7 @@
 import {
-    REMNAWAVE_CLIENT_TYPE_BROWSER,
-    REMNAWAVE_CLIENT_TYPE_HEADER,
     TestSrrMatcherCommand,
     UpdateSubscriptionSettingsCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import {
     TbBug,
     TbClipboardCopy,
@@ -38,6 +36,9 @@ import { useToken } from '@entities/auth/session-store/use-session-store'
 import { queryClient } from '@shared/api'
 
 import { Props } from './interfaces'
+
+const CERBERUS_CLIENT_TYPE_HEADER = 'X-Cerberus-Client-Type'
+const CERBERUS_CLIENT_TYPE_BROWSER = 'browser'
 
 export function ResponseRulesEditorActionsFeature(props: Props) {
     const {
@@ -210,7 +211,7 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
 -H 'accept: application/json' \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer ${token}' \\
--H '${REMNAWAVE_CLIENT_TYPE_HEADER}: ${REMNAWAVE_CLIENT_TYPE_BROWSER}' \\
+-H '${CERBERUS_CLIENT_TYPE_HEADER}: ${CERBERUS_CLIENT_TYPE_BROWSER}' \\
 -d '${JSON.stringify({ responseRules: parsedRules }, null, 0)}'`
 
         modals.open({

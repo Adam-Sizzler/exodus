@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-	"v2ray-stat/constant"
+	"cerberus/constant"
 )
 
 // HealthHandler handles backend liveness checks.
@@ -21,7 +21,7 @@ func HealthHandler() http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status":    "ok",
-			"service":   "v2rs-panel",
+			"service":   "cerberus-panel",
 			"version":   constant.Version,
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		})

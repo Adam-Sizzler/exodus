@@ -1,7 +1,7 @@
 import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'

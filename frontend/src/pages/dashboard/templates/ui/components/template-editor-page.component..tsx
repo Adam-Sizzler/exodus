@@ -1,4 +1,4 @@
-import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@remnawave/backend-contract'
+import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@cerberus/backend-contract'
 import { ActionIcon, Group } from '@mantine/core'
 import { useNavigate } from 'react-router-dom'
 import { TbArrowBackUp } from 'react-icons/tb'

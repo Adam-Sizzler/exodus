@@ -10,7 +10,7 @@ import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetConfigProfiles, useGetHosts } from '@shared/api/hooks'
 import { SEARCH_PARAMS } from '@shared/constants/search-params'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { ROUTES } from '@shared/constants'
 import { LoadingScreen } from '@shared/ui'
 
@@ -185,7 +185,7 @@ export const LinkedHostsDrawer = memo(() => {
                                         }
                                         leftSection={
                                             configProfile?.uuid ? (
-                                                <XrayLogo size={12} />
+                                                <SingboxLogo size={12} />
                                             ) : (
                                                 <TbAlertCircle size={12} />
                                             )

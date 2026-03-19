@@ -1,7 +1,7 @@
 import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { motion } from 'motion/react'
 
 import { TemplatesHeaderActionButtonsFeature } from '@features/ui/dashboard/templates/header-action-buttons'

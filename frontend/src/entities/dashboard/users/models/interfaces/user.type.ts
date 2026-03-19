@@ -1,3 +1,3 @@
-import { GetAllUsersCommand } from '@remnawave/backend-contract'
+import { GetAllUsersCommand } from '@cerberus/backend-contract'
 
 export type User = GetAllUsersCommand.Response['response']['users'][number]

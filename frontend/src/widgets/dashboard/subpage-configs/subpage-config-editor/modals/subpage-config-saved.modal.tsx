@@ -6,7 +6,7 @@ import { TFunction } from 'i18next'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { CopyableCodeBlock } from '@shared/ui/copyable-code-block'
 
-const DOCKER_COMMAND = 'docker restart remnawave-subscription-page'
+const DOCKER_COMMAND = 'docker restart cerberus-subscription-page'
 
 export const showSubpageConfigSavedModal = (t: TFunction) =>
     modals.open({

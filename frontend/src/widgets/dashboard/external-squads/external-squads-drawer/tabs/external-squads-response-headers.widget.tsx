@@ -1,5 +1,5 @@
 import { ActionIcon, Alert, Button, Group, Paper, Stack, Text, TextInput } from '@mantine/core'
-import { GetExternalSquadByUuidCommand } from '@remnawave/backend-contract'
+import { GetExternalSquadByUuidCommand } from '@cerberus/backend-contract'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { PiInfo, PiPlus, PiTrash } from 'react-icons/pi'

@@ -15,8 +15,8 @@ export const SidebarTitleShared = () => {
         }
 
         return [
-            { text: 'Remna', color: 'cyan' },
-            { text: 'wave', color: 'white' }
+            { text: 'Cerber', color: 'cyan' },
+            { text: 'us', color: 'white' }
         ]
     }, [authStatus?.branding.title])
 

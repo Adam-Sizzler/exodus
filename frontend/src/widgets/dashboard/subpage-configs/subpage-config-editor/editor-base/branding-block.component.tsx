@@ -1,4 +1,4 @@
-import { TSubscriptionPageRawConfig } from '@remnawave/subscription-page-types'
+import { TSubscriptionPageRawConfig } from '@cerberus/subscription-page-types'
 import { Card, Divider, Stack, TextInput } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
 import { UseFormReturnType } from '@mantine/form'

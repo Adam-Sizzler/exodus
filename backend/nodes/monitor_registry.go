@@ -33,3 +33,13 @@ func RequestNodeDeploy(restart bool) {
 		nm.RequestDeploy(restart)
 	}
 }
+
+// RequestSRSDeploy triggers SRS lists sync to connected nodes.
+func RequestSRSDeploy() {
+	globalMonitorMu.RLock()
+	nm := globalMonitor
+	globalMonitorMu.RUnlock()
+	if nm != nil {
+		nm.RequestSRSDeploy()
+	}
+}

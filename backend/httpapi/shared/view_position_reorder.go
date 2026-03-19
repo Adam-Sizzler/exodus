@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
 
 	"github.com/google/uuid"
 )

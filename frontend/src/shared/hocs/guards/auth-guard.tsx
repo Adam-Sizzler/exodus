@@ -16,7 +16,7 @@ export function AuthGuard() {
     const updatesStoreActions = useUpdatesStoreActions()
 
     useLayoutEffect(() => {
-        updatesStoreActions.getRemnawaveInfo()
+        updatesStoreActions.getCerberusInfo()
     }, [])
 
     if (!isInitialized || isLoading) {

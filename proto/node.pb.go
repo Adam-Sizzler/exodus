@@ -1220,7 +1220,7 @@ const file_node_proto_rawDesc = "" +
 	"\x0eSetUserEnabled\x12\x1c.proto.SetUserEnabledRequest\x1a\x18.proto.OperationResponse\"\x00\x123\n" +
 	"\n" +
 	"SubmitTask\x12\x0f.proto.NodeTask\x1a\x12.google.rpc.Status\"\x00\x12F\n" +
-	"\rGetTaskStatus\x12\x18.proto.TaskStatusRequest\x1a\x19.proto.TaskStatusResponse\"\x00B\x12Z\x10v2ray-stat/protob\x06proto3"
+	"\rGetTaskStatus\x12\x18.proto.TaskStatusRequest\x1a\x19.proto.TaskStatusResponse\"\x00B\x10Z\x0ecerberus/protob\x06proto3"
 
 var (
 	file_node_proto_rawDescOnce sync.Once

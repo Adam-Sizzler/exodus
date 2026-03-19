@@ -5,7 +5,7 @@ import {
     GetUserAccessibleNodesCommand,
     GetUserByUuidCommand,
     GetUserSubscriptionRequestHistoryCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 

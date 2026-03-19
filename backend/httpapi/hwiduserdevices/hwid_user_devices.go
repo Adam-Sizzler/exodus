@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/shared"
 
 	"github.com/google/uuid"
 )

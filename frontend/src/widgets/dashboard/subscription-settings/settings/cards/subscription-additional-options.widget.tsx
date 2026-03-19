@@ -1,4 +1,4 @@
-import { UpdateSubscriptionSettingsCommand } from '@remnawave/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
 import { Button, Group, Stack, Switch } from '@mantine/core'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'node_modules/react-i18next'

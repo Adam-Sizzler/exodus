@@ -1,0 +1,17 @@
+{
+  "chema": "http://json-schema.org/draft-07/schema#",
+  "title": "sing-box configuration",
+  "type": "object",
+  "properties": {
+    "chema": { "type": "string" },
+    "log": { "type": "object" },
+    "dns": { "type": "object" },
+    "ntp": { "type": "object" },
+    "endpoints": { "type": "array", "items": { "type": "object" } },
+    "inbounds": { "type": "array", "items": { "type": "object" } },
+    "outbounds": { "type": "array", "items": { "type": "object" } },
+    "route": { "type": "object" },
+    "experimental": { "type": "object" }
+  },
+  "additionalProperties": true
+}

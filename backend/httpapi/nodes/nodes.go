@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/dbutil"
-	"v2ray-stat/backend/httpapi/shared"
-	monitor "v2ray-stat/backend/nodes"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/dbutil"
+	"cerberus/backend/httpapi/shared"
+	monitor "cerberus/backend/nodes"
 
 	"github.com/google/uuid"
 )
@@ -81,9 +81,9 @@ type nodeAPI struct {
 	IsConnecting            bool       `json:"isConnecting"`
 	LastStatusChange        *time.Time `json:"lastStatusChange"`
 	LastStatusMessage       *string    `json:"lastStatusMessage"`
-	XrayVersion             *string    `json:"xrayVersion"`
+	SingboxVersion          *string    `json:"singboxVersion"`
 	NodeVersion             *string    `json:"nodeVersion"`
-	XrayUptime              string     `json:"xrayUptime"`
+	SingboxUptime           string     `json:"singboxUptime"`
 	IsTrafficTrackingActive bool       `json:"isTrafficTrackingActive"`
 	TrafficResetDay         *int       `json:"trafficResetDay"`
 	TrafficLimitBytes       *int64     `json:"trafficLimitBytes"`
@@ -121,9 +121,9 @@ type nodeRecord struct {
 	IsDisabled              bool
 	LastStatusChange        *time.Time
 	LastStatusMessage       *string
-	XrayVersion             *string
+	SingboxVersion          *string
 	NodeVersion             *string
-	XrayUptime              string
+	SingboxUptime           string
 	UsersOnline             *int
 	ConsumptionMultiplier   int64
 	IsTrafficTrackingActive bool
@@ -412,7 +412,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			INSERT INTO nodes (
 				uuid, name, address, port, api_schema, api_path, active_config_profile_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
+				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, country_code, tags, created_at, updated_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1237,9 +1237,9 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.IsConnecting = record.IsConnecting
 		item.LastStatusChange = record.LastStatusChange
 		item.LastStatusMessage = record.LastStatusMessage
-		item.XrayVersion = record.XrayVersion
+		item.SingboxVersion = record.SingboxVersion
 		item.NodeVersion = record.NodeVersion
-		item.XrayUptime = record.XrayUptime
+		item.SingboxUptime = record.SingboxUptime
 		item.IsTrafficTrackingActive = record.IsTrafficTrackingActive
 		item.TrafficResetDay = record.TrafficResetDay
 		item.TrafficLimitBytes = record.TrafficLimitBytes
@@ -1274,7 +1274,7 @@ func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 			SELECT
 				uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
+				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, view_position, country_code, tags,
 				cpu_count, cpu_model, total_ram, created_at, updated_at
@@ -1304,7 +1304,7 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 			SELECT
 				uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				xray_version, node_version, xray_uptime, users_online, consumption_multiplier,
+				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, view_position, country_code, tags,
 				cpu_count, cpu_model, total_ram, created_at, updated_at
@@ -1325,7 +1325,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var activeConfigProfileUUID sql.NullString
 	var lastStatusChange sql.NullTime
 	var lastStatusMessage sql.NullString
-	var xrayVersion sql.NullString
+	var singboxVersion sql.NullString
 	var nodeVersion sql.NullString
 	var usersOnline sql.NullInt64
 	var trafficResetDay sql.NullInt64
@@ -1352,9 +1352,9 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.IsDisabled,
 		&lastStatusChange,
 		&lastStatusMessage,
-		&xrayVersion,
+		&singboxVersion,
 		&nodeVersion,
-		&node.XrayUptime,
+		&node.SingboxUptime,
 		&usersOnline,
 		&node.ConsumptionMultiplier,
 		&node.IsTrafficTrackingActive,
@@ -1392,8 +1392,8 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	if lastStatusMessage.Valid {
 		node.LastStatusMessage = &lastStatusMessage.String
 	}
-	if xrayVersion.Valid {
-		node.XrayVersion = &xrayVersion.String
+	if singboxVersion.Valid {
+		node.SingboxVersion = &singboxVersion.String
 	}
 	if nodeVersion.Valid {
 		node.NodeVersion = &nodeVersion.String
@@ -1641,11 +1641,11 @@ func toNanoMultiplier(value float64) int64 {
 
 func normalizeAPISchema(value *string) string {
 	if value == nil {
-		return "grpc"
+		return "grpcs"
 	}
 	normalized := strings.TrimSpace(*value)
 	if normalized == "" {
-		return "grpc"
+		return "grpcs"
 	}
 	return normalized
 }

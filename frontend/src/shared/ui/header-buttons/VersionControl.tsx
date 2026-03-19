@@ -4,8 +4,8 @@ import { useMemo } from 'react'
 import semver from 'semver'
 import clsx from 'clsx'
 
-import { useRemnawaveInfo } from '@entities/dashboard/updates-store'
-import { useGetRemnawaveMetadata } from '@shared/api/hooks'
+import { useCerberusInfo } from '@entities/dashboard/updates-store'
+import { useGetCerberusMetadata } from '@shared/api/hooks'
 
 import { BaseOverlayHeader } from '../overlays/base-overlay-header'
 import { SkeletonHeaderControl } from './SkeletonHeaderControl'
@@ -15,18 +15,18 @@ import { HeaderControl } from './HeaderControl'
 import { Logo } from '../logo'
 
 export function VersionControl() {
-    const remnawaveInfo = useRemnawaveInfo()
-    const { data: remnawaveMetadata, isLoading } = useGetRemnawaveMetadata()
+    const cerberusInfo = useCerberusInfo()
+    const { data: cerberusMetadata, isLoading } = useGetCerberusMetadata()
 
     const [isNewVersionAvailable, isDev] = useMemo(() => {
-        if (!remnawaveMetadata) return [false, false]
+        if (!cerberusMetadata) return [false, false]
 
-        const currentVersion = semver.valid(remnawaveMetadata.version) || '0.0.0'
-        const latest = semver.valid(remnawaveInfo.latestVersion || '') || '0.0.0'
-        return [semver.gt(latest, currentVersion), remnawaveMetadata.git.backend.branch === 'dev']
-    }, [remnawaveInfo.latestVersion, remnawaveMetadata])
+        const currentVersion = semver.valid(cerberusMetadata.version) || '0.0.0'
+        const latest = semver.valid(cerberusInfo.latestVersion || '') || '0.0.0'
+        return [semver.gt(latest, currentVersion), cerberusMetadata.git.backend.branch === 'dev']
+    }, [cerberusInfo.latestVersion, cerberusMetadata])
 
-    if (isLoading || !remnawaveMetadata) {
+    if (isLoading || !cerberusMetadata) {
         return <SkeletonHeaderControl width={85} />
     }
 
@@ -45,7 +45,7 @@ export function VersionControl() {
             children: (
                 <BuildInfoModal
                     isNewVersionAvailable={isNewVersionAvailable}
-                    remnawaveMetadata={remnawaveMetadata}
+                    cerberusMetadata={cerberusMetadata}
                 />
             )
         })
@@ -63,7 +63,7 @@ export function VersionControl() {
             <Group gap={8} ml={10} mr={10} wrap="nowrap">
                 <Logo size={20} />
                 <Text ff="text" fw={600} size="sm">
-                    {remnawaveMetadata.version}
+                    {cerberusMetadata.version}
                 </Text>
             </Group>
         </HeaderControl>

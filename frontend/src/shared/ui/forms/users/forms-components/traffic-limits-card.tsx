@@ -1,4 +1,4 @@
-import { CreateUserCommand, UpdateUserCommand } from '@remnawave/backend-contract'
+import { CreateUserCommand, UpdateUserCommand } from '@cerberus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { NumberInput, Select, Stack, Text } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'

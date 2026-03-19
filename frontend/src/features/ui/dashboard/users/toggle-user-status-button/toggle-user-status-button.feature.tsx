@@ -1,5 +1,5 @@
 import { PiCellSignalFullDuotone, PiCellSignalSlashDuotone, PiTrashDuotone } from 'react-icons/pi'
-import { USERS_STATUS } from '@remnawave/backend-contract'
+import { USERS_STATUS } from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { Loader, Menu } from '@mantine/core'
 

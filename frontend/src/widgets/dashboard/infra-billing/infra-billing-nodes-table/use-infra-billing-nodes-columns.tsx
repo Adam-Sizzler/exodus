@@ -8,7 +8,7 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { GetInfraBillingNodesCommand } from '@remnawave/backend-contract'
+import { GetInfraBillingNodesCommand } from '@cerberus/backend-contract'
 import { HiCalendar, HiOfficeBuilding, HiServer } from 'react-icons/hi'
 import { TbCheckbox, TbClick, TbExternalLink } from 'react-icons/tb'
 import { DataTableColumn } from 'mantine-datatable'

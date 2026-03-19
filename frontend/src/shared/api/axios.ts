@@ -1,13 +1,11 @@
-import {
-    REMNAWAVE_CLIENT_TYPE_BROWSER,
-    REMNAWAVE_CLIENT_TYPE_HEADER
-} from '@remnawave/backend-contract'
 import consola from 'consola/browser'
 import axios from 'axios'
 
 import { logoutEvents } from '../emitters/emit-logout'
 
 let authorizationToken = ''
+const CERBERUS_CLIENT_TYPE_HEADER = 'X-Cerberus-Client-Type'
+const CERBERUS_CLIENT_TYPE_BROWSER = 'browser'
 
 let BASE_DOMAIN = __DOMAIN_BACKEND__
 const isDev = __NODE_ENV__ === 'development'
@@ -28,7 +26,7 @@ export const instance = axios.create({
     headers: {
         'Content-type': 'application/json',
         Accept: 'application/json',
-        [REMNAWAVE_CLIENT_TYPE_HEADER]: REMNAWAVE_CLIENT_TYPE_BROWSER
+        [CERBERUS_CLIENT_TYPE_HEADER]: CERBERUS_CLIENT_TYPE_BROWSER
     }
 })
 

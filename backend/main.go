@@ -7,8 +7,6 @@ import (
 	"html"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,79 +16,29 @@ import (
 	"syscall"
 	"time"
 
-	"v2ray-stat/backend/config"
-	"v2ray-stat/backend/db"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi"
-	"v2ray-stat/backend/httpapi/middleware"
-	users "v2ray-stat/backend/nodes"
-	"v2ray-stat/backend/redisqueue"
-	"v2ray-stat/constant"
+	"cerberus/backend/config"
+	"cerberus/backend/db"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi"
+	"cerberus/backend/httpapi/middleware"
+	users "cerberus/backend/nodes"
+	"cerberus/backend/redisqueue"
+	"cerberus/backend/srslists"
+	"cerberus/constant"
 )
 
-// startAPIServer starts the API server.
-func startAPIServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+// startWebServer serves both panel UI and API on a single APP_PORT.
+func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.V2RS.Port)
-	server := &http.Server{
-		Addr:    addr,
-		Handler: httpapi.NewAPIHandler(manager, cfg),
-	}
-
-	cfg.Logger.Debug("Starting API server", "address", server.Addr)
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			cfg.Logger.Fatal("Failed to start server", "error", err)
-		}
-	}()
-
-	<-ctx.Done()
-
-	cfg.Logger.Debug("Shutting down API server")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		cfg.Logger.Error("Error shutting down server", "error", err)
-	}
-}
-
-// startWebServer serves the panel UI and proxies API requests to the backend.
-func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	addr := fmt.Sprintf("%s:%d", cfg.V2RS.Address, cfg.Panel.WebPort)
+	addr := fmt.Sprintf("%s:%d", cfg.CERBERUS.Address, cfg.Panel.AppPort)
 	panelBasePath := cfg.Panel.BasePath
 	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
 	if panelBasePathNoTrailing == "" {
 		panelBasePathNoTrailing = "/"
 	}
 
-	targetURL, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", cfg.V2RS.Port))
-	if err != nil {
-		cfg.Logger.Fatal("Failed to parse backend URL", "error", err)
-		return
-	}
-
-	proxy := httputil.NewSingleHostReverseProxy(targetURL)
-	proxy.Director = func(req *http.Request) {
-		req.URL.Scheme = targetURL.Scheme
-		req.URL.Host = targetURL.Host
-		req.Host = targetURL.Host
-		if req.Header.Get("X-Forwarded-Proto") == "" {
-			if req.TLS != nil {
-				req.Header.Set("X-Forwarded-Proto", "https")
-			} else {
-				req.Header.Set("X-Forwarded-Proto", "http")
-			}
-		}
-	}
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		cfg.Logger.Warn("API proxy error", "error", err)
-		http.Error(w, "backend unavailable", http.StatusBadGateway)
-	}
+	apiHandler := httpapi.NewAPIHandler(manager, cfg)
 
 	mux := http.NewServeMux()
 	uiDir := cfg.Panel.StaticDir
@@ -115,10 +63,10 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 
 		relativePath := strings.TrimPrefix(requestPath, panelBasePath)
 		if strings.HasPrefix(relativePath, "api/") {
-			proxyReq := r.Clone(r.Context())
-			proxyReq.URL.Path = "/" + relativePath
-			proxyReq.URL.RawPath = ""
-			proxy.ServeHTTP(w, proxyReq)
+			apiReq := r.Clone(r.Context())
+			apiReq.URL.Path = "/" + relativePath
+			apiReq.URL.RawPath = ""
+			apiHandler.ServeHTTP(w, apiReq)
 			return
 		}
 
@@ -157,7 +105,7 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 		Handler: middleware.WithCORS(cfg, middleware.WithRequestLogging(cfg, "web", mux)),
 	}
 
-	cfg.Logger.Debug("Starting web server", "address", server.Addr)
+	cfg.Logger.Debug("Starting web/API server", "address", server.Addr)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			cfg.Logger.Fatal("Failed to start web server", "error", err)
@@ -166,7 +114,7 @@ func startWebServer(ctx context.Context, cfg *config.BackendConfig, wg *sync.Wai
 
 	<-ctx.Done()
 
-	cfg.Logger.Debug("Shutting down web server")
+	cfg.Logger.Debug("Shutting down web/API server")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
@@ -180,7 +128,7 @@ func serveAppConfigJS(w http.ResponseWriter, basePath string) {
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = fmt.Fprintf(
 		w,
-		"window.__V2RS_RUNTIME__={basePath:%q};\n",
+		"window.__CERBERUS_RUNTIME__={basePath:%q};\n",
 		basePath,
 	)
 }
@@ -193,7 +141,7 @@ func servePanelIndex(w http.ResponseWriter, indexPath string, basePathWithSlash,
 	}
 
 	injected := fmt.Sprintf(
-		"<base href=\"%s\" />\n<script>window.__V2RS_RUNTIME__={basePath:%q};</script>",
+		"<base href=\"%s\" />\n<script>window.__CERBERUS_RUNTIME__={basePath:%q};</script>",
 		html.EscapeString(basePathWithSlash),
 		basePath,
 	)
@@ -264,16 +212,16 @@ func main() {
 
 	// Prepare wg
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 
-	go startAPIServer(ctx, manager, &cfg, &wg)
-	go startWebServer(ctx, &cfg, &wg)
+	go startWebServer(ctx, manager, &cfg, &wg)
 	go nodeMonitor.Start(ctx, &wg)
+	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
 	}
 
-	log.Printf("[START] v2rs application %s", constant.Version)
+	log.Printf("[START] cerberus application %s", constant.Version)
 
 	<-sigChan
 	cfg.Logger.Info("Received termination signal, saving data")

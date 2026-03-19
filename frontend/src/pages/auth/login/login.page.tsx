@@ -1,5 +1,5 @@
 import { Badge, Box, Center, Divider, Group, Image, Stack, Text, Title } from '@mantine/core'
-import { GetStatusCommand } from '@remnawave/backend-contract'
+import { GetStatusCommand } from '@cerberus/backend-contract'
 import { useMemo } from 'react'
 
 import { TelegramLoginButtonFeature } from '@features/auth/telegram-login-button/telegram-login-button.feature'
@@ -105,8 +105,8 @@ export const LoginPage = () => {
         }
 
         return [
-            { text: 'Remna', color: 'cyan' },
-            { text: 'wave', color: 'white' }
+            { text: 'Cerber', color: 'cyan' },
+            { text: 'us', color: 'white' }
         ]
     }, [authStatus?.branding.title])
 

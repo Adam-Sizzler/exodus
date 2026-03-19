@@ -1,4 +1,4 @@
-import { CreateHostCommand, SECURITY_LAYERS } from '@remnawave/backend-contract'
+import { CreateHostCommand, SECURITY_LAYERS } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'node_modules/react-i18next'

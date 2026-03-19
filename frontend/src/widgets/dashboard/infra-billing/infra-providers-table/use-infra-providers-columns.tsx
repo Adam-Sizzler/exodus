@@ -9,7 +9,7 @@ import {
     Text
 } from '@mantine/core'
 import { HiCurrencyDollar, HiLink, HiOfficeBuilding, HiServer } from 'react-icons/hi'
-import { GetInfraProvidersCommand } from '@remnawave/backend-contract'
+import { GetInfraProvidersCommand } from '@cerberus/backend-contract'
 import { TbClick, TbEdit, TbSum, TbTrash } from 'react-icons/tb'
 import { DataTableColumn } from 'mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'

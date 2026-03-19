@@ -1,5 +1,5 @@
-import { TSubscriptionPageTemplateKey } from '@remnawave/subscription-page-types'
-import { TEMPLATE_KEYS, TemplateKeys } from '@remnawave/backend-contract'
+import { TSubscriptionPageTemplateKey } from '@cerberus/subscription-page-types'
+import { TEMPLATE_KEYS, TemplateKeys } from '@cerberus/backend-contract'
 import { ActionIcon, SimpleGrid, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useMediaQuery } from '@mantine/hooks'

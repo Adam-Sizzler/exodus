@@ -7,7 +7,7 @@ import {
     PiQueueDuotone,
     PiRocketLaunchDuotone
 } from 'react-icons/pi'
-import { GetRemnawaveHealthCommand } from '@remnawave/backend-contract'
+import { GetCerberusHealthCommand } from '@cerberus/backend-contract'
 import { ThemeIconProps } from '@mantine/core'
 import { TFunction } from 'i18next'
 
@@ -28,7 +28,7 @@ const getIconVariant = (cpuUsage: number): ThemeIconProps['variant'] => {
 }
 
 export const getPm2SummaryMetrics = (
-    pm2Stats: GetRemnawaveHealthCommand.Response['response']['pm2Stats'],
+    pm2Stats: GetCerberusHealthCommand.Response['response']['pm2Stats'],
     t: TFunction
 ): IMetricCardProps[] => {
     if (!pm2Stats || pm2Stats.length === 0) {
@@ -77,7 +77,7 @@ export const getPm2SummaryMetrics = (
 }
 
 export const getPm2ProcessMetrics = (
-    pm2Stats: GetRemnawaveHealthCommand.Response['response']['pm2Stats']
+    pm2Stats: GetCerberusHealthCommand.Response['response']['pm2Stats']
 ): IMetricCardProps[] => {
     if (!pm2Stats || pm2Stats.length === 0) {
         return []

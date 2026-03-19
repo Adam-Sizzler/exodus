@@ -1,4 +1,4 @@
-import { GetInternalSquadsCommand } from '@remnawave/backend-contract'
+import { GetInternalSquadsCommand } from '@cerberus/backend-contract'
 import { Key } from 'react'
 
 export interface IProps {

@@ -1,7 +1,7 @@
 import { Badge, Box, CopyButton, Divider, Group, Loader, Menu, Text, Tooltip } from '@mantine/core'
 import { PiCheck, PiCopy, PiCpu, PiPencil, PiTag, PiTrashDuotone } from 'react-icons/pi'
 import { TbCheck, TbCpu2, TbDownload, TbEdit, TbEye } from 'react-icons/tb'
-import { GetConfigProfilesCommand } from '@remnawave/backend-contract'
+import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'

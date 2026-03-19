@@ -2,7 +2,7 @@ import {
     getLanguagesArray,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageRawConfig
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import { Badge, Card, Divider, Group, ScrollArea, SimpleGrid, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { IconGlobe } from '@tabler/icons-react'

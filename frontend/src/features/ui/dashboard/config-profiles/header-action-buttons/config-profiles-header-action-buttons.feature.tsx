@@ -9,7 +9,7 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateConfigProfileCommand } from '@remnawave/backend-contract'
+import { CreateConfigProfileCommand } from '@cerberus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { TbCode, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
@@ -36,35 +36,37 @@ const generateDefaultConfig = () => {
 
     return {
         log: {
-            loglevel: 'info'
+            level: 'info'
+        },
+        dns: {
+            servers: [
+                {
+                    tag: 'dns-remote',
+                    address: 'https://1.1.1.1/dns-query',
+                    detour: 'direct'
+                }
+            ]
         },
         inbounds: [
             {
-                tag: `Shadowsocks_${randomNumber}`,
-                port: 1234,
-                protocol: 'shadowsocks',
-                settings: {
-                    clients: [],
-                    network: 'tcp,udp'
-                },
-                sniffing: {
-                    enabled: true,
-                    destOverride: ['http', 'tls', 'quic']
-                }
+                type: 'mixed',
+                tag: `mixed_${randomNumber}`,
+                listen: '127.0.0.1',
+                listen_port: 2080
             }
         ],
         outbounds: [
             {
-                protocol: 'freedom',
-                tag: 'DIRECT'
+                type: 'direct',
+                tag: 'direct'
             },
             {
-                protocol: 'blackhole',
-                tag: 'BLOCK'
+                type: 'block',
+                tag: 'block'
             }
         ],
-        routing: {
-            rules: []
+        route: {
+            final: 'direct'
         }
     }
 }

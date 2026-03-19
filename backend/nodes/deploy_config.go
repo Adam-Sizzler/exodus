@@ -9,15 +9,29 @@ import (
 	"strings"
 	"time"
 
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/proto"
+	dbmanager "cerberus/backend/db/manager"
+	srscore "cerberus/backend/srslists"
+	"cerberus/proto"
 
 	"google.golang.org/grpc/codes"
 )
 
 type deployTaskPayload struct {
-	Config  json.RawMessage `json:"config"`
-	Restart *bool           `json:"restart,omitempty"`
+	Config   json.RawMessage         `json:"config"`
+	Restart  *bool                   `json:"restart,omitempty"`
+	SRSLists []srscore.NodeSyncItem  `json:"srs_lists,omitempty"`
+	Modules  *deployModulesTaskBlock `json:"modules,omitempty"`
+}
+
+type deployModulesTaskBlock struct {
+	HaproxyEnabled bool                    `json:"haproxy_enabled"`
+	HaproxyUsers   []deployHaproxyUserItem `json:"haproxy_users,omitempty"`
+}
+
+type deployHaproxyUserItem struct {
+	Username       string `json:"username"`
+	VLESSUUID      string `json:"vless_uuid"`
+	TrojanPassword string `json:"trojan_password"`
 }
 
 type deployTarget struct {
@@ -36,6 +50,10 @@ type inboundUserCredentials struct {
 	VLESSUUID      string
 	TrojanPassword string
 	SSPassword     string
+}
+
+func normalizeTagValue(tag string) string {
+	return strings.TrimSpace(tag)
 }
 
 func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
@@ -86,6 +104,15 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
 		return
 	}
 
+	srsLists, srsErr := srscore.LoadNodeSyncItems(context.Background(), nm.manager)
+	if srsErr != nil {
+		nm.cfg.Logger.Warn("Failed to load SRS lists for deploy payload", "error", srsErr)
+	}
+	haproxyEnabled, modulesErr := nm.loadHaproxyModuleEnabled(context.Background())
+	if modulesErr != nil {
+		nm.cfg.Logger.Warn("Failed to load HAPROXY module settings for deploy payload", "error", modulesErr)
+	}
+
 	for _, target := range targets {
 		nm.cfg.Logger.Debug("Building deploy config for node", "node", target.name, "node_uuid", target.uuid)
 		configJSON, err := nm.buildNodeConfigForDeploy(nm.globalCtx, target.uuid)
@@ -94,10 +121,22 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
 			continue
 		}
 
+		modules := &deployModulesTaskBlock{HaproxyEnabled: haproxyEnabled}
+		if haproxyEnabled {
+			haproxyUsers, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid)
+			if usersErr != nil {
+				nm.cfg.Logger.Warn("Failed to load node users for HAPROXY payload", "node", target.name, "node_uuid", target.uuid, "error", usersErr)
+			} else {
+				modules.HaproxyUsers = haproxyUsers
+			}
+		}
+
 		restartFlag := restart
 		taskPayload, err := json.Marshal(deployTaskPayload{
-			Config:  configJSON,
-			Restart: &restartFlag,
+			Config:   configJSON,
+			Restart:  &restartFlag,
+			SRSLists: srsLists,
+			Modules:  modules,
 		})
 		if err != nil {
 			nm.cfg.Logger.Warn("Failed to serialize deploy payload", "node", target.name, "error", err)
@@ -132,6 +171,78 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
 
 		nm.cfg.Logger.Info("Node config deployed", "node", target.name, "restart", restart, "message", resp.Message)
 	}
+}
+
+func (nm *NodeMonitor) loadHaproxyModuleEnabled(ctx context.Context) (bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	enabled := false
+	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		row := db.QueryRowContext(ctx, `SELECT haproxy_enabled FROM modules_settings WHERE id = 1`)
+		if err := row.Scan(&enabled); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		return nil
+	})
+	return enabled, err
+}
+
+func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string) ([]deployHaproxyUserItem, error) {
+	if strings.TrimSpace(nodeUUID) == "" {
+		return nil, fmt.Errorf("node uuid is empty")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	items := make([]deployHaproxyUserItem, 0)
+	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT
+				u.username,
+				CASE
+					WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid
+					ELSE ''
+				END AS vless_uuid,
+				CASE
+					WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
+					ELSE ''
+				END AS trojan_password
+			FROM config_profile_inbounds_to_nodes cpitn
+			JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+			JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
+			JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
+			JOIN users u ON u.t_id = ism.user_id
+			WHERE cpitn.node_uuid = ? AND u.status = 'ACTIVE'
+			GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password
+			HAVING bool_or(lower(cpi.type) IN ('vless', 'trojan'))
+			ORDER BY u.t_id ASC
+		`, nodeUUID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item deployHaproxyUserItem
+			if err := rows.Scan(&item.Username, &item.VLESSUUID, &item.TrojanPassword); err != nil {
+				return err
+			}
+			item.Username = strings.TrimSpace(item.Username)
+			if item.Username == "" {
+				continue
+			}
+			items = append(items, item)
+		}
+		return rows.Err()
+	})
+
+	return items, err
 }
 
 func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID string) (json.RawMessage, error) {
@@ -193,7 +304,10 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 	inboundUUIDs := make([]string, 0, len(bindings))
 	for _, b := range bindings {
 		bindingByInboundUUID[b.InboundUUID] = b
-		activeTags[b.Tag] = struct{}{}
+		normTag := normalizeTagValue(b.Tag)
+		if normTag != "" {
+			activeTags[normTag] = struct{}{}
+		}
 		inboundUUIDs = append(inboundUUIDs, b.InboundUUID)
 	}
 
@@ -223,18 +337,19 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 				return err
 			}
 			binding, ok := bindingByInboundUUID[inboundUUID]
-			if !ok || strings.TrimSpace(binding.Tag) == "" || strings.TrimSpace(user.Username) == "" {
+			tag := normalizeTagValue(binding.Tag)
+			if !ok || tag == "" || strings.TrimSpace(user.Username) == "" {
 				continue
 			}
 
-			if dedup[binding.Tag] == nil {
-				dedup[binding.Tag] = make(map[string]struct{})
+			if dedup[tag] == nil {
+				dedup[tag] = make(map[string]struct{})
 			}
-			if _, exists := dedup[binding.Tag][user.Username]; exists {
+			if _, exists := dedup[tag][user.Username]; exists {
 				continue
 			}
-			dedup[binding.Tag][user.Username] = struct{}{}
-			usersByTag[binding.Tag] = append(usersByTag[binding.Tag], user)
+			dedup[tag][user.Username] = struct{}{}
+			usersByTag[tag] = append(usersByTag[tag], user)
 		}
 
 		return rows.Err()
@@ -253,6 +368,25 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		return nil, fmt.Errorf("profile config has no valid inbounds array")
 	}
 
+	matchedActiveTags := 0
+	for _, raw := range rawInbounds {
+		inbound, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		tag, _ := inbound["tag"].(string)
+		if _, isActiveTag := activeTags[normalizeTagValue(tag)]; isActiveTag {
+			matchedActiveTags++
+		}
+	}
+
+	// Fallback guard: if selected inbound tags do not match config tags, keep the profile inbounds as-is
+	// instead of dropping secure inbounds and deploying a broken runtime config.
+	useFallbackKeepAll := matchedActiveTags == 0 && len(activeTags) > 0
+	if useFallbackKeepAll {
+		nm.cfg.Logger.Warn("No selected inbound tags matched config inbounds; keeping all profile inbounds", "node_uuid", nodeUUID, "selected_tags", len(activeTags), "config_inbounds", len(rawInbounds))
+	}
+
 	filteredInbounds := make([]any, 0, len(rawInbounds))
 	for _, raw := range rawInbounds {
 		inbound, ok := raw.(map[string]any)
@@ -261,14 +395,15 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		}
 
 		tag, _ := inbound["tag"].(string)
+		normTag := normalizeTagValue(tag)
 		inboundType := normalizeInboundType(inbound)
-		_, isActiveTag := activeTags[tag]
+		_, isActiveTag := activeTags[normTag]
 
-		if !isActiveTag && !isUnsecureInbound(inboundType) {
+		if !useFallbackKeepAll && !isActiveTag && !isUnsecureInbound(inboundType) {
 			continue
 		}
 		if isActiveTag {
-			inbound["users"] = buildInboundUsers(inboundType, usersByTag[tag])
+			inbound["users"] = buildInboundUsers(inboundType, usersByTag[normTag])
 		}
 
 		filteredInbounds = append(filteredInbounds, inbound)
@@ -333,4 +468,70 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 		return []any{}
 	}
 	return result
+}
+
+func (nm *NodeMonitor) syncSRSListsToConnectedNodes() {
+	if nm == nil {
+		return
+	}
+
+	srsLists, err := srscore.LoadNodeSyncItems(context.Background(), nm.manager)
+	if err != nil {
+		nm.cfg.Logger.Warn("Failed to load SRS lists for node sync", "error", err)
+		return
+	}
+
+	payload, err := json.Marshal(map[string]any{
+		"srs_lists": srsLists,
+	})
+	if err != nil {
+		nm.cfg.Logger.Warn("Failed to marshal SRS sync payload", "error", err)
+		return
+	}
+
+	nm.nodesLock.RLock()
+	targets := make([]deployTarget, 0, len(nm.nodes))
+	for nodeName, state := range nm.nodes {
+		if state == nil {
+			continue
+		}
+		state.mutex.RLock()
+		isReady := state.isConnected && state.client != nil
+		client := state.client
+		state.mutex.RUnlock()
+		if !isReady {
+			continue
+		}
+		targets = append(targets, deployTarget{name: nodeName, client: client})
+	}
+	nm.nodesLock.RUnlock()
+
+	for _, target := range targets {
+		ctxBase := nm.globalCtx
+		if ctxBase == nil {
+			ctxBase = context.Background()
+		}
+		ctx, cancel := context.WithTimeout(ctxBase, 30*time.Second)
+		resp, submitErr := target.client.SubmitTask(ctx, &proto.NodeTask{
+			TaskId:    fmt.Sprintf("sync-srs-%d", time.Now().UnixNano()),
+			Operation: "sync_srs_lists",
+			Payload:   payload,
+		})
+		cancel()
+
+		if submitErr != nil {
+			nm.cfg.Logger.Warn("SRS sync task failed", "node", target.name, "error", submitErr)
+			continue
+		}
+		if resp == nil || resp.Code != int32(codes.OK) {
+			if resp == nil {
+				nm.cfg.Logger.Warn("SRS sync returned nil status", "node", target.name)
+			} else {
+				nm.cfg.Logger.Warn("SRS sync rejected", "node", target.name, "code", resp.Code, "message", resp.Message)
+			}
+			continue
+		}
+
+		nm.cfg.Logger.Info("SRS lists synced to node", "node", target.name, "lists", len(srsLists))
+	}
 }

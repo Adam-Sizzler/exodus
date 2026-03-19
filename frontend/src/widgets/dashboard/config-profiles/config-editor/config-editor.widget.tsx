@@ -1,7 +1,7 @@
 import type { editor } from 'monaco-editor'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { GetSnippetsCommand } from '@remnawave/backend-contract'
+import { GetSnippetsCommand } from '@cerberus/backend-contract'
 import { Box, Card, Code, Paper, Text } from '@mantine/core'
 import Editor, { Monaco } from '@monaco-editor/react'
 import { useTranslation } from 'node_modules/react-i18next'

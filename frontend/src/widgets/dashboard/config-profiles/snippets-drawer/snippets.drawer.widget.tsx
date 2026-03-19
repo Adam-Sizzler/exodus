@@ -21,7 +21,7 @@ import {
     TextInput
 } from '@mantine/core'
 import { TbBraces, TbCode, TbPlus, TbQuestionMark, TbRefresh, TbTrash, TbX } from 'react-icons/tb'
-import { CreateSnippetCommand, UpdateSnippetCommand } from '@remnawave/backend-contract'
+import { CreateSnippetCommand, UpdateSnippetCommand } from '@cerberus/backend-contract'
 import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { Editor, Monaco } from '@monaco-editor/react'

@@ -6,7 +6,7 @@ import { sToMs } from '@shared/utils/time-utils'
 
 const CACHE_TIME = sToMs(24 * 60 * 60)
 
-interface IRemnawaveInfo {
+interface ICerberusInfo {
     latestVersion: string
     starsCount: number
 }
@@ -14,23 +14,23 @@ interface IRemnawaveInfo {
 interface IState {
     isLoading: boolean
     lastUpdateTimestamp: number
-    remnawaveInfo: IRemnawaveInfo
+    cerberusInfo: ICerberusInfo
 }
 
 interface IActions {
     actions: {
-        getRemnawaveInfo: () => Promise<void>
+        getCerberusInfo: () => Promise<void>
         resetState: () => void
-        setRemnawaveInfo: (info: IRemnawaveInfo) => void
+        setCerberusInfo: (info: ICerberusInfo) => void
     }
 }
 
 const initialState: IState = {
     isLoading: false,
     lastUpdateTimestamp: 0,
-    remnawaveInfo: {
-        latestVersion: '2.2.3',
-        starsCount: 1869
+    cerberusInfo: {
+        latestVersion: '1.12.0',
+        starsCount: 0
     }
 }
 
@@ -40,15 +40,15 @@ export const useUpdatesStore = create<IActions & IState>()(
             (set, get) => ({
                 ...initialState,
                 actions: {
-                    getRemnawaveInfo: async () => {
-                        const { lastUpdateTimestamp, remnawaveInfo } = get()
+                    getCerberusInfo: async () => {
+                        const { lastUpdateTimestamp, cerberusInfo } = get()
                         const now = Date.now()
 
                         if (
                             lastUpdateTimestamp &&
                             now - lastUpdateTimestamp < CACHE_TIME &&
-                            remnawaveInfo.latestVersion &&
-                            remnawaveInfo.starsCount > 0
+                            cerberusInfo.latestVersion &&
+                            cerberusInfo.starsCount > 0
                         ) {
                             return
                         }
@@ -58,16 +58,16 @@ export const useUpdatesStore = create<IActions & IState>()(
 
                             const starsResponse = await axios.get<{
                                 totalStars: number
-                            }>('https://ungh.cc/stars/remnawave/*')
+                            }>('https://ungh.cc/stars/SagerNet/sing-box')
 
                             const versionResponse = await axios.get<{
                                 release: {
                                     tag: string
                                 }
-                            }>('https://ungh.cc/repos/remnawave/panel/releases/latest')
+                            }>('https://ungh.cc/repos/SagerNet/sing-box/releases/latest')
 
                             set({
-                                remnawaveInfo: {
+                                cerberusInfo: {
                                     latestVersion: versionResponse.data.release.tag,
                                     starsCount: starsResponse.data.totalStars
                                 },
@@ -80,8 +80,8 @@ export const useUpdatesStore = create<IActions & IState>()(
                         }
                     },
 
-                    setRemnawaveInfo: (info: IRemnawaveInfo) => {
-                        set({ remnawaveInfo: info, lastUpdateTimestamp: Date.now() })
+                    setCerberusInfo: (info: ICerberusInfo) => {
+                        set({ cerberusInfo: info, lastUpdateTimestamp: Date.now() })
                     },
                     resetState: () => {
                         set({ ...initialState })
@@ -96,13 +96,13 @@ export const useUpdatesStore = create<IActions & IState>()(
             version: 1,
             partialize: (state) => ({
                 lastUpdateTimestamp: state.lastUpdateTimestamp,
-                remnawaveInfo: state.remnawaveInfo
+                cerberusInfo: state.cerberusInfo
             })
         }
     )
 )
 
-export const useRemnawaveInfo = () => useUpdatesStore((state) => state.remnawaveInfo)
+export const useCerberusInfo = () => useUpdatesStore((state) => state.cerberusInfo)
 export const useLastUpdateTimestamp = () => useUpdatesStore((state) => state.lastUpdateTimestamp)
-export const useIsLoadingRemnawaveUpdates = () => useUpdatesStore((state) => state.isLoading)
+export const useIsLoadingCerberusUpdates = () => useUpdatesStore((state) => state.isLoading)
 export const useUpdatesStoreActions = () => useUpdatesStore((state) => state.actions)

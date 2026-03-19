@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { GetAllNodesCommand } from '@remnawave/backend-contract'
+import { GetAllNodesCommand } from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { Grid, Stack } from '@mantine/core'
 import { HiServer } from 'react-icons/hi'

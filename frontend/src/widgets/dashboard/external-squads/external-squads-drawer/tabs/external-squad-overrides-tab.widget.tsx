@@ -12,7 +12,7 @@ import {
     Textarea,
     TextInput
 } from '@mantine/core'
-import { GetExternalSquadByUuidCommand } from '@remnawave/backend-contract'
+import { GetExternalSquadByUuidCommand } from '@cerberus/backend-contract'
 import { useEffect, useMemo, useState } from 'react'
 import { PiPlus, PiTrash } from 'react-icons/pi'
 import { TbDeviceFloppy } from 'react-icons/tb'

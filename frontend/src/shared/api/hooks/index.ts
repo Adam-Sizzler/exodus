@@ -34,9 +34,9 @@ export * from './nodes/nodes.query.hooks'
 export * from './passkeys/passkeys.hooks'
 
 export * from './passkeys/passkeys.query.hooks'
-export * from './remnawave-settings/remnawave-settings.mutation.hooks'
+export * from './cerberus-settings/cerberus-settings.mutation.hooks'
 
-export * from './remnawave-settings/remnawave-settings.query.hooks'
+export * from './cerberus-settings/cerberus-settings.query.hooks'
 export * from './snippets/snippets.mutation.hooks'
 
 export * from './snippets/snippets.query.hooks'
@@ -55,3 +55,5 @@ export * from './system/system.query.hooks'
 
 export * from './users/users.mutation.hooks'
 export * from './users/users.query.hooks'
+export * from './srs-lists/srs-lists.query.hooks'
+export * from './srs-lists/srs-lists.mutation.hooks'

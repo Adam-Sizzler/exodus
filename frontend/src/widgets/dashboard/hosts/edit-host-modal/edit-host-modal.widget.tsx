@@ -1,4 +1,4 @@
-import { UpdateHostCommand } from '@remnawave/backend-contract'
+import { UpdateHostCommand } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { memo, useEffect, useState } from 'react'

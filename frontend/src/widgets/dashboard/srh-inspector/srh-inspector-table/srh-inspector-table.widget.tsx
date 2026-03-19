@@ -11,7 +11,7 @@ import {
     useMantineReactTable
 } from 'mantine-react-table'
 import { TbExternalLink, TbRefresh, TbReportAnalytics, TbRestore } from 'react-icons/tb'
-import { GetSubscriptionRequestHistoryCommand } from '@remnawave/backend-contract'
+import { GetSubscriptionRequestHistoryCommand } from '@cerberus/backend-contract'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { ActionIcon, ActionIconGroup, Tooltip } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'

@@ -9,7 +9,7 @@ import {
 import {
     TSubscriptionPageAppConfig,
     TSubscriptionPageSvgLibrary
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import { ActionIcon, Badge, Box, Card, Group, Text } from '@mantine/core'
 import isSvg from 'is-svg'
 

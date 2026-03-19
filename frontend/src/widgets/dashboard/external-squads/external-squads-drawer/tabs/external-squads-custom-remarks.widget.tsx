@@ -1,7 +1,7 @@
 import { PiClockCountdown, PiClockUser, PiListChecks, PiProhibit } from 'react-icons/pi'
 import { Button, Group, Paper, Stack, Switch, Text, Transition } from '@mantine/core'
 import { TbDeviceFloppy, TbDevices2, TbListLetters, TbX } from 'react-icons/tb'
-import { GetExternalSquadByUuidCommand } from '@remnawave/backend-contract'
+import { GetExternalSquadByUuidCommand } from '@cerberus/backend-contract'
 import { useCallback, useEffect, useState } from 'react'
 import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'node_modules/react-i18next'

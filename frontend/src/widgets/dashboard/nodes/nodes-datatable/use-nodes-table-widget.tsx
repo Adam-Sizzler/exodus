@@ -1,4 +1,4 @@
-import { GetAllNodesCommand, GetConfigProfilesCommand } from '@remnawave/backend-contract'
+import { GetAllNodesCommand, GetConfigProfilesCommand } from '@cerberus/backend-contract'
 import { ActionIcon, Avatar, Badge, Group, Text } from '@mantine/core'
 import { DataTableColumn } from 'mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'
@@ -131,8 +131,8 @@ export function getNodesTableColumns(
                     .join(', ')
         },
         {
-            accessor: 'xrayVersion',
-            title: t('use-nodes-table-widget.xray-v')
+            accessor: 'singboxVersion',
+            title: t('use-nodes-table-widget.singbox-v')
         },
         {
             accessor: 'nodeVersion',

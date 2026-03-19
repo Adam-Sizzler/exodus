@@ -5,7 +5,7 @@ x-common: &common
       hard: 1048576
   restart: always
   networks:
-    - v2rs-network
+    - cerberus-network
 
 x-logging: &logging
   logging:
@@ -19,67 +19,62 @@ x-env: &env
     - ./.env
 
 services:
-  v2rs:
+  cerberus:
     build:
       context: .
       dockerfile: Dockerfile.panel
-      args:
-        - XRAY_WASM_URL=${XRAY_WASM_URL:-https://adam-sizzler.github.io/s-validator/main.wasm}
-        - XRAY_SCHEMA_URL=${XRAY_SCHEMA_URL:-https://adam-sizzler.github.io/s-validator/singbox.schema.json}
-        - XRAY_SCHEMA_CN_URL=${XRAY_SCHEMA_CN_URL:-https://adam-sizzler.github.io/s-validator/singbox.schema.json}
-    image: v2rs:latest
-    container_name: v2rs
-    hostname: v2rs
+    image: cerberus:latest
+    container_name: cerberus
+    hostname: cerberus
     <<: [*common, *logging, *env]
     environment:
-      - APP_PORT=${APP_PORT:-9242}
-      - BACKEND_PORT=${BACKEND_PORT:-9243}
-      - APP_BASE_PATH=${APP_BASE_PATH:-/panel}
+      - APP_PORT=${APP_PORT:-3000}
+      - APP_PATH=${APP_PATH:-/panel}
     ports:
-      - 127.0.0.1:${APP_PORT:-9242}:${APP_PORT:-9242}
-      - 127.0.0.1:${BACKEND_PORT:-9243}:${BACKEND_PORT:-9243}
+      - 127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}
     volumes:
       - panel-data:/app/data
     depends_on:
-      v2rs-db:
+      cerberus-db:
         condition: service_healthy
-      v2rs-redis:
+      cerberus-redis:
         condition: service_healthy
 
-  v2rs-node:
+  cerberus-node:
     build:
-      context: .
+      context: ../cerberus-node
       dockerfile: Dockerfile.node
-    image: v2rs-node:latest
-    container_name: v2rs-node
-    hostname: v2rs-node
+    image: cerberus-node:latest
+    container_name: cerberus-node
+    hostname: cerberus-node
     <<: [*common, *logging]
     ports:
       - "9253:9253"
     volumes:
       - ./backend/node/config.yml:/app/config.yml:ro
-      - ./xray:/app/xray:ro
-      - ./xray/access.log:/app/logs/access.log:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
-  v2rs-subscription:
+  cerberus-subscription:
     build:
-      context: .
-      dockerfile: Dockerfile.subscription
-    image: v2rs-subscription:latest
-    container_name: v2rs-subscription
-    hostname: v2rs-subscription
-    <<: [*common, *logging]
+      context: ../cerberus-sub
+      dockerfile: Dockerfile
+    image: cerberus-subscription:latest
+    container_name: cerberus-subscription
+    hostname: cerberus-subscription
+    <<: [*common, *logging, *env]
+    environment:
+      - APP_PORT_SUB=${APP_PORT_SUB:-3010}
+      - CUSTOM_SUB_PREFIX=${CUSTOM_SUB_PREFIX:-}
     ports:
-      - "9264:9264"
-      - "9263:9263"
-    volumes:
-      - ./backend/subscription/config.yml:/app/config.yml:ro
-      - ./backend/subscription/templates:/app/templates:ro
+      - 127.0.0.1:${APP_PORT_SUB:-3010}:${APP_PORT_SUB:-3010}
+    depends_on:
+      cerberus:
+        condition: service_started
 
-  v2rs-db:
+  cerberus-db:
     image: postgres:17.6
-    container_name: v2rs-db
-    hostname: v2rs-db
+    container_name: cerberus-db
+    hostname: cerberus-db
     <<: [*common, *logging, *env]
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -89,17 +84,17 @@ services:
     ports:
       - 127.0.0.1:6868:5432
     volumes:
-      - v2rs-db-data:/var/lib/postgresql/data
+      - cerberus-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 3s
       timeout: 10s
       retries: 3
 
-  v2rs-redis:
+  cerberus-redis:
     image: valkey/valkey:8.1-alpine
-    container_name: v2rs-redis
-    hostname: v2rs-redis
+    container_name: cerberus-redis
+    hostname: cerberus-redis
     <<: [*common, *logging]
     command: >
       valkey-server
@@ -114,8 +109,8 @@ services:
       retries: 3
 
 networks:
-  v2rs-network:
-    name: v2rs-network
+  cerberus-network:
+    name: cerberus-network
     driver: bridge
     external: false
 
@@ -123,7 +118,7 @@ volumes:
   panel-data:
     name: panel-data
     driver: local
-  v2rs-db-data:
-    name: v2rs-db-data
+  cerberus-db-data:
+    name: cerberus-db-data
     driver: local
     external: false

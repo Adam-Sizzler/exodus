@@ -19,10 +19,10 @@ export const CopyDockerComposeWidget = ({ port }: IProps) => {
 
     const generateDockerCompose = (port?: number) => {
         return `services:
-  remnanode:
-    container_name: remnanode
-    hostname: remnanode
-    image: remnawave/node:latest
+  cerberus-node:
+    container_name: cerberus-node
+    hostname: cerberus-node
+    image: cerberus/node:latest
     network_mode: host
     restart: always
     cap_add:

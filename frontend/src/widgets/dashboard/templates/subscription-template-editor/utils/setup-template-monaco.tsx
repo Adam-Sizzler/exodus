@@ -1,4 +1,4 @@
-import { GetAllHostsCommand } from '@remnawave/backend-contract'
+import { GetAllHostsCommand } from '@cerberus/backend-contract'
 import { configureMonacoYaml } from 'monaco-yaml'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola'
@@ -62,7 +62,7 @@ export const configureMonaco = (
             const schema = {
                 type: 'object',
                 properties: {
-                    remnawave: {
+                    cerberus: {
                         type: 'object',
                         properties: {
                             injectHosts: {

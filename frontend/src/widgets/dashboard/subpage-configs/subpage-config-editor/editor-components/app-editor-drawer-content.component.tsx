@@ -3,7 +3,7 @@ import {
     TSubscriptionPageBlockConfig,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageSvgLibrary
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import { Button, Card, Group, Stack, Switch, TextInput } from '@mantine/core'
 import { IconChevronRight, IconPlus, IconStar } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'

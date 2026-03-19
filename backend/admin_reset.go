@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"v2ray-stat/backend/config"
-	"v2ray-stat/backend/db"
-	"v2ray-stat/backend/dbutil"
-	"v2ray-stat/backend/security"
+	"cerberus/backend/config"
+	"cerberus/backend/db"
+	"cerberus/backend/dbutil"
+	"cerberus/backend/security"
 )
 
 func runAdminCredentialReset(cfg *config.BackendConfig) error {

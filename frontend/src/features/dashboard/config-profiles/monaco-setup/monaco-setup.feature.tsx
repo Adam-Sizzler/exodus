@@ -2,7 +2,7 @@ import {
     GetSnippetsCommand,
     ResponseRulesConfigSchema,
     TSubscriptionTemplateType
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import zodToJsonSchema, { jsonDescription } from 'zod-to-json-schema'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola'
@@ -40,9 +40,9 @@ export const MonacoSetupFeature = {
 
             const snippetSchema = {
                 name: 'snippet',
-                title: 'Remnawave Snippets',
+                title: 'Cerberus Snippets',
                 markdownDescription:
-                    'Create your own snippets to quickly configure your **Outbounds** or **Rules**. \n\n\nReference them here, Remnawave will handle the rest.',
+                    'Create your own snippets to quickly configure your **Outbounds** or **Rules**. \n\n\nReference them here, Cerberus will handle the rest.',
                 type: 'string',
                 enum: snippetNames,
                 markdownEnumDescriptions: snippetDescriptions,

@@ -1,4 +1,4 @@
-import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@remnawave/backend-contract'
+import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@cerberus/backend-contract'
 
 export interface IProps {
     configProfile: GetConfigProfileByUuidCommand.Response['response']

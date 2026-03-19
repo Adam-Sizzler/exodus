@@ -14,10 +14,10 @@ import (
 	"time"
 	"unicode"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/shared"
-	"v2ray-stat/constant"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/shared"
+	"cerberus/constant"
 )
 
 type usageRange struct {
@@ -48,11 +48,11 @@ func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		version = normalizeVersion(version)
 
-		frontendSHA := strings.TrimSpace(os.Getenv("V2RS_FRONTEND_COMMIT"))
+		frontendSHA := strings.TrimSpace(os.Getenv("CERBERUS_FRONTEND_COMMIT"))
 		if frontendSHA == "" {
 			frontendSHA = backendSHA
 		}
-		buildNumber := strings.TrimSpace(os.Getenv("V2RS_BUILD_NUMBER"))
+		buildNumber := strings.TrimSpace(os.Getenv("CERBERUS_BUILD_NUMBER"))
 		if buildNumber == "" {
 			buildNumber = "unknown"
 		}
@@ -227,7 +227,7 @@ func BandwidthStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 		}
 
 		tz := strings.TrimSpace(r.URL.Query().Get("tz"))
-		loc := resolveLocation(tz, cfg.TZ)
+		loc := resolveLocation(tz)
 		now := time.Now().In(loc)
 
 		lastTwoDays, err := readUsageComparison(r.Context(), manager, getLastTwoDaysRanges(now))
@@ -575,11 +575,8 @@ func endOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), t.Location())
 }
 
-func resolveLocation(requestTZ, defaultTZ string) *time.Location {
+func resolveLocation(requestTZ string) *time.Location {
 	tz := strings.TrimSpace(requestTZ)
-	if tz == "" {
-		tz = strings.TrimSpace(defaultTZ)
-	}
 	if tz == "" {
 		return time.UTC
 	}
@@ -631,7 +628,7 @@ func buildCommitURL(sha string) string {
 	if trimmed == "" || trimmed == "unknown" {
 		return "unknown"
 	}
-	return "https://github.com/v2ray-stat/v2ray-stat/commit/" + trimmed
+	return "https://github.com/cerberus/cerberus/commit/" + trimmed
 }
 
 func readMemStats() memStats {

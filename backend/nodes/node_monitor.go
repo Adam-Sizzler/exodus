@@ -2,18 +2,19 @@ package users
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"io"
+	"math/rand/v2"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"v2ray-stat/backend/config"
-	"v2ray-stat/backend/db"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/proto"
+	"cerberus/backend/config"
+	"cerberus/backend/db"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -39,24 +40,25 @@ type NodeMonitor struct {
 	syncNow chan struct{}
 	// Manual deploy trigger
 	deployNow chan bool
+	// Manual SRS sync trigger
+	srsSyncNow chan struct{}
 }
 
 type nodeState struct {
-	nodeName      string
-	address       string
-	port          int
-	apiSchema     string
-	apiPath       string
-	ctx           context.Context
-	cancel        context.CancelFunc
-	conn          *grpc.ClientConn
-	client        proto.NodeServiceClient
-	stream        proto.NodeService_StreamNodeDataClient
-	isConnected   bool
-	isConnecting  bool
-	lastError     string
-	mutex         sync.RWMutex
-	reconnectChan chan struct{}
+	nodeName     string
+	address      string
+	port         int
+	apiSchema    string
+	apiPath      string
+	ctx          context.Context
+	cancel       context.CancelFunc
+	conn         *grpc.ClientConn
+	client       proto.NodeServiceClient
+	stream       proto.NodeService_StreamNodeDataClient
+	isConnected  bool
+	isConnecting bool
+	lastError    string
+	mutex        sync.RWMutex
 }
 
 func pathPrefixUnaryInterceptor(prefix string) grpc.UnaryClientInterceptor {
@@ -76,11 +78,12 @@ func pathPrefixStreamInterceptor(prefix string) grpc.StreamClientInterceptor {
 // NewNodeMonitor creates a new NodeMonitor.
 func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) *NodeMonitor {
 	return &NodeMonitor{
-		manager:   manager,
-		cfg:       cfg,
-		nodes:     make(map[string]*nodeState),
-		syncNow:   make(chan struct{}, 1),
-		deployNow: make(chan bool, 1),
+		manager:    manager,
+		cfg:        cfg,
+		nodes:      make(map[string]*nodeState),
+		syncNow:    make(chan struct{}, 1),
+		deployNow:  make(chan bool, 1),
+		srsSyncNow: make(chan struct{}, 1),
 	}
 }
 
@@ -121,6 +124,9 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 		case restart := <-nm.deployNow:
 			nm.cfg.Logger.Info("Node monitor deploy requested", "restart", restart)
 			nm.deployToConnectedNodes(restart)
+		case <-nm.srsSyncNow:
+			nm.cfg.Logger.Info("Node monitor SRS sync requested")
+			nm.syncSRSListsToConnectedNodes()
 		case <-syncTicker.C:
 			nm.syncNodes()
 		}
@@ -200,14 +206,13 @@ func (nm *NodeMonitor) startNode(dbNode db.DBNode) {
 	ctx, cancel := context.WithCancel(nm.globalCtx)
 
 	state := &nodeState{
-		nodeName:      dbNode.Name,
-		address:       dbNode.Address,
-		port:          dbNode.Port,
-		apiSchema:     dbNode.APISchema,
-		apiPath:       dbNode.APIPath,
-		ctx:           ctx,
-		cancel:        cancel,
-		reconnectChan: make(chan struct{}, 1),
+		nodeName:  dbNode.Name,
+		address:   dbNode.Address,
+		port:      dbNode.Port,
+		apiSchema: dbNode.APISchema,
+		apiPath:   dbNode.APIPath,
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 
 	nm.nodes[dbNode.Name] = state
@@ -222,27 +227,38 @@ func (nm *NodeMonitor) startNode(dbNode db.DBNode) {
 
 // monitorNode monitors a single node with reconnection logic.
 func (nm *NodeMonitor) monitorNode(state *nodeState) {
-	// Initial connection attempt
-	nm.connectAndStream(state)
-
-	// Reconnection loop
-	reconnectTicker := time.NewTicker(10 * time.Second)
-	defer reconnectTicker.Stop()
+	const (
+		minBackoff = 2 * time.Second
+		maxBackoff = 60 * time.Second
+	)
+	backoff := minBackoff
 
 	for {
-		select {
-		case <-state.ctx.Done():
+		if state.ctx.Err() != nil {
 			nm.cfg.Logger.Debug("Node monitor stopped", "node", state.nodeName)
 			return
+		}
 
-		case <-reconnectTicker.C:
-			if !state.isConnected {
-				nm.connectAndStream(state)
-			}
+		nm.connectAndStream(state)
+		if state.ctx.Err() != nil {
+			nm.cfg.Logger.Debug("Node monitor stopped", "node", state.nodeName)
+			return
+		}
 
-		case <-state.reconnectChan:
-			// Immediate reconnect requested
-			nm.connectAndStream(state)
+		wait := withJitter(backoff, 0.2)
+		nm.cfg.Logger.Debug("Scheduling node reconnect", "node", state.nodeName, "wait", wait.String())
+
+		timer := time.NewTimer(wait)
+		select {
+		case <-state.ctx.Done():
+			timer.Stop()
+			nm.cfg.Logger.Debug("Node monitor stopped", "node", state.nodeName)
+			return
+		case <-timer.C:
+		}
+
+		if backoff < maxBackoff {
+			backoff = minDuration(maxBackoff, backoff*2)
 		}
 	}
 }
@@ -267,10 +283,19 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 
 	apiSchema := strings.ToLower(strings.TrimSpace(state.apiSchema))
 	if apiSchema == "https" || apiSchema == "grpcs" || apiSchema == "tls" {
-		tlsCfg := &tls.Config{InsecureSkipVerify: true}
+		tlsCfg, tlsErr := nm.loadNodeMTLSConfig(state.ctx)
+		if tlsErr != nil {
+			nm.cfg.Logger.Warn("Failed to build mTLS config for node", "node", state.nodeName, "error", tlsErr)
+			nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("mTLS config failed: %v", tlsErr))
+			state.mutex.Lock()
+			state.isConnecting = false
+			state.mutex.Unlock()
+			return
+		}
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
-		nm.cfg.Logger.Warn("Using insecure TLS for node gRPC", "node", state.nodeName, "address", state.address)
+		nm.cfg.Logger.Debug("Using mTLS for node gRPC", "node", state.nodeName, "address", state.address)
 	} else {
+		nm.cfg.Logger.Warn("Node gRPC connection is insecure", "node", state.nodeName, "schema", apiSchema)
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
@@ -396,18 +421,37 @@ func (nm *NodeMonitor) handleDisconnect(state *nodeState, reason string) {
 		nm.cfg.Logger.Warn("Node disconnected before ready", "node", state.nodeName, "reason", reason)
 	}
 
-	// Request reconnect
-	select {
-	case state.reconnectChan <- struct{}{}:
-	default:
+}
+
+func withJitter(base time.Duration, factor float64) time.Duration {
+	if base <= 0 || factor <= 0 {
+		return base
 	}
+	delta := int64(float64(base) * factor)
+	if delta <= 0 {
+		return base
+	}
+	offset := rand.Int64N(2*delta+1) - delta
+	result := base + time.Duration(offset)
+	if result <= 0 {
+		return base
+	}
+	return result
+}
+
+func minDuration(a, b time.Duration) time.Duration {
+	if a <= b {
+		return a
+	}
+	return b
 }
 
 // processResponse processes node response data.
 func (nm *NodeMonitor) processResponse(nodeName string, resp *proto.NodeDataResponse) {
-	switch resp.Response.(type) {
+	switch payload := resp.Response.(type) {
 	case *proto.NodeDataResponse_Stats:
 		nm.cfg.Logger.Trace("Node stats received", "node", nodeName)
+		nm.updateNodeRuntimeFromStats(nodeName, payload.Stats.GetStats())
 	case *proto.NodeDataResponse_Users:
 		nm.cfg.Logger.Trace("Node users received", "node", nodeName)
 	case *proto.NodeDataResponse_LogData:
@@ -415,6 +459,80 @@ func (nm *NodeMonitor) processResponse(nodeName string, resp *proto.NodeDataResp
 	default:
 		nm.cfg.Logger.Trace("Node message received", "node", nodeName)
 	}
+}
+
+func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*proto.Stat) {
+	if len(stats) == 0 {
+		return
+	}
+
+	values := make(map[string]string, len(stats))
+	for _, stat := range stats {
+		if stat == nil {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(stat.GetName()))
+		if key == "" {
+			continue
+		}
+		values[key] = strings.TrimSpace(stat.GetValue())
+	}
+
+	singboxVersion := firstNonEmpty(values["singbox_version"])
+	nodeVersion := firstNonEmpty(values["node_version"])
+	singboxUptime := firstNonEmpty(values["singbox_uptime"])
+	cpuCount := parseOptionalInt(values["cpu_count"])
+	cpuModel := parseOptionalString(values["cpu_model"])
+	totalRAM := parseOptionalString(values["total_ram"])
+	usersOnline := parseOptionalInt(values["users_online"])
+
+	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		query := `
+			UPDATE nodes
+			SET singbox_version = COALESCE(?, singbox_version),
+			    node_version = COALESCE(?, node_version),
+			    singbox_uptime = COALESCE(?, singbox_uptime),
+			    cpu_count = COALESCE(?, cpu_count),
+			    cpu_model = COALESCE(?, cpu_model),
+			    total_ram = COALESCE(?, total_ram),
+			    users_online = COALESCE(?, users_online),
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE name = ?`
+		_, execErr := db.Exec(query, singboxVersion, nodeVersion, singboxUptime, cpuCount, cpuModel, totalRAM, usersOnline, nodeName)
+		return execErr
+	})
+	if err != nil {
+		nm.cfg.Logger.Warn("Failed to persist node runtime stats", "node", nodeName, "error", err)
+	}
+}
+
+func parseOptionalInt(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		return nil
+	}
+	return parsed
+}
+
+func parseOptionalString(value string) any {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return trimmed
+}
+
+func firstNonEmpty(values ...string) any {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return nil
 }
 
 // updateConnectionStatus updates node connection status in database (only on change).
@@ -519,6 +637,20 @@ func (nm *NodeMonitor) RequestDeploy(restart bool) {
 		if nm.cfg != nil && nm.cfg.Logger != nil {
 			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart)
 		}
+	}
+}
+
+// RequestSRSDeploy triggers SRS list sync to connected nodes (non-blocking).
+func (nm *NodeMonitor) RequestSRSDeploy() {
+	if nm == nil {
+		return
+	}
+	if nm.cfg != nil && nm.cfg.Logger != nil {
+		nm.cfg.Logger.Debug("Node SRS sync requested")
+	}
+	select {
+	case nm.srsSyncNow <- struct{}{}:
+	default:
 	}
 }
 

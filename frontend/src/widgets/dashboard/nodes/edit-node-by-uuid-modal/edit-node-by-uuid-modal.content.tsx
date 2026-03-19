@@ -1,4 +1,4 @@
-import { UpdateNodeCommand } from '@remnawave/backend-contract'
+import { UpdateNodeCommand } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect, useState } from 'react'
 import { useForm } from '@mantine/form'

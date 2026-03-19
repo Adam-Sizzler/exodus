@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/shared"
 
 	"github.com/google/uuid"
 )
@@ -248,9 +248,9 @@ func SubscriptionSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionSettingsV2RS(w, r, manager, cfg)
+			handleGetSubscriptionSettingsCERBERUS(w, r, manager, cfg)
 		case http.MethodPatch:
-			handlePatchSubscriptionSettingsV2RS(w, r, manager, cfg)
+			handlePatchSubscriptionSettingsCERBERUS(w, r, manager, cfg)
 		default:
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		}
@@ -288,7 +288,7 @@ func handleGetSubscriptionSettings(w http.ResponseWriter, r *http.Request, manag
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"settings": settings})
 }
 
-func handleGetSubscriptionSettingsV2RS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleGetSubscriptionSettingsCERBERUS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var settings SubscriptionSettings
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(r.Context(), `
@@ -321,7 +321,7 @@ func handleGetSubscriptionSettingsV2RS(w http.ResponseWriter, r *http.Request, m
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": apiSettings})
 }
 
-func handlePatchSubscriptionSettingsV2RS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handlePatchSubscriptionSettingsCERBERUS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req SubscriptionSettingsUpdateRequestAPI
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)

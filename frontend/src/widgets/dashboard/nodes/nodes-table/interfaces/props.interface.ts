@@ -1,4 +1,4 @@
-import { GetAllNodesCommand } from '@remnawave/backend-contract'
+import { GetAllNodesCommand } from '@cerberus/backend-contract'
 
 export interface IProps {
     nodes: GetAllNodesCommand.Response['response'] | undefined

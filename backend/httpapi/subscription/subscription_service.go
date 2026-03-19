@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/dbutil"
-	"v2ray-stat/backend/httpapi/shared"
-	subscriptionresponserules "v2ray-stat/backend/httpapi/subscription-response-rules"
-	subscriptionsettings "v2ray-stat/backend/httpapi/subscription-settings"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/dbutil"
+	"cerberus/backend/httpapi/shared"
+	subscriptionresponserules "cerberus/backend/httpapi/subscription-response-rules"
+	subscriptionsettings "cerberus/backend/httpapi/subscription-settings"
 
 	"gopkg.in/yaml.v3"
 )

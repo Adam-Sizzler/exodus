@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Divider, Group, Stack, Text, ThemeIcon } from '@mantine/core'
-import { GetUserSubscriptionRequestHistoryCommand } from '@remnawave/backend-contract'
+import { GetUserSubscriptionRequestHistoryCommand } from '@cerberus/backend-contract'
 import { TbExternalLink, TbViewfinder } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 

@@ -2,7 +2,7 @@ import {
     TSubscriptionPagePlatformKey,
     TSubscriptionPagePlatformSchema,
     TSubscriptionPageRawConfig
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import { Accordion, Card, Divider, Group, Select, Stack, Text } from '@mantine/core'
 import { IconDeviceDesktop, IconPlus } from '@tabler/icons-react'
 import { UseFormReturnType } from '@mantine/form'

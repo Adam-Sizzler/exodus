@@ -1,7 +1,7 @@
 import { TbCirclesRelation, TbServerCog, TbTag, TbUsersMinus, TbUsersPlus } from 'react-icons/tb'
 import { PiCheck, PiCopy, PiPencil, PiTag, PiTrashDuotone, PiUsers } from 'react-icons/pi'
 import { Badge, CopyButton, Group, Menu, Tooltip } from '@mantine/core'
-import { GetInternalSquadsCommand } from '@remnawave/backend-contract'
+import { GetInternalSquadsCommand } from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'

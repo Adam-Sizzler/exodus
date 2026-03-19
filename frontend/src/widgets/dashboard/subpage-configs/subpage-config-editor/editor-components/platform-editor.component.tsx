@@ -4,7 +4,7 @@ import {
     TSubscriptionPagePlatformKey,
     TSubscriptionPagePlatformSchema,
     TSubscriptionPageSvgLibrary
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import { Accordion, ActionIcon, Button, Center, Divider, Drawer, Group, Stack } from '@mantine/core'
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'

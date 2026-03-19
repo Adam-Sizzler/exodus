@@ -2,7 +2,7 @@ import {
     CreateUserCommand,
     GetAllTagsCommand,
     UpdateUserCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { Anchor, Checkbox, Code, Input, NumberInput, Stack, Text, Textarea } from '@mantine/core'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbDevices2, TbSettings } from 'react-icons/tb'

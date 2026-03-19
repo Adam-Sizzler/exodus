@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"v2ray-stat/backend/config"
-	"v2ray-stat/backend/dbutil"
+	"cerberus/backend/config"
+	"cerberus/backend/dbutil"
 )
 
 const (

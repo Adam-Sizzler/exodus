@@ -15,10 +15,10 @@ import { CSSProperties, memo } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 
-import { getNodeResetDaysUtil, getXrayUptimeUtil } from '@shared/utils/time-utils'
+import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { faviconResolver } from '@shared/utils/misc'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import { NodeStatusBadgeWidget } from '../node-status-badge'
 import classes from './NodeCard.module.css'
@@ -90,7 +90,8 @@ export const NodeCardWidget = memo((props: IProps) => {
     const percentage = calcPercentage()
     const fallbackProgress = node.isTrafficTrackingActive && node.trafficLimitBytes === 0
 
-    const isOnline = node.isConnected && node.xrayUptime !== '0' && !node.isDisabled
+    const nodeSingboxUptime = node.singboxUptime
+    const isOnline = node.isConnected && nodeSingboxUptime !== '0' && !node.isDisabled
     const isConfigMissing =
         node.configProfile.activeConfigProfileUuid === null ||
         node.configProfile.activeInbounds.length === 0
@@ -269,14 +270,14 @@ export const NodeCardWidget = memo((props: IProps) => {
 
                             {isOnline && (
                                 <Flex align="center" gap={4}>
-                                    <XrayLogo size={14} />
+                                    <SingboxLogo size={14} />
                                     <Text
                                         c={isOnline ? 'teal' : 'red'}
                                         fw={isOnline ? 600 : 500}
                                         size="sm"
                                         truncate
                                     >
-                                        {getXrayUptimeUtil(node.xrayUptime)}
+                                        {getSingboxUptimeUtil(nodeSingboxUptime)}
                                     </Text>
                                 </Flex>
                             )}
@@ -419,13 +420,13 @@ export const NodeCardWidget = memo((props: IProps) => {
                         )}
 
                         <Flex align="center" gap={4}>
-                            <XrayLogo size={12} />
+                            <SingboxLogo size={12} />
                             <Text
                                 c={isOnline ? 'teal' : 'dimmed'}
                                 fw={isOnline ? 600 : 500}
                                 size="xs"
                             >
-                                {isOnline ? getXrayUptimeUtil(node.xrayUptime) : 'offline'}
+                                {isOnline ? getSingboxUptimeUtil(nodeSingboxUptime) : 'offline'}
                             </Text>
                         </Flex>
                     </Flex>

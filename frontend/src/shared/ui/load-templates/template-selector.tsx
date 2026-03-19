@@ -57,7 +57,7 @@ export const TemplateSelector = (props: TemplateSelectorProps) => {
             <Group grow justify="space-between">
                 <Button
                     component="a"
-                    href="https://github.com/remnawave/templates"
+                    href="https://github.com/cerberus/templates"
                     target="_blank"
                     variant="light"
                 >
@@ -76,7 +76,7 @@ export const TemplateSelector = (props: TemplateSelectorProps) => {
                     {Object.entries(groupedTemplates).map(([author, templates]) => (
                         <Box key={author}>
                             <Text c="dimmed" fw={600} mb="xs" size="sm">
-                                {author === 'remnawave'
+                                {author === 'cerberus'
                                     ? t('template-selector.official-templates')
                                     : t('template-selector.author-templates', { author })}
                             </Text>

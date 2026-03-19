@@ -10,7 +10,7 @@ import {
     Text,
     TextInput
 } from '@mantine/core'
-import { GetConfigProfilesCommand } from '@remnawave/backend-contract'
+import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TbDeviceFloppy, TbSearch, TbX } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
@@ -19,7 +19,7 @@ import { Virtuoso } from 'react-virtuoso'
 import { ConfigProfileCardShared } from '@shared/ui/config-profiles/config-profile-card/config-profile-card.shared'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetConfigProfiles } from '@shared/api/hooks'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import classes from './config-profiles.module.css'
 import { IProps } from './interfaces'
@@ -166,7 +166,7 @@ export const ConfigProfilesDrawer = (props: IProps) => {
             }}
             title={
                 <BaseOverlayHeader
-                    IconComponent={XrayLogo}
+                    IconComponent={SingboxLogo}
                     iconVariant="gradient-teal"
                     title={t('config-profiles.drawer.widget.config-profiles')}
                 />

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"v2ray-stat/backend/config"
+	"cerberus/backend/config"
 )
 
 type loggingResponseWriter struct {
@@ -42,14 +42,27 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 			statusCode = http.StatusOK
 		}
 
-		durationMs := time.Since(start).Milliseconds()
+		duration := time.Since(start)
+		durationMs := duration.Milliseconds()
+		durationUs := duration.Microseconds()
 
-		cfg.Logger.Debug("HTTP request",
+		// Keep request timing visible even when debug is disabled.
+		cfg.Logger.Info("HTTP request",
 			"component", component,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", statusCode,
 			"duration_ms", durationMs,
+			"duration_us", durationUs,
+		)
+		cfg.Logger.Debug("HTTP request debug",
+			"component", component,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", statusCode,
+			"bytes", lrw.bytes,
+			"duration_ms", durationMs,
+			"duration_us", durationUs,
 		)
 		cfg.Logger.Trace("HTTP request details",
 			"component", component,
@@ -59,6 +72,7 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 			"status", statusCode,
 			"bytes", lrw.bytes,
 			"duration_ms", durationMs,
+			"duration_us", durationUs,
 			"remote_addr", r.RemoteAddr,
 			"user_agent", r.UserAgent(),
 			"x_forwarded_for", r.Header.Get("X-Forwarded-For"),

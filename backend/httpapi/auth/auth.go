@@ -10,16 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/middleware"
-	"v2ray-stat/backend/httpapi/shared"
-	"v2ray-stat/backend/security"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/middleware"
+	"cerberus/backend/httpapi/shared"
+	"cerberus/backend/security"
 
 	"github.com/google/uuid"
 )
 
-const sessionCookieName = "v2rs_session"
+const sessionCookieName = "cerberus_session"
 
 type authContextKey string
 
@@ -880,7 +880,7 @@ func getBootstrapData(manager *dbmanager.DatabaseManager) (brandingSettings map[
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
 			SELECT branding_settings, password_settings
-			FROM v2rs_settings
+			FROM cerberus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)
@@ -928,7 +928,7 @@ func getBootstrapData(manager *dbmanager.DatabaseManager) (brandingSettings map[
 
 func defaultBrandingSettings() map[string]any {
 	return map[string]any{
-		"title":   "V2RS",
+		"title":   "CERBERUS",
 		"logoUrl": nil,
 	}
 }
@@ -953,7 +953,7 @@ func getAuthMethodsStatus(manager *dbmanager.DatabaseManager) (passkeyEnabled bo
 	_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
 			SELECT passkey_settings, oauth2_settings, tg_auth_settings
-			FROM v2rs_settings
+			FROM cerberus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)

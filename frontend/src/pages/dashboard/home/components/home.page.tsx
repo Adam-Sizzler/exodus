@@ -30,9 +30,9 @@ const AnimatedCard = ({ children, index }: IAnimatedCardProps) => (
 export const HomePage = (props: IProps) => {
     const { t } = useTranslation()
 
-    const { systemInfo, bandwidthStats, remnawaveHealth } = props
+    const { systemInfo, bandwidthStats, cerberusHealth } = props
 
-    if (!systemInfo || !bandwidthStats || !remnawaveHealth) {
+    if (!systemInfo || !bandwidthStats || !cerberusHealth) {
         return <LoadingScreen />
     }
 
@@ -40,8 +40,8 @@ export const HomePage = (props: IProps) => {
     const simpleMetrics = getSimpleMetrics(systemInfo, t)
     const usersMetrics = getUsersMetrics(systemInfo.users, t)
     const onlineMetrics = getOnlineMetrics(systemInfo.onlineStats, t)
-    const pm2SummaryMetrics = getPm2SummaryMetrics(remnawaveHealth.pm2Stats, t)
-    const pm2ProcessMetrics = getPm2ProcessMetrics(remnawaveHealth.pm2Stats)
+    const pm2SummaryMetrics = getPm2SummaryMetrics(cerberusHealth.pm2Stats, t)
+    const pm2ProcessMetrics = getPm2ProcessMetrics(cerberusHealth.pm2Stats)
 
     return (
         <Page title={t('constants.home')}>
@@ -49,7 +49,7 @@ export const HomePage = (props: IProps) => {
                 {pm2SummaryMetrics.length > 0 && (
                     <div className={classes.section}>
                         <Title className={classes.title} m="xs" ml={0} order={4}>
-                            {t('home.page.remnawave-usage')}
+                            {t('home.page.cerberus-usage')}
                         </Title>
 
                         <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="xs">

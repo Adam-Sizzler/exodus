@@ -1,4 +1,4 @@
-import { GetConfigProfilesCommand } from '@remnawave/backend-contract'
+import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
 import { ReactNode } from 'react'
 
 export interface IProps {

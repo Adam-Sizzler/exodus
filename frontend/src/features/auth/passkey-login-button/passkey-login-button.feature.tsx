@@ -1,8 +1,5 @@
-import {
-    type PublicKeyCredentialRequestOptionsJSON,
-    startAuthentication
-} from '@simplewebauthn/browser'
-import { GetStatusCommand } from '@remnawave/backend-contract'
+import * as SimpleWebAuthnBrowser from '@simplewebauthn/browser'
+import { GetStatusCommand } from '@cerberus/backend-contract'
 import { notifications } from '@mantine/notifications'
 import { TbFingerprint } from 'react-icons/tb'
 import { Button } from '@mantine/core'
@@ -31,8 +28,8 @@ export const PasskeyLoginButtonFeature = (props: IProps) => {
         try {
             const verificationOptions = await refetch()
 
-            const authenticationResponse = await startAuthentication({
-                optionsJSON: verificationOptions.data as PublicKeyCredentialRequestOptionsJSON
+            const authenticationResponse = await (SimpleWebAuthnBrowser as any).startAuthentication({
+                optionsJSON: verificationOptions.data as any
             })
 
             await verifyAuthentication(

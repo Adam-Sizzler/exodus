@@ -21,7 +21,7 @@ import {
     PiTelegramLogoDuotone,
     PiX
 } from 'react-icons/pi'
-import { BulkAllUpdateUsersCommand } from '@remnawave/backend-contract'
+import { BulkAllUpdateUsersCommand } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { Trans, useTranslation } from 'node_modules/react-i18next'
 import { DateTimePicker } from '@mantine/dates'

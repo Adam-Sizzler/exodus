@@ -39,7 +39,7 @@ import {
     SECURITY_LAYERS,
     SUBSCRIPTION_TEMPLATE_TYPE,
     UpdateHostCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { TbCirclesRelation, TbCloudNetwork, TbEye, TbServer2 } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { useDisclosure } from '@mantine/hooks'

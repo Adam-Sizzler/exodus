@@ -1,5 +1,5 @@
 import { DataTable, useDataTableColumns } from 'mantine-datatable'
-import { GetAllNodesCommand } from '@remnawave/backend-contract'
+import { GetAllNodesCommand } from '@cerberus/backend-contract'
 import { Box, Button, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
 import { PiEmpty } from 'react-icons/pi'

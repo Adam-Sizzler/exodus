@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { GetAllHostsCommand } from '@remnawave/backend-contract'
+import { GetAllHostsCommand } from '@cerberus/backend-contract'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useListState, useMediaQuery } from '@mantine/hooks'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'

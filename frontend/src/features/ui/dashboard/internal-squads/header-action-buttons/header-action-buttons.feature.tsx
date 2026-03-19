@@ -8,7 +8,7 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateInternalSquadCommand } from '@remnawave/backend-contract'
+import { CreateInternalSquadCommand } from '@cerberus/backend-contract'
 import { TbCirclesRelation, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'

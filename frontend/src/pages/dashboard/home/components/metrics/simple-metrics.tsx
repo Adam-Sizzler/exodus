@@ -1,5 +1,5 @@
 import { PiChartBarDuotone, PiCpuDuotone, PiMemoryFill, PiMemoryLight } from 'react-icons/pi'
-import { GetStatsCommand } from '@remnawave/backend-contract'
+import { GetStatsCommand } from '@cerberus/backend-contract'
 import { TFunction } from 'i18next'
 
 import { prettyBytesUtil, prettyBytesUtilWithoutPrefix } from '@shared/utils/bytes'

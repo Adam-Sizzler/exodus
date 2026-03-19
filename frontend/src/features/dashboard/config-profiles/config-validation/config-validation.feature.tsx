@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor'
 
-import { GetSnippetsCommand } from '@remnawave/backend-contract'
+import { GetSnippetsCommand } from '@cerberus/backend-contract'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola/browser'
 import { RefObject } from 'react'

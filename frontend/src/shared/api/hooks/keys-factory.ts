@@ -3,7 +3,7 @@ import { inferQueryKeyStore, mergeQueryKeys } from '@lukemorales/query-key-facto
 import { subscriptionRequestHistoryQueryKeys } from './subscription-request-history/subscription-request-history.query.hooks'
 import { subscriptionTemplateQueryKeys } from './subscription-template/subscription-template.query.hooks'
 import { subscriptionSettingsQueryKeys } from './subscription-settings/subscription-settings.query.hooks'
-import { remnawaveSettingsQueryKeys } from './remnawave-settings/remnawave-settings.query.hooks'
+import { cerberusSettingsQueryKeys } from './cerberus-settings/cerberus-settings.query.hooks'
 import { hwidUserDevicesQueryKeys } from './hwid-user-devices/hwid-user-devices.query.hooks'
 import { configProfilesQueryKeys } from './config-profiles/config-profiles.query.hooks'
 import { internalSquadsQueryKeys } from './internal-squads/internal-squads.query.hooks'
@@ -15,6 +15,7 @@ import { apiTokensQueryKeys } from './api-tokens/api-tokens.query.hooks'
 import { ipControlQueryKeys } from './ip-control/ip-control.query.hooks'
 import { snippetsQueryKeys } from './snippets/snippets.query.hooks'
 import { passkeysQueryKeys } from './passkeys/passkeys.query.hooks'
+import { srsListsQueryKeys } from './srs-lists/srs-lists.query.hooks'
 import { systemQueryKeys } from './system/system.query.hooks'
 import { usersQueryKeys } from './users/users.query.hooks'
 import { hostsQueryKeys } from './hosts/hosts.query.hooks'
@@ -37,8 +38,9 @@ export const QueryKeys = mergeQueryKeys(
     subscriptionRequestHistoryQueryKeys,
     snippetsQueryKeys,
     externalSquadsQueryKeys,
-    remnawaveSettingsQueryKeys,
+    cerberusSettingsQueryKeys,
     passkeysQueryKeys,
+    srsListsQueryKeys,
     subpageConfigsQueryKeys,
     bandwidthStatsQueryKeys,
     ipControlQueryKeys

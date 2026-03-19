@@ -8,7 +8,7 @@ import {
     TagsInput,
     Text
 } from '@mantine/core'
-import { CreateNodeCommand, UpdateNodeCommand } from '@remnawave/backend-contract'
+import { CreateNodeCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbChartBar, TbChartLine } from 'react-icons/tb'
 import { UseFormReturnType } from '@mantine/form'

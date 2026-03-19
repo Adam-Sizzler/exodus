@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor'
 
-import { TSubscriptionTemplateType } from '@remnawave/backend-contract'
+import { TSubscriptionTemplateType } from '@cerberus/backend-contract'
 import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'node_modules/react-i18next'
 import { TbDownload } from 'react-icons/tb'

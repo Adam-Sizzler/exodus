@@ -5,7 +5,7 @@ import {
     GetAllUsersCommand,
     GetExternalSquadsCommand,
     GetInternalSquadsCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { Badge, Group, Stack, Text, Tooltip } from '@mantine/core'
 import { MRT_ColumnDef } from 'mantine-react-table'
 import { useTranslation } from 'node_modules/react-i18next'

@@ -11,7 +11,7 @@ import {
 import {
     CreateSubscriptionTemplateCommand,
     TSubscriptionTemplateType
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { TbFolder, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'

@@ -30,7 +30,7 @@ func GetBuildInfo() string {
 	}
 
 	return fmt.Sprintf(
-		"v2rs version: %s\n"+
+		"cerberus version: %s\n"+
 			"environment: %s %s\n"+
 			"tags: %s\n"+
 			"revision: %s%s\n"+

@@ -23,12 +23,14 @@ export const ROUTES = {
             CONFIG_PROFILE_BY_UUID: '/dashboard/management/config-profiles/:uuid',
             INTERNAL_SQUADS: '/dashboard/management/internal-squads',
             EXTERNAL_SQUADS: '/dashboard/management/external-squads',
-            REMNAWAVE_SETTINGS: '/dashboard/management/settings'
+            SRS_LISTS: '/dashboard/management/srs-lists',
+            CERBERUS_SETTINGS: '/dashboard/management/settings'
         },
         TOOLS: {
             ROOT: '/dashboard/tools',
             HWID_INSPECTOR: '/dashboard/tools/hwid-inspector',
-            SRH_INSPECTOR: '/dashboard/tools/srh-inspector'
+            SRH_INSPECTOR: '/dashboard/tools/srh-inspector',
+            MODULES: '/dashboard/tools/modules'
         },
         TEMPLATES: {
             ROOT: '/dashboard/templates',

@@ -3,9 +3,9 @@ import {
     GetMetadataCommand,
     GetNodesMetricsCommand,
     GetNodesStatisticsCommand,
-    GetRemnawaveHealthCommand,
+    GetCerberusHealthCommand,
     GetStatsCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 
@@ -26,13 +26,13 @@ export const systemQueryKeys = createQueryKeys('system', {
     getNodesStatistics: {
         queryKey: null
     },
-    getRemnawaveHealth: {
+    getCerberusHealth: {
         queryKey: null
     },
     getNodesMetrics: {
         queryKey: null
     },
-    getRemnawaveMetadata: {
+    getCerberusMetadata: {
         queryKey: null
     }
 })
@@ -85,16 +85,16 @@ export const useGetNodesStatisticsCommand = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Nodes Statistics')
 })
 
-export const useGetRemnawaveHealth = createGetQueryHook({
-    endpoint: GetRemnawaveHealthCommand.TSQ_url,
-    responseSchema: GetRemnawaveHealthCommand.ResponseSchema,
-    getQueryKey: () => systemQueryKeys.getRemnawaveHealth.queryKey,
+export const useGetCerberusHealth = createGetQueryHook({
+    endpoint: GetCerberusHealthCommand.TSQ_url,
+    responseSchema: GetCerberusHealthCommand.ResponseSchema,
+    getQueryKey: () => systemQueryKeys.getCerberusHealth.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,
         staleTime: sToMs(10),
         refetchInterval: sToMs(10)
     },
-    errorHandler: (error) => errorHandler(error, 'Get Remnawave Health')
+    errorHandler: (error) => errorHandler(error, 'Get Cerberus Health')
 })
 
 export const useGetNodesMetrics = createGetQueryHook({
@@ -109,14 +109,14 @@ export const useGetNodesMetrics = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Nodes Metrics')
 })
 
-export const useGetRemnawaveMetadata = createGetQueryHook({
+export const useGetCerberusMetadata = createGetQueryHook({
     endpoint: GetMetadataCommand.TSQ_url,
     responseSchema: GetMetadataCommand.ResponseSchema,
-    getQueryKey: () => systemQueryKeys.getRemnawaveMetadata.queryKey,
+    getQueryKey: () => systemQueryKeys.getCerberusMetadata.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,
         refetchOnMount: false,
         staleTime: sToMs(3_600)
     },
-    errorHandler: (error) => errorHandler(error, 'Get Remnawave Metadata')
+    errorHandler: (error) => errorHandler(error, 'Get Cerberus Metadata')
 })

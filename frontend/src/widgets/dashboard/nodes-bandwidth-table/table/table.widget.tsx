@@ -1,5 +1,5 @@
 import { ListViewTable } from '@gfazioli/mantine-list-view-table'
-import { GetAllNodesCommand } from '@remnawave/backend-contract'
+import { GetAllNodesCommand } from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { TbChartArcs } from 'react-icons/tb'
 import { Table } from '@mantine/core'

@@ -1,4 +1,4 @@
-import { GetOneNodeCommand, GetPubKeyCommand, UpdateNodeCommand } from '@remnawave/backend-contract'
+import { GetOneNodeCommand, GetPubKeyCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
 import { Button, CopyButton, em, Group, Menu, px, Stack } from '@mantine/core'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'
 import { UseFormReturnType } from '@mantine/form'

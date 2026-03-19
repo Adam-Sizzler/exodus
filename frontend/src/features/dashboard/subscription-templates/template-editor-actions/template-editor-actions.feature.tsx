@@ -8,7 +8,7 @@ import {
     TbMenuDeep,
     TbSelectAll
 } from 'react-icons/tb'
-import { GetSubscriptionTemplateCommand } from '@remnawave/backend-contract'
+import { GetSubscriptionTemplateCommand } from '@cerberus/backend-contract'
 import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { PiCheckSquareOffset, PiFloppyDisk } from 'react-icons/pi'
 import { ActionIcon, Button, Group, Menu } from '@mantine/core'

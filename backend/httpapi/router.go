@@ -3,29 +3,31 @@ package httpapi
 import (
 	"net/http"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/auth"
-	"v2ray-stat/backend/httpapi/bandwidthstats"
-	"v2ray-stat/backend/httpapi/configprofiles"
-	"v2ray-stat/backend/httpapi/externalsquads"
-	"v2ray-stat/backend/httpapi/health"
-	"v2ray-stat/backend/httpapi/hosts"
-	"v2ray-stat/backend/httpapi/hwiduserdevices"
-	"v2ray-stat/backend/httpapi/infrabilling"
-	"v2ray-stat/backend/httpapi/keygen"
-	"v2ray-stat/backend/httpapi/middleware"
-	"v2ray-stat/backend/httpapi/nodes"
-	"v2ray-stat/backend/httpapi/panelsettings"
-	"v2ray-stat/backend/httpapi/passkeys"
-	"v2ray-stat/backend/httpapi/squads"
-	"v2ray-stat/backend/httpapi/subscription"
-	subscriptionpageconfigs "v2ray-stat/backend/httpapi/subscription-page-configs"
-	subscriptionsettings "v2ray-stat/backend/httpapi/subscription-settings"
-	subscriptiontemplate "v2ray-stat/backend/httpapi/subscription-template"
-	subscriptionrequesthistory "v2ray-stat/backend/httpapi/subscriptionrequesthistory"
-	"v2ray-stat/backend/httpapi/system"
-	"v2ray-stat/backend/httpapi/users"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/auth"
+	"cerberus/backend/httpapi/bandwidthstats"
+	"cerberus/backend/httpapi/configprofiles"
+	"cerberus/backend/httpapi/externalsquads"
+	"cerberus/backend/httpapi/health"
+	"cerberus/backend/httpapi/hosts"
+	"cerberus/backend/httpapi/hwiduserdevices"
+	"cerberus/backend/httpapi/infrabilling"
+	"cerberus/backend/httpapi/keygen"
+	"cerberus/backend/httpapi/middleware"
+	"cerberus/backend/httpapi/modulessettings"
+	"cerberus/backend/httpapi/nodes"
+	"cerberus/backend/httpapi/panelsettings"
+	"cerberus/backend/httpapi/passkeys"
+	"cerberus/backend/httpapi/squads"
+	"cerberus/backend/httpapi/srslists"
+	"cerberus/backend/httpapi/subscription"
+	subscriptionpageconfigs "cerberus/backend/httpapi/subscription-page-configs"
+	subscriptionsettings "cerberus/backend/httpapi/subscription-settings"
+	subscriptiontemplate "cerberus/backend/httpapi/subscription-template"
+	subscriptionrequesthistory "cerberus/backend/httpapi/subscriptionrequesthistory"
+	"cerberus/backend/httpapi/system"
+	"cerberus/backend/httpapi/users"
 )
 
 func NewAPIHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.Handler {
@@ -46,10 +48,12 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/auth/me", auth.AuthMeHandler(manager, cfg))
 
 	mux.HandleFunc("/api/settings", panelsettings.PanelSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/remnawave-settings", panelsettings.RemnawaveSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/remnawave-settings/", panelsettings.RemnawaveSettingsHandler(manager, cfg))
+	mux.HandleFunc("/api/cerberus-settings", panelsettings.CerberusSettingsHandler(manager, cfg))
+	mux.HandleFunc("/api/cerberus-settings/", panelsettings.CerberusSettingsHandler(manager, cfg))
 	mux.HandleFunc("/api/tokens", panelsettings.PanelAPITokensHandler(manager, cfg))
 	mux.HandleFunc("/api/tokens/", panelsettings.PanelAPITokenByUUIDHandler(manager, cfg))
+	mux.HandleFunc("/api/modules-settings", modulessettings.ModulesSettingsHandler(manager, cfg))
+	mux.HandleFunc("/api/modules-settings/", modulessettings.ModulesSettingsHandler(manager, cfg))
 
 	mux.HandleFunc("/api/nodes", nodes.NodesHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes/", nodes.NodeByUUIDHandler(manager, cfg))
@@ -105,6 +109,11 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/external-squads/", externalsquads.ExternalSquadByUUIDHandler(manager, cfg))
 	mux.HandleFunc("/api/external-squads/actions/reorder", externalsquads.ExternalSquadsReorderHandler(manager, cfg))
 	mux.HandleFunc("/api/external-squads/reorder", externalsquads.ExternalSquadsReorderHandler(manager, cfg))
+
+	mux.HandleFunc("/api/srs-lists", srslists.SRSListsHandler(manager, cfg))
+	mux.HandleFunc("/api/srs-lists/", srslists.SRSListByUUIDHandler(manager, cfg))
+	mux.HandleFunc("/api/srs-lists/actions/", srslists.SRSListsActionsHandler(manager, cfg))
+	mux.HandleFunc("/api/srs-lists/bulk/", srslists.SRSListsBulkHandler(manager, cfg))
 
 	mux.HandleFunc("/api/hwid/devices", hwiduserdevices.HWIDCompatDevicesHandler(manager, cfg))
 	mux.HandleFunc("/api/hwid/devices/", hwiduserdevices.HWIDCompatDevicesHandler(manager, cfg))

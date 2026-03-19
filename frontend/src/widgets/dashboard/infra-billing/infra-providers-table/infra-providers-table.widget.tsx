@@ -8,7 +8,7 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { GetInfraProvidersCommand } from '@remnawave/backend-contract'
+import { GetInfraProvidersCommand } from '@cerberus/backend-contract'
 import { TbCloud, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 import { DataTable } from 'mantine-datatable'

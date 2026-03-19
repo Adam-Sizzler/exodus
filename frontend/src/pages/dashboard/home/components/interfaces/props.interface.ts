@@ -1,11 +1,11 @@
 import {
     GetBandwidthStatsCommand,
-    GetRemnawaveHealthCommand,
+    GetCerberusHealthCommand,
     GetStatsCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 
 export interface IProps {
     bandwidthStats: GetBandwidthStatsCommand.Response['response']
-    remnawaveHealth: GetRemnawaveHealthCommand.Response['response']
+    cerberusHealth: GetCerberusHealthCommand.Response['response']
     systemInfo: GetStatsCommand.Response['response']
 }

@@ -6,10 +6,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
-	"v2ray-stat/common"
-	"v2ray-stat/logger"
+	"cerberus/logger"
 
 	"github.com/joho/godotenv"
 )
@@ -17,8 +15,7 @@ import (
 type BackendConfig struct {
 	Logger   *logger.Logger
 	Log      LogConfig
-	TZ       string
-	V2RS     V2RSConfig
+	CERBERUS CERBERUSConfig
 	Panel    PanelConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
@@ -30,7 +27,7 @@ type PanelConfig struct {
 	BasePath          string
 	AllowInsecureHTTP bool
 	TrustedProxies    []string
-	WebPort           int
+	AppPort           int
 	trustedProxyNets  []*net.IPNet
 }
 
@@ -43,9 +40,8 @@ type LogConfig struct {
 	LogMode  string
 }
 
-type V2RSConfig struct {
+type CERBERUSConfig struct {
 	Address string
-	Port    int
 }
 
 type DatabaseConfig struct {
@@ -62,10 +58,8 @@ var defaultConfig = BackendConfig{
 		LogLevel: "warn",
 		LogMode:  "inclusive",
 	},
-	TZ: "UTC",
-	V2RS: V2RSConfig{
+	CERBERUS: CERBERUSConfig{
 		Address: "0.0.0.0",
-		Port:    9243,
 	},
 	Database: DatabaseConfig{
 		URL: "",
@@ -79,7 +73,7 @@ var defaultConfig = BackendConfig{
 		BasePath:          "/",
 		AllowInsecureHTTP: false,
 		TrustedProxies:    []string{},
-		WebPort:           9242,
+		AppPort:           3000,
 		trustedProxyNets:  nil,
 	},
 	CORS: CORSConfig{
@@ -92,7 +86,7 @@ var defaultConfig = BackendConfig{
 func LoadConfig() (BackendConfig, error) {
 	cfg := defaultConfig
 
-	fallbackLogger, _ := logger.NewLoggerWithValidation(defaultConfig.Log.LogLevel, defaultConfig.Log.LogMode, defaultConfig.TZ, os.Stderr)
+	fallbackLogger, _ := logger.NewLoggerWithValidation(defaultConfig.Log.LogLevel, defaultConfig.Log.LogMode, "UTC", os.Stderr)
 	cfg.Logger = fallbackLogger
 
 	if err := loadDotEnv(); err != nil {
@@ -102,31 +96,18 @@ func LoadConfig() (BackendConfig, error) {
 	applyEnvOverrides(&cfg)
 	normalizePanelConfig(&cfg)
 
-	if cfg.V2RS.Port < 1 || cfg.V2RS.Port > 65535 {
-		cfg.Logger.Warn("Invalid backend port, using default", "port", cfg.V2RS.Port, "default", defaultConfig.V2RS.Port)
-		cfg.V2RS.Port = defaultConfig.V2RS.Port
-	}
-	if cfg.Panel.WebPort < 1 || cfg.Panel.WebPort > 65535 {
-		cfg.Logger.Warn("Invalid web port, using default", "port", cfg.Panel.WebPort, "default", defaultConfig.Panel.WebPort)
-		cfg.Panel.WebPort = defaultConfig.Panel.WebPort
+	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
+		cfg.Logger.Warn("Invalid app port, using default", "port", cfg.Panel.AppPort, "default", defaultConfig.Panel.AppPort)
+		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
 	}
 
-	if strings.TrimSpace(cfg.TZ) == "" {
-		cfg.TZ = defaultConfig.TZ
-	}
-	if _, err := time.LoadLocation(cfg.TZ); err != nil {
-		cfg.Logger.Warn("Invalid timezone value, using default", "timezone", cfg.TZ, "default", defaultConfig.TZ)
-		cfg.TZ = defaultConfig.TZ
-	}
-
-	realLogger, err := logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, cfg.TZ, os.Stderr)
+	realLogger, err := logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, "UTC", os.Stderr)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 	cfg.Logger = realLogger
 
-	common.InitTimezone(cfg.TZ, cfg.Logger)
-	cfg.Logger.Info("v2rs listen", "address", cfg.V2RS.Address, "port", cfg.V2RS.Port)
+	cfg.Logger.Info("cerberus listen", "address", cfg.CERBERUS.Address, "port", cfg.Panel.AppPort)
 	cfg.Logger.Debug("Configuration loaded from environment")
 
 	return cfg, nil
@@ -145,49 +126,37 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		return
 	}
 
-	if value := envFirst("LOG_LEVEL", "V2RS_LOG_LEVEL"); value != "" {
+	if value := envFirst("LOG_LEVEL", "CERBERUS_LOG_LEVEL"); value != "" {
 		cfg.Log.LogLevel = value
 	}
-	if value := envFirst("LOG_MODE", "V2RS_LOG_MODE"); value != "" {
+	if value := envFirst("LOG_MODE", "CERBERUS_LOG_MODE"); value != "" {
 		cfg.Log.LogMode = value
 	}
 
-	if value := envFirst("TZ"); value != "" {
-		cfg.TZ = value
-	}
-
-	if value := envFirst("BACKEND_ADDRESS", "V2RS_LISTEN_ADDRESS"); value != "" {
-		cfg.V2RS.Address = value
-	}
-
-	if value := envFirst("BACKEND_PORT"); value != "" {
-		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 && parsed <= 65535 {
-			cfg.V2RS.Port = parsed
-		} else if cfg.Logger != nil {
-			cfg.Logger.Warn("Invalid backend port value, ignoring", "value", value)
-		}
+	if value := envFirst("APP_ADDRESS"); value != "" {
+		cfg.CERBERUS.Address = value
 	}
 
 	if value := envFirst("APP_PORT"); value != "" {
 		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 && parsed <= 65535 {
-			cfg.Panel.WebPort = parsed
+			cfg.Panel.AppPort = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid APP_PORT value, ignoring", "value", value)
 		}
 	}
-	if value := envFirst("APP_BASE_PATH"); value != "" {
+	if value := envFirst("APP_PATH"); value != "" {
 		cfg.Panel.BasePath = value
 	}
 
-	if value := envFirst("V2RS_ALLOW_INSECURE_HTTP"); value != "" {
+	if value := envFirst("CERBERUS_ALLOW_INSECURE_HTTP"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
 			cfg.Panel.AllowInsecureHTTP = parsed
 		} else if cfg.Logger != nil {
-			cfg.Logger.Warn("Invalid V2RS_ALLOW_INSECURE_HTTP value, ignoring", "value", value)
+			cfg.Logger.Warn("Invalid CERBERUS_ALLOW_INSECURE_HTTP value, ignoring", "value", value)
 		}
 	}
 
-	if value := envFirst("V2RS_TRUSTED_PROXIES"); value != "" {
+	if value := envFirst("CERBERUS_TRUSTED_PROXIES"); value != "" {
 		cfg.Panel.TrustedProxies = splitCSV(value)
 	}
 
@@ -223,8 +192,8 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
 	}
 	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
-	if cfg.Panel.WebPort < 1 || cfg.Panel.WebPort > 65535 {
-		cfg.Panel.WebPort = defaultConfig.Panel.WebPort
+	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
+		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
 	}
 
 	proxyNets, invalid := parseTrustedProxies(cfg.Panel.TrustedProxies)

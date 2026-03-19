@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"v2ray-stat/backend/config"
-	"v2ray-stat/constant"
+	"cerberus/backend/config"
+	"cerberus/constant"
 )
 
 var (

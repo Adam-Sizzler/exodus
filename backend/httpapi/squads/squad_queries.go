@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/dbutil"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/dbutil"
+	"cerberus/backend/httpapi/shared"
 )
 
 // ==================== CONFIG PROFILES WITH INBOUNDS (FOR UI) ====================

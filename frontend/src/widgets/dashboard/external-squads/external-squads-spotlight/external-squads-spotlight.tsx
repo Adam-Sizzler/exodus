@@ -1,4 +1,4 @@
-import { GetExternalSquadsCommand } from '@remnawave/backend-contract'
+import { GetExternalSquadsCommand } from '@cerberus/backend-contract'
 import { Badge, Group } from '@mantine/core'
 import { TbWebhook } from 'react-icons/tb'
 import { PiUsers } from 'react-icons/pi'

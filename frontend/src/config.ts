@@ -1,12 +1,12 @@
 import { withBasePath } from '@shared/constants/base-path'
 
 export const app = {
-    name: 'Remnawave Dashboard',
-    githubRepo: 'https://github.com/remnawave/backend',
-    githubStars: 'https://github.com/remnawave/backend/stargazers',
-    githubIssues: 'https://github.com/remnawave/backend/issues',
-    githubOrg: 'https://github.com/remnawave',
-    githubDonation: 'https://github.com/remnawave/backend#donation',
+    name: 'Cerberus Dashboard',
+    githubRepo: 'https://github.com/cerberus/backend',
+    githubStars: 'https://github.com/cerberus/backend/stargazers',
+    githubIssues: 'https://github.com/cerberus/backend/issues',
+    githubOrg: 'https://github.com/cerberus',
+    githubDonation: 'https://github.com/cerberus/backend#donation',
     configEditor: {
         wasmUrl: withBasePath('/assets/main.wasm'),
         wasmJsUrl: withBasePath('/assets/wasm_exec.js'),

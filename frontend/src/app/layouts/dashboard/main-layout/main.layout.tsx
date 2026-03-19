@@ -8,7 +8,7 @@ import {
     useAppshellStoreActions,
     useAppshellStoreDesktopSidebarOpen
 } from '@entities/dashboard/appshell'
-import { useIsLoadingRemnawaveUpdates, useRemnawaveInfo } from '@entities/dashboard/updates-store'
+import { useIsLoadingCerberusUpdates, useCerberusInfo } from '@entities/dashboard/updates-store'
 import { ScrollToTopWrapper } from '@shared/hocs/scroll-to-top/scroll-to-top'
 import { SidebarTitleShared } from '@shared/ui/sidebar/sidebar-title'
 import { SidebarLogoShared } from '@shared/ui/sidebar/sidebar-logo'
@@ -34,8 +34,8 @@ export function MainLayout() {
     const isDesktopSidebarOpen = useAppshellStoreDesktopSidebarOpen()
     const { toggleDesktopSidebar } = useAppshellStoreActions()
 
-    const remnawaveInfo = useRemnawaveInfo()
-    const isLoadingUpdates = useIsLoadingRemnawaveUpdates()
+    const cerberusInfo = useCerberusInfo()
+    const isLoadingUpdates = useIsLoadingCerberusUpdates()
 
     useEffect(() => {
         setIsMediaQueryReady(true)
@@ -77,10 +77,10 @@ export function MainLayout() {
                         </Group>
                         <Group style={{ flexShrink: 0 }}>
                             <HeaderControls
-                                githubLink="https://github.com/remnawave/panel"
+                                githubLink="https://github.com/SagerNet/sing-box"
                                 isGithubLoading={isLoadingUpdates}
-                                stars={remnawaveInfo.starsCount || undefined}
-                                telegramLink="https://t.me/remnawave"
+                                stars={cerberusInfo.starsCount || undefined}
+                                telegramLink="https://t.me/cerberus"
                                 withGithub={!isSocialButton}
                                 withSupport={!isSocialButton}
                                 withTelegram={!isSocialButton}
@@ -128,10 +128,10 @@ export function MainLayout() {
                     {isSocialButton && (
                         <Group justify="center" mt="md" style={{ flexShrink: 0 }}>
                             <HeaderControls
-                                githubLink="https://github.com/remnawave/panel"
+                                githubLink="https://github.com/SagerNet/sing-box"
                                 isGithubLoading={isLoadingUpdates}
-                                stars={remnawaveInfo.starsCount || undefined}
-                                telegramLink="https://t.me/remnawave"
+                                stars={cerberusInfo.starsCount || undefined}
+                                telegramLink="https://t.me/cerberus"
                                 withLanguage={false}
                                 withLogout={false}
                                 withRefresh={false}

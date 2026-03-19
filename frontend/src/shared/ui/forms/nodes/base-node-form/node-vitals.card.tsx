@@ -1,4 +1,4 @@
-import { CreateNodeCommand, GetPubKeyCommand, UpdateNodeCommand } from '@remnawave/backend-contract'
+import { CreateNodeCommand, GetPubKeyCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
 import { TbCertificate, TbMapPin, TbUserCheck, TbWorld } from 'react-icons/tb'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { Group, NumberInput, Select, Stack, TextInput } from '@mantine/core'

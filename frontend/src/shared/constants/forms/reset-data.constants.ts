@@ -1,4 +1,4 @@
-import { RESET_PERIODS } from '@remnawave/backend-contract'
+import { RESET_PERIODS } from '@cerberus/backend-contract'
 import { TFunction } from 'i18next'
 
 export const resetDataStrategy = (t: TFunction) => [

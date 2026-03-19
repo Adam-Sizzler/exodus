@@ -11,7 +11,7 @@ import {
     TextInput
 } from '@mantine/core'
 import { TbCertificate, TbId, TbMapPin, TbWorld } from 'react-icons/tb'
-import { CreateNodeCommand } from '@remnawave/backend-contract'
+import { CreateNodeCommand } from '@cerberus/backend-contract'
 import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'node_modules/react-i18next'
 import { PiArrowRight } from 'react-icons/pi'
@@ -63,10 +63,10 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                     <Code c="white" color="gray.8">
                         docker-compose.yml
                     </Code>{' '}
-                    {t('create-node-step-1-connection.content-for-the-remnawave-node-below')}{' '}
+                    {t('create-node-step-1-connection.content-for-the-cerberus-node-below')}{' '}
                     <Anchor
                         fw="700"
-                        href="https://docs.rw/docs/install/remnawave-node"
+                        href="https://docs.rw/docs/install/cerberus-node"
                         inherit
                         rel="noopener noreferrer"
                         target="_blank"

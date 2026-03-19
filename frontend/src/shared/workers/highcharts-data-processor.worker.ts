@@ -1,4 +1,4 @@
-import { GetLegacyStatsNodeUserUsageCommand } from '@remnawave/backend-contract'
+import { GetLegacyStatsNodeUserUsageCommand } from '@cerberus/backend-contract'
 import ColorHash from 'color-hash'
 import dayjs from 'dayjs'
 

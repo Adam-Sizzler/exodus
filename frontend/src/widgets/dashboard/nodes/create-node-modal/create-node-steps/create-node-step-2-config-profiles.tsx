@@ -1,4 +1,4 @@
-import { CreateNodeCommand } from '@remnawave/backend-contract'
+import { CreateNodeCommand } from '@cerberus/backend-contract'
 import { Button, Group, Skeleton, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'node_modules/react-i18next'

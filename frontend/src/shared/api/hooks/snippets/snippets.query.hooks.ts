@@ -1,4 +1,4 @@
-import { GetSnippetsCommand } from '@remnawave/backend-contract'
+import { GetSnippetsCommand } from '@cerberus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 
 import { sToMs } from '@shared/utils/time-utils'

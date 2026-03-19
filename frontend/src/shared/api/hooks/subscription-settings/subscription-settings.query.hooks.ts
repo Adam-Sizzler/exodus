@@ -1,4 +1,4 @@
-import { GetSubscriptionSettingsCommand } from '@remnawave/backend-contract'
+import { GetSubscriptionSettingsCommand } from '@cerberus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 
 import { sToMs } from '@shared/utils/time-utils'

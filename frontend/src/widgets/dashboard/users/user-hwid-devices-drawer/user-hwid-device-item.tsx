@@ -7,7 +7,7 @@ import {
     PiWindowsLogo
 } from 'react-icons/pi'
 import { ActionIcon, Divider, Group, Stack, Text, ThemeIcon } from '@mantine/core'
-import { GetUserHwidDevicesCommand } from '@remnawave/backend-contract'
+import { GetUserHwidDevicesCommand } from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import dayjs from 'dayjs'
 

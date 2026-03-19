@@ -14,7 +14,7 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
-import { TSubscriptionPageSvgLibrary } from '@remnawave/subscription-page-types'
+import { TSubscriptionPageSvgLibrary } from '@cerberus/subscription-page-types'
 import { IconBulb, IconPhoto, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'

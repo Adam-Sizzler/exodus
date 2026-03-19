@@ -1,4 +1,4 @@
-import { UpdateSubscriptionSettingsCommand } from '@remnawave/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
 import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'

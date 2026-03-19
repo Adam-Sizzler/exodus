@@ -21,7 +21,7 @@ import {
     PiTelegramLogoDuotone,
     PiX
 } from 'react-icons/pi'
-import { BulkUpdateUsersCommand } from '@remnawave/backend-contract'
+import { BulkUpdateUsersCommand } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { TbDevices2, TbWebhook } from 'react-icons/tb'
 import { Trans, useTranslation } from 'node_modules/react-i18next'

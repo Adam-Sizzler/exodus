@@ -10,7 +10,7 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
-import { TSubscriptionPageRawConfig } from '@remnawave/subscription-page-types'
+import { TSubscriptionPageRawConfig } from '@cerberus/subscription-page-types'
 import { TbHealthRecognition, TbKey, TbLink } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { UseFormReturnType } from '@mantine/form'

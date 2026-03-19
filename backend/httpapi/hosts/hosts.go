@@ -11,10 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/dbutil"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/dbutil"
+	"cerberus/backend/httpapi/shared"
 
 	"github.com/google/uuid"
 )

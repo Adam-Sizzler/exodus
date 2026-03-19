@@ -1,4 +1,4 @@
-import { GetAllHostTagsCommand, GetConfigProfilesCommand } from '@remnawave/backend-contract'
+import { GetAllHostTagsCommand, GetConfigProfilesCommand } from '@cerberus/backend-contract'
 
 export interface IProps {
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles'] | undefined

@@ -5,7 +5,7 @@ import {
     PiChartDonutDuotone,
     PiChartPieSliceDuotone
 } from 'react-icons/pi'
-import { GetBandwidthStatsCommand } from '@remnawave/backend-contract'
+import { GetBandwidthStatsCommand } from '@cerberus/backend-contract'
 import { TFunction } from 'i18next'
 
 import { IMetricCardWithTrendProps } from '@shared/ui/metrics/metric-card'

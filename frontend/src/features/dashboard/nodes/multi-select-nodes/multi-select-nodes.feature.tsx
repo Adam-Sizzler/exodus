@@ -1,5 +1,5 @@
 import { Affix, Badge, Button, Group, Paper, Stack, Transition } from '@mantine/core'
-import { GetAllNodesCommand } from '@remnawave/backend-contract'
+import { GetAllNodesCommand } from '@cerberus/backend-contract'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'
 import { modals } from '@mantine/modals'

@@ -1,4 +1,4 @@
-import { TSubscriptionTemplateType } from '@remnawave/backend-contract'
+import { TSubscriptionTemplateType } from '@cerberus/backend-contract'
 import { TbFile } from 'react-icons/tb'
 
 import { MihomoLogo, SingboxLogo, StashLogo, XrayLogo } from './logos'

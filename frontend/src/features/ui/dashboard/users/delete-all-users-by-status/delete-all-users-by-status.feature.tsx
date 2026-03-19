@@ -1,4 +1,4 @@
-import { BulkDeleteUsersByStatusCommand, TUsersStatus } from '@remnawave/backend-contract'
+import { BulkDeleteUsersByStatusCommand, TUsersStatus } from '@cerberus/backend-contract'
 import { TbCheck as IconCheck, TbX as IconX } from 'react-icons/tb'
 import { Button, Group, Select, Stack } from '@mantine/core'
 import { notifications } from '@mantine/notifications'

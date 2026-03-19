@@ -17,17 +17,17 @@ import {
     PiUsersDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import { GetOneNodeCommand, UpdateNodeCommand } from '@remnawave/backend-contract'
+import { GetOneNodeCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'node_modules/react-i18next'
 
-import { getNodeResetDaysUtil, getXrayUptimeUtil } from '@shared/utils/time-utils'
+import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
 import { QueryKeys, useDisableNode, useEnableNode } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { queryClient } from '@shared/api'
 import { Logo } from '@shared/ui'
 
@@ -37,6 +37,8 @@ interface IProps {
 
 export const NodeDetailsCardWidget = memo((props: IProps) => {
     const { node } = props
+    const nodeSingboxVersion = node.singboxVersion
+    const nodeSingboxUptime = node.singboxUptime
 
     const { t } = useTranslation()
 
@@ -149,17 +151,17 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                     <Group gap="xs">
                         {node.isConnected && (
                             <Tooltip
-                                label={t('node-stats.card.represents-the-uptime-of-the-xray-core')}
+                                label={t('node-stats.card.represents-the-uptime-of-the-singbox-core')}
                             >
                                 <Badge
                                     color="teal"
                                     h={28}
-                                    leftSection={<XrayLogo size={14} />}
+                                    leftSection={<SingboxLogo size={14} />}
                                     size="lg"
                                     variant="light"
                                     visibleFrom="sm"
                                 >
-                                    {getXrayUptimeUtil(node.xrayUptime)}
+                                    {getSingboxUptimeUtil(nodeSingboxUptime)}
                                 </Badge>
                             </Tooltip>
                         )}
@@ -320,7 +322,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             </Group>
                         </Paper>
 
-                        {node.xrayVersion && (
+                        {nodeSingboxVersion && (
                             <Paper
                                 p="xs"
                                 radius="md"
@@ -329,18 +331,18 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     border: '1px solid rgba(139, 92, 246, 0.2)'
                                 }}
                             >
-                                <Tooltip label={t('node-details-card.widget.xray-core-version')}>
+                                <Tooltip label={t('node-details-card.widget.singbox-core-version')}>
                                     <Group gap="xs" justify="center">
-                                        <XrayLogo color="var(--mantine-color-violet-5)" size={16} />
+                                        <SingboxLogo color="var(--mantine-color-violet-5)" size={16} />
                                         <Text c="violet.5" fw={600} size="sm">
-                                            {node.xrayVersion}
+                                            {nodeSingboxVersion}
                                         </Text>
                                     </Group>
                                 </Tooltip>
                             </Paper>
                         )}
 
-                        {node.xrayUptime !== '0' && (
+                        {nodeSingboxUptime !== '0' && (
                             <Paper
                                 hiddenFrom="sm"
                                 p="xs"
@@ -352,18 +354,18 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             >
                                 <Tooltip
                                     label={t(
-                                        'node-stats.card.represents-the-uptime-of-the-xray-core'
+                                        'node-stats.card.represents-the-uptime-of-the-singbox-core'
                                     )}
                                 >
                                     <Group gap="xs" justify="center">
-                                        <XrayLogo color="var(--mantine-color-teal-5)" size={16} />
+                                        <SingboxLogo color="var(--mantine-color-teal-5)" size={16} />
                                         <Text
                                             c="teal.5"
                                             fw={600}
                                             size="sm"
                                             style={{ textTransform: 'uppercase' }}
                                         >
-                                            {getXrayUptimeUtil(node.xrayUptime)}
+                                            {getSingboxUptimeUtil(nodeSingboxUptime)}
                                         </Text>
                                     </Group>
                                 </Tooltip>
@@ -380,7 +382,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                 }}
                             >
                                 <Tooltip
-                                    label={t('node-details-card.widget.remnawave-node-version')}
+                                    label={t('node-details-card.widget.cerberus-node-version')}
                                 >
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />

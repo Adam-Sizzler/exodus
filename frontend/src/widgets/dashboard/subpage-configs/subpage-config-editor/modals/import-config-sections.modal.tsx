@@ -1,4 +1,4 @@
-import { TSubscriptionPageRawConfig } from '@remnawave/subscription-page-types'
+import { TSubscriptionPageRawConfig } from '@cerberus/subscription-page-types'
 import { TbDevices, TbIcons, TbLanguage, TbReplace } from 'react-icons/tb'
 import { Divider, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'

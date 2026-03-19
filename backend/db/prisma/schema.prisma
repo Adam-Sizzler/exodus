@@ -16,8 +16,21 @@ model V2rsSettings {
   passwordSettings Json? @map("password_settings")
   /// [BrandingSettings]
   brandingSettings Json? @map("branding_settings")
+  /// [ModulesSettings]
+  modulesSettings  Json? @map("modules_settings")
 
-  @@map("v2rs_settings")
+  @@map("cerberus_settings")
+}
+
+model ModulesSettings {
+  id Int @id @default(1)
+
+  haproxyEnabled Boolean @default(false) @map("haproxy_enabled")
+
+  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
+  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+
+  @@map("modules_settings")
 }
 
 model Users {
@@ -171,9 +184,9 @@ model Nodes {
 
   lastStatusChange  DateTime? @map("last_status_change")
   lastStatusMessage String?   @map("last_status_message")
-  xrayVersion       String?   @map("xray_version")
+  singboxVersion    String?   @map("singbox_version")
   nodeVersion       String?   @map("node_version")
-  xrayUptime        String    @default("0") @map("xray_uptime")
+  singboxUptime     String    @default("0") @map("singbox_uptime")
 
   usersOnline           Int?   @default(0) @map("users_online")
   consumptionMultiplier BigInt @default(1000000000) @map("consumption_multiplier")
@@ -296,6 +309,26 @@ model Hosts {
   excludedInternalSquads InternalSquadHostExclusions[]
 
   @@map("hosts")
+}
+
+model SrsLists {
+  uuid           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tag            String    @unique @map("tag")
+  format         String    @default("binary") @map("format")
+  url            String    @unique @map("url")
+  updateInterval String    @default("1d") @map("update_interval")
+  path           String?   @map("path")
+  fileName       String    @unique @map("file_name")
+  viewPosition   Int       @default(autoincrement()) @map("view_position")
+  isEnabled      Boolean   @default(true) @map("is_enabled")
+  isAvailable    Boolean   @default(false) @map("is_available")
+  lastCheckedAt  DateTime? @map("last_checked_at")
+  lastError      String?   @map("last_error")
+
+  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
+  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+
+  @@map("srs_lists")
 }
 
 model InternalSquadHostExclusions {

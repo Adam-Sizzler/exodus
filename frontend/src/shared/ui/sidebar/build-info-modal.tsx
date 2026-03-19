@@ -23,7 +23,7 @@ import {
     TbServer,
     TbWorld
 } from 'react-icons/tb'
-import { GetMetadataCommand } from '@remnawave/backend-contract'
+import { GetMetadataCommand } from '@cerberus/backend-contract'
 
 import { formatTimeUtil } from '@shared/utils/time-utils'
 
@@ -33,10 +33,10 @@ import { Logo } from '../logo'
 
 interface BuildInfoModalProps {
     isNewVersionAvailable: boolean
-    remnawaveMetadata: GetMetadataCommand.Response['response']
+    cerberusMetadata: GetMetadataCommand.Response['response']
 }
 
-export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: BuildInfoModalProps) {
+export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: BuildInfoModalProps) {
     return (
         <Stack gap="md">
             {isNewVersionAvailable && (
@@ -83,23 +83,23 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                                 size="lg"
                                 variant="light"
                             >
-                                {remnawaveMetadata.version}
+                                {cerberusMetadata.version}
                             </Badge>
 
                             <Badge
                                 color={
-                                    remnawaveMetadata.git.backend.branch === 'dev' ? 'red' : 'teal'
+                                    cerberusMetadata.git.backend.branch === 'dev' ? 'red' : 'teal'
                                 }
                                 leftSection={<TbGitBranch size={16} />}
                                 size="lg"
                                 variant="light"
                             >
-                                {remnawaveMetadata.git.backend.branch}
+                                {cerberusMetadata.git.backend.branch}
                             </Badge>
                         </Group>
                         <CopyButton
                             timeout={2000}
-                            value={JSON.stringify(remnawaveMetadata, null, 2)}
+                            value={JSON.stringify(cerberusMetadata, null, 2)}
                         >
                             {({ copied, copy }) => (
                                 <Tooltip label="Copy build info">
@@ -128,7 +128,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                             </Group>
                             <Text c="gray.3" ff="monospace" size="xs">
                                 {formatTimeUtil(
-                                    remnawaveMetadata.build.time,
+                                    cerberusMetadata.build.time,
                                     'DD.MM.YYYY HH:mm:ss'
                                 )}
                             </Text>
@@ -142,7 +142,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                                 </Text>
                             </Group>
                             <Text c="gray.3" ff="monospace" size="xs">
-                                {remnawaveMetadata.build.number}
+                                {cerberusMetadata.build.number}
                             </Text>
                         </Paper>
                     </SimpleGrid>
@@ -163,7 +163,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                                 <ActionIcon
                                     color="teal"
                                     component="a"
-                                    href={remnawaveMetadata.git.backend.commitUrl}
+                                    href={cerberusMetadata.git.backend.commitUrl}
                                     size="sm"
                                     target="_blank"
                                     variant="subtle"
@@ -175,7 +175,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
 
                         <CopyableCodeBlock
                             size="small"
-                            value={remnawaveMetadata.git.backend.commitSha}
+                            value={cerberusMetadata.git.backend.commitSha}
                         />
                     </Stack>
                 </Paper>
@@ -193,7 +193,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                                 <ActionIcon
                                     color="cyan"
                                     component="a"
-                                    href={remnawaveMetadata.git.frontend.commitUrl}
+                                    href={cerberusMetadata.git.frontend.commitUrl}
                                     size="sm"
                                     target="_blank"
                                     variant="subtle"
@@ -205,7 +205,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
 
                         <CopyableCodeBlock
                             size="small"
-                            value={remnawaveMetadata.git.frontend.commitSha}
+                            value={cerberusMetadata.git.frontend.commitSha}
                         />
                     </Stack>
                 </Paper>
@@ -215,7 +215,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                 <Button
                     color="cyan"
                     component="a"
-                    href="https://t.me/remnawave"
+                    href="https://t.me/cerberus"
                     leftSection={<TbBrandTelegram size={16} />}
                     radius="md"
                     size="sm"
@@ -226,7 +226,7 @@ export function BuildInfoModal({ remnawaveMetadata, isNewVersionAvailable }: Bui
                 </Button>
                 <Button
                     component="a"
-                    href="https://github.com/remnawave"
+                    href="https://github.com/cerberus"
                     leftSection={<TbBrandGithub size={16} />}
                     radius="md"
                     size="sm"

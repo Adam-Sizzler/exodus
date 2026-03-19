@@ -1,32 +1,45 @@
-# Multistage build for v2rs panel (frontend + backend)
+# syntax=docker/dockerfile:1.7
+
+# Multistage build for cerberus panel (frontend + backend)
 FROM node:20-alpine AS panel-ui
 WORKDIR /ui
 ENV NODE_OPTIONS=--max-old-space-size=4096
-ARG XRAY_WASM_URL=https://remnawave.github.io/xray-monaco-editor/main.wasm
-ARG XRAY_SCHEMA_URL=https://remnawave.github.io/xray-monaco-editor/xray.schema.json
-ARG XRAY_SCHEMA_CN_URL=https://remnawave.github.io/xray-monaco-editor/xray.schema.cn.json
+ARG SINGBOX_WASM_URL=https://adam-sizzler.github.io/s-validator/main.wasm
+ARG SINGBOX_SCHEMA_URL=https://adam-sizzler.github.io/s-validator/singbox.schema.json
+ARG SINGBOX_SCHEMA_CN_URL=https://adam-sizzler.github.io/s-validator/singbox.schema.json
 COPY frontend/package*.json ./
-RUN npm install --legacy-peer-deps
+RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps --no-audit --prefer-offline
 COPY frontend/ ./
 RUN mkdir -p /ui/public/assets
-RUN if [ -n "$XRAY_WASM_URL" ]; then \
-      wget -qO /ui/public/assets/main.wasm "$XRAY_WASM_URL"; \
-    fi
-RUN if [ -n "$XRAY_SCHEMA_URL" ]; then \
-      wget -qO /ui/public/assets/xray.schema.json "$XRAY_SCHEMA_URL"; \
-    fi
-RUN if [ -n "$XRAY_SCHEMA_CN_URL" ]; then \
-      wget -qO /ui/public/assets/xray.schema.cn.json "$XRAY_SCHEMA_CN_URL"; \
-    fi
+RUN set -eu; \
+    fetch_with_retry() { \
+      url="$1"; out="$2"; name="$3"; \
+      [ -n "$url" ] || return 0; \
+      n=1; ok=0; \
+      while [ "$n" -le 4 ]; do \
+        if wget -qO "$out" "$url"; then \
+          ok=1; break; \
+        fi; \
+        echo "WARN: download failed for $name (attempt $n/4): $url"; \
+        rm -f "$out"; \
+        n=$((n+1)); \
+        sleep 2; \
+      done; \
+      if [ "$ok" -ne 1 ]; then \
+        echo "WARN: skip $name after retries: $url"; \
+      fi; \
+    }; \
+    fetch_with_retry "$SINGBOX_WASM_URL" /ui/public/assets/main.wasm main.wasm; \
+    fetch_with_retry "$SINGBOX_SCHEMA_URL" /ui/public/assets/singbox.schema.json singbox.schema.json; \
+    fetch_with_retry "$SINGBOX_SCHEMA_CN_URL" /ui/public/assets/singbox.schema.cn.json singbox.schema.cn.json
 RUN if [ -f /ui/public/assets/main.wasm ]; then \
       magic="$(od -An -t x1 -N 4 /ui/public/assets/main.wasm | tr -d ' \n')"; \
       [ "$magic" = "0061736d" ] || { echo "Invalid WASM magic for main.wasm: $magic"; exit 1; }; \
       echo "WASM artifact attached: /ui/public/assets/main.wasm"; \
     else \
-      echo "WARN: /ui/public/assets/main.wasm is missing. Xray validator will be disabled in UI."; \
+      echo "WARN: /ui/public/assets/main.wasm is missing. Sing-box validator will be disabled in UI."; \
     fi
-COPY config/env/frontend.env /ui/.env
-RUN npm run cb
+RUN --mount=type=cache,target=/root/.npm npm run cb
 
 FROM golang:1.25-alpine AS builder
 
@@ -55,11 +68,11 @@ RUN CGO_ENABLED=0 \
         -trimpath \
         -buildvcs=true \
         -ldflags="-s -w \
-                -X 'v2ray-stat/constant.Version=${VERSION}' \
-                -X 'v2ray-stat/constant.Revision=${REVISION}' \
-                -X 'v2ray-stat/constant.BuildTags=none' \
-                -X 'v2ray-stat/constant.CgoEnabled=0'" \
-    -o v2rs \
+                -X 'cerberus/constant.Version=${VERSION}' \
+                -X 'cerberus/constant.Revision=${REVISION}' \
+                -X 'cerberus/constant.BuildTags=none' \
+                -X 'cerberus/constant.CgoEnabled=0'" \
+    -o cerberus \
     ./backend
 
 # Final stage
@@ -71,7 +84,7 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/v2rs /app/
+COPY --from=builder /build/cerberus /app/
 
 # Copy built frontend
 COPY --from=panel-ui /ui/dist /app/ui
@@ -80,6 +93,6 @@ COPY --from=builder /usr/local/go/lib/wasm/wasm_exec.js /app/ui/assets/wasm_exec
 # Create directories for data and certificates
 RUN mkdir -p /app/data /app/certs
 
-EXPOSE 9242 9243
+EXPOSE 3000
 
-ENTRYPOINT ["/app/v2rs"]
+ENTRYPOINT ["/app/cerberus"]

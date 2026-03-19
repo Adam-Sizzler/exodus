@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
+	"cerberus/backend/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )

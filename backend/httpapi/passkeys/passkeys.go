@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/auth"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/auth"
+	"cerberus/backend/httpapi/shared"
 )
 
 var passkeyNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_\s-]+$`)

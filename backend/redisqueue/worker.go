@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
 
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	scheduledKey          = "v2rs:push_to_db:scheduled"
+	scheduledKey          = "cerberus:push_to_db:scheduled"
 	recordUserUsagePrefix = "recordUserUsage:"
 	processingPostfix     = ":processing"
 )

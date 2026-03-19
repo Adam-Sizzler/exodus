@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
 )
 
 // IdEntry представляет одиночную пару ID и inbound_tag для пользователя.

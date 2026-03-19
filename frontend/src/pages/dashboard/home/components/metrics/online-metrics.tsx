@@ -4,7 +4,7 @@ import {
     PiPulseDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { GetStatsCommand } from '@remnawave/backend-contract'
+import { GetStatsCommand } from '@cerberus/backend-contract'
 import { TFunction } from 'i18next'
 
 import { IMetricCardProps } from '@shared/ui/metrics/metric-card'

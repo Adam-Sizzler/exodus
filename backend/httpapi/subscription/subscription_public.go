@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/middleware"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/middleware"
+	"cerberus/backend/httpapi/shared"
 )
 
 // SubscriptionPublicHandler handles public subscription endpoints under /api/sub.
@@ -122,9 +122,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	headersForMatch := r.Header.Clone()
-	headersForMatch.Set("x-v2ray-stat-injected-short-uuid", shortUUID)
+	headersForMatch.Set("x-cerberus-injected-short-uuid", shortUUID)
 	if clientType != "" {
-		headersForMatch.Set("x-v2ray-stat-injected-client-type", clientType)
+		headersForMatch.Set("x-cerberus-injected-client-type", clientType)
 	}
 
 	matchResult := matchResponseRulesDetailed(settings.ResponseRules, headersForMatch, clientType)

@@ -16,7 +16,7 @@ func DefaultSubscriptionTemplates() []DefaultSubscriptionTemplate {
 	return []DefaultSubscriptionTemplate{
 		{
 			TemplateType: "XRAY_JSON",
-			TemplateJSON: json.RawMessage([]byte(`{"dns":{"servers":["1.1.1.1","1.0.0.1"],"queryStrategy":"UseIP"},"routing":{"rules":[{"type":"field","protocol":["bittorrent"],"outboundTag":"direct"}],"domainMatcher":"hybrid","domainStrategy":"IPIfNonMatch"},"inbounds":[{"tag":"socks","port":10808,"listen":"127.0.0.1","protocol":"socks","settings":{"udp":true,"auth":"noauth"},"sniffing":{"enabled":true,"routeOnly":false,"destOverride":["http","tls","quic"]}},{"tag":"http","port":10809,"listen":"127.0.0.1","protocol":"http","settings":{"allowTransparent":false},"sniffing":{"enabled":true,"routeOnly":false,"destOverride":["http","tls","quic"]}}],"outbounds":[{"tag":"direct","protocol":"freedom"},{"tag":"block","protocol":"blackhole"}]}`)),
+			TemplateJSON: json.RawMessage([]byte(`{"log":{"level":"info"},"dns":{"servers":[{"tag":"dns-remote","address":"https://1.1.1.1/dns-query","detour":"direct"}]},"inbounds":[{"type":"mixed","tag":"mixed-in","listen":"127.0.0.1","listen_port":2080}],"outbounds":[{"type":"direct","tag":"direct"},{"type":"block","tag":"block"}],"route":{"final":"direct"}}`)),
 			Name:         "Default",
 			ViewPosition: 1,
 		},
@@ -76,12 +76,12 @@ dns:
 proxies: # LEAVE THIS LINE!
 
 proxy-groups:
-  - name: '→ V2RS'
+  - name: '→ CERBERUS'
     type: 'select'
     proxies: # LEAVE THIS LINE!
 
 rules:
-  - MATCH,→ V2RS
+  - MATCH,→ CERBERUS
 `),
 			Name:         "Default",
 			ViewPosition: 2,
@@ -89,7 +89,7 @@ rules:
 		{
 			TemplateType: "STASH",
 			TemplateYAML: strPtr(`proxy-groups:
-  - name: → V2RS
+  - name: → CERBERUS
     type: select
     proxies: # LEAVE THIS LINE!
 
@@ -123,7 +123,7 @@ rules:
   - PROCESS-NAME,uTorrent,DIRECT
   - PROCESS-NAME,WebTorrent,DIRECT
   - GEOIP,LAN,DIRECT
-  - MATCH,→ V2RS
+  - MATCH,→ CERBERUS
 script:
   shortcuts:
     quic: network == 'udp' and dst_port == 443
@@ -196,12 +196,12 @@ dns:
 proxies: # LEAVE THIS LINE!
 
 proxy-groups:
-  - name: '→ V2RS'
+  - name: '→ CERBERUS'
     type: 'select'
     proxies: # LEAVE THIS LINE!
 
 rules:
-  - MATCH,→ V2RS
+  - MATCH,→ CERBERUS
 `),
 			Name:         "Default",
 			ViewPosition: 4,
@@ -286,7 +286,7 @@ rules:
   "outbounds": [
     {
       "type": "selector",
-      "tag": "→ V2RS",
+      "tag": "→ CERBERUS",
       "interrupt_exist_connections": true,
       "outbounds": null
     },
@@ -331,8 +331,8 @@ rules:
     },
     "cache_file": {
       "enabled": true,
-      "path": "v2ray-stat.db",
-      "cache_id": "v2ray-stat",
+      "path": "cerberus.db",
+      "cache_id": "cerberus",
       "store_fakeip": true
     }
   }

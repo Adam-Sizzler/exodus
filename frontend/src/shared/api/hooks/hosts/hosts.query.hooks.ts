@@ -1,4 +1,4 @@
-import { GetAllHostsCommand, GetAllHostTagsCommand } from '@remnawave/backend-contract'
+import { GetAllHostsCommand, GetAllHostTagsCommand } from '@cerberus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 
 import { sToMs } from '@shared/utils/time-utils'

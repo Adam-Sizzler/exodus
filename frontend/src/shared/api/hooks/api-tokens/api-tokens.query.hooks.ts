@@ -1,4 +1,4 @@
-import { FindAllApiTokensCommand } from '@remnawave/backend-contract'
+import { FindAllApiTokensCommand } from '@cerberus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 

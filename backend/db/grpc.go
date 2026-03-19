@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/dbutil"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/dbutil"
 )
 
 // DBNode represents a node loaded from database.

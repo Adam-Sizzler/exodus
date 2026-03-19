@@ -3,7 +3,7 @@ import {
     TSubscriptionPageButtonConfig,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageSvgLibrary
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import { IconChevronRight, IconPalette, IconPlus } from '@tabler/icons-react'
 import { Button, Card, Drawer, Stack, Text, TextInput } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'

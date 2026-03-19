@@ -1,4 +1,4 @@
-import { GetInternalSquadsCommand } from '@remnawave/backend-contract'
+import { GetInternalSquadsCommand } from '@cerberus/backend-contract'
 
 export interface IProps {
     hideEditButton?: boolean

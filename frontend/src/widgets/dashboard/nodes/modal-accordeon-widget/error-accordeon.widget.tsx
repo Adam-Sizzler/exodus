@@ -13,9 +13,18 @@ export const ModalAccordionWidget = (props: IProps) => {
     const [localStatusMessage, setLocalStatusMessage] = useState<null | string>(null)
 
     useEffect(() => {
-        if (node?.lastStatusMessage) {
-            setLocalStatusMessage(node.lastStatusMessage)
+        if (!node?.lastStatusMessage) {
+            setLocalStatusMessage(null)
+            return
         }
+
+        const normalized = node.lastStatusMessage.trim().toLowerCase()
+        if (normalized === 'connected' && node.isConnected) {
+            setLocalStatusMessage(null)
+            return
+        }
+
+        setLocalStatusMessage(node.lastStatusMessage)
     }, [node])
 
     if (!localStatusMessage) {

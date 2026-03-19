@@ -23,8 +23,8 @@ import {
 import {
     SubscriptionPageRawConfigSchema,
     TSubscriptionPageRawConfig
-} from '@remnawave/subscription-page-types'
-import { GetSubscriptionPageConfigCommand } from '@remnawave/backend-contract'
+} from '@cerberus/subscription-page-types'
+import { GetSubscriptionPageConfigCommand } from '@cerberus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { PiCheck, PiCopy } from 'react-icons/pi'

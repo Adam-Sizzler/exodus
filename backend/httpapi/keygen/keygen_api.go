@@ -1,14 +1,14 @@
 package keygen
 
 import (
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
-	"v2ray-stat/backend/config"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/shared"
+	"cerberus/backend/security"
 )
 
 type secretPayload struct {
@@ -26,37 +26,41 @@ func KeygenHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			return
 		}
 
-		var pubKey string
-		var caCert sql.NullString
-		var clientCert sql.NullString
-		var clientKey sql.NullString
+		var (
+			pubKey string
+			caCert string
+			caKey  string
+		)
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			return db.QueryRowContext(r.Context(), `
-				SELECT pub_key, ca_cert, client_cert, client_key
+				SELECT pub_key, ca_cert, ca_key
 				FROM keygen
 				ORDER BY created_at ASC
 				LIMIT 1
-			`).Scan(&pubKey, &caCert, &clientCert, &clientKey)
+			`).Scan(&pubKey, &caCert, &caKey)
 		})
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch keygen data", err, cfg)
 			return
 		}
 
-		// Remnawave returns a base64 payload for node SECRET_KEY.
-		// If cert material exists, we keep the same payload shape.
-		payload := pubKey
-		if caCert.Valid && clientCert.Valid && clientKey.Valid && caCert.String != "" && clientCert.String != "" && clientKey.String != "" {
-			raw, marshalErr := json.Marshal(secretPayload{
-				NodeCertPem:  clientCert.String,
-				NodeKeyPem:   clientKey.String,
-				CaCertPem:    caCert.String,
-				JWTPublicKey: pubKey,
-			})
-			if marshalErr == nil {
-				payload = base64.StdEncoding.EncodeToString(raw)
-			}
+		nodeCert, err := security.GenerateNodeCert(caCert, caKey)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to generate node certificate", err, cfg)
+			return
 		}
+
+		raw, err := json.Marshal(secretPayload{
+			NodeCertPem:  nodeCert.NodeCertPEM,
+			NodeKeyPem:   nodeCert.NodeKeyPEM,
+			CaCertPem:    caCert,
+			JWTPublicKey: pubKey,
+		})
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to encode secret payload", err, cfg)
+			return
+		}
+		payload := base64.StdEncoding.EncodeToString(raw)
 
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{

@@ -10,14 +10,16 @@ import { SubpageConfigEditorPageConnector } from '@pages/dashboard/subpage-confi
 import { ConfigProfileByUuidPageConnector } from '@pages/dashboard/config-profiles/connectors/config-profile-by-uuid.page.connector'
 import { SubpageConfigBasePageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-base-page.connector'
 import { InternalSquadsPageConnector } from '@pages/dashboard/internal-squads/connectors/internal-squads.page.connector'
+import { SRSListsPageConnector } from '@pages/dashboard/srs-lists/connectors'
 import { InfraBillingPageConnector } from '@pages/dashboard/crm/infra-billing/connectors/infra-billing.page.connector'
 import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
 import { TemplateEditorPageConnector } from '@pages/dashboard/templates/ui/connectors/template-editor-page.connector'
 import { TemplateBasePageConnector } from '@pages/dashboard/templates/ui/connectors/template-base-page.connector'
 import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
 import { SubscriptionSettingsConnector } from '@pages/dashboard/subscription-settings/connectors'
-import { RemnawaveSettingsConnector } from '@pages/dashboard/remnawave-settings/connectors'
+import { CerberusSettingsConnector } from '@pages/dashboard/cerberus-settings/connectors'
 import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
+import { ModulesPageConnector } from '@pages/dashboard/modules/ui/connectors'
 import { ConfigProfilesPageConnector } from '@pages/dashboard/config-profiles/connectors'
 import { ExternalSquadsPageConnector } from '@pages/dashboard/external-squads/connectors'
 import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
@@ -101,6 +103,10 @@ const router = createBrowserRouter(
                             element={<ExternalSquadsPageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.EXTERNAL_SQUADS}
                         />
+                        <Route
+                            element={<SRSListsPageConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS}
+                        />
 
                         <Route
                             element={<NodesMetricsPageConnector />}
@@ -112,8 +118,8 @@ const router = createBrowserRouter(
                         />
 
                         <Route
-                            element={<RemnawaveSettingsConnector />}
-                            path={ROUTES.DASHBOARD.MANAGEMENT.REMNAWAVE_SETTINGS}
+                            element={<CerberusSettingsConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.CERBERUS_SETTINGS}
                         />
                     </Route>
 
@@ -125,6 +131,10 @@ const router = createBrowserRouter(
                         <Route
                             element={<SrhInspectorPageConnector />}
                             path={ROUTES.DASHBOARD.TOOLS.SRH_INSPECTOR}
+                        />
+                        <Route
+                            element={<ModulesPageConnector />}
+                            path={ROUTES.DASHBOARD.TOOLS.MODULES}
                         />
                     </Route>
 

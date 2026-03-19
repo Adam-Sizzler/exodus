@@ -5,7 +5,7 @@ import {
     TSubscriptionPageButtonConfig,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageSvgLibrary
-} from '@remnawave/subscription-page-types'
+} from '@cerberus/subscription-page-types'
 import {
     ActionIcon,
     Badge,

@@ -21,6 +21,14 @@ enum STATUS {
     ERROR = 'error'
 }
 
+const isErrorStatusMessage = (message: null | string) => {
+    const normalized = message?.trim().toLowerCase()
+    if (!normalized) {
+        return false
+    }
+    return normalized !== 'connected'
+}
+
 export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
     const { t } = useTranslation()
     const [status, setStatus] = useState<STATUS>(STATUS.CONNECTING)
@@ -54,7 +62,8 @@ export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
 
         const { isConnected, isConnecting, lastStatusMessage } = node
 
-        setErrorMessage(lastStatusMessage)
+        const hasErrorMessage = isErrorStatusMessage(lastStatusMessage)
+        setErrorMessage(hasErrorMessage ? lastStatusMessage : null)
 
         if (isConnected && !isConnecting) {
             setStatus(STATUS.CONNECTED)
@@ -68,7 +77,7 @@ export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
             return
         }
 
-        if (lastStatusMessage && !isConnected) {
+        if (hasErrorMessage && !isConnected) {
             setStatus(STATUS.ERROR)
         }
     }, [node, isLoading])
@@ -127,7 +136,7 @@ export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
                                     {t('create-node-modal.widget.connection-successful')}
                                 </Badge>
                                 <Text c="dimmed" fw={600} size="sm" ta="center">
-                                    {t('create-node-step-3-status.xray-core-is-up-and-running')}
+                                    {t('create-node-step-3-status.singbox-core-is-up-and-running')}
                                 </Text>
                             </>
                         )}
@@ -140,7 +149,7 @@ export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
 
                                 <Text c="dimmed" fw={600} size="sm" ta="center">
                                     {t(
-                                        'create-node-step-3-status.remnawave-will-try-to-reconnect-shortly'
+                                        'create-node-step-3-status.cerberus-will-try-to-reconnect-shortly'
                                     )}
                                 </Text>
                             </>

@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package proto;
-option go_package = "v2ray-stat/proto";
+option go_package = "cerberus/proto";
 
 import "google/rpc/status.proto";
 

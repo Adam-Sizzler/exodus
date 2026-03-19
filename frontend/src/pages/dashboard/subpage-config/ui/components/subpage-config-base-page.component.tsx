@@ -1,4 +1,4 @@
-import { GetSubscriptionPageConfigsCommand } from '@remnawave/backend-contract'
+import { GetSubscriptionPageConfigsCommand } from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { TbFile } from 'react-icons/tb'
 import { motion } from 'motion/react'

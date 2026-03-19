@@ -5,7 +5,7 @@ import {
     DeleteUsersFromExternalSquadCommand,
     ReorderExternalSquadCommand,
     UpdateExternalSquadCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'

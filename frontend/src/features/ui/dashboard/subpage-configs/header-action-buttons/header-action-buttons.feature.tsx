@@ -8,7 +8,7 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateSubscriptionPageConfigCommand } from '@remnawave/backend-contract'
+import { CreateSubscriptionPageConfigCommand } from '@cerberus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { TbFile, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'

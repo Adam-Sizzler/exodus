@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"v2ray-stat/backend/config"
+	"cerberus/backend/config"
 )
 
 //go:embed prisma/migrations/*/migration.sql

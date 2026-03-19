@@ -1,5 +1,5 @@
 import { Button, Group, NumberInput, px, Stack, Switch, Text, Textarea } from '@mantine/core'
-import { UpdateSubscriptionSettingsCommand } from '@remnawave/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
 import { PiGear, PiIdentificationBadge } from 'react-icons/pi'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'node_modules/react-i18next'

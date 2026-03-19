@@ -1,7 +1,7 @@
 import {
     ExternalSquadSubscriptionSettingsSchema,
     GetExternalSquadByUuidCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import z from 'zod'
 

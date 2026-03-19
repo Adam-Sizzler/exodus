@@ -1,7 +1,7 @@
-import remnawave from '../public/locales/en/remnawave.json'
+import cerberus from '../public/locales/en/cerberus.json'
 
 const resources = {
-    remnawave
+    cerberus
 } as const
 
 export default resources

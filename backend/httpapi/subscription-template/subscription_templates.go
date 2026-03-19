@@ -10,10 +10,10 @@ import (
 	"regexp"
 	"strings"
 
-	"v2ray-stat/backend/config"
-	"v2ray-stat/backend/db"
-	dbmanager "v2ray-stat/backend/db/manager"
-	"v2ray-stat/backend/httpapi/shared"
+	"cerberus/backend/config"
+	"cerberus/backend/db"
+	dbmanager "cerberus/backend/db/manager"
+	"cerberus/backend/httpapi/shared"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"

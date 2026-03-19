@@ -13,11 +13,13 @@ import {
     TbDeviceAnalytics,
     TbFolder,
     TbHexagon,
+    TbListDetails,
+    TbPackages,
     TbReportAnalytics,
     TbRoute,
     TbWebhook
 } from 'react-icons/tb'
-import { SUBSCRIPTION_TEMPLATE_TYPE } from '@remnawave/backend-contract'
+import { SUBSCRIPTION_TEMPLATE_TYPE } from '@cerberus/backend-contract'
 import { HiChartPie, HiCurrencyDollar, HiServer } from 'react-icons/hi'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useHotkeys } from '@mantine/hooks'
@@ -72,6 +74,12 @@ export const useMenuSections = (): MenuItem[] => {
                     id: 'external-squads'
                 },
                 {
+                    name: t('constants.srs-lists', { defaultValue: 'SRS Lists' }),
+                    href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
+                    icon: TbListDetails,
+                    id: 'srs-lists'
+                },
+                {
                     name: t('constants.config-profiles'),
                     href: ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES,
                     icon: XrayLogo,
@@ -124,10 +132,10 @@ export const useMenuSections = (): MenuItem[] => {
                 },
 
                 {
-                    name: t('constants.remnawave-settings'),
-                    href: ROUTES.DASHBOARD.MANAGEMENT.REMNAWAVE_SETTINGS,
+                    name: t('constants.cerberus-settings'),
+                    href: ROUTES.DASHBOARD.MANAGEMENT.CERBERUS_SETTINGS,
                     icon: Logo,
-                    id: 'remnawave-settings'
+                    id: 'cerberus-settings'
                 }
             ]
         },
@@ -223,6 +231,12 @@ export const useMenuSections = (): MenuItem[] => {
                     href: ROUTES.DASHBOARD.TOOLS.SRH_INSPECTOR,
                     icon: TbReportAnalytics,
                     id: 'srh-inspector'
+                },
+                {
+                    name: t('constants.modules', { defaultValue: 'Modules' }),
+                    href: ROUTES.DASHBOARD.TOOLS.MODULES,
+                    icon: TbPackages,
+                    id: 'modules'
                 }
             ]
         },

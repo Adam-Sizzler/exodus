@@ -10,7 +10,6 @@ import react from '@vitejs/plugin-react-swc'
 import { defineConfig } from 'vite'
 import * as dotenv from 'dotenv'
 
-dotenv.config({ path: `${__dirname}/../config/env/frontend.env` })
 dotenv.config({ path: `${__dirname}/.env`, override: true })
 
 export default defineConfig({
@@ -46,6 +45,10 @@ export default defineConfig({
         target: 'esNext',
         outDir: 'dist',
         chunkSizeWarningLimit: 1000000,
+        commonjsOptions: {
+            include: [/node_modules/, /vendor\/@cerberus/],
+            transformMixedEsModules: true
+        },
         // minify: 'terser',
         rollupOptions: {
             output: {
@@ -86,9 +89,9 @@ export default defineConfig({
                         '@mantine/notifications',
                         '@mantine/modals'
                     ],
-                    remnawave: [
-                        '@remnawave/backend-contract',
-                        '@remnawave/subscription-page-types'
+                    cerberus: [
+                        '@cerberus/backend-contract',
+                        '@cerberus/subscription-page-types'
                     ],
                     i18n: ['i18next', 'i18next-http-backend', 'i18next-browser-languagedetector'],
                     motion: ['framer-motion', 'motion-dom', 'motion-utils', 'motion'],
@@ -108,7 +111,7 @@ export default defineConfig({
         }
     },
     define: {
-        __DOMAIN_BACKEND__: JSON.stringify(process.env.DOMAIN_BACKEND || 'http://127.0.0.1:9242').trim(),
+        __DOMAIN_BACKEND__: JSON.stringify(process.env.DOMAIN_BACKEND || 'http://127.0.0.1:3000').trim(),
         __NODE_ENV__: JSON.stringify(process.env.NODE_ENV || 'production').trim(),
         __DOMAIN_OVERRIDE__: JSON.stringify(process.env.DOMAIN_OVERRIDE || '0').trim()
     },

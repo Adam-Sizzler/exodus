@@ -1,5 +1,5 @@
-import { SUBPAGE_DEFAULT_CONFIG_UUID } from '@remnawave/subscription-page-types'
-import { GetSubscriptionPageConfigsCommand } from '@remnawave/backend-contract'
+import { SUBPAGE_DEFAULT_CONFIG_UUID } from '@cerberus/subscription-page-types'
+import { GetSubscriptionPageConfigsCommand } from '@cerberus/backend-contract'
 import { PiCheck, PiCopy, PiPencil, PiTrashDuotone } from 'react-icons/pi'
 import { TbCopyCheck, TbEdit, TbFile } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router-dom'

@@ -2,7 +2,7 @@ import {
     GetConfigProfilesCommand,
     GetInfraProvidersCommand,
     UpdateHostCommand
-} from '@remnawave/backend-contract'
+} from '@cerberus/backend-contract'
 
 import { THelpDrawerAvailableScreen } from '@shared/ui/help-drawer/help-drawer.types'
 

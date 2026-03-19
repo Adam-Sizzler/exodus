@@ -1,4 +1,4 @@
-import { UpdateSubscriptionSettingsCommand } from '@remnawave/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
 import { Button, Group, px, Stack, Textarea } from '@mantine/core'
 import { PiDeviceMobile, PiGear } from 'react-icons/pi'
 import { zodResolver } from 'mantine-form-zod-resolver'
