@@ -1,111 +1,49 @@
-name: Build and push
+name: Build And Push Subscription Image
 
 on:
   push:
     tags:
       - '*'
 
-  workflow_dispatch:
-
 jobs:
-  send-start-deploy-telegram-message:
-    name: Send Telegram message
+  docker-sub:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
+    permissions:
+      contents: read
+      packages: write
 
-      - name: Send Telegram message
-        uses: proDreams/actions-telegram-notifier@main
-        with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: info
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build started'
-
-  build-docker-image:
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: '22.x'
-
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm ci
-          npm run start:build
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/cerberus-sub
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
-          platforms: linux/amd64, linux/arm64
+          file: ./Dockerfile
+          platforms: linux/amd64
           push: true
-          tags: |
-            cerberus/subscription-page:latest
-            cerberus/subscription-page:${{github.ref_name}}
-            ghcr.io/cerberus/subscription-page:latest
-            ghcr.io/cerberus/subscription-page:${{github.ref_name}}
-
-  send-telegram-message:
-    name: Send Telegram message
-    needs: [build-docker-image]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v2
-
-      - name: Send Telegram message
-        uses: proDreams/actions-telegram-notifier@main
-        with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: success
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build finished'
-
-  notify-on-error:
-    runs-on: ubuntu-latest
-    needs: [build-docker-image]
-    if: failure()
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v2
-
-      - name: Send Telegram message
-        uses: proDreams/actions-telegram-notifier@main
-        with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: error
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build failed'
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
