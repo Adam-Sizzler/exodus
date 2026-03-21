@@ -735,9 +735,9 @@ func isJsonSubscriptionSupported(userAgent string) bool {
 		regexp.MustCompile(`^Happ/`),
 		regexp.MustCompile(`^ktor-client`),
 		regexp.MustCompile(`^V2Box`),
-		regexp.MustCompile(`^io\\.github\\.saeeddev94\\.xray/`),
-		regexp.MustCompile(`^v2rayNG/(\\d+\\.\\d+\\.\\d+)`),
-		regexp.MustCompile(`^v2rayN/(\\d+\\.\\d+\\.\\d+)`),
+		regexp.MustCompile(`^io\.github\.saeeddev94\.xray/`),
+		regexp.MustCompile(`^v2rayNG/(\d+\.\d+\.\d+)`),
+		regexp.MustCompile(`^v2rayN/(\d+\.\d+\.\d+)`),
 	}
 	for _, re := range clients {
 		if re.MatchString(userAgent) {

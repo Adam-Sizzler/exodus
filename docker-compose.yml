@@ -42,7 +42,7 @@ services:
 
   cerberus-node:
     build:
-      context: ../cerberus-node
+      context: ../node
       dockerfile: Dockerfile.node
     image: cerberus-node:latest
     container_name: cerberus-node

@@ -22,7 +22,7 @@ export const CopyDockerComposeWidget = ({ port }: IProps) => {
   cerberus-node:
     container_name: cerberus-node
     hostname: cerberus-node
-    image: cerberus/node:latest
+    image: ghcr.io/adam-sizzler/cerberus-node:latest
     network_mode: host
     restart: always
     cap_add:
@@ -33,7 +33,7 @@ export const CopyDockerComposeWidget = ({ port }: IProps) => {
         hard: 1048576
     environment:
       - NODE_PORT=${port ?? 2222}
-      - SECRET_KEY="${pubKey.pubKey.trimEnd()}"`
+      - SECRET_KEY=${pubKey.pubKey.trimEnd()}`
     }
 
     return (

@@ -9,6 +9,7 @@ import (
 	"cerberus/backend/config"
 	dbmanager "cerberus/backend/db/manager"
 	"cerberus/backend/httpapi/shared"
+	monitor "cerberus/backend/nodes"
 )
 
 type modulesSettingsResponse struct {
@@ -69,6 +70,9 @@ func ModulesSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated modules settings")
 				return
 			}
+
+			// Apply module setting changes to connected nodes immediately.
+			monitor.RequestNodeDeploy(true)
 			shared.WriteJSON(w, http.StatusOK, modulesSettingsResponse{Response: settings})
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")

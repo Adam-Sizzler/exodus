@@ -203,25 +203,25 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 	items := make([]deployHaproxyUserItem, 0)
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-			SELECT
-				u.username,
-				CASE
-					WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid
-					ELSE ''
-				END AS vless_uuid,
+				SELECT
+					u.username,
+					CASE
+						WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid::text
+						ELSE ''
+					END AS vless_uuid,
 				CASE
 					WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
 					ELSE ''
 				END AS trojan_password
-			FROM config_profile_inbounds_to_nodes cpitn
-			JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
-			JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
-			JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-			JOIN users u ON u.t_id = ism.user_id
-			WHERE cpitn.node_uuid = ? AND u.status = 'ACTIVE'
-			GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password
-			HAVING bool_or(lower(cpi.type) IN ('vless', 'trojan'))
-			ORDER BY u.t_id ASC
+				FROM config_profile_inbounds_to_nodes cpitn
+				JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+				JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
+				JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
+				JOIN users u ON u.t_id = ism.user_id
+			WHERE cpitn.node_uuid::text = ? AND u.status = 'ACTIVE'
+				GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password
+				HAVING bool_or(lower(cpi.type) IN ('vless', 'trojan'))
+				ORDER BY u.t_id ASC
 		`, nodeUUID)
 		if err != nil {
 			return err

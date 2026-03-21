@@ -1,11 +1,12 @@
-name: Release Cerberus Docker Image
+name: Build And Push Panel Image
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - '*'
 
 jobs:
-  cerberus:
+  docker-panel:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository_owner }}/cerberus
           tags: |
             type=ref,event=tag
             type=raw,value=latest
@@ -41,7 +42,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.panel
+          file: ./Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
