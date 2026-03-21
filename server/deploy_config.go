@@ -121,10 +121,14 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 			return DeploySummary{}, err
 		}
 		if task.Modules.HaproxyEnabled {
-			if err := restartHaproxyContainer(); err != nil {
-				s.Cfg.Logger.Warn("Failed to restart HAProxy container after deploy", "error", err, "container", "haproxy")
-			} else {
-				s.Cfg.Logger.Info("HAProxy container restarted", "container", "haproxy")
+			result := restartHaproxyContainer()
+			switch {
+			case result.Reloaded:
+				s.Cfg.Logger.Info("HAProxy container reloaded", "container", "haproxy")
+			case result.Restarted:
+				s.Cfg.Logger.Warn("HAProxy soft reload failed, restarted container", "container", "haproxy", "warning", result.Warning)
+			default:
+				s.Cfg.Logger.Warn("HAProxy reload skipped", "container", "haproxy", "warning", result.Warning)
 			}
 		}
 		restarted = true

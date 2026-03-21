@@ -20,6 +20,7 @@ func ParseNodePayloadFromSecret() (NodePayload, error) {
 	if !ok {
 		return NodePayload{}, fmt.Errorf("SECRET_KEY is not set")
 	}
+	secret = strings.Trim(secret, "\"'")
 
 	raw, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
