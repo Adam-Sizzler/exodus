@@ -80,7 +80,16 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		return nil, status.Error(codes.FailedPrecondition, "core SDK is not initialized")
 	}
 
-	stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{Pattern: ""})
+	stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{
+		Patterns: []string{
+			`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+			`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+			`^user>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+			`^user>>>.*>>>online$`,
+		},
+		Regexp: true,
+		Reset:  true,
+	})
 	if err != nil {
 		s.cfg.Logger.Error("Failed to execute core stats query", "error", err, "core_type", config.FixedCoreType)
 		return nil, fmt.Errorf("query core stats: %w", err)
