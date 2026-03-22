@@ -359,23 +359,6 @@ func normalizeTrojanHash(secret string) string {
 	if secret == "" {
 		return ""
 	}
-	if isLowerHex(secret) && len(secret) == 56 {
-		return secret
-	}
 	sum := sha256.Sum224([]byte(secret))
 	return hex.EncodeToString(sum[:])
-}
-
-func isLowerHex(v string) bool {
-	if v == "" {
-		return false
-	}
-	for i := 0; i < len(v); i++ {
-		ch := v[i]
-		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') {
-			continue
-		}
-		return false
-	}
-	return true
 }
