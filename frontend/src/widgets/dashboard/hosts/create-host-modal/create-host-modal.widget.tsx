@@ -49,6 +49,7 @@ export const CreateHostModalWidget = () => {
             port: 0,
             remark: '',
             address: '',
+            selectorNodesFirst: false,
             inbound: {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''
@@ -89,6 +90,8 @@ export const CreateHostModalWidget = () => {
 
         let xHttpExtraParams
         let muxParams
+        let singboxMuxParams
+        let clashMuxParams
         let sockoptParams
 
         try {
@@ -98,8 +101,12 @@ export const CreateHostModalWidget = () => {
                 xHttpExtraParams = JSON.parse(values.xHttpExtraParams as unknown as string)
             }
         } catch {
-            xHttpExtraParams = null
-            // silence
+            notifications.show({
+                title: t('create-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return null
         }
 
         try {
@@ -109,9 +116,33 @@ export const CreateHostModalWidget = () => {
                 muxParams = JSON.parse(values.muxParams as unknown as string)
             }
         } catch {
-            muxParams = null
-            // silence
+            notifications.show({
+                title: t('create-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return null
         }
+
+        try {
+            if (values.singboxMuxParams === '') {
+                singboxMuxParams = null
+            } else {
+                singboxMuxParams = JSON.parse(values.singboxMuxParams as unknown as string)
+            }
+        } catch {
+            notifications.show({
+                title: t('create-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return null
+        }
+
+        clashMuxParams =
+            typeof values.clashMuxParams === 'string' && values.clashMuxParams.trim() !== ''
+                ? values.clashMuxParams
+                : null
 
         try {
             if (values.sockoptParams === '') {
@@ -130,6 +161,8 @@ export const CreateHostModalWidget = () => {
                 isDisabled: !values.isDisabled,
                 sockoptParams,
                 muxParams,
+                singboxMuxParams,
+                clashMuxParams,
                 xHttpExtraParams,
                 inbound: {
                     configProfileInboundUuid: values.inbound.configProfileInboundUuid,

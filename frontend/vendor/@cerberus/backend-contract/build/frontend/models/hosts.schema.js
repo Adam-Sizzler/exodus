@@ -19,6 +19,8 @@ exports.HostsSchema = zod_1.z.object({
     securityLayer: zod_1.z.nativeEnum(hosts_1.SECURITY_LAYERS).default(hosts_1.SECURITY_LAYERS.DEFAULT),
     xHttpExtraParams: zod_1.z.nullable(zod_1.z.unknown()),
     muxParams: zod_1.z.nullable(zod_1.z.unknown()),
+    singboxMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
+    clashMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
     sockoptParams: zod_1.z.nullable(zod_1.z.unknown()),
     inbound: zod_1.z.object({
         configProfileUuid: zod_1.z.string().uuid().nullable(),
@@ -32,6 +34,7 @@ exports.HostsSchema = zod_1.z.object({
     vlessRouteId: zod_1.z.number().int().min(0).max(65535).nullable(),
     allowInsecure: zod_1.z.boolean().default(false),
     shuffleHost: zod_1.z.boolean(),
+    selectorNodesFirst: zod_1.z.boolean().default(false),
     mihomoX25519: zod_1.z.boolean(),
     nodes: zod_1.z.array(zod_1.z.string().uuid()),
     xrayJsonTemplateUuid: zod_1.z.string().uuid().nullable(),

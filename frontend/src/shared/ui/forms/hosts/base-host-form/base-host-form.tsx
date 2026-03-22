@@ -14,6 +14,7 @@ import {
     Stack,
     Switch,
     Tabs,
+    Textarea,
     Text,
     TextInput,
     ThemeIcon,
@@ -48,7 +49,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
+    BASIC_CLASH_MUX_PARAMS,
     BASIC_MUX_PARAMS,
+    BASIC_SINGBOX_MUX_PARAMS,
     BASIC_SOCKOPT_PARAMS,
     BASIC_XHTTP_EXTRA_PARAMS,
     PASTE_BASIC_XHTTP_EXTRA_PARAMS
@@ -97,6 +100,32 @@ const SUBSCRIPTION_TYPES = {
     }
 } as const
 
+const MUX_CORE_OPTIONS = [
+    { value: 'XRAY', label: 'Xray' },
+    { value: 'SINGBOX', label: 'Singbox' },
+    { value: 'CLASH', label: 'Clash/Mihomo' }
+] as const
+
+type MuxCore = (typeof MUX_CORE_OPTIONS)[number]['value']
+
+const MUX_FIELD_BY_CORE: Record<MuxCore, 'muxParams' | 'singboxMuxParams' | 'clashMuxParams'> = {
+    XRAY: 'muxParams',
+    SINGBOX: 'singboxMuxParams',
+    CLASH: 'clashMuxParams'
+}
+
+const MUX_PLACEHOLDER_BY_CORE: Record<MuxCore, string> = {
+    XRAY: BASIC_MUX_PARAMS,
+    SINGBOX: BASIC_SINGBOX_MUX_PARAMS,
+    CLASH: BASIC_CLASH_MUX_PARAMS
+}
+
+const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
+    XRAY: 'https://xtls.github.io/ru/config/outbound.html#muxobject',
+    SINGBOX: 'https://sing-box.sagernet.org/configuration/shared/multiplex/',
+    CLASH: 'https://wiki.metacubex.one/en/config/proxies/'
+}
+
 export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCommand.Request>(
     props: IProps<T>
 ) => {
@@ -114,6 +143,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const { t } = useTranslation()
     const [opened, { open, close }] = useDisclosure(false)
     const [activeTab, setActiveTab] = useState<null | string>('basic')
+    const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('XRAY')
 
     const [muxParamsOpened, { open: openMuxParams, close: closeMuxParams }] = useDisclosure(false)
     const [sockoptParamsOpened, { open: openSockoptParams, close: closeSockoptParams }] =
@@ -299,6 +329,31 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
             </HoverCard>
         )
     }
+
+    const selectorNodesFirstHoverCard = () => {
+        return (
+            <HoverCard shadow="md" width={300} withArrow>
+                <HoverCard.Target>
+                    <ActionIcon color="gray" size="xs" variant="subtle">
+                        <HiQuestionMarkCircle size={20} />
+                    </ActionIcon>
+                </HoverCard.Target>
+                <HoverCard.Dropdown>
+                    <Stack gap="sm">
+                        <Text c="dimmed" size="sm">
+                            {t('base-host-form.selector-nodes-first-description')}
+                        </Text>
+                    </Stack>
+                </HoverCard.Dropdown>
+            </HoverCard>
+        )
+    }
+
+    const activeMuxField = MUX_FIELD_BY_CORE[activeMuxCore]
+    const activeMuxPlaceholder = MUX_PLACEHOLDER_BY_CORE[activeMuxCore]
+    const isClashMuxCore = activeMuxCore === 'CLASH'
+    const activeMuxCoreLabel =
+        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Xray'
 
     return (
         <form onSubmit={handleSubmit}>
@@ -1040,6 +1095,25 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                             <Group gap="xs" justify="space-between">
                                                 <Group gap={4}>
                                                     <Text fw={600} size="sm">
+                                                        {t(
+                                                            'base-host-form.selector-nodes-first'
+                                                        )}
+                                                    </Text>
+                                                    {selectorNodesFirstHoverCard()}
+                                                </Group>
+                                                <Switch
+                                                    color="teal.8"
+                                                    key={form.key('selectorNodesFirst')}
+                                                    size="md"
+                                                    {...form.getInputProps('selectorNodesFirst', {
+                                                        type: 'checkbox'
+                                                    })}
+                                                />
+                                            </Group>
+
+                                            <Group gap="xs" justify="space-between">
+                                                <Group gap={4}>
+                                                    <Text fw={600} size="sm">
                                                         {t('base-host-form.allow-insecure')}
                                                     </Text>
                                                 </Group>
@@ -1184,40 +1258,65 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                 }
             >
                 <Stack gap="md">
+                    <Select
+                        allowDeselect={false}
+                        data={MUX_CORE_OPTIONS.map((option) => ({
+                            label: option.label,
+                            value: option.value
+                        }))}
+                        label={t('base-host-form.mux-core')}
+                        onChange={(value) => setActiveMuxCore((value as MuxCore) || 'XRAY')}
+                        value={activeMuxCore}
+                    />
+
                     <Stack gap={0}>
                         <Text size="sm">
-                            {t('base-host-form.this-will-only-be-used-for-xray-json-output')}
+                            {t('base-host-form.this-will-only-be-used-for-selected-core-output', {
+                                core: activeMuxCoreLabel
+                            })}
                         </Text>
                         <Text size="sm">
-                            {t('base-host-form.please-ensure-you-provide-a-valid-json-mux-object')}
+                            {isClashMuxCore
+                                ? t('base-host-form.please-ensure-you-provide-a-valid-yaml-mux-object')
+                                : t('base-host-form.please-ensure-you-provide-a-valid-json-mux-object')}
                         </Text>
                         <Text size="sm">
                             {t('base-host-form.for-more-information-refer-to')}{' '}
-                            <Link
+                            <a
+                                href={MUX_DOCS_BY_CORE[activeMuxCore]}
+                                rel="noreferrer"
                                 target="_blank"
-                                to="https://xtls.github.io/ru/config/outbound.html#muxobject"
                             >
                                 {t('base-host-form.xtls-documentation')}
-                            </Link>
+                            </a>
                             .
                         </Text>
                     </Stack>
-                    <JsonInput
-                        autosize
-                        formatOnBlur
-                        key={form.key('muxParams')}
-                        minRows={15}
-                        placeholder={BASIC_MUX_PARAMS}
-                        validationError={t('base-host-form.invalid-json')}
-                        {...form.getInputProps('muxParams')}
-                    />
+                    {isClashMuxCore ? (
+                        <Textarea
+                            autosize
+                            key={form.key(activeMuxField)}
+                            minRows={15}
+                            placeholder={activeMuxPlaceholder}
+                            {...form.getInputProps(activeMuxField)}
+                        />
+                    ) : (
+                        <JsonInput
+                            autosize
+                            formatOnBlur
+                            key={form.key(activeMuxField)}
+                            minRows={15}
+                            placeholder={activeMuxPlaceholder}
+                            validationError={t('base-host-form.invalid-json')}
+                            {...form.getInputProps(activeMuxField)}
+                        />
+                    )}
 
                     <Button
                         color="gray"
                         leftSection={<PiArrowUpDuotone size={px('1.2rem')} />}
                         onClick={() => {
-                            // @ts-expect-error -- TODO: fix this
-                            form.setFieldValue('muxParams', BASIC_MUX_PARAMS)
+                            form.setFieldValue(activeMuxField as never, activeMuxPlaceholder as never)
                         }}
                         variant="light"
                     >

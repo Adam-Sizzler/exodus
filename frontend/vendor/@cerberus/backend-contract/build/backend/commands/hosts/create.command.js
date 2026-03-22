@@ -42,6 +42,8 @@ var CreateHostCommand;
         securityLayer: zod_1.z.optional(zod_1.z.nativeEnum(constants_1.SECURITY_LAYERS).default(constants_1.SECURITY_LAYERS.DEFAULT)),
         xHttpExtraParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
         muxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
+        singboxMuxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
+        clashMuxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
         sockoptParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
         serverDescription: zod_1.z.optional(zod_1.z
             .string()
@@ -62,6 +64,7 @@ var CreateHostCommand;
         allowInsecure: zod_1.z.optional(zod_1.z.boolean().default(false)),
         vlessRouteId: zod_1.z.optional(zod_1.z.number().int().min(0).max(65535).nullable()),
         shuffleHost: zod_1.z.optional(zod_1.z.boolean().default(false)),
+        selectorNodesFirst: zod_1.z.optional(zod_1.z.boolean().default(false)),
         mihomoX25519: zod_1.z.optional(zod_1.z.boolean().default(false)),
         nodes: zod_1.z.optional(zod_1.z.array(zod_1.z.string().uuid())),
         xrayJsonTemplateUuid: zod_1.z.optional(zod_1.z.string().uuid().nullable()),

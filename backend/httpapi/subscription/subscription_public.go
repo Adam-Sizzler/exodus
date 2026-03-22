@@ -186,9 +186,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	if responseType == responseTypeXrayBase64 && settings.Raw.ServeJSONAtBaseSubscription && !ignoreServeJsonAtBaseSubscription {
-		if isJsonSubscriptionSupported(r.Header.Get("User-Agent")) {
-			responseType = responseTypeXrayJSON
-		}
+		responseType = responseTypeXrayJSON
 	}
 
 	if responseType == responseTypeBrowser {

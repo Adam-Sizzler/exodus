@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/base64"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	subscriptionresponserules "cerberus/backend/httpapi/subscription-response-rules"
 	subscriptionsettings "cerberus/backend/httpapi/subscription-settings"
 
+	"golang.org/x/crypto/curve25519"
 	"gopkg.in/yaml.v3"
 )
 
@@ -101,12 +104,15 @@ type SubscriptionHost struct {
 	SecurityLayer                string
 	XHTTPExtraParams             *string
 	MuxParams                    *string
+	SingboxMuxParams             *string
+	ClashMuxParams               *string
 	SockoptParams                *string
 	IsDisabled                   bool
 	ServerDescription            *string
 	VLESSRouteID                 *int64
 	AllowInsecure                bool
 	ShuffleHost                  bool
+	SelectorNodesFirst           bool
 	MihomoX25519                 bool
 	XrayJSONTemplateUUID         *string
 	KeepSNIBlank                 bool
@@ -398,9 +404,9 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
 			rows, err = db.QueryContext(ctx, `
                 SELECT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.xhttp_extra_params, h.mux_params, h.sockopt_params, h.is_disabled,
+                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
                        h.server_description, h.vless_route_id, h.allow_insecure, h.shuffle_host,
-                       h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
+                       h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
                        h.config_profile_uuid, h.config_profile_inbound_uuid,
                        cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
@@ -412,9 +418,9 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
 			rows, err = db.QueryContext(ctx, `
                 SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.xhttp_extra_params, h.mux_params, h.sockopt_params, h.is_disabled,
+                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
                        h.server_description, h.vless_route_id, h.allow_insecure, h.shuffle_host,
-                       h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
+                       h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
                        h.config_profile_uuid, h.config_profile_inbound_uuid,
                        cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
@@ -454,14 +460,14 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var xhttpExtraParams, muxParams, sockoptParams, serverDescription sql.NullString
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription sql.NullString
 	var vlessRouteID sql.NullInt64
 	var xrayJSONTemplateUUID, tag, configProfileUUID, configProfileInboundUUID sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
 	var excludeTypes dbutil.StringArray
-	var isDisabled, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var isDisabled, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 
 	err := scanner.Scan(
 		&h.UUID,
@@ -477,12 +483,15 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&securityLayer,
 		&xhttpExtraParams,
 		&muxParams,
+		&singboxMuxParams,
+		&clashMuxParams,
 		&sockoptParams,
 		&isDisabled,
 		&serverDescription,
 		&vlessRouteID,
 		&allowInsecure,
 		&shuffleHost,
+		&selectorNodesFirst,
 		&mihomoX25519,
 		&xrayJSONTemplateUUID,
 		&keepSNIBlank,
@@ -532,6 +541,12 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if muxParams.Valid {
 		h.MuxParams = &muxParams.String
 	}
+	if singboxMuxParams.Valid {
+		h.SingboxMuxParams = &singboxMuxParams.String
+	}
+	if clashMuxParams.Valid {
+		h.ClashMuxParams = &clashMuxParams.String
+	}
 	if sockoptParams.Valid {
 		h.SockoptParams = &sockoptParams.String
 	}
@@ -549,6 +564,9 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	}
 	if shuffleHost.Valid {
 		h.ShuffleHost = shuffleHost.Bool
+	}
+	if selectorNodesFirst.Valid {
+		h.SelectorNodesFirst = selectorNodesFirst.Bool
 	}
 	if mihomoX25519.Valid {
 		h.MihomoX25519 = mihomoX25519.Bool
@@ -1099,6 +1117,43 @@ func extractShadowsocksMethod(raw json.RawMessage) string {
 	return ""
 }
 
+func parseJSONMapString(raw *string) map[string]interface{} {
+	if raw == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" || trimmed == "null" {
+		return nil
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
+		if len(parsed) > 0 {
+			return parsed
+		}
+		return nil
+	}
+
+	// Stored value can be a JSON string with YAML payload (for Clash/Mihomo editor).
+	var yamlPayload string
+	if err := json.Unmarshal([]byte(trimmed), &yamlPayload); err != nil {
+		return nil
+	}
+	yamlPayload = strings.TrimSpace(yamlPayload)
+	if yamlPayload == "" {
+		return nil
+	}
+
+	var yamlParsed map[string]interface{}
+	if err := yaml.Unmarshal([]byte(yamlPayload), &yamlParsed); err != nil {
+		return nil
+	}
+	if len(yamlParsed) == 0 {
+		return nil
+	}
+	return yamlParsed
+}
+
 func generateXrayJSONConfig(templateJSON []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
 	baseConfig := map[string]interface{}{}
 	if len(templateJSON) > 0 {
@@ -1121,11 +1176,7 @@ func generateXrayJSONConfig(templateJSON []byte, hosts []SubscriptionHost, user 
 
 	baseConfig["outbounds"] = outbounds
 
-	data, err := json.MarshalIndent(baseConfig, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+	return marshalJSONWithTemplateTopLevelOrder(templateJSON, baseConfig)
 }
 
 func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
@@ -1259,7 +1310,689 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 		return nil
 	}
 
+	if mux := parseJSONMapString(host.MuxParams); mux != nil {
+		outbound["mux"] = mux
+	}
+
 	return outbound
+}
+
+func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
+	baseConfig := map[string]interface{}{}
+	if len(templateJSON) > 0 {
+		if err := json.Unmarshal(templateJSON, &baseConfig); err != nil {
+			baseConfig = map[string]interface{}{}
+		}
+	}
+
+	outbounds := []interface{}{}
+	if existing, ok := baseConfig["outbounds"].([]interface{}); ok {
+		outbounds = existing
+	}
+
+	for _, host := range hosts {
+		// In remnawave hidden hosts are not returned for singbox generation.
+		if host.IsHidden {
+			continue
+		}
+
+		outbound := buildSingboxOutbound(host, user)
+		if outbound == nil {
+			continue
+		}
+		outbounds = append(outbounds, outbound)
+	}
+
+	baseConfig["outbounds"] = outbounds
+	selectorNodesFirst := false
+	for _, host := range hosts {
+		if host.SelectorNodesFirst {
+			selectorNodesFirst = true
+			break
+		}
+	}
+	patchSingboxSelectors(baseConfig, selectorNodesFirst)
+
+	return marshalJSONWithTemplateTopLevelOrder(templateJSON, baseConfig)
+}
+
+func marshalJSONWithTemplateTopLevelOrder(templateJSON []byte, payload map[string]interface{}) (string, error) {
+	templateOrder, err := extractTopLevelJSONKeys(templateJSON)
+	if err != nil || len(templateOrder) == 0 {
+		data, marshalErr := json.MarshalIndent(payload, "", "  ")
+		if marshalErr != nil {
+			return "", marshalErr
+		}
+		return string(data), nil
+	}
+
+	encodedValues := make(map[string][]byte, len(payload))
+	for key, value := range payload {
+		raw, marshalErr := json.MarshalIndent(value, "", "  ")
+		if marshalErr != nil {
+			return "", marshalErr
+		}
+		encodedValues[key] = raw
+	}
+
+	orderedKeys := make([]string, 0, len(payload))
+	used := make(map[string]struct{}, len(payload))
+	for _, key := range templateOrder {
+		if _, exists := encodedValues[key]; !exists {
+			continue
+		}
+		if _, exists := used[key]; exists {
+			continue
+		}
+		orderedKeys = append(orderedKeys, key)
+		used[key] = struct{}{}
+	}
+
+	remainingKeys := make([]string, 0)
+	for key := range encodedValues {
+		if _, exists := used[key]; !exists {
+			remainingKeys = append(remainingKeys, key)
+		}
+	}
+	sort.Strings(remainingKeys)
+	orderedKeys = append(orderedKeys, remainingKeys...)
+
+	if len(orderedKeys) == 0 {
+		return "{}", nil
+	}
+
+	var builder strings.Builder
+	builder.WriteString("{\n")
+
+	for i, key := range orderedKeys {
+		keyJSON, marshalErr := json.Marshal(key)
+		if marshalErr != nil {
+			return "", marshalErr
+		}
+
+		builder.WriteString("  ")
+		builder.Write(keyJSON)
+		builder.WriteString(": ")
+		builder.WriteString(indentTopLevelJSONValue(encodedValues[key]))
+
+		if i != len(orderedKeys)-1 {
+			builder.WriteString(",")
+		}
+		builder.WriteString("\n")
+	}
+
+	builder.WriteString("}")
+	return builder.String(), nil
+}
+
+func extractTopLevelJSONKeys(templateJSON []byte) ([]string, error) {
+	trimmed := bytes.TrimSpace(templateJSON)
+	if len(trimmed) == 0 {
+		return nil, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(trimmed))
+	firstToken, err := decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	startDelim, ok := firstToken.(json.Delim)
+	if !ok || startDelim != '{' {
+		return nil, nil
+	}
+
+	keys := make([]string, 0)
+	for decoder.More() {
+		keyToken, tokenErr := decoder.Token()
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+
+		key, ok := keyToken.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid json object key token type")
+		}
+		keys = append(keys, key)
+
+		var discard json.RawMessage
+		if decodeErr := decoder.Decode(&discard); decodeErr != nil {
+			return nil, decodeErr
+		}
+	}
+
+	_, err = decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	return keys, nil
+}
+
+func indentTopLevelJSONValue(value []byte) string {
+	text := string(value)
+	if !strings.Contains(text, "\n") {
+		return text
+	}
+
+	lines := strings.Split(text, "\n")
+	for i := 1; i < len(lines); i++ {
+		lines[i] = "  " + lines[i]
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+type singboxInboundDefaults struct {
+	network     string
+	security    string
+	path        string
+	hostHeader  string
+	sni         string
+	alpn        string
+	fingerprint string
+	publicKey   string
+	shortID     string
+	flow        string
+}
+
+func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
+	protocol := ""
+	if host.InboundType != nil {
+		protocol = strings.ToLower(strings.TrimSpace(*host.InboundType))
+	}
+	if protocol == "" {
+		return nil
+	}
+
+	if protocol == "ss" {
+		protocol = "shadowsocks"
+	}
+
+	if protocol != "vless" && protocol != "trojan" && protocol != "shadowsocks" {
+		return nil
+	}
+
+	defaults := resolveSingboxInboundDefaults(host)
+
+	// Keep behavior close to remnawave: xhttp is skipped for singbox generation.
+	if defaults.network == "xhttp" {
+		return nil
+	}
+
+	remark := strings.TrimSpace(host.Remark)
+	if remark == "" {
+		remark = host.Address
+	}
+
+	outbound := map[string]interface{}{
+		"type":        protocol,
+		"tag":         remark,
+		"server":      host.Address,
+		"server_port": host.Port,
+	}
+
+	switch protocol {
+	case "vless":
+		outbound["uuid"] = user.VlessUUID
+		if defaults.flow == "xtls-rprx-vision" {
+			outbound["flow"] = "xtls-rprx-vision"
+		}
+	case "trojan":
+		outbound["password"] = user.TrojanPassword
+	case "shadowsocks":
+		method := extractShadowsocksMethod(host.InboundRaw)
+		if method == "" {
+			method = "chacha20-ietf-poly1305"
+		}
+		outbound["password"] = user.SSPassword
+		outbound["method"] = method
+		outbound["network"] = "tcp"
+	}
+
+	if defaults.security == "tls" || defaults.security == "reality" {
+		tlsCfg := map[string]interface{}{
+			"enabled": true,
+		}
+
+		sni := defaults.sni
+		if host.OverrideSNIFromAddress {
+			sni = host.Address
+		}
+		if host.KeepSNIBlank {
+			sni = ""
+		}
+		if sni != "" {
+			tlsCfg["server_name"] = sni
+		}
+
+		if host.AllowInsecure {
+			tlsCfg["insecure"] = true
+		}
+
+		if defaults.fingerprint != "" {
+			tlsCfg["utls"] = map[string]interface{}{
+				"enabled":     true,
+				"fingerprint": defaults.fingerprint,
+			}
+		} else if defaults.security == "reality" {
+			// remnawave default for reality when fp is empty
+			tlsCfg["utls"] = map[string]interface{}{
+				"enabled":     true,
+				"fingerprint": "chrome",
+			}
+		}
+
+		if defaults.alpn != "" {
+			raw := strings.Split(defaults.alpn, ",")
+			alpn := make([]string, 0, len(raw))
+			for _, v := range raw {
+				v = strings.TrimSpace(v)
+				if v != "" {
+					alpn = append(alpn, v)
+				}
+			}
+			if len(alpn) > 0 {
+				tlsCfg["alpn"] = alpn
+			}
+		}
+
+		if defaults.security == "reality" {
+			reality := map[string]interface{}{
+				"enabled": true,
+			}
+			if defaults.publicKey != "" {
+				reality["public_key"] = defaults.publicKey
+			}
+			if defaults.shortID != "" {
+				reality["short_id"] = defaults.shortID
+			}
+			tlsCfg["reality"] = reality
+		}
+
+		outbound["tls"] = tlsCfg
+	}
+
+	if defaults.network == "ws" || defaults.network == "httpupgrade" {
+		transport := map[string]interface{}{
+			"type": defaults.network,
+		}
+
+		path := defaults.path
+		path, earlyData := extractEarlyDataFromPath(path)
+		if path != "" {
+			transport["path"] = path
+		}
+
+		if defaults.hostHeader != "" {
+			transport["headers"] = map[string]interface{}{
+				"Host": defaults.hostHeader,
+			}
+		}
+
+		if defaults.network == "ws" && earlyData > 0 {
+			transport["max_early_data"] = earlyData
+			transport["early_data_header_name"] = "Sec-WebSocket-Protocol"
+		}
+
+		outbound["transport"] = transport
+	}
+
+	if mux := parseJSONMapString(host.SingboxMuxParams); mux != nil {
+		outbound["multiplex"] = mux
+	}
+
+	return outbound
+}
+
+func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults {
+	defaults := singboxInboundDefaults{
+		network:  "tcp",
+		security: "none",
+	}
+
+	raw := parseInboundRaw(host.InboundRaw)
+	streamSettings := readMap(raw, "streamSettings")
+
+	if host.InboundNetwork != nil && strings.TrimSpace(*host.InboundNetwork) != "" {
+		defaults.network = strings.ToLower(strings.TrimSpace(*host.InboundNetwork))
+	} else if network := readString(streamSettings, "network"); network != "" {
+		defaults.network = strings.ToLower(network)
+	}
+
+	if host.InboundSecurity != nil && strings.TrimSpace(*host.InboundSecurity) != "" {
+		defaults.security = strings.ToLower(strings.TrimSpace(*host.InboundSecurity))
+	} else if security := readString(streamSettings, "security"); security != "" {
+		defaults.security = strings.ToLower(security)
+	} else {
+		switch strings.ToUpper(strings.TrimSpace(host.SecurityLayer)) {
+		case "TLS":
+			defaults.security = "tls"
+		case "NONE":
+			defaults.security = "none"
+		}
+	}
+
+	switch defaults.network {
+	case "ws":
+		wsSettings := readMap(streamSettings, "wsSettings")
+		defaults.path = firstNonEmpty(
+			derefString(host.Path),
+			readString(wsSettings, "path"),
+		)
+		defaults.hostHeader = firstNonEmpty(
+			derefString(host.Host),
+			readString(readMap(wsSettings, "headers"), "Host"),
+			readString(wsSettings, "host"),
+		)
+	case "httpupgrade":
+		upgradeSettings := readMap(streamSettings, "httpupgradeSettings")
+		defaults.path = firstNonEmpty(
+			derefString(host.Path),
+			readString(upgradeSettings, "path"),
+		)
+		defaults.hostHeader = firstNonEmpty(
+			derefString(host.Host),
+			readString(readMap(upgradeSettings, "headers"), "Host"),
+			readString(upgradeSettings, "host"),
+		)
+	default:
+		defaults.path = derefString(host.Path)
+		defaults.hostHeader = derefString(host.Host)
+	}
+
+	switch defaults.security {
+	case "tls":
+		tlsSettings := readMap(streamSettings, "tlsSettings")
+		defaults.sni = firstNonEmpty(derefString(host.SNI), readString(tlsSettings, "serverName"))
+		defaults.fingerprint = firstNonEmpty(
+			derefString(host.Fingerprint),
+			readString(tlsSettings, "fingerprint"),
+		)
+		defaults.alpn = firstNonEmpty(
+			derefString(host.ALPN),
+			joinStringSlice(readStringSlice(tlsSettings, "alpn")),
+		)
+	case "reality":
+		realitySettings := readMap(streamSettings, "realitySettings")
+		defaults.sni = firstNonEmpty(
+			derefString(host.SNI),
+			readFirstString(readStringSlice(realitySettings, "serverNames")),
+		)
+		defaults.fingerprint = firstNonEmpty(
+			derefString(host.Fingerprint),
+			readString(realitySettings, "fingerprint"),
+		)
+		defaults.alpn = firstNonEmpty(derefString(host.ALPN), joinStringSlice(readStringSlice(realitySettings, "alpn")))
+		defaults.shortID = readRandomString(readStringSlice(realitySettings, "shortIds"))
+		defaults.publicKey = readString(realitySettings, "publicKey")
+		if defaults.publicKey == "" {
+			defaults.publicKey = deriveRealityPublicKey(readString(realitySettings, "privateKey"))
+		}
+	}
+
+	defaults.flow = resolveVlessFlow(host, defaults)
+
+	if defaults.sni == "" && host.OverrideSNIFromAddress {
+		defaults.sni = host.Address
+	}
+	if host.KeepSNIBlank {
+		defaults.sni = ""
+	}
+
+	return defaults
+}
+
+func resolveVlessFlow(host SubscriptionHost, defaults singboxInboundDefaults) string {
+	if host.InboundType == nil || !strings.EqualFold(*host.InboundType, "vless") {
+		return ""
+	}
+
+	raw := parseInboundRaw(host.InboundRaw)
+	settings := readMap(raw, "settings")
+	flowFromSettings := strings.TrimSpace(readString(settings, "flow"))
+	if flowFromSettings == "xtls-rprx-vision" {
+		return flowFromSettings
+	}
+
+	if (defaults.network == "tcp" || defaults.network == "raw") &&
+		(defaults.security == "tls" || defaults.security == "reality") {
+		return "xtls-rprx-vision"
+	}
+
+	return ""
+}
+
+func parseInboundRaw(raw json.RawMessage) map[string]interface{} {
+	if len(raw) == 0 {
+		return map[string]interface{}{}
+	}
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(raw, &parsed); err != nil || parsed == nil {
+		return map[string]interface{}{}
+	}
+	return parsed
+}
+
+func readMap(src map[string]interface{}, key string) map[string]interface{} {
+	if src == nil {
+		return map[string]interface{}{}
+	}
+	value, ok := src[key]
+	if !ok || value == nil {
+		return map[string]interface{}{}
+	}
+	if result, ok := value.(map[string]interface{}); ok && result != nil {
+		return result
+	}
+	return map[string]interface{}{}
+}
+
+func readString(src map[string]interface{}, key string) string {
+	if src == nil {
+		return ""
+	}
+	value, ok := src[key]
+	if !ok || value == nil {
+		return ""
+	}
+	str, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(str)
+}
+
+func readStringSlice(src map[string]interface{}, key string) []string {
+	if src == nil {
+		return nil
+	}
+	value, ok := src[key]
+	if !ok || value == nil {
+		return nil
+	}
+
+	interfaces, ok := value.([]interface{})
+	if !ok {
+		return nil
+	}
+
+	result := make([]string, 0, len(interfaces))
+	for _, item := range interfaces {
+		str, ok := item.(string)
+		if !ok {
+			continue
+		}
+		str = strings.TrimSpace(str)
+		if str != "" {
+			result = append(result, str)
+		}
+	}
+
+	return result
+}
+
+func joinStringSlice(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.Join(values, ",")
+}
+
+func readFirstString(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
+}
+
+func readRandomString(values []string) string {
+	filtered := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			filtered = append(filtered, value)
+		}
+	}
+	if len(filtered) == 0 {
+		return ""
+	}
+	return filtered[rand.Intn(len(filtered))]
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func deriveRealityPublicKey(privateKey string) string {
+	privateKey = strings.TrimSpace(privateKey)
+	if privateKey == "" {
+		return ""
+	}
+
+	raw, ok := decodeBase64Any(privateKey)
+	if !ok || len(raw) != 32 {
+		return ""
+	}
+
+	var scalar [32]byte
+	copy(scalar[:], raw)
+	var public [32]byte
+	curve25519.ScalarBaseMult(&public, &scalar)
+
+	return base64.RawURLEncoding.EncodeToString(public[:])
+}
+
+func decodeBase64Any(value string) ([]byte, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, false
+	}
+
+	encodings := []*base64.Encoding{
+		base64.RawStdEncoding,
+		base64.StdEncoding,
+		base64.RawURLEncoding,
+		base64.URLEncoding,
+	}
+
+	for _, encoding := range encodings {
+		if decoded, err := encoding.DecodeString(value); err == nil {
+			return decoded, true
+		}
+	}
+
+	return nil, false
+}
+
+func patchSingboxSelectors(baseConfig map[string]interface{}, selectorNodesFirst bool) {
+	rawOutbounds, ok := baseConfig["outbounds"].([]interface{})
+	if !ok {
+		return
+	}
+
+	nodeTypes := map[string]struct{}{
+		"vless":       {},
+		"trojan":      {},
+		"shadowsocks": {},
+	}
+
+	urltestTags := make([]string, 0, len(rawOutbounds))
+	nodeTags := make([]string, 0, len(rawOutbounds))
+
+	for _, item := range rawOutbounds {
+		ob, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		typ, _ := ob["type"].(string)
+		tag, _ := ob["tag"].(string)
+		if tag == "" {
+			continue
+		}
+		if typ == "urltest" {
+			urltestTags = append(urltestTags, tag)
+			continue
+		}
+		if _, exists := nodeTypes[typ]; exists {
+			nodeTags = append(nodeTags, tag)
+		}
+	}
+
+	selectorTags := make([]string, 0, len(urltestTags)+len(nodeTags))
+	if selectorNodesFirst {
+		selectorTags = append(selectorTags, nodeTags...)
+		selectorTags = append(selectorTags, urltestTags...)
+	} else {
+		selectorTags = append(selectorTags, urltestTags...)
+		selectorTags = append(selectorTags, nodeTags...)
+	}
+
+	for _, item := range rawOutbounds {
+		ob, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		typ, _ := ob["type"].(string)
+		switch typ {
+		case "urltest":
+			ob["outbounds"] = nodeTags
+		case "selector":
+			ob["outbounds"] = selectorTags
+		}
+	}
+}
+
+func derefString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return strings.TrimSpace(*v)
+}
+
+func extractEarlyDataFromPath(path string) (string, int) {
+	if path == "" || !strings.Contains(path, "?ed=") {
+		return path, 0
+	}
+
+	parts := strings.SplitN(path, "?ed=", 2)
+	cleanPath := strings.TrimSpace(parts[0])
+	edPart := strings.TrimSpace(parts[1])
+	if idx := strings.Index(edPart, "/"); idx >= 0 {
+		edPart = edPart[:idx]
+	}
+	n, err := strconv.Atoi(edPart)
+	if err != nil || n <= 0 {
+		return cleanPath, 0
+	}
+
+	return cleanPath, n
 }
 
 func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
@@ -1416,6 +2149,10 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 		}
 	}
 
+	if mux := parseJSONMapString(host.ClashMuxParams); mux != nil {
+		proxy["smux"] = mux
+	}
+
 	return proxy
 }
 
@@ -1428,7 +2165,7 @@ func generateSubscriptionContent(responseType string, templateData []byte, hosts
 		body, err := generateYAMLConfig(templateData, hosts, user)
 		return SubscriptionWithConfig{Body: body, ContentType: "text/yaml"}, err
 	case responseTypeSingbox:
-		body, err := generateXrayJSONConfig(templateData, hosts, user)
+		body, err := generateSingboxConfig(templateData, hosts, user)
 		return SubscriptionWithConfig{Body: body, ContentType: "application/json"}, err
 	case responseTypeXrayBase64:
 		links, _ := buildSubscriptionLinks(hosts, user)

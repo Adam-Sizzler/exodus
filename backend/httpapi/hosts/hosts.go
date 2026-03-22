@@ -72,12 +72,15 @@ type hostRecord struct {
 	SecurityLayer            string
 	XHTTPExtraParams         json.RawMessage
 	MuxParams                json.RawMessage
+	SingboxMuxParams         json.RawMessage
+	ClashMuxParams           json.RawMessage
 	SockoptParams            json.RawMessage
 	IsDisabled               bool
 	ServerDescription        *string
 	VLESSRouteID             *int64
 	AllowInsecure            bool
 	ShuffleHost              bool
+	SelectorNodesFirst       bool
 	MihomoX25519             bool
 	XrayJSONTemplateUUID     *string
 	KeepSNIBlank             bool
@@ -158,6 +161,8 @@ type HostAPI struct {
 	SecurityLayer           string      `json:"securityLayer"`
 	XHTTPExtraParams        interface{} `json:"xHttpExtraParams"`
 	MuxParams               interface{} `json:"muxParams"`
+	SingboxMuxParams        interface{} `json:"singboxMuxParams"`
+	ClashMuxParams          interface{} `json:"clashMuxParams"`
 	SockoptParams           interface{} `json:"sockoptParams"`
 	Inbound                 HostInbound `json:"inbound"`
 	ServerDescription       *string     `json:"serverDescription"`
@@ -168,6 +173,7 @@ type HostAPI struct {
 	VLESSRouteID            *int64      `json:"vlessRouteId"`
 	AllowInsecure           bool        `json:"allowInsecure"`
 	ShuffleHost             bool        `json:"shuffleHost"`
+	SelectorNodesFirst      bool        `json:"selectorNodesFirst"`
 	MihomoX25519            bool        `json:"mihomoX25519"`
 	Nodes                   []string    `json:"nodes"`
 	XrayJSONTemplateUUID    *string     `json:"xrayJsonTemplateUuid"`
@@ -189,6 +195,8 @@ type HostCreateRequestAPI struct {
 	SecurityLayer           *string          `json:"securityLayer,omitempty"`
 	XHTTPExtraParams        *json.RawMessage `json:"xHttpExtraParams,omitempty"`
 	MuxParams               *json.RawMessage `json:"muxParams,omitempty"`
+	SingboxMuxParams        *json.RawMessage `json:"singboxMuxParams,omitempty"`
+	ClashMuxParams          *json.RawMessage `json:"clashMuxParams,omitempty"`
 	SockoptParams           *json.RawMessage `json:"sockoptParams,omitempty"`
 	ServerDescription       *string          `json:"serverDescription,omitempty"`
 	Tag                     *string          `json:"tag,omitempty"`
@@ -198,6 +206,7 @@ type HostCreateRequestAPI struct {
 	AllowInsecure           *bool            `json:"allowInsecure,omitempty"`
 	VLESSRouteID            *int64           `json:"vlessRouteId,omitempty"`
 	ShuffleHost             *bool            `json:"shuffleHost,omitempty"`
+	SelectorNodesFirst      *bool            `json:"selectorNodesFirst,omitempty"`
 	MihomoX25519            *bool            `json:"mihomoX25519,omitempty"`
 	Nodes                   []string         `json:"nodes,omitempty"`
 	XrayJSONTemplateUUID    *string          `json:"xrayJsonTemplateUuid,omitempty"`
@@ -220,6 +229,8 @@ type HostUpdateRequestAPI struct {
 	SecurityLayer           *string        `json:"securityLayer,omitempty"`
 	XHTTPExtraParams        OptionalJSON   `json:"xHttpExtraParams,omitempty"`
 	MuxParams               OptionalJSON   `json:"muxParams,omitempty"`
+	SingboxMuxParams        OptionalJSON   `json:"singboxMuxParams,omitempty"`
+	ClashMuxParams          OptionalJSON   `json:"clashMuxParams,omitempty"`
 	SockoptParams           OptionalJSON   `json:"sockoptParams,omitempty"`
 	ServerDescription       OptionalString `json:"serverDescription,omitempty"`
 	Tag                     OptionalString `json:"tag,omitempty"`
@@ -229,6 +240,7 @@ type HostUpdateRequestAPI struct {
 	AllowInsecure           *bool          `json:"allowInsecure,omitempty"`
 	VLESSRouteID            OptionalInt64  `json:"vlessRouteId,omitempty"`
 	ShuffleHost             *bool          `json:"shuffleHost,omitempty"`
+	SelectorNodesFirst      *bool          `json:"selectorNodesFirst,omitempty"`
 	MihomoX25519            *bool          `json:"mihomoX25519,omitempty"`
 	Nodes                   []string       `json:"nodes,omitempty"`
 	XrayJSONTemplateUUID    OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
@@ -476,6 +488,16 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			_ = tx.Rollback()
 			return err
 		}
+		singboxMux, err := normalizeJSONValue(req.SingboxMuxParams, true)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		clashMux, err := normalizeJSONValue(req.ClashMuxParams, true)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
 		sockopt, err := normalizeJSONValue(req.SockoptParams, true)
 		if err != nil {
 			_ = tx.Rollback()
@@ -486,13 +508,13 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
             INSERT INTO hosts (
                 uuid, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                xhttp_extra_params, mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
                 is_disabled, server_description, vless_route_id,
-                allow_insecure, shuffle_host, mihomo_x25519,
+                allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 exclude_from_subscription_types, tag, is_hidden,
                 override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
 			hostUUID,
 			req.Remark,
@@ -506,12 +528,15 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			normalizeSecurityLayer(req.SecurityLayer),
 			xhttp,
 			mux,
+			singboxMux,
+			clashMux,
 			sockopt,
 			coalesceBool(req.IsDisabled, false),
 			normalizeOptionalStringAllowEmpty(req.ServerDescription),
 			req.VLESSRouteID,
 			coalesceBool(req.AllowInsecure, false),
 			coalesceBool(req.ShuffleHost, false),
+			coalesceBool(req.SelectorNodesFirst, false),
 			coalesceBool(req.MihomoX25519, false),
 			normalizeOptionalStringAllowEmpty(req.XrayJSONTemplateUUID),
 			coalesceBool(req.KeepSNIBlank, false),
@@ -692,6 +717,26 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 				add("mux_params", val)
 			}
 		}
+		if set, val, err := normalizeOptionalJSONField(req.SingboxMuxParams, true); err != nil {
+			_ = tx.Rollback()
+			return err
+		} else if set {
+			if val == nil {
+				clauses = append(clauses, "singbox_mux_params = NULL")
+			} else {
+				add("singbox_mux_params", val)
+			}
+		}
+		if set, val, err := normalizeOptionalJSONField(req.ClashMuxParams, true); err != nil {
+			_ = tx.Rollback()
+			return err
+		} else if set {
+			if val == nil {
+				clauses = append(clauses, "clash_mux_params = NULL")
+			} else {
+				add("clash_mux_params", val)
+			}
+		}
 		if set, val, err := normalizeOptionalJSONField(req.SockoptParams, true); err != nil {
 			_ = tx.Rollback()
 			return err
@@ -725,6 +770,9 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 		if req.ShuffleHost != nil {
 			add("shuffle_host", *req.ShuffleHost)
+		}
+		if req.SelectorNodesFirst != nil {
+			add("selector_nodes_first", *req.SelectorNodesFirst)
 		}
 		if req.MihomoX25519 != nil {
 			add("mihomo_x25519", *req.MihomoX25519)
@@ -1286,6 +1334,8 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 		SecurityLayer:          rec.SecurityLayer,
 		XHTTPExtraParams:       parseJSONAny(rec.XHTTPExtraParams),
 		MuxParams:              parseJSONAny(rec.MuxParams),
+		SingboxMuxParams:       parseJSONAny(rec.SingboxMuxParams),
+		ClashMuxParams:         parseJSONAny(rec.ClashMuxParams),
 		SockoptParams:          parseJSONAny(rec.SockoptParams),
 		Inbound:                HostInbound{ConfigProfileUUID: rec.ConfigProfileUUID, ConfigProfileInboundUUID: rec.ConfigProfileInboundUUID},
 		ServerDescription:      rec.ServerDescription,
@@ -1296,6 +1346,7 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 		VLESSRouteID:           rec.VLESSRouteID,
 		AllowInsecure:          rec.AllowInsecure,
 		ShuffleHost:            rec.ShuffleHost,
+		SelectorNodesFirst:     rec.SelectorNodesFirst,
 		MihomoX25519:           rec.MihomoX25519,
 		Nodes:                  ensureStringSlice(nodes),
 		XrayJSONTemplateUUID:   rec.XrayJSONTemplateUUID,
@@ -1335,9 +1386,9 @@ func getHosts(ctx context.Context, manager *dbmanager.DatabaseManager) ([]hostRe
             SELECT
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                xhttp_extra_params, mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
                 is_disabled, server_description, vless_route_id,
-                allow_insecure, shuffle_host, mihomo_x25519,
+                allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 tag, is_hidden, override_sni_from_address,
                 config_profile_uuid, config_profile_inbound_uuid,
@@ -1368,9 +1419,9 @@ func getHostByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, host
             SELECT
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                xhttp_extra_params, mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
                 is_disabled, server_description, vless_route_id,
-                allow_insecure, shuffle_host, mihomo_x25519,
+                allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 tag, is_hidden, override_sni_from_address,
                 config_profile_uuid, config_profile_inbound_uuid,
@@ -1392,8 +1443,8 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var serverDescription, tag sql.NullString
 	var vlessRouteID sql.NullInt64
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
-	var isDisabled, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
-	var xhttpExtraParams, muxParams, sockoptParams []byte
+	var isDisabled, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams []byte
 	var excludeTypes dbutil.StringArray
 
 	err := scanner.Scan(
@@ -1410,12 +1461,15 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&securityLayer,
 		&xhttpExtraParams,
 		&muxParams,
+		&singboxMuxParams,
+		&clashMuxParams,
 		&sockoptParams,
 		&isDisabled,
 		&serverDescription,
 		&vlessRouteID,
 		&allowInsecure,
 		&shuffleHost,
+		&selectorNodesFirst,
 		&mihomoX25519,
 		&xrayJSONTemplateUUID,
 		&keepSNIBlank,
@@ -1459,6 +1513,12 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	if len(muxParams) > 0 {
 		rec.MuxParams = json.RawMessage(muxParams)
 	}
+	if len(singboxMuxParams) > 0 {
+		rec.SingboxMuxParams = json.RawMessage(singboxMuxParams)
+	}
+	if len(clashMuxParams) > 0 {
+		rec.ClashMuxParams = json.RawMessage(clashMuxParams)
+	}
 	if len(sockoptParams) > 0 {
 		rec.SockoptParams = json.RawMessage(sockoptParams)
 	}
@@ -1476,6 +1536,9 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	}
 	if shuffleHost.Valid {
 		rec.ShuffleHost = shuffleHost.Bool
+	}
+	if selectorNodesFirst.Valid {
+		rec.SelectorNodesFirst = selectorNodesFirst.Bool
 	}
 	if mihomoX25519.Valid {
 		rec.MihomoX25519 = mihomoX25519.Bool

@@ -282,12 +282,15 @@ model Hosts {
   securityLayer                String   @default("DEFAULT") @map("security_layer") // ENUM: DEFAULT, TLS, NONE
   xHttpExtraParams             Json?    @map("xhttp_extra_params")
   muxParams                    Json?    @map("mux_params")
+  singboxMuxParams             Json?    @map("singbox_mux_params")
+  clashMuxParams               Json?    @map("clash_mux_params")
   sockoptParams                Json?    @map("sockopt_params")
   isDisabled                   Boolean  @default(false) @map("is_disabled")
   serverDescription            String?  @map("server_description") @db.VarChar(30)
   vlessRouteId                 Int?     @map("vless_route_id")
   allowInsecure                Boolean  @default(false) @map("allow_insecure")
   shuffleHost                  Boolean  @default(false) @map("shuffle_host")
+  selectorNodesFirst           Boolean  @default(false) @map("selector_nodes_first")
   mihomoX25519                 Boolean  @default(false) @map("mihomo_x25519")
   xrayJsonTemplateUuid         String?  @map("xray_json_template_uuid") @db.Uuid
   keepSniBlank                 Boolean  @default(false) @map("keep_sni_blank")

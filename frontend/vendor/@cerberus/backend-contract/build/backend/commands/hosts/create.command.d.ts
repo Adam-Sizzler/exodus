@@ -47,6 +47,8 @@ export declare namespace CreateHostCommand {
         }>>>;
         xHttpExtraParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         muxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        singboxMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        clashMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         sockoptParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -56,6 +58,7 @@ export declare namespace CreateHostCommand {
         allowInsecure: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
         vlessRouteId: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         shuffleHost: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
+        selectorNodesFirst: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
         mihomoX25519: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
         nodes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         xrayJsonTemplateUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -87,6 +90,8 @@ export declare namespace CreateHostCommand {
         securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
         xHttpExtraParams?: unknown;
         muxParams?: unknown;
+        singboxMuxParams?: unknown;
+        clashMuxParams?: unknown;
         sockoptParams?: unknown;
         serverDescription?: string | null | undefined;
         isHidden?: boolean | undefined;
@@ -95,6 +100,7 @@ export declare namespace CreateHostCommand {
         vlessRouteId?: number | null | undefined;
         allowInsecure?: boolean | undefined;
         shuffleHost?: boolean | undefined;
+        selectorNodesFirst?: boolean | undefined;
         mihomoX25519?: boolean | undefined;
         xrayJsonTemplateUuid?: string | null | undefined;
         excludedInternalSquads?: string[] | undefined;
@@ -118,6 +124,8 @@ export declare namespace CreateHostCommand {
         securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
         xHttpExtraParams?: unknown;
         muxParams?: unknown;
+        singboxMuxParams?: unknown;
+        clashMuxParams?: unknown;
         sockoptParams?: unknown;
         serverDescription?: string | null | undefined;
         isHidden?: boolean | undefined;
@@ -126,6 +134,7 @@ export declare namespace CreateHostCommand {
         vlessRouteId?: number | null | undefined;
         allowInsecure?: boolean | undefined;
         shuffleHost?: boolean | undefined;
+        selectorNodesFirst?: boolean | undefined;
         mihomoX25519?: boolean | undefined;
         xrayJsonTemplateUuid?: string | null | undefined;
         excludedInternalSquads?: string[] | undefined;

@@ -18,6 +18,8 @@ export declare const HostsSchema: z.ZodObject<{
     }>>;
     xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
     muxParams: z.ZodNullable<z.ZodUnknown>;
+    singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
+    clashMuxParams: z.ZodNullable<z.ZodUnknown>;
     sockoptParams: z.ZodNullable<z.ZodUnknown>;
     inbound: z.ZodObject<{
         configProfileUuid: z.ZodNullable<z.ZodString>;
@@ -37,6 +39,7 @@ export declare const HostsSchema: z.ZodObject<{
     vlessRouteId: z.ZodNullable<z.ZodNumber>;
     allowInsecure: z.ZodDefault<z.ZodBoolean>;
     shuffleHost: z.ZodBoolean;
+    selectorNodesFirst: z.ZodDefault<z.ZodBoolean>;
     mihomoX25519: z.ZodBoolean;
     nodes: z.ZodArray<z.ZodString, "many">;
     xrayJsonTemplateUuid: z.ZodNullable<z.ZodString>;
@@ -75,11 +78,14 @@ export declare const HostsSchema: z.ZodObject<{
     vlessRouteId: number | null;
     allowInsecure: boolean;
     shuffleHost: boolean;
+    selectorNodesFirst: boolean;
     mihomoX25519: boolean;
     xrayJsonTemplateUuid: string | null;
     excludedInternalSquads: string[];
     xHttpExtraParams?: unknown;
     muxParams?: unknown;
+    singboxMuxParams?: unknown;
+    clashMuxParams?: unknown;
     sockoptParams?: unknown;
     excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
 }, {
@@ -102,6 +108,7 @@ export declare const HostsSchema: z.ZodObject<{
     serverDescription: string | null;
     vlessRouteId: number | null;
     shuffleHost: boolean;
+    selectorNodesFirst?: boolean | undefined;
     mihomoX25519: boolean;
     xrayJsonTemplateUuid: string | null;
     excludedInternalSquads: string[];
@@ -109,6 +116,8 @@ export declare const HostsSchema: z.ZodObject<{
     securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
     xHttpExtraParams?: unknown;
     muxParams?: unknown;
+    singboxMuxParams?: unknown;
+    clashMuxParams?: unknown;
     sockoptParams?: unknown;
     isHidden?: boolean | undefined;
     overrideSniFromAddress?: boolean | undefined;

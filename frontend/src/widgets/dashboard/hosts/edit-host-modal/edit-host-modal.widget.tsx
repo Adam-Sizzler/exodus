@@ -85,8 +85,11 @@ export const EditHostModalWidget = memo(() => {
 
     useEffect(() => {
         if (host && configProfiles) {
+            const hostAny = host as any
             let xHttpExtraParamsParsed: null | object | string
             let muxParamsParsed: null | object | string
+            let singboxMuxParamsParsed: null | object | string
+            let clashMuxParamsParsed: null | object | string
             let sockoptParamsParsed: null | object | string
 
             if (typeof host.xHttpExtraParams === 'object' && host.xHttpExtraParams !== null) {
@@ -99,6 +102,20 @@ export const EditHostModalWidget = memo(() => {
                 muxParamsParsed = JSON.stringify(host.muxParams, null, 2)
             } else {
                 muxParamsParsed = ''
+            }
+
+            if (typeof hostAny.singboxMuxParams === 'object' && hostAny.singboxMuxParams !== null) {
+                singboxMuxParamsParsed = JSON.stringify(hostAny.singboxMuxParams, null, 2)
+            } else {
+                singboxMuxParamsParsed = ''
+            }
+
+            if (typeof hostAny.clashMuxParams === 'string') {
+                clashMuxParamsParsed = hostAny.clashMuxParams
+            } else if (typeof hostAny.clashMuxParams === 'object' && hostAny.clashMuxParams !== null) {
+                clashMuxParamsParsed = JSON.stringify(hostAny.clashMuxParams, null, 2)
+            } else {
+                clashMuxParamsParsed = ''
             }
 
             if (typeof host.sockoptParams === 'object' && host.sockoptParams !== null) {
@@ -126,6 +143,8 @@ export const EditHostModalWidget = memo(() => {
                 serverDescription: host.serverDescription ?? undefined,
                 xHttpExtraParams: xHttpExtraParamsParsed,
                 muxParams: muxParamsParsed,
+                singboxMuxParams: singboxMuxParamsParsed,
+                clashMuxParams: clashMuxParamsParsed,
                 sockoptParams: sockoptParamsParsed,
                 tag: host.tag ?? undefined,
                 isHidden: host.isHidden,
@@ -134,6 +153,7 @@ export const EditHostModalWidget = memo(() => {
                 vlessRouteId: host.vlessRouteId ?? undefined,
                 allowInsecure: host.allowInsecure ?? undefined,
                 shuffleHost: host.shuffleHost ?? undefined,
+                selectorNodesFirst: hostAny.selectorNodesFirst ?? undefined,
                 mihomoX25519: host.mihomoX25519 ?? undefined,
                 nodes: host.nodes ?? undefined,
                 xrayJsonTemplateUuid: host.xrayJsonTemplateUuid ?? undefined,
@@ -192,6 +212,8 @@ export const EditHostModalWidget = memo(() => {
 
         let xHttpExtraParams
         let muxParams
+        let singboxMuxParams
+        let clashMuxParams
         let sockoptParams
 
         try {
@@ -202,8 +224,12 @@ export const EditHostModalWidget = memo(() => {
             }
         } catch (error) {
             consola.error(error)
-            xHttpExtraParams = null
-            // silence
+            notifications.show({
+                title: t('edit-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return
         }
 
         try {
@@ -214,9 +240,34 @@ export const EditHostModalWidget = memo(() => {
             }
         } catch (error) {
             consola.error(error)
-            muxParams = null
-            // silence
+            notifications.show({
+                title: t('edit-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return
         }
+
+        try {
+            if (values.singboxMuxParams === '') {
+                singboxMuxParams = null
+            } else {
+                singboxMuxParams = JSON.parse(values.singboxMuxParams as unknown as string)
+            }
+        } catch (error) {
+            consola.error(error)
+            notifications.show({
+                title: t('edit-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return
+        }
+
+        clashMuxParams =
+            typeof values.clashMuxParams === 'string' && values.clashMuxParams.trim() !== ''
+                ? values.clashMuxParams
+                : null
 
         try {
             if (values.sockoptParams === '') {
@@ -237,6 +288,8 @@ export const EditHostModalWidget = memo(() => {
                 uuid: host.uuid,
                 xHttpExtraParams,
                 muxParams,
+                singboxMuxParams,
+                clashMuxParams,
                 sockoptParams,
                 tag: values.tag === '' ? null : values.tag
             }
@@ -271,6 +324,8 @@ export const EditHostModalWidget = memo(() => {
                 alpn: (host.alpn as UpdateHostCommand.Request['alpn']) ?? undefined,
                 xHttpExtraParams: host.xHttpExtraParams ?? undefined,
                 muxParams: host.muxParams ?? undefined,
+                singboxMuxParams: (host as any).singboxMuxParams ?? undefined,
+                clashMuxParams: (host as any).clashMuxParams ?? undefined,
                 fingerprint:
                     (host.fingerprint as UpdateHostCommand.Request['fingerprint']) ?? undefined,
                 inbound: {
@@ -284,6 +339,7 @@ export const EditHostModalWidget = memo(() => {
                 keepSniBlank: host.keepSniBlank,
                 vlessRouteId: host.vlessRouteId ?? undefined,
                 allowInsecure: host.allowInsecure ?? undefined,
+                selectorNodesFirst: (host as any).selectorNodesFirst ?? undefined,
                 nodes: host.nodes ?? undefined,
                 xrayJsonTemplateUuid: host.xrayJsonTemplateUuid ?? undefined,
                 excludedInternalSquads: host.excludedInternalSquads ?? undefined

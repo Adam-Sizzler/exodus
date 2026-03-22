@@ -22,6 +22,8 @@ export declare namespace UpdateHostCommand {
         }>>;
         xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
         muxParams: z.ZodNullable<z.ZodUnknown>;
+        singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
+        clashMuxParams: z.ZodNullable<z.ZodUnknown>;
         sockoptParams: z.ZodNullable<z.ZodUnknown>;
         inbound: z.ZodObject<{
             configProfileUuid: z.ZodNullable<z.ZodString>;
@@ -41,6 +43,7 @@ export declare namespace UpdateHostCommand {
         vlessRouteId: z.ZodNullable<z.ZodNumber>;
         allowInsecure: z.ZodDefault<z.ZodBoolean>;
         shuffleHost: z.ZodBoolean;
+        selectorNodesFirst: z.ZodDefault<z.ZodBoolean>;
         mihomoX25519: z.ZodBoolean;
         nodes: z.ZodArray<z.ZodString, "many">;
         xrayJsonTemplateUuid: z.ZodNullable<z.ZodString>;
@@ -97,6 +100,8 @@ export declare namespace UpdateHostCommand {
         }>>;
         xHttpExtraParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         muxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        singboxMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        clashMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         sockoptParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -106,6 +111,7 @@ export declare namespace UpdateHostCommand {
         vlessRouteId: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         allowInsecure: z.ZodOptional<z.ZodBoolean>;
         shuffleHost: z.ZodOptional<z.ZodBoolean>;
+        selectorNodesFirst: z.ZodOptional<z.ZodBoolean>;
         mihomoX25519: z.ZodOptional<z.ZodBoolean>;
         nodes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         xrayJsonTemplateUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -134,6 +140,8 @@ export declare namespace UpdateHostCommand {
         securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
         xHttpExtraParams?: unknown;
         muxParams?: unknown;
+        singboxMuxParams?: unknown;
+        clashMuxParams?: unknown;
         sockoptParams?: unknown;
         inbound?: {
             configProfileUuid: string;
@@ -146,6 +154,7 @@ export declare namespace UpdateHostCommand {
         vlessRouteId?: number | null | undefined;
         allowInsecure?: boolean | undefined;
         shuffleHost?: boolean | undefined;
+        selectorNodesFirst?: boolean | undefined;
         mihomoX25519?: boolean | undefined;
         xrayJsonTemplateUuid?: string | null | undefined;
         excludedInternalSquads?: string[] | undefined;
@@ -166,6 +175,8 @@ export declare namespace UpdateHostCommand {
         securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
         xHttpExtraParams?: unknown;
         muxParams?: unknown;
+        singboxMuxParams?: unknown;
+        clashMuxParams?: unknown;
         sockoptParams?: unknown;
         inbound?: {
             configProfileUuid: string;
@@ -178,6 +189,7 @@ export declare namespace UpdateHostCommand {
         vlessRouteId?: number | null | undefined;
         allowInsecure?: boolean | undefined;
         shuffleHost?: boolean | undefined;
+        selectorNodesFirst?: boolean | undefined;
         mihomoX25519?: boolean | undefined;
         xrayJsonTemplateUuid?: string | null | undefined;
         excludedInternalSquads?: string[] | undefined;
