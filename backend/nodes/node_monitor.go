@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"math"
 	"math/rand/v2"
 	"strconv"
 	"strings"
@@ -478,6 +479,8 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 		values[key] = strings.TrimSpace(stat.GetValue())
 	}
 
+	trafficDelta := extractTrafficStatsDelta(stats)
+
 	singboxVersion := firstNonEmpty(values["singbox_version"])
 	nodeVersion := firstNonEmpty(values["node_version"])
 	singboxUptime := firstNonEmpty(values["singbox_uptime"])
@@ -485,8 +488,18 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	cpuModel := parseOptionalString(values["cpu_model"])
 	totalRAM := parseOptionalString(values["total_ram"])
 	usersOnline := parseOptionalInt(values["users_online"])
+	usersOnline = trafficDelta.UsersOnline
 
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var (
+			nodeUUID              string
+			nodeID                int64
+			consumptionMultiplier int64
+		)
+		if err := db.QueryRow(`SELECT uuid, id, consumption_multiplier FROM nodes WHERE name = ?`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier); err != nil {
+			return err
+		}
+
 		query := `
 			UPDATE nodes
 			SET singbox_version = COALESCE(?, singbox_version),
@@ -498,12 +511,209 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			    users_online = COALESCE(?, users_online),
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE name = ?`
-		_, execErr := db.Exec(query, singboxVersion, nodeVersion, singboxUptime, cpuCount, cpuModel, totalRAM, usersOnline, nodeName)
-		return execErr
+		if _, execErr := db.Exec(query, singboxVersion, nodeVersion, singboxUptime, cpuCount, cpuModel, totalRAM, usersOnline, nodeName); execErr != nil {
+			return execErr
+		}
+
+		if trafficDelta.TotalUploadBytes > 0 || trafficDelta.TotalDownloadBytes > 0 {
+			totalBytes := trafficDelta.TotalUploadBytes + trafficDelta.TotalDownloadBytes
+			if _, execErr := db.Exec(`
+				INSERT INTO nodes_usage_history (node_uuid, download_bytes, upload_bytes, total_bytes)
+				VALUES (?, ?, ?, ?)
+				ON CONFLICT (node_uuid, created_at)
+				DO UPDATE SET
+					download_bytes = nodes_usage_history.download_bytes + EXCLUDED.download_bytes,
+					upload_bytes = nodes_usage_history.upload_bytes + EXCLUDED.upload_bytes,
+					total_bytes = nodes_usage_history.total_bytes + EXCLUDED.total_bytes,
+					updated_at = now()
+			`, nodeUUID, trafficDelta.TotalDownloadBytes, trafficDelta.TotalUploadBytes, totalBytes); execErr != nil {
+				return execErr
+			}
+
+			if _, execErr := db.Exec(`
+				UPDATE nodes
+				SET traffic_used_bytes = COALESCE(traffic_used_bytes, 0) + ?, updated_at = CURRENT_TIMESTAMP
+				WHERE uuid = ?
+			`, totalBytes, nodeUUID); execErr != nil {
+				return execErr
+			}
+		}
+
+		if len(trafficDelta.UserBytesByName) == 0 {
+			return nil
+		}
+
+		usernames := make([]string, 0, len(trafficDelta.UserBytesByName))
+		for username := range trafficDelta.UserBytesByName {
+			if strings.TrimSpace(username) != "" {
+				usernames = append(usernames, username)
+			}
+		}
+		if len(usernames) == 0 {
+			return nil
+		}
+
+		rows, queryErr := db.Query(`
+			SELECT t_id, username
+			FROM users
+			WHERE status = 'ACTIVE' AND username = ANY(?)
+		`, usernames)
+		if queryErr != nil {
+			return queryErr
+		}
+		defer rows.Close()
+
+		userIDs := make(map[string]int64, len(usernames))
+		for rows.Next() {
+			var (
+				userID   int64
+				username string
+			)
+			if scanErr := rows.Scan(&userID, &username); scanErr != nil {
+				return scanErr
+			}
+			userIDs[strings.TrimSpace(username)] = userID
+		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			return rowsErr
+		}
+
+		for username, rawBytes := range trafficDelta.UserBytesByName {
+			userID, ok := userIDs[username]
+			if !ok {
+				continue
+			}
+
+			effectiveBytes := applyConsumptionMultiplier(rawBytes, consumptionMultiplier)
+			if effectiveBytes <= 0 {
+				continue
+			}
+
+			if _, execErr := db.Exec(`
+				INSERT INTO user_traffic (
+					t_id, used_traffic_bytes, lifetime_used_traffic_bytes,
+					online_at, last_connected_node_uuid, first_connected_at
+				)
+				VALUES (?, ?, ?, now(), ?, now())
+				ON CONFLICT (t_id)
+				DO UPDATE SET
+					used_traffic_bytes = user_traffic.used_traffic_bytes + EXCLUDED.used_traffic_bytes,
+					lifetime_used_traffic_bytes = user_traffic.lifetime_used_traffic_bytes + EXCLUDED.lifetime_used_traffic_bytes,
+					online_at = now(),
+					last_connected_node_uuid = EXCLUDED.last_connected_node_uuid,
+					first_connected_at = COALESCE(user_traffic.first_connected_at, now())
+			`, userID, effectiveBytes, effectiveBytes, nodeUUID); execErr != nil {
+				return execErr
+			}
+
+			if _, execErr := db.Exec(`
+				INSERT INTO nodes_user_usage_history (node_id, user_id, total_bytes)
+				VALUES (?, ?, ?)
+				ON CONFLICT (node_id, created_at, user_id)
+				DO UPDATE SET
+					total_bytes = nodes_user_usage_history.total_bytes + EXCLUDED.total_bytes,
+					updated_at = now()
+			`, nodeID, userID, effectiveBytes); execErr != nil {
+				return execErr
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
 		nm.cfg.Logger.Warn("Failed to persist node runtime stats", "node", nodeName, "error", err)
 	}
+}
+
+type trafficStatsDelta struct {
+	TotalUploadBytes   int64
+	TotalDownloadBytes int64
+	UserBytesByName    map[string]int64
+	UsersOnline        int
+}
+
+func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
+	delta := trafficStatsDelta{
+		UserBytesByName: make(map[string]int64),
+		UsersOnline:     0,
+	}
+	onlineUsers := make(map[string]struct{})
+
+	for _, stat := range stats {
+		if stat == nil {
+			continue
+		}
+
+		name := strings.TrimSpace(stat.GetName())
+		valueRaw := strings.TrimSpace(stat.GetValue())
+		if name == "" || valueRaw == "" {
+			continue
+		}
+
+		value, err := strconv.ParseInt(valueRaw, 10, 64)
+		if err != nil || value <= 0 {
+			continue
+		}
+
+		parts := strings.Split(name, ">>>")
+		if len(parts) < 3 {
+			continue
+		}
+
+		switch strings.ToLower(strings.TrimSpace(parts[0])) {
+		case "outbound":
+			if len(parts) != 4 || !strings.EqualFold(parts[2], "traffic") {
+				continue
+			}
+			switch strings.ToLower(strings.TrimSpace(parts[3])) {
+			case "uplink":
+				delta.TotalUploadBytes += value
+			case "downlink":
+				delta.TotalDownloadBytes += value
+			}
+		case "user":
+			username := strings.TrimSpace(parts[1])
+			if username == "" {
+				continue
+			}
+
+			if len(parts) == 4 && strings.EqualFold(parts[2], "traffic") {
+				switch strings.ToLower(strings.TrimSpace(parts[3])) {
+				case "uplink", "downlink":
+					delta.UserBytesByName[username] += value
+					onlineUsers[username] = struct{}{}
+				}
+				continue
+			}
+
+			if len(parts) == 3 && strings.EqualFold(parts[2], "online") {
+				onlineUsers[username] = struct{}{}
+			}
+		}
+	}
+
+	delta.UsersOnline = len(onlineUsers)
+	return delta
+}
+
+func applyConsumptionMultiplier(totalBytes int64, multiplierNano int64) int64 {
+	const nanoScale = int64(1_000_000_000)
+
+	if totalBytes <= 0 || multiplierNano <= 0 {
+		return 0
+	}
+	if multiplierNano == nanoScale {
+		return totalBytes
+	}
+
+	scaled := math.Floor((float64(multiplierNano) / float64(nanoScale)) * float64(totalBytes))
+	if scaled <= 0 {
+		return 0
+	}
+	if scaled >= float64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	return int64(scaled)
 }
 
 func parseOptionalInt(value string) any {
