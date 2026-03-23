@@ -335,7 +335,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	if err := stream.Send(&proto.NodeDataRequest{
 		Request: &proto.NodeDataRequest_Config{
 			Config: &proto.StreamConfig{
-				IntervalSeconds: 10, // Default interval
+				IntervalSeconds: 20, // Default interval
 			},
 		},
 	}); err != nil {
@@ -487,8 +487,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	cpuCount := parseOptionalInt(values["cpu_count"])
 	cpuModel := parseOptionalString(values["cpu_model"])
 	totalRAM := parseOptionalString(values["total_ram"])
-	usersOnline := parseOptionalInt(values["users_online"])
-	usersOnline = trafficDelta.UsersOnline
+	usersOnline := trafficDelta.UsersOnline
 
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var (
@@ -683,11 +682,6 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 					delta.UserBytesByName[username] += value
 					onlineUsers[username] = struct{}{}
 				}
-				continue
-			}
-
-			if len(parts) == 3 && strings.EqualFold(parts[2], "online") {
-				onlineUsers[username] = struct{}{}
 			}
 		}
 	}

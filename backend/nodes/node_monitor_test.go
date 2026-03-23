@@ -12,8 +12,6 @@ func TestExtractTrafficStatsDelta(t *testing.T) {
 		{Name: "outbound>>>direct>>>traffic>>>downlink", Value: "20"},
 		{Name: "user>>>alice>>>traffic>>>uplink", Value: "3"},
 		{Name: "user>>>alice>>>traffic>>>downlink", Value: "7"},
-		{Name: "user>>>bob>>>online", Value: "1"},
-		{Name: "user>>>charlie>>>online", Value: "0"},
 		{Name: "singbox_version", Value: "1.13.3"},
 		{Name: "outbound>>>warp>>>traffic>>>uplink", Value: "bad"},
 	}
@@ -34,9 +32,9 @@ func TestExtractTrafficStatsDelta(t *testing.T) {
 		t.Fatalf("bob should not have traffic bytes")
 	}
 
-	// alice appears because of traffic; bob appears because of online marker.
-	if delta.UsersOnline != 2 {
-		t.Fatalf("unexpected users_online: got %d want %d", delta.UsersOnline, 2)
+	// Online users are derived only from non-zero traffic during the interval.
+	if delta.UsersOnline != 1 {
+		t.Fatalf("unexpected users_online: got %d want %d", delta.UsersOnline, 1)
 	}
 }
 
