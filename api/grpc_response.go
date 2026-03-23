@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"cerberus-node/config"
 	"cerberus-node/constant"
@@ -35,7 +34,6 @@ type Service struct {
 	cfg *config.NodeConfig
 	api *sdk.API
 
-	startedAt      time.Time
 	singboxVersion string
 	nodeVersion    string
 	cpuCount       int
@@ -58,7 +56,6 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 	return &Service{
 		cfg:            cfg,
 		api:            coreAPI,
-		startedAt:      time.Now(),
 		singboxVersion: detectSingboxVersion(),
 		nodeVersion:    constant.Version,
 		cpuCount:       runtime.NumCPU(),
@@ -85,7 +82,6 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
 			`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
 			`^user>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-			`^user>>>.*>>>online$`,
 		},
 		Regexp: true,
 		Reset:  true,
@@ -106,11 +102,19 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		})
 	}
 
+	singboxUptimeSeconds := int64(0)
+	sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
+	if sysErr != nil {
+		s.cfg.Logger.Warn("Failed to read core sys stats", "error", sysErr, "core_type", config.FixedCoreType)
+	} else if sysStats != nil {
+		singboxUptimeSeconds = int64(sysStats.Uptime)
+	}
+
 	// Runtime metadata consumed by backend node monitor.
 	result.Stat = append(result.Stat,
 		Stat{Name: "singbox_version", Value: s.singboxVersion},
 		Stat{Name: "node_version", Value: s.nodeVersion},
-		Stat{Name: "singbox_uptime", Value: strconv.FormatInt(int64(time.Since(s.startedAt).Seconds()), 10)},
+		Stat{Name: "singbox_uptime", Value: strconv.FormatInt(singboxUptimeSeconds, 10)},
 		Stat{Name: "cpu_count", Value: strconv.Itoa(s.cpuCount)},
 		Stat{Name: "cpu_model", Value: s.cpuModel},
 		Stat{Name: "total_ram", Value: formatIECBytes(s.totalRAMBytes)},

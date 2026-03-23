@@ -61,6 +61,29 @@ func (s *singboxStatsService) QueryStats(ctx context.Context, options QueryOptio
 	return result, nil
 }
 
+func (s *singboxStatsService) GetSysStats(ctx context.Context) (*SysStats, error) {
+	ctx, cancel := s.withTimeout(ctx)
+	defer cancel()
+
+	resp, err := s.client.GetSysStats(ctx, &singboxapi.SysStatsRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &SysStats{
+		NumGoroutine: resp.GetNumGoroutine(),
+		NumGC:        resp.GetNumGC(),
+		Alloc:        resp.GetAlloc(),
+		TotalAlloc:   resp.GetTotalAlloc(),
+		Sys:          resp.GetSys(),
+		Mallocs:      resp.GetMallocs(),
+		Frees:        resp.GetFrees(),
+		LiveObjects:  resp.GetLiveObjects(),
+		PauseTotalNs: resp.GetPauseTotalNs(),
+		Uptime:       resp.GetUptime(),
+	}, nil
+}
+
 func (s *singboxStatsService) Close() error {
 	if s == nil || s.conn == nil {
 		return nil

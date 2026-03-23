@@ -68,7 +68,7 @@ func (s *NodeServer) GetLogData(ctx context.Context, req *proto.GetLogDataReques
 
 // StreamNodeData handles bidirectional streaming for node data.
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
-	const defaultIntervalSeconds = 10
+	const defaultIntervalSeconds = 20
 
 	reqCh := make(chan *proto.NodeDataRequest)
 	recvErrCh := make(chan error, 1)

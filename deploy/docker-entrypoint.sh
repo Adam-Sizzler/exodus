@@ -38,7 +38,14 @@ installed_singbox_version() {
 }
 
 ensure_singbox_version() {
-    local desired desired_tag desired_norm current_norm sb_arch url tmp_file
+    local desired desired_tag desired_norm current_norm sb_arch url tmp_file validate_output
+    local current_output has_working_current
+
+    current_output="$(/usr/local/bin/sing-box version 2>&1 || true)"
+    has_working_current=0
+    if printf '%s\n' "$current_output" | grep -qi '^sing-box version'; then
+        has_working_current=1
+    fi
 
     desired="${SINGBOX_VERSION:-}"
     if [ -z "$desired" ]; then
@@ -61,20 +68,54 @@ ensure_singbox_version() {
 
     sb_arch="${SB_ARCH:-$(resolve_sb_arch)}"
     url="https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${desired_tag}/sing-box-linux-${sb_arch}"
-    tmp_file="/tmp/sing-box-${desired_tag}-${sb_arch}.tmp"
+    tmp_file="/usr/local/bin/.sing-box-${desired_tag}-${sb_arch}.tmp"
 
     echo "[Entrypoint] Downloading sing-box ${desired_tag} for ${sb_arch}"
-    curl -fL "$url" -o "$tmp_file"
+    if ! curl -fL "$url" -o "$tmp_file"; then
+        rm -f "$tmp_file"
+        if [ "$has_working_current" -eq 1 ]; then
+            echo "[Entrypoint] Failed to download ${desired_tag}, continuing with current sing-box: $(printf '%s\n' "$current_output" | head -n 1)" >&2
+            return 0
+        fi
+        echo "[Entrypoint] Failed to download ${desired_tag} and no working current sing-box is available" >&2
+        exit 1
+    fi
     chmod +x "$tmp_file"
 
-    if ! "$tmp_file" version >/dev/null 2>&1; then
-        echo "[Entrypoint] Downloaded sing-box is invalid: ${url}" >&2
+    validate_output="$("$tmp_file" version 2>&1 || true)"
+    if [ -z "$validate_output" ]; then
+        if [ "$has_working_current" -eq 1 ]; then
+            echo "[Entrypoint] Downloaded sing-box is invalid (empty output), continuing with current sing-box: $(printf '%s\n' "$current_output" | head -n 1)" >&2
+            rm -f "$tmp_file"
+            return 0
+        fi
+        echo "[Entrypoint] Downloaded sing-box is invalid (empty output): ${url}" >&2
+        rm -f "$tmp_file"
+        exit 1
+    fi
+    if ! printf '%s\n' "$validate_output" | grep -qi '^sing-box version'; then
+        if [ "$has_working_current" -eq 1 ]; then
+            echo "[Entrypoint] Downloaded sing-box failed validation, continuing with current sing-box: $(printf '%s\n' "$current_output" | head -n 1)" >&2
+            echo "[Entrypoint] Validation output: ${validate_output}" >&2
+            rm -f "$tmp_file"
+            return 0
+        fi
+        echo "[Entrypoint] Downloaded sing-box failed validation: ${url}" >&2
+        echo "[Entrypoint] Validation output: ${validate_output}" >&2
         rm -f "$tmp_file"
         exit 1
     fi
 
-    mv "$tmp_file" /usr/local/bin/sing-box
-    echo "[Entrypoint] Updated sing-box to: $(/usr/local/bin/sing-box version | head -n 1)"
+    if ! mv "$tmp_file" /usr/local/bin/sing-box; then
+        rm -f "$tmp_file"
+        if [ "$has_working_current" -eq 1 ]; then
+            echo "[Entrypoint] Failed to replace sing-box binary, continuing with current sing-box: $(printf '%s\n' "$current_output" | head -n 1)" >&2
+            return 0
+        fi
+        echo "[Entrypoint] Failed to replace sing-box binary and no working current sing-box is available" >&2
+        exit 1
+    fi
+    echo "[Entrypoint] Updated sing-box to: $(printf '%s\n' "$validate_output" | head -n 1)"
 }
 
 RNDSTR="$(generate_random 10)"
