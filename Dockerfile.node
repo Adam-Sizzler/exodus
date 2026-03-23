@@ -33,6 +33,7 @@ FROM alpine:3.23
 
 ARG TARGETARCH
 ARG SINGBOX_VERSION=v1.13.3
+ENV SINGBOX_VERSION=${SINGBOX_VERSION}
 
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor
 
