@@ -34,10 +34,12 @@ export const useBulkUsersActionsStore = create<IActions & IState>()(
                     }))
                 },
                 getUuidLength: () => {
-                    return Object.keys(get().tableSelection).length
+                    return Object.values(get().tableSelection).filter(Boolean).length
                 },
                 getUuids: (): string[] => {
-                    return Object.keys(get().tableSelection).map((uuid) => uuid)
+                    return Object.entries(get().tableSelection)
+                        .filter(([, selected]) => Boolean(selected))
+                        .map(([uuid]) => uuid)
                 },
 
                 getInitialState: () => {

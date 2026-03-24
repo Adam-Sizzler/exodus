@@ -21,6 +21,7 @@ import (
 	dbmanager "cerberus/backend/db/manager"
 	"cerberus/backend/httpapi"
 	"cerberus/backend/httpapi/middleware"
+	"cerberus/backend/httpapi/system"
 	users "cerberus/backend/nodes"
 	"cerberus/backend/redisqueue"
 	"cerberus/backend/srslists"
@@ -39,6 +40,7 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 	}
 
 	apiHandler := httpapi.NewAPIHandler(manager, cfg)
+	metricsHandler := system.MetricsHandler(manager, cfg)
 
 	mux := http.NewServeMux()
 	uiDir := cfg.Panel.StaticDir
@@ -62,6 +64,10 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 		}
 
 		relativePath := strings.TrimPrefix(requestPath, panelBasePath)
+		if relativePath == "metrics" {
+			metricsHandler.ServeHTTP(w, r)
+			return
+		}
 		if strings.HasPrefix(relativePath, "api/") {
 			apiReq := r.Clone(r.Context())
 			apiReq.URL.Path = "/" + relativePath
@@ -120,6 +126,60 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		cfg.Logger.Error("Error shutting down web server", "error", err)
+	}
+}
+
+func startMetricsServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	if cfg == nil || cfg.Metrics.Port <= 0 {
+		return
+	}
+
+	metricsAddress := strings.TrimSpace(cfg.Metrics.Address)
+	if metricsAddress == "" {
+		metricsAddress = "127.0.0.1"
+	}
+	addr := fmt.Sprintf("%s:%d", metricsAddress, cfg.Metrics.Port)
+	metricsHandler := system.MetricsHandler(manager, cfg)
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", metricsHandler)
+	registered := map[string]struct{}{
+		"/metrics": {},
+	}
+	for _, path := range []string{cfg.Panel.BasePath, strings.TrimSuffix(cfg.Panel.BasePath, "/")} {
+		normalized := strings.TrimSpace(path)
+		if normalized == "" || normalized == "/" {
+			continue
+		}
+		endpoint := strings.TrimSuffix(normalized, "/") + "/metrics"
+		if _, exists := registered[endpoint]; exists {
+			continue
+		}
+		registered[endpoint] = struct{}{}
+		mux.Handle(endpoint, metricsHandler)
+	}
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: middleware.WithRequestLogging(cfg, "metrics", mux),
+	}
+
+	cfg.Logger.Debug("Starting metrics server", "address", server.Addr)
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			cfg.Logger.Error("Failed to start metrics server", "error", err)
+		}
+	}()
+
+	<-ctx.Done()
+
+	cfg.Logger.Debug("Shutting down metrics server")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		cfg.Logger.Error("Error shutting down metrics server", "error", err)
 	}
 }
 
@@ -212,9 +272,10 @@ func main() {
 
 	// Prepare wg
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go startWebServer(ctx, manager, &cfg, &wg)
+	go startMetricsServer(ctx, manager, &cfg, &wg)
 	go nodeMonitor.Start(ctx, &wg)
 	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	if redisWorker != nil {

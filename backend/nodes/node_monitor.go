@@ -40,12 +40,35 @@ type NodeMonitor struct {
 	// Manual sync trigger
 	syncNow chan struct{}
 	// Manual deploy trigger
-	deployNow chan bool
+	deployNow chan deployRequest
 	// Manual SRS sync trigger
 	srsSyncNow chan struct{}
+
+	// Runtime traffic metrics snapshots by node UUID.
+	metricsByNodeUUID map[string]*NodeMetricsSnapshot
+	metricsLock       sync.RWMutex
+}
+
+type deployRequest struct {
+	Restart   bool
+	NodeUUIDs []string
+}
+
+type TagTrafficCounters struct {
+	UploadBytes   int64
+	DownloadBytes int64
+}
+
+type NodeMetricsSnapshot struct {
+	NodeUUID    string
+	UsersOnline int
+	Inbounds    map[string]TagTrafficCounters
+	Outbounds   map[string]TagTrafficCounters
+	UpdatedAt   time.Time
 }
 
 type nodeState struct {
+	nodeUUID     string
 	nodeName     string
 	address      string
 	port         int
@@ -79,12 +102,13 @@ func pathPrefixStreamInterceptor(prefix string) grpc.StreamClientInterceptor {
 // NewNodeMonitor creates a new NodeMonitor.
 func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) *NodeMonitor {
 	return &NodeMonitor{
-		manager:    manager,
-		cfg:        cfg,
-		nodes:      make(map[string]*nodeState),
-		syncNow:    make(chan struct{}, 1),
-		deployNow:  make(chan bool, 1),
-		srsSyncNow: make(chan struct{}, 1),
+		manager:           manager,
+		cfg:               cfg,
+		nodes:             make(map[string]*nodeState),
+		syncNow:           make(chan struct{}, 1),
+		deployNow:         make(chan deployRequest, 1),
+		srsSyncNow:        make(chan struct{}, 1),
+		metricsByNodeUUID: make(map[string]*NodeMetricsSnapshot),
 	}
 }
 
@@ -122,9 +146,9 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 		case <-nm.syncNow:
 			nm.cfg.Logger.Debug("Node monitor manual sync requested")
 			nm.syncNodes()
-		case restart := <-nm.deployNow:
-			nm.cfg.Logger.Info("Node monitor deploy requested", "restart", restart)
-			nm.deployToConnectedNodes(restart)
+		case deployReq := <-nm.deployNow:
+			nm.cfg.Logger.Info("Node monitor deploy requested", "restart", deployReq.Restart, "node_targets", len(deployReq.NodeUUIDs))
+			nm.deployToConnectedNodes(deployReq.Restart, deployReq.NodeUUIDs)
 		case <-nm.srsSyncNow:
 			nm.cfg.Logger.Info("Node monitor SRS sync requested")
 			nm.syncSRSListsToConnectedNodes()
@@ -163,6 +187,9 @@ func (nm *NodeMonitor) syncNodes() {
 			state.cancel()
 			if state.conn != nil {
 				state.conn.Close()
+			}
+			if state.nodeUUID != "" {
+				nm.removeNodeMetrics(state.nodeUUID)
 			}
 			delete(nm.nodes, name)
 			continue
@@ -207,6 +234,7 @@ func (nm *NodeMonitor) startNode(dbNode db.DBNode) {
 	ctx, cancel := context.WithCancel(nm.globalCtx)
 
 	state := &nodeState{
+		nodeUUID:  dbNode.UUID,
 		nodeName:  dbNode.Name,
 		address:   dbNode.Address,
 		port:      dbNode.Port,
@@ -489,6 +517,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	totalRAM := parseOptionalString(values["total_ram"])
 	usersOnline := trafficDelta.UsersOnline
 
+	persistedNodeUUID := ""
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var (
 			nodeUUID              string
@@ -498,6 +527,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 		if err := db.QueryRow(`SELECT uuid, id, consumption_multiplier FROM nodes WHERE name = ?`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier); err != nil {
 			return err
 		}
+		persistedNodeUUID = nodeUUID
 
 		query := `
 			UPDATE nodes
@@ -621,6 +651,11 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	})
 	if err != nil {
 		nm.cfg.Logger.Warn("Failed to persist node runtime stats", "node", nodeName, "error", err)
+		return
+	}
+
+	if persistedNodeUUID != "" {
+		nm.updateNodeMetricsSnapshot(persistedNodeUUID, usersOnline, trafficDelta)
 	}
 }
 
@@ -629,12 +664,16 @@ type trafficStatsDelta struct {
 	TotalDownloadBytes int64
 	UserBytesByName    map[string]int64
 	UsersOnline        int
+	InboundByTag       map[string]TagTrafficCounters
+	OutboundByTag      map[string]TagTrafficCounters
 }
 
 func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 	delta := trafficStatsDelta{
 		UserBytesByName: make(map[string]int64),
 		UsersOnline:     0,
+		InboundByTag:    make(map[string]TagTrafficCounters),
+		OutboundByTag:   make(map[string]TagTrafficCounters),
 	}
 	onlineUsers := make(map[string]struct{})
 
@@ -660,16 +699,44 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 		}
 
 		switch strings.ToLower(strings.TrimSpace(parts[0])) {
+		case "inbound":
+			if len(parts) != 4 || !strings.EqualFold(parts[2], "traffic") {
+				continue
+			}
+			tag := strings.TrimSpace(parts[1])
+			if tag == "" {
+				continue
+			}
+			current := delta.InboundByTag[tag]
+			switch strings.ToLower(strings.TrimSpace(parts[3])) {
+			case "uplink":
+				current.UploadBytes += value
+			case "downlink":
+				current.DownloadBytes += value
+			default:
+				continue
+			}
+			delta.InboundByTag[tag] = current
 		case "outbound":
 			if len(parts) != 4 || !strings.EqualFold(parts[2], "traffic") {
 				continue
 			}
+			tag := strings.TrimSpace(parts[1])
+			if tag == "" {
+				continue
+			}
+			current := delta.OutboundByTag[tag]
 			switch strings.ToLower(strings.TrimSpace(parts[3])) {
 			case "uplink":
 				delta.TotalUploadBytes += value
+				current.UploadBytes += value
 			case "downlink":
 				delta.TotalDownloadBytes += value
+				current.DownloadBytes += value
+			default:
+				continue
 			}
+			delta.OutboundByTag[tag] = current
 		case "user":
 			username := strings.TrimSpace(parts[1])
 			if username == "" {
@@ -820,26 +887,31 @@ func (nm *NodeMonitor) RequestSync() {
 }
 
 // RequestDeploy triggers config deploy to connected nodes (non-blocking).
-func (nm *NodeMonitor) RequestDeploy(restart bool) {
+func (nm *NodeMonitor) RequestDeploy(restart bool, nodeUUIDs ...string) {
 	if nm == nil {
 		return
 	}
+	normalizedTargets := normalizeNodeUUIDTargets(nodeUUIDs)
+	req := deployRequest{
+		Restart:   restart,
+		NodeUUIDs: normalizedTargets,
+	}
 	if nm.cfg != nil && nm.cfg.Logger != nil {
-		nm.cfg.Logger.Debug("Node deploy requested", "restart", restart)
+		nm.cfg.Logger.Debug("Node deploy requested", "restart", restart, "node_targets", len(normalizedTargets))
 	}
 	select {
-	case nm.deployNow <- restart:
+	case nm.deployNow <- req:
 		if nm.cfg != nil && nm.cfg.Logger != nil {
-			nm.cfg.Logger.Trace("Node deploy enqueued", "restart", restart)
+			nm.cfg.Logger.Trace("Node deploy enqueued", "restart", restart, "node_targets", len(normalizedTargets))
 		}
 	default:
 		select {
 		case <-nm.deployNow:
 		default:
 		}
-		nm.deployNow <- restart
+		nm.deployNow <- req
 		if nm.cfg != nil && nm.cfg.Logger != nil {
-			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart)
+			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart, "node_targets", len(normalizedTargets))
 		}
 	}
 }
@@ -887,4 +959,105 @@ func nodeConfigChanged(state *nodeState, desired db.DBNode) bool {
 		return true
 	}
 	return false
+}
+
+func normalizeNodeUUIDTargets(raw []string) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(raw))
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		uuid := strings.TrimSpace(item)
+		if uuid == "" {
+			continue
+		}
+		if _, exists := seen[uuid]; exists {
+			continue
+		}
+		seen[uuid] = struct{}{}
+		result = append(result, uuid)
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func (nm *NodeMonitor) removeNodeMetrics(nodeUUID string) {
+	if nm == nil || strings.TrimSpace(nodeUUID) == "" {
+		return
+	}
+	nm.metricsLock.Lock()
+	delete(nm.metricsByNodeUUID, nodeUUID)
+	nm.metricsLock.Unlock()
+}
+
+func (nm *NodeMonitor) updateNodeMetricsSnapshot(nodeUUID string, usersOnline int, delta trafficStatsDelta) {
+	if nm == nil || strings.TrimSpace(nodeUUID) == "" {
+		return
+	}
+
+	nm.metricsLock.Lock()
+	defer nm.metricsLock.Unlock()
+
+	snapshot, exists := nm.metricsByNodeUUID[nodeUUID]
+	if !exists || snapshot == nil {
+		snapshot = &NodeMetricsSnapshot{
+			NodeUUID:  nodeUUID,
+			Inbounds:  make(map[string]TagTrafficCounters),
+			Outbounds: make(map[string]TagTrafficCounters),
+		}
+		nm.metricsByNodeUUID[nodeUUID] = snapshot
+	}
+
+	snapshot.UsersOnline = usersOnline
+	snapshot.UpdatedAt = time.Now().UTC()
+
+	for tag, item := range delta.InboundByTag {
+		current := snapshot.Inbounds[tag]
+		current.UploadBytes += item.UploadBytes
+		current.DownloadBytes += item.DownloadBytes
+		snapshot.Inbounds[tag] = current
+	}
+
+	for tag, item := range delta.OutboundByTag {
+		current := snapshot.Outbounds[tag]
+		current.UploadBytes += item.UploadBytes
+		current.DownloadBytes += item.DownloadBytes
+		snapshot.Outbounds[tag] = current
+	}
+}
+
+func (nm *NodeMonitor) SnapshotNodeMetrics() map[string]NodeMetricsSnapshot {
+	if nm == nil {
+		return map[string]NodeMetricsSnapshot{}
+	}
+
+	nm.metricsLock.RLock()
+	defer nm.metricsLock.RUnlock()
+
+	result := make(map[string]NodeMetricsSnapshot, len(nm.metricsByNodeUUID))
+	for nodeUUID, source := range nm.metricsByNodeUUID {
+		if source == nil {
+			continue
+		}
+
+		copySnapshot := NodeMetricsSnapshot{
+			NodeUUID:    source.NodeUUID,
+			UsersOnline: source.UsersOnline,
+			Inbounds:    make(map[string]TagTrafficCounters, len(source.Inbounds)),
+			Outbounds:   make(map[string]TagTrafficCounters, len(source.Outbounds)),
+			UpdatedAt:   source.UpdatedAt,
+		}
+		for tag, item := range source.Inbounds {
+			copySnapshot.Inbounds[tag] = item
+		}
+		for tag, item := range source.Outbounds {
+			copySnapshot.Outbounds[tag] = item
+		}
+
+		result[nodeUUID] = copySnapshot
+	}
+	return result
 }

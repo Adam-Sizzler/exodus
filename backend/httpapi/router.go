@@ -151,7 +151,7 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/system/stats", system.StatsHandler(manager, cfg))
 	mux.HandleFunc("/api/system/stats/bandwidth", system.BandwidthStatsHandler(manager, cfg))
 	mux.HandleFunc("/api/system/stats/nodes", system.NodesStatsHandler(manager, cfg))
-	mux.HandleFunc("/api/system/nodes/metrics", system.NodesMetricsHandler(cfg))
+	mux.HandleFunc("/api/system/nodes/metrics", system.NodesMetricsHandler(manager, cfg))
 	mux.HandleFunc("/api/system/health", system.HealthHandler(cfg))
 
 	mux.HandleFunc("/api/health", health.HealthHandler())

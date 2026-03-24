@@ -25,12 +25,12 @@ func RequestNodeSync() {
 }
 
 // RequestNodeDeploy triggers config deploy to connected nodes.
-func RequestNodeDeploy(restart bool) {
+func RequestNodeDeploy(restart bool, nodeUUIDs ...string) {
 	globalMonitorMu.RLock()
 	nm := globalMonitor
 	globalMonitorMu.RUnlock()
 	if nm != nil {
-		nm.RequestDeploy(restart)
+		nm.RequestDeploy(restart, nodeUUIDs...)
 	}
 }
 
@@ -42,4 +42,15 @@ func RequestSRSDeploy() {
 	if nm != nil {
 		nm.RequestSRSDeploy()
 	}
+}
+
+// GetNodeMetricsSnapshot returns current per-node traffic metrics snapshots.
+func GetNodeMetricsSnapshot() map[string]NodeMetricsSnapshot {
+	globalMonitorMu.RLock()
+	nm := globalMonitor
+	globalMonitorMu.RUnlock()
+	if nm == nil {
+		return map[string]NodeMetricsSnapshot{}
+	}
+	return nm.SnapshotNodeMetrics()
 }

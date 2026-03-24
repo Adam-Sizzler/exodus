@@ -17,6 +17,7 @@ type BackendConfig struct {
 	Log      LogConfig
 	CERBERUS CERBERUSConfig
 	Panel    PanelConfig
+	Metrics  MetricsConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
 	CORS     CORSConfig
@@ -33,6 +34,13 @@ type PanelConfig struct {
 
 type CORSConfig struct {
 	AllowedOrigins []string
+}
+
+type MetricsConfig struct {
+	Address string
+	Port    int
+	User    string
+	Pass    string
 }
 
 type LogConfig struct {
@@ -76,6 +84,12 @@ var defaultConfig = BackendConfig{
 		AppPort:           3000,
 		trustedProxyNets:  nil,
 	},
+	Metrics: MetricsConfig{
+		Address: "0.0.0.0",
+		Port:    3001,
+		User:    "",
+		Pass:    "",
+	},
 	CORS: CORSConfig{
 		AllowedOrigins: []string{},
 	},
@@ -99,6 +113,10 @@ func LoadConfig() (BackendConfig, error) {
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
 		cfg.Logger.Warn("Invalid app port, using default", "port", cfg.Panel.AppPort, "default", defaultConfig.Panel.AppPort)
 		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
+	}
+	if cfg.Metrics.Port < 1 || cfg.Metrics.Port > 65535 {
+		cfg.Logger.Warn("Invalid metrics port, using default", "port", cfg.Metrics.Port, "default", defaultConfig.Metrics.Port)
+		cfg.Metrics.Port = defaultConfig.Metrics.Port
 	}
 
 	realLogger, err := logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, "UTC", os.Stderr)
@@ -148,6 +166,23 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		cfg.Panel.BasePath = value
 	}
 
+	if value := envFirst("METRICS_ADDRESS"); value != "" {
+		cfg.Metrics.Address = value
+	}
+	if value := envFirst("METRICS_PORT"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 && parsed <= 65535 {
+			cfg.Metrics.Port = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid METRICS_PORT value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("METRICS_USER"); value != "" {
+		cfg.Metrics.User = value
+	}
+	if value := envFirst("METRICS_PASS"); value != "" {
+		cfg.Metrics.Pass = value
+	}
+
 	if value := envFirst("CERBERUS_ALLOW_INSECURE_HTTP"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
 			cfg.Panel.AllowInsecureHTTP = parsed
@@ -194,6 +229,12 @@ func normalizePanelConfig(cfg *BackendConfig) {
 	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
 		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
+	}
+	if strings.TrimSpace(cfg.Metrics.Address) == "" {
+		cfg.Metrics.Address = defaultConfig.Metrics.Address
+	}
+	if cfg.Metrics.Port < 1 || cfg.Metrics.Port > 65535 {
+		cfg.Metrics.Port = defaultConfig.Metrics.Port
 	}
 
 	proxyNets, invalid := parseTrustedProxies(cfg.Panel.TrustedProxies)

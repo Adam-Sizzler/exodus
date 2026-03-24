@@ -32,7 +32,23 @@ type bandwidthStat struct {
 }
 
 type nodesMetricsResponse struct {
-	Nodes []any `json:"nodes"`
+	Nodes []nodeMetricsItem `json:"nodes"`
+}
+
+type nodeMetricsItem struct {
+	NodeUUID       string            `json:"nodeUuid"`
+	NodeName       string            `json:"nodeName"`
+	CountryEmoji   string            `json:"countryEmoji"`
+	ProviderName   string            `json:"providerName"`
+	UsersOnline    int               `json:"usersOnline"`
+	InboundsStats  []nodeTrafficStat `json:"inboundsStats"`
+	OutboundsStats []nodeTrafficStat `json:"outboundsStats"`
+}
+
+type nodeTrafficStat struct {
+	Tag      string `json:"tag"`
+	Upload   string `json:"upload"`
+	Download string `json:"download"`
 }
 
 func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
@@ -350,16 +366,22 @@ func NodesStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func NodesMetricsHandler(cfg *config.BackendConfig) http.HandlerFunc {
+func NodesMetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
+		nodes, err := loadNodesMetricsViaPrometheus(r.Context(), manager, cfg)
+		if err != nil {
+			cfg.Logger.Warn("Failed to load nodes metrics via prometheus endpoint", "error", err)
+			nodes = []nodeMetricsItem{}
+		}
+
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": nodesMetricsResponse{
-				Nodes: []any{},
+				Nodes: nodes,
 			},
 		})
 	}

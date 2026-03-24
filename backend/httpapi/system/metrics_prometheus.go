@@ -1,0 +1,701 @@
+package system
+
+import (
+	"bufio"
+	"context"
+	"crypto/subtle"
+	"fmt"
+	"io"
+	"math"
+	"math/big"
+	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"cerberus/backend/config"
+	dbmanager "cerberus/backend/db/manager"
+	monitor "cerberus/backend/nodes"
+)
+
+const (
+	metricNodeOnlineUsers      = "node_online_users"
+	metricNodeStatus           = "node_status"
+	metricNodeInboundUpload    = "node_inbound_upload_bytes"
+	metricNodeInboundDownload  = "node_inbound_download_bytes"
+	metricNodeOutboundUpload   = "node_outbound_upload_bytes"
+	metricNodeOutboundDownload = "node_outbound_download_bytes"
+)
+
+type nodeMetricsMeta struct {
+	UUID         string
+	Name         string
+	CountryCode  string
+	ProviderName string
+	ViewPosition int
+	IsConnected  bool
+	UsersOnline  int
+}
+
+type prometheusSample struct {
+	Name   string
+	Labels map[string]string
+	Value  float64
+}
+
+type parsedNodeMetrics struct {
+	NodeUUID      string
+	NodeName      string
+	CountryEmoji  string
+	ProviderName  string
+	UsersOnline   int
+	InboundByTag  map[string]metricTrafficPair
+	OutboundByTag map[string]metricTrafficPair
+}
+
+type metricTrafficPair struct {
+	Upload   float64
+	Download float64
+}
+
+func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			_, _ = io.WriteString(w, "method not allowed")
+			return
+		}
+
+		if !authorizeMetricsRequest(w, r, cfg) {
+			return
+		}
+
+		payload, err := renderPrometheusMetrics(r.Context(), manager)
+		if err != nil {
+			if cfg != nil && cfg.Logger != nil {
+				cfg.Logger.Warn("Failed to render prometheus metrics", "error", err)
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = io.WriteString(w, "failed to render metrics")
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, payload)
+	}
+}
+
+func loadNodesMetricsViaPrometheus(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]nodeMetricsItem, error) {
+	nodesMeta, err := loadNodesMetricsMeta(ctx, manager)
+	if err != nil {
+		return nil, err
+	}
+
+	metricsText, err := fetchPrometheusMetricsText(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	samples := parsePrometheusText(metricsText)
+	nodesByUUID := make(map[string]*parsedNodeMetrics)
+
+	for _, sample := range samples {
+		metric := canonicalNodeMetricName(sample.Name)
+		if metric == "" {
+			continue
+		}
+		nodeUUID := strings.TrimSpace(sample.Labels["node_uuid"])
+		if nodeUUID == "" {
+			continue
+		}
+
+		node, exists := nodesByUUID[nodeUUID]
+		if !exists {
+			node = &parsedNodeMetrics{
+				NodeUUID:      nodeUUID,
+				NodeName:      strings.TrimSpace(sample.Labels["node_name"]),
+				CountryEmoji:  strings.TrimSpace(sample.Labels["node_country_emoji"]),
+				ProviderName:  strings.TrimSpace(sample.Labels["provider_name"]),
+				InboundByTag:  make(map[string]metricTrafficPair),
+				OutboundByTag: make(map[string]metricTrafficPair),
+			}
+			nodesByUUID[nodeUUID] = node
+		}
+
+		switch metric {
+		case metricNodeOnlineUsers:
+			node.UsersOnline = int(math.Round(sample.Value))
+		case metricNodeInboundUpload:
+			tag := strings.TrimSpace(sample.Labels["tag"])
+			if tag == "" {
+				continue
+			}
+			item := node.InboundByTag[tag]
+			item.Upload = sample.Value
+			node.InboundByTag[tag] = item
+		case metricNodeInboundDownload:
+			tag := strings.TrimSpace(sample.Labels["tag"])
+			if tag == "" {
+				continue
+			}
+			item := node.InboundByTag[tag]
+			item.Download = sample.Value
+			node.InboundByTag[tag] = item
+		case metricNodeOutboundUpload:
+			tag := strings.TrimSpace(sample.Labels["tag"])
+			if tag == "" {
+				continue
+			}
+			item := node.OutboundByTag[tag]
+			item.Upload = sample.Value
+			node.OutboundByTag[tag] = item
+		case metricNodeOutboundDownload:
+			tag := strings.TrimSpace(sample.Labels["tag"])
+			if tag == "" {
+				continue
+			}
+			item := node.OutboundByTag[tag]
+			item.Download = sample.Value
+			node.OutboundByTag[tag] = item
+		}
+	}
+
+	result := make([]nodeMetricsItem, 0, len(nodesMeta))
+	for _, meta := range nodesMeta {
+		node := nodesByUUID[meta.UUID]
+		if node == nil {
+			result = append(result, nodeMetricsItem{
+				NodeUUID:       meta.UUID,
+				NodeName:       meta.Name,
+				CountryEmoji:   resolveCountryEmoji(meta.CountryCode),
+				ProviderName:   normalizeProviderName(meta.ProviderName),
+				UsersOnline:    meta.UsersOnline,
+				InboundsStats:  []nodeTrafficStat{},
+				OutboundsStats: []nodeTrafficStat{},
+			})
+			continue
+		}
+
+		nodeName := node.NodeName
+		if nodeName == "" {
+			nodeName = meta.Name
+		}
+		countryEmoji := node.CountryEmoji
+		if countryEmoji == "" {
+			countryEmoji = resolveCountryEmoji(meta.CountryCode)
+		}
+		providerName := node.ProviderName
+		if providerName == "" {
+			providerName = normalizeProviderName(meta.ProviderName)
+		}
+		usersOnline := node.UsersOnline
+		if usersOnline < 0 {
+			usersOnline = 0
+		}
+
+		inboundTags := sortedTags(node.InboundByTag)
+		outboundTags := sortedTags(node.OutboundByTag)
+		inboundsStats := make([]nodeTrafficStat, 0, len(inboundTags))
+		outboundsStats := make([]nodeTrafficStat, 0, len(outboundTags))
+
+		for _, tag := range inboundTags {
+			item := node.InboundByTag[tag]
+			inboundsStats = append(inboundsStats, nodeTrafficStat{
+				Tag:      tag,
+				Upload:   formatMetricBytes(item.Upload),
+				Download: formatMetricBytes(item.Download),
+			})
+		}
+
+		for _, tag := range outboundTags {
+			item := node.OutboundByTag[tag]
+			outboundsStats = append(outboundsStats, nodeTrafficStat{
+				Tag:      tag,
+				Upload:   formatMetricBytes(item.Upload),
+				Download: formatMetricBytes(item.Download),
+			})
+		}
+
+		result = append(result, nodeMetricsItem{
+			NodeUUID:       meta.UUID,
+			NodeName:       nodeName,
+			CountryEmoji:   countryEmoji,
+			ProviderName:   providerName,
+			UsersOnline:    usersOnline,
+			InboundsStats:  inboundsStats,
+			OutboundsStats: outboundsStats,
+		})
+	}
+
+	return result, nil
+}
+
+func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nodeMetricsMeta, error) {
+	result := make([]nodeMetricsMeta, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT
+				n.uuid,
+				n.name,
+				COALESCE(n.country_code, ''),
+				COALESCE(p.name, 'unknown'),
+				n.view_position,
+				n.is_connected,
+				COALESCE(n.users_online, 0)
+			FROM nodes n
+			LEFT JOIN infra_providers p ON p.uuid = n.provider_uuid
+			ORDER BY n.view_position ASC, n.name ASC
+		`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item nodeMetricsMeta
+			if scanErr := rows.Scan(
+				&item.UUID,
+				&item.Name,
+				&item.CountryCode,
+				&item.ProviderName,
+				&item.ViewPosition,
+				&item.IsConnected,
+				&item.UsersOnline,
+			); scanErr != nil {
+				return scanErr
+			}
+			result = append(result, item)
+		}
+		return rows.Err()
+	})
+	return result, err
+}
+
+func renderPrometheusMetrics(ctx context.Context, manager *dbmanager.DatabaseManager) (string, error) {
+	nodesMeta, err := loadNodesMetricsMeta(ctx, manager)
+	if err != nil {
+		return "", err
+	}
+	snapshots := monitor.GetNodeMetricsSnapshot()
+
+	var builder strings.Builder
+	builder.Grow(2048)
+
+	builder.WriteString("# HELP " + metricNodeOnlineUsers + " Number of online users on node.\n")
+	builder.WriteString("# TYPE " + metricNodeOnlineUsers + " gauge\n")
+	builder.WriteString("# HELP " + metricNodeStatus + " Current node connection status (1=connected, 0=disconnected).\n")
+	builder.WriteString("# TYPE " + metricNodeStatus + " gauge\n")
+	builder.WriteString("# HELP " + metricNodeInboundUpload + " Accumulated inbound uplink traffic bytes by inbound tag.\n")
+	builder.WriteString("# TYPE " + metricNodeInboundUpload + " counter\n")
+	builder.WriteString("# HELP " + metricNodeInboundDownload + " Accumulated inbound downlink traffic bytes by inbound tag.\n")
+	builder.WriteString("# TYPE " + metricNodeInboundDownload + " counter\n")
+	builder.WriteString("# HELP " + metricNodeOutboundUpload + " Accumulated outbound uplink traffic bytes by outbound tag.\n")
+	builder.WriteString("# TYPE " + metricNodeOutboundUpload + " counter\n")
+	builder.WriteString("# HELP " + metricNodeOutboundDownload + " Accumulated outbound downlink traffic bytes by outbound tag.\n")
+	builder.WriteString("# TYPE " + metricNodeOutboundDownload + " counter\n")
+
+	for _, node := range nodesMeta {
+		snapshot := snapshots[node.UUID]
+		usersOnline := node.UsersOnline
+		if snapshot.NodeUUID != "" {
+			usersOnline = snapshot.UsersOnline
+		}
+
+		labels := map[string]string{
+			"node_uuid":          node.UUID,
+			"node_name":          node.Name,
+			"node_country_emoji": resolveCountryEmoji(node.CountryCode),
+			"provider_name":      normalizeProviderName(node.ProviderName),
+		}
+
+		writePrometheusMetricLine(&builder, metricNodeOnlineUsers, labels, strconv.Itoa(maxInt(usersOnline, 0)))
+		if node.IsConnected {
+			writePrometheusMetricLine(&builder, metricNodeStatus, labels, "1")
+		} else {
+			writePrometheusMetricLine(&builder, metricNodeStatus, labels, "0")
+		}
+
+		if snapshot.NodeUUID == "" {
+			continue
+		}
+
+		inboundTags := make([]string, 0, len(snapshot.Inbounds))
+		for tag := range snapshot.Inbounds {
+			inboundTags = append(inboundTags, tag)
+		}
+		sort.Strings(inboundTags)
+		for _, tag := range inboundTags {
+			item := snapshot.Inbounds[tag]
+			tagLabels := copyLabels(labels)
+			tagLabels["tag"] = tag
+			writePrometheusMetricLine(&builder, metricNodeInboundUpload, tagLabels, strconv.FormatInt(maxInt64(item.UploadBytes, 0), 10))
+			writePrometheusMetricLine(&builder, metricNodeInboundDownload, tagLabels, strconv.FormatInt(maxInt64(item.DownloadBytes, 0), 10))
+		}
+
+		outboundTags := make([]string, 0, len(snapshot.Outbounds))
+		for tag := range snapshot.Outbounds {
+			outboundTags = append(outboundTags, tag)
+		}
+		sort.Strings(outboundTags)
+		for _, tag := range outboundTags {
+			item := snapshot.Outbounds[tag]
+			tagLabels := copyLabels(labels)
+			tagLabels["tag"] = tag
+			writePrometheusMetricLine(&builder, metricNodeOutboundUpload, tagLabels, strconv.FormatInt(maxInt64(item.UploadBytes, 0), 10))
+			writePrometheusMetricLine(&builder, metricNodeOutboundDownload, tagLabels, strconv.FormatInt(maxInt64(item.DownloadBytes, 0), 10))
+		}
+	}
+
+	return builder.String(), nil
+}
+
+func fetchPrometheusMetricsText(cfg *config.BackendConfig) (string, error) {
+	if cfg == nil {
+		return "", fmt.Errorf("nil backend config")
+	}
+
+	host := strings.TrimSpace(cfg.Metrics.Address)
+	switch host {
+	case "", "0.0.0.0", "::":
+		host = "127.0.0.1"
+	}
+	port := cfg.Metrics.Port
+	if port <= 0 {
+		return "", fmt.Errorf("invalid metrics port")
+	}
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	paths := metricsCandidatePaths(cfg.Panel.BasePath)
+	var lastErr error
+
+	for _, path := range paths {
+		url := fmt.Sprintf("http://%s:%d%s", host, port, path)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		metricsUser := strings.TrimSpace(cfg.Metrics.User)
+		metricsPass := strings.TrimSpace(cfg.Metrics.Pass)
+		if metricsUser != "" || metricsPass != "" {
+			req.SetBasicAuth(metricsUser, metricsPass)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		body, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			lastErr = readErr
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("metrics endpoint %s returned status %d", url, resp.StatusCode)
+			continue
+		}
+
+		return string(body), nil
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("metrics endpoint is unavailable")
+	}
+	return "", lastErr
+}
+
+func parsePrometheusText(text string) []prometheusSample {
+	result := make([]prometheusSample, 0)
+	scanner := bufio.NewScanner(strings.NewReader(text))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		sample, ok := parsePrometheusLine(line)
+		if !ok {
+			continue
+		}
+		result = append(result, sample)
+	}
+	return result
+}
+
+func parsePrometheusLine(line string) (prometheusSample, bool) {
+	var sample prometheusSample
+
+	firstSpace := strings.IndexAny(line, " \t")
+	if firstSpace <= 0 {
+		return sample, false
+	}
+
+	nameAndLabels := strings.TrimSpace(line[:firstSpace])
+	valuePart := strings.TrimSpace(line[firstSpace+1:])
+	valueFields := strings.Fields(valuePart)
+	if len(valueFields) == 0 {
+		return sample, false
+	}
+
+	value, err := strconv.ParseFloat(valueFields[0], 64)
+	if err != nil {
+		return sample, false
+	}
+
+	metricName := nameAndLabels
+	labels := map[string]string{}
+	if openIdx := strings.Index(nameAndLabels, "{"); openIdx >= 0 {
+		closeIdx := strings.LastIndex(nameAndLabels, "}")
+		if closeIdx <= openIdx {
+			return sample, false
+		}
+		metricName = strings.TrimSpace(nameAndLabels[:openIdx])
+		labels = parsePrometheusLabels(nameAndLabels[openIdx+1 : closeIdx])
+	}
+	if metricName == "" {
+		return sample, false
+	}
+
+	sample.Name = metricName
+	sample.Labels = labels
+	sample.Value = value
+	return sample, true
+}
+
+func parsePrometheusLabels(raw string) map[string]string {
+	result := make(map[string]string)
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return result
+	}
+
+	for len(text) > 0 {
+		text = strings.TrimLeft(text, " \t,")
+		if text == "" {
+			break
+		}
+
+		eqIdx := strings.Index(text, "=")
+		if eqIdx <= 0 {
+			break
+		}
+		key := strings.TrimSpace(text[:eqIdx])
+		text = strings.TrimLeft(text[eqIdx+1:], " \t")
+		if !strings.HasPrefix(text, "\"") {
+			break
+		}
+
+		text = text[1:]
+		valueEnd := 0
+		escaped := false
+		for valueEnd < len(text) {
+			ch := text[valueEnd]
+			if ch == '"' && !escaped {
+				break
+			}
+			if ch == '\\' && !escaped {
+				escaped = true
+			} else {
+				escaped = false
+			}
+			valueEnd++
+		}
+		if valueEnd >= len(text) {
+			break
+		}
+
+		rawValue := text[:valueEnd]
+		decodedValue, err := strconv.Unquote(`"` + rawValue + `"`)
+		if err != nil {
+			decodedValue = rawValue
+		}
+		if key != "" {
+			result[key] = decodedValue
+		}
+
+		text = text[valueEnd+1:]
+		if commaIdx := strings.Index(text, ","); commaIdx >= 0 {
+			text = text[commaIdx+1:]
+		} else {
+			text = strings.TrimSpace(text)
+			if text != "" {
+				break
+			}
+		}
+	}
+
+	return result
+}
+
+func canonicalNodeMetricName(metricName string) string {
+	name := strings.TrimSpace(metricName)
+	switch {
+	case strings.HasSuffix(name, metricNodeOnlineUsers):
+		return metricNodeOnlineUsers
+	case strings.HasSuffix(name, metricNodeInboundUpload):
+		return metricNodeInboundUpload
+	case strings.HasSuffix(name, metricNodeInboundDownload):
+		return metricNodeInboundDownload
+	case strings.HasSuffix(name, metricNodeOutboundUpload):
+		return metricNodeOutboundUpload
+	case strings.HasSuffix(name, metricNodeOutboundDownload):
+		return metricNodeOutboundDownload
+	default:
+		return ""
+	}
+}
+
+func authorizeMetricsRequest(w http.ResponseWriter, r *http.Request, cfg *config.BackendConfig) bool {
+	if cfg == nil {
+		return true
+	}
+
+	metricsUser := strings.TrimSpace(cfg.Metrics.User)
+	metricsPass := strings.TrimSpace(cfg.Metrics.Pass)
+	if metricsUser == "" && metricsPass == "" {
+		return true
+	}
+
+	user, pass, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", `Basic realm="metrics"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = io.WriteString(w, "unauthorized")
+		return false
+	}
+
+	userMatch := subtle.ConstantTimeCompare([]byte(user), []byte(metricsUser)) == 1
+	passMatch := subtle.ConstantTimeCompare([]byte(pass), []byte(metricsPass)) == 1
+	if !userMatch || !passMatch {
+		w.Header().Set("WWW-Authenticate", `Basic realm="metrics"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = io.WriteString(w, "unauthorized")
+		return false
+	}
+
+	return true
+}
+
+func metricsCandidatePaths(basePath string) []string {
+	paths := []string{"/metrics"}
+	normalized := strings.TrimSpace(basePath)
+	if normalized == "" {
+		return paths
+	}
+	trimmed := strings.TrimSuffix(normalized, "/")
+	if trimmed == "" || trimmed == "/" {
+		return paths
+	}
+	candidate := trimmed + "/metrics"
+	if candidate != "/metrics" {
+		paths = append(paths, candidate)
+	}
+	return paths
+}
+
+func writePrometheusMetricLine(builder *strings.Builder, metricName string, labels map[string]string, value string) {
+	builder.WriteString(metricName)
+	builder.WriteString("{")
+	builder.WriteString(formatPrometheusLabels(labels))
+	builder.WriteString("} ")
+	builder.WriteString(value)
+	builder.WriteString("\n")
+}
+
+func formatPrometheusLabels(labels map[string]string) string {
+	if len(labels) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		value := escapePrometheusLabelValue(labels[key])
+		parts = append(parts, fmt.Sprintf(`%s="%s"`, key, value))
+	}
+	return strings.Join(parts, ",")
+}
+
+func escapePrometheusLabelValue(value string) string {
+	escaped := strings.ReplaceAll(value, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, "\n", `\n`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return escaped
+}
+
+func copyLabels(source map[string]string) map[string]string {
+	if len(source) == 0 {
+		return map[string]string{}
+	}
+	result := make(map[string]string, len(source))
+	for key, value := range source {
+		result[key] = value
+	}
+	return result
+}
+
+func sortedTags(values map[string]metricTrafficPair) []string {
+	result := make([]string, 0, len(values))
+	for tag := range values {
+		result = append(result, tag)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func normalizeProviderName(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "unknown"
+	}
+	return trimmed
+}
+
+func formatMetricBytes(value float64) string {
+	if value <= 0 {
+		return "0"
+	}
+	if value > float64(math.MaxInt64) {
+		value = float64(math.MaxInt64)
+	}
+	return formatBigBytes(big.NewInt(int64(math.Round(value))))
+}
+
+func maxInt(value, minValue int) int {
+	if value < minValue {
+		return minValue
+	}
+	return value
+}
+
+func maxInt64(value, minValue int64) int64 {
+	if value < minValue {
+		return minValue
+	}
+	return value
+}
+
+func resolveCountryEmoji(countryCode string) string {
+	code := strings.ToUpper(strings.TrimSpace(countryCode))
+	if len(code) != 2 {
+		return "🌍"
+	}
+
+	runes := []rune(code)
+	if runes[0] < 'A' || runes[0] > 'Z' || runes[1] < 'A' || runes[1] > 'Z' {
+		return "🌍"
+	}
+
+	const regionalIndicatorA = 0x1F1E6
+	first := rune(regionalIndicatorA + int(runes[0]-'A'))
+	second := rune(regionalIndicatorA + int(runes[1]-'A'))
+	return string([]rune{first, second})
+}

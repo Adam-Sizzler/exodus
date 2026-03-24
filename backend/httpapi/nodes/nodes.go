@@ -463,7 +463,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, nodeUUID)
 	node, err := getNodeByUUID(r.Context(), manager, nodeUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created node", err, cfg)
@@ -602,7 +602,7 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, req.UUID)
 	node, err := getNodeByUUID(r.Context(), manager, req.UUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated node", err, cfg)
@@ -641,7 +641,7 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, nodeUUID)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -681,7 +681,7 @@ func handleEnableNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, nodeUUID)
 	sendUpdatedNodeResponse(w, r, manager, cfg, nodeUUID)
 }
 
@@ -723,7 +723,7 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, nodeUUID)
 	sendUpdatedNodeResponse(w, r, manager, cfg, nodeUUID)
 }
 
@@ -743,7 +743,7 @@ func handleRestartNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, nodeUUID)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -896,7 +896,7 @@ func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, manag
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, req.UUIDs...)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -940,7 +940,7 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, manager *dbm
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeploy(true, req.UUIDs...)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 

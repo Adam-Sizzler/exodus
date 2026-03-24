@@ -56,11 +56,11 @@ func normalizeTagValue(tag string) string {
 	return strings.TrimSpace(tag)
 }
 
-func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
+func (nm *NodeMonitor) deployToConnectedNodes(restart bool, requestedNodeUUIDs []string) {
 	if nm == nil {
 		return
 	}
-	nm.cfg.Logger.Info("Deploying node configs", "restart", restart)
+	nm.cfg.Logger.Info("Deploying node configs", "restart", restart, "requested_node_targets", len(requestedNodeUUIDs))
 
 	dbNodes, err := nm.loadActiveNodes()
 	if err != nil {
@@ -71,6 +71,15 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
 	nodesByName := make(map[string]string, len(dbNodes))
 	for _, n := range dbNodes {
 		nodesByName[n.Name] = n.UUID
+	}
+
+	targetFilter := make(map[string]struct{}, len(requestedNodeUUIDs))
+	for _, nodeUUID := range requestedNodeUUIDs {
+		trimmed := strings.TrimSpace(nodeUUID)
+		if trimmed == "" {
+			continue
+		}
+		targetFilter[trimmed] = struct{}{}
 	}
 
 	targets := make([]deployTarget, 0)
@@ -90,6 +99,11 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
 		if !ok {
 			continue
 		}
+		if len(targetFilter) > 0 {
+			if _, allowed := targetFilter[nodeUUID]; !allowed {
+				continue
+			}
+		}
 		targets = append(targets, deployTarget{
 			name:   nodeName,
 			uuid:   nodeUUID,
@@ -97,7 +111,7 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool) {
 		})
 	}
 	nm.nodesLock.RUnlock()
-	nm.cfg.Logger.Debug("Prepared deploy targets", "active_nodes", len(dbNodes), "connected_targets", len(targets), "restart", restart)
+	nm.cfg.Logger.Debug("Prepared deploy targets", "active_nodes", len(dbNodes), "connected_targets", len(targets), "requested_node_targets", len(targetFilter), "restart", restart)
 
 	if len(targets) == 0 {
 		nm.cfg.Logger.Warn("No connected nodes to deploy")
