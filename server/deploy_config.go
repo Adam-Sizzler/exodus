@@ -183,6 +183,10 @@ func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions)
 	}
 
 	experimental := mapAny(cfg["experimental"])
+	cacheFile := mapAny(experimental["cache_file"])
+	cacheFile["enabled"] = true
+	experimental["cache_file"] = cacheFile
+
 	v2rayAPI := map[string]any{
 		"listen": opt.Listen,
 		"stats": map[string]any{
