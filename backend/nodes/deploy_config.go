@@ -13,6 +13,7 @@ import (
 	srscore "cerberus/backend/srslists"
 	"cerberus/proto"
 
+	"github.com/iancoleman/orderedmap"
 	"google.golang.org/grpc/codes"
 )
 
@@ -372,23 +373,23 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		return nil, err
 	}
 
-	var parsed map[string]any
-	if err := json.Unmarshal(profileConfig, &parsed); err != nil {
+	parsed := orderedmap.New()
+	if err := json.Unmarshal(profileConfig, parsed); err != nil {
 		return nil, fmt.Errorf("invalid profile config json: %w", err)
 	}
 
-	rawInbounds, ok := parsed["inbounds"].([]any)
+	rawInboundsRaw, ok := parsed.Get("inbounds")
+	if !ok {
+		return nil, fmt.Errorf("profile config has no valid inbounds array")
+	}
+	rawInbounds, ok := rawInboundsRaw.([]any)
 	if !ok {
 		return nil, fmt.Errorf("profile config has no valid inbounds array")
 	}
 
 	matchedActiveTags := 0
 	for _, raw := range rawInbounds {
-		inbound, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		tag, _ := inbound["tag"].(string)
+		tag := getFieldString(raw, "tag")
 		if _, isActiveTag := activeTags[normalizeTagValue(tag)]; isActiveTag {
 			matchedActiveTags++
 		}
@@ -403,27 +404,22 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 
 	filteredInbounds := make([]any, 0, len(rawInbounds))
 	for _, raw := range rawInbounds {
-		inbound, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		tag, _ := inbound["tag"].(string)
+		tag := getFieldString(raw, "tag")
 		normTag := normalizeTagValue(tag)
-		inboundType := normalizeInboundType(inbound)
+		inboundType := normalizeInboundType(raw)
 		_, isActiveTag := activeTags[normTag]
 
 		if !useFallbackKeepAll && !isActiveTag && !isUnsecureInbound(inboundType) {
 			continue
 		}
 		if isActiveTag {
-			inbound["users"] = buildInboundUsers(inboundType, usersByTag[normTag])
+			raw = setField(raw, "users", buildInboundUsers(inboundType, usersByTag[normTag]))
 		}
 
-		filteredInbounds = append(filteredInbounds, inbound)
+		filteredInbounds = append(filteredInbounds, raw)
 	}
 
-	parsed["inbounds"] = filteredInbounds
+	parsed.Set("inbounds", filteredInbounds)
 
 	finalConfig, err := json.Marshal(parsed)
 	if err != nil {
@@ -432,17 +428,61 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 	return finalConfig, nil
 }
 
-func normalizeInboundType(inbound map[string]any) string {
-	if inbound == nil {
-		return ""
-	}
-	if value, ok := inbound["type"].(string); ok && strings.TrimSpace(value) != "" {
+func normalizeInboundType(inbound any) string {
+	if value := getFieldString(inbound, "type"); strings.TrimSpace(value) != "" {
 		return strings.ToLower(strings.TrimSpace(value))
 	}
-	if value, ok := inbound["protocol"].(string); ok && strings.TrimSpace(value) != "" {
+	if value := getFieldString(inbound, "protocol"); strings.TrimSpace(value) != "" {
 		return strings.ToLower(strings.TrimSpace(value))
 	}
 	return ""
+}
+
+func getField(v any, key string) (any, bool) {
+	switch m := v.(type) {
+	case map[string]any:
+		value, ok := m[key]
+		return value, ok
+	case orderedmap.OrderedMap:
+		return m.Get(key)
+	case *orderedmap.OrderedMap:
+		if m == nil {
+			return nil, false
+		}
+		return m.Get(key)
+	default:
+		return nil, false
+	}
+}
+
+func getFieldString(v any, key string) string {
+	value, ok := getField(v, key)
+	if !ok {
+		return ""
+	}
+	s, _ := value.(string)
+	return s
+}
+
+func setField(v any, key string, value any) any {
+	switch m := v.(type) {
+	case map[string]any:
+		m[key] = value
+		return m
+	case orderedmap.OrderedMap:
+		m.Set(key, value)
+		return m
+	case *orderedmap.OrderedMap:
+		if m == nil {
+			n := orderedmap.New()
+			n.Set(key, value)
+			return *n
+		}
+		m.Set(key, value)
+		return *m
+	default:
+		return v
+	}
 }
 
 func isUnsecureInbound(inboundType string) bool {
