@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"cerberus-node/config"
+
+	"github.com/iancoleman/orderedmap"
 )
 
 // DeployConfigTaskPayload is JSON payload for SubmitTask(operation=deploy_config).
@@ -161,43 +163,47 @@ type buildSummary struct {
 }
 
 func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions) ([]byte, buildSummary, error) {
-	var cfg map[string]any
-	if err := json.Unmarshal(rawConfig, &cfg); err != nil {
+	cfg := orderedmap.New()
+	if err := json.Unmarshal(rawConfig, cfg); err != nil {
 		return nil, buildSummary{}, fmt.Errorf("invalid sing-box JSON: %w", err)
 	}
-	normalizeLocalRuleSetPaths(cfg, filepath.Dir(config.FixedSingboxConfigPath))
+	normalizeLocalRuleSetPathsOrdered(cfg, filepath.Dir(config.FixedSingboxConfigPath))
+
+	inboundsValue, _ := cfg.Get("inbounds")
+	outboundsValue, _ := cfg.Get("outbounds")
 
 	inboundTags := dedupeKeepOrder(opt.ExplicitInTags)
 	if len(inboundTags) == 0 {
-		inboundTags = extractTags(cfg["inbounds"])
+		inboundTags = extractTags(inboundsValue)
 	}
 
 	outboundTags := dedupeKeepOrder(opt.ExplicitOutTags)
 	if len(outboundTags) == 0 {
-		outboundTags = extractTags(cfg["outbounds"])
+		outboundTags = extractTags(outboundsValue)
 	}
 
 	users := dedupeKeepOrder(opt.ExplicitUsers)
 	if len(users) == 0 {
-		users = extractUsers(cfg["inbounds"])
+		users = extractUsers(inboundsValue)
 	}
 
-	experimental := mapAny(cfg["experimental"])
-	cacheFile := mapAny(experimental["cache_file"])
-	cacheFile["enabled"] = true
-	experimental["cache_file"] = cacheFile
+	experimental, _ := orderedMapByKey(cfg, "experimental")
+	cacheFile, _ := orderedMapByKey(&experimental, "cache_file")
+	cacheFile.Set("enabled", true)
+	experimental.Set("cache_file", cacheFile)
 
-	v2rayAPI := map[string]any{
-		"listen": opt.Listen,
-		"stats": map[string]any{
-			"enabled":   opt.Enabled,
-			"inbounds":  nonNilSlice(inboundTags),
-			"outbounds": nonNilSlice(outboundTags),
-			"users":     nonNilSlice(users),
-		},
-	}
-	experimental["v2ray_api"] = v2rayAPI
-	cfg["experimental"] = experimental
+	stats := orderedmap.New()
+	stats.Set("enabled", opt.Enabled)
+	stats.Set("inbounds", nonNilSlice(inboundTags))
+	stats.Set("outbounds", nonNilSlice(outboundTags))
+	stats.Set("users", nonNilSlice(users))
+
+	v2rayAPI := orderedmap.New()
+	v2rayAPI.Set("listen", opt.Listen)
+	v2rayAPI.Set("stats", stats)
+
+	experimental.Set("v2ray_api", v2rayAPI)
+	cfg.Set("experimental", experimental)
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
@@ -208,6 +214,18 @@ func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions)
 		Outbounds: outboundTags,
 		Users:     users,
 	}, nil
+}
+
+func orderedMapByKey(container any, key string) (orderedmap.OrderedMap, bool) {
+	raw, ok := getField(container, key)
+	if !ok {
+		return *orderedmap.New(), false
+	}
+	m, ok := toOrderedMap(raw)
+	if !ok {
+		return *orderedmap.New(), false
+	}
+	return m, true
 }
 
 func mapAny(v any) map[string]any {
@@ -224,11 +242,7 @@ func extractTags(v any) []string {
 	}
 	out := make([]string, 0, len(arr))
 	for _, item := range arr {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		tag, _ := m["tag"].(string)
+		tag := getFieldString(item, "tag")
 		if tag != "" {
 			out = append(out, tag)
 		}
@@ -243,20 +257,16 @@ func extractUsers(v any) []string {
 	}
 	users := make([]string, 0)
 	for _, inbound := range inbounds {
-		inboundMap, ok := inbound.(map[string]any)
+		usersRaw, ok := getField(inbound, "users")
 		if !ok {
 			continue
 		}
-		usersArr, ok := inboundMap["users"].([]any)
+		usersArr, ok := usersRaw.([]any)
 		if !ok {
 			continue
 		}
 		for _, u := range usersArr {
-			userMap, ok := u.(map[string]any)
-			if !ok {
-				continue
-			}
-			name, _ := userMap["name"].(string)
+			name := getFieldString(u, "name")
 			if name != "" {
 				users = append(users, name)
 			}
@@ -291,32 +301,91 @@ func nonNilSlice(in []string) []string {
 	return in
 }
 
-func normalizeLocalRuleSetPaths(cfg map[string]any, baseDir string) {
-	route, ok := cfg["route"].(map[string]any)
-	if !ok || strings.TrimSpace(baseDir) == "" {
+func normalizeLocalRuleSetPathsOrdered(cfg *orderedmap.OrderedMap, baseDir string) {
+	if cfg == nil || strings.TrimSpace(baseDir) == "" {
 		return
 	}
-	rawRuleSets, ok := route["rule_set"].([]any)
+	routeRaw, ok := cfg.Get("route")
+	if !ok {
+		return
+	}
+	route, ok := toOrderedMap(routeRaw)
+	if !ok {
+		return
+	}
+	rawRuleSetsRaw, ok := route.Get("rule_set")
+	if !ok {
+		return
+	}
+	rawRuleSets, ok := rawRuleSetsRaw.([]any)
 	if !ok || len(rawRuleSets) == 0 {
 		return
 	}
 
-	for _, raw := range rawRuleSets {
-		ruleSet, ok := raw.(map[string]any)
+	changed := false
+	for i, raw := range rawRuleSets {
+		ruleSet, ok := toOrderedMap(raw)
 		if !ok {
 			continue
 		}
-		rsType, _ := ruleSet["type"].(string)
+		rsType := getFieldString(ruleSet, "type")
 		if strings.ToLower(strings.TrimSpace(rsType)) != "local" {
 			continue
 		}
-		pathValue, _ := ruleSet["path"].(string)
+		pathValue := getFieldString(ruleSet, "path")
 		pathValue = strings.TrimSpace(pathValue)
 		if pathValue == "" || filepath.IsAbs(pathValue) {
 			continue
 		}
-		ruleSet["path"] = filepath.Clean(filepath.Join(baseDir, pathValue))
+		ruleSet.Set("path", filepath.Clean(filepath.Join(baseDir, pathValue)))
+		rawRuleSets[i] = ruleSet
+		changed = true
 	}
+
+	if changed {
+		route.Set("rule_set", rawRuleSets)
+		cfg.Set("route", route)
+	}
+}
+
+func toOrderedMap(v any) (orderedmap.OrderedMap, bool) {
+	switch m := v.(type) {
+	case orderedmap.OrderedMap:
+		return m, true
+	case *orderedmap.OrderedMap:
+		if m == nil {
+			return orderedmap.OrderedMap{}, false
+		}
+		return *m, true
+	default:
+		return orderedmap.OrderedMap{}, false
+	}
+}
+
+func getField(v any, key string) (any, bool) {
+	switch m := v.(type) {
+	case map[string]any:
+		value, ok := m[key]
+		return value, ok
+	case orderedmap.OrderedMap:
+		return m.Get(key)
+	case *orderedmap.OrderedMap:
+		if m == nil {
+			return nil, false
+		}
+		return m.Get(key)
+	default:
+		return nil, false
+	}
+}
+
+func getFieldString(v any, key string) string {
+	value, ok := getField(v, key)
+	if !ok {
+		return ""
+	}
+	s, _ := value.(string)
+	return s
 }
 
 func applyHaproxyModule(modules DeployModulesPayload) error {

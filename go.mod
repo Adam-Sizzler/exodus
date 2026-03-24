@@ -3,6 +3,7 @@ module cerberus-node
 go 1.25
 
 require (
+	github.com/iancoleman/orderedmap v0.3.0
 	golang.org/x/net v0.48.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516
 	google.golang.org/grpc v1.77.0
