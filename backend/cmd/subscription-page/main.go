@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/cerberus/subscription-page/backend/internal/config"
+	"github.com/cerberus/subscription-page/backend/internal/grpcapi"
+	"github.com/cerberus/subscription-page/backend/internal/grpcserver"
 	"github.com/cerberus/subscription-page/backend/internal/server"
 )
 
@@ -18,17 +20,19 @@ func main() {
 		log.Fatalf("[FATAL] %v", err)
 	}
 
-	application, err := server.New(cfg)
-	if err != nil {
-		log.Fatalf("[FATAL] %v", err)
+	log.Printf("[CONFIG] SUB_GRPC_PATH: %s", config.DisplayPrefix(cfg.SubPath))
+	log.Printf("[CONFIG] grpc target %s:%d", cfg.GRPCAddress, cfg.GRPCPort)
+	log.Printf("[CONFIG] http listening on :%s", cfg.AppPort)
+
+	nodeService := grpcapi.NewNodeServer(cfg.AppVersion)
+
+	application, appErr := server.New(cfg, nodeService)
+	if appErr != nil {
+		log.Fatalf("[FATAL] %v", appErr)
 	}
 
-	address := ":" + cfg.AppPort
-	log.Printf("[CONFIG] CUSTOM_SUB_PREFIX: %s", config.DisplayPrefix(cfg.CustomSubPrefix))
-	log.Printf("[CONFIG] listening on %s", address)
-
 	httpServer := &http.Server{
-		Addr:              address,
+		Addr:              ":" + cfg.AppPort,
 		Handler:           application,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
@@ -36,7 +40,22 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("[FATAL] listen failed: %v", err)
+	errCh := make(chan error, 2)
+
+	go func() {
+		if err := grpcserver.Start(cfg, nodeService); err != nil {
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	err = <-errCh
+	if err != nil {
+		log.Fatalf("[FATAL] server failed: %v", err)
 	}
 }

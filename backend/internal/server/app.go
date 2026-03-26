@@ -15,12 +15,18 @@ import (
 
 	"github.com/cerberus/subscription-page/backend/internal/assets"
 	"github.com/cerberus/subscription-page/backend/internal/config"
-	"github.com/cerberus/subscription-page/backend/internal/cerberus"
+	"github.com/cerberus/subscription-page/backend/internal/proto"
 	"github.com/cerberus/subscription-page/backend/internal/security"
-	"github.com/cerberus/subscription-page/backend/internal/subpages"
 )
 
 const sessionCookieName = "session"
+
+const (
+	bridgeOperationSubscriptionInfo    = "subscription_info"
+	bridgeOperationSubscriptionContent = "subscription_content"
+	bridgeOperationSubpageByShortUUID  = "subpage_config_for_short"
+	bridgeOperationSubpageByUUID       = "subpage_config_by_uuid"
+)
 
 var (
 	appConfigPaths = map[string]struct{}{
@@ -60,30 +66,45 @@ var (
 	}
 )
 
-type App struct {
-	cfg        config.Config
-	client     *cerberus.Client
-	assetsPath string
-	subpages   *subpages.Store
+type PanelBridge interface {
+	QueryPanel(context.Context, *proto.SubscriptionBridgeRequest) (*proto.SubscriptionBridgeResponse, error)
+	GetCachedSubpageConfig(uuid string) ([]byte, bool)
 }
 
-func New(cfg config.Config) (*App, error) {
-	client := cerberus.NewClient(cfg)
+type App struct {
+	cfg        config.Config
+	bridge     PanelBridge
+	assetsPath string
+}
 
-	version, err := client.GetMetadata(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("connection to Cerberus Panel failed: %w", err)
+type subpageConfigByShortEnvelope struct {
+	Response struct {
+		SubpageConfigUUID string `json:"subpageConfigUuid"`
+		WebpageAllowed    bool   `json:"webpageAllowed"`
+	} `json:"response"`
+}
+
+type baseSettingsEnvelope struct {
+	BaseSettings struct {
+		MetaTitle          string `json:"metaTitle"`
+		MetaDescription    string `json:"metaDescription"`
+		ShowConnectionKeys bool   `json:"showConnectionKeys"`
+	} `json:"baseSettings"`
+}
+
+type baseSettings struct {
+	MetaTitle          string
+	MetaDescription    string
+	ShowConnectionKeys bool
+}
+
+func New(cfg config.Config, bridge PanelBridge) (*App, error) {
+	if bridge == nil {
+		return nil, fmt.Errorf("panel bridge is required")
 	}
-
-	log.Printf("[OK] Connected to Cerberus v%s", version)
 
 	assetsPath, err := assets.DetectPath()
 	if err != nil {
-		return nil, err
-	}
-
-	store := subpages.NewStore(cfg)
-	if err := store.Load(context.Background(), client); err != nil {
 		return nil, err
 	}
 
@@ -91,9 +112,8 @@ func New(cfg config.Config) (*App, error) {
 
 	return &App{
 		cfg:        cfg,
-		client:     client,
+		bridge:     bridge,
 		assetsPath: assetsPath,
-		subpages:   store,
 	}, nil
 }
 
@@ -196,13 +216,14 @@ func (a *App) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encryptedUUID, _ := claims["su"].(string)
-	if encryptedUUID == "" {
+	subpageConfigUUID, _ := claims["subpageConfigUuid"].(string)
+	subpageConfigUUID = strings.TrimSpace(subpageConfigUUID)
+	if subpageConfigUUID == "" {
 		closeConnection(w)
 		return
 	}
 
-	subpageConfig, err := a.subpages.ResolveRawConfig(encryptedUUID)
+	subpageConfigRaw, err := a.getSubpageConfigByUUID(r.Context(), subpageConfigUUID)
 	if err != nil {
 		log.Printf("[ERROR] %v", err)
 		closeConnection(w)
@@ -211,7 +232,7 @@ func (a *App) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(subpageConfig)
+	_, _ = w.Write(subpageConfigRaw)
 }
 
 func (a *App) serveStatic(w http.ResponseWriter, r *http.Request, requestPath string) {
@@ -237,13 +258,10 @@ func (a *App) serveStatic(w http.ResponseWriter, r *http.Request, requestPath st
 		return
 	}
 
-	// Frontend bundle requests app-config from "/assets/.app-config-v2.json".
-	// Under prefix mode we rewrite it to "/<prefix>/assets/.app-config-v2.json"
-	// so Nginx with only "location /sub/" can serve it correctly.
-	if strings.Trim(a.cfg.CustomSubPrefix, "/") != "" && strings.HasSuffix(cleanFullPath, ".js") {
+	if a.cfg.SubPath != "" && strings.HasSuffix(cleanFullPath, ".js") {
 		content, readErr := os.ReadFile(cleanFullPath)
 		if readErr == nil {
-			prefix := "/" + strings.Trim(a.cfg.CustomSubPrefix, "/")
+			prefix := a.cfg.SubPath
 			rewritten := strings.ReplaceAll(
 				string(content),
 				`"/assets/.app-config-v2.json"`,
@@ -265,68 +283,107 @@ func (a *App) proxySubscription(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	body, headers, err := a.client.GetSubscription(
-		r.Context(),
-		clientIP,
-		shortUUID,
-		clientType,
-		r.Header,
-	)
+	bridgeResp, err := a.bridge.QueryPanel(r.Context(), &proto.SubscriptionBridgeRequest{
+		Operation:  bridgeOperationSubscriptionContent,
+		ShortUuid:  shortUUID,
+		ClientType: clientType,
+		ClientIp:   clientIP,
+		Headers:    toProtoHeaders(r.Header),
+	})
 	if err != nil {
 		log.Printf("[ERROR] get subscription failed for %s: %v", shortUUID, err)
 		closeConnection(w)
 		return
 	}
 
-	for key, values := range headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
+	if bridgeResp.GetStatusCode() < 200 || bridgeResp.GetStatusCode() >= 300 {
+		closeConnection(w)
+		return
+	}
+
+	for _, header := range bridgeResp.GetHeaders() {
+		if header == nil {
+			continue
 		}
+		key := strings.TrimSpace(header.GetKey())
+		if key == "" {
+			continue
+		}
+		w.Header().Add(key, header.GetValue())
 	}
 
 	w.WriteHeader(http.StatusOK)
 	if r.Method != http.MethodHead {
-		_, _ = w.Write(body)
+		_, _ = w.Write(bridgeResp.GetPayload())
 	}
 }
 
 func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r *http.Request) {
-	subscriptionData, err := a.client.GetSubscriptionInfo(r.Context(), clientIP, shortUUID)
+	subscriptionDataRaw, err := a.requestJSON(r.Context(), &proto.SubscriptionBridgeRequest{
+		Operation: bridgeOperationSubscriptionInfo,
+		ShortUuid: shortUUID,
+		ClientIp:  clientIP,
+	})
 	if err != nil {
 		log.Printf("[ERROR] get subscription info failed for %s: %v", shortUUID, err)
 		closeConnection(w)
 		return
 	}
 
-	subpageResponse, err := a.client.GetSubpageConfig(r.Context(), shortUUID, r.Header)
+	subpageEnvelopeRaw, err := a.requestJSON(r.Context(), &proto.SubscriptionBridgeRequest{
+		Operation: bridgeOperationSubpageByShortUUID,
+		ShortUuid: shortUUID,
+		Headers:   toProtoHeaders(r.Header),
+	})
 	if err != nil {
 		log.Printf("[ERROR] get subpage config failed for %s: %v", shortUUID, err)
 		closeConnection(w)
 		return
 	}
 
-	if !subpageResponse.WebpageAllowed {
+	var subscriptionData map[string]any
+	if err := json.Unmarshal(subscriptionDataRaw, &subscriptionData); err != nil {
+		log.Printf("[ERROR] failed to parse subscription info: %v", err)
+		closeConnection(w)
+		return
+	}
+
+	var subpageEnvelope subpageConfigByShortEnvelope
+	if err := json.Unmarshal(subpageEnvelopeRaw, &subpageEnvelope); err != nil {
+		log.Printf("[ERROR] failed to parse subpage envelope: %v", err)
+		closeConnection(w)
+		return
+	}
+
+	subpageConfigUUID := strings.TrimSpace(subpageEnvelope.Response.SubpageConfigUUID)
+	if subpageConfigUUID == "" {
+		log.Printf("[ERROR] empty subpage config uuid for %s", shortUUID)
+		closeConnection(w)
+		return
+	}
+
+	if !subpageEnvelope.Response.WebpageAllowed {
 		log.Printf("Webpage access is not allowed by Cerberus's SRR.")
 		a.proxySubscription(clientIP, shortUUID, "", w, r)
 		return
 	}
 
-	settings := a.subpages.BaseSettingsFor(subpageResponse.SubpageConfigUUID)
-	if !settings.ShowConnectionKeys {
-		hideConnectionKeys(subscriptionData)
-	}
-
-	encryptedUUID, err := a.subpages.EncryptResolvedUUID(subpageResponse.SubpageConfigUUID)
+	subpageConfigRaw, err := a.getSubpageConfigByUUID(r.Context(), subpageConfigUUID)
 	if err != nil {
-		log.Printf("[ERROR] failed to encrypt subpage config uuid: %v", err)
+		log.Printf("[ERROR] failed to load subpage config %s: %v", subpageConfigUUID, err)
 		closeConnection(w)
 		return
 	}
 
+	settings := parseBaseSettings(subpageConfigRaw)
+	if !settings.ShowConnectionKeys {
+		hideConnectionKeys(subscriptionData)
+	}
+
 	sessionToken, err := security.SignJWT(security.Claims{
-		"sessionId": security.RandomToken(32),
-		"su":        encryptedUUID,
-		"exp":       time.Now().Add(33 * time.Minute).Unix(),
+		"sessionId":         security.RandomToken(32),
+		"subpageConfigUuid": subpageConfigUUID,
+		"exp":               time.Now().Add(33 * time.Minute).Unix(),
 	}, a.cfg.SessionSecret)
 	if err != nil {
 		log.Printf("[ERROR] failed to build session jwt: %v", err)
@@ -339,10 +396,8 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Value:    sessionToken,
 		HttpOnly: true,
 		Secure:   true,
-		// Use root cookie path to support frontends that request app-config/assets
-		// from both "/assets/*" and "/<prefix>/assets/*".
-		Path:   "/",
-		MaxAge: 1800,
+		Path:     "/",
+		MaxAge:   1800,
 	})
 
 	panelData, err := json.Marshal(subscriptionData)
@@ -365,12 +420,42 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		settings.MetaDescription,
 		base64.StdEncoding.EncodeToString(panelData),
 	)
-	rendered = prefixAssetsInHTML(rendered, a.cfg.CustomSubPrefix)
+	rendered = prefixAssetsInHTML(rendered, a.cfg.SubPath)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	if r.Method != http.MethodHead {
 		_, _ = io.WriteString(w, rendered)
 	}
+}
+
+func (a *App) requestJSON(ctx context.Context, req *proto.SubscriptionBridgeRequest) ([]byte, error) {
+	resp, err := a.bridge.QueryPanel(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.GetStatusCode() < 200 || resp.GetStatusCode() >= 300 {
+		return nil, fmt.Errorf("panel returned status %d: %s", resp.GetStatusCode(), strings.TrimSpace(resp.GetError()))
+	}
+	if len(resp.GetPayload()) == 0 {
+		return nil, fmt.Errorf("empty panel payload")
+	}
+	return resp.GetPayload(), nil
+}
+
+func (a *App) getSubpageConfigByUUID(ctx context.Context, subpageConfigUUID string) ([]byte, error) {
+	if cached, ok := a.bridge.GetCachedSubpageConfig(subpageConfigUUID); ok && len(cached) > 0 {
+		return cached, nil
+	}
+
+	resp, err := a.requestJSON(ctx, &proto.SubscriptionBridgeRequest{
+		Operation:        bridgeOperationSubpageByUUID,
+		SubpageConfigUuid: subpageConfigUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (a *App) verifySessionCookie(r *http.Request) (security.Claims, error) {
@@ -383,12 +468,10 @@ func (a *App) verifySessionCookie(r *http.Request) (security.Claims, error) {
 }
 
 func (a *App) applyCustomPrefix(requestPath string) (string, bool) {
-	if a.cfg.CustomSubPrefix == "" {
+	if a.cfg.SubPath == "" {
 		return requestPath, true
 	}
 
-	// Compatibility mode: some frontend bundles request these routes from root
-	// even when CUSTOM_SUB_PREFIX is enabled.
 	if requestPath == "/assets" ||
 		requestPath == "/locales" ||
 		strings.HasPrefix(requestPath, "/assets/") ||
@@ -396,13 +479,12 @@ func (a *App) applyCustomPrefix(requestPath string) (string, bool) {
 		return requestPath, true
 	}
 
-	prefix := "/" + a.cfg.CustomSubPrefix
+	prefix := a.cfg.SubPath
 	if requestPath == prefix {
 		return "/", true
 	}
 
 	if !strings.HasPrefix(requestPath, prefix+"/") {
-		// Compatibility mode: allow direct short UUID routes without prefix.
 		segments := splitSegments(requestPath)
 		if len(segments) == 1 || len(segments) == 2 {
 			return requestPath, true
@@ -439,6 +521,8 @@ func (a *App) isGenericPath(requestPath string) bool {
 }
 
 func (a *App) resolveShortUUID(ctx context.Context, clientIP, shortUUID string) (string, error) {
+	_ = ctx
+	_ = clientIP
 	return shortUUID, nil
 }
 
@@ -455,4 +539,45 @@ func hideConnectionKeys(subscriptionData map[string]any) {
 
 	responseMap["links"] = []any{}
 	responseMap["ssConfLinks"] = map[string]any{}
+}
+
+func toProtoHeaders(headers http.Header) []*proto.Header {
+	if len(headers) == 0 {
+		return nil
+	}
+	result := make([]*proto.Header, 0, len(headers))
+	for key, values := range headers {
+		for _, value := range values {
+			result = append(result, &proto.Header{Key: key, Value: value})
+		}
+	}
+	return result
+}
+
+func parseBaseSettings(rawConfig []byte) baseSettings {
+	defaultSettings := baseSettings{
+		MetaTitle:          "Subscription Page",
+		MetaDescription:    "Subscription Page",
+		ShowConnectionKeys: false,
+	}
+
+	var envelope baseSettingsEnvelope
+	if err := json.Unmarshal(rawConfig, &envelope); err != nil {
+		return defaultSettings
+	}
+
+	metaTitle := strings.TrimSpace(envelope.BaseSettings.MetaTitle)
+	if metaTitle == "" {
+		metaTitle = defaultSettings.MetaTitle
+	}
+	metaDescription := strings.TrimSpace(envelope.BaseSettings.MetaDescription)
+	if metaDescription == "" {
+		metaDescription = defaultSettings.MetaDescription
+	}
+
+	return baseSettings{
+		MetaTitle:          metaTitle,
+		MetaDescription:    metaDescription,
+		ShowConnectionKeys: envelope.BaseSettings.ShowConnectionKeys,
+	}
 }
