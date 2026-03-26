@@ -64,7 +64,9 @@ services:
     <<: [*common, *logging, *env]
     environment:
       - APP_PORT_SUB=${APP_PORT_SUB:-3010}
-      - CUSTOM_SUB_PREFIX=${CUSTOM_SUB_PREFIX:-}
+      - SUB_GRPC_ADDRESS=${SUB_GRPC_ADDRESS:-0.0.0.0}
+      - SUB_GRPC_PORT=${SUB_GRPC_PORT:-2222}
+      - SUB_GRPC_PATH=${SUB_GRPC_PATH:-/}
     ports:
       - 127.0.0.1:${APP_PORT_SUB:-3010}:${APP_PORT_SUB:-3010}
     depends_on:

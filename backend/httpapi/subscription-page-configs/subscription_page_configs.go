@@ -16,6 +16,7 @@ import (
 	"cerberus/backend/db"
 	dbmanager "cerberus/backend/db/manager"
 	"cerberus/backend/httpapi/shared"
+	monitor "cerberus/backend/subscriptionnodes"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -248,6 +249,15 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{
 		"response": created,
 	})
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, created.UUID)
+	if targetErr != nil {
+		cfg.Logger.Warn("Failed to resolve sub nodes for created subpage config push", "subpage_config_uuid", created.UUID, "error", targetErr)
+		return
+	}
+	if len(targetNodeUUIDs) == 0 {
+		return
+	}
+	monitor.RequestSubNodeSubpageConfigPush(created.UUID, created.Config, targetNodeUUIDs...)
 }
 
 func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
@@ -338,6 +348,22 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": updated,
 	})
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, updated.UUID)
+	if targetErr != nil {
+		cfg.Logger.Warn("Failed to resolve sub nodes for updated subpage config push", "subpage_config_uuid", updated.UUID, "error", targetErr)
+		return
+	}
+	if len(targetNodeUUIDs) == 0 {
+		cfg.Logger.Debug("No linked subscription nodes for updated subpage config push", "subpage_config_uuid", updated.UUID)
+		return
+	}
+	cfg.Logger.Info(
+		"Dispatching updated subpage config push",
+		"subpage_config_uuid", updated.UUID,
+		"target_nodes_count", len(targetNodeUUIDs),
+		"target_node_uuids", targetNodeUUIDs,
+	)
+	monitor.RequestSubNodeSubpageConfigPush(updated.UUID, updated.Config, targetNodeUUIDs...)
 }
 
 func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, uuidStr string) {
@@ -348,6 +374,12 @@ func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 
 	ctx := r.Context()
 	deleted := false
+
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, uuidStr)
+	if targetErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to resolve linked subscription nodes", targetErr, cfg)
+		return
+	}
 
 	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
 		result, err := dbExec.ExecContext(ctx, `DELETE FROM subscription_page_config WHERE uuid = ?`, uuidStr)
@@ -373,6 +405,10 @@ func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": subpageConfigDeleteResponse{IsDeleted: true},
 	})
+	if len(targetNodeUUIDs) == 0 {
+		return
+	}
+	monitor.RequestSubNodeSubpageConfigPush(uuidStr, nil, targetNodeUUIDs...)
 }
 
 func handleReorderSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
@@ -493,6 +529,15 @@ func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, m
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": created,
 	})
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, created.UUID)
+	if targetErr != nil {
+		cfg.Logger.Warn("Failed to resolve sub nodes for cloned subpage config push", "subpage_config_uuid", created.UUID, "error", targetErr)
+		return
+	}
+	if len(targetNodeUUIDs) == 0 {
+		return
+	}
+	monitor.RequestSubNodeSubpageConfigPush(created.UUID, created.Config, targetNodeUUIDs...)
 }
 
 func fetchSubscriptionPageConfig(ctx context.Context, manager *dbmanager.DatabaseManager, uuidStr string, withConfig bool) (SubscriptionPageConfig, error) {
@@ -548,6 +593,39 @@ func fetchDefaultSubpageConfig(ctx context.Context, dbExec dbmanager.DBExecutor)
 
 	// fallback to embedded default
 	return json.RawMessage(db.DefaultSubscriptionPageConfig), nil
+}
+
+func getSubNodeUUIDsBySubpageConfigUUID(ctx context.Context, manager *dbmanager.DatabaseManager, subpageConfigUUID string) ([]string, error) {
+	nodeUUIDs := make([]string, 0)
+	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
+		rows, err := dbExec.QueryContext(ctx, `
+			SELECT node_uuid
+			FROM sub_nodes_to_subscription_page_config
+			WHERE subpage_config_uuid = ?
+		`, subpageConfigUUID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var nodeUUID string
+			if err := rows.Scan(&nodeUUID); err != nil {
+				return err
+			}
+			nodeUUID = strings.TrimSpace(nodeUUID)
+			if nodeUUID != "" {
+				nodeUUIDs = append(nodeUUIDs, nodeUUID)
+			}
+		}
+
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return nodeUUIDs, nil
 }
 
 func normalizeSubpageConfigName(name string) (string, error) {

@@ -25,6 +25,7 @@ import (
 	subscriptionpageconfigs "cerberus/backend/httpapi/subscription-page-configs"
 	subscriptionsettings "cerberus/backend/httpapi/subscription-settings"
 	subscriptiontemplate "cerberus/backend/httpapi/subscription-template"
+	subscriptionconnections "cerberus/backend/httpapi/subscriptionconnections"
 	subscriptionrequesthistory "cerberus/backend/httpapi/subscriptionrequesthistory"
 	"cerberus/backend/httpapi/system"
 	"cerberus/backend/httpapi/users"
@@ -62,6 +63,13 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/nodes/bulk-actions/", nodes.NodesBulkActionsHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes/tags", nodes.NodesTagsHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes-with-config", squads.NodesWithConfigHandler(manager, cfg))
+
+	mux.HandleFunc("/api/subscription-connections", subscriptionconnections.NodesHandler(manager, cfg))
+	mux.HandleFunc("/api/subscription-connections/", subscriptionconnections.NodeByUUIDHandler(manager, cfg))
+	mux.HandleFunc("/api/subscription-connections/actions/", subscriptionconnections.NodesActionsHandler(manager, cfg))
+	mux.HandleFunc("/api/subscription-connections/bulk-actions", subscriptionconnections.NodesBulkActionsHandler(manager, cfg))
+	mux.HandleFunc("/api/subscription-connections/bulk-actions/", subscriptionconnections.NodesBulkActionsHandler(manager, cfg))
+	mux.HandleFunc("/api/subscription-connections/tags", subscriptionconnections.NodesTagsHandler(manager, cfg))
 
 	mux.HandleFunc("/api/hosts", hosts.HostsHandler(manager, cfg))
 	mux.HandleFunc("/api/hosts/", hosts.HostByUUIDHandler(manager, cfg))

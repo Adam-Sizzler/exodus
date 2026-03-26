@@ -25,6 +25,7 @@ import (
 	users "cerberus/backend/nodes"
 	"cerberus/backend/redisqueue"
 	"cerberus/backend/srslists"
+	"cerberus/backend/subscriptionnodes"
 	"cerberus/constant"
 )
 
@@ -261,6 +262,8 @@ func main() {
 	// Create and start node monitor (dynamically manages nodes from DB)
 	nodeMonitor := users.NewNodeMonitor(manager, &cfg)
 	users.RegisterGlobalNodeMonitor(nodeMonitor)
+	subNodeMonitor := subscriptionnodes.NewSubNodeMonitor(manager, &cfg)
+	subscriptionnodes.RegisterGlobalSubNodeMonitor(subNodeMonitor)
 
 	redisWorker, err := redisqueue.NewWorker(&cfg, manager)
 	if err != nil {
@@ -272,11 +275,12 @@ func main() {
 
 	// Prepare wg
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go startWebServer(ctx, manager, &cfg, &wg)
 	go startMetricsServer(ctx, manager, &cfg, &wg)
 	go nodeMonitor.Start(ctx, &wg)
+	go subNodeMonitor.Start(ctx, &wg)
 	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
@@ -290,6 +294,7 @@ func main() {
 
 	// Stop node monitor
 	nodeMonitor.Stop()
+	subNodeMonitor.Stop()
 
 	// Закрываем DatabaseManager
 	manager.Close()

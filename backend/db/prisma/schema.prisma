@@ -160,6 +160,7 @@ model Keygen {
   caKey      String? @map("ca_key")
   clientCert String? @map("client_cert")
   clientKey  String? @map("client_key")
+  grpcAuthToken String @default(dbgenerated("encode(gen_random_bytes(32), 'hex'::text)")) @map("grpc_auth_token")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")

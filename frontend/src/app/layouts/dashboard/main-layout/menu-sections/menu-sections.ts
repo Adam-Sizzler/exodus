@@ -150,6 +150,14 @@ export const useMenuSections = (): MenuItem[] => {
                     id: 'subscription-settings'
                 },
                 {
+                    name: t('constants.subscription-connections', {
+                        defaultValue: 'Подключения'
+                    }),
+                    href: ROUTES.DASHBOARD.MANAGEMENT.SUBSCRIPTION_CONNECTIONS,
+                    icon: PiCpu,
+                    id: 'subscription-connections'
+                },
+                {
                     name: t('constants.templates'),
                     href: ROUTES.DASHBOARD.TEMPLATES.ROOT,
                     icon: TbFolder,

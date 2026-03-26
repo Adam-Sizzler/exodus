@@ -1,0 +1,80 @@
+import { Center, Group, Stack, Text } from '@mantine/core'
+import { GetAllNodesCommand } from '@cerberus/backend-contract'
+import { PiEmptyDuotone } from 'react-icons/pi'
+import { TbServer, TbServer2 } from 'react-icons/tb'
+import ReactCountryFlag from 'react-country-flag'
+import { Spotlight } from '@mantine/spotlight'
+import { useTranslation } from 'node_modules/react-i18next'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+
+import { NodeStatusBadgeWidget } from '../node-status-badge'
+
+interface IProps {
+    nodes: GetAllNodesCommand.Response['response']
+}
+
+export const NodesSpotlightSearchWidget = ({ nodes }: IProps) => {
+    const openModalWithData = useModalsStoreOpenWithData()
+
+    const { t } = useTranslation()
+
+    const handleViewNode = (value: null | string) => {
+        if (!value) {
+            return
+        }
+
+        const node = nodes.find((node) => node.uuid === value)
+        if (node) {
+            openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, { nodeUuid: node.uuid })
+        }
+    }
+
+    return (
+        <Spotlight
+            actions={nodes.map((node) => ({
+                label: node.name,
+                description: `${node.address} ${node.provider?.name ? `| ${node.provider.name} | ${node.uuid}` : `| ${node.uuid}`}`,
+                id: node.uuid,
+                leftSection:
+                    node.countryCode && node.countryCode !== 'XX' ? (
+                        <ReactCountryFlag
+                            countryCode={node.countryCode}
+                            style={{
+                                fontSize: '1.1em',
+                                borderRadius: '2px'
+                            }}
+                        />
+                    ) : (
+                        <TbServer color="var(--mantine-color-gray-5)" size={16} />
+                    ),
+                rightSection: (
+                    <Group>
+                        <NodeStatusBadgeWidget node={node} withText={false} />
+                    </Group>
+                ),
+                onClick: () => handleViewNode(node.uuid)
+            }))}
+            centered
+            highlightQuery
+            maxHeight={350}
+            nothingFound={
+                <Center h="230">
+                    <Stack align="center" gap="xs">
+                        <PiEmptyDuotone color="var(--mantine-color-gray-5)" size="3rem" />
+                        <Text c="dimmed" size="sm">
+                            {t('nodes-spotlight-search.widget.no-nodes-found')}
+                        </Text>
+                    </Stack>
+                </Center>
+            }
+            overlayProps={{ backgroundOpacity: 0.6, blur: 0 }}
+            scrollable
+            searchProps={{
+                leftSection: <TbServer2 size={20} />,
+                placeholder: t('nodes-spotlight-search.widget.search-by-name-or-address')
+            }}
+            shortcut={['mod + F']}
+        />
+    )
+}

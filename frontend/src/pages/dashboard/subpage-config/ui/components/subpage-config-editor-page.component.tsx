@@ -46,7 +46,6 @@ import {
 import {
     ImportConfigSectionsModalContent,
     ImportMode,
-    showSubpageConfigSavedModal,
     showValidationErrorsModal
 } from '@widgets/dashboard/subpage-configs/subpage-config-editor/modals'
 import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
@@ -86,8 +85,6 @@ export const SubpageConfigEditorPageComponent = (props: Props) => {
                         data
                     )
                     form.resetDirty()
-
-                    showSubpageConfigSavedModal(t)
                 }
             }
         })

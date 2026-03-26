@@ -84,11 +84,47 @@ message StreamConfig {
   int32 interval_seconds = 1;
 }
 
+// Header represents a single HTTP-style header line.
+message Header {
+  string key = 1;
+  string value = 2;
+}
+
+// SubscriptionBridgeRequest is sent by subscription node to panel over stream.
+message SubscriptionBridgeRequest {
+  string request_id = 1;
+  string operation = 2;
+  string short_uuid = 3;
+  string client_type = 4;
+  string client_ip = 5;
+  string subpage_config_uuid = 6;
+  bytes payload = 7;
+  repeated Header headers = 8;
+  string api_token = 9;
+}
+
+// SubscriptionBridgeResponse is sent by panel back to subscription node.
+message SubscriptionBridgeResponse {
+  string request_id = 1;
+  int32 status_code = 2;
+  string error = 3;
+  bytes payload = 4;
+  repeated Header headers = 5;
+}
+
+// SubpageConfigUpdate pushes fresh subpage config payload to subscription node.
+message SubpageConfigUpdate {
+  string uuid = 1;
+  bytes config = 2;
+}
+
 // NodeDataRequest is the request message for StreamNodeData.
 message NodeDataRequest {
   oneof request {
     StreamConfig config = 1;
     ListUsersRequest list_users = 2;
+    SubscriptionBridgeResponse subscription_response = 3;
+    SubpageConfigUpdate subpage_config_update = 4;
   }
 }
 
@@ -98,6 +134,7 @@ message NodeDataResponse {
     GetApiStatsResponse stats = 1;
     ListUsersResponse users = 2;
     GetLogDataResponse log_data = 3;
+    SubscriptionBridgeRequest subscription_request = 4;
   }
 }
 

@@ -18,6 +18,7 @@ export const ROUTES = {
             NODES_STATS: '/dashboard/management/stats/nodes',
             NODES_METRICS: '/dashboard/management/metrics/nodes',
             SUBSCRIPTION_SETTINGS: '/dashboard/management/subscription-settings',
+            SUBSCRIPTION_CONNECTIONS: '/dashboard/management/subscription-connections',
             RESPONSE_RULES: '/dashboard/management/response-rules',
             CONFIG_PROFILES: '/dashboard/management/config-profiles',
             CONFIG_PROFILE_BY_UUID: '/dashboard/management/config-profiles/:uuid',

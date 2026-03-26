@@ -20,6 +20,7 @@ import { systemQueryKeys } from './system/system.query.hooks'
 import { usersQueryKeys } from './users/users.query.hooks'
 import { hostsQueryKeys } from './hosts/hosts.query.hooks'
 import { nodesQueryKeys } from './nodes/nodes.query.hooks'
+import { subscriptionConnectionsQueryKeys } from './subscription-connections/subscription-connections.query.hooks'
 import { authQueryKeys } from './auth/auth.query.hooks'
 
 export const QueryKeys = mergeQueryKeys(
@@ -27,6 +28,7 @@ export const QueryKeys = mergeQueryKeys(
     systemQueryKeys,
     hostsQueryKeys,
     nodesQueryKeys,
+    subscriptionConnectionsQueryKeys,
     apiTokensQueryKeys,
     authQueryKeys,
     subscriptionTemplateQueryKeys,

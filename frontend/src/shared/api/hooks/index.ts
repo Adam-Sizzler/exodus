@@ -31,6 +31,8 @@ export * from './keys-factory'
 export * from './nodes/nodes.mutation.hooks'
 
 export * from './nodes/nodes.query.hooks'
+export * from './subscription-connections/subscription-connections.mutation.hooks'
+export * from './subscription-connections/subscription-connections.query.hooks'
 export * from './passkeys/passkeys.hooks'
 
 export * from './passkeys/passkeys.query.hooks'
