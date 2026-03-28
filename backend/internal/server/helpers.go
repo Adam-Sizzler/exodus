@@ -81,6 +81,14 @@ func containsDotfile(requestPath string) bool {
 }
 
 func closeConnection(w http.ResponseWriter) {
+	if hijacker, ok := w.(http.Hijacker); ok {
+		conn, _, err := hijacker.Hijack()
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+	}
+	w.Header().Set("Connection", "close")
 	w.WriteHeader(http.StatusNotFound)
 }
 

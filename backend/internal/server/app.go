@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cerberus/subscription-page/backend/internal/assets"
@@ -75,6 +76,15 @@ type App struct {
 	cfg        config.Config
 	bridge     PanelBridge
 	assetsPath string
+
+	subscriptionCacheMu sync.RWMutex
+	subscriptionCache   map[string]cachedSubscriptionContent
+
+	subscriptionInfoCacheMu sync.RWMutex
+	subscriptionInfoCache   map[string]cachedJSONPayload
+
+	subpageByShortCacheMu sync.RWMutex
+	subpageByShortCache   map[string]cachedJSONPayload
 }
 
 type subpageConfigByShortEnvelope struct {
@@ -98,6 +108,17 @@ type baseSettings struct {
 	ShowConnectionKeys bool
 }
 
+type cachedSubscriptionContent struct {
+	Payload   []byte
+	Headers   http.Header
+	UpdatedAt time.Time
+}
+
+type cachedJSONPayload struct {
+	Payload   []byte
+	UpdatedAt time.Time
+}
+
 func New(cfg config.Config, bridge PanelBridge) (*App, error) {
 	if bridge == nil {
 		return nil, fmt.Errorf("panel bridge is required")
@@ -114,6 +135,9 @@ func New(cfg config.Config, bridge PanelBridge) (*App, error) {
 		cfg:        cfg,
 		bridge:     bridge,
 		assetsPath: assetsPath,
+		subscriptionCache:     make(map[string]cachedSubscriptionContent),
+		subscriptionInfoCache: make(map[string]cachedJSONPayload),
+		subpageByShortCache:   make(map[string]cachedJSONPayload),
 	}, nil
 }
 
@@ -283,6 +307,7 @@ func (a *App) proxySubscription(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	cacheKey := subscriptionCacheKey(shortUUID, clientType)
 	bridgeResp, err := a.bridge.QueryPanel(r.Context(), &proto.SubscriptionBridgeRequest{
 		Operation:  bridgeOperationSubscriptionContent,
 		ShortUuid:  shortUUID,
@@ -292,30 +317,29 @@ func (a *App) proxySubscription(
 	})
 	if err != nil {
 		log.Printf("[ERROR] get subscription failed for %s: %v", shortUUID, err)
+		if cached, ok := a.getCachedSubscriptionContent(cacheKey); ok {
+			log.Printf("[WARN] serving cached subscription content for %s (client_type=%q, age=%s)", shortUUID, clientType, time.Since(cached.UpdatedAt).Round(time.Second))
+			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
+			return
+		}
 		closeConnection(w)
 		return
 	}
 
-	if bridgeResp.GetStatusCode() < 200 || bridgeResp.GetStatusCode() >= 300 {
+	if bridgeResp.GetStatusCode() < 200 || bridgeResp.GetStatusCode() >= 300 || len(bridgeResp.GetPayload()) == 0 {
+		if cached, ok := a.getCachedSubscriptionContent(cacheKey); ok {
+			log.Printf("[WARN] serving cached subscription content for %s due panel status=%d (client_type=%q, age=%s)", shortUUID, bridgeResp.GetStatusCode(), clientType, time.Since(cached.UpdatedAt).Round(time.Second))
+			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
+			return
+		}
 		closeConnection(w)
 		return
 	}
 
-	for _, header := range bridgeResp.GetHeaders() {
-		if header == nil {
-			continue
-		}
-		key := strings.TrimSpace(header.GetKey())
-		if key == "" {
-			continue
-		}
-		w.Header().Add(key, header.GetValue())
-	}
-
-	w.WriteHeader(http.StatusOK)
-	if r.Method != http.MethodHead {
-		_, _ = w.Write(bridgeResp.GetPayload())
-	}
+	headers := protoHeadersToHTTPHeader(bridgeResp.GetHeaders())
+	payload := cloneBytes(bridgeResp.GetPayload())
+	a.setCachedSubscriptionContent(cacheKey, payload, headers)
+	writeSubscriptionResponse(w, r, headers, payload)
 }
 
 func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r *http.Request) {
@@ -326,8 +350,15 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	})
 	if err != nil {
 		log.Printf("[ERROR] get subscription info failed for %s: %v", shortUUID, err)
-		closeConnection(w)
-		return
+		if cached, ok := a.getCachedSubscriptionInfo(shortUUID); ok {
+			log.Printf("[WARN] serving cached subscription info for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+			subscriptionDataRaw = cached.Payload
+		} else {
+			closeConnection(w)
+			return
+		}
+	} else {
+		a.setCachedSubscriptionInfo(shortUUID, subscriptionDataRaw)
 	}
 
 	subpageEnvelopeRaw, err := a.requestJSON(r.Context(), &proto.SubscriptionBridgeRequest{
@@ -337,8 +368,15 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	})
 	if err != nil {
 		log.Printf("[ERROR] get subpage config failed for %s: %v", shortUUID, err)
-		closeConnection(w)
-		return
+		if cached, ok := a.getCachedSubpageByShort(shortUUID); ok {
+			log.Printf("[WARN] serving cached subpage config envelope for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+			subpageEnvelopeRaw = cached.Payload
+		} else {
+			closeConnection(w)
+			return
+		}
+	} else {
+		a.setCachedSubpageByShort(shortUUID, subpageEnvelopeRaw)
 	}
 
 	var subscriptionData map[string]any
@@ -580,4 +618,157 @@ func parseBaseSettings(rawConfig []byte) baseSettings {
 		MetaDescription:    metaDescription,
 		ShowConnectionKeys: envelope.BaseSettings.ShowConnectionKeys,
 	}
+}
+
+func subscriptionCacheKey(shortUUID, clientType string) string {
+	normalizedType := strings.ToLower(strings.TrimSpace(clientType))
+	if normalizedType == "" {
+		normalizedType = "_"
+	}
+	return strings.TrimSpace(shortUUID) + "|" + normalizedType
+}
+
+func (a *App) setCachedSubscriptionContent(key string, payload []byte, headers http.Header) {
+	if key == "" || len(payload) == 0 {
+		return
+	}
+
+	a.subscriptionCacheMu.Lock()
+	a.subscriptionCache[key] = cachedSubscriptionContent{
+		Payload:   cloneBytes(payload),
+		Headers:   cloneHeader(headers),
+		UpdatedAt: time.Now().UTC(),
+	}
+	a.subscriptionCacheMu.Unlock()
+}
+
+func (a *App) getCachedSubscriptionContent(key string) (cachedSubscriptionContent, bool) {
+	if key == "" {
+		return cachedSubscriptionContent{}, false
+	}
+
+	a.subscriptionCacheMu.RLock()
+	cached, ok := a.subscriptionCache[key]
+	a.subscriptionCacheMu.RUnlock()
+	if !ok || len(cached.Payload) == 0 {
+		return cachedSubscriptionContent{}, false
+	}
+
+	return cachedSubscriptionContent{
+		Payload:   cloneBytes(cached.Payload),
+		Headers:   cloneHeader(cached.Headers),
+		UpdatedAt: cached.UpdatedAt,
+	}, true
+}
+
+func (a *App) setCachedSubscriptionInfo(shortUUID string, payload []byte) {
+	if strings.TrimSpace(shortUUID) == "" || len(payload) == 0 {
+		return
+	}
+
+	a.subscriptionInfoCacheMu.Lock()
+	a.subscriptionInfoCache[shortUUID] = cachedJSONPayload{
+		Payload:   cloneBytes(payload),
+		UpdatedAt: time.Now().UTC(),
+	}
+	a.subscriptionInfoCacheMu.Unlock()
+}
+
+func (a *App) getCachedSubscriptionInfo(shortUUID string) (cachedJSONPayload, bool) {
+	if strings.TrimSpace(shortUUID) == "" {
+		return cachedJSONPayload{}, false
+	}
+
+	a.subscriptionInfoCacheMu.RLock()
+	cached, ok := a.subscriptionInfoCache[shortUUID]
+	a.subscriptionInfoCacheMu.RUnlock()
+	if !ok || len(cached.Payload) == 0 {
+		return cachedJSONPayload{}, false
+	}
+
+	return cachedJSONPayload{
+		Payload:   cloneBytes(cached.Payload),
+		UpdatedAt: cached.UpdatedAt,
+	}, true
+}
+
+func (a *App) setCachedSubpageByShort(shortUUID string, payload []byte) {
+	if strings.TrimSpace(shortUUID) == "" || len(payload) == 0 {
+		return
+	}
+
+	a.subpageByShortCacheMu.Lock()
+	a.subpageByShortCache[shortUUID] = cachedJSONPayload{
+		Payload:   cloneBytes(payload),
+		UpdatedAt: time.Now().UTC(),
+	}
+	a.subpageByShortCacheMu.Unlock()
+}
+
+func (a *App) getCachedSubpageByShort(shortUUID string) (cachedJSONPayload, bool) {
+	if strings.TrimSpace(shortUUID) == "" {
+		return cachedJSONPayload{}, false
+	}
+
+	a.subpageByShortCacheMu.RLock()
+	cached, ok := a.subpageByShortCache[shortUUID]
+	a.subpageByShortCacheMu.RUnlock()
+	if !ok || len(cached.Payload) == 0 {
+		return cachedJSONPayload{}, false
+	}
+
+	return cachedJSONPayload{
+		Payload:   cloneBytes(cached.Payload),
+		UpdatedAt: cached.UpdatedAt,
+	}, true
+}
+
+func writeSubscriptionResponse(w http.ResponseWriter, r *http.Request, headers http.Header, payload []byte) {
+	for key, values := range headers {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(payload)
+	}
+}
+
+func protoHeadersToHTTPHeader(headers []*proto.Header) http.Header {
+	result := make(http.Header)
+	for _, header := range headers {
+		if header == nil {
+			continue
+		}
+		key := strings.TrimSpace(header.GetKey())
+		if key == "" {
+			continue
+		}
+		result.Add(key, header.GetValue())
+	}
+	return result
+}
+
+func cloneBytes(in []byte) []byte {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]byte, len(in))
+	copy(out, in)
+	return out
+}
+
+func cloneHeader(in http.Header) http.Header {
+	if len(in) == 0 {
+		return make(http.Header)
+	}
+	out := make(http.Header, len(in))
+	for key, values := range in {
+		copied := make([]string, len(values))
+		copy(copied, values)
+		out[key] = copied
+	}
+	return out
 }
