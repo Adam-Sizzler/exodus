@@ -13,19 +13,6 @@ normalize_version() {
     printf '%s' "${1:-}" | sed 's/^v//'
 }
 
-resolve_sb_arch() {
-    case "$(uname -m)" in
-        x86_64|amd64) echo "amd64" ;;
-        aarch64|arm64) echo "arm64" ;;
-        armv7l|armv6l|arm) echo "arm" ;;
-        i386|i686|386) echo "386" ;;
-        *)
-            echo "[Entrypoint] Unsupported CPU architecture: $(uname -m)" >&2
-            exit 1
-            ;;
-    esac
-}
-
 installed_singbox_version() {
     if [ ! -x /usr/local/bin/sing-box ]; then
         return 0
@@ -66,7 +53,7 @@ ensure_singbox_version() {
         return 0
     fi
 
-    sb_arch="${SB_ARCH:-$(resolve_sb_arch)}"
+    sb_arch="amd64"
     url="https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${desired_tag}/sing-box-linux-${sb_arch}"
     tmp_file="/usr/local/bin/.sing-box-${desired_tag}-${sb_arch}.tmp"
 

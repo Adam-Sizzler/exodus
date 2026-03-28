@@ -17,6 +17,7 @@ COPY . .
 
 RUN CGO_ENABLED=1 \
     GOOS=linux \
+    GOARCH=amd64 \
     go build \
         -tags "${BUILD_TAGS}" \
         -trimpath \
@@ -31,20 +32,12 @@ RUN CGO_ENABLED=1 \
 
 FROM alpine:3.23
 
-ARG TARGETARCH
 ARG SINGBOX_VERSION=v1.13.3
 ENV SINGBOX_VERSION=${SINGBOX_VERSION}
 
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor
 
-RUN case "${TARGETARCH}" in \
-      amd64) SB_ARCH="amd64" ;; \
-      arm64) SB_ARCH="arm64" ;; \
-      arm) SB_ARCH="arm" ;; \
-      386) SB_ARCH="386" ;; \
-      *) echo "Unsupported TARGETARCH: ${TARGETARCH}" && exit 1 ;; \
-    esac && \
-    curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-${SB_ARCH}" \
+RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
       -o /usr/local/bin/sing-box && \
     chmod +x /usr/local/bin/sing-box
 
