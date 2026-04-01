@@ -53,7 +53,7 @@ func Start(cfg config.Config, nodeService proto.NodeServiceServer) error {
 		if pathPrefix != "" {
 			trimmedPath, ok := trimGRPCPathPrefix(r.URL.Path, pathPrefix)
 			if !ok {
-				http.NotFound(w, r)
+				abortConnection(w)
 				return
 			}
 			r.URL.Path = trimmedPath
@@ -168,4 +168,15 @@ func trimGRPCPathPrefix(path, prefix string) (string, bool) {
 		return "/", true
 	}
 	return trimmed, true
+}
+
+func abortConnection(w http.ResponseWriter) {
+	if hijacker, ok := w.(http.Hijacker); ok {
+		conn, _, err := hijacker.Hijack()
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+	}
+	panic(http.ErrAbortHandler)
 }

@@ -314,9 +314,8 @@ func (s *NodeServer) buildStats() []*proto.Stat {
 	}
 
 	return []*proto.Stat{
-		{Name: "singbox_version", Value: "subscription-page"},
-		{Name: "node_version", Value: s.version},
-		{Name: "singbox_uptime", Value: strconv.FormatInt(uptimeSeconds, 10)},
+		{Name: "sub_node_version", Value: s.version},
+		{Name: "sub_node_uptime", Value: strconv.FormatInt(uptimeSeconds, 10)},
 		{Name: "cpu_count", Value: strconv.Itoa(s.cpuCount)},
 		{Name: "cpu_model", Value: s.cpuModel},
 		{Name: "total_ram", Value: s.totalRAM},

@@ -88,8 +88,7 @@ func closeConnection(w http.ResponseWriter) {
 			return
 		}
 	}
-	w.Header().Set("Connection", "close")
-	w.WriteHeader(http.StatusNotFound)
+	panic(http.ErrAbortHandler)
 }
 
 func cookiePathForPrefix(prefix string) string {
