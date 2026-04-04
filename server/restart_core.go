@@ -11,12 +11,12 @@ import (
 	"cerberus-node/config"
 )
 
-func restartCoreProcess(cfg *config.NodeConfig) error {
-	cfg.Logger.Debug("Restarting sing-box via supervisorctl")
-	return restartViaSupervisor(cfg)
+func reloadCoreProcess(cfg *config.NodeConfig) error {
+	cfg.Logger.Debug("Reloading sing-box via supervisorctl signal HUP")
+	return reloadViaSupervisorHUP(cfg)
 }
 
-func restartViaSupervisor(cfg *config.NodeConfig) error {
+func reloadViaSupervisorHUP(cfg *config.NodeConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -30,13 +30,13 @@ func restartViaSupervisor(cfg *config.NodeConfig) error {
 	if pass := strings.TrimSpace(os.Getenv("SUPERVISORD_PASSWORD")); pass != "" {
 		args = append(args, "-p", pass)
 	}
-	args = append(args, "restart", "singbox")
+	args = append(args, "signal", "HUP", "singbox")
 
 	out, err := exec.CommandContext(ctx, "supervisorctl", args...).CombinedOutput()
 	if err != nil {
-		cfg.Logger.Error("supervisorctl restart failed", "error", err, "output", strings.TrimSpace(string(out)))
-		return fmt.Errorf("restart singbox via supervisorctl failed: %w: %s", err, strings.TrimSpace(string(out)))
+		cfg.Logger.Error("supervisorctl signal HUP failed", "error", err, "output", strings.TrimSpace(string(out)))
+		return fmt.Errorf("reload singbox via supervisorctl signal HUP failed: %w: %s", err, strings.TrimSpace(string(out)))
 	}
-	cfg.Logger.Info("Core restarted via supervisorctl", "output", strings.TrimSpace(string(out)))
+	cfg.Logger.Info("Core reloaded via supervisorctl signal HUP", "output", strings.TrimSpace(string(out)))
 	return nil
 }

@@ -128,13 +128,13 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 
 	restarted := false
 	if shouldRestart {
-		s.Cfg.Logger.Info("Restart requested by deploy payload")
-		if err := restartCoreProcess(s.Cfg); err != nil {
+		s.Cfg.Logger.Info("Core reload requested by deploy payload")
+		if err := reloadCoreProcess(s.Cfg); err != nil {
 			return DeploySummary{}, err
 		}
 		restarted = true
 	} else {
-		s.Cfg.Logger.Info("Restart skipped by deploy payload")
+		s.Cfg.Logger.Info("Core reload skipped by deploy payload")
 	}
 
 	return DeploySummary{
