@@ -9,7 +9,7 @@ import (
 	"cerberus-node/config"
 )
 
-const srsRefreshInterval = 12 * time.Hour
+const srsRefreshInterval = 24 * time.Hour
 
 func (s *NodeServer) startSRSAutoUpdater() {
 	if s == nil || s.Cfg == nil {
@@ -17,8 +17,9 @@ func (s *NodeServer) startSRSAutoUpdater() {
 	}
 
 	s.Cfg.Logger.Info("SRS auto updater started", "interval", srsRefreshInterval.String())
-
 	go func() {
+		s.refreshSRSFromManifest()
+
 		ticker := time.NewTicker(srsRefreshInterval)
 		defer ticker.Stop()
 
@@ -34,25 +35,25 @@ func (s *NodeServer) refreshSRSFromManifest() {
 	lists, err := loadSRSManifest()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			s.Cfg.Logger.Debug("SRS manifest not found, skipping periodic refresh", "path", manifestPath)
+			s.Cfg.Logger.Debug("SRS manifest not found, skipping refresh", "path", manifestPath)
 			return
 		}
-		s.Cfg.Logger.Warn("Failed to read SRS manifest for periodic refresh", "path", manifestPath, "error", err)
+		s.Cfg.Logger.Warn("Failed to read SRS manifest for refresh", "path", manifestPath, "error", err)
 		return
 	}
 	if len(lists) == 0 {
-		s.Cfg.Logger.Debug("SRS manifest is empty, skipping periodic refresh", "path", manifestPath)
+		s.Cfg.Logger.Debug("SRS manifest is empty, skipping refresh", "path", manifestPath)
 		return
 	}
 
 	summary, syncErr := s.SyncSRSLists(lists)
 	if syncErr != nil {
-		s.Cfg.Logger.Warn("Periodic SRS refresh failed", "error", syncErr)
+		s.Cfg.Logger.Warn("SRS refresh failed", "error", syncErr)
 		return
 	}
 
 	s.Cfg.Logger.Info(
-		"Periodic SRS refresh completed",
+		"SRS refresh completed",
 		"total", summary.Total,
 		"configured", summary.Configured,
 		"downloaded", summary.Downloaded,
