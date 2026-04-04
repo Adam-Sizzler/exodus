@@ -39,6 +39,14 @@ type NodeServer struct {
 	subpageConfigs   map[string][]byte
 }
 
+const (
+	subNodeStatVersion  = "sub_node_version"
+	subNodeStatUptime   = "sub_node_uptime"
+	subNodeStatCPUCount = "cpu_count"
+	subNodeStatCPUModel = "cpu_model"
+	subNodeStatTotalRAM = "total_ram"
+)
+
 func NewNodeServer(version string) *NodeServer {
 	trimmedVersion := strings.TrimSpace(version)
 	if trimmedVersion == "" {
@@ -314,11 +322,11 @@ func (s *NodeServer) buildStats() []*proto.Stat {
 	}
 
 	return []*proto.Stat{
-		{Name: "sub_node_version", Value: s.version},
-		{Name: "sub_node_uptime", Value: strconv.FormatInt(uptimeSeconds, 10)},
-		{Name: "cpu_count", Value: strconv.Itoa(s.cpuCount)},
-		{Name: "cpu_model", Value: s.cpuModel},
-		{Name: "total_ram", Value: s.totalRAM},
+		{Name: subNodeStatVersion, Value: s.version},
+		{Name: subNodeStatUptime, Value: strconv.FormatInt(uptimeSeconds, 10)},
+		{Name: subNodeStatCPUCount, Value: strconv.Itoa(s.cpuCount)},
+		{Name: subNodeStatCPUModel, Value: s.cpuModel},
+		{Name: subNodeStatTotalRAM, Value: s.totalRAM},
 	}
 }
 
