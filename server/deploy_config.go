@@ -114,6 +114,16 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		return DeploySummary{}, err
 	}
 
+	reloadResult := reloadHaproxyUsers()
+	switch {
+	case reloadResult.Reloaded:
+		s.Cfg.Logger.Info("HAProxy users cache reloaded", "socket", haproxyRuntimeSocketPath, "result", reloadResult.Output)
+	case reloadResult.Skipped:
+		s.Cfg.Logger.Debug("HAProxy users reload skipped", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+	default:
+		s.Cfg.Logger.Warn("HAProxy users reload failed", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+	}
+
 	shouldRestart := task.Restart != nil && *task.Restart
 
 	restarted := false
@@ -121,17 +131,6 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		s.Cfg.Logger.Info("Restart requested by deploy payload")
 		if err := restartCoreProcess(s.Cfg); err != nil {
 			return DeploySummary{}, err
-		}
-		if task.Modules.HaproxyEnabled {
-			result := restartHaproxyContainer()
-			switch {
-			case result.Reloaded:
-				s.Cfg.Logger.Info("HAProxy container reloaded", "container", "haproxy")
-			case result.Restarted:
-				s.Cfg.Logger.Warn("HAProxy soft reload failed, restarted container", "container", "haproxy", "warning", result.Warning)
-			default:
-				s.Cfg.Logger.Warn("HAProxy reload skipped", "container", "haproxy", "warning", result.Warning)
-			}
 		}
 		restarted = true
 	} else {

@@ -1,78 +1,96 @@
 package server
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
-	"net/http"
-	"net/url"
+	"os"
+	"strings"
 	"time"
 )
 
 const (
-	haproxyContainerName = "haproxy"
-	dockerSocketPath     = "/var/run/docker.sock"
+	haproxyRuntimeSocketPath = "/var/run/haproxy/haproxy.sock"
+	haproxyReloadUsersCmd    = "lua reload users\n"
+	haproxySocketReadLimit   = 64 * 1024
 )
 
-type haproxyRestartResult struct {
-	Reloaded  bool
-	Restarted bool
-	Warning   string
+type haproxyReloadResult struct {
+	Reloaded bool
+	Skipped  bool
+	Warning  string
+	Output   string
 }
 
-func restartHaproxyContainer() haproxyRestartResult {
-	container := haproxyContainerName
-	socketPath := dockerSocketPath
-
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				d := net.Dialer{Timeout: 10 * time.Second}
-				return d.DialContext(ctx, "unix", socketPath)
-			},
-		},
-	}
-
-	// Prefer soft reload first: send SIGHUP to the running HAProxy process.
-	// If it fails (container missing/stopped), fallback to full restart.
-	reloadEndpoint := fmt.Sprintf("http://docker/containers/%s/kill?signal=HUP", url.PathEscape(container))
-	reloadErr := doDockerPost(client, reloadEndpoint)
-	if reloadErr == nil {
-		return haproxyRestartResult{Reloaded: true}
-	}
-
-	restartEndpoint := fmt.Sprintf("http://docker/containers/%s/restart?t=10", url.PathEscape(container))
-	restartErr := doDockerPost(client, restartEndpoint)
-	if restartErr == nil {
-		return haproxyRestartResult{
-			Restarted: true,
-			Warning:   fmt.Sprintf("soft reload failed, fallback to restart: %v", reloadErr),
+func reloadHaproxyUsers() haproxyReloadResult {
+	result, err := runHaproxyRuntimeCommand(haproxyRuntimeSocketPath, haproxyReloadUsersCmd)
+	if err == nil {
+		return haproxyReloadResult{
+			Reloaded: true,
+			Output:   result,
 		}
 	}
 
-	return haproxyRestartResult{
-		Warning: fmt.Sprintf("skip HAProxy reload/restart: reload_err=%v restart_err=%v", reloadErr, restartErr),
+	if errors.Is(err, os.ErrNotExist) {
+		return haproxyReloadResult{
+			Skipped: true,
+			Warning: err.Error(),
+		}
+	}
+
+	return haproxyReloadResult{
+		Warning: err.Error(),
 	}
 }
 
-func doDockerPost(client *http.Client, endpoint string) error {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, nil)
+func runHaproxyRuntimeCommand(socketPath string, command string) (string, error) {
+	if strings.TrimSpace(socketPath) == "" {
+		return "", fmt.Errorf("haproxy runtime socket path is empty")
+	}
+	if strings.TrimSpace(command) == "" {
+		return "", fmt.Errorf("haproxy runtime command is empty")
+	}
+
+	if _, err := os.Stat(socketPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("haproxy runtime socket not found at %s: %w", socketPath, os.ErrNotExist)
+		}
+		return "", fmt.Errorf("stat haproxy runtime socket %s: %w", socketPath, err)
+	}
+
+	conn, err := net.DialTimeout("unix", socketPath, 3*time.Second)
 	if err != nil {
-		return fmt.Errorf("build docker request: %w", err)
+		return "", fmt.Errorf("connect haproxy runtime socket %s: %w", socketPath, err)
+	}
+	defer conn.Close()
+
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	if _, err := io.WriteString(conn, command); err != nil {
+		return "", fmt.Errorf("send command to haproxy runtime socket: %w", err)
 	}
 
-	resp, err := client.Do(req)
+	raw, err := io.ReadAll(io.LimitReader(conn, haproxySocketReadLimit))
 	if err != nil {
-		return fmt.Errorf("call docker api: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotModified {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("docker api returned status %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("read response from haproxy runtime socket: %w", err)
 	}
 
-	return nil
+	response := strings.TrimSpace(string(raw))
+	if response == "" {
+		return "", fmt.Errorf("empty response from haproxy runtime command")
+	}
+
+	firstLine := response
+	if idx := strings.IndexByte(response, '\n'); idx >= 0 {
+		firstLine = response[:idx]
+	}
+	if strings.HasPrefix(firstLine, "ERR") {
+		return "", fmt.Errorf("haproxy runtime command failed: %s", firstLine)
+	}
+	if !strings.HasPrefix(firstLine, "OK") {
+		return "", fmt.Errorf("unexpected haproxy runtime response: %s", firstLine)
+	}
+
+	return response, nil
 }
