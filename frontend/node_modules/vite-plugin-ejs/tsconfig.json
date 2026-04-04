@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    /* Visit https://aka.ms/tsconfig.json to read more about this file */
+    "target": "es2017",
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', 'es2020', or 'ESNext'. */
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    /* Specify library files to be included in the compilation. */
+    "declaration": true,
+    /* Generates corresponding '.d.ts' file. */
+    "declarationDir": "./",
+    /* Redirect output structure to the directory. */
+    "outDir": "./",
+    /* Redirect output structure to the directory. */
+    /* Strict Type-Checking Options */
+    "strict": true,
+    /* Enable all strict type-checking options. */
+    "esModuleInterop": true,
+    /* Advanced Options */
+    "skipLibCheck": true,
+    /* Skip type checking of declaration files. */
+    "forceConsistentCasingInFileNames": true
+    /* Disallow inconsistently-cased references to the same file. */
+  },
+  "exclude": [
+    "dist"
+  ]
+}

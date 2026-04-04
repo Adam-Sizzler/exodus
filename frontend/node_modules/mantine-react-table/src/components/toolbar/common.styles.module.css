@@ -1,0 +1,10 @@
+.common-toolbar-styles {
+  align-items: flex-start;
+  display: grid;
+  flex-wrap: wrap-reverse;
+  min-height: 3.5rem;
+  overflow: visible;
+  padding: 0;
+  transition: all 150ms ease-in-out;
+  z-index: 3;
+}

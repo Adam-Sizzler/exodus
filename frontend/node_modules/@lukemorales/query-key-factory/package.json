@@ -1,0 +1,87 @@
+{
+  "name": "@lukemorales/query-key-factory",
+  "version": "1.3.4",
+  "author": "Luke Morales <lukemorales@live.com>",
+  "description": "A library for creating standardized query keys, useful for cache management in @tanstack/query",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukemorales/query-key-factory.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lukemorales/query-key-factory/issues"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "eslintConfig": {
+    "extends": [
+      "lukemorales/oss",
+      "lukemorales/jest"
+    ]
+  },
+  "peerDependencies": {
+    "@tanstack/query-core": ">= 4.0.0",
+    "@tanstack/react-query": ">= 4.0.0"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.1",
+    "@lukemorales/jest-type-matchers": "^0.2.2",
+    "@lukemorales/prettier-config": "^1.1.0",
+    "@tanstack/query-core": "^4.29.15",
+    "@tanstack/react-query": "^4.29.15",
+    "@types/node": "^20.11.17",
+    "@vitest/coverage-v8": "^1.2.2",
+    "@vitest/ui": "^1.2.2",
+    "eslint": "^8.56.0",
+    "eslint-config-lukemorales": "^0.3.1",
+    "husky": "^9.0.10",
+    "is-ci": "^3.0.1",
+    "lint-staged": "^15.2.2",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.0.1",
+    "typescript": "^4.8.3",
+    "vitest": "^1.2.2"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint src --ext .ts"
+    ]
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": [
+    "react",
+    "react-query",
+    "tanstack",
+    "tanstack-query",
+    "cache",
+    "query",
+    "query-keys"
+  ],
+  "scripts": {
+    "build": "run-p build:*",
+    "build:tsup": "tsup --dts --minify",
+    "changeset": "changeset",
+    "clean": "rimraf dist",
+    "dev": "pnpm run test:coverage --ui",
+    "lint": "run-p lint:*",
+    "lint:eslint": "eslint src --ext .ts",
+    "lint:eslint:fix": "pnpm run lint:eslint --fix",
+    "lint:format": "prettier --check \"src/**/*.ts\"",
+    "lint:format:fix": "pnpm run lint:format --write",
+    "lint:tsc": "tsc --project tsconfig.json --noEmit",
+    "test": "vitest --passWithNoTests",
+    "test:ci": "pnpm run test:coverage --run",
+    "test:coverage": "pnpm run test --coverage",
+    "prerelease": "run-p build test:ci",
+    "release": "changeset publish"
+  }
+}
