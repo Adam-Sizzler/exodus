@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -33,6 +34,66 @@ type SRSSyncSummary struct {
 	Configured int
 	Downloaded int
 	Failed     int
+}
+
+func normalizeSRSListsForSync(lists []SRSListItem, onInvalid func(error)) []SRSListItem {
+	normalized := make([]SRSListItem, 0, len(lists))
+	for _, raw := range lists {
+		item, err := sanitizeSRSItem(raw)
+		if err != nil {
+			if onInvalid != nil {
+				onInvalid(err)
+			}
+			continue
+		}
+		normalized = append(normalized, item)
+	}
+	return normalized
+}
+
+func srsListKey(item SRSListItem) string {
+	return strings.Join([]string{
+		item.Tag,
+		item.Format,
+		item.URL,
+		item.UpdateInterval,
+		item.Path,
+	}, "\x00")
+}
+
+func areSRSListsEquivalent(a, b []SRSListItem) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 {
+		return true
+	}
+	aKeys := make([]string, 0, len(a))
+	for _, item := range a {
+		aKeys = append(aKeys, srsListKey(item))
+	}
+	bKeys := make([]string, 0, len(b))
+	for _, item := range b {
+		bKeys = append(bKeys, srsListKey(item))
+	}
+	sort.Strings(aKeys)
+	sort.Strings(bKeys)
+	for i := range aKeys {
+		if aKeys[i] != bKeys[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func allSRSFilesExist(lists []SRSListItem) bool {
+	for _, item := range lists {
+		targetPath := filepath.Join(config.FixedSingboxDir, item.Path)
+		if _, err := os.Stat(targetPath); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func sanitizeSRSItem(item SRSListItem) (SRSListItem, error) {
@@ -166,16 +227,9 @@ func (s *NodeServer) SyncSRSLists(lists []SRSListItem) (SRSSyncSummary, error) {
 		return summary, fmt.Errorf("create singbox dir: %w", err)
 	}
 
-	normalized := make([]SRSListItem, 0, len(lists))
-	for _, raw := range lists {
-		item, err := sanitizeSRSItem(raw)
-		if err != nil {
-			s.Cfg.Logger.Warn("Skip invalid SRS list", "error", err)
-			continue
-		}
-		normalized = append(normalized, item)
-	}
-
+	normalized := normalizeSRSListsForSync(lists, func(err error) {
+		s.Cfg.Logger.Warn("Skip invalid SRS list", "error", err)
+	})
 	client := &http.Client{Timeout: 90 * time.Second}
 	for _, item := range normalized {
 		downloadStarted := time.Now()
@@ -196,6 +250,34 @@ func (s *NodeServer) SyncSRSLists(lists []SRSListItem) (SRSSyncSummary, error) {
 	}
 
 	return summary, nil
+}
+
+// SyncSRSListsIfChanged skips downloads when manifest has the same SRS set and all files already exist.
+// Returns summary, whether download was performed, and error.
+func (s *NodeServer) SyncSRSListsIfChanged(lists []SRSListItem) (SRSSyncSummary, bool, error) {
+	summary := SRSSyncSummary{Total: len(lists)}
+	if len(lists) == 0 {
+		return summary, false, nil
+	}
+
+	normalized := normalizeSRSListsForSync(lists, func(err error) {
+		s.Cfg.Logger.Warn("Skip invalid SRS list", "error", err)
+	})
+	summary.Configured = len(normalized)
+
+	currentManifest, err := loadSRSManifest()
+	if err == nil {
+		currentNormalized := normalizeSRSListsForSync(currentManifest, nil)
+		if areSRSListsEquivalent(normalized, currentNormalized) && allSRSFilesExist(normalized) {
+			return summary, false, nil
+		}
+	}
+
+	summary, err = s.SyncSRSLists(lists)
+	if err != nil {
+		return summary, false, err
+	}
+	return summary, true, nil
 }
 
 func loadSRSManifest() ([]SRSListItem, error) {

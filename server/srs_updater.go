@@ -9,7 +9,7 @@ import (
 	"cerberus-node/config"
 )
 
-const srsRefreshInterval = 24 * time.Hour
+const srsRefreshInterval = 7 * 24 * time.Hour
 
 func (s *NodeServer) startSRSAutoUpdater() {
 	if s == nil || s.Cfg == nil {

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -45,12 +46,15 @@ type HaproxyUserEntry struct {
 }
 
 type DeploySummary struct {
-	ConfigPath string
-	Listen     string
-	Inbounds   int
-	Outbounds  int
-	Users      int
-	Restarted  bool
+	ConfigPath            string
+	Listen                string
+	Inbounds              int
+	Outbounds             int
+	Users                 int
+	Restarted             bool
+	ConfigChanged         bool
+	HaproxyUsersChanged   bool
+	SRSDownloadedOnDeploy bool
 }
 
 // DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and restarts core if requested.
@@ -76,19 +80,9 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		enabled = *task.Stats.Enabled
 	}
 
-	if len(task.SRSLists) > 0 {
-		if summary, err := s.SyncSRSLists(task.SRSLists); err != nil {
-			s.Cfg.Logger.Warn("Failed to sync SRS lists during deploy", "error", err)
-		} else {
-			s.Cfg.Logger.Info(
-				"SRS lists synced during deploy",
-				"total", summary.Total,
-				"configured", summary.Configured,
-				"downloaded", summary.Downloaded,
-				"failed", summary.Failed,
-			)
-		}
-	}
+	// SRS files are not synced as part of deploy_config.
+	// They are refreshed only on node startup and via explicit sync_srs_lists task.
+	srsDownloadedOnDeploy := false
 
 	finalConfig, summary, err := BuildSingboxConfigWithV2RayAPI(rawConfig, BuildOptions{
 		Listen:          listen,
@@ -105,45 +99,69 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return DeploySummary{}, fmt.Errorf("create config dir: %w", err)
 	}
-	if err := os.WriteFile(configPath, finalConfig, 0o644); err != nil {
-		return DeploySummary{}, fmt.Errorf("write config: %w", err)
-	}
-	s.Cfg.Logger.Info("Sing-box config written", "path", configPath, "bytes", len(finalConfig))
 
-	if err := applyHaproxyModule(task.Modules); err != nil {
+	configChanged := true
+	if currentConfig, err := os.ReadFile(configPath); err == nil {
+		configChanged = !bytes.Equal(currentConfig, finalConfig)
+	} else if !os.IsNotExist(err) {
+		return DeploySummary{}, fmt.Errorf("read current config: %w", err)
+	}
+
+	if configChanged {
+		if err := os.WriteFile(configPath, finalConfig, 0o644); err != nil {
+			return DeploySummary{}, fmt.Errorf("write config: %w", err)
+		}
+		s.Cfg.Logger.Info("Sing-box config written", "path", configPath, "bytes", len(finalConfig))
+	} else {
+		s.Cfg.Logger.Debug("Sing-box config unchanged, write skipped", "path", configPath)
+	}
+
+	haproxyUsersChanged, err := applyHaproxyModule(task.Modules)
+	if err != nil {
 		return DeploySummary{}, err
 	}
 
-	reloadResult := reloadHaproxyUsers()
-	switch {
-	case reloadResult.Reloaded:
-		s.Cfg.Logger.Info("HAProxy users cache reloaded", "socket", haproxyRuntimeSocketPath, "result", reloadResult.Output)
-	case reloadResult.Skipped:
-		s.Cfg.Logger.Debug("HAProxy users reload skipped", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
-	default:
-		s.Cfg.Logger.Warn("HAProxy users reload failed", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+	if haproxyUsersChanged {
+		reloadResult := reloadHaproxyUsers()
+		switch {
+		case reloadResult.Reloaded:
+			s.Cfg.Logger.Info("HAProxy users cache reloaded", "socket", haproxyRuntimeSocketPath, "result", reloadResult.Output)
+		case reloadResult.Skipped:
+			s.Cfg.Logger.Debug("HAProxy users reload skipped", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+		default:
+			s.Cfg.Logger.Warn("HAProxy users reload failed", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+		}
+	} else {
+		s.Cfg.Logger.Debug("HAProxy users unchanged, runtime reload skipped")
 	}
 
 	shouldRestart := task.Restart != nil && *task.Restart
 
 	restarted := false
 	if shouldRestart {
-		s.Cfg.Logger.Info("Core reload requested by deploy payload")
-		if err := reloadCoreProcess(s.Cfg); err != nil {
-			return DeploySummary{}, err
+		if configChanged {
+			s.Cfg.Logger.Info("Core reload requested by deploy payload")
+			if err := reloadCoreProcess(s.Cfg); err != nil {
+				return DeploySummary{}, err
+			}
+			restarted = true
+		} else {
+			s.Cfg.Logger.Info("Core reload skipped: config is unchanged")
 		}
-		restarted = true
 	} else {
 		s.Cfg.Logger.Info("Core reload skipped by deploy payload")
 	}
 
 	return DeploySummary{
-		ConfigPath: configPath,
-		Listen:     listen,
-		Inbounds:   len(summary.Inbounds),
-		Outbounds:  len(summary.Outbounds),
-		Users:      len(summary.Users),
-		Restarted:  restarted,
+		ConfigPath:            configPath,
+		Listen:                listen,
+		Inbounds:              len(summary.Inbounds),
+		Outbounds:             len(summary.Outbounds),
+		Users:                 len(summary.Users),
+		Restarted:             restarted,
+		ConfigChanged:         configChanged,
+		HaproxyUsersChanged:   haproxyUsersChanged,
+		SRSDownloadedOnDeploy: srsDownloadedOnDeploy,
 	}, nil
 }
 
@@ -387,14 +405,19 @@ func getFieldString(v any, key string) string {
 	return s
 }
 
-func applyHaproxyModule(modules DeployModulesPayload) error {
+func applyHaproxyModule(modules DeployModulesPayload) (bool, error) {
 	const usersFilePath = "/app/haproxy/data/users.csv"
 
 	if !modules.HaproxyEnabled {
-		if err := os.Remove(usersFilePath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("remove haproxy users file: %w", err)
+		err := os.Remove(usersFilePath)
+		switch {
+		case err == nil:
+			return true, nil
+		case os.IsNotExist(err):
+			return false, nil
+		default:
+			return false, fmt.Errorf("remove haproxy users file: %w", err)
 		}
-		return nil
 	}
 
 	lines := make([]string, 0, len(modules.HaproxyUsers)*2)
@@ -412,18 +435,25 @@ func applyHaproxyModule(modules DeployModulesPayload) error {
 	}
 
 	if err := os.MkdirAll(filepath.Dir(usersFilePath), 0o755); err != nil {
-		return fmt.Errorf("create haproxy data dir: %w", err)
+		return false, fmt.Errorf("create haproxy data dir: %w", err)
 	}
 
 	content := ""
 	if len(lines) > 0 {
 		content = strings.Join(lines, "\n") + "\n"
 	}
+	existing, readErr := os.ReadFile(usersFilePath)
+	if readErr == nil && bytes.Equal(existing, []byte(content)) {
+		return false, nil
+	}
+	if readErr != nil && !os.IsNotExist(readErr) {
+		return false, fmt.Errorf("read haproxy users file: %w", readErr)
+	}
 	if err := os.WriteFile(usersFilePath, []byte(content), 0o644); err != nil {
-		return fmt.Errorf("write haproxy users file: %w", err)
+		return false, fmt.Errorf("write haproxy users file: %w", err)
 	}
 
-	return nil
+	return true, nil
 }
 
 func normalizeTrojanHash(secret string) string {
