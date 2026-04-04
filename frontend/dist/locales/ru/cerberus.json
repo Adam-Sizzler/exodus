@@ -1349,9 +1349,6 @@
             "enable-node": "Включить ноды",
             "disable-node": "Выключить ноду",
             "config-profile-or-inbounds-is-missing": "Профиль или инбаунд не выбран",
-            "subscription-profile-is-missing": "Профиль подписки не выбран",
-            "represents-the-uptime-of-the-subscription-node": "Отражает время работы ноды подписки",
-            "subscription-node-version": "Версия ноды подписки",
             "singbox-core-version": "Версия ядра Singbox",
             "cerberus-node-version": "Версия модуля @cerberus/node"
         }
@@ -1791,7 +1788,6 @@
         "config-profile": "Профиль",
         "inbounds": "Инбаунды",
         "singbox-v": "вер. Sb",
-        "sub-node-v": "вер. Sub-ноды",
         "node-v": "вер. Ноды",
         "provider": "Провайдер",
         "tags": "Теги",

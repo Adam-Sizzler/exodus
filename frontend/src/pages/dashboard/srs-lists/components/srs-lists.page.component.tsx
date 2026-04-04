@@ -70,6 +70,7 @@ import {
     useCheckSRSLists,
     useCreateSRSLists,
     useReorderSRSLists,
+    useSyncSRSLists,
     useUpdateSRSList
 } from '@shared/api/hooks'
 import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
@@ -103,6 +104,29 @@ function SRSListsIcon(props: { size?: number }) {
     return (
         <svg fill="currentColor" height={size} viewBox="0 0 256 256" width={size}>
             <path d="M224,128a8,8,0,0,1-8,8H128a8,8,0,0,1,0-16h88A8,8,0,0,1,224,128ZM128,72h88a8,8,0,0,0,0-16H128a8,8,0,0,0,0,16Zm88,112H128a8,8,0,0,0,0,16h88a8,8,0,0,0,0-16ZM82.34,42.34,56,68.69,45.66,58.34A8,8,0,0,0,34.34,69.66l16,16a8,8,0,0,0,11.32,0l32-32A8,8,0,0,0,82.34,42.34Zm0,64L56,132.69,45.66,122.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Zm0,64L56,196.69,45.66,186.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Z" />
+        </svg>
+    )
+}
+
+function SRSSyncIcon(props: { size?: number }) {
+    const { size = 24 } = props
+
+    return (
+        <svg
+            fill="none"
+            height={size}
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            width={size}
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <path d="M0 0h24v24H0z" fill="none" stroke="none" />
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" />
+            <path d="M7 11l5 5l5 -5" />
+            <path d="M12 4l0 12" />
         </svg>
     )
 }
@@ -341,6 +365,7 @@ export function SRSListsPageComponent(props: Props) {
             }
         }
     })
+    const { mutate: syncSRSLists, isPending: isSyncing } = useSyncSRSLists()
 
     const { mutate: updateSRSList, isPending: isUpdating } = useUpdateSRSList({
         mutationFns: {
@@ -566,6 +591,23 @@ export function SRSListsPageComponent(props: Props) {
                                             variant="light"
                                         >
                                             <TbRefresh size="24px" />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </ActionIconGroup>
+
+                                <ActionIconGroup>
+                                    <Tooltip
+                                        label={tr('srs-lists.feature.sync-to-nodes', 'Sync to nodes')}
+                                        withArrow
+                                    >
+                                        <ActionIcon
+                                            color="teal"
+                                            loading={isSyncing}
+                                            onClick={() => syncSRSLists({ variables: {} })}
+                                            size="input-md"
+                                            variant="light"
+                                        >
+                                            <SRSSyncIcon />
                                         </ActionIcon>
                                     </Tooltip>
                                 </ActionIconGroup>

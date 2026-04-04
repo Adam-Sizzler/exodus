@@ -512,6 +512,8 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
+	internalSquadsChanged := false
+	internalSquadNodeUUIDs := make([]string, 0)
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
@@ -591,9 +593,25 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 
 		if req.ActiveInternalSquads != nil {
-			if err := replaceUserInternalSquadsTx(r.Context(), tx, record.TID, *req.ActiveInternalSquads); err != nil {
+			currentSquads, loadErr := getUserInternalSquadsTx(r.Context(), tx, record.TID)
+			if loadErr != nil {
 				_ = tx.Rollback()
-				return err
+				return loadErr
+			}
+			requestedSquads := dedupeStrings(*req.ActiveInternalSquads)
+			if internalSquadSetsDiffer(currentSquads, requestedSquads) {
+				affectedSquads := dedupeStrings(append(append([]string{}, currentSquads...), requestedSquads...))
+				nodeUUIDs, nodeTargetsErr := resolveNodeUUIDsForInternalSquadsTx(r.Context(), tx, affectedSquads)
+				if nodeTargetsErr != nil {
+					_ = tx.Rollback()
+					return nodeTargetsErr
+				}
+				if err := replaceUserInternalSquadsTx(r.Context(), tx, record.TID, requestedSquads); err != nil {
+					_ = tx.Rollback()
+					return err
+				}
+				internalSquadNodeUUIDs = nodeUUIDs
+				internalSquadsChanged = true
 			}
 		}
 
@@ -615,7 +633,9 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
-	monitor.RequestNodeDeploy(true)
+	if internalSquadsChanged && len(internalSquadNodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
 }
 
@@ -645,6 +665,75 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	monitor.RequestNodeDeploy(true)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
+}
+
+func getUserInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, tID int64) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT internal_squad_uuid FROM internal_squad_members WHERE user_id = ?`, tID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	current := make([]string, 0)
+	for rows.Next() {
+		var squadUUID string
+		if err := rows.Scan(&squadUUID); err != nil {
+			return nil, err
+		}
+		current = append(current, strings.TrimSpace(squadUUID))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return dedupeStrings(current), nil
+}
+
+func internalSquadSetsDiffer(current []string, requested []string) bool {
+	nextSet := make(map[string]struct{})
+	for _, squadUUID := range dedupeStrings(requested) {
+		nextSet[squadUUID] = struct{}{}
+	}
+	if len(current) != len(nextSet) {
+		return true
+	}
+	for _, squadUUID := range current {
+		if _, ok := nextSet[squadUUID]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+func resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, squadUUIDs []string) ([]string, error) {
+	cleanSquadUUIDs := dedupeStrings(squadUUIDs)
+	if len(cleanSquadUUIDs) == 0 {
+		return []string{}, nil
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT cpitn.node_uuid
+		FROM internal_squad_inbounds isi
+		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
+		WHERE isi.internal_squad_uuid = ANY(?)
+	`, cleanSquadUUIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	nodeUUIDs := make([]string, 0)
+	for rows.Next() {
+		var nodeUUID string
+		if err := rows.Scan(&nodeUUID); err != nil {
+			return nil, err
+		}
+		nodeUUIDs = append(nodeUUIDs, strings.TrimSpace(nodeUUID))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return dedupeStrings(nodeUUIDs), nil
 }
 
 func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {

@@ -363,9 +363,7 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, manager *dbman
 	cfg.Logger.Debug("SRS create availability check completed", "duration_ms", time.Since(checkStarted).Milliseconds())
 
 	queueStarted := time.Now()
-	monitor.RequestSRSDeploy()
-	monitor.RequestNodeDeploy(false)
-	cfg.Logger.Debug("SRS create deploy requests queued", "duration_ms", time.Since(queueStarted).Milliseconds())
+	cfg.Logger.Debug("SRS create sync/deploy skipped (manual sync only)", "duration_ms", time.Since(queueStarted).Milliseconds())
 
 	handleGetSRSLists(w, r, manager, cfg)
 }
@@ -492,9 +490,7 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, manager *dbmana
 	cfg.Logger.Debug("SRS update availability check completed", "duration_ms", time.Since(checkStarted).Milliseconds(), "uuid", strings.TrimSpace(req.UUID))
 
 	queueStarted := time.Now()
-	monitor.RequestSRSDeploy()
-	monitor.RequestNodeDeploy(false)
-	cfg.Logger.Debug("SRS update deploy requests queued", "duration_ms", time.Since(queueStarted).Milliseconds(), "uuid", strings.TrimSpace(req.UUID))
+	cfg.Logger.Debug("SRS update sync/deploy skipped (manual sync only)", "duration_ms", time.Since(queueStarted).Milliseconds(), "uuid", strings.TrimSpace(req.UUID))
 	handleGetSRSLists(w, r, manager, cfg)
 }
 
@@ -517,8 +513,6 @@ func handleDeleteSRSList(w http.ResponseWriter, r *http.Request, manager *dbmana
 		shared.SendError(w, http.StatusBadRequest, "failed to delete srs list", err, cfg)
 		return
 	}
-	monitor.RequestSRSDeploy()
-	monitor.RequestNodeDeploy(false)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"deleted": true}})
 }
 
@@ -546,8 +540,6 @@ func handleBulkDeleteSRSLists(w http.ResponseWriter, r *http.Request, manager *d
 		shared.SendError(w, http.StatusBadRequest, "failed to bulk delete srs lists", err, cfg)
 		return
 	}
-	monitor.RequestSRSDeploy()
-	monitor.RequestNodeDeploy(false)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"deleted": true}})
 }
 
@@ -580,8 +572,6 @@ func handleBulkEnableSRSLists(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
-	monitor.RequestSRSDeploy()
-	monitor.RequestNodeDeploy(false)
 	handleGetSRSLists(w, r, manager, cfg)
 }
 
@@ -619,8 +609,6 @@ func handleBulkSetIntervalSRSLists(w http.ResponseWriter, r *http.Request, manag
 		return
 	}
 
-	monitor.RequestSRSDeploy()
-	monitor.RequestNodeDeploy(false)
 	handleGetSRSLists(w, r, manager, cfg)
 }
 

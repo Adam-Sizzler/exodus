@@ -1328,9 +1328,6 @@
             "enable-node": "启用节点",
             "disable-node": "禁用节点",
             "config-profile-or-inbounds-is-missing": "缺少配置文件或者入站配置",
-            "subscription-profile-is-missing": "未选择订阅配置",
-            "represents-the-uptime-of-the-subscription-node": "表示订阅节点的运行时长",
-            "subscription-node-version": "订阅节点版本",
             "singbox-core-version": "Singbox 核心版本",
             "cerberus-node-version": "节点版本，@cerberus/节点"
         }
@@ -1770,7 +1767,6 @@
         "config-profile": "配置文件",
         "inbounds": "入站",
         "singbox-v": "Singbox V.",
-        "sub-node-v": "订阅节点 V.",
         "node-v": "节点 V.",
         "provider": "服务商",
         "tags": "标签",

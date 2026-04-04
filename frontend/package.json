@@ -15,7 +15,7 @@
   },
   "scripts": {
     "start:dev": "vite",
-    "start:build": "NODE_ENV=production tsc && vite build",
+    "start:build": "export NODE_OPTIONS=--max-old-space-size=6144 && NODE_ENV=production tsc && vite build",
     "cb": "vite build",
     "start:preview": "vite preview --port 3333",
     "serve": "NODE_ENV=production tsc && vite build && vite preview --port 3333",
@@ -190,6 +190,7 @@
     "@rollup/rollup-linux-x64-gnu": "4.9.5"
   },
   "overrides": {
+    "defu": "6.1.5",
     "node-plop": {
       "inquirer": "9.3.5"
     }

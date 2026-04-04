@@ -70,6 +70,28 @@ export const useCheckSRSLists = createMutationHook({
     requestMethod: 'post'
 })
 
+export const useSyncSRSLists = createMutationHook({
+    endpoint: '/api/srs-lists/actions/sync',
+    responseSchema: GenericSRSListsMutationResponseSchema,
+    requestMethod: 'post',
+    rMutationParams: {
+        onSuccess: () => {
+            notifications.show({
+                title: 'Success',
+                message: 'SRS sync queued for connected nodes',
+                color: 'teal'
+            })
+        },
+        onError: (error) => {
+            notifications.show({
+                title: 'Sync SRS lists',
+                message: error instanceof Error ? error.message : 'Request failed',
+                color: 'red'
+            })
+        }
+    }
+})
+
 export const useBulkEnableSRSLists = createMutationHook({
     endpoint: '/api/srs-lists/bulk/enable',
     bodySchema: BulkEnableSRSListsRequestSchema,

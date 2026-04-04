@@ -1349,9 +1349,6 @@
             "enable-node": "Enable Node",
             "disable-node": "Disable Node",
             "config-profile-or-inbounds-is-missing": "Config profile or inbounds is missing",
-            "subscription-profile-is-missing": "Subscription profile is not selected",
-            "represents-the-uptime-of-the-subscription-node": "Represents the uptime of the subscription node",
-            "subscription-node-version": "Subscription node version",
             "singbox-core-version": "Singbox Core Version",
             "cerberus-node-version": "Node version, @cerberus/node"
         }
@@ -1791,7 +1788,6 @@
         "config-profile": "Config Profile",
         "inbounds": "Inbounds",
         "singbox-v": "Singbox V.",
-        "sub-node-v": "Subscription Node V.",
         "node-v": "Node V.",
         "provider": "Provider",
         "tags": "Tags",

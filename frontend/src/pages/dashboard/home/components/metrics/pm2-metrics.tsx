@@ -35,16 +35,18 @@ export const getPm2SummaryMetrics = (
         return []
     }
 
-    const totalMemoryBytes = pm2Stats.reduce((sum, process) => {
+    type PM2Process = GetCerberusHealthCommand.Response['response']['pm2Stats'][number]
+
+    const totalMemoryBytes = pm2Stats.reduce((sum: number, process: PM2Process) => {
         return sum + Number(process.memory)
     }, 0)
 
     const averageCpu =
-        pm2Stats.reduce((sum, process) => {
+        pm2Stats.reduce((sum: number, process: PM2Process) => {
             return sum + parseFloat(process.cpu)
         }, 0) / pm2Stats.length
 
-    const heaviestProcess = pm2Stats.reduce((max, process) => {
+    const heaviestProcess = pm2Stats.reduce((max: PM2Process, process: PM2Process) => {
         return parseFloat(process.cpu) > parseFloat(max.cpu) ? process : max
     })
 
@@ -83,7 +85,7 @@ export const getPm2ProcessMetrics = (
         return []
     }
 
-    return pm2Stats.map((process) => {
+    return pm2Stats.map((process: GetCerberusHealthCommand.Response['response']['pm2Stats'][number]) => {
         const cpuUsage = parseFloat(process.cpu)
         return {
             value: prettyBytesToAnyUtil(process.memory, true),

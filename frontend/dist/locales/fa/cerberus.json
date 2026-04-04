@@ -1328,9 +1328,6 @@
             "enable-node": "فعالسازی نود",
             "disable-node": "غیرفعالسازی نود",
             "config-profile-or-inbounds-is-missing": "پروفایل پیکربندی یا اینباند وجود ندارد",
-            "subscription-profile-is-missing": "پروفایل اشتراک انتخاب نشده است",
-            "represents-the-uptime-of-the-subscription-node": "نشان‌دهنده مدت زمان کارکرد نود اشتراک است",
-            "subscription-node-version": "نسخه نود اشتراک",
             "singbox-core-version": "نسخه هسته Singbox",
             "cerberus-node-version": "نسخه نود، @cerberus/node"
         }
@@ -1770,7 +1767,6 @@
         "config-profile": "پروفایل پیکربندی",
         "inbounds": "اینباندها",
         "singbox-v": "نسخه هسته Singbox",
-        "sub-node-v": "نسخه نود اشتراک",
         "node-v": "نسخه نود",
         "provider": "ارائه‌دهنده",
         "tags": "برچسب‌ها",
