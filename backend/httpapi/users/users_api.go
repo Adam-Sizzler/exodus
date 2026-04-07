@@ -403,6 +403,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 	}
 
+	internalSquadNodeUUIDs := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
@@ -458,6 +459,15 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			_ = tx.Rollback()
 			return err
 		}
+		requestedSquads := dedupeStrings(req.ActiveInternalSquads)
+		if len(requestedSquads) > 0 {
+			nodeUUIDs, nodeTargetsErr := resolveNodeUUIDsForInternalSquadsTx(r.Context(), tx, requestedSquads)
+			if nodeTargetsErr != nil {
+				_ = tx.Rollback()
+				return nodeTargetsErr
+			}
+			internalSquadNodeUUIDs = nodeUUIDs
+		}
 
 		return tx.Commit()
 	})
@@ -477,7 +487,9 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
-	monitor.RequestNodeDeploy(true)
+	if len(internalSquadNodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	}
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
 }
 
@@ -640,19 +652,51 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 }
 
 func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+	internalSquadNodeUUIDs := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, err := db.ExecContext(r.Context(), `DELETE FROM users WHERE uuid = ?`, userUUID)
+		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
+			return err
+		}
+
+		var tID int64
+		if err := tx.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, userUUID).Scan(&tID); err != nil {
+			_ = tx.Rollback()
+			if errors.Is(err, sql.ErrNoRows) {
+				return errUserNotFound
+			}
+			return err
+		}
+
+		currentSquads, loadErr := getUserInternalSquadsTx(r.Context(), tx, tID)
+		if loadErr != nil {
+			_ = tx.Rollback()
+			return loadErr
+		}
+
+		nodeUUIDs, nodeTargetsErr := resolveNodeUUIDsForInternalSquadsTx(r.Context(), tx, currentSquads)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		internalSquadNodeUUIDs = nodeUUIDs
+
+		result, err := tx.ExecContext(r.Context(), `DELETE FROM users WHERE uuid = ?`, userUUID)
+		if err != nil {
+			_ = tx.Rollback()
 			return err
 		}
 		rows, err := result.RowsAffected()
 		if err != nil {
+			_ = tx.Rollback()
 			return err
 		}
 		if rows == 0 {
+			_ = tx.Rollback()
 			return errUserNotFound
 		}
-		return nil
+
+		return tx.Commit()
 	})
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
@@ -663,7 +707,9 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
-	monitor.RequestNodeDeploy(true)
+	if len(internalSquadNodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -736,6 +782,40 @@ func resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx dbmanager.TxExe
 	return dedupeStrings(nodeUUIDs), nil
 }
 
+func resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
+	cleanUserUUIDs := dedupeStrings(userUUIDs)
+	if len(cleanUserUUIDs) == 0 {
+		return []string{}, nil
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT cpitn.node_uuid
+		FROM users u
+		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
+		WHERE u.uuid = ANY(?)
+	`, cleanUserUUIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	nodeUUIDs := make([]string, 0)
+	for rows.Next() {
+		var nodeUUID string
+		if err := rows.Scan(&nodeUUID); err != nil {
+			return nil, err
+		}
+		nodeUUIDs = append(nodeUUIDs, strings.TrimSpace(nodeUUID))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return dedupeStrings(nodeUUIDs), nil
+}
+
 func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req bulkDeleteUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -747,16 +827,35 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 		return
 	}
 
+	internalSquadNodeUUIDs := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(r.Context(), `DELETE FROM users WHERE uuid = ANY(?)`, req.UUIDs)
-		return err
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		nodeUUIDs, nodeTargetsErr := resolveNodeUUIDsForUserUUIDsTx(r.Context(), tx, req.UUIDs)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		internalSquadNodeUUIDs = nodeUUIDs
+
+		if _, err := tx.ExecContext(r.Context(), `DELETE FROM users WHERE uuid = ANY(?)`, req.UUIDs); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		return tx.Commit()
 	})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to delete users", err, cfg)
 		return
 	}
 
-	monitor.RequestNodeDeploy(true)
+	if len(internalSquadNodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -765,7 +864,6 @@ func handleEnableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		handleUserActionError(w, err, cfg, "failed to enable user")
 		return
 	}
-	monitor.RequestNodeDeploy(true)
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
@@ -774,7 +872,6 @@ func handleDisableUser(w http.ResponseWriter, r *http.Request, manager *dbmanage
 		handleUserActionError(w, err, cfg, "failed to disable user")
 		return
 	}
-	monitor.RequestNodeDeploy(true)
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
@@ -842,7 +939,6 @@ func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, manage
 		handleUserWriteError(w, err, cfg)
 		return
 	}
-	monitor.RequestNodeDeploy(true)
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
