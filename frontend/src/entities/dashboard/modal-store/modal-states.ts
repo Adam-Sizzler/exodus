@@ -2,7 +2,7 @@ import {
     GetConfigProfilesCommand,
     GetInfraProvidersCommand,
     UpdateHostCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 
 import { THelpDrawerAvailableScreen } from '@shared/ui/help-drawer/help-drawer.types'
 

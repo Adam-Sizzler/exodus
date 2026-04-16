@@ -30,7 +30,6 @@ import {
     PiListChecks,
     PiNetwork,
     PiNoteDuotone,
-    PiPencilDuotone,
     PiTag
 } from 'react-icons/pi'
 import {
@@ -40,7 +39,7 @@ import {
     SECURITY_LAYERS,
     SUBSCRIPTION_TEMPLATE_TYPE,
     UpdateHostCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { TbCirclesRelation, TbCloudNetwork, TbEye, TbServer2 } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { useDisclosure } from '@mantine/hooks'
@@ -52,9 +51,7 @@ import {
     BASIC_CLASH_MUX_PARAMS,
     BASIC_MUX_PARAMS,
     BASIC_SINGBOX_MUX_PARAMS,
-    BASIC_SOCKOPT_PARAMS,
-    BASIC_XHTTP_EXTRA_PARAMS,
-    PASTE_BASIC_XHTTP_EXTRA_PARAMS
+    BASIC_SOCKOPT_PARAMS
 } from '@shared/constants'
 import { HostSelectInboundFeature } from '@features/ui/dashboard/hosts/host-select-inbound/host-select-inbound.feature'
 import { HostTagsInputWidget } from '@widgets/dashboard/hosts/host-tags-input/host-tags-input'
@@ -141,7 +138,6 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     } = props
 
     const { t } = useTranslation()
-    const [opened, { open, close }] = useDisclosure(false)
     const [activeTab, setActiveTab] = useState<null | string>('basic')
     const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('XRAY')
 
@@ -153,24 +149,6 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
         [SECURITY_LAYERS.TLS]: t('base-host-form.tls-transport-layer-security'),
         [SECURITY_LAYERS.NONE]: t('base-host-form.none'),
         [SECURITY_LAYERS.DEFAULT]: t('base-host-form.inbounds-default')
-    }
-
-    const isXhttpExtraButtonDisabled = () => {
-        const { inbound } = form.getValues()
-
-        if (!inbound) {
-            return true
-        }
-
-        if (!configProfiles || !inbound.configProfileInboundUuid || !inbound.configProfileUuid) {
-            return true
-        }
-
-        return !configProfiles.some(
-            (configProfile) =>
-                configProfile.uuid === inbound.configProfileUuid &&
-                configProfile.inbounds.some((inbound) => inbound.network === 'xhttp')
-        )
     }
 
     const saveInbound = (inbound: string, configProfileUuid: string) => {
@@ -973,14 +951,6 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                             w="100%"
                                         >
                                             <Button
-                                                disabled={isXhttpExtraButtonDisabled()}
-                                                leftSection={<PiPencilDuotone />}
-                                                onClick={open}
-                                            >
-                                                xHTTP
-                                            </Button>
-
-                                            <Button
                                                 leftSection={<TbCloudNetwork />}
                                                 onClick={openMuxParams}
                                             >
@@ -1199,49 +1169,6 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                     </Group>
                 </Group>
             </DrawerFooter>
-
-            <Drawer
-                onClose={close}
-                opened={opened}
-                overlayProps={{ backgroundOpacity: 0.6, blur: 0 }}
-                padding="lg"
-                position="right"
-                size="lg"
-                title={
-                    <BaseOverlayHeader
-                        IconComponent={PiPencilDuotone}
-                        iconVariant="gradient-teal"
-                        title={t('base-host-form.xhttp-extra-params')}
-                    />
-                }
-            >
-                <Stack gap="md">
-                    <Text size="sm">{t('base-host-form.extra-xhttp-description')}</Text>
-                    <JsonInput
-                        autosize
-                        formatOnBlur
-                        key={form.key('xHttpExtraParams')}
-                        minRows={15}
-                        placeholder={BASIC_XHTTP_EXTRA_PARAMS}
-                        validationError={t('base-host-form.invalid-json')}
-                        {...form.getInputProps('xHttpExtraParams')}
-                    />
-
-                    <Button
-                        color="gray"
-                        leftSection={<PiArrowUpDuotone size={px('1.2rem')} />}
-                        onClick={() => {
-                            // @ts-expect-error -- TODO: fix this
-                            form.setFieldValue('xHttpExtraParams', PASTE_BASIC_XHTTP_EXTRA_PARAMS)
-                        }}
-                        variant="light"
-                    >
-                        {t('base-host-form.fill-with-sample-xhttp-extra-params')}
-                    </Button>
-
-                    <Button onClick={close}>{t('common.close')}</Button>
-                </Stack>
-            </Drawer>
 
             <Drawer
                 onClose={closeMuxParams}

@@ -10,7 +10,7 @@ import {
     Table,
     Text
 } from '@mantine/core'
-import { GetStatsUserUsageCommand } from '@cerberus/backend-contract'
+import { GetStatsUserUsageCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { TbChartBar } from 'react-icons/tb'
 import { Chart } from '@highcharts/react'

@@ -1,11 +1,11 @@
-import { GetAllHostsCommand } from '@cerberus/backend-contract'
+import { GetAllHostsCommand } from '@exodus/backend-contract'
 import { configureMonacoYaml } from 'monaco-yaml'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola'
 
 type Host = GetAllHostsCommand.Response['response'][number]
 
-const DOCS_URL = 'https://docs.rw/docs/learn/xray-json-advanced'
+const DOCS_URL = 'https://docs.exodus.dev/docs/learn/xray-json-advanced'
 const DOCS_LINK = `\n\n[📖 Documentation](${DOCS_URL})`
 
 function getHostStatus(host: Host): { icon: string; label: string } {
@@ -62,7 +62,7 @@ export const configureMonaco = (
             const schema = {
                 type: 'object',
                 properties: {
-                    cerberus: {
+                    exodus: {
                         type: 'object',
                         properties: {
                             injectHosts: {

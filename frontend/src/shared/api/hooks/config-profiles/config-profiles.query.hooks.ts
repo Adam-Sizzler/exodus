@@ -3,7 +3,7 @@ import {
     GetConfigProfileByUuidCommand,
     GetConfigProfilesCommand,
     GetInboundsByProfileUuidCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 
 import { sToMs } from '@shared/utils/time-utils'

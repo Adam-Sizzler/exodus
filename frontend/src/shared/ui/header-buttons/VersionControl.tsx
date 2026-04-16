@@ -4,8 +4,8 @@ import { useMemo } from 'react'
 import semver from 'semver'
 import clsx from 'clsx'
 
-import { useCerberusInfo } from '@entities/dashboard/updates-store'
-import { useGetCerberusMetadata } from '@shared/api/hooks'
+import { useExodusInfo } from '@entities/dashboard/updates-store'
+import { useGetExodusMetadata } from '@shared/api/hooks'
 
 import { BaseOverlayHeader } from '../overlays/base-overlay-header'
 import { SkeletonHeaderControl } from './SkeletonHeaderControl'
@@ -15,18 +15,18 @@ import { HeaderControl } from './HeaderControl'
 import { Logo } from '../logo'
 
 export function VersionControl() {
-    const cerberusInfo = useCerberusInfo()
-    const { data: cerberusMetadata, isLoading } = useGetCerberusMetadata()
+    const exodusInfo = useExodusInfo()
+    const { data: exodusMetadata, isLoading } = useGetExodusMetadata()
 
     const [isNewVersionAvailable, isDev] = useMemo(() => {
-        if (!cerberusMetadata) return [false, false]
+        if (!exodusMetadata) return [false, false]
 
-        const currentVersion = semver.valid(cerberusMetadata.version) || '0.0.0'
-        const latest = semver.valid(cerberusInfo.latestVersion || '') || '0.0.0'
-        return [semver.gt(latest, currentVersion), cerberusMetadata.git.backend.branch === 'dev']
-    }, [cerberusInfo.latestVersion, cerberusMetadata])
+        const currentVersion = semver.valid(exodusMetadata.version) || '0.0.0'
+        const latest = semver.valid(exodusInfo.latestVersion || '') || '0.0.0'
+        return [semver.gt(latest, currentVersion), exodusMetadata.git.backend.branch === 'dev']
+    }, [exodusInfo.latestVersion, exodusMetadata])
 
-    if (isLoading || !cerberusMetadata) {
+    if (isLoading || !exodusMetadata) {
         return <SkeletonHeaderControl width={85} />
     }
 
@@ -45,7 +45,7 @@ export function VersionControl() {
             children: (
                 <BuildInfoModal
                     isNewVersionAvailable={isNewVersionAvailable}
-                    cerberusMetadata={cerberusMetadata}
+                    exodusMetadata={exodusMetadata}
                 />
             )
         })
@@ -63,7 +63,7 @@ export function VersionControl() {
             <Group gap={8} ml={10} mr={10} wrap="nowrap">
                 <Logo size={20} />
                 <Text ff="text" fw={600} size="sm">
-                    {cerberusMetadata.version}
+                    {exodusMetadata.version}
                 </Text>
             </Group>
         </HeaderControl>

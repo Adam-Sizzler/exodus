@@ -1,5 +1,5 @@
 import { Badge, Box, Center, Drawer, Group, Loader, Stack, Text } from '@mantine/core'
-import { GetInternalSquadAccessibleNodesCommand } from '@cerberus/backend-contract'
+import { GetInternalSquadAccessibleNodesCommand } from '@exodus/backend-contract'
 import { TbChevronRight, TbServer } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 import { DataTable } from 'mantine-datatable'

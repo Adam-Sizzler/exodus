@@ -5,7 +5,7 @@ x-common: &common
       hard: 1048576
   restart: always
   networks:
-    - cerberus-network
+    - exodus-network
 
 x-logging: &logging
   logging:
@@ -19,13 +19,13 @@ x-env: &env
     - ./.env
 
 services:
-  cerberus:
+  exodus:
     build:
       context: .
       dockerfile: Dockerfile.panel
-    image: cerberus:latest
-    container_name: cerberus
-    hostname: cerberus
+    image: exodus:latest
+    container_name: exodus
+    hostname: exodus
     <<: [*common, *logging, *env]
     environment:
       - APP_PORT=${APP_PORT:-3000}
@@ -35,18 +35,18 @@ services:
     volumes:
       - panel-data:/app/data
     depends_on:
-      cerberus-db:
+      exodus-db:
         condition: service_healthy
-      cerberus-redis:
+      exodus-redis:
         condition: service_healthy
 
-  cerberus-node:
+  exodus-node:
     build:
       context: ../node
       dockerfile: Dockerfile.node
-    image: cerberus-node:latest
-    container_name: cerberus-node
-    hostname: cerberus-node
+    image: exodus-node:latest
+    container_name: exodus-node
+    hostname: exodus-node
     <<: [*common, *logging]
     ports:
       - "9253:9253"
@@ -54,13 +54,13 @@ services:
       - ./backend/node/config.yml:/app/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock
 
-  cerberus-subscription:
+  exodus-subscription:
     build:
-      context: ../cerberus-sub
+      context: ../exodus-sub
       dockerfile: Dockerfile
-    image: cerberus-subscription:latest
-    container_name: cerberus-subscription
-    hostname: cerberus-subscription
+    image: exodus-subscription:latest
+    container_name: exodus-subscription
+    hostname: exodus-subscription
     <<: [*common, *logging, *env]
     environment:
       - APP_PORT_SUB=${APP_PORT_SUB:-3010}
@@ -70,13 +70,13 @@ services:
     ports:
       - 127.0.0.1:${APP_PORT_SUB:-3010}:${APP_PORT_SUB:-3010}
     depends_on:
-      cerberus:
+      exodus:
         condition: service_started
 
-  cerberus-db:
+  exodus-db:
     image: postgres:17.6
-    container_name: cerberus-db
-    hostname: cerberus-db
+    container_name: exodus-db
+    hostname: exodus-db
     <<: [*common, *logging, *env]
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -86,17 +86,17 @@ services:
     ports:
       - 127.0.0.1:6868:5432
     volumes:
-      - cerberus-db-data:/var/lib/postgresql/data
+      - exodus-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 3s
       timeout: 10s
       retries: 3
 
-  cerberus-redis:
+  exodus-redis:
     image: valkey/valkey:8.1-alpine
-    container_name: cerberus-redis
-    hostname: cerberus-redis
+    container_name: exodus-redis
+    hostname: exodus-redis
     <<: [*common, *logging]
     command: >
       valkey-server
@@ -111,8 +111,8 @@ services:
       retries: 3
 
 networks:
-  cerberus-network:
-    name: cerberus-network
+  exodus-network:
+    name: exodus-network
     driver: bridge
     external: false
 
@@ -120,7 +120,7 @@ volumes:
   panel-data:
     name: panel-data
     driver: local
-  cerberus-db-data:
-    name: cerberus-db-data
+  exodus-db-data:
+    name: exodus-db-data
     driver: local
     external: false

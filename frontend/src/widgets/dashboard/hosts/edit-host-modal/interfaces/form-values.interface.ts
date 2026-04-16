@@ -1,4 +1,4 @@
-import { UpdateHostCommand } from '@cerberus/backend-contract'
+import { UpdateHostCommand } from '@exodus/backend-contract'
 
 export interface IFormValues extends UpdateHostCommand.Request {
     shortUuid: string

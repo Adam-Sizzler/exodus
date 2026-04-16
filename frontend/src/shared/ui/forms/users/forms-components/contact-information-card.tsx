@@ -1,4 +1,4 @@
-import { CreateUserCommand, UpdateUserCommand } from '@cerberus/backend-contract'
+import { CreateUserCommand, UpdateUserCommand } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { PiEnvelopeDuotone, PiTelegramLogoDuotone } from 'react-icons/pi'
 import { NumberInput, Stack, TextInput } from '@mantine/core'

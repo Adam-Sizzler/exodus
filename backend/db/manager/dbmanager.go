@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"cerberus/backend/config"
-	"cerberus/backend/dbutil"
+	"exodus/backend/config"
+	"exodus/backend/dbutil"
 )
 
 const (

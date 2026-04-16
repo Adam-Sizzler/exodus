@@ -1,4 +1,4 @@
-import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'

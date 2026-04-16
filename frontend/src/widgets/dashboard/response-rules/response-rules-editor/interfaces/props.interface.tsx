@@ -1,7 +1,7 @@
 import {
     GetSubscriptionSettingsCommand,
     TSubscriptionTemplateType
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 
 export interface IProps {
     groupedTemplates: Record<TSubscriptionTemplateType, string[]>

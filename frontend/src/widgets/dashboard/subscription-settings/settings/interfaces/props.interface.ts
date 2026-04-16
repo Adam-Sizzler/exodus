@@ -1,4 +1,4 @@
-import { GetSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionSettingsCommand } from '@exodus/backend-contract'
 
 export interface IProps {
     subscriptionSettings: GetSubscriptionSettingsCommand.Response['response']

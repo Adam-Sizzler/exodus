@@ -10,10 +10,10 @@ import (
 	"regexp"
 	"strings"
 
-	"cerberus/backend/config"
-	"cerberus/backend/db"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
+	"exodus/backend/config"
+	"exodus/backend/db"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"

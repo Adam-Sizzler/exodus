@@ -18,11 +18,11 @@ import (
 	"sync"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	subscriptionapi "cerberus/backend/httpapi/subscription"
-	systemapi "cerberus/backend/httpapi/system"
-	"cerberus/proto"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	subscriptionapi "exodus/backend/httpapi/subscription"
+	systemapi "exodus/backend/httpapi/system"
+	"exodus/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -31,8 +31,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const cerberusRealIPHeader = "x-cerberus-real-ip"
-const subGRPCTokenHeader = "x-cerberus-grpc-token"
+const exodusRealIPHeader = "x-exodus-real-ip"
+const subGRPCTokenHeader = "x-exodus-grpc-token"
 
 const (
 	bridgeOperationSubscriptionInfo    = "subscription_info"
@@ -366,7 +366,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 		}
 		if sm.cfg != nil && sm.cfg.Panel.AllowInsecureHTTP {
 			tlsCfg.InsecureSkipVerify = true
-			sm.cfg.Logger.Warn("Subscription TLS verification is disabled by CERBERUS_ALLOW_INSECURE_HTTP", "node", state.nodeName)
+			sm.cfg.Logger.Warn("Subscription TLS verification is disabled by EXODUS_ALLOW_INSECURE_HTTP", "node", state.nodeName)
 		}
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
 	default:
@@ -576,7 +576,7 @@ func (sm *SubNodeMonitor) bridgeHeadersWithClientIP(req *proto.SubscriptionBridg
 	headers := append([]*proto.Header{}, req.GetHeaders()...)
 	clientIP := strings.TrimSpace(req.GetClientIp())
 	if clientIP != "" {
-		headers = append(headers, &proto.Header{Key: cerberusRealIPHeader, Value: clientIP})
+		headers = append(headers, &proto.Header{Key: exodusRealIPHeader, Value: clientIP})
 	}
 	return headers
 }
@@ -1069,7 +1069,7 @@ func (sm *SubNodeMonitor) loadMTLSConfig(ctx context.Context) (*tls.Config, erro
 		MinVersion:   tls.VersionTLS12,
 		RootCAs:      pool,
 		Certificates: []tls.Certificate{clientCert},
-		ServerName:   "internal.cerberus.local",
+		ServerName:   "internal.exodus.local",
 	}, nil
 }
 

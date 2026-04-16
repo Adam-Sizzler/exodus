@@ -3,7 +3,7 @@ import {
     GetHwidDevicesStatsCommand,
     GetTopUsersByHwidDevicesCommand,
     GetUserHwidDevicesCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 

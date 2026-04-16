@@ -1,4 +1,4 @@
-import { GetExternalSquadByUuidCommand } from '@cerberus/backend-contract'
+import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { Button, Paper, Select, Stack, Text } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
 import { TbDeviceFloppy } from 'react-icons/tb'

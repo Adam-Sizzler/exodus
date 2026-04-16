@@ -3,7 +3,7 @@ import {
     TSubscriptionPageBaseTranslationKeys,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageRawConfig
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import { Badge, Button, Card, Group } from '@mantine/core'
 import { IconLanguage } from '@tabler/icons-react'
 import { UseFormReturnType } from '@mantine/form'

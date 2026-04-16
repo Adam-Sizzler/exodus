@@ -10,7 +10,7 @@ import {
     Text,
     TextInput
 } from '@mantine/core'
-import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TbDeviceFloppy, TbSearch, TbX } from 'react-icons/tb'
 import { notifications } from '@mantine/notifications'

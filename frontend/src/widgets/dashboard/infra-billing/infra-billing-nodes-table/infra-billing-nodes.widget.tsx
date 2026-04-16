@@ -9,7 +9,7 @@ import {
     Tooltip
 } from '@mantine/core'
 import { TbCalendar, TbPlus, TbRefresh, TbServer, TbTrash } from 'react-icons/tb'
-import { GetInfraBillingNodesCommand } from '@cerberus/backend-contract'
+import { GetInfraBillingNodesCommand } from '@exodus/backend-contract'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTranslation } from 'node_modules/react-i18next'
 import { DataTable } from 'mantine-datatable'

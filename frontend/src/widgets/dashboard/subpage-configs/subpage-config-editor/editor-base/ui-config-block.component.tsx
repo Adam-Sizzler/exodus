@@ -2,7 +2,7 @@ import {
     INSTALLATION_GUIDE_BLOCKS_VARIANTS_VALUES,
     SUBSCRIPTION_INFO_BLOCK_VARIANTS_VALUES,
     TSubscriptionPageRawConfig
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import { Card, Divider, Select, SimpleGrid, Stack } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
 import { UseFormReturnType } from '@mantine/form'

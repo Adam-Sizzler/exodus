@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
 
 	"github.com/google/uuid"
 )

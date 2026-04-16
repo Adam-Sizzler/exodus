@@ -1,7 +1,7 @@
-import cerberus from '../public/locales/en/cerberus.json'
+import exodus from '../public/locales/en/exodus.json'
 
 const resources = {
-    cerberus
+    exodus
 } as const
 
 export default resources

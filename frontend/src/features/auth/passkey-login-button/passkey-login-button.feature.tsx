@@ -1,5 +1,5 @@
 import * as SimpleWebAuthnBrowser from '@simplewebauthn/browser'
-import { GetStatusCommand } from '@cerberus/backend-contract'
+import { GetStatusCommand } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
 import { TbFingerprint } from 'react-icons/tb'
 import { Button } from '@mantine/core'

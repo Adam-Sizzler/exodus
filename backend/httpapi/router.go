@@ -3,32 +3,32 @@ package httpapi
 import (
 	"net/http"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/auth"
-	"cerberus/backend/httpapi/bandwidthstats"
-	"cerberus/backend/httpapi/configprofiles"
-	"cerberus/backend/httpapi/externalsquads"
-	"cerberus/backend/httpapi/health"
-	"cerberus/backend/httpapi/hosts"
-	"cerberus/backend/httpapi/hwiduserdevices"
-	"cerberus/backend/httpapi/infrabilling"
-	"cerberus/backend/httpapi/keygen"
-	"cerberus/backend/httpapi/middleware"
-	"cerberus/backend/httpapi/modulessettings"
-	"cerberus/backend/httpapi/nodes"
-	"cerberus/backend/httpapi/panelsettings"
-	"cerberus/backend/httpapi/passkeys"
-	"cerberus/backend/httpapi/squads"
-	"cerberus/backend/httpapi/srslists"
-	"cerberus/backend/httpapi/subscription"
-	subscriptionpageconfigs "cerberus/backend/httpapi/subscription-page-configs"
-	subscriptionsettings "cerberus/backend/httpapi/subscription-settings"
-	subscriptiontemplate "cerberus/backend/httpapi/subscription-template"
-	subscriptionconnections "cerberus/backend/httpapi/subscriptionconnections"
-	subscriptionrequesthistory "cerberus/backend/httpapi/subscriptionrequesthistory"
-	"cerberus/backend/httpapi/system"
-	"cerberus/backend/httpapi/users"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/auth"
+	"exodus/backend/httpapi/bandwidthstats"
+	"exodus/backend/httpapi/configprofiles"
+	"exodus/backend/httpapi/externalsquads"
+	"exodus/backend/httpapi/health"
+	"exodus/backend/httpapi/hosts"
+	"exodus/backend/httpapi/hwiduserdevices"
+	"exodus/backend/httpapi/infrabilling"
+	"exodus/backend/httpapi/keygen"
+	"exodus/backend/httpapi/middleware"
+	"exodus/backend/httpapi/modulessettings"
+	"exodus/backend/httpapi/nodes"
+	"exodus/backend/httpapi/panelsettings"
+	"exodus/backend/httpapi/passkeys"
+	"exodus/backend/httpapi/squads"
+	"exodus/backend/httpapi/srslists"
+	"exodus/backend/httpapi/subscription"
+	subscriptionpageconfigs "exodus/backend/httpapi/subscription-page-configs"
+	subscriptionsettings "exodus/backend/httpapi/subscription-settings"
+	subscriptiontemplate "exodus/backend/httpapi/subscription-template"
+	subscriptionconnections "exodus/backend/httpapi/subscriptionconnections"
+	subscriptionrequesthistory "exodus/backend/httpapi/subscriptionrequesthistory"
+	"exodus/backend/httpapi/system"
+	"exodus/backend/httpapi/users"
 )
 
 func NewAPIHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.Handler {
@@ -49,8 +49,8 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/auth/me", auth.AuthMeHandler(manager, cfg))
 
 	mux.HandleFunc("/api/settings", panelsettings.PanelSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/cerberus-settings", panelsettings.CerberusSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/cerberus-settings/", panelsettings.CerberusSettingsHandler(manager, cfg))
+	mux.HandleFunc("/api/exodus-settings", panelsettings.ExodusSettingsHandler(manager, cfg))
+	mux.HandleFunc("/api/exodus-settings/", panelsettings.ExodusSettingsHandler(manager, cfg))
 	mux.HandleFunc("/api/tokens", panelsettings.PanelAPITokensHandler(manager, cfg))
 	mux.HandleFunc("/api/tokens/", panelsettings.PanelAPITokenByUUIDHandler(manager, cfg))
 	mux.HandleFunc("/api/modules-settings", modulessettings.ModulesSettingsHandler(manager, cfg))

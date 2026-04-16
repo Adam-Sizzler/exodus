@@ -1,5 +1,5 @@
 import { ActionIcon, Alert, Button, Card, Group, Stack, TextInput } from '@mantine/core'
-import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { PiChatsCircle, PiInfo, PiPlus, PiTrash } from 'react-icons/pi'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { zodResolver } from 'mantine-form-zod-resolver'

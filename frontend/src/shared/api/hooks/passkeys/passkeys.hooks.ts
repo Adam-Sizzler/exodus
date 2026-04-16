@@ -2,7 +2,7 @@ import {
     DeletePasskeyCommand,
     UpdatePasskeyCommand,
     VerifyPasskeyRegistrationCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'

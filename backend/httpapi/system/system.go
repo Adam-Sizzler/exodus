@@ -14,10 +14,10 @@ import (
 	"time"
 	"unicode"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
-	"cerberus/constant"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
+	"exodus/constant"
 )
 
 type usageRange struct {
@@ -64,11 +64,11 @@ func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		version = normalizeVersion(version)
 
-		frontendSHA := strings.TrimSpace(os.Getenv("CERBERUS_FRONTEND_COMMIT"))
+		frontendSHA := strings.TrimSpace(os.Getenv("EXODUS_FRONTEND_COMMIT"))
 		if frontendSHA == "" {
 			frontendSHA = backendSHA
 		}
-		buildNumber := strings.TrimSpace(os.Getenv("CERBERUS_BUILD_NUMBER"))
+		buildNumber := strings.TrimSpace(os.Getenv("EXODUS_BUILD_NUMBER"))
 		if buildNumber == "" {
 			buildNumber = "unknown"
 		}
@@ -650,7 +650,7 @@ func buildCommitURL(sha string) string {
 	if trimmed == "" || trimmed == "unknown" {
 		return "unknown"
 	}
-	return "https://github.com/cerberus/cerberus/commit/" + trimmed
+	return "https://github.com/teamdominant/exodus/commit/" + trimmed
 }
 
 func readMemStats() memStats {

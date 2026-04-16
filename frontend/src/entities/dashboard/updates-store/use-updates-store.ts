@@ -6,7 +6,7 @@ import { sToMs } from '@shared/utils/time-utils'
 
 const CACHE_TIME = sToMs(24 * 60 * 60)
 
-interface ICerberusInfo {
+interface IExodusInfo {
     latestVersion: string
     starsCount: number
 }
@@ -14,21 +14,21 @@ interface ICerberusInfo {
 interface IState {
     isLoading: boolean
     lastUpdateTimestamp: number
-    cerberusInfo: ICerberusInfo
+    exodusInfo: IExodusInfo
 }
 
 interface IActions {
     actions: {
-        getCerberusInfo: () => Promise<void>
+        getExodusInfo: () => Promise<void>
         resetState: () => void
-        setCerberusInfo: (info: ICerberusInfo) => void
+        setExodusInfo: (info: IExodusInfo) => void
     }
 }
 
 const initialState: IState = {
     isLoading: false,
     lastUpdateTimestamp: 0,
-    cerberusInfo: {
+    exodusInfo: {
         latestVersion: '1.12.0',
         starsCount: 0
     }
@@ -40,15 +40,15 @@ export const useUpdatesStore = create<IActions & IState>()(
             (set, get) => ({
                 ...initialState,
                 actions: {
-                    getCerberusInfo: async () => {
-                        const { lastUpdateTimestamp, cerberusInfo } = get()
+                    getExodusInfo: async () => {
+                        const { lastUpdateTimestamp, exodusInfo } = get()
                         const now = Date.now()
 
                         if (
                             lastUpdateTimestamp &&
                             now - lastUpdateTimestamp < CACHE_TIME &&
-                            cerberusInfo.latestVersion &&
-                            cerberusInfo.starsCount > 0
+                            exodusInfo.latestVersion &&
+                            exodusInfo.starsCount > 0
                         ) {
                             return
                         }
@@ -67,7 +67,7 @@ export const useUpdatesStore = create<IActions & IState>()(
                             }>('https://ungh.cc/repos/SagerNet/sing-box/releases/latest')
 
                             set({
-                                cerberusInfo: {
+                                exodusInfo: {
                                     latestVersion: versionResponse.data.release.tag,
                                     starsCount: starsResponse.data.totalStars
                                 },
@@ -80,8 +80,8 @@ export const useUpdatesStore = create<IActions & IState>()(
                         }
                     },
 
-                    setCerberusInfo: (info: ICerberusInfo) => {
-                        set({ cerberusInfo: info, lastUpdateTimestamp: Date.now() })
+                    setExodusInfo: (info: IExodusInfo) => {
+                        set({ exodusInfo: info, lastUpdateTimestamp: Date.now() })
                     },
                     resetState: () => {
                         set({ ...initialState })
@@ -96,13 +96,13 @@ export const useUpdatesStore = create<IActions & IState>()(
             version: 1,
             partialize: (state) => ({
                 lastUpdateTimestamp: state.lastUpdateTimestamp,
-                cerberusInfo: state.cerberusInfo
+                exodusInfo: state.exodusInfo
             })
         }
     )
 )
 
-export const useCerberusInfo = () => useUpdatesStore((state) => state.cerberusInfo)
+export const useExodusInfo = () => useUpdatesStore((state) => state.exodusInfo)
 export const useLastUpdateTimestamp = () => useUpdatesStore((state) => state.lastUpdateTimestamp)
-export const useIsLoadingCerberusUpdates = () => useUpdatesStore((state) => state.isLoading)
+export const useIsLoadingExodusUpdates = () => useUpdatesStore((state) => state.isLoading)
 export const useUpdatesStoreActions = () => useUpdatesStore((state) => state.actions)

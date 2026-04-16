@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
 )
 
 // IdEntry представляет одиночную пару ID и inbound_tag для пользователя.

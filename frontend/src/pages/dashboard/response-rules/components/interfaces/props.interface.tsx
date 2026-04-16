@@ -1,4 +1,4 @@
-import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 
 export interface Props {
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles']

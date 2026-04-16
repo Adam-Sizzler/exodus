@@ -1,14 +1,14 @@
 -- This migration initializes the full schema from schema.prisma.
 
 -- CreateTable
-CREATE TABLE "cerberus_settings" (
+CREATE TABLE "exodus_settings" (
     "id" INTEGER NOT NULL DEFAULT 1,
     "passkey_settings" JSONB,
     "oauth2_settings" JSONB,
     "tg_auth_settings" JSONB,
     "password_settings" JSONB,
     "branding_settings" JSONB,
-    CONSTRAINT "cerberus_settings_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "exodus_settings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable

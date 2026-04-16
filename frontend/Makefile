@@ -6,7 +6,7 @@ MONACO_FILES = \
 	public/assets/xray.schema.cn.json \
 	public/assets/main.wasm
 
-MONACO_BASE_URL ?= https://cerberus.github.io/xray-monaco-editor
+MONACO_BASE_URL ?= https://teamdominant.github.io/xray-monaco-editor
 
 download-monaco-deps: $(MONACO_FILES)
 

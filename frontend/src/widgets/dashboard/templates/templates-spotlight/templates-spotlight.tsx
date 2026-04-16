@@ -1,7 +1,7 @@
 import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'

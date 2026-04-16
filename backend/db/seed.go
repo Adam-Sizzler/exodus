@@ -8,16 +8,16 @@ import (
 	"fmt"
 	"strings"
 
-	"cerberus/backend/config"
-	"cerberus/backend/dbutil"
-	"cerberus/backend/security"
+	"exodus/backend/config"
+	"exodus/backend/dbutil"
+	"exodus/backend/security"
 
 	"github.com/google/uuid"
 )
 
 const defaultResponseRules = `{"rules":[{"name":"Browser Subscription","enabled":true,"operator":"AND","conditions":[{"value":"text/html","operator":"CONTAINS","headerName":"accept","caseSensitive":true}],"description":"System critical: do not delete or disable this rule.","responseType":"BROWSER"},{"name":"Mihomo Clients","enabled":true,"operator":"AND","conditions":[{"value":"^(?:FlClash|FlClashX|Flowvy|[Cc]lash-[Vv]erge|[Kk]oala-[Cc]lash|[Cc]lash-?[Mm]eta|[Mm]urge|[Cc]lashX [Mm]eta|[Mm]ihomo|[Cc]lash-nyanpasu|clash.meta|prizrak-box)","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Response with generated YAML config (Mihomo Template)","responseType":"MIHOMO"},{"name":"Stash (iOS, macOS)","enabled":true,"operator":"AND","conditions":[{"value":"^stash","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Response with generated YAML config (Stash Template)","responseType":"STASH"},{"name":"Sing-box clients","enabled":true,"operator":"AND","conditions":[{"value":"^sfa|sfi|sfm|sft|karing|singbox|rabbithole","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Resonse with generated JSON config (Singbox template)","responseType":"SINGBOX"},{"name":"Clash Core Clients","enabled":true,"operator":"AND","conditions":[{"value":"^clash","operator":"REGEX","headerName":"user-agent","caseSensitive":false}],"description":"Response with generated YAML config (Clash Template)","responseType":"CLASH"},{"name":"Fallback Base64","enabled":true,"operator":"AND","conditions":[],"description":"System critical: do not delete or disable this rule.","responseType":"XRAY_BASE64"}],"version":"1"}`
 const defaultHWIDSettings = `{"enabled":false,"maxDevicesAnnounce":null,"fallbackDeviceLimit":999}`
-const defaultCustomRemarks = `{"emptyHosts":["→ cerberus","→ No hosts found","→ Check Hosts tab","→ Check Internal Squads tab"],"expiredUsers":["⌛ Subscription expired","Contact support"],"limitedUsers":["🚧 Subscription limited","Contact support"],"disabledUsers":["🚫 Subscription disabled","Contact support"],"HWIDNotSupported":["App not supported"],"HWIDMaxDevicesExceeded":["Limit of devices reached"]}`
+const defaultCustomRemarks = `{"emptyHosts":["→ exodus","→ No hosts found","→ Check Hosts tab","→ Check Internal Squads tab"],"expiredUsers":["⌛ Subscription expired","Contact support"],"limitedUsers":["🚧 Subscription limited","Contact support"],"disabledUsers":["🚫 Subscription disabled","Contact support"],"HWIDNotSupported":["App not supported"],"HWIDMaxDevicesExceeded":["Limit of devices reached"]}`
 const defaultSubpageConfigUUID = "00000000-0000-0000-0000-000000000000"
 
 // SeedDefaults inserts base settings and templates if they do not exist.
@@ -66,8 +66,8 @@ func SeedDefaults(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig
 
 func ensureV2rsSettings(ctx context.Context, tx *sql.Tx) error {
 	var exists int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM cerberus_settings WHERE id = 1`).Scan(&exists); err != nil {
-		return fmt.Errorf("check cerberus_settings row: %w", err)
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM exodus_settings WHERE id = 1`).Scan(&exists); err != nil {
+		return fmt.Errorf("check exodus_settings row: %w", err)
 	}
 	if exists > 0 {
 		return nil
@@ -77,16 +77,16 @@ func ensureV2rsSettings(ctx context.Context, tx *sql.Tx) error {
 	oauth2Settings := `{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]}}`
 	tgAuthSettings := `{"enabled":false,"adminIds":[],"botToken":null}`
 	passwordSettings := `{"enabled":true}`
-	brandingSettings := `{"title":"CERBERUS","logoUrl":null}`
+	brandingSettings := `{"title":"EXODUS","logoUrl":null}`
 	modulesSettings := `{"haproxy":{"enabled":false}}`
 
 	query := dbutil.Rebind(`
-		INSERT INTO cerberus_settings (
+		INSERT INTO exodus_settings (
 			id, passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
 		) VALUES (1, ?, ?, ?, ?, ?, ?)
 	`)
 	if _, err := tx.ExecContext(ctx, query, passkeySettings, oauth2Settings, tgAuthSettings, passwordSettings, brandingSettings, modulesSettings); err != nil {
-		return fmt.Errorf("insert default cerberus_settings row: %w", err)
+		return fmt.Errorf("insert default exodus_settings row: %w", err)
 	}
 
 	return nil
@@ -133,7 +133,7 @@ func ensureDefaultSubscriptionSettings(ctx context.Context, tx *sql.Tx) error {
 	`)
 	_, err := tx.ExecContext(ctx, query,
 		uuid.NewString(),
-		"cerberus",
+		"exodus",
 		"https://github.com",
 		12,
 		"",

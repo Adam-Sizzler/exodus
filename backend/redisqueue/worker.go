@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
 
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	scheduledKey          = "cerberus:push_to_db:scheduled"
+	scheduledKey          = "exodus:push_to_db:scheduled"
 	recordUserUsagePrefix = "recordUserUsage:"
 	processingPostfix     = ":processing"
 )

@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/dbutil"
-	"cerberus/backend/httpapi/shared"
-	monitor "cerberus/backend/subscriptionnodes"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/dbutil"
+	"exodus/backend/httpapi/shared"
+	monitor "exodus/backend/subscriptionnodes"
 
 	"github.com/google/uuid"
 )

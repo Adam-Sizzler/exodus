@@ -23,7 +23,7 @@ import {
     TbServer,
     TbWorld
 } from 'react-icons/tb'
-import { GetMetadataCommand } from '@cerberus/backend-contract'
+import { GetMetadataCommand } from '@exodus/backend-contract'
 
 import { formatTimeUtil } from '@shared/utils/time-utils'
 
@@ -33,10 +33,10 @@ import { Logo } from '../logo'
 
 interface BuildInfoModalProps {
     isNewVersionAvailable: boolean
-    cerberusMetadata: GetMetadataCommand.Response['response']
+    exodusMetadata: GetMetadataCommand.Response['response']
 }
 
-export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: BuildInfoModalProps) {
+export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildInfoModalProps) {
     return (
         <Stack gap="md">
             {isNewVersionAvailable && (
@@ -59,7 +59,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                         <Button
                             color="teal"
                             component="a"
-                            href="https://t.me/remnalog"
+                            href="https://t.me/exodus"
                             leftSection={<TbBrandTelegram size={14} />}
                             ml="auto"
                             radius="md"
@@ -83,23 +83,23 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                                 size="lg"
                                 variant="light"
                             >
-                                {cerberusMetadata.version}
+                                {exodusMetadata.version}
                             </Badge>
 
                             <Badge
                                 color={
-                                    cerberusMetadata.git.backend.branch === 'dev' ? 'red' : 'teal'
+                                    exodusMetadata.git.backend.branch === 'dev' ? 'red' : 'teal'
                                 }
                                 leftSection={<TbGitBranch size={16} />}
                                 size="lg"
                                 variant="light"
                             >
-                                {cerberusMetadata.git.backend.branch}
+                                {exodusMetadata.git.backend.branch}
                             </Badge>
                         </Group>
                         <CopyButton
                             timeout={2000}
-                            value={JSON.stringify(cerberusMetadata, null, 2)}
+                            value={JSON.stringify(exodusMetadata, null, 2)}
                         >
                             {({ copied, copy }) => (
                                 <Tooltip label="Copy build info">
@@ -128,7 +128,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                             </Group>
                             <Text c="gray.3" ff="monospace" size="xs">
                                 {formatTimeUtil(
-                                    cerberusMetadata.build.time,
+                                    exodusMetadata.build.time,
                                     'DD.MM.YYYY HH:mm:ss'
                                 )}
                             </Text>
@@ -142,7 +142,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                                 </Text>
                             </Group>
                             <Text c="gray.3" ff="monospace" size="xs">
-                                {cerberusMetadata.build.number}
+                                {exodusMetadata.build.number}
                             </Text>
                         </Paper>
                     </SimpleGrid>
@@ -163,7 +163,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                                 <ActionIcon
                                     color="teal"
                                     component="a"
-                                    href={cerberusMetadata.git.backend.commitUrl}
+                                    href={exodusMetadata.git.backend.commitUrl}
                                     size="sm"
                                     target="_blank"
                                     variant="subtle"
@@ -175,7 +175,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
 
                         <CopyableCodeBlock
                             size="small"
-                            value={cerberusMetadata.git.backend.commitSha}
+                            value={exodusMetadata.git.backend.commitSha}
                         />
                     </Stack>
                 </Paper>
@@ -193,7 +193,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                                 <ActionIcon
                                     color="cyan"
                                     component="a"
-                                    href={cerberusMetadata.git.frontend.commitUrl}
+                                    href={exodusMetadata.git.frontend.commitUrl}
                                     size="sm"
                                     target="_blank"
                                     variant="subtle"
@@ -205,7 +205,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
 
                         <CopyableCodeBlock
                             size="small"
-                            value={cerberusMetadata.git.frontend.commitSha}
+                            value={exodusMetadata.git.frontend.commitSha}
                         />
                     </Stack>
                 </Paper>
@@ -215,7 +215,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                 <Button
                     color="cyan"
                     component="a"
-                    href="https://t.me/cerberus"
+                    href="https://t.me/exodus"
                     leftSection={<TbBrandTelegram size={16} />}
                     radius="md"
                     size="sm"
@@ -226,7 +226,7 @@ export function BuildInfoModal({ cerberusMetadata, isNewVersionAvailable }: Buil
                 </Button>
                 <Button
                     component="a"
-                    href="https://github.com/cerberus"
+                    href="https://github.com/teamdominant"
                     leftSection={<TbBrandGithub size={16} />}
                     radius="md"
                     size="sm"

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"cerberus/backend/config"
+	"exodus/backend/config"
 )
 
 // getClientIP retrieves the client IP address from an HTTP request.

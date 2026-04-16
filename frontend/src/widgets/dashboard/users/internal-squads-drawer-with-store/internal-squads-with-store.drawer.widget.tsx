@@ -17,7 +17,7 @@ import {
 } from '@mantine/core'
 import { PiCheck, PiCopy, PiList, PiTag, PiTreeView, PiUsers } from 'react-icons/pi'
 import { TbCirclesRelation, TbDeviceFloppy, TbSearch } from 'react-icons/tb'
-import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'node_modules/react-i18next'
 import { Virtuoso } from 'react-virtuoso'

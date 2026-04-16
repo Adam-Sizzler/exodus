@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"cerberus/backend/config"
+	"exodus/backend/config"
 )
 
 //go:embed prisma/migrations/*/migration.sql

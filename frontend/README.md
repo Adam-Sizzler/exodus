@@ -1,18 +1,18 @@
-## Cerberus Frontend
+## Exodus Frontend
 
-Frontend for Cerberus Panel..
+Frontend for Exodus Panel..
 
-Learn more about Cerberus Panel [here](https://docs.rw/).
+Learn more about Exodus Panel [here](https://docs.exodus.dev/).
 
 # Contributors
 
-Check [open issues](https://github.com/cerberus/panel/issues) to help the progress of this project.
+Check [open issues](https://github.com/teamdominant/exodus/issues) to help the progress of this project.
 
 <p align="center">
-Thanks to the all contributors who have helped improve Cerberus:
+Thanks to the all contributors who have helped improve Exodus:
 </p>
 <p align="center">
-<a href="https://github.com/cerberus/frontend/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=cerberus/frontend" />
+<a href="https://github.com/teamdominant/exodus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=exodus/frontend" />
 </a>
 </p>

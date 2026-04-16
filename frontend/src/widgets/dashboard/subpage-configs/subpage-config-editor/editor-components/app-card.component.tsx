@@ -9,7 +9,7 @@ import {
 import {
     TSubscriptionPageAppConfig,
     TSubscriptionPageSvgLibrary
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import { ActionIcon, Badge, Box, Card, Group, Text } from '@mantine/core'
 import isSvg from 'is-svg'
 

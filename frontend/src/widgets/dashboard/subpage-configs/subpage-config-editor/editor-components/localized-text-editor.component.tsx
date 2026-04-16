@@ -13,7 +13,7 @@ import {
     getLanguageName,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageLocalizedText
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import { IconLanguage } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'

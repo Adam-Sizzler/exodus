@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	dbmanager "cerberus/backend/db/manager"
-	srscore "cerberus/backend/srslists"
-	"cerberus/proto"
+	dbmanager "exodus/backend/db/manager"
+	srscore "exodus/backend/srslists"
+	"exodus/proto"
 
 	"github.com/iancoleman/orderedmap"
 	"google.golang.org/grpc/codes"

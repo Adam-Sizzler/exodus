@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor'
 
-import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@cerberus/backend-contract'
+import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
 import Editor, { Monaco } from '@monaco-editor/react'
 import 'monaco-yaml/yaml.worker'
 import { Box, Card, Paper } from '@mantine/core'

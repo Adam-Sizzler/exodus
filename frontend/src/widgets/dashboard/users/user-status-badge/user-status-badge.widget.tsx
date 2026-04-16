@@ -4,7 +4,7 @@ import {
     PiProhibitDuotone,
     PiPulseDuotone
 } from 'react-icons/pi'
-import { TUsersStatus, USERS_STATUS } from '@cerberus/backend-contract'
+import { TUsersStatus, USERS_STATUS } from '@exodus/backend-contract'
 import { Badge, BadgeProps } from '@mantine/core'
 
 interface IProps extends Omit<BadgeProps, 'children' | 'color'> {

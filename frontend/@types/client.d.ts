@@ -3,7 +3,7 @@ declare const __NODE_ENV__: string
 declare const __DOMAIN_OVERRIDE__: string
 
 interface Window {
-    __CERBERUS_RUNTIME__?: {
+    __EXODUS_RUNTIME__?: {
         basePath?: string
     }
 }

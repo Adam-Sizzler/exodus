@@ -17,7 +17,7 @@ import { TemplateEditorPageConnector } from '@pages/dashboard/templates/ui/conne
 import { TemplateBasePageConnector } from '@pages/dashboard/templates/ui/connectors/template-base-page.connector'
 import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
 import { SubscriptionSettingsConnector } from '@pages/dashboard/subscription-settings/connectors'
-import { CerberusSettingsConnector } from '@pages/dashboard/cerberus-settings/connectors'
+import { ExodusSettingsConnector } from '@pages/dashboard/exodus-settings/connectors'
 import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
 import { ModulesPageConnector } from '@pages/dashboard/modules/ui/connectors'
 import { ConfigProfilesPageConnector } from '@pages/dashboard/config-profiles/connectors'
@@ -123,8 +123,8 @@ const router = createBrowserRouter(
                         />
 
                         <Route
-                            element={<CerberusSettingsConnector />}
-                            path={ROUTES.DASHBOARD.MANAGEMENT.CERBERUS_SETTINGS}
+                            element={<ExodusSettingsConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.EXODUS_SETTINGS}
                         />
                     </Route>
 

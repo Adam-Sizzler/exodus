@@ -22,7 +22,7 @@ import {
     PiTag,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { GetNodesMetricsCommand } from '@cerberus/backend-contract'
+import { GetNodesMetricsCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { TbServer2 } from 'react-icons/tb'
 import { memo, useState } from 'react'

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
 )
 
 type historyRecord struct {

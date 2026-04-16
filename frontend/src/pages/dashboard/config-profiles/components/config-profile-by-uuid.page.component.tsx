@@ -1,4 +1,4 @@
-import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@cerberus/backend-contract'
+import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@exodus/backend-contract'
 import { ActionIcon, Box, Drawer, Flex, Group, Transition } from '@mantine/core'
 import { TbArrowBackUp, TbCode, TbFile } from 'react-icons/tb'
 import { useMediaQuery } from '@mantine/hooks'

@@ -1,20 +1,20 @@
-import { useGetBandwidthStats, useGetCerberusHealth, useGetSystemStats } from '@shared/api/hooks'
+import { useGetBandwidthStats, useGetExodusHealth, useGetSystemStats } from '@shared/api/hooks'
 import { HomePage } from '@pages/dashboard/home/components'
 import { LoadingScreen } from '@shared/ui/loading-screen'
 
 export const HomePageConnector = () => {
     const { data: systemInfo } = useGetSystemStats()
     const { data: bandwidthStats } = useGetBandwidthStats()
-    const { data: cerberusHealth } = useGetCerberusHealth()
+    const { data: exodusHealth } = useGetExodusHealth()
 
-    if (!systemInfo || !bandwidthStats || !cerberusHealth) {
+    if (!systemInfo || !bandwidthStats || !exodusHealth) {
         return <LoadingScreen />
     }
 
     return (
         <HomePage
             bandwidthStats={bandwidthStats}
-            cerberusHealth={cerberusHealth}
+            exodusHealth={exodusHealth}
             systemInfo={systemInfo}
         />
     )

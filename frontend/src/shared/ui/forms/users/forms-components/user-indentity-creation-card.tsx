@@ -1,5 +1,5 @@
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { CreateUserCommand } from '@cerberus/backend-contract'
+import { CreateUserCommand } from '@exodus/backend-contract'
 import { HiIdentification } from 'react-icons/hi'
 import { UseFormReturnType } from '@mantine/form'
 import { PiUserDuotone } from 'react-icons/pi'

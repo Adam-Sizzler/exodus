@@ -1,4 +1,4 @@
-import { GetSubscriptionTemplatesCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionTemplatesCommand } from '@exodus/backend-contract'
 import { PiCheck, PiCopy, PiPencil, PiTrashDuotone } from 'react-icons/pi'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { CopyButton, Menu } from '@mantine/core'

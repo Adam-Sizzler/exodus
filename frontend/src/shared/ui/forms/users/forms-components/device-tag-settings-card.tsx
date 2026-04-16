@@ -2,7 +2,7 @@ import {
     CreateUserCommand,
     GetAllTagsCommand,
     UpdateUserCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { Anchor, Checkbox, Code, Input, NumberInput, Stack, Text, Textarea } from '@mantine/core'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbDevices2, TbSettings } from 'react-icons/tb'
@@ -56,7 +56,7 @@ export function DeviceTagSettingsCard<
                                                 highlight: <Code />,
                                                 anchor: (
                                                     <Anchor
-                                                        href="https://docs.rw/docs/features/hwid-device-limit"
+                                                        href="https://docs.exodus.dev/docs/features/hwid-device-limit"
                                                         rel="noopener noreferrer"
                                                         target="_blank"
                                                     />

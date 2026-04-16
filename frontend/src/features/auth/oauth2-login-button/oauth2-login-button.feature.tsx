@@ -1,4 +1,4 @@
-import { TOAuth2ProvidersKeys } from '@cerberus/backend-contract'
+import { TOAuth2ProvidersKeys } from '@exodus/backend-contract'
 import { BiLogoGithub } from 'react-icons/bi'
 import { Button, Stack } from '@mantine/core'
 import { SiKeycloak } from 'react-icons/si'

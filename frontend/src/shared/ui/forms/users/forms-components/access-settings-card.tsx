@@ -3,7 +3,7 @@ import {
     GetExternalSquadsCommand,
     GetInternalSquadsCommand,
     UpdateUserCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { DateTimePicker, getTimeRange } from '@mantine/dates'
 import { notifications } from '@mantine/notifications'

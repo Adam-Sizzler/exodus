@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"cerberus/logger"
+	"exodus/logger"
 
 	"github.com/joho/godotenv"
 )
@@ -15,7 +15,7 @@ import (
 type BackendConfig struct {
 	Logger   *logger.Logger
 	Log      LogConfig
-	CERBERUS CERBERUSConfig
+	EXODUS EXODUSConfig
 	Panel    PanelConfig
 	Metrics  MetricsConfig
 	Database DatabaseConfig
@@ -48,7 +48,7 @@ type LogConfig struct {
 	LogMode  string
 }
 
-type CERBERUSConfig struct {
+type EXODUSConfig struct {
 	Address string
 }
 
@@ -66,7 +66,7 @@ var defaultConfig = BackendConfig{
 		LogLevel: "warn",
 		LogMode:  "inclusive",
 	},
-	CERBERUS: CERBERUSConfig{
+	EXODUS: EXODUSConfig{
 		Address: "0.0.0.0",
 	},
 	Database: DatabaseConfig{
@@ -125,7 +125,7 @@ func LoadConfig() (BackendConfig, error) {
 	}
 	cfg.Logger = realLogger
 
-	cfg.Logger.Info("cerberus listen", "address", cfg.CERBERUS.Address, "port", cfg.Panel.AppPort)
+	cfg.Logger.Info("exodus listen", "address", cfg.EXODUS.Address, "port", cfg.Panel.AppPort)
 	cfg.Logger.Debug("Configuration loaded from environment")
 
 	return cfg, nil
@@ -144,15 +144,15 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		return
 	}
 
-	if value := envFirst("LOG_LEVEL", "CERBERUS_LOG_LEVEL"); value != "" {
+	if value := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
 		cfg.Log.LogLevel = value
 	}
-	if value := envFirst("LOG_MODE", "CERBERUS_LOG_MODE"); value != "" {
+	if value := envFirst("LOG_MODE", "EXODUS_LOG_MODE"); value != "" {
 		cfg.Log.LogMode = value
 	}
 
 	if value := envFirst("APP_ADDRESS"); value != "" {
-		cfg.CERBERUS.Address = value
+		cfg.EXODUS.Address = value
 	}
 
 	if value := envFirst("APP_PORT"); value != "" {
@@ -183,15 +183,15 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		cfg.Metrics.Pass = value
 	}
 
-	if value := envFirst("CERBERUS_ALLOW_INSECURE_HTTP"); value != "" {
+	if value := envFirst("EXODUS_ALLOW_INSECURE_HTTP"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
 			cfg.Panel.AllowInsecureHTTP = parsed
 		} else if cfg.Logger != nil {
-			cfg.Logger.Warn("Invalid CERBERUS_ALLOW_INSECURE_HTTP value, ignoring", "value", value)
+			cfg.Logger.Warn("Invalid EXODUS_ALLOW_INSECURE_HTTP value, ignoring", "value", value)
 		}
 	}
 
-	if value := envFirst("CERBERUS_TRUSTED_PROXIES"); value != "" {
+	if value := envFirst("EXODUS_TRUSTED_PROXIES"); value != "" {
 		cfg.Panel.TrustedProxies = splitCSV(value)
 	}
 

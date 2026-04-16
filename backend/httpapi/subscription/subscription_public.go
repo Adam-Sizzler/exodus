@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/middleware"
-	"cerberus/backend/httpapi/shared"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/middleware"
+	"exodus/backend/httpapi/shared"
 )
 
 // SubscriptionPublicHandler handles public subscription endpoints under /api/sub.
@@ -122,9 +122,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	headersForMatch := r.Header.Clone()
-	headersForMatch.Set("x-cerberus-injected-short-uuid", shortUUID)
+	headersForMatch.Set("x-exodus-injected-short-uuid", shortUUID)
 	if clientType != "" {
-		headersForMatch.Set("x-cerberus-injected-client-type", clientType)
+		headersForMatch.Set("x-exodus-injected-client-type", clientType)
 	}
 
 	matchResult := matchResponseRulesDetailed(settings.ResponseRules, headersForMatch, clientType)

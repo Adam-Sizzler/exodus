@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor'
 
-import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { Monaco } from '@monaco-editor/react'
 import { RefObject } from 'react'
 

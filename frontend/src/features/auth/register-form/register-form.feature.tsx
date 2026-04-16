@@ -9,7 +9,7 @@ import {
     Title
 } from '@mantine/core'
 import { PiShuffleDuotone, PiSignpostDuotone } from 'react-icons/pi'
-import { RegisterCommand } from '@cerberus/backend-contract'
+import { RegisterCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { generate } from 'generate-password-ts'

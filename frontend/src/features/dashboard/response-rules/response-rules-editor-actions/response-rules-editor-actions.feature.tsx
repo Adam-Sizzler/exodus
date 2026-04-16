@@ -1,7 +1,7 @@
 import {
     TestSrrMatcherCommand,
     UpdateSubscriptionSettingsCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import {
     TbBug,
     TbClipboardCopy,
@@ -37,8 +37,8 @@ import { queryClient } from '@shared/api'
 
 import { Props } from './interfaces'
 
-const CERBERUS_CLIENT_TYPE_HEADER = 'X-Cerberus-Client-Type'
-const CERBERUS_CLIENT_TYPE_BROWSER = 'browser'
+const EXODUS_CLIENT_TYPE_HEADER = 'X-Exodus-Client-Type'
+const EXODUS_CLIENT_TYPE_BROWSER = 'browser'
 
 export function ResponseRulesEditorActionsFeature(props: Props) {
     const {
@@ -211,7 +211,7 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
 -H 'accept: application/json' \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer ${token}' \\
--H '${CERBERUS_CLIENT_TYPE_HEADER}: ${CERBERUS_CLIENT_TYPE_BROWSER}' \\
+-H '${EXODUS_CLIENT_TYPE_HEADER}: ${EXODUS_CLIENT_TYPE_BROWSER}' \\
 -d '${JSON.stringify({ responseRules: parsedRules }, null, 0)}'`
 
         modals.open({

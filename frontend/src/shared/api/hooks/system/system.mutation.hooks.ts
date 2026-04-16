@@ -1,4 +1,4 @@
-import { EncryptHappCryptoLinkCommand } from '@cerberus/backend-contract'
+import { EncryptHappCryptoLinkCommand } from '@exodus/backend-contract'
 
 import { createMutationHook } from '@shared/api/tsq-helpers'
 

@@ -1,5 +1,5 @@
 import { PiClockCountdown, PiClockUser, PiListChecks, PiProhibit } from 'react-icons/pi'
-import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { TbDevices2, TbListLetters, TbX } from 'react-icons/tb'
 import { Button, Card, Group, Stack } from '@mantine/core'
 import { useCallback, useEffect, useState } from 'react'

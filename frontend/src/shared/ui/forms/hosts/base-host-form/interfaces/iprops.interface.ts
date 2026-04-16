@@ -5,7 +5,7 @@ import {
     GetInternalSquadsCommand,
     GetSubscriptionTemplatesCommand,
     UpdateHostCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { UseFormReturnType } from '@mantine/form'
 
 export interface IProps<T extends CreateHostCommand.Request | UpdateHostCommand.Request> {

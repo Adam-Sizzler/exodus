@@ -1,4 +1,4 @@
-import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { Button, Group, px, Stack, Textarea } from '@mantine/core'
 import { PiDeviceMobile, PiGear } from 'react-icons/pi'
 import { zodResolver } from 'mantine-form-zod-resolver'
@@ -101,7 +101,7 @@ export const SubscriptionAnnounceRoutingCardWidget = (props: IProps) => {
                             leftSection={<PiGear size={px('1.2rem')} />}
                             onClick={() => {
                                 window.open(
-                                    'https://utils.docs.rw/happ-rb',
+                                    'https://utils.docs.exodus.dev/happ-rb',
                                     '_blank',
                                     'noopener noreferrer'
                                 )

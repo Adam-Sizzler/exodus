@@ -1,4 +1,4 @@
-import { GetAllNodesCommand, GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetAllNodesCommand, GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { ActionIcon, Avatar, Badge, Group, Text } from '@mantine/core'
 import { DataTableColumn } from 'mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'

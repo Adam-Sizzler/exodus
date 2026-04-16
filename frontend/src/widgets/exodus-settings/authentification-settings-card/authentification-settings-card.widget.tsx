@@ -1,0 +1,570 @@
+import {
+    Accordion,
+    Button,
+    Center,
+    Code,
+    Group,
+    Stack,
+    Switch,
+    TagsInput,
+    Text,
+    TextInput,
+    ThemeIcon
+} from '@mantine/core'
+import {
+    GetExodusSettingsCommand,
+    UpdateExodusSettingsCommand
+} from '@exodus/backend-contract'
+import { TbAlertCircle, TbFingerprint, TbKey, TbPassword, TbServer } from 'react-icons/tb'
+import { BiLogoGithub, BiLogoTelegram } from 'react-icons/bi'
+import { zodResolver } from 'mantine-form-zod-resolver'
+import { PiGlobe, PiKey } from 'react-icons/pi'
+import { useDisclosure } from '@mantine/hooks'
+import { useTranslation } from 'node_modules/react-i18next'
+import { SiKeycloak } from 'react-icons/si'
+import { modals } from '@mantine/modals'
+import { useForm } from '@mantine/form'
+import { TFunction } from 'i18next'
+
+import { PasskeysDrawerComponent } from '@widgets/exodus-settings/passkeys-settings-drawer/passkeys-drawer.component'
+import { useUpdateExodusSettings } from '@shared/api/hooks/exodus-settings/exodus-settings.mutation.hooks'
+import { HelpActionIconShared, THelpDrawerAvailableScreen } from '@shared/ui/help-drawer'
+import { CheckboxCardShared } from '@shared/ui/checkbox-card/checkbox-card.shared'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { SettingsCardShared } from '@shared/ui/settings-card'
+import { PocketidLogo, YandexLogo } from '@shared/ui/logos'
+import { QueryKeys } from '@shared/api/hooks/keys-factory'
+import { handleFormErrors } from '@shared/utils/misc'
+import { queryClient } from '@shared/api'
+
+interface IProps {
+    oauth2Settings: NonNullable<GetExodusSettingsCommand.Response['response']['oauth2Settings']>
+    passkeySettings: NonNullable<
+        GetExodusSettingsCommand.Response['response']['passkeySettings']
+    >
+    passwordSettings: NonNullable<
+        GetExodusSettingsCommand.Response['response']['passwordSettings']
+    >
+    tgAuthSettings: NonNullable<GetExodusSettingsCommand.Response['response']['tgAuthSettings']>
+}
+
+const getOAuth2ProvidersConfig = () =>
+    [
+        {
+            key: 'github' as const,
+            title: 'GitHub',
+            icon: <BiLogoGithub size={24} />,
+            iconColor: '#1B1F24',
+            fields: ['clientId', 'clientSecret', 'allowedEmails'] as const
+        },
+        {
+            key: 'pocketid' as const,
+            title: 'PocketID',
+            icon: <PocketidLogo size={24} />,
+            iconColor: '#000',
+            fields: ['clientId', 'clientSecret', 'plainDomain', 'allowedEmails'] as const
+        },
+        {
+            key: 'yandex' as const,
+            title: 'Yandex',
+            icon: <YandexLogo size={24} />,
+            iconColor: '#FC3F1D',
+            fields: ['clientId', 'clientSecret', 'allowedEmails'] as const
+        },
+        {
+            key: 'keycloak' as const,
+            title: 'Keycloak',
+            icon: <SiKeycloak color="#FFFFFF" size={24} />,
+            iconColor: '#000000',
+            fields: [
+                'clientId',
+                'clientSecret',
+                'realm',
+                'frontendDomain',
+                'keycloakDomain',
+                'allowedEmails'
+            ] as const
+        },
+        {
+            key: 'generic' as const,
+            title: 'Generic OAuth2',
+            icon: <TbKey size={24} />,
+            iconColor: '#000000',
+            fields: [
+                'clientId',
+                'clientSecret',
+                'frontendDomain',
+                'authorizationUrl',
+                'tokenUrl',
+                'allowedEmails',
+                'withPkce'
+            ] as const
+        }
+    ] as const
+
+const getFieldConfig = (t: TFunction) =>
+    ({
+        clientId: {
+            label: t('auth-settings.fields.clientId.label'),
+            description: t('auth-settings.fields.clientId.description'),
+            placeholder: t('auth-settings.fields.clientId.placeholder'),
+            type: 'text' as const
+        },
+        clientSecret: {
+            label: t('auth-settings.fields.clientSecret.label'),
+            description: t('auth-settings.fields.clientSecret.description'),
+            placeholder: t('auth-settings.fields.clientSecret.placeholder'),
+            type: 'text' as const
+        },
+        plainDomain: {
+            label: t('auth-settings.fields.plainDomain.label'),
+            description: t('auth-settings.fields.plainDomain.description'),
+            placeholder: t('auth-settings.fields.plainDomain.placeholder'),
+            type: 'text' as const
+        },
+        allowedEmails: {
+            label: t('auth-settings.fields.allowedEmails.label'),
+            description: t('auth-settings.fields.allowedEmails.description'),
+            placeholder: t('auth-settings.fields.allowedEmails.placeholder'),
+            type: 'tags' as const
+        },
+        realm: {
+            label: t('auth-settings.fields.realm.label'),
+            description: t('auth-settings.fields.realm.description'),
+            placeholder: 'master',
+            type: 'text' as const
+        },
+        frontendDomain: {
+            label: t('auth-settings.passkey.rpId.label'),
+            description: t('auth-settings.passkey.rpId.description'),
+            placeholder: 'docs.exodus.dev',
+            type: 'text' as const
+        },
+        keycloakDomain: {
+            label: t('auth-settings.fields.keycloakDomain.label'),
+            description: t('auth-settings.fields.keycloakDomain.description'),
+            placeholder: 'keycloak.docs.exodus.dev',
+            type: 'text' as const
+        },
+        authorizationUrl: {
+            label: 'Authorization URL',
+            description: 'Authorization URL for the OAuth2 provider',
+            placeholder: 'https://example.com/oauth2/authorize',
+            type: 'text' as const
+        },
+        tokenUrl: {
+            label: 'Token URL',
+            description: 'Token URL for the OAuth2 provider',
+            placeholder: 'https://example.com/oauth2/token',
+            type: 'text' as const
+        },
+        withPkce: {
+            label: 'With PKCE',
+            description: '',
+            placeholder: 'false',
+            type: 'checkbox' as const
+        }
+    }) as const
+
+export const AuthentificationSettingsCardWidget = (props: IProps) => {
+    const { passkeySettings, passwordSettings, oauth2Settings, tgAuthSettings } = props
+    const { t } = useTranslation()
+    const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false)
+
+    const form = useForm<NonNullable<UpdateExodusSettingsCommand.Request>>({
+        name: 'auth-settings',
+        mode: 'uncontrolled',
+        validate: zodResolver(
+            UpdateExodusSettingsCommand.RequestSchema.pick({
+                passkeySettings: true,
+                passwordSettings: true,
+                oauth2Settings: true,
+                tgAuthSettings: true
+            })
+        ),
+        initialValues: {
+            passkeySettings: {
+                enabled: passkeySettings.enabled,
+                rpId: passkeySettings.rpId,
+                origin: passkeySettings.origin
+            },
+            passwordSettings: {
+                enabled: passwordSettings.enabled
+            },
+            oauth2Settings: {
+                github: oauth2Settings.github,
+                pocketid: oauth2Settings.pocketid,
+                yandex: oauth2Settings.yandex,
+                keycloak: oauth2Settings.keycloak,
+                generic: oauth2Settings.generic
+            },
+            tgAuthSettings: {
+                enabled: tgAuthSettings.enabled,
+                botToken: tgAuthSettings.botToken,
+                adminIds: tgAuthSettings.adminIds
+            }
+        }
+    })
+
+    const { mutate: updateSettings, isPending: isUpdatePending } = useUpdateExodusSettings({
+        mutationFns: {
+            onSuccess(data) {
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.exodusSettings.getExodusSettings.queryKey
+                })
+
+                form.setValues({
+                    passkeySettings: data.passkeySettings!,
+                    passwordSettings: data.passwordSettings!,
+                    oauth2Settings: data.oauth2Settings!,
+                    tgAuthSettings: data.tgAuthSettings!
+                })
+
+                form.resetDirty()
+                form.resetTouched()
+            },
+            onError(error) {
+                handleFormErrors(form, error)
+
+                modals.open({
+                    title: (
+                        <BaseOverlayHeader
+                            IconComponent={TbAlertCircle}
+                            iconVariant="gradient-red"
+                            title={t('auth-settings.error-modal.title')}
+                        />
+                    ),
+                    centered: true,
+                    children: (
+                        <Stack gap="md">
+                            <Text c="dimmed" size="sm">
+                                {t('auth-settings.error-modal.description')}
+                            </Text>
+                            <Code p="md">
+                                <Text c="red.1" fw={500} size="sm">
+                                    {error instanceof Error
+                                        ? error.message
+                                        : t('auth-settings.error-modal.unknown-error')}
+                                </Text>
+                            </Code>
+                            <Button
+                                color="red"
+                                fullWidth
+                                onClick={() => modals.closeAll()}
+                                variant="light"
+                            >
+                                {t('common.close')}
+                            </Button>
+                        </Stack>
+                    )
+                })
+            }
+        }
+    })
+
+    const handleSubmit = form.onSubmit((values) => {
+        updateSettings({
+            variables: {
+                passkeySettings: values.passkeySettings,
+                passwordSettings: values.passwordSettings,
+                oauth2Settings: values.oauth2Settings,
+                tgAuthSettings: values.tgAuthSettings
+            }
+        })
+    })
+
+    const OAUTH2_PROVIDERS = getOAuth2ProvidersConfig()
+    const FIELD_CONFIG = getFieldConfig(t)
+
+    const renderOAuth2Provider = (config: ReturnType<typeof getOAuth2ProvidersConfig>[number]) => {
+        return (
+            <Accordion.Item key={config.key} value={config.key}>
+                <Center>
+                    <Accordion.Control
+                        icon={
+                            <ThemeIcon color={config.iconColor} size="lg" variant="filled">
+                                {config.icon}
+                            </ThemeIcon>
+                        }
+                    >
+                        <Group justify="space-between" pr="md">
+                            <Text fw={500}>{config.title}</Text>
+                        </Group>
+                    </Accordion.Control>
+                    <Group gap="xs" justify="flex-end" pr="xs" wrap="nowrap">
+                        <HelpActionIconShared
+                            actionIconProps={{
+                                size: 'input-xs'
+                            }}
+                            iconProps={{
+                                size: 20
+                            }}
+                            screen={
+                                `AUTH_METHODS_${config.key.toUpperCase()}` as THelpDrawerAvailableScreen
+                            }
+                        />
+                        <Switch
+                            color="teal.8"
+                            key={form.key(`oauth2Settings.${config.key}.enabled`)}
+                            onClick={(e) => e.stopPropagation()}
+                            size="md"
+                            {...form.getInputProps(`oauth2Settings.${config.key}.enabled`, {
+                                type: 'checkbox'
+                            })}
+                        />
+                    </Group>
+                </Center>
+
+                <Accordion.Panel>
+                    <Stack gap="md">
+                        {config.fields.map((fieldKey: keyof ReturnType<typeof getFieldConfig>) => {
+                            const fieldConfig = FIELD_CONFIG[fieldKey]
+                            const formPath = `oauth2Settings.${config.key}.${fieldKey}` as const
+
+                            if (fieldConfig.type === 'tags') {
+                                return (
+                                    <TagsInput
+                                        clearable
+                                        description={fieldConfig.description}
+                                        key={form.key(formPath)}
+                                        label={fieldConfig.label}
+                                        placeholder={fieldConfig.placeholder}
+                                        splitChars={[',', ' ', ';']}
+                                        {...form.getInputProps(formPath)}
+                                    />
+                                )
+                            }
+
+                            if (fieldConfig.type === 'checkbox') {
+                                return (
+                                    <CheckboxCardShared
+                                        description={fieldConfig.description}
+                                        key={form.key(formPath)}
+                                        label={fieldConfig.label}
+                                        {...form.getInputProps(formPath, {
+                                            type: 'checkbox'
+                                        })}
+                                    />
+                                )
+                            }
+
+                            return (
+                                <TextInput
+                                    description={fieldConfig.description}
+                                    key={form.key(formPath)}
+                                    label={fieldConfig.label}
+                                    placeholder={fieldConfig.placeholder}
+                                    {...form.getInputProps(formPath)}
+                                />
+                            )
+                        })}
+                    </Stack>
+                </Accordion.Panel>
+            </Accordion.Item>
+        )
+    }
+
+    return (
+        <>
+            <form onSubmit={handleSubmit} style={{ display: 'contents' }}>
+                <SettingsCardShared.Container>
+                    <SettingsCardShared.Header
+                        description={t('auth-settings.header.description')}
+                        icon={<PiKey size={24} />}
+                        title={t('auth-settings.header.title')}
+                    />
+
+                    <SettingsCardShared.Content>
+                        <Accordion multiple variant="separated">
+                            {/* Password */}
+                            <Accordion.Item key="password" value="password">
+                                <Center>
+                                    <Accordion.Control
+                                        disabled
+                                        icon={
+                                            <ThemeIcon color="orange" size="lg" variant="light">
+                                                <TbPassword size={24} />
+                                            </ThemeIcon>
+                                        }
+                                        style={{ opacity: 1.0 }}
+                                        styles={{
+                                            chevron: {
+                                                display: 'none'
+                                            }
+                                        }}
+                                    >
+                                        <Group justify="space-between">
+                                            <Text fw={500}>
+                                                {t('auth-settings.password.title')}
+                                            </Text>
+                                        </Group>
+                                    </Accordion.Control>
+                                    <Group gap="xs" justify="flex-end" pr="xs" wrap="nowrap">
+                                        <HelpActionIconShared
+                                            actionIconProps={{
+                                                size: 'input-xs'
+                                            }}
+                                            iconProps={{
+                                                size: 20
+                                            }}
+                                            screen="AUTH_METHODS_PASSWORD"
+                                        />
+                                        <Switch
+                                            color="teal.8"
+                                            key={form.key('passwordSettings.enabled')}
+                                            onClick={(e) => e.stopPropagation()}
+                                            size="md"
+                                            {...form.getInputProps('passwordSettings.enabled', {
+                                                type: 'checkbox'
+                                            })}
+                                        />
+                                    </Group>
+                                </Center>
+                            </Accordion.Item>
+
+                            {/* Passkey */}
+                            <Accordion.Item key="passkey" value="passkey">
+                                <Center>
+                                    <Accordion.Control
+                                        icon={
+                                            <ThemeIcon color="cyan" size="lg" variant="light">
+                                                <TbFingerprint size={24} />
+                                            </ThemeIcon>
+                                        }
+                                    >
+                                        <Group justify="space-between" pr="md">
+                                            <Text fw={500}>{t('auth-settings.passkey.title')}</Text>
+                                        </Group>
+                                    </Accordion.Control>
+                                    <Group justify="flex-end" pr="xs" wrap="nowrap">
+                                        <Switch
+                                            color="teal.8"
+                                            key={form.key('passkeySettings.enabled')}
+                                            onClick={(e) => e.stopPropagation()}
+                                            size="md"
+                                            {...form.getInputProps('passkeySettings.enabled', {
+                                                type: 'checkbox'
+                                            })}
+                                        />
+                                    </Group>
+                                </Center>
+
+                                <Accordion.Panel>
+                                    <Group justify="right">
+                                        <Button
+                                            color="gray"
+                                            disabled={!form.getValues().passkeySettings!.enabled}
+                                            leftSection={<TbFingerprint size={20} />}
+                                            onClick={openDrawer}
+                                            size="md"
+                                            variant="light"
+                                        >
+                                            {t('auth-settings.passkey.manage-button')}
+                                        </Button>
+                                    </Group>
+
+                                    <Stack gap="md">
+                                        <TextInput
+                                            description={t(
+                                                'auth-settings.passkey.rpId.description'
+                                            )}
+                                            key={form.key('passkeySettings.rpId')}
+                                            label={t('auth-settings.passkey.rpId.label')}
+                                            leftSection={<PiGlobe size={16} />}
+                                            placeholder="example.com"
+                                            {...form.getInputProps('passkeySettings.rpId')}
+                                        />
+
+                                        <TextInput
+                                            description={t(
+                                                'auth-settings.passkey.origin.description'
+                                            )}
+                                            key={form.key('passkeySettings.origin')}
+                                            label={t('auth-settings.passkey.origin.label')}
+                                            leftSection={<TbServer size={16} />}
+                                            placeholder="https://api.example.com"
+                                            {...form.getInputProps('passkeySettings.origin')}
+                                        />
+                                    </Stack>
+                                </Accordion.Panel>
+                            </Accordion.Item>
+
+                            {/* OAuth2 */}
+                            {OAUTH2_PROVIDERS.map(renderOAuth2Provider)}
+
+                            {/* Telegram */}
+                            <Accordion.Item key="tgAuth" value="tgAuth">
+                                <Center>
+                                    <Accordion.Control
+                                        icon={
+                                            <ThemeIcon color="#0088cc" size="lg" variant="filled">
+                                                <BiLogoTelegram color="white" size={20} />
+                                            </ThemeIcon>
+                                        }
+                                    >
+                                        <Group justify="space-between" pr="md">
+                                            <Text fw={500}>Telegram</Text>
+                                        </Group>
+                                    </Accordion.Control>
+                                    <Group gap="xs" justify="flex-end" pr="xs" wrap="nowrap">
+                                        <HelpActionIconShared
+                                            actionIconProps={{
+                                                size: 'input-xs'
+                                            }}
+                                            iconProps={{
+                                                size: 20
+                                            }}
+                                            screen="AUTH_METHODS_TELEGRAM"
+                                        />
+                                        <Switch
+                                            color="teal.8"
+                                            key={form.key('tgAuthSettings.enabled')}
+                                            onClick={(e) => e.stopPropagation()}
+                                            size="md"
+                                            {...form.getInputProps('tgAuthSettings.enabled', {
+                                                type: 'checkbox'
+                                            })}
+                                        />
+                                    </Group>
+                                </Center>
+
+                                <Accordion.Panel>
+                                    <Stack gap="md">
+                                        <TextInput
+                                            key={form.key('tgAuthSettings.botToken')}
+                                            label={t('auth-settings.telegram.botToken.label')}
+                                            placeholder={t(
+                                                'auth-settings.telegram.botToken.placeholder'
+                                            )}
+                                            {...form.getInputProps('tgAuthSettings.botToken')}
+                                        />
+
+                                        <TagsInput
+                                            clearable
+                                            key={form.key('tgAuthSettings.adminIds')}
+                                            label={t('auth-settings.telegram.adminIds.label')}
+                                            placeholder={t(
+                                                'auth-settings.telegram.adminIds.placeholder'
+                                            )}
+                                            splitChars={[',', ' ', ';']}
+                                            {...form.getInputProps('tgAuthSettings.adminIds')}
+                                        />
+                                    </Stack>
+                                </Accordion.Panel>
+                            </Accordion.Item>
+                        </Accordion>
+                    </SettingsCardShared.Content>
+
+                    <SettingsCardShared.Bottom>
+                        <Group justify="flex-end">
+                            <Button color="teal" loading={isUpdatePending} size="md" type="submit">
+                                {t('common.save')}
+                            </Button>
+                        </Group>
+                    </SettingsCardShared.Bottom>
+                </SettingsCardShared.Container>
+            </form>
+            <PasskeysDrawerComponent onClose={closeDrawer} opened={drawerOpened} />
+        </>
+    )
+}

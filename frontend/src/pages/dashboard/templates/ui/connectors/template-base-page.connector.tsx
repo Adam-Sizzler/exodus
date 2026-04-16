@@ -1,4 +1,4 @@
-import { SUBSCRIPTION_TEMPLATE_TYPE, TSubscriptionTemplateType } from '@cerberus/backend-contract'
+import { SUBSCRIPTION_TEMPLATE_TYPE, TSubscriptionTemplateType } from '@exodus/backend-contract'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { useGetSubscriptionTemplates } from '@shared/api/hooks'

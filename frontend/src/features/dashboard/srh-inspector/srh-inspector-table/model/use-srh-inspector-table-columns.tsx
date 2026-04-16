@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { GetSubscriptionRequestHistoryCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionRequestHistoryCommand } from '@exodus/backend-contract'
 import { MRT_ColumnDef } from 'mantine-react-table'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useMemo } from 'react'

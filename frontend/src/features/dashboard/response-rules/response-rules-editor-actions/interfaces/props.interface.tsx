@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor'
 
-import { GetSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { Monaco } from '@monaco-editor/react'
 import { RefObject } from 'react'
 

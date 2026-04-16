@@ -3,7 +3,7 @@ package users
 import (
 	"testing"
 
-	"cerberus/proto"
+	"exodus/proto"
 )
 
 func TestExtractTrafficStatsDelta(t *testing.T) {

@@ -1,4 +1,4 @@
-import { TSubscriptionTemplateType } from '@cerberus/backend-contract'
+import { TSubscriptionTemplateType } from '@exodus/backend-contract'
 
 export interface IDownloadableSubscriptionTemplate {
     author: string

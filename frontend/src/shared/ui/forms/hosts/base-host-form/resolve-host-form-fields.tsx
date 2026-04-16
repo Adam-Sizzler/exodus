@@ -1,4 +1,4 @@
-import { ExternalSquadHostOverridesSchema } from '@cerberus/backend-contract'
+import { ExternalSquadHostOverridesSchema } from '@exodus/backend-contract'
 import { ActionIcon, HoverCard, px, Stack, Text } from '@mantine/core'
 import { PiIdentificationBadge } from 'react-icons/pi'
 import { HiQuestionMarkCircle } from 'react-icons/hi'

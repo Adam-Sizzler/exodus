@@ -1,4 +1,4 @@
-import { CreateUserCommand, USERS_STATUS } from '@cerberus/backend-contract'
+import { CreateUserCommand, USERS_STATUS } from '@exodus/backend-contract'
 import { Button, em, Group, Stack } from '@mantine/core'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'

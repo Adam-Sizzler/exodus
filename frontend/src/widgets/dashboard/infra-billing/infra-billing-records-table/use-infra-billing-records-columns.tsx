@@ -1,5 +1,5 @@
 import { ActionIcon, ActionIconGroup, Avatar, Center, Flex, Text } from '@mantine/core'
-import { GetInfraBillingHistoryRecordsCommand } from '@cerberus/backend-contract'
+import { GetInfraBillingHistoryRecordsCommand } from '@exodus/backend-contract'
 import { HiCalendar, HiCurrencyDollar, HiOfficeBuilding } from 'react-icons/hi'
 import { DataTableColumn } from 'mantine-datatable'
 import { TbClick, TbTrash } from 'react-icons/tb'

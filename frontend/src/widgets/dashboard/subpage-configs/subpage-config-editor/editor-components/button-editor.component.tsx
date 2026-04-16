@@ -5,7 +5,7 @@ import {
     TSubscriptionPageButtonConfig,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageSvgLibrary
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import {
     ActionIcon,
     Badge,

@@ -1,4 +1,4 @@
-import { CreateNodeCommand } from '@cerberus/backend-contract'
+import { CreateNodeCommand } from '@exodus/backend-contract'
 import { Button, Group, Skeleton, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'node_modules/react-i18next'

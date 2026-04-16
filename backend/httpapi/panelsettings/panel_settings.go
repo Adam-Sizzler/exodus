@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
-	"cerberus/backend/security"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
+	"exodus/backend/security"
 
 	"github.com/google/uuid"
 )
@@ -81,7 +81,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 
 			err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 				if _, execErr := db.Exec(`
-					INSERT INTO cerberus_settings (
+					INSERT INTO exodus_settings (
 						id, passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
 					) VALUES (
 						1, ?, ?, ?, ?, ?, ?
@@ -92,13 +92,13 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 					`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]}}`,
 					`{"enabled":false,"adminIds":[],"botToken":null}`,
 					`{"enabled":true}`,
-					`{"title":"CERBERUS","logoUrl":null}`,
+					`{"title":"EXODUS","logoUrl":null}`,
 					`{"haproxy":{"enabled":false}}`,
 				); execErr != nil {
 					return execErr
 				}
 
-				query := "UPDATE cerberus_settings SET " + strings.Join(setClauses, ", ") + " WHERE id = 1"
+				query := "UPDATE exodus_settings SET " + strings.Join(setClauses, ", ") + " WHERE id = 1"
 				_, execErr := db.Exec(query, args...)
 				return execErr
 			})
@@ -247,17 +247,17 @@ func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 	}
 }
 
-func CerberusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			settings, err := loadPanelSettings(manager)
 			if err != nil {
-				cfg.Logger.Error("Failed to load cerberus settings", "error", err)
+				cfg.Logger.Error("Failed to load exodus settings", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load settings")
 				return
 			}
-			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": toCerberusSettingsResponse(settings)})
+			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": toExodusSettingsResponse(settings)})
 		case http.MethodPatch:
 			var payload map[string]json.RawMessage
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -303,11 +303,11 @@ func CerberusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 
 			settings, err := loadPanelSettings(manager)
 			if err != nil {
-				cfg.Logger.Error("Failed to load cerberus settings after update", "error", err)
+				cfg.Logger.Error("Failed to load exodus settings after update", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated settings")
 				return
 			}
-			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": toCerberusSettingsResponse(settings)})
+			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": toExodusSettingsResponse(settings)})
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -336,7 +336,7 @@ func toAPITokensResponse(items []APITokenRecord) []apiTokenResponse {
 	return out
 }
 
-func toCerberusSettingsResponse(settings map[string]any) map[string]any {
+func toExodusSettingsResponse(settings map[string]any) map[string]any {
 	return map[string]any{
 		"passkeySettings":  settings["passkey_settings"],
 		"oauth2Settings":   settings["oauth2_settings"],
@@ -376,14 +376,14 @@ func loadPanelSettings(manager *dbmanager.DatabaseManager) (map[string]any, erro
 		"oauth2_settings":   map[string]any{},
 		"tg_auth_settings":  map[string]any{"enabled": false, "adminIds": []any{}, "botToken": nil},
 		"password_settings": map[string]any{"enabled": true},
-		"branding_settings": map[string]any{"title": "CERBERUS", "logoUrl": nil},
+		"branding_settings": map[string]any{"title": "EXODUS", "logoUrl": nil},
 		"modules_settings":  map[string]any{"haproxy": map[string]any{"enabled": false}},
 	}
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
 			SELECT passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
-			FROM cerberus_settings
+			FROM exodus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)

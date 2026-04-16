@@ -18,7 +18,7 @@ const SUPPORTED_LANGUAGES = new Set(['en', 'fa', 'ru', 'zh'])
 const resolveDocsUrl = (screen: THelpDrawerAvailableScreen, language: string) => {
     const lang = language.split('-')[0]
     const safeLang = SUPPORTED_LANGUAGES.has(lang) ? lang : 'en'
-    return `https://raw.githubusercontent.com/cerberus/panel/refs/heads/main/_panel-docs/help-articles/${safeLang}/${screen}.md`
+    return `https://raw.githubusercontent.com/exodus/panel/refs/heads/main/_panel-docs/help-articles/${safeLang}/${screen}.md`
 }
 
 const getStaticHelpArticle = (screen: THelpDrawerAvailableScreen, language: string): null | string => {

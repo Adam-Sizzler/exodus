@@ -1,4 +1,4 @@
-import { TSubscriptionPageRawConfig } from '@cerberus/subscription-page-types'
+import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
 import { Badge, Button, Card, Group } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { IconPhoto } from '@tabler/icons-react'

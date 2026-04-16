@@ -16,24 +16,24 @@ import (
 	"syscall"
 	"time"
 
-	"cerberus/backend/config"
-	"cerberus/backend/db"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi"
-	"cerberus/backend/httpapi/middleware"
-	"cerberus/backend/httpapi/system"
-	users "cerberus/backend/nodes"
-	"cerberus/backend/redisqueue"
-	"cerberus/backend/srslists"
-	"cerberus/backend/subscriptionnodes"
-	"cerberus/constant"
+	"exodus/backend/config"
+	"exodus/backend/db"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi"
+	"exodus/backend/httpapi/middleware"
+	"exodus/backend/httpapi/system"
+	users "exodus/backend/nodes"
+	"exodus/backend/redisqueue"
+	"exodus/backend/srslists"
+	"exodus/backend/subscriptionnodes"
+	"exodus/constant"
 )
 
 // startWebServer serves both panel UI and API on a single APP_PORT.
 func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	addr := fmt.Sprintf("%s:%d", cfg.CERBERUS.Address, cfg.Panel.AppPort)
+	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Panel.AppPort)
 	panelBasePath := cfg.Panel.BasePath
 	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
 	if panelBasePathNoTrailing == "" {
@@ -189,7 +189,7 @@ func serveAppConfigJS(w http.ResponseWriter, basePath string) {
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = fmt.Fprintf(
 		w,
-		"window.__CERBERUS_RUNTIME__={basePath:%q};\n",
+		"window.__EXODUS_RUNTIME__={basePath:%q};\n",
 		basePath,
 	)
 }
@@ -202,7 +202,7 @@ func servePanelIndex(w http.ResponseWriter, indexPath string, basePathWithSlash,
 	}
 
 	injected := fmt.Sprintf(
-		"<base href=\"%s\" />\n<script>window.__CERBERUS_RUNTIME__={basePath:%q};</script>",
+		"<base href=\"%s\" />\n<script>window.__EXODUS_RUNTIME__={basePath:%q};</script>",
 		html.EscapeString(basePathWithSlash),
 		basePath,
 	)
@@ -286,7 +286,7 @@ func main() {
 		redisWorker.Start(ctx, &wg)
 	}
 
-	log.Printf("[START] cerberus application %s", constant.Version)
+	log.Printf("[START] exodus application %s", constant.Version)
 
 	<-sigChan
 	cfg.Logger.Info("Received termination signal, saving data")

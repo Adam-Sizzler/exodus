@@ -2,7 +2,7 @@ import {
     GetExternalSquadByUuidCommand,
     SUBSCRIPTION_TEMPLATE_TYPE,
     TSubscriptionTemplateType
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { Button, Paper, Select, Stack, Text } from '@mantine/core'
 import { useEffect, useMemo, useState } from 'react'
 import { TbDeviceFloppy } from 'react-icons/tb'

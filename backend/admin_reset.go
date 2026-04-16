@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"cerberus/backend/config"
-	"cerberus/backend/db"
-	"cerberus/backend/dbutil"
-	"cerberus/backend/security"
+	"exodus/backend/config"
+	"exodus/backend/db"
+	"exodus/backend/dbutil"
+	"exodus/backend/security"
 )
 
 func runAdminCredentialReset(cfg *config.BackendConfig) error {

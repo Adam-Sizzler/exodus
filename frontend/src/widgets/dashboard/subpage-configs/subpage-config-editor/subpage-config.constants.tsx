@@ -5,7 +5,7 @@ import {
     IconDeviceDesktop,
     IconDeviceTv
 } from '@tabler/icons-react'
-import { TSubscriptionPagePlatformKey } from '@cerberus/subscription-page-types'
+import { TSubscriptionPagePlatformKey } from '@exodus/subscription-page-types'
 
 export const PLATFORM_ICONS: Record<
     TSubscriptionPagePlatformKey,

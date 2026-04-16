@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	dbmanager "cerberus/backend/db/manager"
+	dbmanager "exodus/backend/db/manager"
 )
 
 func (nm *NodeMonitor) loadNodeMTLSConfig(ctx context.Context) (*tls.Config, error) {
@@ -42,6 +42,6 @@ func (nm *NodeMonitor) loadNodeMTLSConfig(ctx context.Context) (*tls.Config, err
 		MinVersion:   tls.VersionTLS12,
 		RootCAs:      pool,
 		Certificates: []tls.Certificate{clientCert},
-		ServerName:   "internal.cerberus.local",
+		ServerName:   "internal.exodus.local",
 	}, nil
 }

@@ -14,7 +14,7 @@ const normalizeBasePath = (rawBasePath: string): string => {
 }
 
 const runtimeBasePath =
-    typeof window !== 'undefined' ? (window.__CERBERUS_RUNTIME__?.basePath ?? '') : ''
+    typeof window !== 'undefined' ? (window.__EXODUS_RUNTIME__?.basePath ?? '') : ''
 
 export const APP_BASE_PATH = normalizeBasePath(runtimeBasePath)
 export const APP_BASE_PATH_WITH_TRAILING_SLASH =

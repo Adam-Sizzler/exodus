@@ -1,4 +1,4 @@
-import { GetAllHostsCommand, GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetAllHostsCommand, GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { Group, Stack, Text, ThemeIcon } from '@mantine/core'
 import { PiProhibit, PiPulse } from 'react-icons/pi'
 import { TbEyeOff } from 'react-icons/tb'

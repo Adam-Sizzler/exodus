@@ -1,4 +1,4 @@
-import { FindAllApiTokensCommand } from '@cerberus/backend-contract'
+import { FindAllApiTokensCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 

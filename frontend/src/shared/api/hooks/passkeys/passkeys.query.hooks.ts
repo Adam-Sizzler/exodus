@@ -1,7 +1,7 @@
 import {
     GetAllPasskeysCommand,
     GetPasskeyRegistrationOptionsCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'

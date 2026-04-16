@@ -1,4 +1,4 @@
-import { GetLegacyStatsNodeUserUsageCommand } from '@cerberus/backend-contract'
+import { GetLegacyStatsNodeUserUsageCommand } from '@exodus/backend-contract'
 import ColorHash from 'color-hash'
 import dayjs from 'dayjs'
 

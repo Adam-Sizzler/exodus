@@ -4,8 +4,8 @@ import axios from 'axios'
 import { logoutEvents } from '../emitters/emit-logout'
 
 let authorizationToken = ''
-const CERBERUS_CLIENT_TYPE_HEADER = 'X-Cerberus-Client-Type'
-const CERBERUS_CLIENT_TYPE_BROWSER = 'browser'
+const EXODUS_CLIENT_TYPE_HEADER = 'X-Exodus-Client-Type'
+const EXODUS_CLIENT_TYPE_BROWSER = 'browser'
 
 let BASE_DOMAIN = __DOMAIN_BACKEND__
 const isDev = __NODE_ENV__ === 'development'
@@ -26,7 +26,7 @@ export const instance = axios.create({
     headers: {
         'Content-type': 'application/json',
         Accept: 'application/json',
-        [CERBERUS_CLIENT_TYPE_HEADER]: CERBERUS_CLIENT_TYPE_BROWSER
+        [EXODUS_CLIENT_TYPE_HEADER]: EXODUS_CLIENT_TYPE_BROWSER
     }
 })
 

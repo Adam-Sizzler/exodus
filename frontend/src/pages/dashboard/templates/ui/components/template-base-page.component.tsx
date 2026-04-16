@@ -1,7 +1,7 @@
 import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { motion } from 'motion/react'
 
 import { TemplatesHeaderActionButtonsFeature } from '@features/ui/dashboard/templates/header-action-buttons'

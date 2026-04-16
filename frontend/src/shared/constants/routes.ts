@@ -25,7 +25,7 @@ export const ROUTES = {
             INTERNAL_SQUADS: '/dashboard/management/internal-squads',
             EXTERNAL_SQUADS: '/dashboard/management/external-squads',
             SRS_LISTS: '/dashboard/management/srs-lists',
-            CERBERUS_SETTINGS: '/dashboard/management/settings'
+            EXODUS_SETTINGS: '/dashboard/management/settings'
         },
         TOOLS: {
             ROOT: '/dashboard/tools',

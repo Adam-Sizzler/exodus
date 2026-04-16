@@ -1,4 +1,4 @@
-import { CreateInfraBillingNodeCommand } from '@cerberus/backend-contract'
+import { CreateInfraBillingNodeCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { Button, Modal, Stack } from '@mantine/core'

@@ -1,4 +1,4 @@
-import { GetInternalSquadsCommand } from '@cerberus/backend-contract'
+import { GetInternalSquadsCommand } from '@exodus/backend-contract'
 import { TbCirclesRelation } from 'react-icons/tb'
 import { PiTag, PiUsers } from 'react-icons/pi'
 import { Badge, Group } from '@mantine/core'

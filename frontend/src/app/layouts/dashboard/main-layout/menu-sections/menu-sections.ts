@@ -19,7 +19,7 @@ import {
     TbRoute,
     TbWebhook
 } from 'react-icons/tb'
-import { SUBSCRIPTION_TEMPLATE_TYPE } from '@cerberus/backend-contract'
+import { SUBSCRIPTION_TEMPLATE_TYPE } from '@exodus/backend-contract'
 import { HiChartPie, HiCurrencyDollar, HiServer } from 'react-icons/hi'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useHotkeys } from '@mantine/hooks'
@@ -132,10 +132,10 @@ export const useMenuSections = (): MenuItem[] => {
                 },
 
                 {
-                    name: t('constants.cerberus-settings'),
-                    href: ROUTES.DASHBOARD.MANAGEMENT.CERBERUS_SETTINGS,
+                    name: t('constants.exodus-settings'),
+                    href: ROUTES.DASHBOARD.MANAGEMENT.EXODUS_SETTINGS,
                     icon: Logo,
-                    id: 'cerberus-settings'
+                    id: 'exodus-settings'
                 }
             ]
         },
@@ -254,7 +254,7 @@ export const useMenuSections = (): MenuItem[] => {
             section: [
                 {
                     name: t('constants.happ-routing-builder'),
-                    href: 'https://utils.docs.rw/happ-rb',
+                    href: 'https://utils.docs.exodus.dev/happ-rb',
                     icon: HappLogo,
                     id: 'happ-routing-builder',
                     newTab: true

@@ -9,7 +9,7 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateConfigProfileCommand } from '@cerberus/backend-contract'
+import { CreateConfigProfileCommand } from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { TbCode, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'

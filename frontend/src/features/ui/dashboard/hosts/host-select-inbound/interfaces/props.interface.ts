@@ -1,4 +1,4 @@
-import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 
 export interface IProps {
     activeConfigProfileInbound: null | string | undefined

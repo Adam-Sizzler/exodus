@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"cerberus/backend/config"
-	"cerberus/constant"
+	"exodus/backend/config"
+	"exodus/constant"
 )
 
 var (

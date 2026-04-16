@@ -1,5 +1,5 @@
 import { ListViewTableColumn } from '@gfazioli/mantine-list-view-table'
-import { GetAllNodesCommand } from '@cerberus/backend-contract'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { Flex, Progress, Text } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useMemo } from 'react'

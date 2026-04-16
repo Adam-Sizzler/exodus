@@ -16,7 +16,7 @@ export function AuthGuard() {
     const updatesStoreActions = useUpdatesStoreActions()
 
     useLayoutEffect(() => {
-        updatesStoreActions.getCerberusInfo()
+        updatesStoreActions.getExodusInfo()
     }, [])
 
     if (!isInitialized || isLoading) {

@@ -4,7 +4,7 @@ import {
     TSubscriptionPageBaseTranslationKeys,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageTranslateKeys
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import { IconLanguage } from '@tabler/icons-react'
 import { useTranslation } from 'node_modules/react-i18next'
 import { Drawer, Stack } from '@mantine/core'

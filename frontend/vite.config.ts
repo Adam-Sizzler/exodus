@@ -46,7 +46,7 @@ export default defineConfig({
         outDir: 'dist',
         chunkSizeWarningLimit: 1000000,
         commonjsOptions: {
-            include: [/node_modules/, /vendor\/@cerberus/],
+            include: [/node_modules/, /vendor\/@exodus/],
             transformMixedEsModules: true
         },
         // minify: 'terser',
@@ -89,9 +89,9 @@ export default defineConfig({
                         '@mantine/notifications',
                         '@mantine/modals'
                     ],
-                    cerberus: [
-                        '@cerberus/backend-contract',
-                        '@cerberus/subscription-page-types'
+                    exodus: [
+                        '@exodus/backend-contract',
+                        '@exodus/subscription-page-types'
                     ],
                     i18n: ['i18next', 'i18next-http-backend', 'i18next-browser-languagedetector'],
                     motion: ['framer-motion', 'motion-dom', 'motion-utils', 'motion'],

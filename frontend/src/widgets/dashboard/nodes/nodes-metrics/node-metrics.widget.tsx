@@ -20,7 +20,7 @@ import {
     PiPulseDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { GetNodesMetricsCommand } from '@cerberus/backend-contract'
+import { GetNodesMetricsCommand } from '@exodus/backend-contract'
 import { VirtuosoMasonry } from '@virtuoso.dev/masonry'
 import { useMediaQuery } from '@mantine/hooks'
 import { useCallback, useMemo } from 'react'

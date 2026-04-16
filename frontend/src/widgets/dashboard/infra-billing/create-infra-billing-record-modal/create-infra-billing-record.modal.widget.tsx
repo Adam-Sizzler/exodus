@@ -1,4 +1,4 @@
-import { CreateInfraBillingHistoryRecordCommand } from '@cerberus/backend-contract'
+import { CreateInfraBillingHistoryRecordCommand } from '@exodus/backend-contract'
 import { Button, Modal, NumberInput, Stack } from '@mantine/core'
 import { HiCalendar, HiCurrencyDollar } from 'react-icons/hi'
 import { zodResolver } from 'mantine-form-zod-resolver'

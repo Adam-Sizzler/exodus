@@ -14,7 +14,7 @@ import {
     GetExternalSquadByUuidCommand,
     HwidSettingsSchema,
     THwidSettings
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { TbDeviceFloppy, TbDevices2 } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useEffect, useState } from 'react'

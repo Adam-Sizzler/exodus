@@ -9,10 +9,10 @@
  * All other text (plain, outside braces) is grouped as "normal" and assigned the color `'white'`.
  *
  * Examples:
- *   - "{ff0000}Cerber{00ff00}us" =>
+ *   - "{ff0000}Exo{00ff00}dus" =>
  *       [
- *         { text: "Cerber", color: "#ff0000" },
- *         { text: "us", color: "#00ff00" }
+ *         { text: "Exo", color: "#ff0000" },
+ *         { text: "dus", color: "#00ff00" }
  *       ]
  *   - "{blue}My Brand" =>
  *       [

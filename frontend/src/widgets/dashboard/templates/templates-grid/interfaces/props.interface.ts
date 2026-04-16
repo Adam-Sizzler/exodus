@@ -1,7 +1,7 @@
 import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 
 export interface IProps {
     templates: GetSubscriptionTemplatesCommand.Response['response']['templates']

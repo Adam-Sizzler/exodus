@@ -5,7 +5,7 @@ import {
     RegisterCommand,
     TelegramCallbackCommand,
     VerifyPasskeyAuthenticationCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
 
 import { setToken } from '@entities/auth/session-store'

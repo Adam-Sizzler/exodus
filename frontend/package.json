@@ -1,17 +1,17 @@
 {
-  "name": "@cerberus/frontend",
+  "name": "@exodus/frontend",
   "private": false,
   "type": "module",
   "version": "2.6.4",
   "license": "AGPL-3.0-only",
-  "author": "CERBERUS <github.com/cerberus>",
-  "homepage": "https://github.com/cerberus",
+  "author": "EXODUS <github.com/exodus>",
+  "homepage": "https://github.com/teamdominant",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cerberus/frontend.git"
+    "url": "git+https://github.com/teamdominant/exodus.git"
   },
   "bugs": {
-    "url": "https://github.com/cerberus/frontend/issues"
+    "url": "https://github.com/teamdominant/exodus/issues"
   },
   "scripts": {
     "start:dev": "vite",
@@ -38,6 +38,8 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@exodus/backend-contract": "file:vendor/@exodus/backend-contract",
+    "@exodus/subscription-page-types": "file:vendor/@exodus/subscription-page-types",
     "@formkit/auto-animate": "^0.9.0",
     "@gfazioli/mantine-list-view-table": "1.2.3",
     "@gfazioli/mantine-split-pane": "^2.7.1",
@@ -59,8 +61,6 @@
     "@monaco-editor/react": "^4.7.0",
     "@noble/post-quantum": "^0.5.4",
     "@paralleldrive/cuid2": "3.3.0",
-    "@cerberus/backend-contract": "file:vendor/@cerberus/backend-contract",
-    "@cerberus/subscription-page-types": "file:vendor/@cerberus/subscription-page-types",
     "@simplewebauthn/browser": "^13.2.2",
     "@stablelib/base64": "^2.0.1",
     "@stablelib/x25519": "^2.0.1",
@@ -103,7 +103,7 @@
     "react-imask": "^7.6.1",
     "react-layout-masonry": "^2.0.0",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "6.27.0",
+    "react-router-dom": "6.30.3",
     "react-virtuoso": "^4.18.1",
     "recharts": "2.15.4",
     "rehype-raw": "^7.0.0",
@@ -169,7 +169,7 @@
     "typesafe-i18n": "^5.27.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0",
-    "vite": "7.3.1",
+    "vite": "7.3.2",
     "vite-plugin-deadfile": "^1.4.0",
     "vite-plugin-ejs": "^1.7.0",
     "vite-plugin-javascript-obfuscator": "^3.1.0",

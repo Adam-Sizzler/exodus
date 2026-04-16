@@ -1,4 +1,4 @@
-import { RESET_PERIODS } from '@cerberus/backend-contract'
+import { RESET_PERIODS } from '@exodus/backend-contract'
 import { Box, Group, Progress, Text } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
 

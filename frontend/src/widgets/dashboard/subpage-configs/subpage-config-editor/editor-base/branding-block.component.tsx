@@ -1,4 +1,4 @@
-import { TSubscriptionPageRawConfig } from '@cerberus/subscription-page-types'
+import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
 import { Card, Divider, Stack, TextInput } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
 import { UseFormReturnType } from '@mantine/form'
@@ -51,7 +51,7 @@ export function BrandingBlockComponent({ form }: IProps) {
                     classNames={{ input: styles.inputDark }}
                     key={form.key('brandingSettings.supportUrl')}
                     label={t('subpage-config-visual-editor.widget.support-url')}
-                    placeholder="https://t.me/support"
+                    placeholder="https://t.me/exodus"
                     required
                     {...form.getInputProps('brandingSettings.supportUrl')}
                 />

@@ -1,4 +1,4 @@
-import { CreateHostCommand, SECURITY_LAYERS } from '@cerberus/backend-contract'
+import { CreateHostCommand, SECURITY_LAYERS } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'node_modules/react-i18next'
@@ -88,26 +88,10 @@ export const CreateHostModalWidget = () => {
             return null
         }
 
-        let xHttpExtraParams
         let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
-
-        try {
-            if (values.xHttpExtraParams === '') {
-                xHttpExtraParams = null
-            } else {
-                xHttpExtraParams = JSON.parse(values.xHttpExtraParams as unknown as string)
-            }
-        } catch {
-            notifications.show({
-                title: t('create-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return null
-        }
 
         try {
             if (values.muxParams === '') {
@@ -163,7 +147,6 @@ export const CreateHostModalWidget = () => {
                 muxParams,
                 singboxMuxParams,
                 clashMuxParams,
-                xHttpExtraParams,
                 inbound: {
                     configProfileInboundUuid: values.inbound.configProfileInboundUuid,
                     configProfileUuid: values.inbound.configProfileUuid

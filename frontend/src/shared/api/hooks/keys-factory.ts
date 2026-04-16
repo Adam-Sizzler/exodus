@@ -3,7 +3,7 @@ import { inferQueryKeyStore, mergeQueryKeys } from '@lukemorales/query-key-facto
 import { subscriptionRequestHistoryQueryKeys } from './subscription-request-history/subscription-request-history.query.hooks'
 import { subscriptionTemplateQueryKeys } from './subscription-template/subscription-template.query.hooks'
 import { subscriptionSettingsQueryKeys } from './subscription-settings/subscription-settings.query.hooks'
-import { cerberusSettingsQueryKeys } from './cerberus-settings/cerberus-settings.query.hooks'
+import { exodusSettingsQueryKeys } from './exodus-settings/exodus-settings.query.hooks'
 import { hwidUserDevicesQueryKeys } from './hwid-user-devices/hwid-user-devices.query.hooks'
 import { configProfilesQueryKeys } from './config-profiles/config-profiles.query.hooks'
 import { internalSquadsQueryKeys } from './internal-squads/internal-squads.query.hooks'
@@ -40,7 +40,7 @@ export const QueryKeys = mergeQueryKeys(
     subscriptionRequestHistoryQueryKeys,
     snippetsQueryKeys,
     externalSquadsQueryKeys,
-    cerberusSettingsQueryKeys,
+    exodusSettingsQueryKeys,
     passkeysQueryKeys,
     srsListsQueryKeys,
     subpageConfigsQueryKeys,

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
-	"cerberus/backend/security"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
+	"exodus/backend/security"
 )
 
 type secretPayload struct {

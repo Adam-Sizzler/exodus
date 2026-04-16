@@ -21,7 +21,7 @@ import {
     PiTelegramLogoDuotone,
     PiX
 } from 'react-icons/pi'
-import { BulkUpdateUsersCommand } from '@cerberus/backend-contract'
+import { BulkUpdateUsersCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { TbDevices2, TbWebhook } from 'react-icons/tb'
 import { Trans, useTranslation } from 'node_modules/react-i18next'
@@ -312,7 +312,7 @@ export const BulkUserActionsUpdateTabFeature = (props: IProps) => {
                                         highlight: <Code />,
                                         anchor: (
                                             <Anchor
-                                                href="https://docs.rw/docs/features/hwid-device-limit"
+                                                href="https://docs.exodus.dev/docs/features/hwid-device-limit"
                                                 rel="noopener noreferrer"
                                                 target="_blank"
                                             />

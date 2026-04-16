@@ -11,7 +11,7 @@ import {
 import { PiCheck, PiCheckSquareOffset, PiCopy, PiFloppyDisk } from 'react-icons/pi'
 import { ActionIcon, Button, CopyButton, Group, Menu, Text } from '@mantine/core'
 import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
-import { UpdateConfigProfileCommand } from '@cerberus/backend-contract'
+import { UpdateConfigProfileCommand } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'node_modules/react-i18next'
 import { modals } from '@mantine/modals'

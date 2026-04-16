@@ -1,4 +1,4 @@
-import { DropConnectionsCommand, FetchIpsCommand } from '@cerberus/backend-contract'
+import { DropConnectionsCommand, FetchIpsCommand } from '@exodus/backend-contract'
 
 import { createMutationHook } from '../../tsq-helpers'
 

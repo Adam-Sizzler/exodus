@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/dbutil"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/dbutil"
 )
 
 // DBNode represents a node loaded from database.

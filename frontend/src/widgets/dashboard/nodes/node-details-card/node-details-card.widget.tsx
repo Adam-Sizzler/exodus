@@ -17,7 +17,7 @@ import {
     PiUsersDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import { GetOneNodeCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
+import { GetOneNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'node_modules/react-i18next'
@@ -382,7 +382,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                 }}
                             >
                                 <Tooltip
-                                    label={t('node-details-card.widget.cerberus-node-version')}
+                                    label={t('node-details-card.widget.exodus-node-version')}
                                 >
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />

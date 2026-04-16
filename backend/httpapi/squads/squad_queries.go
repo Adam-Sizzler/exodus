@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/dbutil"
-	"cerberus/backend/httpapi/shared"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/dbutil"
+	"exodus/backend/httpapi/shared"
 )
 
 // ==================== CONFIG PROFILES WITH INBOUNDS (FOR UI) ====================

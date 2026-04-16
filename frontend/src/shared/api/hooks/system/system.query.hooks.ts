@@ -3,9 +3,9 @@ import {
     GetMetadataCommand,
     GetNodesMetricsCommand,
     GetNodesStatisticsCommand,
-    GetCerberusHealthCommand,
+    GetExodusHealthCommand,
     GetStatsCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 
@@ -26,13 +26,13 @@ export const systemQueryKeys = createQueryKeys('system', {
     getNodesStatistics: {
         queryKey: null
     },
-    getCerberusHealth: {
+    getExodusHealth: {
         queryKey: null
     },
     getNodesMetrics: {
         queryKey: null
     },
-    getCerberusMetadata: {
+    getExodusMetadata: {
         queryKey: null
     }
 })
@@ -85,16 +85,16 @@ export const useGetNodesStatisticsCommand = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Nodes Statistics')
 })
 
-export const useGetCerberusHealth = createGetQueryHook({
-    endpoint: GetCerberusHealthCommand.TSQ_url,
-    responseSchema: GetCerberusHealthCommand.ResponseSchema,
-    getQueryKey: () => systemQueryKeys.getCerberusHealth.queryKey,
+export const useGetExodusHealth = createGetQueryHook({
+    endpoint: GetExodusHealthCommand.TSQ_url,
+    responseSchema: GetExodusHealthCommand.ResponseSchema,
+    getQueryKey: () => systemQueryKeys.getExodusHealth.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,
         staleTime: sToMs(10),
         refetchInterval: sToMs(10)
     },
-    errorHandler: (error) => errorHandler(error, 'Get Cerberus Health')
+    errorHandler: (error) => errorHandler(error, 'Get Exodus Health')
 })
 
 export const useGetNodesMetrics = createGetQueryHook({
@@ -109,14 +109,14 @@ export const useGetNodesMetrics = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Nodes Metrics')
 })
 
-export const useGetCerberusMetadata = createGetQueryHook({
+export const useGetExodusMetadata = createGetQueryHook({
     endpoint: GetMetadataCommand.TSQ_url,
     responseSchema: GetMetadataCommand.ResponseSchema,
-    getQueryKey: () => systemQueryKeys.getCerberusMetadata.queryKey,
+    getQueryKey: () => systemQueryKeys.getExodusMetadata.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,
         refetchOnMount: false,
         staleTime: sToMs(3_600)
     },
-    errorHandler: (error) => errorHandler(error, 'Get Cerberus Metadata')
+    errorHandler: (error) => errorHandler(error, 'Get Exodus Metadata')
 })

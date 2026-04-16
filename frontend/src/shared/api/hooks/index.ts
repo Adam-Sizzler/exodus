@@ -36,9 +36,9 @@ export * from './subscription-connections/subscription-connections.query.hooks'
 export * from './passkeys/passkeys.hooks'
 
 export * from './passkeys/passkeys.query.hooks'
-export * from './cerberus-settings/cerberus-settings.mutation.hooks'
+export * from './exodus-settings/exodus-settings.mutation.hooks'
 
-export * from './cerberus-settings/cerberus-settings.query.hooks'
+export * from './exodus-settings/exodus-settings.query.hooks'
 export * from './snippets/snippets.mutation.hooks'
 
 export * from './snippets/snippets.query.hooks'

@@ -1,5 +1,5 @@
 import { ForwardRefComponent, HTMLMotionProps, motion, Variants } from 'motion/react'
-import { CreateNodeCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
+import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { SiSecurityscorecard } from 'react-icons/si'
 import { UseFormReturnType } from '@mantine/form'
 import { Skeleton, Stack } from '@mantine/core'

@@ -1,4 +1,4 @@
-import { GetAllNodesCommand } from '@cerberus/backend-contract'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 
 export interface IProps {
     isLoading: boolean

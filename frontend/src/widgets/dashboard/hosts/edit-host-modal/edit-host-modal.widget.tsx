@@ -1,4 +1,4 @@
-import { UpdateHostCommand } from '@cerberus/backend-contract'
+import { UpdateHostCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
 import { memo, useEffect, useState } from 'react'
@@ -86,17 +86,10 @@ export const EditHostModalWidget = memo(() => {
     useEffect(() => {
         if (host && configProfiles) {
             const hostAny = host as any
-            let xHttpExtraParamsParsed: null | object | string
             let muxParamsParsed: null | object | string
             let singboxMuxParamsParsed: null | object | string
             let clashMuxParamsParsed: null | object | string
             let sockoptParamsParsed: null | object | string
-
-            if (typeof host.xHttpExtraParams === 'object' && host.xHttpExtraParams !== null) {
-                xHttpExtraParamsParsed = JSON.stringify(host.xHttpExtraParams, null, 2)
-            } else {
-                xHttpExtraParamsParsed = ''
-            }
 
             if (typeof host.muxParams === 'object' && host.muxParams !== null) {
                 muxParamsParsed = JSON.stringify(host.muxParams, null, 2)
@@ -141,7 +134,6 @@ export const EditHostModalWidget = memo(() => {
                     configProfileInboundUuid: host.inbound.configProfileInboundUuid ?? ''
                 },
                 serverDescription: host.serverDescription ?? undefined,
-                xHttpExtraParams: xHttpExtraParamsParsed,
                 muxParams: muxParamsParsed,
                 singboxMuxParams: singboxMuxParamsParsed,
                 clashMuxParams: clashMuxParamsParsed,
@@ -210,27 +202,10 @@ export const EditHostModalWidget = memo(() => {
             return
         }
 
-        let xHttpExtraParams
         let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
-
-        try {
-            if (values.xHttpExtraParams === '') {
-                xHttpExtraParams = null
-            } else {
-                xHttpExtraParams = JSON.parse(values.xHttpExtraParams as unknown as string)
-            }
-        } catch (error) {
-            consola.error(error)
-            notifications.show({
-                title: t('edit-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return
-        }
 
         try {
             if (values.muxParams === '') {
@@ -286,7 +261,6 @@ export const EditHostModalWidget = memo(() => {
                 ...values,
                 isDisabled: !values.isDisabled,
                 uuid: host.uuid,
-                xHttpExtraParams,
                 muxParams,
                 singboxMuxParams,
                 clashMuxParams,
@@ -322,7 +296,6 @@ export const EditHostModalWidget = memo(() => {
                 sni: host.sni ?? undefined,
                 host: host.host ?? undefined,
                 alpn: (host.alpn as UpdateHostCommand.Request['alpn']) ?? undefined,
-                xHttpExtraParams: host.xHttpExtraParams ?? undefined,
                 muxParams: host.muxParams ?? undefined,
                 singboxMuxParams: (host as any).singboxMuxParams ?? undefined,
                 clashMuxParams: (host as any).clashMuxParams ?? undefined,

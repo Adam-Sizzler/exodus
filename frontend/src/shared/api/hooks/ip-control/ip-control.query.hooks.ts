@@ -1,4 +1,4 @@
-import { FetchIpsResultCommand } from '@cerberus/backend-contract'
+import { FetchIpsResultCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 
 import { sToMs } from '@shared/utils/time-utils'

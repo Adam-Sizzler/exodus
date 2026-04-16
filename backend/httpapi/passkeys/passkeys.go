@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/auth"
-	"cerberus/backend/httpapi/shared"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/auth"
+	"exodus/backend/httpapi/shared"
 )
 
 var passkeyNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_\s-]+$`)

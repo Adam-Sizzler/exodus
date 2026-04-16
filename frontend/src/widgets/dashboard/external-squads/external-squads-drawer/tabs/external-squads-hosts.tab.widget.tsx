@@ -1,7 +1,7 @@
 import {
     ExternalSquadHostOverridesSchema,
     GetExternalSquadByUuidCommand
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import z from 'zod'
 

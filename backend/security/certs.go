@@ -134,7 +134,7 @@ func GenerateNodeCert(caCertPEM string, caKeyPEM string) (NodeCert, error) {
 	nodeTemplate.Subject = pkix.Name{CommonName: randomCertCN()}
 	nodeTemplate.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
 	nodeTemplate.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
-	nodeTemplate.DNSNames = []string{"internal.cerberus.local"}
+	nodeTemplate.DNSNames = []string{"internal.exodus.local"}
 
 	nodeDER, err := x509.CreateCertificate(rand.Reader, nodeTemplate, caCert, &nodeKey.PublicKey, caKey)
 	if err != nil {

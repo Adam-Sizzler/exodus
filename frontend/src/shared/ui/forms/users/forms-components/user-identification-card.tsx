@@ -10,7 +10,7 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { GetUserByUuidCommand, USERS_STATUS } from '@cerberus/backend-contract'
+import { GetUserByUuidCommand, USERS_STATUS } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbCalendar, TbChartArcs, TbUser, TbWifi } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'

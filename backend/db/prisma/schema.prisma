@@ -19,7 +19,7 @@ model V2rsSettings {
   /// [ModulesSettings]
   modulesSettings  Json? @map("modules_settings")
 
-  @@map("cerberus_settings")
+  @@map("exodus_settings")
 }
 
 model ModulesSettings {
@@ -281,7 +281,6 @@ model Hosts {
   alpn                         String?  @map("alpn") // ENUM: h2, http/1.1, h2,http/1.1 
   fingerprint                  String?  @map("fingerprint") // ENUM: chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized
   securityLayer                String   @default("DEFAULT") @map("security_layer") // ENUM: DEFAULT, TLS, NONE
-  xHttpExtraParams             Json?    @map("xhttp_extra_params")
   muxParams                    Json?    @map("mux_params")
   singboxMuxParams             Json?    @map("singbox_mux_params")
   clashMuxParams               Json?    @map("clash_mux_params")

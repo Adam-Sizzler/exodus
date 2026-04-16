@@ -12,7 +12,7 @@ import resources from './resources.ts'
 
 declare module 'i18next' {
     interface CustomTypeOptions {
-        defaultNS: 'cerberus'
+        defaultNS: 'exodus'
         resources: typeof resources
     }
 }

@@ -8,7 +8,7 @@ import {
     Stack,
     Text
 } from '@mantine/core'
-import { CreateNodeCommand, UpdateNodeCommand } from '@cerberus/backend-contract'
+import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbChartLine, TbMinus, TbPlus } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'

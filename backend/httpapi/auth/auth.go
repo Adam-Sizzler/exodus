@@ -10,16 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/middleware"
-	"cerberus/backend/httpapi/shared"
-	"cerberus/backend/security"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/middleware"
+	"exodus/backend/httpapi/shared"
+	"exodus/backend/security"
 
 	"github.com/google/uuid"
 )
 
-const sessionCookieName = "cerberus_session"
+const sessionCookieName = "exodus_session"
 
 type authContextKey string
 
@@ -880,7 +880,7 @@ func getBootstrapData(manager *dbmanager.DatabaseManager) (brandingSettings map[
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
 			SELECT branding_settings, password_settings
-			FROM cerberus_settings
+			FROM exodus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)
@@ -928,7 +928,7 @@ func getBootstrapData(manager *dbmanager.DatabaseManager) (brandingSettings map[
 
 func defaultBrandingSettings() map[string]any {
 	return map[string]any{
-		"title":   "CERBERUS",
+		"title":   "EXODUS",
 		"logoUrl": nil,
 	}
 }
@@ -953,7 +953,7 @@ func getAuthMethodsStatus(manager *dbmanager.DatabaseManager) (passkeyEnabled bo
 	_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
 			SELECT passkey_settings, oauth2_settings, tg_auth_settings
-			FROM cerberus_settings
+			FROM exodus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)

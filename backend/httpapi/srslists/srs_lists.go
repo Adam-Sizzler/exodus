@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
-	monitor "cerberus/backend/nodes"
-	srscore "cerberus/backend/srslists"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
+	monitor "exodus/backend/nodes"
+	srscore "exodus/backend/srslists"
 
 	"github.com/google/uuid"
 )

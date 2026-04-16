@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	monitor "cerberus/backend/nodes"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	monitor "exodus/backend/nodes"
 )
 
 const (

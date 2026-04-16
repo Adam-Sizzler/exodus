@@ -3,7 +3,7 @@ package shared
 import (
 	"net/http"
 
-	"cerberus/backend/config"
+	"exodus/backend/config"
 )
 
 func SendError(w http.ResponseWriter, code int, msg string, err error, cfg *config.BackendConfig) {

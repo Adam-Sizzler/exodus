@@ -1,4 +1,4 @@
-import { GetTopUsersByHwidDevicesCommand } from '@cerberus/backend-contract'
+import { GetTopUsersByHwidDevicesCommand } from '@exodus/backend-contract'
 import { ActionIcon, Group, Text } from '@mantine/core'
 import { DataTableColumn } from 'mantine-datatable'
 import { TbSum, TbUser } from 'react-icons/tb'

@@ -76,12 +76,12 @@ dns:
 proxies: # LEAVE THIS LINE!
 
 proxy-groups:
-  - name: '→ CERBERUS'
+  - name: '→ EXODUS'
     type: 'select'
     proxies: # LEAVE THIS LINE!
 
 rules:
-  - MATCH,→ CERBERUS
+  - MATCH,→ EXODUS
 `),
 			Name:         "Default",
 			ViewPosition: 2,
@@ -89,7 +89,7 @@ rules:
 		{
 			TemplateType: "STASH",
 			TemplateYAML: strPtr(`proxy-groups:
-  - name: → CERBERUS
+  - name: → EXODUS
     type: select
     proxies: # LEAVE THIS LINE!
 
@@ -123,7 +123,7 @@ rules:
   - PROCESS-NAME,uTorrent,DIRECT
   - PROCESS-NAME,WebTorrent,DIRECT
   - GEOIP,LAN,DIRECT
-  - MATCH,→ CERBERUS
+  - MATCH,→ EXODUS
 script:
   shortcuts:
     quic: network == 'udp' and dst_port == 443
@@ -196,12 +196,12 @@ dns:
 proxies: # LEAVE THIS LINE!
 
 proxy-groups:
-  - name: '→ CERBERUS'
+  - name: '→ EXODUS'
     type: 'select'
     proxies: # LEAVE THIS LINE!
 
 rules:
-  - MATCH,→ CERBERUS
+  - MATCH,→ EXODUS
 `),
 			Name:         "Default",
 			ViewPosition: 4,
@@ -286,7 +286,7 @@ rules:
   "outbounds": [
     {
       "type": "selector",
-      "tag": "→ CERBERUS",
+      "tag": "→ EXODUS",
       "interrupt_exist_connections": true,
       "outbounds": null
     },
@@ -331,8 +331,8 @@ rules:
     },
     "cache_file": {
       "enabled": true,
-      "path": "cerberus.db",
-      "cache_id": "cerberus",
+      "path": "exodus.db",
+      "cache_id": "exodus",
       "store_fakeip": true
     }
   }

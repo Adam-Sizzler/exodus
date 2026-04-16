@@ -1,6 +1,6 @@
 import { PiFloppyDiskDuotone, PiQrCodeDuotone, PiUserCircle } from 'react-icons/pi'
 import { Button, em, Group, Menu, px, Stack } from '@mantine/core'
-import { UpdateUserCommand } from '@cerberus/backend-contract'
+import { UpdateUserCommand } from '@exodus/backend-contract'
 import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { TbDots, TbServerCog } from 'react-icons/tb'

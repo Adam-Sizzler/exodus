@@ -1,4 +1,4 @@
-import { TSubscriptionTemplateType } from '@cerberus/backend-contract'
+import { TSubscriptionTemplateType } from '@exodus/backend-contract'
 
 import { IDownloadableSubscriptionTemplate } from '@shared/constants/templates'
 

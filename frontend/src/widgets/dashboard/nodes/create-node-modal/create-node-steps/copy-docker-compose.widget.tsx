@@ -19,10 +19,10 @@ export const CopyDockerComposeWidget = ({ port }: IProps) => {
 
     const generateDockerCompose = (port?: number) => {
         return `services:
-  cerberus-node:
-    container_name: cerberus-node
-    hostname: cerberus-node
-    image: ghcr.io/adam-sizzler/cerberus-node:latest
+  exodus-node:
+    container_name: exodus-node
+    hostname: exodus-node
+    image: ghcr.io/teamdominant/exodus-node:latest
     network_mode: host
     restart: always
     cap_add:

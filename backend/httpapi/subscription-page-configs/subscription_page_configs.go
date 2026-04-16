@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	"cerberus/backend/db"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
-	monitor "cerberus/backend/subscriptionnodes"
+	"exodus/backend/config"
+	"exodus/backend/db"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
+	monitor "exodus/backend/subscriptionnodes"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"

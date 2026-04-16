@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
+	"exodus/backend/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )

@@ -1,7 +1,7 @@
 import {
     GetSubscriptionSettingsCommand,
     TSubscriptionTemplateType
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { Box, Flex } from '@mantine/core'
 import { TbRoute } from 'react-icons/tb'

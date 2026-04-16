@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
-	"cerberus/backend/httpapi/shared"
-	monitor "cerberus/backend/nodes"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
+	"exodus/backend/httpapi/shared"
+	monitor "exodus/backend/nodes"
 
 	"github.com/google/uuid"
 )

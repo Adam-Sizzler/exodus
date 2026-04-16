@@ -7,7 +7,7 @@ import {
     PiQueueDuotone,
     PiRocketLaunchDuotone
 } from 'react-icons/pi'
-import { GetCerberusHealthCommand } from '@cerberus/backend-contract'
+import { GetExodusHealthCommand } from '@exodus/backend-contract'
 import { ThemeIconProps } from '@mantine/core'
 import { TFunction } from 'i18next'
 
@@ -28,14 +28,14 @@ const getIconVariant = (cpuUsage: number): ThemeIconProps['variant'] => {
 }
 
 export const getPm2SummaryMetrics = (
-    pm2Stats: GetCerberusHealthCommand.Response['response']['pm2Stats'],
+    pm2Stats: GetExodusHealthCommand.Response['response']['pm2Stats'],
     t: TFunction
 ): IMetricCardProps[] => {
     if (!pm2Stats || pm2Stats.length === 0) {
         return []
     }
 
-    type PM2Process = GetCerberusHealthCommand.Response['response']['pm2Stats'][number]
+    type PM2Process = GetExodusHealthCommand.Response['response']['pm2Stats'][number]
 
     const totalMemoryBytes = pm2Stats.reduce((sum: number, process: PM2Process) => {
         return sum + Number(process.memory)
@@ -79,13 +79,13 @@ export const getPm2SummaryMetrics = (
 }
 
 export const getPm2ProcessMetrics = (
-    pm2Stats: GetCerberusHealthCommand.Response['response']['pm2Stats']
+    pm2Stats: GetExodusHealthCommand.Response['response']['pm2Stats']
 ): IMetricCardProps[] => {
     if (!pm2Stats || pm2Stats.length === 0) {
         return []
     }
 
-    return pm2Stats.map((process: GetCerberusHealthCommand.Response['response']['pm2Stats'][number]) => {
+    return pm2Stats.map((process: GetExodusHealthCommand.Response['response']['pm2Stats'][number]) => {
         const cpuUsage = parseFloat(process.cpu)
         return {
             value: prettyBytesToAnyUtil(process.memory, true),

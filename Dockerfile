@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-# Multistage build for cerberus panel (frontend + backend)
+# Multistage build for exodus panel (frontend + backend)
 FROM node:20-alpine AS panel-ui
 WORKDIR /ui
 ENV NODE_OPTIONS=--max-old-space-size=4096
@@ -68,11 +68,11 @@ RUN CGO_ENABLED=0 \
         -trimpath \
         -buildvcs=true \
         -ldflags="-s -w \
-                -X 'cerberus/constant.Version=${VERSION}' \
-                -X 'cerberus/constant.Revision=${REVISION}' \
-                -X 'cerberus/constant.BuildTags=none' \
-                -X 'cerberus/constant.CgoEnabled=0'" \
-    -o cerberus \
+                -X 'exodus/constant.Version=${VERSION}' \
+                -X 'exodus/constant.Revision=${REVISION}' \
+                -X 'exodus/constant.BuildTags=none' \
+                -X 'exodus/constant.CgoEnabled=0'" \
+    -o exodus \
     ./backend
 
 # Final stage
@@ -84,7 +84,7 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/cerberus /app/
+COPY --from=builder /build/exodus /app/
 
 # Copy built frontend
 COPY --from=panel-ui /ui/dist /app/ui
@@ -95,4 +95,4 @@ RUN mkdir -p /app/data /app/certs
 
 EXPOSE 3000
 
-ENTRYPOINT ["/app/cerberus"]
+ENTRYPOINT ["/app/exodus"]

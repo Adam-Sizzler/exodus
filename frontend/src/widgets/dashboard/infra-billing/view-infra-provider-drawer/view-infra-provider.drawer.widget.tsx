@@ -1,4 +1,4 @@
-import { UpdateInfraProviderCommand } from '@cerberus/backend-contract'
+import { UpdateInfraProviderCommand } from '@exodus/backend-contract'
 import { Button, Drawer, Stack, TextInput } from '@mantine/core'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'node_modules/react-i18next'

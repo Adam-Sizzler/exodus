@@ -1,4 +1,4 @@
-import { GetSubscriptionPageConfigsCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionPageConfigsCommand } from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { TbFile } from 'react-icons/tb'
 

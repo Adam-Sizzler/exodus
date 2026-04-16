@@ -1,4 +1,4 @@
-import { GetOneNodeCommand } from '@cerberus/backend-contract'
+import { GetOneNodeCommand } from '@exodus/backend-contract'
 import { Button, CopyButton, Menu, px, SimpleGrid, Stack } from '@mantine/core'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'
 import { UseFormReturnType } from '@mantine/form'

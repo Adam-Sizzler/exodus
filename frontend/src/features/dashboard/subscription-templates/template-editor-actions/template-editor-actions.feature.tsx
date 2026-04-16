@@ -8,7 +8,11 @@ import {
     TbMenuDeep,
     TbSelectAll
 } from 'react-icons/tb'
-import { GetSubscriptionTemplateCommand } from '@cerberus/backend-contract'
+import {
+    GetSubscriptionTemplateCommand,
+    SUBSCRIPTION_TEMPLATE_TYPE,
+    UpdateSubscriptionTemplateCommand
+} from '@exodus/backend-contract'
 import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { PiCheckSquareOffset, PiFloppyDisk } from 'react-icons/pi'
 import { ActionIcon, Button, Group, Menu } from '@mantine/core'
@@ -30,6 +34,8 @@ interface Props {
 export function TemplateEditorActionsFeature(props: Props) {
     const { editorRef, editorType, template } = props
     const { t } = useTranslation()
+    const shouldPreserveSingboxJsonOrder =
+        editorType === 'json' && template.templateType === SUBSCRIPTION_TEMPLATE_TYPE.SINGBOX
 
     const isMobile = useMediaQuery('(max-width: 48em)')
     const clipboard = useClipboard({ timeout: 500 })
@@ -37,11 +43,22 @@ export function TemplateEditorActionsFeature(props: Props) {
 
     const { mutate: updateConfig, isPending: isUpdating } = useUpdateSubscriptionTemplate({
         mutationFns: {
-            onSuccess: (data) => {
+            onSuccess: (
+                data,
+                mutation
+            ) => {
+                const requestedTemplateJson =
+                    mutation.templateJson as UpdateSubscriptionTemplateCommand.Request['templateJson']
+
+                const nextTemplate =
+                    shouldPreserveSingboxJsonOrder && requestedTemplateJson
+                        ? { ...data, templateJson: requestedTemplateJson }
+                        : data
+
                 queryClient.setQueryData(
                     QueryKeys.subscriptionTemplate.getSubscriptionTemplate({ uuid: template.uuid })
                         .queryKey,
-                    data
+                    nextTemplate
                 )
             }
         }

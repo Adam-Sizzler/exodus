@@ -1,7 +1,7 @@
 import { PiCheck, PiCopy, PiPencil, PiTrashDuotone, PiUsers } from 'react-icons/pi'
 import { TbSettings, TbUsersMinus, TbUsersPlus, TbWebhook } from 'react-icons/tb'
 import { Badge, CopyButton, Group, Menu, Tooltip } from '@mantine/core'
-import { GetExternalSquadsCommand } from '@cerberus/backend-contract'
+import { GetExternalSquadsCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'

@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { GetAllUsersCommand } from '@cerberus/backend-contract'
+import { GetAllUsersCommand } from '@exodus/backend-contract'
 import { MRT_TableInstance } from 'mantine-react-table'
 
 export interface IProps {

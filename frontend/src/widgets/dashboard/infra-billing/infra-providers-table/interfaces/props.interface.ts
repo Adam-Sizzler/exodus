@@ -1,4 +1,4 @@
-import { GetInfraProvidersCommand } from '@cerberus/backend-contract'
+import { GetInfraProvidersCommand } from '@exodus/backend-contract'
 
 export interface IProps {
     infraProviders: GetInfraProvidersCommand.Response['response']['providers']

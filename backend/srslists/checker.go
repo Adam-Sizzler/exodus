@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
 )
 
 func StartPeriodicChecker(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, interval time.Duration) {

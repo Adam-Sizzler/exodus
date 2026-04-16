@@ -1,4 +1,4 @@
-import { GetConfigProfilesCommand } from '@cerberus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { PiCpu, PiTag } from 'react-icons/pi'
 import { Badge, Group } from '@mantine/core'

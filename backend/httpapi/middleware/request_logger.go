@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"cerberus/backend/config"
+	"exodus/backend/config"
 )
 
 type loggingResponseWriter struct {

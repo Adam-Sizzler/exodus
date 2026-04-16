@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"cerberus/backend/config"
-	dbmanager "cerberus/backend/db/manager"
+	"exodus/backend/config"
+	dbmanager "exodus/backend/db/manager"
 )
 
 var fileNameAllowedRe = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)

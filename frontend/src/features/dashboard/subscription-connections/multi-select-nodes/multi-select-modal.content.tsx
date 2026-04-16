@@ -2,7 +2,7 @@ import {
     GetAllNodesCommand,
     NODES_BULK_ACTIONS,
     TNodesBulkActions
-} from '@cerberus/backend-contract'
+} from '@exodus/backend-contract'
 import { TbCheck, TbPlayerStop, TbRefresh, TbRocket } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 import { modals } from '@mantine/modals'

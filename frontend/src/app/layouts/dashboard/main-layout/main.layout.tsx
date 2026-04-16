@@ -8,7 +8,7 @@ import {
     useAppshellStoreActions,
     useAppshellStoreDesktopSidebarOpen
 } from '@entities/dashboard/appshell'
-import { useIsLoadingCerberusUpdates, useCerberusInfo } from '@entities/dashboard/updates-store'
+import { useIsLoadingExodusUpdates, useExodusInfo } from '@entities/dashboard/updates-store'
 import { ScrollToTopWrapper } from '@shared/hocs/scroll-to-top/scroll-to-top'
 import { SidebarTitleShared } from '@shared/ui/sidebar/sidebar-title'
 import { SidebarLogoShared } from '@shared/ui/sidebar/sidebar-logo'
@@ -34,8 +34,8 @@ export function MainLayout() {
     const isDesktopSidebarOpen = useAppshellStoreDesktopSidebarOpen()
     const { toggleDesktopSidebar } = useAppshellStoreActions()
 
-    const cerberusInfo = useCerberusInfo()
-    const isLoadingUpdates = useIsLoadingCerberusUpdates()
+    const exodusInfo = useExodusInfo()
+    const isLoadingUpdates = useIsLoadingExodusUpdates()
 
     useEffect(() => {
         setIsMediaQueryReady(true)
@@ -79,8 +79,8 @@ export function MainLayout() {
                             <HeaderControls
                                 githubLink="https://github.com/SagerNet/sing-box"
                                 isGithubLoading={isLoadingUpdates}
-                                stars={cerberusInfo.starsCount || undefined}
-                                telegramLink="https://t.me/cerberus"
+                                stars={exodusInfo.starsCount || undefined}
+                                telegramLink="https://t.me/exodus"
                                 withGithub={!isSocialButton}
                                 withSupport={!isSocialButton}
                                 withTelegram={!isSocialButton}
@@ -130,8 +130,8 @@ export function MainLayout() {
                             <HeaderControls
                                 githubLink="https://github.com/SagerNet/sing-box"
                                 isGithubLoading={isLoadingUpdates}
-                                stars={cerberusInfo.starsCount || undefined}
-                                telegramLink="https://t.me/cerberus"
+                                stars={exodusInfo.starsCount || undefined}
+                                telegramLink="https://t.me/exodus"
                                 withLanguage={false}
                                 withLogout={false}
                                 withRefresh={false}

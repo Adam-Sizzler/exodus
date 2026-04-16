@@ -1,4 +1,4 @@
-import { UpdateSubscriptionSettingsCommand } from '@cerberus/backend-contract'
+import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { TbListLetters, TbPrescription } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 import Masonry from 'react-layout-masonry'

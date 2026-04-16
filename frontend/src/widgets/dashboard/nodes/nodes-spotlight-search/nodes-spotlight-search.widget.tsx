@@ -1,5 +1,5 @@
 import { Badge, Center, Group, Stack, Text } from '@mantine/core'
-import { GetAllNodesCommand } from '@cerberus/backend-contract'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { PiEmptyDuotone, PiUsersDuotone } from 'react-icons/pi'
 import { TbServer, TbServer2 } from 'react-icons/tb'
 import ReactCountryFlag from 'react-country-flag'
