@@ -34,7 +34,7 @@ type QueryOptions struct {
 	Reset    bool
 }
 
-// StatsService is a minimal SDK contract used by cerberus-node.
+// StatsService is a minimal SDK contract used by exodus-node.
 type StatsService interface {
 	QueryStats(ctx context.Context, options QueryOptions) ([]Stat, error)
 	GetSysStats(ctx context.Context) (*SysStats, error)

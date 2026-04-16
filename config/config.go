@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"strings"
 
-	"cerberus-node/logger"
+	"exodus-node/logger"
 )
 
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
 	Log      LogConfig
-	CERBERUS CERBERUSConfig
+	Exodus   ExodusConfig
 	Logger   *logger.Logger
 }
 
@@ -21,7 +21,7 @@ type LogConfig struct {
 	LogMode  string
 }
 
-type CERBERUSConfig struct {
+type ExodusConfig struct {
 	GrpcAddress string
 	GrpcPort    int
 	GrpcPath    string
@@ -39,7 +39,7 @@ const (
 	DefaultNodeGRPCPath      = ""
 	DefaultNodeLogLevel      = "warn"
 	DefaultNodeLogMode       = "inclusive"
-	DefaultNodeTLSServerName = "internal.cerberus.local"
+	DefaultNodeTLSServerName = "internal.exodus.local"
 )
 
 type MTLSConfig struct {
@@ -53,7 +53,7 @@ var defaultConfig = NodeConfig{
 		LogLevel: DefaultNodeLogLevel,
 		LogMode:  DefaultNodeLogMode,
 	},
-	CERBERUS: CERBERUSConfig{
+	Exodus: ExodusConfig{
 		GrpcAddress: DefaultNodeGRPCAddress,
 		GrpcPort:    DefaultNodeGRPCPort,
 		GrpcPath:    DefaultNodeGRPCPath,
@@ -64,15 +64,15 @@ var defaultConfig = NodeConfig{
 func LoadNodeConfig() (NodeConfig, error) {
 	cfg := defaultConfig
 
-	if value := firstEnv("LOG_LEVEL", "CERBERUS_LOG_LEVEL"); value != "" {
+	if value := firstEnv("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
 		cfg.Log.LogLevel = value
 	}
-	if value := firstEnv("LOG_MODE", "CERBERUS_LOG_MODE"); value != "" {
+	if value := firstEnv("LOG_MODE", "EXODUS_LOG_MODE"); value != "" {
 		cfg.Log.LogMode = value
 	}
 
 	if value := firstEnv("NODE_GRPC_ADDRESS", "LISTEN_GRPC_ADDRESS"); value != "" {
-		cfg.CERBERUS.GrpcAddress = value
+		cfg.Exodus.GrpcAddress = value
 	}
 
 	if value := firstEnv("NODE_GRPC_PORT", "LISTEN_GRPC_PORT", "NODE_PORT"); value != "" {
@@ -80,18 +80,18 @@ func LoadNodeConfig() (NodeConfig, error) {
 		if err != nil || port < 1 || port > 65535 {
 			return cfg, fmt.Errorf("invalid NODE_GRPC_PORT/NODE_PORT value: %q", value)
 		}
-		cfg.CERBERUS.GrpcPort = port
+		cfg.Exodus.GrpcPort = port
 	}
 
 	if value := firstEnv("NODE_GRPC_PATH", "GRPC_PATH"); value != "" {
-		cfg.CERBERUS.GrpcPath = strings.Trim(value, "/")
+		cfg.Exodus.GrpcPath = strings.Trim(value, "/")
 	}
 
 	nodePayload, err := ParseNodePayloadFromSecret()
 	if err != nil {
 		return cfg, err
 	}
-	cfg.CERBERUS.MTLSConfig = &MTLSConfig{
+	cfg.Exodus.MTLSConfig = &MTLSConfig{
 		Cert:   nodePayload.NodeCertPem,
 		Key:    nodePayload.NodeKeyPem,
 		CACert: nodePayload.CaCertPem,
@@ -101,7 +101,7 @@ func LoadNodeConfig() (NodeConfig, error) {
 	if err != nil {
 		return cfg, fmt.Errorf("failed to initialize logger: %w", err)
 	}
-	cfg.Logger.Info("Node configuration validated", "address", cfg.CERBERUS.GrpcAddress, "port", cfg.CERBERUS.GrpcPort, "mtls_enabled", cfg.CERBERUS.MTLSConfig != nil)
+	cfg.Logger.Info("Node configuration validated", "address", cfg.Exodus.GrpcAddress, "port", cfg.Exodus.GrpcPort, "mtls_enabled", cfg.Exodus.MTLSConfig != nil)
 	return cfg, nil
 }
 

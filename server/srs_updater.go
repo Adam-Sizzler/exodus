@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"cerberus-node/config"
+	"exodus-node/config"
 )
 
 const srsRefreshInterval = 7 * 24 * time.Hour

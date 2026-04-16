@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
-	"cerberus-node/api"
-	"cerberus-node/config"
-	"cerberus-node/proto"
+	"exodus-node/api"
+	"exodus-node/config"
+	"exodus-node/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

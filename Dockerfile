@@ -1,4 +1,4 @@
-# Multistage build for cerberus-node (Go) + sing-box core (with v2ray_api) + supervisord.
+# Multistage build for exodus-node (Go) + sing-box core (with v2ray_api) + supervisord.
 FROM golang:1.25-alpine AS builder
 
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
@@ -23,11 +23,11 @@ RUN CGO_ENABLED=1 \
         -trimpath \
         -buildvcs=true \
         -ldflags="-s -w \
-                -X cerberus-node/constant.Version=${VERSION} \
-                -X cerberus-node/constant.Revision=${REVISION} \
-                -X cerberus-node/constant.BuildTags=${BUILD_TAGS} \
-                -X cerberus-node/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
-    -o /build/cerberus-node \
+                -X exodus-node/constant.Version=${VERSION} \
+                -X exodus-node/constant.Revision=${REVISION} \
+                -X exodus-node/constant.BuildTags=${BUILD_TAGS} \
+                -X exodus-node/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
+    -o /build/exodus-node \
     .
 
 FROM alpine:3.23
@@ -43,7 +43,7 @@ RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/downlo
 
 WORKDIR /app
 
-COPY --from=builder /build/cerberus-node /app/cerberus-node
+COPY --from=builder /build/exodus-node /app/exodus-node
 COPY deploy/supervisord.conf /etc/supervisord.conf
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY deploy/singbox-default.json /app/singbox/config.default.json
@@ -52,4 +52,4 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     mkdir -p /run /var/log/supervisor /app/singbox /app/logs /app/certs
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["/app/cerberus-node"]
+CMD ["/app/exodus-node"]

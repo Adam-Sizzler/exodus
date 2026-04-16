@@ -10,7 +10,7 @@ const (
 	defaultRequestTimeout = 5 * time.Second
 )
 
-// API is a unified core SDK entrypoint (similar in spirit to cerberus XtlsApi).
+// API is a unified core SDK entrypoint (similar in spirit to exodus XtlsApi).
 type API struct {
 	Stats StatsService
 }

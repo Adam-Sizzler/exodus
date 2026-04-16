@@ -130,6 +130,6 @@ supervisord -c /etc/supervisord.conf
 sleep 1
 
 echo "[Entrypoint] sing-box version: $(/usr/local/bin/sing-box version | head -n 1)"
-echo "[Entrypoint] cerberus-node command: $*"
+echo "[Entrypoint] exodus-node command: $*"
 
 exec "$@"

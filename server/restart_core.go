@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"cerberus-node/config"
+	"exodus-node/config"
 )
 
 func reloadCoreProcess(cfg *config.NodeConfig) error {

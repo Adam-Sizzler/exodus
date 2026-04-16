@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"cerberus-node/config"
-	"cerberus-node/constant"
-	"cerberus-node/sdk"
+	"exodus-node/config"
+	"exodus-node/constant"
+	"exodus-node/sdk"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

@@ -1,6 +1,6 @@
-# Core SDK (cerberus-node)
+# Core SDK (exodus-node)
 
-This package provides a unified core API client (similar to cerberus `XtlsApi` approach):
+This package provides a unified core API client (similar to exodus `XtlsApi` approach):
 
 - one entrypoint: `sdk.New(Config)`
 - one logical service: `API.Stats`

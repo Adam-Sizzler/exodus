@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	"cerberus-node/config"
-	"cerberus-node/constant"
-	"cerberus-node/grpcserver"
-	"cerberus-node/server"
+	"exodus-node/config"
+	"exodus-node/constant"
+	"exodus-node/grpcserver"
+	"exodus-node/server"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Printf("[START] cerberus-node application %s", constant.Version)
+	log.Printf("[START] exodus-node application %s", constant.Version)
 
 	if err := grpcserver.StartGRPCServer(&cfg, nodeServer); err != nil {
 		cfg.Logger.Error("Failed to start gRPC server", "error", err)

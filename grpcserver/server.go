@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"cerberus-node/config"
-	"cerberus-node/proto"
-	"cerberus-node/server"
+	"exodus-node/config"
+	"exodus-node/proto"
+	"exodus-node/server"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -29,18 +29,18 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	)
 
 	var tlsConfig *tls.Config
-	if cfg.CERBERUS.MTLSConfig != nil {
+	if cfg.Exodus.MTLSConfig != nil {
 		cfg.Logger.Debug("Configuring mTLS for gRPC server")
 		cert, err := tls.X509KeyPair(
-			[]byte(cfg.CERBERUS.MTLSConfig.Cert),
-			[]byte(cfg.CERBERUS.MTLSConfig.Key),
+			[]byte(cfg.Exodus.MTLSConfig.Cert),
+			[]byte(cfg.Exodus.MTLSConfig.Key),
 		)
 		if err != nil {
 			cfg.Logger.Error("Failed to load server certificate", "error", err)
 			return err
 		}
 		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM([]byte(cfg.CERBERUS.MTLSConfig.CACert)) {
+		if !caCertPool.AppendCertsFromPEM([]byte(cfg.Exodus.MTLSConfig.CACert)) {
 			cfg.Logger.Error("Failed to parse CA certificate")
 			return fmt.Errorf("failed to parse CA certificate")
 		}
@@ -52,8 +52,8 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		}
 		cfg.Logger.Info("mTLS enabled for gRPC server")
 	} else {
-		if cfg.CERBERUS.GrpcAddress != "127.0.0.1" && cfg.CERBERUS.GrpcAddress != "localhost" {
-			cfg.Logger.Warn("Insecure gRPC on non-local address", "address", cfg.CERBERUS.GrpcAddress)
+		if cfg.Exodus.GrpcAddress != "127.0.0.1" && cfg.Exodus.GrpcAddress != "localhost" {
+			cfg.Logger.Warn("Insecure gRPC on non-local address", "address", cfg.Exodus.GrpcAddress)
 		}
 		cfg.Logger.Debug("Using insecure gRPC server (no TLS configured inside Node)")
 	}
@@ -62,8 +62,8 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	proto.RegisterNodeServiceServer(grpcServer, nodeServer)
 
 	var pathPrefix string
-	if cfg.CERBERUS.GrpcPath != "" {
-		pathPrefix = "/" + strings.Trim(cfg.CERBERUS.GrpcPath, "/")
+	if cfg.Exodus.GrpcPath != "" {
+		pathPrefix = "/" + strings.Trim(cfg.Exodus.GrpcPath, "/")
 		cfg.Logger.Info("gRPC path prefix configured", "prefix", pathPrefix)
 	}
 
@@ -87,7 +87,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		grpcServer.ServeHTTP(w, r)
 	})
 
-	addr := fmt.Sprintf("%s:%d", cfg.CERBERUS.GrpcAddress, cfg.CERBERUS.GrpcPort)
+	addr := fmt.Sprintf("%s:%d", cfg.Exodus.GrpcAddress, cfg.Exodus.GrpcPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		cfg.Logger.Error("Failed to start listener", "error", err)

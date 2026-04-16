@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"cerberus-node/config"
+	"exodus-node/config"
 )
 
 var srsFileNameAllowedRe = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
@@ -181,7 +181,7 @@ func applySRSListsToConfig(cfg map[string]any, lists []SRSListItem) {
 			continue
 		}
 		tag, _ := rs["tag"].(string)
-		if strings.HasPrefix(strings.TrimSpace(tag), "cerberus-") {
+		if strings.HasPrefix(strings.TrimSpace(tag), "exodus-") {
 			continue
 		}
 		pathValue, _ := rs["path"].(string)

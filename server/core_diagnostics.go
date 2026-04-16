@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"cerberus-node/config"
+	"exodus-node/config"
 )
 
 func (s *NodeServer) diagnoseCoreFailure(ctx context.Context, baseErr error) string {

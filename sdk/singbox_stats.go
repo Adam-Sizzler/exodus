@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	singboxapi "cerberus-node/sdk/singboxapi"
+	singboxapi "exodus-node/sdk/singboxapi"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

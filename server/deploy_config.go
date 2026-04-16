@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cerberus-node/config"
+	"exodus-node/config"
 
 	"github.com/iancoleman/orderedmap"
 )

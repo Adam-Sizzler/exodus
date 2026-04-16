@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"cerberus-node/proto"
+	"exodus-node/proto"
 )
 
 const statsOnlyMessage = "stats-only node: user management and task APIs are disabled for sing-box"

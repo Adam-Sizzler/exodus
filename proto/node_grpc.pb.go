@@ -51,9 +51,9 @@ type NodeServiceClient interface {
 	DeleteUsers(ctx context.Context, in *DeleteUsersRequest, opts ...grpc.CallOption) (*OperationResponse, error)
 	// SetUserEnabled enables or disables users on the node.
 	SetUserEnabled(ctx context.Context, in *SetUserEnabledRequest, opts ...grpc.CallOption) (*OperationResponse, error)
-	// SubmitTask submits a task to the node for async processing.
+	// SubmitTask executes a task synchronously and returns final status.
 	SubmitTask(ctx context.Context, in *NodeTask, opts ...grpc.CallOption) (*status.Status, error)
-	// GetTaskStatus retrieves the status of a previously submitted task.
+	// GetTaskStatus is deprecated (kept for backward compatibility).
 	GetTaskStatus(ctx context.Context, in *TaskStatusRequest, opts ...grpc.CallOption) (*TaskStatusResponse, error)
 }
 
@@ -178,9 +178,9 @@ type NodeServiceServer interface {
 	DeleteUsers(context.Context, *DeleteUsersRequest) (*OperationResponse, error)
 	// SetUserEnabled enables or disables users on the node.
 	SetUserEnabled(context.Context, *SetUserEnabledRequest) (*OperationResponse, error)
-	// SubmitTask submits a task to the node for async processing.
+	// SubmitTask executes a task synchronously and returns final status.
 	SubmitTask(context.Context, *NodeTask) (*status.Status, error)
-	// GetTaskStatus retrieves the status of a previously submitted task.
+	// GetTaskStatus is deprecated (kept for backward compatibility).
 	GetTaskStatus(context.Context, *TaskStatusRequest) (*TaskStatusResponse, error)
 	mustEmbedUnimplementedNodeServiceServer()
 }
