@@ -1,5 +1,5 @@
 import { Box, Center, Container, Group, Image, Stack, Title } from '@mantine/core'
-import { TSubscriptionPagePlatformKey } from '@cerberus/subscription-page-types'
+import { TSubscriptionPagePlatformKey } from '@exodus/subscription-page-types'
 
 import {
     AccordionBlockRenderer,
@@ -15,7 +15,7 @@ import {
 } from '@widgets/main'
 import { useAppConfig, useAppConfigStoreActions, useCurrentLang } from '@entities/app-config-store'
 import { LanguagePicker } from '@shared/ui/language-picker/language-picker.shared'
-import { Page, CerberusLogo } from '@shared/ui'
+import { Page, ExodusLogo } from '@shared/ui'
 
 interface IMainPageComponentProps {
     isMobile: boolean
@@ -83,7 +83,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                                     }}
                                 />
                             ) : (
-                                <CerberusLogo c="cyan" size={32} />
+                                <ExodusLogo c="cyan" size={32} />
                             )}
                             <Title
                                 c={hasCustomLogo ? 'white' : 'cyan'}

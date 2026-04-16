@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cerberus/subscription-page/backend/internal/assets"
-	"github.com/cerberus/subscription-page/backend/internal/config"
-	"github.com/cerberus/subscription-page/backend/internal/proto"
-	"github.com/cerberus/subscription-page/backend/internal/security"
+	"github.com/exodus/subscription-page/backend/internal/assets"
+	"github.com/exodus/subscription-page/backend/internal/config"
+	"github.com/exodus/subscription-page/backend/internal/proto"
+	"github.com/exodus/subscription-page/backend/internal/security"
 )
 
 const (
@@ -423,7 +423,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	}
 
 	if !subpageEnvelope.Response.WebpageAllowed {
-		log.Printf("Webpage access is not allowed by Cerberus's SRR.")
+		log.Printf("Webpage access is not allowed by Exodus's SRR.")
 		closeConnection(w)
 		return
 	}

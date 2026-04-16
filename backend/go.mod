@@ -1,11 +1,11 @@
-module github.com/cerberus/subscription-page/backend
+module github.com/exodus/subscription-page/backend
 
-go 1.25.0
+go 1.25.9
 
 require (
 	golang.org/x/net v0.52.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7
-	google.golang.org/grpc v1.79.3
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478
+	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 )
 

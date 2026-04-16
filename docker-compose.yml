@@ -1,5 +1,5 @@
 services:
-  cerberus-subscription-page:
+  exodus-subscription-page:
     build:
       context: .
       dockerfile: Dockerfile

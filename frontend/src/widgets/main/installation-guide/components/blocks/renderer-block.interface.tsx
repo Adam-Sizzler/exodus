@@ -2,7 +2,7 @@ import {
     TSubscriptionPageBlockConfig,
     TSubscriptionPageButtonConfig,
     TSubscriptionPageLanguageCode
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import { ButtonVariant } from '@mantine/core'
 
 export interface IBlockRendererProps {

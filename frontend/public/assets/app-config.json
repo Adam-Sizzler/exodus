@@ -9,7 +9,7 @@
         "branding": {
             "name": "Subscription",
             "logoUrl": "https://docs.rw/img/logo.svg",
-            "supportUrl": "https://t.me/cerberus"
+            "supportUrl": "https://t.me/exodus"
         }
     },
     "platforms": {
@@ -275,7 +275,7 @@
                 "id": "clash-mi",
                 "name": "Clash Mi",
                 "isFeatured": false,
-                "urlScheme": "clash://install-config?overwrite=no&name=Cerberus&url=",
+                "urlScheme": "clash://install-config?overwrite=no&name=Exodus&url=",
                 "installationStep": {
                     "buttons": [
                         {
@@ -394,7 +394,7 @@
                 "id": "clash-meta",
                 "name": "Clash Meta",
                 "isFeatured": true,
-                "urlScheme": "clashmeta://install-config?name=Cerberus&url=",
+                "urlScheme": "clashmeta://install-config?name=Exodus&url=",
                 "installationStep": {
                     "buttons": [
                         {
@@ -514,7 +514,7 @@
                 "id": "v2rayNG",
                 "name": "v2rayNG",
                 "isFeatured": false,
-                "urlScheme": "v2rayng://install-config?name=Cerberus&url=",
+                "urlScheme": "v2rayng://install-config?name=Exodus&url=",
                 "installationStep": {
                     "buttons": [
                         {

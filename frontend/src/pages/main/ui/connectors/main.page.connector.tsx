@@ -1,4 +1,4 @@
-import { TSubscriptionPagePlatformKey } from '@cerberus/subscription-page-types'
+import { TSubscriptionPagePlatformKey } from '@exodus/subscription-page-types'
 import { useMediaQuery, useOs } from '@mantine/hooks'
 import { useEffect, useState } from 'react'
 

@@ -2,7 +2,7 @@ import {
     TSubscriptionPageLanguageCode,
     TSubscriptionPageLocalizedText,
     TSubscriptionPageRawConfig
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import dayjs from 'dayjs'
 
 export function getIconFromLibrary(iconKey: string, svgLibrary: Record<string, string>) {

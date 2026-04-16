@@ -1,4 +1,4 @@
-import { GetSubscriptionInfoByShortUuidCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionInfoByShortUuidCommand } from '@exodus/backend-contract'
 import { create } from 'zustand'
 
 import { IActions, IState } from './interfaces'

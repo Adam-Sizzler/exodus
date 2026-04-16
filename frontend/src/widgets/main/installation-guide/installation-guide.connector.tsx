@@ -2,7 +2,7 @@ import {
     TSubscriptionPageAppConfig,
     TSubscriptionPageButtonConfig,
     TSubscriptionPagePlatformKey
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import {
     Box,
     Button,

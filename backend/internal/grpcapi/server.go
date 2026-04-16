@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cerberus/subscription-page/backend/internal/proto"
+	"github.com/exodus/subscription-page/backend/internal/proto"
 
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"

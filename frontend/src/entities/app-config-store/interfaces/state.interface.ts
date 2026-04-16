@@ -1,7 +1,7 @@
 import {
     TSubscriptionPageLanguageCode,
     TSubscriptionPageRawConfig
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 
 export interface IState {
     config: null | TSubscriptionPageRawConfig

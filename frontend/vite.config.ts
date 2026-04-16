@@ -78,7 +78,7 @@ export default defineConfig({
 
         outDir: 'dist',
         commonjsOptions: {
-            include: [/node_modules/, /vendor\/@cerberus/],
+            include: [/node_modules/, /vendor\/@exodus/],
             transformMixedEsModules: true
         },
         rollupOptions: {
@@ -103,8 +103,8 @@ export default defineConfig({
                     ],
                     i18n: [
                         'i18next-browser-languagedetector',
-                        '@cerberus/backend-contract',
-                        '@cerberus/subscription-page-types'
+                        '@exodus/backend-contract',
+                        '@exodus/subscription-page-types'
                     ]
                 }
             }

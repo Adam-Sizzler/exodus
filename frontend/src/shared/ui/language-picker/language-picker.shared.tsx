@@ -1,4 +1,4 @@
-import { getLanguageInfo, TSubscriptionPageLanguageCode } from '@cerberus/subscription-page-types'
+import { getLanguageInfo, TSubscriptionPageLanguageCode } from '@exodus/subscription-page-types'
 import { ActionIcon, Menu, Text, useDirection } from '@mantine/core'
 import { IconLanguage } from '@tabler/icons-react'
 import { useEffect } from 'react'

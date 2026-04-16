@@ -1,4 +1,4 @@
-import { TSubscriptionPageLocalizedText } from '@cerberus/subscription-page-types'
+import { TSubscriptionPageLocalizedText } from '@exodus/subscription-page-types'
 import { useCallback } from 'react'
 
 import { useAppConfig, useCurrentLang } from '@entities/app-config-store'

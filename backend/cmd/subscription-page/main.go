@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cerberus/subscription-page/backend/internal/config"
-	"github.com/cerberus/subscription-page/backend/internal/grpcapi"
-	"github.com/cerberus/subscription-page/backend/internal/grpcserver"
-	"github.com/cerberus/subscription-page/backend/internal/server"
+	"github.com/exodus/subscription-page/backend/internal/config"
+	"github.com/exodus/subscription-page/backend/internal/grpcapi"
+	"github.com/exodus/subscription-page/backend/internal/grpcserver"
+	"github.com/exodus/subscription-page/backend/internal/server"
 )
 
 func main() {

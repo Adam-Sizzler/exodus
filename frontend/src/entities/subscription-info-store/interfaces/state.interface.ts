@@ -1,4 +1,4 @@
-import { GetSubscriptionInfoByShortUuidCommand } from '@cerberus/backend-contract'
+import { GetSubscriptionInfoByShortUuidCommand } from '@exodus/backend-contract'
 
 export interface IState {
     subscription: GetSubscriptionInfoByShortUuidCommand.Response['response'] | null

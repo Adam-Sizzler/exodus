@@ -1,0 +1,34 @@
+{
+  "name": "@exodus/backend-contract",
+  "version": "2.5.13",
+  "public": true,
+  "license": "AGPL-3.0-only",
+  "description": "A contract library for Exodus Backend. It can be used in backend and frontend.",
+  "author": "EXODUS <github.com/exodus>",
+  "homepage": "https://github.com/exodus",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/exodus/backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/exodus/backend/issues"
+  },
+  "main": "build/backend/index.js",
+  "browser": "build/frontend/index.mjs",
+  "types": "build/backend/index.d.ts",
+  "files": [
+    "build/**/*"
+  ],
+  "scripts": {
+    "clean": "rm -rf build",
+    "build:backend": "tsc -p tsconfig.backend.json",
+    "build:frontend": "tsc -p tsconfig.frontend.json",
+    "build": "npm run clean && npm run build:backend && npm run build:frontend",
+    "prepublish": "npm run build"
+  },
+  "keywords": [],
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "module": "build/frontend/index.mjs"
+}

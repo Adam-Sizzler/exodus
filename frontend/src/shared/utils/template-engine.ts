@@ -1,4 +1,4 @@
-import { TSubscriptionPageTemplateKey } from '@cerberus/subscription-page-types'
+import { TSubscriptionPageTemplateKey } from '@exodus/subscription-page-types'
 import { createHappCryptoLink } from '@kastov/cryptohapp'
 
 type TemplateValues = {

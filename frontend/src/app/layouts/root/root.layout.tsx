@@ -1,5 +1,5 @@
-import { SubscriptionPageRawConfigSchema } from '@cerberus/subscription-page-types'
-import { GetSubscriptionInfoByShortUuidCommand } from '@cerberus/backend-contract'
+import { SubscriptionPageRawConfigSchema } from '@exodus/subscription-page-types'
+import { GetSubscriptionInfoByShortUuidCommand } from '@exodus/backend-contract'
 import { Outlet } from 'react-router-dom'
 import { useLayoutEffect } from 'react'
 import consola from 'consola/browser'

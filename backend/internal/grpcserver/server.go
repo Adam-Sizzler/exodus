@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cerberus/subscription-page/backend/internal/config"
-	"github.com/cerberus/subscription-page/backend/internal/proto"
+	"github.com/exodus/subscription-page/backend/internal/config"
+	"github.com/exodus/subscription-page/backend/internal/proto"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const grpcTokenHeader = "x-cerberus-grpc-token"
+const grpcTokenHeader = "x-exodus-grpc-token"
 
 func Start(cfg config.Config, nodeService proto.NodeServiceServer) error {
 	expectedToken := strings.TrimSpace(cfg.GRPCToken)

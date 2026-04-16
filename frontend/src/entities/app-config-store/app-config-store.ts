@@ -1,7 +1,7 @@
 import {
     TSubscriptionPageLanguageCode,
     TSubscriptionPageRawConfig
-} from '@cerberus/subscription-page-types'
+} from '@exodus/subscription-page-types'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { create } from 'zustand'
 
