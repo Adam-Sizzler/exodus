@@ -1,10 +1,3 @@
-export const BASIC_MUX_PARAMS = `{
-  "enabled": true,
-  "concurrency": -1,
-  "xudpConcurrency": 16,
-  "xudpProxyUDP443": "reject"
-}`
-
 export const BASIC_SINGBOX_MUX_PARAMS = `{
   "enabled": true,
   "padding": true

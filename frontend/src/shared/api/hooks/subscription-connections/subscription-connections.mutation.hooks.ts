@@ -32,9 +32,48 @@ const SUBSCRIPTION_CONNECTIONS_API = {
 
 const TAG_REGEX = /^[A-Z0-9_:]+$/
 
+const isValidPublicDomain = (value: string) => {
+    const trimmed = value.trim()
+    if (trimmed === '') {
+        return true
+    }
+
+    const candidate = trimmed.includes('://') ? trimmed : `https://${trimmed}`
+
+    try {
+        const parsed = new URL(candidate)
+        if (!parsed.hostname) {
+            return false
+        }
+        if (parsed.pathname && parsed.pathname !== '/') {
+            return false
+        }
+        if (parsed.search || parsed.hash) {
+            return false
+        }
+        if (parsed.username || parsed.password) {
+            return false
+        }
+        return true
+    } catch {
+        return false
+    }
+}
+
+const publicDomainSchema = z
+    .string()
+    .trim()
+    .max(255)
+    .refine(isValidPublicDomain, {
+        message: 'Invalid public domain'
+    })
+    .nullable()
+    .optional()
+
 const createSubscriptionConnectionSchemaBase = z.object({
     name: z.string().min(3).max(30),
     address: z.string().min(2),
+    publicDomain: publicDomainSchema,
     port: z.number().int().min(1).max(65535).optional(),
     apiSchema: z.enum(['mtls', 'tls']).default('mtls'),
     apiPath: z.string().trim().min(1).default('/'),
@@ -51,6 +90,7 @@ const updateSubscriptionConnectionSchemaBase = z.object({
     uuid: z.string().uuid(),
     name: z.string().min(3).max(30).optional(),
     address: z.string().min(2).optional(),
+    publicDomain: publicDomainSchema,
     port: z.number().int().min(1).max(65535).optional(),
     apiSchema: z.enum(['mtls', 'tls']).optional(),
     apiPath: z.string().trim().min(1).optional(),

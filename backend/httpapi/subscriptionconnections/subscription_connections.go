@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -70,6 +71,7 @@ type nodeAPI struct {
 	UUID                    string     `json:"uuid"`
 	Name                    string     `json:"name"`
 	Address                 string     `json:"address"`
+	PublicDomain            *string    `json:"publicDomain,omitempty"`
 	Port                    *int       `json:"port"`
 	APISchema               string     `json:"apiSchema"`
 	APIPath                 string     `json:"apiPath"`
@@ -110,6 +112,7 @@ type nodeRecord struct {
 	UUID                    string
 	Name                    string
 	Address                 string
+	PublicDomain            *string
 	Port                    *int
 	APISchema               string
 	APIPath                 string
@@ -149,6 +152,7 @@ type configProfileRefRequest struct {
 type createNodeRequest struct {
 	Name              string   `json:"name"`
 	Address           string   `json:"address"`
+	PublicDomain      *string  `json:"publicDomain,omitempty"`
 	Port              *int     `json:"port,omitempty"`
 	APISchema         *string  `json:"apiSchema,omitempty"`
 	APIPath           *string  `json:"apiPath,omitempty"`
@@ -161,6 +165,7 @@ type updateNodeRequest struct {
 	UUID              string         `json:"uuid"`
 	Name              *string        `json:"name,omitempty"`
 	Address           *string        `json:"address,omitempty"`
+	PublicDomain      OptionalString `json:"publicDomain,omitempty"`
 	Port              *int           `json:"port,omitempty"`
 	APISchema         *string        `json:"apiSchema,omitempty"`
 	APIPath           *string        `json:"apiPath,omitempty"`
@@ -409,14 +414,15 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 
 		_, err = tx.ExecContext(r.Context(), `
-			INSERT INTO sub_nodes (
-				uuid, name, address, port, api_schema, api_path,
-				is_connected, is_connecting, is_disabled, provider_uuid, tags, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`,
+				INSERT INTO sub_nodes (
+					uuid, name, address, public_domain, port, api_schema, api_path,
+					is_connected, is_connecting, is_disabled, provider_uuid, tags, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`,
 			nodeUUID,
 			strings.TrimSpace(req.Name),
 			strings.TrimSpace(req.Address),
+			normalizePublicDomain(req.PublicDomain),
 			req.Port,
 			schema,
 			normalizeAPIPath(req.APIPath),
@@ -554,6 +560,13 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 		if req.Address != nil {
 			add("address", strings.TrimSpace(*req.Address))
+		}
+		if req.PublicDomain.Set {
+			if req.PublicDomain.Value == nil || strings.TrimSpace(*req.PublicDomain.Value) == "" {
+				clauses = append(clauses, "public_domain = NULL")
+			} else {
+				add("public_domain", normalizePublicDomain(req.PublicDomain.Value))
+			}
 		}
 		if req.Port != nil {
 			add("port", *req.Port)
@@ -971,6 +984,11 @@ func validateCreateRequest(req createNodeRequest) error {
 	if req.Port != nil && (*req.Port < 1 || *req.Port > 65535) {
 		return fmt.Errorf("invalid port")
 	}
+	if req.PublicDomain != nil {
+		if err := validatePublicDomain(*req.PublicDomain); err != nil {
+			return err
+		}
+	}
 	if req.APISchema != nil && strings.TrimSpace(*req.APISchema) == "" {
 		return fmt.Errorf("apiSchema cannot be empty")
 	}
@@ -999,6 +1017,11 @@ func validateUpdateRequest(req updateNodeRequest) error {
 	}
 	if req.Port != nil && (*req.Port < 1 || *req.Port > 65535) {
 		return fmt.Errorf("invalid port")
+	}
+	if req.PublicDomain.Set && req.PublicDomain.Value != nil {
+		if err := validatePublicDomain(*req.PublicDomain.Value); err != nil {
+			return err
+		}
 	}
 	if req.APISchema != nil && strings.TrimSpace(*req.APISchema) == "" {
 		return fmt.Errorf("apiSchema cannot be empty")
@@ -1060,10 +1083,13 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 
 	response := make([]nodeAPI, 0, len(records))
 	for _, record := range records {
+		record = applySubNodeRuntimeSnapshot(record)
+
 		var item nodeAPI
 		item.UUID = record.UUID
 		item.Name = record.Name
 		item.Address = record.Address
+		item.PublicDomain = record.PublicDomain
 		item.Port = record.Port
 		item.APISchema = normalizeSubNodeSchema(record.APISchema)
 		item.APIPath = record.APIPath
@@ -1103,15 +1129,56 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	return response, nil
 }
 
+func applySubNodeRuntimeSnapshot(record nodeRecord) nodeRecord {
+	snapshot, ok := monitor.GetSubNodeRuntimeSnapshot(record.Name)
+	if !ok {
+		return record
+	}
+
+	if snapshot.SingboxVersion != nil {
+		value := strings.TrimSpace(*snapshot.SingboxVersion)
+		if value != "" {
+			record.SingboxVersion = &value
+		}
+	}
+	if snapshot.NodeVersion != nil {
+		value := strings.TrimSpace(*snapshot.NodeVersion)
+		if value != "" {
+			record.NodeVersion = &value
+		}
+	}
+	if uptime := strings.TrimSpace(snapshot.SingboxUptime); uptime != "" {
+		record.SingboxUptime = uptime
+	}
+	if snapshot.CPUCount != nil {
+		value := *snapshot.CPUCount
+		record.CPUCount = &value
+	}
+	if snapshot.CPUModel != nil {
+		value := strings.TrimSpace(*snapshot.CPUModel)
+		if value != "" {
+			record.CPUModel = &value
+		}
+	}
+	if snapshot.TotalRAM != nil {
+		value := strings.TrimSpace(*snapshot.TotalRAM)
+		if value != "" {
+			record.TotalRAM = &value
+		}
+	}
+
+	return record
+}
+
 func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nodeRecord, error) {
 	var nodes []nodeRecord
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-			SELECT
-				n.uuid, n.id, n.name, n.address, n.port, n.api_schema, n.api_path, sns.subpage_config_uuid,
-				n.is_connected, n.is_connecting, n.is_disabled,
-				n.last_status_change, n.last_status_message,
-				n.provider_uuid, n.view_position, n.tags, n.created_at, n.updated_at
+				SELECT
+					n.uuid, n.id, n.name, n.address, n.public_domain, n.port, n.api_schema, n.api_path, sns.subpage_config_uuid,
+					n.is_connected, n.is_connecting, n.is_disabled,
+					n.last_status_change, n.last_status_message,
+					n.provider_uuid, n.view_position, n.tags, n.created_at, n.updated_at
 			FROM sub_nodes n
 			LEFT JOIN sub_nodes_to_subscription_page_config sns ON sns.node_uuid = n.uuid
 			ORDER BY n.view_position ASC
@@ -1136,11 +1203,11 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 	var node nodeRecord
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
-			SELECT
-				n.uuid, n.id, n.name, n.address, n.port, n.api_schema, n.api_path, sns.subpage_config_uuid,
-				n.is_connected, n.is_connecting, n.is_disabled,
-				n.last_status_change, n.last_status_message,
-				n.provider_uuid, n.view_position, n.tags, n.created_at, n.updated_at
+				SELECT
+					n.uuid, n.id, n.name, n.address, n.public_domain, n.port, n.api_schema, n.api_path, sns.subpage_config_uuid,
+					n.is_connected, n.is_connecting, n.is_disabled,
+					n.last_status_change, n.last_status_message,
+					n.provider_uuid, n.view_position, n.tags, n.created_at, n.updated_at
 			FROM sub_nodes n
 			LEFT JOIN sub_nodes_to_subscription_page_config sns ON sns.node_uuid = n.uuid
 			WHERE n.uuid = ?
@@ -1156,6 +1223,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var node nodeRecord
 	var id sql.NullInt64
 	var port sql.NullInt64
+	var publicDomain sql.NullString
 	var lastStatusChange sql.NullTime
 	var lastStatusMessage sql.NullString
 	var providerUUID sql.NullString
@@ -1167,6 +1235,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&id,
 		&node.Name,
 		&node.Address,
+		&publicDomain,
 		&port,
 		&node.APISchema,
 		&node.APIPath,
@@ -1192,6 +1261,12 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	if port.Valid {
 		value := int(port.Int64)
 		node.Port = &value
+	}
+	if publicDomain.Valid {
+		value := strings.TrimSpace(publicDomain.String)
+		if value != "" {
+			node.PublicDomain = &value
+		}
 	}
 	if lastStatusChange.Valid {
 		ts := lastStatusChange.Time
@@ -1312,6 +1387,32 @@ func normalizeNullableString(value *string) any {
 	return strings.TrimSpace(*value)
 }
 
+func normalizePublicDomain(value *string) any {
+	if value == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+
+	if !strings.Contains(trimmed, "://") {
+		return strings.TrimSuffix(trimmed, "/")
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Host == "" {
+		return strings.TrimSuffix(trimmed, "/")
+	}
+
+	parsed.Path = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.User = nil
+	return strings.TrimSuffix(parsed.String(), "/")
+}
+
 func normalizeNullableUUID(value *string) *string {
 	if value == nil {
 		return nil
@@ -1365,6 +1466,34 @@ func normalizeAPIPath(value *string) string {
 		return "/" + path
 	}
 	return path
+}
+
+func validatePublicDomain(value string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	if len(trimmed) > 255 {
+		return fmt.Errorf("publicDomain must be less than or equal to 255 characters")
+	}
+
+	candidate := trimmed
+	if !strings.Contains(candidate, "://") {
+		candidate = "https://" + candidate
+	}
+
+	parsed, err := url.Parse(candidate)
+	if err != nil || strings.TrimSpace(parsed.Host) == "" {
+		return fmt.Errorf("publicDomain must be a valid domain or URL")
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("publicDomain must not contain credentials, query or fragment")
+	}
+	if parsed.Path != "" && parsed.Path != "/" {
+		return fmt.Errorf("publicDomain must not contain path")
+	}
+
+	return nil
 }
 
 func ensureStringSlice(values []string) []string {

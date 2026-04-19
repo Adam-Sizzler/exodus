@@ -69,6 +69,7 @@ export const CreateNodeModalWidget = () => {
                 ...values,
                 name: values.name.trim(),
                 address: values.address.trim(),
+                publicDomain: (values.publicDomain ?? '').trim() || null,
                 apiSchema: schema,
                 apiPath: values.apiPath.trim() || '/',
                 subpageConfigUuid: (values.subpageConfigUuid ?? '').trim() || null
@@ -85,6 +86,7 @@ export const CreateNodeModalWidget = () => {
             port: 2222,
             apiSchema: 'mtls',
             apiPath: '/',
+            publicDomain: null,
             subpageConfigUuid: null
         })
     }, [form])

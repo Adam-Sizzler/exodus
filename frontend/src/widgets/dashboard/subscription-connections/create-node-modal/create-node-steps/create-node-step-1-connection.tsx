@@ -51,6 +51,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
     const handleNext = async () => {
         const nameErrors = form.validateField('name')
         const addressErrors = form.validateField('address')
+        const publicDomainErrors = form.validateField('publicDomain')
         const portErrors = form.validateField('port')
         const apiSchemaErrors = form.validateField('apiSchema')
         const apiPathErrors = form.validateField('apiPath')
@@ -58,6 +59,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
         if (
             nameErrors.hasError ||
             addressErrors.hasError ||
+            publicDomainErrors.hasError ||
             portErrors.hasError ||
             apiSchemaErrors.hasError ||
             apiPathErrors.hasError
@@ -148,6 +150,19 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                             }}
                         />
                     </SimpleGrid>
+
+                    <TextInput
+                        key={form.key('publicDomain')}
+                        description={t('base-node-form.public-domain-description')}
+                        label={t('base-node-form.public-domain')}
+                        leftSection={<TbWorld size={16} />}
+                        placeholder={t('base-node-form.public-domain-placeholder')}
+                        size="sm"
+                        styles={{
+                            label: { fontWeight: 500 }
+                        }}
+                        {...form.getInputProps('publicDomain')}
+                    />
 
                     <Stack gap="xs">
                         <Select

@@ -39,3 +39,13 @@ func RequestSubNodeSubpageConfigPush(uuid string, config []byte, nodeUUIDs ...st
 		monitor.RequestSubpageConfigPush(uuid, config, nodeUUIDs...)
 	}
 }
+
+func GetSubNodeRuntimeSnapshot(nodeName string) (SubNodeRuntimeSnapshot, bool) {
+	globalSubMonitorMu.RLock()
+	monitor := globalSubMonitor
+	globalSubMonitorMu.RUnlock()
+	if monitor == nil {
+		return SubNodeRuntimeSnapshot{}, false
+	}
+	return monitor.RuntimeSnapshot(nodeName)
+}

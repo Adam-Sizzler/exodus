@@ -16,7 +16,7 @@ import clsx from 'clsx'
 import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { faviconResolver } from '@shared/utils/misc'
-import { SingboxLogo } from '@shared/ui/logos'
+import { Logo } from '@shared/ui'
 
 import { NodeStatusBadgeWidget } from '../node-status-badge'
 import classes from './NodeCard.module.css'
@@ -243,7 +243,7 @@ export const NodeCardWidget = memo((props: IProps) => {
 
                             {isOnline && (
                                 <Flex align="center" gap={4}>
-                                    <SingboxLogo size={14} />
+                                    <Logo size={14} />
                                     <Text
                                         c={isOnline ? 'teal' : 'red'}
                                         fw={isOnline ? 600 : 500}
@@ -370,7 +370,7 @@ export const NodeCardWidget = memo((props: IProps) => {
                         )}
 
                         <Flex align="center" gap={4}>
-                            <SingboxLogo size={12} />
+                            <Logo size={12} />
                             <Text
                                 c={isOnline ? 'teal' : 'dimmed'}
                                 fw={isOnline ? 600 : 500}

@@ -114,10 +114,6 @@ export function getNodesTableColumns(
                     .join(', ')
         },
         {
-            accessor: 'singboxVersion',
-            title: t('use-nodes-table-widget.singbox-v')
-        },
-        {
             accessor: 'nodeVersion',
             title: t('use-nodes-table-widget.node-v')
         },

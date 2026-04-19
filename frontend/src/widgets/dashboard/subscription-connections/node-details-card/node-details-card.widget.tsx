@@ -26,7 +26,6 @@ import { QueryKeys, useDisableSubscriptionConnection, useEnableSubscriptionConne
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
-import { SingboxLogo } from '@shared/ui/logos'
 import { queryClient } from '@shared/api'
 import { Logo } from '@shared/ui'
 
@@ -36,7 +35,6 @@ interface IProps {
 
 export const NodeDetailsCardWidget = memo((props: IProps) => {
     const { node } = props
-    const nodeSingboxVersion = node.singboxVersion
     const nodeSingboxUptime = node.singboxUptime
 
     const { t } = useTranslation()
@@ -150,12 +148,14 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                     <Group gap="xs">
                         {node.isConnected && (
                             <Tooltip
-                                label={t('node-stats.card.represents-the-uptime-of-the-singbox-core')}
+                                label={t(
+                                    'node-stats.card.represents-the-uptime-of-the-subscription-node-container'
+                                )}
                             >
                                 <Badge
                                     color="teal"
                                     h={28}
-                                    leftSection={<SingboxLogo size={14} />}
+                                    leftSection={<Logo size={14} />}
                                     size="lg"
                                     variant="light"
                                     visibleFrom="sm"
@@ -286,26 +286,6 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                         }}
                         spacing="xs"
                     >
-                        {nodeSingboxVersion && (
-                            <Paper
-                                p="xs"
-                                radius="md"
-                                style={{
-                                    background: 'rgba(139, 92, 246, 0.08)',
-                                    border: '1px solid rgba(139, 92, 246, 0.2)'
-                                }}
-                            >
-                                <Tooltip label={t('node-details-card.widget.singbox-core-version')}>
-                                    <Group gap="xs" justify="center">
-                                        <SingboxLogo color="var(--mantine-color-violet-5)" size={16} />
-                                        <Text c="violet.5" fw={600} size="sm">
-                                            {nodeSingboxVersion}
-                                        </Text>
-                                    </Group>
-                                </Tooltip>
-                            </Paper>
-                        )}
-
                         {nodeSingboxUptime !== '0' && (
                             <Paper
                                 hiddenFrom="sm"
@@ -318,11 +298,11 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             >
                                 <Tooltip
                                     label={t(
-                                        'node-stats.card.represents-the-uptime-of-the-singbox-core'
+                                        'node-stats.card.represents-the-uptime-of-the-subscription-node-container'
                                     )}
                                 >
                                     <Group gap="xs" justify="center">
-                                        <SingboxLogo color="var(--mantine-color-teal-5)" size={16} />
+                                        <Logo color="var(--mantine-color-teal-5)" size={16} />
                                         <Text
                                             c="teal.5"
                                             fw={600}

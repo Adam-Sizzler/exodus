@@ -1,6 +1,5 @@
 import {
     ActionIcon,
-    Code,
     Group,
     HoverCard,
     Paper,
@@ -16,15 +15,16 @@ import { TbCalendar, TbChartArcs, TbUser, TbWifi } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { PiLinkDuotone } from 'react-icons/pi'
 import { useTranslation } from 'node_modules/react-i18next'
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import dayjs from 'dayjs'
 
 import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
+import { useGetSubscriptionConnections } from '@shared/api/hooks'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { UserStatusBadge } from '@widgets/dashboard/users/user-status-badge'
+import { buildSubscriptionLinksFromNodes } from '@shared/utils/misc/subscription-links'
 import { resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { CopyableCodeBlock } from '@shared/ui/copyable-code-block'
 import { getTimeAgoUtil } from '@shared/utils/time-utils'
 import { prettyBytesUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
@@ -53,6 +53,7 @@ export const UserIdentificationCard = memo((props: IProps) => {
     const MotionWrapper = motionWrapper
 
     const actions = useUserModalStoreActions()
+    const { data: subscriptionConnections } = useGetSubscriptionConnections()
 
     const statusIconVariant = statusIconVariantMap[user.status] ?? 'gradient-gray'
 
@@ -77,6 +78,15 @@ export const UserIdentificationCard = memo((props: IProps) => {
     const daysLeft = expireDate.diff(dayjs(), 'day')
     const isExpired = daysLeft !== null && daysLeft <= 0
     const expirationFormattedDate = expireDate?.format('DD.MM.YYYY HH:mm')
+    const subscriptionLinks = useMemo(
+        () =>
+            buildSubscriptionLinksFromNodes(
+                subscriptionConnections?.response ?? [],
+                user.shortUuid,
+                user.subscriptionUrl
+            ),
+        [subscriptionConnections?.response, user.shortUuid, user.subscriptionUrl]
+    )
 
     const getExpirationStyle = () => {
         if (isExpired) {
@@ -250,44 +260,45 @@ export const UserIdentificationCard = memo((props: IProps) => {
                 </SectionCard.Section>
 
                 <SectionCard.Section>
-                    <CopyableFieldShared
-                        label={
-                            <Group gap={4} justify="flex-start">
-                                <Text fw={500} fz="sm">
-                                    {t('view-user-modal.widget.subscription-url')}
-                                </Text>
-                                <HoverCard shadow="md" width={280} withArrow>
-                                    <HoverCard.Target>
-                                        <ActionIcon color="gray" mb={2} size="xs" variant="subtle">
-                                            <HiQuestionMarkCircle size={16} />
-                                        </ActionIcon>
-                                    </HoverCard.Target>
-                                    <HoverCard.Dropdown>
-                                        <Stack gap="sm">
-                                            <Text fw={600} size="sm">
-                                                {t('view-user-modal.widget.subscription-url')}
-                                            </Text>
-                                            <Text c="dimmed" size="sm">
-                                                {t(
-                                                    'view-user-modal.widget.subscription-url-description-line-1'
-                                                )}{' '}
-                                                <Code bg="gray.1" c="dark.4" fw={700}>
-                                                    SUB_PUBLIC_DOMAIN
-                                                </Code>
-                                                <br />
-                                                {t(
-                                                    'view-user-modal.widget.subscription-url-description-line-2'
-                                                )}
-                                            </Text>
-                                            <CopyableCodeBlock value="docker compose down && docker compose up -d" />
-                                        </Stack>
-                                    </HoverCard.Dropdown>
-                                </HoverCard>
-                            </Group>
-                        }
-                        leftSection={<PiLinkDuotone size="16px" />}
-                        value={user.subscriptionUrl}
-                    />
+                    <Stack gap="xs">
+                        <Group gap={4} justify="flex-start">
+                            <Text fw={500} fz="sm">
+                                {t('view-user-modal.widget.subscription-url')}
+                            </Text>
+                            <HoverCard shadow="md" width={280} withArrow>
+                                <HoverCard.Target>
+                                    <ActionIcon color="gray" mb={2} size="xs" variant="subtle">
+                                        <HiQuestionMarkCircle size={16} />
+                                    </ActionIcon>
+                                </HoverCard.Target>
+                                <HoverCard.Dropdown>
+                                    <Stack gap="sm">
+                                        <Text fw={600} size="sm">
+                                            {t('view-user-modal.widget.subscription-url')}
+                                        </Text>
+                                        <Text c="dimmed" size="sm">
+                                            {t('view-user-modal.widget.subscription-url-description-line-1')}
+                                            <br />
+                                            {t('view-user-modal.widget.subscription-url-description-line-2')}
+                                        </Text>
+                                    </Stack>
+                                </HoverCard.Dropdown>
+                            </HoverCard>
+                        </Group>
+
+                        {subscriptionLinks.map((subscriptionLink) => (
+                            <CopyableFieldShared
+                                key={subscriptionLink.url}
+                                label={
+                                    subscriptionLinks.length > 1
+                                        ? subscriptionLink.nodeName
+                                        : undefined
+                                }
+                                leftSection={<PiLinkDuotone size="16px" />}
+                                value={subscriptionLink.url}
+                            />
+                        ))}
+                    </Stack>
                 </SectionCard.Section>
             </SectionCard.Root>
         </MotionWrapper>

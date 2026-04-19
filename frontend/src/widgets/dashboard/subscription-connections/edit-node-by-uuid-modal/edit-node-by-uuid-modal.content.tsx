@@ -25,6 +25,7 @@ type EditSubscriptionConnectionForm = {
     uuid: string
     name?: string
     address?: string
+    publicDomain?: string | null
     port?: number
     apiSchema?: 'mtls' | 'tls'
     apiPath?: string
@@ -76,6 +77,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 uuid: fetchedNode.uuid,
                 name: fetchedNode.name,
                 address: fetchedNode.address,
+                publicDomain: fetchedNode.publicDomain ?? null,
                 port: fetchedNode.port ?? undefined,
                 apiSchema,
                 apiPath: fetchedNode.apiPath ?? '/',
@@ -96,6 +98,10 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             values.subpageConfigUuid === undefined
                 ? (fetchedNode.subpageConfigUuid ?? null)
                 : ((values.subpageConfigUuid ?? '').trim() || null)
+        const resolvedPublicDomain =
+            values.publicDomain === undefined
+                ? (fetchedNode.publicDomain ?? null)
+                : ((values.publicDomain ?? '').trim() || null)
 
         updateNode({
             variables: {
@@ -103,6 +109,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 uuid: fetchedNode.uuid,
                 name: values.name?.trim(),
                 address: values.address?.trim(),
+                publicDomain: resolvedPublicDomain,
                 apiSchema: schema,
                 apiPath: values.apiPath?.trim() || '/',
                 subpageConfigUuid: resolvedSubpageConfigUuid

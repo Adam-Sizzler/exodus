@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,12 +43,25 @@ const (
 	bridgeOperationSubpageByUUID       = "subpage_config_by_uuid"
 )
 
+const (
+	subNodeRuntimeStatVersion  = "sub_node_version"
+	subNodeRuntimeStatUptime   = "sub_node_uptime"
+	subNodeRuntimeStatCPUCount = "cpu_count"
+	subNodeRuntimeStatCPUModel = "cpu_model"
+	subNodeRuntimeStatTotalRAM = "total_ram"
+)
+
+var subNodeVersionPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
+
 type SubNodeMonitor struct {
 	manager *dbmanager.DatabaseManager
 	cfg     *config.BackendConfig
 
 	nodes     map[string]*subNodeState
 	nodesLock sync.RWMutex
+
+	runtimeByNodeName map[string]SubNodeRuntimeSnapshot
+	runtimeMu         sync.RWMutex
 
 	globalCtx    context.Context
 	globalCancel context.CancelFunc
@@ -95,14 +110,24 @@ type dbSubNode struct {
 	SubpageConfigUUID string
 }
 
+type SubNodeRuntimeSnapshot struct {
+	SingboxVersion *string
+	NodeVersion    *string
+	SingboxUptime  string
+	CPUCount       *int
+	CPUModel       *string
+	TotalRAM       *string
+}
+
 func NewSubNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) *SubNodeMonitor {
 	return &SubNodeMonitor{
-		manager:        manager,
-		cfg:            cfg,
-		nodes:          make(map[string]*subNodeState),
-		syncNow:        make(chan struct{}, 1),
-		deployNow:      make(chan []string, 1),
-		subpagePushNow: make(chan subpageConfigPushCommand, 1),
+		manager:           manager,
+		cfg:               cfg,
+		nodes:             make(map[string]*subNodeState),
+		runtimeByNodeName: make(map[string]SubNodeRuntimeSnapshot),
+		syncNow:           make(chan struct{}, 1),
+		deployNow:         make(chan []string, 1),
+		subpagePushNow:    make(chan subpageConfigPushCommand, 1),
 	}
 }
 
@@ -168,6 +193,7 @@ func (sm *SubNodeMonitor) syncNodes() {
 				_ = state.conn.Close()
 			}
 			delete(sm.nodes, name)
+			sm.deleteRuntimeSnapshot(name)
 			continue
 		}
 		if subNodeConfigChanged(state, desiredNode) {
@@ -728,8 +754,64 @@ func (sm *SubNodeMonitor) sendNodeRequest(state *subNodeState, req *proto.NodeDa
 }
 
 func (sm *SubNodeMonitor) updateRuntimeFromStats(nodeName string, stats []*proto.Stat) {
-	_ = nodeName
-	_ = stats
+	cleanNodeName := strings.TrimSpace(nodeName)
+	if cleanNodeName == "" || len(stats) == 0 {
+		return
+	}
+
+	values := make(map[string]string, len(stats))
+	for _, stat := range stats {
+		if stat == nil {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(stat.GetName()))
+		if key == "" {
+			continue
+		}
+		values[key] = strings.TrimSpace(stat.GetValue())
+	}
+	if len(values) == 0 {
+		return
+	}
+
+	sm.runtimeMu.Lock()
+	runtime := sm.runtimeByNodeName[cleanNodeName]
+	if runtime.SingboxUptime == "" {
+		runtime.SingboxUptime = "0"
+	}
+
+	if version, ok := normalizeSubNodeRuntimeVersion(firstNonEmptyString(
+		values[subNodeRuntimeStatVersion],
+		values["node_version"],
+	)); ok {
+		runtime.NodeVersion = stringPtr(version)
+	}
+
+	if singboxVersion, ok := normalizeSubNodeRuntimeVersion(values["singbox_version"]); ok {
+		runtime.SingboxVersion = stringPtr(singboxVersion)
+	}
+
+	if uptime, ok := normalizeSubNodeRuntimeUptime(firstNonEmptyString(
+		values[subNodeRuntimeStatUptime],
+		values["singbox_uptime"],
+	)); ok {
+		runtime.SingboxUptime = uptime
+	}
+
+	if cpuCount, ok := parseOptionalIntValue(values[subNodeRuntimeStatCPUCount]); ok {
+		runtime.CPUCount = intPtr(cpuCount)
+	}
+
+	if cpuModel, ok := parseOptionalStringValue(values[subNodeRuntimeStatCPUModel]); ok {
+		runtime.CPUModel = stringPtr(cpuModel)
+	}
+
+	if totalRAM, ok := parseOptionalStringValue(values[subNodeRuntimeStatTotalRAM]); ok {
+		runtime.TotalRAM = stringPtr(totalRAM)
+	}
+
+	sm.runtimeByNodeName[cleanNodeName] = runtime
+	sm.runtimeMu.Unlock()
 }
 
 func (sm *SubNodeMonitor) handleDisconnect(state *subNodeState, reason string) {
@@ -971,7 +1053,43 @@ func (sm *SubNodeMonitor) stopAll() {
 			_ = state.conn.Close()
 		}
 		delete(sm.nodes, name)
+		sm.deleteRuntimeSnapshot(name)
 	}
+}
+
+func (sm *SubNodeMonitor) RuntimeSnapshot(nodeName string) (SubNodeRuntimeSnapshot, bool) {
+	if sm == nil {
+		return SubNodeRuntimeSnapshot{}, false
+	}
+
+	cleanNodeName := strings.TrimSpace(nodeName)
+	if cleanNodeName == "" {
+		return SubNodeRuntimeSnapshot{}, false
+	}
+
+	sm.runtimeMu.RLock()
+	snapshot, ok := sm.runtimeByNodeName[cleanNodeName]
+	sm.runtimeMu.RUnlock()
+	if !ok {
+		return SubNodeRuntimeSnapshot{}, false
+	}
+
+	return cloneRuntimeSnapshot(snapshot), true
+}
+
+func (sm *SubNodeMonitor) deleteRuntimeSnapshot(nodeName string) {
+	if sm == nil {
+		return
+	}
+
+	cleanNodeName := strings.TrimSpace(nodeName)
+	if cleanNodeName == "" {
+		return
+	}
+
+	sm.runtimeMu.Lock()
+	delete(sm.runtimeByNodeName, cleanNodeName)
+	sm.runtimeMu.Unlock()
 }
 
 func (sm *SubNodeMonitor) Stop() {
@@ -1182,4 +1300,109 @@ func subMinDuration(a, b time.Duration) time.Duration {
 		return a
 	}
 	return b
+}
+
+func normalizeSubNodeRuntimeVersion(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", false
+	}
+
+	lower := strings.ToLower(trimmed)
+	switch lower {
+	case "unknown", "latest", "(devel)", "sub":
+		return "", false
+	}
+
+	if subNodeVersionPattern.MatchString(trimmed) {
+		if strings.HasPrefix(lower, "v") {
+			return "v" + strings.TrimSpace(trimmed[1:]), true
+		}
+		return trimmed, true
+	}
+
+	return trimmed, true
+}
+
+func normalizeSubNodeRuntimeUptime(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", false
+	}
+
+	parsed, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil || parsed < 0 {
+		return "", false
+	}
+
+	return strconv.FormatInt(parsed, 10), true
+}
+
+func parseOptionalIntValue(value string) (int, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, false
+	}
+
+	parsed, err := strconv.Atoi(trimmed)
+	if err != nil {
+		return 0, false
+	}
+
+	return parsed, true
+}
+
+func parseOptionalStringValue(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", false
+	}
+	return trimmed, true
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func cloneRuntimeSnapshot(snapshot SubNodeRuntimeSnapshot) SubNodeRuntimeSnapshot {
+	cloned := SubNodeRuntimeSnapshot{
+		SingboxUptime: snapshot.SingboxUptime,
+	}
+
+	if snapshot.SingboxVersion != nil {
+		cloned.SingboxVersion = stringPtr(*snapshot.SingboxVersion)
+	}
+	if snapshot.NodeVersion != nil {
+		cloned.NodeVersion = stringPtr(*snapshot.NodeVersion)
+	}
+	if snapshot.CPUCount != nil {
+		cloned.CPUCount = intPtr(*snapshot.CPUCount)
+	}
+	if snapshot.CPUModel != nil {
+		cloned.CPUModel = stringPtr(*snapshot.CPUModel)
+	}
+	if snapshot.TotalRAM != nil {
+		cloned.TotalRAM = stringPtr(*snapshot.TotalRAM)
+	}
+	if cloned.SingboxUptime == "" {
+		cloned.SingboxUptime = "0"
+	}
+
+	return cloned
+}
+
+func stringPtr(value string) *string {
+	v := value
+	return &v
+}
+
+func intPtr(value int) *int {
+	v := value
+	return &v
 }

@@ -12,6 +12,7 @@ import { SectionCard } from '@shared/ui/section-card'
 interface SubscriptionNodeVitalsForm {
     name?: string
     address?: string
+    publicDomain?: string | null
     port?: number
     apiSchema?: 'mtls' | 'tls'
     apiPath?: string
@@ -103,6 +104,19 @@ export const NodeVitalsCard = <T extends SubscriptionNodeVitalsForm>(props: IPro
                                 }}
                             />
                         </SimpleGrid>
+
+                        <TextInput
+                            key={form.key('publicDomain')}
+                            description={t('base-node-form.public-domain-description')}
+                            label={t('base-node-form.public-domain')}
+                            leftSection={<TbWorld size={16} />}
+                            placeholder={t('base-node-form.public-domain-placeholder')}
+                            size="sm"
+                            styles={{
+                                label: { fontWeight: 500 }
+                            }}
+                            {...form.getInputProps('publicDomain')}
+                        />
 
                         <Stack gap="xs">
                             <Select

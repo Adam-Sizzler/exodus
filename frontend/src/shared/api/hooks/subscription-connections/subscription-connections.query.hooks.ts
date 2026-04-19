@@ -19,6 +19,7 @@ const SUBSCRIPTION_CONNECTIONS_API = {
 const subscriptionConnectionNodeSchema = GetOneNodeCommand.ResponseSchema.shape.response.extend({
     apiSchema: z.string().optional().default('mtls'),
     apiPath: z.string().optional().default('/'),
+    publicDomain: z.string().nullable().optional(),
     subpageConfigUuid: z.string().uuid().nullable().optional()
 })
 

@@ -8,7 +8,6 @@ import { ReactNode } from 'react'
 import { t } from 'i18next'
 
 import { ToggleNodeStatusButtonFeature } from '@features/ui/dashboard/subscription-connections/toggle-node-status-button'
-import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/subscription-connections/get-node-linked-hosts'
 import { RestartNodeButtonFeature } from '@features/ui/dashboard/subscription-connections/restart-node-button'
 import { DeleteNodeFeature } from '@features/ui/dashboard/subscription-connections/delete-node'
 import { ModalAccordionWidget } from '@widgets/dashboard/subscription-connections/modal-accordeon-widget'
@@ -42,6 +41,7 @@ interface BaseSubscriptionConnectionFormValues {
     uuid: string
     name?: string
     address?: string
+    publicDomain?: string | null
     port?: number
     apiSchema?: 'mtls' | 'tls'
     apiPath?: string
@@ -123,9 +123,6 @@ export const BaseNodeForm = <T extends BaseSubscriptionConnectionFormValues>(pro
 
                             <RestartNodeButtonFeature handleClose={handleClose} node={node} />
                             <ToggleNodeStatusButtonFeature handleClose={handleClose} node={node} />
-                            <Menu.Divider />
-                            <Menu.Label>{t('base-node-form.quick-actions')}</Menu.Label>
-                            <GetNodeLinkedHostsFeature nodeUuid={node.uuid} />
                         </Menu.Dropdown>
                     </Menu>
                 )}

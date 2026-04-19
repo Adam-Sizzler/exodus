@@ -333,8 +333,8 @@
             "edit-user": "编辑用户",
             "subscription-qr-code": "订阅二维码",
             "edit-user-headline": "编辑用户",
-            "subscription-url-description-line-1": ".env 变量解析出的域名和路径：",
-            "subscription-url-description-line-2": "如需更改，请在 .env 文件中修改并使用以下命令重启 Exodus：",
+            "subscription-url-description-line-1": "链接会按所有启用的订阅节点生成（每个节点各自的域名/路径）。",
+            "subscription-url-description-line-2": "如需修改，请在“订阅 -> 连接”中调整“订阅 URL 公共域名”和“API 路径”。",
             "view-accessible-nodes": "查看可访问的节点",
             "fetching-user-data": "正在获取用户数据……",
             "more-actions": "更多操作",
@@ -1357,7 +1357,8 @@
         "card": {
             "stats": "统计信息",
             "traffic-refill-in-days": "流量重置(天)：",
-            "represents-the-uptime-of-the-singbox-core": "表示Singbox 核心的运行时间"
+            "represents-the-uptime-of-the-singbox-core": "表示Singbox 核心的运行时间",
+            "represents-the-uptime-of-the-subscription-node-container": "表示订阅节点容器的运行时间"
         }
     },
     "nodes-spotlight-search": {

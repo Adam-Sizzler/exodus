@@ -334,8 +334,8 @@
             "edit-user": "Edit user",
             "subscription-qr-code": "Subscription QR Code",
             "edit-user-headline": "Edit user",
-            "subscription-url-description-line-1": "Domain and path resolved from .env variable:",
-            "subscription-url-description-line-2": "If you want to change it, please change it in the .env file and restart Exodus using command:",
+            "subscription-url-description-line-1": "Links are generated for every active subscription node (each node domain/path).",
+            "subscription-url-description-line-2": "Change “Subscription URL public domain” and “API Path” in Subscription -> Connections.",
             "view-accessible-nodes": "View accessible nodes",
             "fetching-user-data": "Fetching user data...",
             "more-actions": "More Actions",
@@ -449,7 +449,10 @@
         "node-port-placeholder": "2222",
         "api-schema": "gRPC Security Mode",
         "api-schema-description": "mTLS: direct certificate auth. TLS+token: reverse proxy TLS with gRPC token auth.",
-        "api-schema-mtls": "gRPC + mTLS (no token)",
+        "api-schema-mtls": "gRPC + mTLS",
+        "public-domain": "Subscription URL public domain",
+        "public-domain-description": "Optional. If empty, node address is used. Path is taken from API Path.",
+        "public-domain-placeholder": "e.g. sub.example.com",
         "api-schema-tls-token": "gRPC + TLS + gRPC token",
         "api-path": "API Path",
         "api-path-description": "gRPC path prefix. Root path: /",
@@ -610,7 +613,7 @@
             "enabled": "Enabled",
             "disabled": "Disabled",
             "profile-webpage-url": "Profile Webpage URL",
-            "profile-webpage-url-description": "Used by some clients. Enabled by default, domain obtained from SUB_PUBLIC_DOMAIN .env variable.",
+            "profile-webpage-url-description": "Used by some clients. URL is derived from active subscription connection (public domain + API path).",
             "serve-json-at-base-subscription": "Serve JSON at base subscription",
             "serve-json-description": "Serve JSON configurations at the base subscription path (without having to append /json). If the client supports it, it will be served JSON, otherwise it will be served as usual.",
             "subscription-info-description": "Subscription links are supported by many client apps such as Happ, v2RayNG, Streisand, etc.",
@@ -1378,7 +1381,8 @@
         "card": {
             "stats": "Stats",
             "traffic-refill-in-days": "Traffic refill in (days):",
-            "represents-the-uptime-of-the-singbox-core": "Represents the uptime of the Singbox Core"
+            "represents-the-uptime-of-the-singbox-core": "Represents the uptime of the Singbox Core",
+            "represents-the-uptime-of-the-subscription-node-container": "Represents the subscription node container uptime"
         }
     },
     "nodes-spotlight-search": {

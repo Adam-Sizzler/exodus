@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -334,7 +333,7 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 		return
 	}
 
-	response, err := buildUserResponses(r.Context(), manager, records, resolveUsersSubscriptionBase(r, cfg))
+	response, err := buildUserResponses(r.Context(), manager, records, resolveUsersSubscriptionBase(r.Context(), manager, r, cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build users response", err, cfg)
 		return
@@ -359,7 +358,7 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.Da
 		return
 	}
 
-	response, err := buildUserResponses(r.Context(), manager, []userRecord{record}, resolveUsersSubscriptionBase(r, cfg))
+	response, err := buildUserResponses(r.Context(), manager, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), manager, r, cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build user response", err, cfg)
 		return
@@ -481,7 +480,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created user", err, cfg)
 		return
 	}
-	response, err := buildUserResponses(r.Context(), manager, []userRecord{record}, resolveUsersSubscriptionBase(r, cfg))
+	response, err := buildUserResponses(r.Context(), manager, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), manager, r, cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build created user response", err, cfg)
 		return
@@ -639,7 +638,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated user", err, cfg)
 		return
 	}
-	response, err := buildUserResponses(r.Context(), manager, []userRecord{updatedRecord}, resolveUsersSubscriptionBase(r, cfg))
+	response, err := buildUserResponses(r.Context(), manager, []userRecord{updatedRecord}, resolveUsersSubscriptionBase(r.Context(), manager, r, cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build updated user response", err, cfg)
 		return
@@ -948,7 +947,7 @@ func sendUpdatedUserResponse(w http.ResponseWriter, r *http.Request, manager *db
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated user", err, cfg)
 		return
 	}
-	response, err := buildUserResponses(r.Context(), manager, []userRecord{record}, resolveUsersSubscriptionBase(r, cfg))
+	response, err := buildUserResponses(r.Context(), manager, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), manager, r, cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build updated user response", err, cfg)
 		return
@@ -1419,18 +1418,76 @@ func resolveUserUUIDForUpdate(ctx context.Context, manager *dbmanager.DatabaseMa
 	return resolved, err
 }
 
-func resolveUsersSubscriptionBase(r *http.Request, cfg *config.BackendConfig) string {
-	if domain := strings.TrimSpace(os.Getenv("FRONT_END_DOMAIN")); domain != "" {
-		first := strings.TrimSpace(strings.Split(domain, ",")[0])
-		if parsed, err := url.Parse(first); err == nil && parsed.Host != "" {
-			return strings.TrimRight(parsed.String(), "/") + "/"
-		}
-		if strings.HasPrefix(first, "http://") || strings.HasPrefix(first, "https://") {
-			return strings.TrimRight(first, "/") + "/"
-		}
-		return "https://" + strings.TrimRight(first, "/") + "/"
+func resolveUsersSubscriptionBase(ctx context.Context, manager *dbmanager.DatabaseManager, r *http.Request, cfg *config.BackendConfig) string {
+	if base := resolveUsersSubscriptionBaseFromNode(ctx, manager); base != "" {
+		return base
 	}
 
+	return resolveUsersSubscriptionBaseFallback(r, cfg)
+}
+
+func resolveUsersSubscriptionBaseFromNode(ctx context.Context, manager *dbmanager.DatabaseManager) string {
+	if manager == nil {
+		return ""
+	}
+
+	var domain sql.NullString
+	var apiPath sql.NullString
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		row := db.QueryRowContext(ctx, `
+			SELECT
+				COALESCE(NULLIF(BTRIM(public_domain), ''), NULLIF(BTRIM(address), '')) AS domain,
+				COALESCE(NULLIF(BTRIM(api_path), ''), '/') AS api_path
+			FROM sub_nodes
+			ORDER BY is_disabled ASC, view_position ASC, created_at ASC
+			LIMIT 1
+		`)
+
+		scanErr := row.Scan(&domain, &apiPath)
+		if errors.Is(scanErr, sql.ErrNoRows) {
+			return nil
+		}
+
+		return scanErr
+	})
+	if err != nil || !domain.Valid {
+		return ""
+	}
+
+	nodeDomain := strings.TrimSpace(strings.Split(domain.String, ",")[0])
+	if nodeDomain == "" {
+		return ""
+	}
+
+	if !strings.Contains(nodeDomain, "://") {
+		nodeDomain = "https://" + nodeDomain
+	}
+
+	parsedDomain, parseErr := url.Parse(nodeDomain)
+	if parseErr != nil || strings.TrimSpace(parsedDomain.Host) == "" {
+		return ""
+	}
+
+	parsedDomain.Path = ""
+	parsedDomain.RawQuery = ""
+	parsedDomain.Fragment = ""
+	parsedDomain.User = nil
+
+	base := strings.TrimRight(parsedDomain.String(), "/")
+	path := normalizeUsersSubscriptionAPIPath(apiPath.String)
+	return base + path
+}
+
+func normalizeUsersSubscriptionAPIPath(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" || trimmed == "/" {
+		return "/"
+	}
+
+	return "/" + strings.Trim(trimmed, "/") + "/"
+}
+
+func resolveUsersSubscriptionBaseFallback(r *http.Request, cfg *config.BackendConfig) string {
 	scheme := "https"
 	if cfg != nil && cfg.Panel.AllowInsecureHTTP {
 		scheme = "http"

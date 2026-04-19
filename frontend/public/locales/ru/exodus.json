@@ -334,8 +334,8 @@
             "edit-user": "Сохранить",
             "subscription-qr-code": "QR-код ссылки-подписки",
             "edit-user-headline": "Редактирование",
-            "subscription-url-description-line-1": "Домен и путь получены из .env переменной:",
-            "subscription-url-description-line-2": "Если вы хотите изменить его, пожалуйста, измените его в .env файле и перезапустите Exodus командой:",
+            "subscription-url-description-line-1": "Ссылки формируются для всех активных нод подписки (домен/путь каждой ноды).",
+            "subscription-url-description-line-2": "Измените поля «Публичный домен URL подписки» и «Путь API» в разделе «Подписка → Подключения».",
             "view-accessible-nodes": "Доступные ноды",
             "fetching-user-data": "Получение данных пользователя...",
             "more-actions": "Действия",
@@ -449,7 +449,10 @@
         "node-port-placeholder": "2222",
         "api-schema": "Режим защиты gRPC",
         "api-schema-description": "mTLS: прямое подключение по сертификатам. TLS+token: через reverse proxy и gRPC token.",
-        "api-schema-mtls": "gRPC + mTLS (без токена)",
+        "api-schema-mtls": "gRPC + mTLS",
+        "public-domain": "Публичный домен URL подписки",
+        "public-domain-description": "Опционально. Если пусто, используется адрес ноды. Путь берется из поля «Путь API».",
+        "public-domain-placeholder": "например, sub.example.com",
         "api-schema-tls-token": "gRPC + TLS + gRPC token",
         "api-path": "Путь API",
         "api-path-description": "Префикс gRPC пути. Корневой путь: /",
@@ -610,7 +613,7 @@
             "enabled": "Включено",
             "disabled": "Выключено",
             "profile-webpage-url": "URL страницы профиля",
-            "profile-webpage-url-description": "Используется некоторыми клиентами. \nВключено по умолчанию, домен резволится из SUB_PUBLIC_DOMAIN .env переменной.",
+            "profile-webpage-url-description": "Используется некоторыми клиентами. \nURL берется из активного подключения подписки (публичный домен + путь API).",
             "serve-json-at-base-subscription": "Использовать JSON в базовой подписке",
             "serve-json-description": "Это позволит вам сервить JSON подписку в базовом пути подписки. Если запрошенный клиент поддерживает его, он будет сервиться как JSON, в противном случае он будет сервиться как обычно.",
             "subscription-info-description": "Эти настройки поддерживаются многими клиентами, такими как Happ, V2RayNG, Streisand и т.д.",
@@ -1378,7 +1381,8 @@
         "card": {
             "stats": "Статистика",
             "traffic-refill-in-days": "Сброс трафика (дней):",
-            "represents-the-uptime-of-the-singbox-core": "Отражает время работы ядра Singbox"
+            "represents-the-uptime-of-the-singbox-core": "Отражает время работы ядра Singbox",
+            "represents-the-uptime-of-the-subscription-node-container": "Отражает время работы контейнера ноды подписки"
         }
     },
     "nodes-spotlight-search": {
