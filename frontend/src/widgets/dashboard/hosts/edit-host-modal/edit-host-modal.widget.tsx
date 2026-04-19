@@ -7,7 +7,6 @@ import { PiListChecks } from 'react-icons/pi'
 import { modals } from '@mantine/modals'
 import { useForm } from '@mantine/form'
 import { Drawer } from '@mantine/core'
-import consola from 'consola/browser'
 
 import {
     QueryKeys,
@@ -24,6 +23,51 @@ import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { cloneString } from '@shared/utils/misc/clone-string'
 import { queryClient } from '@shared/api'
 import {} from '@entities/dashboard'
+
+type OptionalJSONParseResult =
+    | { ok: false }
+    | { ok: true; value: null | unknown }
+
+const parseOptionalJSONValue = (value: unknown): OptionalJSONParseResult => {
+    if (value === null || value === undefined) {
+        return {
+            ok: true,
+            value: null
+        }
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (trimmed === '' || trimmed === 'null') {
+            return {
+                ok: true,
+                value: null
+            }
+        }
+
+        try {
+            return {
+                ok: true,
+                value: JSON.parse(trimmed)
+            }
+        } catch {
+            return {
+                ok: false
+            }
+        }
+    }
+
+    if (typeof value === 'object') {
+        return {
+            ok: true,
+            value
+        }
+    }
+
+    return {
+        ok: false
+    }
+}
 
 export const EditHostModalWidget = memo(() => {
     const { t } = useTranslation()
@@ -86,16 +130,9 @@ export const EditHostModalWidget = memo(() => {
     useEffect(() => {
         if (host && configProfiles) {
             const hostAny = host as any
-            let muxParamsParsed: null | object | string
             let singboxMuxParamsParsed: null | object | string
             let clashMuxParamsParsed: null | object | string
             let sockoptParamsParsed: null | object | string
-
-            if (typeof host.muxParams === 'object' && host.muxParams !== null) {
-                muxParamsParsed = JSON.stringify(host.muxParams, null, 2)
-            } else {
-                muxParamsParsed = ''
-            }
 
             if (typeof hostAny.singboxMuxParams === 'object' && hostAny.singboxMuxParams !== null) {
                 singboxMuxParamsParsed = JSON.stringify(hostAny.singboxMuxParams, null, 2)
@@ -134,7 +171,6 @@ export const EditHostModalWidget = memo(() => {
                     configProfileInboundUuid: host.inbound.configProfileInboundUuid ?? ''
                 },
                 serverDescription: host.serverDescription ?? undefined,
-                muxParams: muxParamsParsed,
                 singboxMuxParams: singboxMuxParamsParsed,
                 clashMuxParams: clashMuxParamsParsed,
                 sockoptParams: sockoptParamsParsed,
@@ -202,19 +238,12 @@ export const EditHostModalWidget = memo(() => {
             return
         }
 
-        let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
 
-        try {
-            if (values.muxParams === '') {
-                muxParams = null
-            } else {
-                muxParams = JSON.parse(values.muxParams as unknown as string)
-            }
-        } catch (error) {
-            consola.error(error)
+        const singboxMuxParamsResult = parseOptionalJSONValue(values.singboxMuxParams)
+        if (!singboxMuxParamsResult.ok) {
             notifications.show({
                 title: t('edit-host-modal.widget.error'),
                 message: t('base-host-form.invalid-json'),
@@ -222,46 +251,22 @@ export const EditHostModalWidget = memo(() => {
             })
             return
         }
-
-        try {
-            if (values.singboxMuxParams === '') {
-                singboxMuxParams = null
-            } else {
-                singboxMuxParams = JSON.parse(values.singboxMuxParams as unknown as string)
-            }
-        } catch (error) {
-            consola.error(error)
-            notifications.show({
-                title: t('edit-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return
-        }
+        singboxMuxParams = singboxMuxParamsResult.value
 
         clashMuxParams =
             typeof values.clashMuxParams === 'string' && values.clashMuxParams.trim() !== ''
                 ? values.clashMuxParams
                 : null
 
-        try {
-            if (values.sockoptParams === '') {
-                sockoptParams = null
-            } else {
-                sockoptParams = JSON.parse(values.sockoptParams as unknown as string)
-            }
-        } catch (error) {
-            consola.error(error)
-            sockoptParams = null
-            // silence
-        }
+        const sockoptParamsResult = parseOptionalJSONValue(values.sockoptParams)
+        sockoptParams = sockoptParamsResult.ok ? sockoptParamsResult.value : null
 
         updateHost({
             variables: {
                 ...values,
                 isDisabled: !values.isDisabled,
                 uuid: host.uuid,
-                muxParams,
+                muxParams: null,
                 singboxMuxParams,
                 clashMuxParams,
                 sockoptParams,
@@ -296,7 +301,7 @@ export const EditHostModalWidget = memo(() => {
                 sni: host.sni ?? undefined,
                 host: host.host ?? undefined,
                 alpn: (host.alpn as UpdateHostCommand.Request['alpn']) ?? undefined,
-                muxParams: host.muxParams ?? undefined,
+                muxParams: null,
                 singboxMuxParams: (host as any).singboxMuxParams ?? undefined,
                 clashMuxParams: (host as any).clashMuxParams ?? undefined,
                 fingerprint:

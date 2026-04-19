@@ -49,7 +49,6 @@ import { Link } from 'react-router-dom'
 
 import {
     BASIC_CLASH_MUX_PARAMS,
-    BASIC_MUX_PARAMS,
     BASIC_SINGBOX_MUX_PARAMS,
     BASIC_SOCKOPT_PARAMS
 } from '@shared/constants'
@@ -98,27 +97,23 @@ const SUBSCRIPTION_TYPES = {
 } as const
 
 const MUX_CORE_OPTIONS = [
-    { value: 'XRAY', label: 'Xray' },
     { value: 'SINGBOX', label: 'Singbox' },
     { value: 'CLASH', label: 'Clash/Mihomo' }
 ] as const
 
 type MuxCore = (typeof MUX_CORE_OPTIONS)[number]['value']
 
-const MUX_FIELD_BY_CORE: Record<MuxCore, 'muxParams' | 'singboxMuxParams' | 'clashMuxParams'> = {
-    XRAY: 'muxParams',
+const MUX_FIELD_BY_CORE: Record<MuxCore, 'singboxMuxParams' | 'clashMuxParams'> = {
     SINGBOX: 'singboxMuxParams',
     CLASH: 'clashMuxParams'
 }
 
 const MUX_PLACEHOLDER_BY_CORE: Record<MuxCore, string> = {
-    XRAY: BASIC_MUX_PARAMS,
     SINGBOX: BASIC_SINGBOX_MUX_PARAMS,
     CLASH: BASIC_CLASH_MUX_PARAMS
 }
 
 const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
-    XRAY: 'https://xtls.github.io/ru/config/outbound.html#muxobject',
     SINGBOX: 'https://sing-box.sagernet.org/configuration/shared/multiplex/',
     CLASH: 'https://wiki.metacubex.one/en/config/proxies/'
 }
@@ -139,7 +134,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
 
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<null | string>('basic')
-    const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('XRAY')
+    const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('SINGBOX')
 
     const [muxParamsOpened, { open: openMuxParams, close: closeMuxParams }] = useDisclosure(false)
     const [sockoptParamsOpened, { open: openSockoptParams, close: closeSockoptParams }] =
@@ -331,7 +326,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const activeMuxPlaceholder = MUX_PLACEHOLDER_BY_CORE[activeMuxCore]
     const isClashMuxCore = activeMuxCore === 'CLASH'
     const activeMuxCoreLabel =
-        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Xray'
+        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Singbox'
 
     return (
         <form onSubmit={handleSubmit}>
@@ -1192,7 +1187,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                             value: option.value
                         }))}
                         label={t('base-host-form.mux-core')}
-                        onChange={(value) => setActiveMuxCore((value as MuxCore) || 'XRAY')}
+                        onChange={(value) => setActiveMuxCore((value as MuxCore) || 'SINGBOX')}
                         value={activeMuxCore}
                     />
 

@@ -20,6 +20,51 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { queryClient } from '@shared/api'
 
+type OptionalJSONParseResult =
+    | { ok: false }
+    | { ok: true; value: null | unknown }
+
+const parseOptionalJSONValue = (value: unknown): OptionalJSONParseResult => {
+    if (value === null || value === undefined) {
+        return {
+            ok: true,
+            value: null
+        }
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (trimmed === '' || trimmed === 'null') {
+            return {
+                ok: true,
+                value: null
+            }
+        }
+
+        try {
+            return {
+                ok: true,
+                value: JSON.parse(trimmed)
+            }
+        } catch {
+            return {
+                ok: false
+            }
+        }
+    }
+
+    if (typeof value === 'object') {
+        return {
+            ok: true,
+            value
+        }
+    }
+
+    return {
+        ok: false
+    }
+}
+
 export const CreateHostModalWidget = () => {
     const { t } = useTranslation()
 
@@ -88,18 +133,12 @@ export const CreateHostModalWidget = () => {
             return null
         }
 
-        let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
 
-        try {
-            if (values.muxParams === '') {
-                muxParams = null
-            } else {
-                muxParams = JSON.parse(values.muxParams as unknown as string)
-            }
-        } catch {
+        const singboxMuxParamsResult = parseOptionalJSONValue(values.singboxMuxParams)
+        if (!singboxMuxParamsResult.ok) {
             notifications.show({
                 title: t('create-host-modal.widget.error'),
                 message: t('base-host-form.invalid-json'),
@@ -107,44 +146,22 @@ export const CreateHostModalWidget = () => {
             })
             return null
         }
-
-        try {
-            if (values.singboxMuxParams === '') {
-                singboxMuxParams = null
-            } else {
-                singboxMuxParams = JSON.parse(values.singboxMuxParams as unknown as string)
-            }
-        } catch {
-            notifications.show({
-                title: t('create-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return null
-        }
+        singboxMuxParams = singboxMuxParamsResult.value
 
         clashMuxParams =
             typeof values.clashMuxParams === 'string' && values.clashMuxParams.trim() !== ''
                 ? values.clashMuxParams
                 : null
 
-        try {
-            if (values.sockoptParams === '') {
-                sockoptParams = null
-            } else {
-                sockoptParams = JSON.parse(values.sockoptParams as unknown as string)
-            }
-        } catch {
-            sockoptParams = null
-            // silence
-        }
+        const sockoptParamsResult = parseOptionalJSONValue(values.sockoptParams)
+        sockoptParams = sockoptParamsResult.ok ? sockoptParamsResult.value : null
 
         createHost({
             variables: {
                 ...values,
                 isDisabled: !values.isDisabled,
                 sockoptParams,
-                muxParams,
+                muxParams: null,
                 singboxMuxParams,
                 clashMuxParams,
                 inbound: {
