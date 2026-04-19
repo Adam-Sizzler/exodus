@@ -26,19 +26,27 @@ const grpcTokenHeader = "x-exodus-grpc-token"
 
 func Start(cfg config.Config, nodeService proto.NodeServiceServer) error {
 	expectedToken := strings.TrimSpace(cfg.GRPCToken)
+	unaryInterceptors := []grpc.UnaryServerInterceptor{
+		grpcPathValidationUnaryInterceptor(),
+	}
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		grpcPathValidationStreamInterceptor(),
+	}
 	opts := make([]grpc.ServerOption, 0, 2)
 	if cfg.RequireGRPCToken {
 		if expectedToken == "" {
 			return fmt.Errorf("SUB_GRPC_TOKEN is required")
 		}
-		opts = append(opts,
-			grpc.UnaryInterceptor(grpcTokenUnaryInterceptor(expectedToken)),
-			grpc.StreamInterceptor(grpcTokenStreamInterceptor(expectedToken)),
-		)
+		unaryInterceptors = append(unaryInterceptors, grpcTokenUnaryInterceptor(expectedToken))
+		streamInterceptors = append(streamInterceptors, grpcTokenStreamInterceptor(expectedToken))
 		log.Printf("[CONFIG] gRPC auth mode: TLS + token")
 	} else {
 		log.Printf("[CONFIG] gRPC auth mode: mTLS")
 	}
+	opts = append(opts,
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
+	)
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterNodeServiceServer(grpcServer, nodeService)
 
@@ -105,6 +113,24 @@ func buildServerTLSConfig(material *config.MTLSConfig) (*tls.Config, error) {
 		ClientCAs:    pool,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}, nil
+}
+
+func grpcPathValidationUnaryInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if info == nil || len(info.FullMethod) == 0 || info.FullMethod[0] != '/' {
+			return nil, status.Error(codes.Unimplemented, "malformed method name")
+		}
+		return handler(ctx, req)
+	}
+}
+
+func grpcPathValidationStreamInterceptor() grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if info == nil || len(info.FullMethod) == 0 || info.FullMethod[0] != '/' {
+			return status.Error(codes.Unimplemented, "malformed method name")
+		}
+		return handler(srv, ss)
+	}
 }
 
 func grpcTokenUnaryInterceptor(expectedToken string) grpc.UnaryServerInterceptor {

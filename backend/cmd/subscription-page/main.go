@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/exodus/subscription-page/backend/internal/config"
@@ -11,6 +13,10 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/grpcserver"
 	"github.com/exodus/subscription-page/backend/internal/server"
 )
+
+var buildVersion = "unknown"
+
+var semverPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
@@ -24,7 +30,7 @@ func main() {
 	log.Printf("[CONFIG] grpc target %s:%d", cfg.GRPCAddress, cfg.GRPCPort)
 	log.Printf("[CONFIG] http listening on :%s", cfg.AppPort)
 
-	nodeService := grpcapi.NewNodeServer(cfg.AppVersion)
+	nodeService := grpcapi.NewNodeServer(resolveNodeVersion(cfg.AppVersion))
 
 	application, appErr := server.New(cfg, nodeService)
 	if appErr != nil {
@@ -58,4 +64,29 @@ func main() {
 	if err != nil {
 		log.Fatalf("[FATAL] server failed: %v", err)
 	}
+}
+
+func resolveNodeVersion(configVersion string) string {
+	resolved := strings.TrimSpace(configVersion)
+	if resolved == "" {
+		resolved = strings.TrimSpace(buildVersion)
+	}
+	if resolved == "" {
+		return "v0.0.0-dev"
+	}
+
+	lower := strings.ToLower(resolved)
+	switch lower {
+	case "unknown", "latest", "(devel)":
+		return "v0.0.0-dev"
+	}
+
+	if semverPattern.MatchString(resolved) {
+		if strings.HasPrefix(lower, "v") {
+			return "v" + strings.TrimSpace(resolved[1:])
+		}
+		return "v" + resolved
+	}
+
+	return resolved
 }
