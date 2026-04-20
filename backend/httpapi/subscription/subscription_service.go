@@ -23,6 +23,7 @@ import (
 	subscriptionresponserules "exodus/backend/httpapi/subscription-response-rules"
 	subscriptionsettings "exodus/backend/httpapi/subscription-settings"
 
+	"github.com/iancoleman/orderedmap"
 	"golang.org/x/crypto/curve25519"
 	"gopkg.in/yaml.v3"
 )
@@ -1313,18 +1314,22 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 }
 
 func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
-	baseConfig := map[string]interface{}{}
+	baseConfig := orderedmap.New()
 	if len(templateJSON) > 0 {
-		if err := json.Unmarshal(templateJSON, &baseConfig); err != nil {
-			baseConfig = map[string]interface{}{}
+		if err := baseConfig.UnmarshalJSON(templateJSON); err != nil {
+			baseConfig = orderedmap.New()
 		}
 	}
 
 	outbounds := []interface{}{}
-	if existing, ok := baseConfig["outbounds"].([]interface{}); ok {
-		outbounds = existing
+	if existing, ok := baseConfig.Get("outbounds"); ok {
+		if items, ok := existing.([]interface{}); ok {
+			outbounds = items
+		}
 	}
 
+	leadingSelectorNodeTags := make([]string, 0, len(hosts))
+	trailingSelectorNodeTags := make([]string, 0, len(hosts))
 	for _, host := range hosts {
 		// In exodus hidden hosts are not returned for singbox generation.
 		if host.IsHidden {
@@ -1336,19 +1341,26 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
 			continue
 		}
 		outbounds = append(outbounds, outbound)
-	}
 
-	baseConfig["outbounds"] = outbounds
-	selectorNodesFirst := false
-	for _, host := range hosts {
+		tag := orderedMapString(*outbound, "tag")
+		if tag == "" {
+			continue
+		}
 		if host.SelectorNodesFirst {
-			selectorNodesFirst = true
-			break
+			leadingSelectorNodeTags = append(leadingSelectorNodeTags, tag)
+		} else {
+			trailingSelectorNodeTags = append(trailingSelectorNodeTags, tag)
 		}
 	}
-	patchSingboxSelectors(baseConfig, selectorNodesFirst)
+	baseConfig.Set("outbounds", outbounds)
+	patchSingboxSelectors(baseConfig, leadingSelectorNodeTags, trailingSelectorNodeTags)
 
-	return marshalJSONWithTemplateTopLevelOrder(templateJSON, baseConfig)
+	data, err := json.MarshalIndent(baseConfig, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }
 
 func marshalJSONWithTemplateTopLevelOrder(templateJSON []byte, payload map[string]interface{}) (string, error) {
@@ -1491,7 +1503,7 @@ type singboxInboundDefaults struct {
 	flow        string
 }
 
-func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
+func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *orderedmap.OrderedMap {
 	protocol := ""
 	if host.InboundType != nil {
 		protocol = strings.ToLower(strings.TrimSpace(*host.InboundType))
@@ -1519,35 +1531,33 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) map[stri
 		remark = host.Address
 	}
 
-	outbound := map[string]interface{}{
-		"type":        protocol,
-		"tag":         remark,
-		"server":      host.Address,
-		"server_port": host.Port,
-	}
+	outbound := orderedmap.New()
+	outbound.Set("type", protocol)
+	outbound.Set("tag", remark)
+	outbound.Set("server", host.Address)
+	outbound.Set("server_port", host.Port)
 
 	switch protocol {
 	case "vless":
-		outbound["uuid"] = user.VlessUUID
 		if defaults.flow == "xtls-rprx-vision" {
-			outbound["flow"] = "xtls-rprx-vision"
+			outbound.Set("flow", "xtls-rprx-vision")
 		}
+		outbound.Set("uuid", user.VlessUUID)
 	case "trojan":
-		outbound["password"] = user.TrojanPassword
+		outbound.Set("password", user.TrojanPassword)
 	case "shadowsocks":
 		method := extractShadowsocksMethod(host.InboundRaw)
 		if method == "" {
 			method = "chacha20-ietf-poly1305"
 		}
-		outbound["password"] = user.SSPassword
-		outbound["method"] = method
-		outbound["network"] = "tcp"
+		outbound.Set("password", user.SSPassword)
+		outbound.Set("method", method)
+		outbound.Set("network", "tcp")
 	}
 
 	if defaults.security == "tls" || defaults.security == "reality" {
-		tlsCfg := map[string]interface{}{
-			"enabled": true,
-		}
+		tlsCfg := orderedmap.New()
+		tlsCfg.Set("enabled", true)
 
 		sni := defaults.sni
 		if host.OverrideSNIFromAddress {
@@ -1557,24 +1567,24 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) map[stri
 			sni = ""
 		}
 		if sni != "" {
-			tlsCfg["server_name"] = sni
+			tlsCfg.Set("server_name", sni)
 		}
 
 		if host.AllowInsecure {
-			tlsCfg["insecure"] = true
+			tlsCfg.Set("insecure", true)
 		}
 
 		if defaults.fingerprint != "" {
-			tlsCfg["utls"] = map[string]interface{}{
-				"enabled":     true,
-				"fingerprint": defaults.fingerprint,
-			}
+			utlsCfg := orderedmap.New()
+			utlsCfg.Set("enabled", true)
+			utlsCfg.Set("fingerprint", defaults.fingerprint)
+			tlsCfg.Set("utls", utlsCfg)
 		} else if defaults.security == "reality" {
 			// exodus default for reality when fp is empty
-			tlsCfg["utls"] = map[string]interface{}{
-				"enabled":     true,
-				"fingerprint": "chrome",
-			}
+			utlsCfg := orderedmap.New()
+			utlsCfg.Set("enabled", true)
+			utlsCfg.Set("fingerprint", "chrome")
+			tlsCfg.Set("utls", utlsCfg)
 		}
 
 		if defaults.alpn != "" {
@@ -1587,53 +1597,57 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) map[stri
 				}
 			}
 			if len(alpn) > 0 {
-				tlsCfg["alpn"] = alpn
+				tlsCfg.Set("alpn", alpn)
 			}
 		}
 
 		if defaults.security == "reality" {
-			reality := map[string]interface{}{
-				"enabled": true,
-			}
+			reality := orderedmap.New()
+			reality.Set("enabled", true)
 			if defaults.publicKey != "" {
-				reality["public_key"] = defaults.publicKey
+				reality.Set("public_key", defaults.publicKey)
 			}
 			if defaults.shortID != "" {
-				reality["short_id"] = defaults.shortID
+				reality.Set("short_id", defaults.shortID)
 			}
-			tlsCfg["reality"] = reality
+			tlsCfg.Set("reality", reality)
 		}
 
-		outbound["tls"] = tlsCfg
+		outbound.Set("tls", tlsCfg)
 	}
 
 	if defaults.network == "ws" || defaults.network == "httpupgrade" {
-		transport := map[string]interface{}{
-			"type": defaults.network,
-		}
+		transport := orderedmap.New()
+		transport.Set("type", defaults.network)
 
 		path := defaults.path
 		path, earlyData := extractEarlyDataFromPath(path)
 		if path != "" {
-			transport["path"] = path
+			transport.Set("path", path)
 		}
 
 		if defaults.hostHeader != "" {
-			transport["headers"] = map[string]interface{}{
-				"Host": defaults.hostHeader,
-			}
+			headers := orderedmap.New()
+			headers.Set("Host", defaults.hostHeader)
+			transport.Set("headers", headers)
 		}
 
 		if defaults.network == "ws" && earlyData > 0 {
-			transport["max_early_data"] = earlyData
-			transport["early_data_header_name"] = "Sec-WebSocket-Protocol"
+			transport.Set("max_early_data", earlyData)
+			transport.Set("early_data_header_name", "Sec-WebSocket-Protocol")
 		}
 
-		outbound["transport"] = transport
+		outbound.Set("transport", transport)
 	}
 
 	if mux := parseJSONMapString(host.SingboxMuxParams); mux != nil {
-		outbound["multiplex"] = mux
+		outbound.Set("multiplex", orderedMapFromMapWithPreferredOrder(mux, []string{
+			"enabled",
+			"protocol",
+			"max_connections",
+			"min_streams",
+			"padding",
+		}))
 	}
 
 	return outbound
@@ -1914,28 +1928,32 @@ func decodeBase64Any(value string) ([]byte, bool) {
 	return nil, false
 }
 
-func patchSingboxSelectors(baseConfig map[string]interface{}, selectorNodesFirst bool) {
-	rawOutbounds, ok := baseConfig["outbounds"].([]interface{})
+func patchSingboxSelectors(baseConfig *orderedmap.OrderedMap, preferredHostNodeTags, regularHostNodeTags []string) {
+	rawValue, ok := baseConfig.Get("outbounds")
 	if !ok {
 		return
 	}
 
-	nodeTypes := map[string]struct{}{
-		"vless":       {},
-		"trojan":      {},
-		"shadowsocks": {},
+	rawOutbounds, ok := rawValue.([]interface{})
+	if !ok {
+		return
 	}
 
-	urltestTags := make([]string, 0, len(rawOutbounds))
-	nodeTags := make([]string, 0, len(rawOutbounds))
+	knownHostTags := appendUniqueStrings(append([]string(nil), preferredHostNodeTags...), regularHostNodeTags...)
+	knownHostSet := make(map[string]struct{}, len(knownHostTags))
+	for _, tag := range knownHostTags {
+		knownHostSet[tag] = struct{}{}
+	}
 
+	allNodeTags := make([]string, 0, len(knownHostTags))
+	urltestTags := make([]string, 0, len(rawOutbounds))
 	for _, item := range rawOutbounds {
-		ob, ok := item.(map[string]interface{})
+		ob, ok := orderedMapValue(item)
 		if !ok {
 			continue
 		}
-		typ, _ := ob["type"].(string)
-		tag, _ := ob["tag"].(string)
+		typ := orderedMapString(ob, "type")
+		tag := orderedMapString(ob, "tag")
 		if tag == "" {
 			continue
 		}
@@ -1943,32 +1961,137 @@ func patchSingboxSelectors(baseConfig map[string]interface{}, selectorNodesFirst
 			urltestTags = append(urltestTags, tag)
 			continue
 		}
-		if _, exists := nodeTypes[typ]; exists {
-			nodeTags = append(nodeTags, tag)
+		if _, isHostNode := knownHostSet[tag]; isHostNode {
+			allNodeTags = append(allNodeTags, tag)
 		}
 	}
 
-	selectorTags := make([]string, 0, len(urltestTags)+len(nodeTags))
-	if selectorNodesFirst {
-		selectorTags = append(selectorTags, nodeTags...)
-		selectorTags = append(selectorTags, urltestTags...)
-	} else {
-		selectorTags = append(selectorTags, urltestTags...)
-		selectorTags = append(selectorTags, nodeTags...)
-	}
-
-	for _, item := range rawOutbounds {
-		ob, ok := item.(map[string]interface{})
+	for index, item := range rawOutbounds {
+		ob, ok := orderedMapValue(item)
 		if !ok {
 			continue
 		}
-		typ, _ := ob["type"].(string)
+		typ := orderedMapString(ob, "type")
 		switch typ {
 		case "urltest":
-			ob["outbounds"] = nodeTags
+			ob.Set("outbounds", append([]string(nil), allNodeTags...))
 		case "selector":
-			ob["outbounds"] = selectorTags
+			existingEntries := orderedMapStrings(ob, "outbounds")
+			middleEntries := make([]string, 0, len(existingEntries))
+			for _, entry := range existingEntries {
+				if _, isHostNode := knownHostSet[entry]; isHostNode {
+					continue
+				}
+				middleEntries = append(middleEntries, entry)
+			}
+			if len(middleEntries) == 0 {
+				middleEntries = append(middleEntries, urltestTags...)
+			}
+
+			selectorTags := make([]string, 0, len(preferredHostNodeTags)+len(middleEntries)+len(regularHostNodeTags))
+			selectorTags = append(selectorTags, preferredHostNodeTags...)
+			selectorTags = append(selectorTags, middleEntries...)
+			selectorTags = append(selectorTags, regularHostNodeTags...)
+			ob.Set("outbounds", appendUniqueStrings(nil, selectorTags...))
 		}
+		rawOutbounds[index] = ob
+	}
+
+	baseConfig.Set("outbounds", rawOutbounds)
+}
+
+func orderedMapValue(value interface{}) (orderedmap.OrderedMap, bool) {
+	switch typed := value.(type) {
+	case orderedmap.OrderedMap:
+		return typed, true
+	case *orderedmap.OrderedMap:
+		if typed == nil {
+			return orderedmap.OrderedMap{}, false
+		}
+		return *typed, true
+	default:
+		return orderedmap.OrderedMap{}, false
+	}
+}
+
+func orderedMapString(obj orderedmap.OrderedMap, key string) string {
+	value, ok := obj.Get(key)
+	if !ok || value == nil {
+		return ""
+	}
+	str, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(str)
+}
+
+func orderedMapStrings(obj orderedmap.OrderedMap, key string) []string {
+	value, ok := obj.Get(key)
+	if !ok || value == nil {
+		return nil
+	}
+
+	switch typed := value.(type) {
+	case []string:
+		return appendUniqueStrings(nil, typed...)
+	case []interface{}:
+		result := make([]string, 0, len(typed))
+		for _, item := range typed {
+			str, ok := item.(string)
+			if !ok {
+				continue
+			}
+			result = append(result, str)
+		}
+		return appendUniqueStrings(nil, result...)
+	default:
+		return nil
+	}
+}
+
+func orderedMapFromMapWithPreferredOrder(values map[string]interface{}, preferred []string) orderedmap.OrderedMap {
+	obj := orderedmap.New()
+	used := make(map[string]struct{}, len(values))
+
+	for _, key := range preferred {
+		value, exists := values[key]
+		if !exists {
+			continue
+		}
+		obj.Set(key, orderedJSONValue(value))
+		used[key] = struct{}{}
+	}
+
+	remainingKeys := make([]string, 0, len(values))
+	for key := range values {
+		if _, exists := used[key]; exists {
+			continue
+		}
+		remainingKeys = append(remainingKeys, key)
+	}
+	sort.Strings(remainingKeys)
+
+	for _, key := range remainingKeys {
+		obj.Set(key, orderedJSONValue(values[key]))
+	}
+
+	return *obj
+}
+
+func orderedJSONValue(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		obj := orderedMapFromMapWithPreferredOrder(typed, nil)
+		return obj
+	case []interface{}:
+		items := make([]interface{}, 0, len(typed))
+		for _, item := range typed {
+			items = append(items, orderedJSONValue(item))
+		}
+		return items
+	default:
+		return value
 	}
 }
 
@@ -1999,57 +2122,383 @@ func extractEarlyDataFromPath(path string) (string, int) {
 }
 
 func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
-	var config map[string]interface{}
+	var root yaml.Node
 	if len(templateYAML) > 0 {
-		if err := yaml.Unmarshal(templateYAML, &config); err != nil {
-			config = map[string]interface{}{}
+		if err := yaml.Unmarshal(templateYAML, &root); err != nil {
+			root = yaml.Node{}
 		}
-	} else {
-		config = map[string]interface{}{}
 	}
 
-	proxies := []interface{}{}
+	topLevelSpacing := extractYAMLTopLevelSpacing(templateYAML)
+	config := ensureYAMLDocumentMappingNode(&root)
+	proxiesNode := ensureYAMLMappingSequenceValue(config, "proxies")
+
 	proxyNames := []string{}
+	leadingSelectorProxyNames := []string{}
+	trailingSelectorProxyNames := []string{}
 	for _, host := range hosts {
 		proxy := buildMihomoProxy(host, user)
 		if proxy == nil {
 			continue
 		}
-		proxies = append(proxies, proxy)
+		proxiesNode.Content = append(proxiesNode.Content, buildOrderedYAMLValueNode("proxy", proxy))
 		if name, ok := proxy["name"].(string); ok && name != "" {
 			proxyNames = append(proxyNames, name)
+			if host.SelectorNodesFirst {
+				leadingSelectorProxyNames = append(leadingSelectorProxyNames, name)
+			} else {
+				trailingSelectorProxyNames = append(trailingSelectorProxyNames, name)
+			}
 		}
 	}
 
-	config["proxies"] = proxies
+	groupsNode := ensureYAMLMappingSequenceValue(config, "proxy-groups")
+	for _, group := range groupsNode.Content {
+		if group == nil || group.Kind != yaml.MappingNode {
+			continue
+		}
 
-	if groups, ok := config["proxy-groups"].([]interface{}); ok {
-		for _, group := range groups {
-			groupMap, ok := group.(map[string]interface{})
-			if !ok {
-				continue
+		groupProxies := ensureYAMLMappingSequenceValue(group, "proxies")
+		groupType := strings.ToLower(strings.TrimSpace(yamlMappingString(group, "type")))
+		switch groupType {
+		case "select":
+			existingEntries := yamlSequenceStrings(groupProxies)
+			middleEntries := make([]string, 0, len(existingEntries))
+			hostNames := make(map[string]struct{}, len(proxyNames))
+			for _, name := range proxyNames {
+				hostNames[name] = struct{}{}
 			}
-			if proxiesVal, exists := groupMap["proxies"]; exists {
-				switch v := proxiesVal.(type) {
-				case []interface{}:
-					if len(v) == 0 {
-						groupMap["proxies"] = proxyNames
-					}
-				case string, nil:
-					groupMap["proxies"] = proxyNames
-				default:
-					// leave as-is
+			for _, entry := range existingEntries {
+				if _, isHostName := hostNames[entry]; isHostName {
+					continue
 				}
+				middleEntries = append(middleEntries, entry)
 			}
+			finalEntries := make([]string, 0, len(leadingSelectorProxyNames)+len(middleEntries)+len(trailingSelectorProxyNames))
+			finalEntries = append(finalEntries, leadingSelectorProxyNames...)
+			finalEntries = append(finalEntries, middleEntries...)
+			finalEntries = append(finalEntries, trailingSelectorProxyNames...)
+			setYAMLSequenceStrings(groupProxies, finalEntries)
+		case "url-test", "urltest":
+			setYAMLSequenceStrings(groupProxies, proxyNames)
+		default:
+			finalEntries := appendUniqueStrings(yamlSequenceStrings(groupProxies), proxyNames...)
+			setYAMLSequenceStrings(groupProxies, finalEntries)
 		}
 	}
 
-	data, err := yaml.Marshal(config)
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	err := encoder.Encode(config)
+	closeErr := encoder.Close()
 	if err != nil {
 		return "", err
 	}
+	if closeErr != nil {
+		return "", closeErr
+	}
 
-	return string(data), nil
+	rendered := applyYAMLTopLevelSpacing(buf.String(), topLevelSpacing)
+	return rendered, nil
+}
+
+func ensureYAMLDocumentMappingNode(root *yaml.Node) *yaml.Node {
+	if root.Kind != yaml.DocumentNode {
+		*root = yaml.Node{Kind: yaml.DocumentNode}
+	}
+	if len(root.Content) == 0 || root.Content[0] == nil || root.Content[0].Kind != yaml.MappingNode {
+		root.Content = []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}
+	}
+	return root.Content[0]
+}
+
+func ensureYAMLMappingSequenceValue(mapping *yaml.Node, key string) *yaml.Node {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	}
+
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		keyNode := mapping.Content[i]
+		if keyNode == nil || keyNode.Value != key {
+			continue
+		}
+
+		valueNode := mapping.Content[i+1]
+		if valueNode == nil || valueNode.Kind != yaml.SequenceNode {
+			valueNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+			mapping.Content[i+1] = valueNode
+		}
+		return valueNode
+	}
+
+	valueNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	mapping.Content = append(mapping.Content, newYAMLScalarNode(key), valueNode)
+	return valueNode
+}
+
+func yamlMappingString(mapping *yaml.Node, key string) string {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return ""
+	}
+
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		keyNode := mapping.Content[i]
+		if keyNode == nil || keyNode.Value != key {
+			continue
+		}
+
+		valueNode := mapping.Content[i+1]
+		if valueNode == nil || valueNode.Kind != yaml.ScalarNode {
+			return ""
+		}
+		return strings.TrimSpace(valueNode.Value)
+	}
+
+	return ""
+}
+
+func yamlSequenceStrings(sequence *yaml.Node) []string {
+	if sequence == nil || sequence.Kind != yaml.SequenceNode {
+		return nil
+	}
+
+	values := make([]string, 0, len(sequence.Content))
+	for _, item := range sequence.Content {
+		if item == nil || item.Kind != yaml.ScalarNode {
+			continue
+		}
+		value := strings.TrimSpace(item.Value)
+		if value == "" {
+			continue
+		}
+		values = append(values, value)
+	}
+
+	return values
+}
+
+func setYAMLSequenceStrings(sequence *yaml.Node, values []string) {
+	if sequence == nil {
+		return
+	}
+	sequence.Kind = yaml.SequenceNode
+	sequence.Tag = "!!seq"
+	sequence.Content = sequence.Content[:0]
+	for _, value := range values {
+		sequence.Content = append(sequence.Content, newYAMLScalarNode(value))
+	}
+}
+
+func appendUniqueStrings(base []string, extra ...string) []string {
+	result := make([]string, 0, len(base)+len(extra))
+	seen := make(map[string]struct{}, len(base)+len(extra))
+
+	for _, value := range base {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+
+	for _, value := range extra {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+
+	return result
+}
+
+func buildOrderedYAMLValueNode(parentKey string, value interface{}) *yaml.Node {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		return buildOrderedYAMLMappingNode(parentKey, v)
+	case []string:
+		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, item := range v {
+			node.Content = append(node.Content, newYAMLScalarNode(item))
+		}
+		return node
+	case []interface{}:
+		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, item := range v {
+			node.Content = append(node.Content, buildOrderedYAMLValueNode("", item))
+		}
+		return node
+	case string:
+		return newYAMLScalarNode(v)
+	case bool:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strconv.FormatBool(v)}
+	case int:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.Itoa(v)}
+	case int64:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.FormatInt(v, 10)}
+	case float64:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: strconv.FormatFloat(v, 'f', -1, 64)}
+	case nil:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null"}
+	default:
+		return newYAMLScalarNode(fmt.Sprint(v))
+	}
+}
+
+func buildOrderedYAMLMappingNode(parentKey string, values map[string]interface{}) *yaml.Node {
+	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	usedKeys := make(map[string]struct{}, len(values))
+
+	for _, key := range preferredYAMLKeyOrder(parentKey) {
+		value, exists := values[key]
+		if !exists {
+			continue
+		}
+		appendYAMLMappingEntry(node, key, buildOrderedYAMLValueNode(key, value))
+		usedKeys[key] = struct{}{}
+	}
+
+	remainingKeys := make([]string, 0, len(values))
+	for key := range values {
+		if _, exists := usedKeys[key]; exists {
+			continue
+		}
+		remainingKeys = append(remainingKeys, key)
+	}
+	sort.Strings(remainingKeys)
+
+	for _, key := range remainingKeys {
+		appendYAMLMappingEntry(node, key, buildOrderedYAMLValueNode(key, values[key]))
+	}
+
+	return node
+}
+
+func preferredYAMLKeyOrder(parentKey string) []string {
+	switch parentKey {
+	case "proxy":
+		return []string{
+			"name",
+			"type",
+			"server",
+			"port",
+			"udp",
+			"network",
+			"uuid",
+			"password",
+			"cipher",
+			"tls",
+			"skip-cert-verify",
+			"servername",
+			"client-fingerprint",
+			"alpn",
+			"packet-encoding",
+			"flow",
+			"encryption",
+			"ws-opts",
+			"grpc-opts",
+			"smux",
+		}
+	case "ws-opts":
+		return []string{"path", "headers", "max-early-data", "early-data-header-name", "v2ray-http-upgrade", "v2ray-http-upgrade-fast-open"}
+	case "headers":
+		return []string{"Host"}
+	case "grpc-opts":
+		return []string{"grpc-service-name"}
+	case "smux":
+		return []string{"enabled", "protocol", "max-connections", "padding"}
+	default:
+		return nil
+	}
+}
+
+func appendYAMLMappingEntry(node *yaml.Node, key string, value *yaml.Node) {
+	node.Content = append(node.Content, newYAMLScalarNode(key), value)
+}
+
+func newYAMLScalarNode(value string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
+}
+
+func extractYAMLTopLevelSpacing(templateYAML []byte) map[string]bool {
+	if len(templateYAML) == 0 {
+		return nil
+	}
+
+	lines := strings.Split(strings.ReplaceAll(string(templateYAML), "\r\n", "\n"), "\n")
+	spacing := map[string]bool{}
+	previousBlank := false
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			previousBlank = true
+			continue
+		}
+
+		if key, ok := extractYAMLTopLevelKey(line); ok && previousBlank {
+			spacing[key] = true
+		}
+
+		previousBlank = false
+	}
+
+	return spacing
+}
+
+func applyYAMLTopLevelSpacing(rendered string, spacing map[string]bool) string {
+	if rendered == "" || len(spacing) == 0 {
+		return rendered
+	}
+
+	hasTrailingNewline := strings.HasSuffix(rendered, "\n")
+	lines := strings.Split(strings.TrimSuffix(rendered, "\n"), "\n")
+	output := make([]string, 0, len(lines)+len(spacing))
+
+	for index, line := range lines {
+		if key, ok := extractYAMLTopLevelKey(line); ok && index > 0 && spacing[key] {
+			if len(output) > 0 && strings.TrimSpace(output[len(output)-1]) != "" {
+				output = append(output, "")
+			}
+		}
+		output = append(output, line)
+	}
+
+	result := strings.Join(output, "\n")
+	if hasTrailingNewline {
+		result += "\n"
+	}
+
+	return result
+}
+
+func extractYAMLTopLevelKey(line string) (string, bool) {
+	if line == "" {
+		return "", false
+	}
+	if line[0] == ' ' || line[0] == '\t' || strings.HasPrefix(strings.TrimSpace(line), "- ") {
+		return "", false
+	}
+
+	index := strings.IndexByte(line, ':')
+	if index <= 0 {
+		return "", false
+	}
+
+	key := strings.TrimSpace(line[:index])
+	if key == "" {
+		return "", false
+	}
+
+	return key, true
 }
 
 func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {

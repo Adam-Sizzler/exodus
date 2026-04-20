@@ -16,13 +16,14 @@ x-logging: &logging
 
 x-env: &env
   env_file:
-    - ./.env
+    - path: ./.env
+      required: false
 
 services:
   exodus:
     build:
       context: .
-      dockerfile: Dockerfile.panel
+      dockerfile: Dockerfile
     image: exodus:latest
     container_name: exodus
     hostname: exodus
@@ -30,6 +31,9 @@ services:
     environment:
       - APP_PORT=${APP_PORT:-3000}
       - APP_PATH=${APP_PATH:-/panel}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@exodus-db:5432/postgres}
+      - REDIS_HOST=${REDIS_HOST:-exodus-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
     ports:
       - 127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}
     volumes:
@@ -42,8 +46,8 @@ services:
 
   exodus-node:
     build:
-      context: ../node
-      dockerfile: Dockerfile.node
+      context: ../exodus-node
+      dockerfile: Dockerfile
     image: exodus-node:latest
     container_name: exodus-node
     hostname: exodus-node
@@ -56,12 +60,17 @@ services:
 
   exodus-subscription:
     build:
-      context: ../exodus-sub
+      context: ../exodus-subscription
       dockerfile: Dockerfile
     image: exodus-subscription:latest
     container_name: exodus-subscription
     hostname: exodus-subscription
     <<: [*common, *logging, *env]
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ../exodus-subscription/.env
+        required: false
     environment:
       - APP_PORT_SUB=${APP_PORT_SUB:-3010}
       - SUB_GRPC_ADDRESS=${SUB_GRPC_ADDRESS:-0.0.0.0}

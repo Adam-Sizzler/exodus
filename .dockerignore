@@ -32,6 +32,7 @@ coverage.html
 # Documentation
 *.md
 !README.md
+!frontend/public/help-articles/**/*.md
 LICENSE
 
 # CI/CD
