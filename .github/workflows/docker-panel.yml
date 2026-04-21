@@ -38,6 +38,20 @@ jobs:
             type=ref,event=tag
             type=raw,value=latest
 
+      - name: Resolve build metadata
+        id: build_meta
+        run: |
+          BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          REPOSITORY_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+
+          echo "version=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "frontend_revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "branch=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "build_time=${BUILD_TIME}" >> "${GITHUB_OUTPUT}"
+          echo "build_number=${GITHUB_RUN_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "repository_url=${REPOSITORY_URL}" >> "${GITHUB_OUTPUT}"
+
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -47,3 +61,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.build_meta.outputs.version }}
+            REVISION=${{ steps.build_meta.outputs.revision }}
+            FRONTEND_REVISION=${{ steps.build_meta.outputs.frontend_revision }}
+            BUILD_BRANCH=${{ steps.build_meta.outputs.branch }}
+            BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
+            BUILD_NUMBER=${{ steps.build_meta.outputs.build_number }}
+            REPOSITORY_URL=${{ steps.build_meta.outputs.repository_url }}
