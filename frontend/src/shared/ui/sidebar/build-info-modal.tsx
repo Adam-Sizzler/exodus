@@ -36,7 +36,28 @@ interface BuildInfoModalProps {
     exodusMetadata: GetMetadataCommand.Response['response']
 }
 
+function isKnownLink(value: string | undefined) {
+    return Boolean(value && value !== 'unknown')
+}
+
+function getRepositoryUrl(exodusMetadata: BuildInfoModalProps['exodusMetadata']) {
+    if (isKnownLink(exodusMetadata.git.repositoryUrl)) {
+        return exodusMetadata.git.repositoryUrl
+    }
+
+    const commitUrl = exodusMetadata.git.backend.commitUrl
+    const markerIndex = commitUrl.indexOf('/commit/')
+    if (markerIndex > 0) {
+        return commitUrl.slice(0, markerIndex)
+    }
+
+    return commitUrl
+}
+
 export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildInfoModalProps) {
+    const repositoryUrl = getRepositoryUrl(exodusMetadata)
+    const hasRepositoryUrl = isKnownLink(repositoryUrl)
+
     return (
         <Stack gap="md">
             {isNewVersionAvailable && (
@@ -226,7 +247,8 @@ export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildI
                 </Button>
                 <Button
                     component="a"
-                    href="https://github.com/teamdominant"
+                    disabled={!hasRepositoryUrl}
+                    href={hasRepositoryUrl ? repositoryUrl : undefined}
                     leftSection={<TbBrandGithub size={16} />}
                     radius="md"
                     size="sm"

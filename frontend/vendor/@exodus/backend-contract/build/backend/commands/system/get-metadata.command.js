@@ -17,6 +17,7 @@ var GetMetadataCommand;
                 number: zod_1.z.string(),
             }),
             git: zod_1.z.object({
+                repositoryUrl: zod_1.z.string(),
                 backend: zod_1.z.object({
                     commitSha: zod_1.z.string(),
                     branch: zod_1.z.string(),

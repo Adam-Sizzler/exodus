@@ -48,6 +48,11 @@ RUN apk add --no-cache git ca-certificates tzdata
 
 ARG VERSION=latest
 ARG REVISION=unknown
+ARG FRONTEND_REVISION=unknown
+ARG BUILD_BRANCH=unknown
+ARG BUILD_TIME=unknown
+ARG BUILD_NUMBER=unknown
+ARG REPOSITORY_URL=unknown
 ARG BUILD_TAGS=none
 ARG CGO_ENABLED_STATUS=disabled
 
@@ -77,6 +82,28 @@ RUN CGO_ENABLED=0 \
 
 # Final stage
 FROM alpine:latest
+
+ARG VERSION=latest
+ARG REVISION=unknown
+ARG FRONTEND_REVISION=unknown
+ARG BUILD_BRANCH=unknown
+ARG BUILD_TIME=unknown
+ARG BUILD_NUMBER=unknown
+ARG REPOSITORY_URL=unknown
+
+LABEL org.opencontainers.image.title="exodus" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${BUILD_TIME}" \
+      org.opencontainers.image.source="${REPOSITORY_URL}"
+
+ENV EXODUS_VERSION="${VERSION}" \
+    EXODUS_BACKEND_COMMIT="${REVISION}" \
+    EXODUS_FRONTEND_COMMIT="${FRONTEND_REVISION}" \
+    EXODUS_GIT_BRANCH="${BUILD_BRANCH}" \
+    EXODUS_BUILD_TIME="${BUILD_TIME}" \
+    EXODUS_BUILD_NUMBER="${BUILD_NUMBER}" \
+    EXODUS_REPOSITORY_URL="${REPOSITORY_URL}"
 
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata

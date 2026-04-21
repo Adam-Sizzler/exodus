@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -64,17 +65,18 @@ func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		version = normalizeVersion(version)
 
-		frontendSHA := strings.TrimSpace(os.Getenv("EXODUS_FRONTEND_COMMIT"))
+		frontendSHA := firstMetadataEnv("EXODUS_FRONTEND_COMMIT")
 		if frontendSHA == "" {
 			frontendSHA = backendSHA
 		}
-		buildNumber := strings.TrimSpace(os.Getenv("EXODUS_BUILD_NUMBER"))
+		buildNumber := firstMetadataEnv("EXODUS_BUILD_NUMBER", "BUILD_NUMBER", "GITHUB_RUN_NUMBER")
 		if buildNumber == "" {
 			buildNumber = "unknown"
 		}
 
-		backendCommitURL := buildCommitURL(backendSHA)
-		frontendCommitURL := buildCommitURL(frontendSHA)
+		repositoryURL := readRepositoryURL()
+		backendCommitURL := buildCommitURL(repositoryURL, backendSHA)
+		frontendCommitURL := buildCommitURL(repositoryURL, frontendSHA)
 
 		payload := map[string]any{
 			"response": map[string]any{
@@ -84,6 +86,7 @@ func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 					"number": buildNumber,
 				},
 				"git": map[string]any{
+					"repositoryUrl": repositoryURL,
 					"backend": map[string]string{
 						"commitSha": backendSHA,
 						"branch":    branch,
@@ -638,19 +641,109 @@ func readBuildMetadata() (version string, commitSHA string, branch string, build
 		}
 	}
 
-	if commitSHA == "unknown" && constant.Revision != "" && constant.Revision != "unknown" {
+	if value := firstMetadataEnv("EXODUS_VERSION"); value != "" {
+		version = value
+	}
+	if value := firstMetadataEnv("EXODUS_BACKEND_COMMIT", "EXODUS_REVISION", "EXODUS_COMMIT", "GITHUB_SHA"); value != "" {
+		commitSHA = value
+	}
+	if value := firstMetadataEnv("EXODUS_GIT_BRANCH", "EXODUS_BRANCH", "GITHUB_REF_NAME", "GITHUB_HEAD_REF"); value != "" {
+		branch = value
+	}
+	if value := firstMetadataEnv("EXODUS_BUILD_TIME"); value != "" {
+		buildTime = value
+	}
+
+	if commitSHA == "unknown" && isKnownMetadataValue(constant.Revision) {
 		commitSHA = constant.Revision
 	}
 
 	return version, commitSHA, branch, buildTime
 }
 
-func buildCommitURL(sha string) string {
-	trimmed := strings.TrimSpace(sha)
-	if trimmed == "" || trimmed == "unknown" {
+func readRepositoryURL() string {
+	if value := normalizeRepositoryURL(firstMetadataEnv("EXODUS_REPOSITORY_URL", "EXODUS_GIT_REMOTE", "GITHUB_REPOSITORY_URL")); value != "" {
+		return value
+	}
+
+	repository := firstMetadataEnv("GITHUB_REPOSITORY")
+	if repository == "" {
 		return "unknown"
 	}
-	return "https://github.com/teamdominant/exodus/commit/" + trimmed
+
+	serverURL := firstMetadataEnv("GITHUB_SERVER_URL")
+	if serverURL == "" {
+		serverURL = "https://github.com"
+	}
+
+	value := normalizeRepositoryURL(strings.TrimRight(serverURL, "/") + "/" + repository)
+	if value == "" {
+		return "unknown"
+	}
+	return value
+}
+
+func firstMetadataEnv(keys ...string) string {
+	for _, key := range keys {
+		value := strings.TrimSpace(os.Getenv(key))
+		if isKnownMetadataValue(value) {
+			return value
+		}
+	}
+	return ""
+}
+
+func isKnownMetadataValue(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return false
+	}
+	return !strings.EqualFold(trimmed, "unknown") && trimmed != "(devel)"
+}
+
+func normalizeRepositoryURL(raw string) string {
+	value := strings.TrimSpace(raw)
+	if !isKnownMetadataValue(value) {
+		return ""
+	}
+
+	value = strings.TrimPrefix(value, "git+")
+	switch {
+	case strings.HasPrefix(value, "git@"):
+		parts := strings.SplitN(strings.TrimPrefix(value, "git@"), ":", 2)
+		if len(parts) == 2 {
+			value = "https://" + parts[0] + "/" + parts[1]
+		}
+	case strings.HasPrefix(value, "ssh://git@"):
+		value = "https://" + strings.TrimPrefix(value, "ssh://git@")
+	case !strings.Contains(value, "://"):
+		host, _, ok := strings.Cut(value, "/")
+		if ok && strings.Contains(host, ".") {
+			value = "https://" + value
+		}
+	}
+
+	if parsed, err := url.Parse(value); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		parsed.User = nil
+		value = parsed.String()
+	}
+
+	value = strings.TrimRight(value, "/")
+	value = strings.TrimSuffix(value, ".git")
+	return value
+}
+
+func buildCommitURL(repositoryURL, sha string) string {
+	trimmed := strings.TrimSpace(sha)
+	if !isKnownMetadataValue(trimmed) {
+		return "unknown"
+	}
+
+	repositoryURL = normalizeRepositoryURL(repositoryURL)
+	if repositoryURL == "" {
+		return "unknown"
+	}
+	return repositoryURL + "/commit/" + trimmed
 }
 
 func readMemStats() memStats {
