@@ -15,7 +15,25 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 \
+RUN set -eu; \
+    version="${VERSION}"; \
+    revision="${REVISION}"; \
+    if [ -z "${version}" ] || [ "${version}" = "unknown" ]; then \
+        version="$(git describe --tags --abbrev=0 2>/dev/null || true)"; \
+    fi; \
+    if [ -z "${version}" ] || [ "${version}" = "unknown" ]; then \
+        version="$(git describe --tags --always --dirty 2>/dev/null || true)"; \
+    fi; \
+    if [ -z "${version}" ]; then \
+        version="unknown"; \
+    fi; \
+    if [ -z "${revision}" ] || [ "${revision}" = "unknown" ]; then \
+        revision="$(git rev-parse HEAD 2>/dev/null || true)"; \
+    fi; \
+    if [ -z "${revision}" ]; then \
+        revision="unknown"; \
+    fi; \
+    CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=amd64 \
     go build \
@@ -23,12 +41,12 @@ RUN CGO_ENABLED=1 \
         -trimpath \
         -buildvcs=true \
         -ldflags="-s -w \
-                -X exodus-node/constant.Version=${VERSION} \
-                -X exodus-node/constant.Revision=${REVISION} \
+                -X exodus-node/constant.Version=${version} \
+                -X exodus-node/constant.Revision=${revision} \
                 -X exodus-node/constant.BuildTags=${BUILD_TAGS} \
                 -X exodus-node/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
-    -o /build/exodus-node \
-    .
+        -o /build/exodus-node \
+        .
 
 FROM alpine:3.23
 

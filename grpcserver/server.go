@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
@@ -24,8 +25,14 @@ import (
 func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) error {
 	var opts []grpc.ServerOption
 	opts = append(opts,
-		grpc.UnaryInterceptor(grpcUnaryRequestLogger(cfg)),
-		grpc.StreamInterceptor(grpcStreamRequestLogger(cfg)),
+		grpc.ChainUnaryInterceptor(
+			grpcPathValidationUnaryInterceptor(),
+			grpcUnaryRequestLogger(cfg),
+		),
+		grpc.ChainStreamInterceptor(
+			grpcPathValidationStreamInterceptor(),
+			grpcStreamRequestLogger(cfg),
+		),
 	)
 
 	var tlsConfig *tls.Config
@@ -114,6 +121,24 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	}
 
 	return nil
+}
+
+func grpcPathValidationUnaryInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if info == nil || len(info.FullMethod) == 0 || info.FullMethod[0] != '/' {
+			return nil, status.Error(codes.Unimplemented, "malformed method name")
+		}
+		return handler(ctx, req)
+	}
+}
+
+func grpcPathValidationStreamInterceptor() grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if info == nil || len(info.FullMethod) == 0 || info.FullMethod[0] != '/' {
+			return status.Error(codes.Unimplemented, "malformed method name")
+		}
+		return handler(srv, ss)
+	}
 }
 
 func grpcUnaryRequestLogger(cfg *config.NodeConfig) grpc.UnaryServerInterceptor {
