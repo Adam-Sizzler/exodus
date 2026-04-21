@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"exodus/backend/config"
 	dbmanager "exodus/backend/db/manager"
@@ -113,17 +113,10 @@ func normalizeVersion(value string) string {
 			return normalized
 		}
 	}
-
-	rev := strings.TrimSpace(constant.Revision)
-	if rev != "" && rev != "unknown" {
-		short := rev
-		if len(short) > 12 {
-			short = short[:12]
-		}
-		return "0.0.0-" + short
-	}
-	return "0.0.0"
+	return "unknown"
 }
+
+var gitDescribeVersionPattern = regexp.MustCompile(`^(.+)-\d+-g[0-9a-f]{7,}(?:-dirty)?$`)
 
 func normalizeVersionCandidate(value string) (string, bool) {
 	raw := strings.TrimSpace(value)
@@ -134,34 +127,14 @@ func normalizeVersionCandidate(value string) (string, bool) {
 		return "", false
 	}
 
-	v := raw
-	if strings.HasPrefix(v, "v") || strings.HasPrefix(v, "V") {
-		v = v[1:]
+	if matches := gitDescribeVersionPattern.FindStringSubmatch(raw); len(matches) == 2 {
+		base := strings.TrimSpace(matches[1])
+		if isKnownMetadataValue(base) && !strings.EqualFold(base, "latest") {
+			return base, true
+		}
 	}
-	if isSemverLike(v) {
-		return v, true
-	}
-	return "", false
-}
 
-func isSemverLike(v string) bool {
-	parts := strings.SplitN(v, "-", 2)
-	core := parts[0]
-	coreParts := strings.Split(core, ".")
-	if len(coreParts) != 3 {
-		return false
-	}
-	for _, p := range coreParts {
-		if p == "" {
-			return false
-		}
-		for _, r := range p {
-			if !unicode.IsDigit(r) {
-				return false
-			}
-		}
-	}
-	return true
+	return raw, true
 }
 
 func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {

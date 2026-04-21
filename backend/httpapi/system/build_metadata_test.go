@@ -112,3 +112,20 @@ func TestNormalizeRepositoryURL(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeVersion(t *testing.T) {
+	tests := map[string]string{
+		"v26.4.21.n1":               "v26.4.21.n1",
+		"26.4.21":                   "26.4.21",
+		"0.0.1-18-gd6f6d3bc2":       "0.0.1",
+		"0.0.1-18-gd6f6d3bc2-dirty": "0.0.1",
+		"latest":                    "unknown",
+		"unknown":                   "unknown",
+	}
+
+	for raw, expected := range tests {
+		if actual := normalizeVersion(raw); actual != expected {
+			t.Fatalf("normalizeVersion(%q) = %q, want %q", raw, actual, expected)
+		}
+	}
+}
