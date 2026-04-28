@@ -27,9 +27,10 @@ type NodeServer struct {
 	cpuModel  string
 	totalRAM  string
 
-	streamMu     sync.RWMutex
-	stream       proto.NodeService_StreamNodeDataServer
-	streamSendMu sync.Mutex
+	streamMu      sync.RWMutex
+	stream        proto.NodeService_StreamNodeDataServer
+	streamStateCh chan struct{}
+	streamSendMu  sync.Mutex
 
 	pendingMu sync.Mutex
 	pending   map[string]chan *proto.SubscriptionBridgeResponse
@@ -47,6 +48,8 @@ const (
 	subNodeStatTotalRAM = "total_ram"
 )
 
+var panelStreamWaitTimeout = 5 * time.Second
+
 func NewNodeServer(version string) *NodeServer {
 	trimmedVersion := strings.TrimSpace(version)
 	if trimmedVersion == "" {
@@ -59,6 +62,7 @@ func NewNodeServer(version string) *NodeServer {
 		cpuCount:       runtime.NumCPU(),
 		cpuModel:       detectCPUModel(),
 		totalRAM:       detectTotalRAM(),
+		streamStateCh:  make(chan struct{}),
 		pending:        make(map[string]chan *proto.SubscriptionBridgeResponse),
 		subpageConfigs: make(map[string][]byte),
 	}
@@ -149,41 +153,55 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 		req.RequestId = s.nextRequestID()
 	}
 
-	stream := s.currentStream()
-	if stream == nil {
-		return nil, fmt.Errorf("panel stream is not connected")
-	}
+	waitCtx, cancel := context.WithTimeout(ctx, panelStreamWaitTimeout)
+	defer cancel()
 
-	responseCh := make(chan *proto.SubscriptionBridgeResponse, 1)
-	s.pendingMu.Lock()
-	s.pending[req.RequestId] = responseCh
-	s.pendingMu.Unlock()
-
-	cleanup := func() {
-		s.pendingMu.Lock()
-		delete(s.pending, req.RequestId)
-		s.pendingMu.Unlock()
-	}
-
-	if err := s.sendResponse(stream, &proto.NodeDataResponse{
-		Response: &proto.NodeDataResponse_SubscriptionRequest{SubscriptionRequest: req},
-	}); err != nil {
-		cleanup()
-		return nil, err
-	}
-
-	select {
-	case <-ctx.Done():
-		cleanup()
-		return nil, ctx.Err()
-	case <-stream.Context().Done():
-		cleanup()
-		return nil, fmt.Errorf("panel stream context closed")
-	case resp := <-responseCh:
-		if resp == nil {
-			return nil, fmt.Errorf("empty bridge response")
+	for {
+		stream, err := s.waitForStream(waitCtx)
+		if err != nil {
+			return nil, err
 		}
-		return resp, nil
+
+		responseCh := make(chan *proto.SubscriptionBridgeResponse, 1)
+		s.pendingMu.Lock()
+		s.pending[req.RequestId] = responseCh
+		s.pendingMu.Unlock()
+
+		cleanup := func() {
+			s.pendingMu.Lock()
+			delete(s.pending, req.RequestId)
+			s.pendingMu.Unlock()
+		}
+
+		if err := s.sendResponse(stream, &proto.NodeDataResponse{
+			Response: &proto.NodeDataResponse_SubscriptionRequest{SubscriptionRequest: req},
+		}); err != nil {
+			cleanup()
+			if waitCtx.Err() != nil {
+				return nil, fmt.Errorf("panel stream is not connected")
+			}
+			if err.Error() == "panel stream is not active" {
+				continue
+			}
+			return nil, err
+		}
+
+		select {
+		case <-waitCtx.Done():
+			cleanup()
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return nil, fmt.Errorf("panel stream is not connected")
+		case <-stream.Context().Done():
+			cleanup()
+			continue
+		case resp := <-responseCh:
+			if resp == nil {
+				return nil, fmt.Errorf("empty bridge response")
+			}
+			return resp, nil
+		}
 	}
 }
 
@@ -337,9 +355,36 @@ func (s *NodeServer) currentStream() proto.NodeService_StreamNodeDataServer {
 	return stream
 }
 
+func (s *NodeServer) waitForStream(ctx context.Context) (proto.NodeService_StreamNodeDataServer, error) {
+	for {
+		stream, changed := s.streamSnapshot()
+		if stream != nil {
+			return stream, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			if ctx.Err() != nil && ctx.Err() == context.Canceled {
+				return nil, ctx.Err()
+			}
+			return nil, fmt.Errorf("panel stream is not connected")
+		case <-changed:
+		}
+	}
+}
+
+func (s *NodeServer) streamSnapshot() (proto.NodeService_StreamNodeDataServer, <-chan struct{}) {
+	s.streamMu.RLock()
+	stream := s.stream
+	changed := s.streamStateCh
+	s.streamMu.RUnlock()
+	return stream, changed
+}
+
 func (s *NodeServer) attachStream(stream proto.NodeService_StreamNodeDataServer) {
 	s.streamMu.Lock()
 	s.stream = stream
+	s.notifyStreamStateChangeLocked()
 	s.streamMu.Unlock()
 
 	s.failPending("panel stream replaced")
@@ -349,10 +394,16 @@ func (s *NodeServer) detachStream(stream proto.NodeService_StreamNodeDataServer)
 	s.streamMu.Lock()
 	if s.stream == stream {
 		s.stream = nil
+		s.notifyStreamStateChangeLocked()
 	}
 	s.streamMu.Unlock()
 
 	s.failPending("panel stream disconnected")
+}
+
+func (s *NodeServer) notifyStreamStateChangeLocked() {
+	close(s.streamStateCh)
+	s.streamStateCh = make(chan struct{})
 }
 
 func (s *NodeServer) sendResponse(stream proto.NodeService_StreamNodeDataServer, resp *proto.NodeDataResponse) error {
