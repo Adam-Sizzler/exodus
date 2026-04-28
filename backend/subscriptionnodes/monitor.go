@@ -53,6 +53,12 @@ const (
 
 var subNodeVersionPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
 
+const (
+	subNodeStreamInterval      = 20 * time.Second
+	subNodeStreamIdleTimeout   = 75 * time.Second
+	subNodeStreamWatchInterval = 5 * time.Second
+)
+
 type SubNodeMonitor struct {
 	manager *dbmanager.DatabaseManager
 	cfg     *config.BackendConfig
@@ -91,6 +97,9 @@ type subNodeState struct {
 	conn              *grpc.ClientConn
 	client            proto.NodeServiceClient
 	stream            proto.NodeService_StreamNodeDataClient
+	streamCancel      context.CancelFunc
+	streamGeneration  uint64
+	lastResponseAt    time.Time
 	sendMu            sync.Mutex
 
 	isConnected  bool
@@ -422,9 +431,12 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 		return
 	}
 
+	streamCtx, streamCancel := context.WithCancel(state.ctx)
+
 	client := proto.NewNodeServiceClient(conn)
-	stream, err := client.StreamNodeData(state.ctx)
+	stream, err := client.StreamNodeData(streamCtx)
 	if err != nil {
+		streamCancel()
 		sm.cfg.Logger.Warn("Failed to create subscription stream", "node", state.nodeName, "error", err)
 		_ = conn.Close()
 		sm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Stream failed: %v", err))
@@ -438,18 +450,26 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 	state.conn = conn
 	state.client = client
 	state.stream = stream
+	state.streamCancel = streamCancel
+	state.streamGeneration++
+	generation := state.streamGeneration
+	state.lastResponseAt = time.Now()
 	state.isConnected = true
 	state.isConnecting = false
 	state.lastError = ""
 	state.mutex.Unlock()
 
 	if err := sm.sendNodeRequest(state, &proto.NodeDataRequest{
-		Request: &proto.NodeDataRequest_Config{Config: &proto.StreamConfig{IntervalSeconds: 20}},
+		Request: &proto.NodeDataRequest_Config{
+			Config: &proto.StreamConfig{IntervalSeconds: int32(subNodeStreamInterval / time.Second)},
+		},
 	}); err != nil {
 		sm.cfg.Logger.Warn("Failed to send subscription stream config", "node", state.nodeName, "error", err)
 		sm.handleDisconnect(state, fmt.Sprintf("Config failed: %v", err))
 		return
 	}
+
+	go sm.watchStreamHeartbeat(state, generation, subNodeStreamIdleTimeout, subNodeStreamWatchInterval)
 
 	sm.pushAssignedSubpageConfig(state)
 
@@ -487,6 +507,8 @@ func (sm *SubNodeMonitor) receiveStream(state *subNodeState) {
 			sm.handleDisconnect(state, fmt.Sprintf("Stream error: %v", err))
 			return
 		}
+
+		sm.markStreamActivity(state)
 
 		if err := sm.processResponse(state, resp); err != nil {
 			sm.handleDisconnect(state, err.Error())
@@ -753,6 +775,57 @@ func (sm *SubNodeMonitor) sendNodeRequest(state *subNodeState, req *proto.NodeDa
 	return stream.Send(req)
 }
 
+func (sm *SubNodeMonitor) watchStreamHeartbeat(
+	state *subNodeState,
+	generation uint64,
+	idleTimeout time.Duration,
+	pollInterval time.Duration,
+) {
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-state.ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		state.mutex.RLock()
+		currentGeneration := state.streamGeneration
+		lastResponseAt := state.lastResponseAt
+		streamCancel := state.streamCancel
+		nodeName := state.nodeName
+		isConnected := state.isConnected
+		state.mutex.RUnlock()
+
+		if currentGeneration != generation || !isConnected || streamCancel == nil {
+			return
+		}
+		if lastResponseAt.IsZero() || time.Since(lastResponseAt) <= idleTimeout {
+			continue
+		}
+
+		if sm.cfg != nil {
+			sm.cfg.Logger.Warn(
+				"Subscription node stream heartbeat timed out",
+				"node", nodeName,
+				"idle_for", time.Since(lastResponseAt).Round(time.Second),
+			)
+		}
+		streamCancel()
+		return
+	}
+}
+
+func (sm *SubNodeMonitor) markStreamActivity(state *subNodeState) {
+	state.mutex.Lock()
+	if state.stream != nil {
+		state.lastResponseAt = time.Now()
+	}
+	state.mutex.Unlock()
+}
+
 func (sm *SubNodeMonitor) updateRuntimeFromStats(nodeName string, stats []*proto.Stat) {
 	cleanNodeName := strings.TrimSpace(nodeName)
 	if cleanNodeName == "" || len(stats) == 0 {
@@ -817,15 +890,23 @@ func (sm *SubNodeMonitor) updateRuntimeFromStats(nodeName string, stats []*proto
 func (sm *SubNodeMonitor) handleDisconnect(state *subNodeState, reason string) {
 	state.mutex.Lock()
 	wasConnected := state.isConnected
+	streamCancel := state.streamCancel
+	conn := state.conn
 	state.isConnected = false
 	state.isConnecting = false
 	state.lastError = reason
+	state.lastResponseAt = time.Time{}
 	state.stream = nil
-	if state.conn != nil {
-		_ = state.conn.Close()
-		state.conn = nil
-	}
+	state.streamCancel = nil
+	state.conn = nil
 	state.mutex.Unlock()
+
+	if streamCancel != nil {
+		streamCancel()
+	}
+	if conn != nil {
+		_ = conn.Close()
+	}
 
 	if wasConnected {
 		sm.updateConnectionStatus(state.nodeName, false, false, reason)

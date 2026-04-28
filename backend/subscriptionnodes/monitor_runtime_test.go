@@ -1,7 +1,9 @@
 package subscriptionnodes
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"exodus/proto"
 )
@@ -65,5 +67,77 @@ func TestUpdateRuntimeFromStatsStoresSnapshot(t *testing.T) {
 	}
 	if snapshot.TotalRAM == nil || *snapshot.TotalRAM != "31.25 GiB" {
 		t.Fatalf("unexpected total ram: %#v", snapshot.TotalRAM)
+	}
+}
+
+func TestWatchStreamHeartbeatCancelsStaleStream(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	canceled := make(chan struct{}, 1)
+	monitor := &SubNodeMonitor{}
+	state := &subNodeState{
+		nodeName:         "AEZA",
+		ctx:              ctx,
+		streamCancel:     func() { canceled <- struct{}{} },
+		streamGeneration: 1,
+		lastResponseAt:   time.Now().Add(-time.Minute),
+		isConnected:      true,
+	}
+
+	done := make(chan struct{})
+	go func() {
+		monitor.watchStreamHeartbeat(state, 1, 20*time.Millisecond, 5*time.Millisecond)
+		close(done)
+	}()
+
+	select {
+	case <-canceled:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("expected stale stream to be canceled")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("watchdog did not exit after canceling stale stream")
+	}
+}
+
+func TestWatchStreamHeartbeatIgnoresOldGeneration(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	canceled := make(chan struct{}, 1)
+	monitor := &SubNodeMonitor{}
+	state := &subNodeState{
+		nodeName:         "AEZA",
+		ctx:              ctx,
+		streamCancel:     func() { canceled <- struct{}{} },
+		streamGeneration: 2,
+		lastResponseAt:   time.Now().Add(-time.Minute),
+		isConnected:      true,
+	}
+
+	done := make(chan struct{})
+	go func() {
+		monitor.watchStreamHeartbeat(state, 1, 20*time.Millisecond, 5*time.Millisecond)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("expected watchdog for old generation to exit")
+	}
+
+	select {
+	case <-canceled:
+		t.Fatal("old generation watchdog must not cancel current stream")
+	default:
 	}
 }

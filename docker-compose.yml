@@ -56,7 +56,7 @@ services:
 
   exodus-node:
     build:
-      context: ../node
+      context: ../exodus-node
       dockerfile: Dockerfile
     image: exodus-node:latest
     container_name: exodus-node
@@ -70,7 +70,7 @@ services:
 
   exodus-subscription:
     build:
-      context: ../sub
+      context: ../exodus-subscription
       dockerfile: Dockerfile
     image: exodus-subscription:latest
     container_name: exodus-subscription
