@@ -209,6 +209,15 @@ type bulkDeleteUsersRequest struct {
 	UUIDs []string `json:"uuids"`
 }
 
+type bulkExtendExpirationDateRequest struct {
+	UUIDs      []string `json:"uuids"`
+	ExtendDays int      `json:"extendDays"`
+}
+
+type bulkAllExtendExpirationDateRequest struct {
+	ExtendDays int `json:"extendDays"`
+}
+
 func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -290,6 +299,14 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		switch path {
 		case "delete":
 			handleBulkDeleteUsers(w, r, manager, cfg)
+		case "reset-traffic":
+			handleBulkResetUsersTraffic(w, r, manager, cfg)
+		case "extend-expiration-date":
+			handleBulkExtendUsersExpirationDate(w, r, manager, cfg)
+		case "all/reset-traffic":
+			handleBulkAllResetUsersTraffic(w, r, manager, cfg)
+		case "all/extend-expiration-date":
+			handleBulkAllExtendUsersExpirationDate(w, r, manager, cfg)
 		default:
 			http.NotFound(w, r)
 		}
@@ -486,7 +503,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
-	if len(internalSquadNodeUUIDs) > 0 {
+	if strings.EqualFold(normalizeUserStatus(req.Status), "ACTIVE") && len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
@@ -525,6 +542,9 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	internalSquadsChanged := false
 	internalSquadNodeUUIDs := make([]string, 0)
+	statusNodeUUIDs := make([]string, 0)
+	statusToSet, shouldSetStatus := plannedUserStatusForUpdate(record, req, time.Now().UTC())
+	statusDeployRequired := shouldSetStatus && userConfigPresenceChanges(record.Status, statusToSet)
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
@@ -538,8 +558,17 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			args = append(args, value)
 		}
 
-		if req.Status != nil {
-			add("status", strings.ToUpper(strings.TrimSpace(*req.Status)))
+		if statusDeployRequired {
+			nodeUUIDs, nodeTargetsErr := resolveNodeUUIDsForUserUUIDsTx(r.Context(), tx, []string{targetUUID})
+			if nodeTargetsErr != nil {
+				_ = tx.Rollback()
+				return nodeTargetsErr
+			}
+			statusNodeUUIDs = nodeUUIDs
+		}
+
+		if shouldSetStatus {
+			add("status", statusToSet)
 		}
 		if req.TrafficLimitBytes != nil {
 			add("traffic_limit_bytes", *req.TrafficLimitBytes)
@@ -644,8 +673,9 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return
 	}
 
-	if internalSquadsChanged && len(internalSquadNodeUUIDs) > 0 {
-		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	deployNodeUUIDs := dedupeStrings(append(statusNodeUUIDs, internalSquadNodeUUIDs...))
+	if (internalSquadsChanged || statusDeployRequired) && len(deployNodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, deployNodeUUIDs...)
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
 }
@@ -858,53 +888,175 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
+func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req bulkDeleteUsersRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if err := validateUUIDList(req.UUIDs); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
+	affectedRows, nodeUUIDs, err := resetUsersTrafficByUUIDs(r.Context(), manager, req.UUIDs)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to reset users traffic", err, cfg)
+		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
+func handleBulkAllResetUsersTraffic(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	affectedRows, nodeUUIDs, err := resetAllUsersTraffic(r.Context(), manager)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to reset all users traffic", err, cfg)
+		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
+func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req bulkExtendExpirationDateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if err := validateUUIDList(req.UUIDs); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+	if err := validateExtendDays(req.ExtendDays); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
+	affectedRows, nodeUUIDs, err := extendUsersExpirationByUUIDs(r.Context(), manager, req.UUIDs, req.ExtendDays)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to extend users expiration date", err, cfg)
+		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
+func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req bulkAllExtendExpirationDateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if err := validateExtendDays(req.ExtendDays); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
+	affectedRows, nodeUUIDs, err := extendAllUsersExpiration(r.Context(), manager, req.ExtendDays)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to extend all users expiration date", err, cfg)
+		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
 func handleEnableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
-	if err := updateUserStatus(r.Context(), manager, userUUID, "ACTIVE"); err != nil {
+	nodeUUIDs, err := updateUserStatus(r.Context(), manager, userUUID, "ACTIVE")
+	if err != nil {
 		handleUserActionError(w, err, cfg, "failed to enable user")
 		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
 func handleDisableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
-	if err := updateUserStatus(r.Context(), manager, userUUID, "DISABLED"); err != nil {
+	nodeUUIDs, err := updateUserStatus(r.Context(), manager, userUUID, "DISABLED")
+	if err != nil {
 		handleUserActionError(w, err, cfg, "failed to disable user")
 		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
 func handleResetUserTraffic(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+	nodeUUIDs := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(r.Context(), `
-			UPDATE users
-			SET last_traffic_reset_at = CURRENT_TIMESTAMP, last_triggered_threshold = 0, updated_at = CURRENT_TIMESTAMP
-			WHERE uuid = ?
-		`, userUUID)
+		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
 		}
 
-		result, err := db.ExecContext(r.Context(), `
-			UPDATE user_traffic
-			SET used_traffic_bytes = 0
-			WHERE t_id = (SELECT t_id FROM users WHERE uuid = ?)
-		`, userUUID)
-		if err != nil {
+		var (
+			tID    int64
+			status string
+		)
+		if err := tx.QueryRowContext(r.Context(), `SELECT t_id, status FROM users WHERE uuid = ?`, userUUID).Scan(&tID, &status); err != nil {
+			_ = tx.Rollback()
+			if errors.Is(err, sql.ErrNoRows) {
+				return errUserNotFound
+			}
 			return err
 		}
-		rows, err := result.RowsAffected()
-		if err != nil {
+
+		if strings.EqualFold(status, "LIMITED") {
+			targets, nodeTargetsErr := resolveNodeUUIDsForUserUUIDsTx(r.Context(), tx, []string{userUUID})
+			if nodeTargetsErr != nil {
+				_ = tx.Rollback()
+				return nodeTargetsErr
+			}
+			nodeUUIDs = targets
+		}
+
+		if _, err := tx.ExecContext(r.Context(), `
+			UPDATE users
+			SET last_traffic_reset_at = CURRENT_TIMESTAMP,
+			    last_triggered_threshold = 0,
+			    status = CASE WHEN status = 'LIMITED' THEN 'ACTIVE' ELSE status END,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = ?
+		`, userUUID); err != nil {
+			_ = tx.Rollback()
 			return err
 		}
-		if rows == 0 {
-			return errUserNotFound
+
+		if _, err := tx.ExecContext(r.Context(), `
+			INSERT INTO user_traffic (t_id, used_traffic_bytes, lifetime_used_traffic_bytes)
+			VALUES (?, 0, 0)
+			ON CONFLICT (t_id)
+			DO UPDATE SET used_traffic_bytes = 0
+		`, tID); err != nil {
+			_ = tx.Rollback()
+			return err
 		}
-		return nil
+
+		return tx.Commit()
 	})
 	if err != nil {
 		handleUserActionError(w, err, cfg, "failed to reset user traffic")
 		return
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
@@ -963,25 +1115,329 @@ func handleUserActionError(w http.ResponseWriter, err error, cfg *config.Backend
 	shared.SendError(w, http.StatusInternalServerError, message, err, cfg)
 }
 
-func updateUserStatus(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, status string) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, err := db.ExecContext(ctx, `
+func updateUserStatus(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, status string) ([]string, error) {
+	nodeUUIDs := make([]string, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := resolveNodeUUIDsForUserUUIDsTx(ctx, tx, []string{userUUID})
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		nodeUUIDs = targets
+
+		result, err := tx.ExecContext(ctx, `
 			UPDATE users
 			SET status = ?, updated_at = CURRENT_TIMESTAMP
 			WHERE uuid = ?
 		`, status, userUUID)
 		if err != nil {
+			_ = tx.Rollback()
 			return err
 		}
 		rows, err := result.RowsAffected()
 		if err != nil {
+			_ = tx.Rollback()
 			return err
 		}
 		if rows == 0 {
+			_ = tx.Rollback()
 			return errUserNotFound
 		}
-		return nil
+		return tx.Commit()
 	})
+	return nodeUUIDs, err
+}
+
+func plannedUserStatusForUpdate(record userRecord, req updateUserRequest, now time.Time) (string, bool) {
+	if req.Status != nil {
+		return strings.ToUpper(strings.TrimSpace(*req.Status)), true
+	}
+
+	if req.TrafficLimitBytes != nil && strings.EqualFold(record.Status, "LIMITED") {
+		if *req.TrafficLimitBytes == 0 || *req.TrafficLimitBytes > record.TrafficLimitBytes {
+			return "ACTIVE", true
+		}
+	}
+
+	if req.ExpireAt != nil && strings.EqualFold(record.Status, "EXPIRED") {
+		parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(*req.ExpireAt))
+		if err == nil {
+			newExpireAt := parsed.UTC()
+			if !newExpireAt.Equal(record.ExpireAt.UTC()) && newExpireAt.After(now.UTC()) {
+				return "ACTIVE", true
+			}
+		}
+	}
+
+	return "", false
+}
+
+func userConfigPresenceChanges(previousStatus string, nextStatus string) bool {
+	previousActive := strings.EqualFold(previousStatus, "ACTIVE")
+	nextActive := strings.EqualFold(nextStatus, "ACTIVE")
+	return previousActive != nextActive
+}
+
+func validateExtendDays(days int) error {
+	if days < 1 || days > 9999 {
+		return fmt.Errorf("extendDays must be between 1 and 9999")
+	}
+	return nil
+}
+
+func queryLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT cpitn.node_uuid
+		FROM users u
+		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
+		WHERE u.status = 'LIMITED' AND u.uuid = ANY(?)
+	`, dedupeStrings(userUUIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNodeUUIDRows(rows)
+}
+
+func queryAllLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT cpitn.node_uuid
+		FROM users u
+		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
+		WHERE u.status = 'LIMITED'
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNodeUUIDRows(rows)
+}
+
+func queryReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string, extendDays int) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT cpitn.node_uuid
+		FROM users u
+		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
+		WHERE u.status = 'EXPIRED'
+		  AND u.uuid = ANY(?)
+		  AND u.expire_at + (?::int * INTERVAL '1 day') > CURRENT_TIMESTAMP
+	`, dedupeStrings(userUUIDs), extendDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNodeUUIDRows(rows)
+}
+
+func queryAllReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, extendDays int) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT DISTINCT cpitn.node_uuid
+		FROM users u
+		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
+		WHERE u.status = 'EXPIRED'
+		  AND u.expire_at + (?::int * INTERVAL '1 day') > CURRENT_TIMESTAMP
+	`, extendDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanNodeUUIDRows(rows)
+}
+
+func scanNodeUUIDRows(rows *sql.Rows) ([]string, error) {
+	nodeUUIDs := make([]string, 0)
+	for rows.Next() {
+		var nodeUUID string
+		if err := rows.Scan(&nodeUUID); err != nil {
+			return nil, err
+		}
+		nodeUUIDs = append(nodeUUIDs, strings.TrimSpace(nodeUUID))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return dedupeStrings(nodeUUIDs), nil
+}
+
+func resetUsersTrafficByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManager, userUUIDs []string) (int64, []string, error) {
+	var affectedRows int64
+	nodeUUIDs := make([]string, 0)
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := queryLimitedUserNodeUUIDsTx(ctx, tx, userUUIDs)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		nodeUUIDs = targets
+
+		result, err := tx.ExecContext(ctx, `
+			UPDATE users
+			SET last_traffic_reset_at = CURRENT_TIMESTAMP,
+			    last_triggered_threshold = 0,
+			    status = CASE WHEN status = 'LIMITED' THEN 'ACTIVE' ELSE status END,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = ANY(?)
+		`, dedupeStrings(userUUIDs))
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		affectedRows, _ = result.RowsAffected()
+
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE user_traffic
+			SET used_traffic_bytes = 0
+			WHERE t_id IN (SELECT t_id FROM users WHERE uuid = ANY(?))
+		`, dedupeStrings(userUUIDs)); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		return tx.Commit()
+	})
+
+	return affectedRows, nodeUUIDs, err
+}
+
+func resetAllUsersTraffic(ctx context.Context, manager *dbmanager.DatabaseManager) (int64, []string, error) {
+	var affectedRows int64
+	nodeUUIDs := make([]string, 0)
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := queryAllLimitedUserNodeUUIDsTx(ctx, tx)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		nodeUUIDs = targets
+
+		result, err := tx.ExecContext(ctx, `
+			UPDATE users
+			SET last_traffic_reset_at = CURRENT_TIMESTAMP,
+			    last_triggered_threshold = 0,
+			    status = CASE WHEN status = 'LIMITED' THEN 'ACTIVE' ELSE status END,
+			    updated_at = CURRENT_TIMESTAMP
+		`)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		affectedRows, _ = result.RowsAffected()
+
+		if _, err := tx.ExecContext(ctx, `UPDATE user_traffic SET used_traffic_bytes = 0`); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		return tx.Commit()
+	})
+
+	return affectedRows, nodeUUIDs, err
+}
+
+func extendUsersExpirationByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManager, userUUIDs []string, extendDays int) (int64, []string, error) {
+	var affectedRows int64
+	nodeUUIDs := make([]string, 0)
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := queryReactivatedExpiredUserNodeUUIDsTx(ctx, tx, userUUIDs, extendDays)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		nodeUUIDs = targets
+
+		result, err := tx.ExecContext(ctx, `
+			UPDATE users
+			SET expire_at = expire_at + (?::int * INTERVAL '1 day'),
+			    status = CASE
+			        WHEN status = 'EXPIRED' AND expire_at + (?::int * INTERVAL '1 day') > CURRENT_TIMESTAMP THEN 'ACTIVE'
+			        ELSE status
+			    END,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = ANY(?)
+		`, extendDays, extendDays, dedupeStrings(userUUIDs))
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		affectedRows, _ = result.RowsAffected()
+
+		return tx.Commit()
+	})
+
+	return affectedRows, nodeUUIDs, err
+}
+
+func extendAllUsersExpiration(ctx context.Context, manager *dbmanager.DatabaseManager, extendDays int) (int64, []string, error) {
+	var affectedRows int64
+	nodeUUIDs := make([]string, 0)
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := queryAllReactivatedExpiredUserNodeUUIDsTx(ctx, tx, extendDays)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		nodeUUIDs = targets
+
+		result, err := tx.ExecContext(ctx, `
+			UPDATE users
+			SET expire_at = expire_at + (?::int * INTERVAL '1 day'),
+			    status = CASE
+			        WHEN status = 'EXPIRED' AND expire_at + (?::int * INTERVAL '1 day') > CURRENT_TIMESTAMP THEN 'ACTIVE'
+			        ELSE status
+			    END,
+			    updated_at = CURRENT_TIMESTAMP
+		`, extendDays, extendDays)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		affectedRows, _ = result.RowsAffected()
+
+		return tx.Commit()
+	})
+
+	return affectedRows, nodeUUIDs, err
 }
 
 func validateCreateUserRequest(req createUserRequest) error {

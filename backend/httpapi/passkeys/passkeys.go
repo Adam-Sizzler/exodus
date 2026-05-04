@@ -18,10 +18,10 @@ import (
 var passkeyNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_\s-]+$`)
 
 type passkeyRecord struct {
-	ID         string
-	Name       string
-	CreatedAt  time.Time
-	LastUsedAt time.Time
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"createdAt"`
+	LastUsedAt time.Time `json:"lastUsedAt"`
 }
 
 type passkeyWriteRequest struct {
@@ -31,6 +31,11 @@ type passkeyWriteRequest struct {
 
 func PasskeysHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/passkeys" && r.URL.Path != "/api/passkeys/" {
+			shared.WriteJSONError(w, http.StatusNotFound, "not found")
+			return
+		}
+
 		switch r.Method {
 		case http.MethodGet:
 			handleGetPasskeys(w, r, manager, cfg)

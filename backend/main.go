@@ -26,6 +26,7 @@ import (
 	"exodus/backend/redisqueue"
 	"exodus/backend/srslists"
 	"exodus/backend/subscriptionnodes"
+	"exodus/backend/userwatchdog"
 	"exodus/constant"
 )
 
@@ -282,6 +283,7 @@ func main() {
 	go nodeMonitor.Start(ctx, &wg)
 	go subNodeMonitor.Start(ctx, &wg)
 	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
+	userwatchdog.Start(ctx, &wg, manager, &cfg)
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
 	}
