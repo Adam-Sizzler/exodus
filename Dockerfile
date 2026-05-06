@@ -56,14 +56,14 @@ ARG REPOSITORY_URL=unknown
 ARG BUILD_TAGS=none
 ARG CGO_ENABLED_STATUS=disabled
 
-WORKDIR /build
+WORKDIR /build/backend
 
 # Copy go mod files and download dependencies
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY backend/ ./
 
 # Build panel backend binary
 RUN CGO_ENABLED=0 \
@@ -71,14 +71,14 @@ RUN CGO_ENABLED=0 \
     go build \
         -tags "none" \
         -trimpath \
-        -buildvcs=true \
+        -buildvcs=false \
         -ldflags="-s -w \
-                -X 'exodus/constant.Version=${VERSION}' \
-                -X 'exodus/constant.Revision=${REVISION}' \
-                -X 'exodus/constant.BuildTags=none' \
-                -X 'exodus/constant.CgoEnabled=0'" \
-    -o exodus \
-    ./backend
+                -X 'exodus/internal/constant.Version=${VERSION}' \
+                -X 'exodus/internal/constant.Revision=${REVISION}' \
+                -X 'exodus/internal/constant.BuildTags=none' \
+                -X 'exodus/internal/constant.CgoEnabled=0'" \
+    -o /build/exodus \
+    .
 
 # Final stage
 FROM alpine:latest
@@ -112,6 +112,17 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /build/exodus /app/
+
+# Keep /app/exodus as the server entrypoint, and expose a short rescue command
+# for `docker exec -it exodus exodus`.
+RUN printf '%s\n' \
+      '#!/bin/sh' \
+      'if [ "$#" -eq 0 ]; then' \
+      '  exec /app/exodus --rescue' \
+      'fi' \
+      'exec /app/exodus "$@"' \
+    > /usr/local/bin/exodus \
+    && chmod +x /usr/local/bin/exodus
 
 # Copy built frontend
 COPY --from=panel-ui /ui/dist /app/ui

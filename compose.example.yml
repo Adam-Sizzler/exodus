@@ -1,0 +1,97 @@
+name: exodus
+
+x-common: &common
+  ulimits:
+    nofile:
+      soft: 1048576
+      hard: 1048576
+  restart: always
+  networks:
+    - exodus-network
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: 5
+
+x-env: &env
+  env_file:
+    - path: .env
+      required: false
+
+services:
+  exodus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${EXODUS_VERSION:-latest}
+        REVISION: ${EXODUS_REVISION:-unknown}
+        FRONTEND_REVISION: ${EXODUS_FRONTEND_COMMIT:-unknown}
+        BUILD_BRANCH: ${EXODUS_GIT_BRANCH:-unknown}
+        BUILD_TIME: ${EXODUS_BUILD_TIME:-unknown}
+        BUILD_NUMBER: ${EXODUS_BUILD_NUMBER:-unknown}
+        REPOSITORY_URL: ${EXODUS_REPOSITORY_URL:-unknown}
+    image: exodus:latest
+    container_name: exodus
+    hostname: exodus
+    <<: [*common, *logging, *env]
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}"
+      - "127.0.0.1:${METRICS_PORT:-3001}:${METRICS_PORT:-3001}"
+    volumes:
+      - panel-data:/app/data
+    depends_on:
+      exodus-db:
+        condition: service_healthy
+      exodus-redis:
+        condition: service_healthy
+
+  exodus-db:
+    image: postgres:18
+    container_name: exodus-db
+    hostname: exodus-db
+    <<: [*common, *logging, *env]
+    ports:
+      - "127.0.0.1:6868:5432"
+    volumes:
+      - exodus-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  exodus-redis:
+    image: valkey/valkey:9-alpine
+    container_name: exodus-redis
+    hostname: exodus-redis
+    <<: [*common, *logging]
+    command: >
+      valkey-server
+      --save ""
+      --appendonly no
+      --maxmemory-policy noeviction
+      --loglevel warning
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+networks:
+  exodus-network:
+    name: exodus-network
+    driver: bridge
+    external: false
+
+volumes:
+  panel-data:
+    name: panel-data
+    driver: local
+  exodus-data:
+    name: exodus-data
+    driver: local
+    external: false

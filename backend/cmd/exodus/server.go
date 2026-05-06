@@ -1,0 +1,119 @@
+package exodus
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"exodus/internal/config"
+	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/httpapi"
+	"exodus/internal/httpapi/middleware"
+	"exodus/internal/httpapi/system"
+)
+
+// startWebServer serves both panel UI and API on a single APP_PORT.
+func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Panel.AppPort)
+	panelBasePath := cfg.Panel.BasePath
+	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
+	if panelBasePathNoTrailing == "" {
+		panelBasePathNoTrailing = "/"
+	}
+
+	apiHandler := httpapi.NewAPIHandler(manager, cfg)
+	metricsHandler := system.MetricsHandler(manager, cfg)
+
+	mux := http.NewServeMux()
+	uiDir := cfg.Panel.StaticDir
+	indexPath := filepath.Join(uiDir, "index.html")
+	staticFS := http.FileServer(http.Dir(uiDir))
+	if _, err := os.Stat(indexPath); err != nil {
+		cfg.Logger.Warn("Panel UI index not found; static UI disabled", "path", indexPath, "error", err)
+	}
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		requestPath := r.URL.Path
+
+		if panelBasePath != "/" && requestPath == panelBasePathNoTrailing {
+			http.Redirect(w, r, panelBasePath, http.StatusPermanentRedirect)
+			return
+		}
+
+		if !strings.HasPrefix(requestPath, panelBasePath) {
+			http.NotFound(w, r)
+			return
+		}
+
+		relativePath := strings.TrimPrefix(requestPath, panelBasePath)
+		if relativePath == "metrics" {
+			metricsHandler.ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(relativePath, "api/") {
+			apiReq := r.Clone(r.Context())
+			apiReq.URL.Path = "/" + relativePath
+			apiReq.URL.RawPath = ""
+			apiHandler.ServeHTTP(w, apiReq)
+			return
+		}
+
+		if relativePath == "app-config.js" {
+			serveAppConfigJS(w, panelBasePathNoTrailing)
+			return
+		}
+
+		cleanPath := filepath.Clean(relativePath)
+		if strings.HasPrefix(cleanPath, "..") {
+			http.NotFound(w, r)
+			return
+		}
+
+		if cleanPath != "." && cleanPath != "" {
+			targetPath := filepath.Join(uiDir, cleanPath)
+			if info, err := os.Stat(targetPath); err == nil && !info.IsDir() {
+				staticReq := r.Clone(r.Context())
+				staticReq.URL.Path = "/" + cleanPath
+				staticReq.URL.RawPath = ""
+				staticFS.ServeHTTP(w, staticReq)
+				return
+			}
+		}
+
+		if _, err := os.Stat(indexPath); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		servePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
+	})
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: middleware.WithCORS(cfg, middleware.WithRequestLogging(cfg, "web", mux)),
+	}
+
+	cfg.Logger.Debug("Starting web/API server", "address", server.Addr)
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			cfg.Logger.Fatal("Failed to start web server", "error", err)
+		}
+	}()
+
+	<-ctx.Done()
+
+	cfg.Logger.Debug("Shutting down web/API server")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		cfg.Logger.Error("Error shutting down web server", "error", err)
+	}
+}

@@ -36,14 +36,6 @@ services:
     container_name: exodus
     hostname: exodus
     <<: [*common, *logging, *env]
-    environment:
-      - APP_PORT=${APP_PORT:-3000}
-      - APP_PATH=${APP_PATH:-/panel}
-      - EXODUS_ALLOW_INSECURE_HTTP=${EXODUS_ALLOW_INSECURE_HTTP:-true}
-      - EXODUS_TRUSTED_PROXIES=${EXODUS_TRUSTED_PROXIES:-127.0.0.1/32,172.16.0.0/12,10.0.0.0/8,192.168.0.0/16}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@exodus-db:5432/postgres}
-      - REDIS_HOST=${REDIS_HOST:-exodus-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
     ports:
       - 127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}
     volumes:
@@ -81,11 +73,6 @@ services:
         required: false
       - path: ../exodus-subscription/.env
         required: false
-    environment:
-      - APP_PORT_SUB=${APP_PORT_SUB:-3010}
-      - SUB_GRPC_ADDRESS=${SUB_GRPC_ADDRESS:-0.0.0.0}
-      - SUB_GRPC_PORT=${SUB_GRPC_PORT:-2222}
-      - SUB_GRPC_PATH=${SUB_GRPC_PATH:-/}
     ports:
       - 127.0.0.1:${APP_PORT_SUB:-3010}:${APP_PORT_SUB:-3010}
     depends_on:
@@ -97,17 +84,12 @@ services:
     container_name: exodus-db
     hostname: exodus-db
     <<: [*common, *logging, *env]
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - TZ=UTC
     ports:
       - 127.0.0.1:6868:5432
     volumes:
       - exodus-data:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}"']
       interval: 3s
       timeout: 10s
       retries: 3

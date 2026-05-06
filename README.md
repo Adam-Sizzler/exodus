@@ -1,289 +1,298 @@
-# v2ray-stat API
+# Exodus
 
-API для управления пользователями и статистикой сервера **v2ray-stat**.  
-Все запросы отправляются на `http://127.0.0.1:9952`.
+Exodus - self-hosted панель для управления нодами, пользователями, подписками, роутингом по хостам, шаблонами, response rules, HWID-лимитами, SRS-списками и инфраструктурной биллинговой статистикой.
 
----
+Backend написан на Go и отдает API вместе с собранным React/Vite frontend. PostgreSQL хранит состояние панели, Valkey/Redis используется для фоновых задач. Полный стек с node/subscription сервисами запускается из compose в `/home/docker/projectSB`.
 
-## 📋 Список эндпоинтов
+## Быстрые Команды
 
-### Получить список всех пользователей
-
-**GET** `/api/v1/users`
+Сброс пароля admin через CLI:
 
 ```bash
-curl -X GET http://127.0.0.1:9952/api/v1/users
+cd /home/docker/projectSB
+docker exec -it exodus exodus
 ```
 
-### Получить статистику по серверу и клиентам
+В меню выберите `Reset admin password`.
 
-**GET** `/api/v1/stats`
-
-Этот эндпоинт возвращает статистику по серверу и клиентам, в зависимости от конфигурации `stats_columns`.
+Подготовить старую БД к новому baseline без переноса:
 
 ```bash
-curl -X GET http://127.0.0.1:9952/api/v1/stats
+cd /home/docker/projectSB/exodus
+./scripts/exodus-db-migration.sh prepare
 ```
 
-#### Ответ зависит от настроек в конфигурации
+Создать готовый архив БД для переноса на другую машину:
 
-В файле конфигурации YAML можно указать, какие колонки выводить и по какому столбцу сортировать:
+```bash
+cd /home/docker/projectSB/exodus
+./scripts/exodus-db-migration.sh export /home/docker/projectSB/backups/exodus-db.tar.gz
+```
+
+Развернуть архив на новой машине:
+
+```bash
+cd /home/docker/projectSB/exodus
+./scripts/exodus-db-migration.sh import /path/to/exodus-db.tar.gz --force
+```
+
+## Структура Репозитория
+
+```text
+backend/
+  main.go                     тонкая точка входа backend
+  cmd/exodus/                 lifecycle, servers, static UI и emergency CLI
+  internal/                   приватные backend-пакеты Go
+  internal/db/prisma/         Prisma schema и baseline-миграция релиза
+scripts/                      one-shot миграция и перенос PostgreSQL
+frontend/                     React/Vite панель
+Dockerfile                    multi-stage сборка frontend + Go backend
+docker-compose.yml            локальный compose сервиса
+compose.example.yml           минимальный пример compose для панели
+../docker-compose.yml         рекомендуемый compose стек projectSB
+```
+
+Go module находится в `backend/go.mod`. Go-команды нужно запускать из `backend`, а не из корня репозитория.
+
+## Политика Миграций
+
+Этот релиз намеренно не поддерживает старую цепочку миграций. В поставке осталась одна baseline-миграция:
+
+```text
+backend/internal/db/prisma/migrations/20260506000000_initial_schema/migration.sql
+```
+
+Релиз рассчитан на чистую БД или на БД, уже подготовленную под этот baseline. Если в `schema_migrations` есть старые миграции вида `202603...`, backend быстро завершит запуск с явной ошибкой `unsupported legacy migration history`.
+
+Для перехода со старой БД используйте one-shot скрипт:
+
+```bash
+cd /home/docker/projectSB/exodus
+./scripts/exodus-db-migration.sh prepare
+```
+
+Скрипт проверяет, что старая БД находится на последней поддерживаемой legacy-миграции, сохраняет старую таблицу `schema_migrations` в `/home/docker/projectSB/backups/schema_migrations-legacy-*.sql`, затем заменяет историю миграций на baseline `20260506000000_initial_schema`. Данные пользователей, нод, hosts, subscription templates и других таблиц не удаляются.
+
+Для переноса между машинами:
+
+```bash
+# На старой машине
+cd /home/docker/projectSB/exodus
+./scripts/exodus-db-migration.sh export /home/docker/projectSB/backups/exodus-db.tar.gz
+
+# На новой машине
+cd /home/docker/projectSB/exodus
+./scripts/exodus-db-migration.sh import /path/to/exodus-db.tar.gz --force
+```
+
+Для чистой переустановки удаляйте только те volumes, данные в которых можно потерять:
+
+```bash
+cd /home/docker/projectSB
+docker compose down
+docker volume rm exodus-data panel-data
+docker compose up -d --build
+```
+
+Не удаляйте production volumes без backup.
+
+## Сборка И Запуск
+
+Основной путь сборки из корня `projectSB`:
+
+```bash
+cd /home/docker/projectSB
+docker compose build exodus
+docker compose up -d exodus-db exodus-redis exodus
+curl -fsS http://127.0.0.1:${APP_PORT:-3000}/api/health
+```
+
+Полный локальный стек:
+
+```bash
+cd /home/docker/projectSB
+docker compose up -d --build
+```
+
+Остановка:
+
+```bash
+cd /home/docker/projectSB
+docker compose down
+```
+
+## Compose
+
+Минимальный compose для панели есть в `compose.example.yml`. Он оформлен в том же стиле, что и основной `/home/docker/projectSB/docker-compose.yml`: общие настройки вынесены в YAML anchors `x-common`, `x-logging`, `x-env`, все сервисы сидят в одной сети `exodus-network`.
+
+Runtime-переменные не задаются через `environment`; они берутся из `.env`. Базовый `APP_PATH=/`, поэтому UI и API открываются от корня. Если нужен префикс вроде `/panel`, его нужно явно задать в `.env`.
 
 ```yaml
-stats_columns:
-  server:
-    sort: rate DESC
-    columns:
-      - source
-      - rate
-      - uplink
-      - downlink
-  client:
-    sort: user ASC
-    columns:
-      - user
-      - last_seen
-      - rate
-      - uplink
-      - downlink
+name: exodus
+
+x-common: &common
+  restart: always
+  networks:
+    - exodus-network
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: 5
+
+x-env: &env
+  env_file:
+    - path: ./.env
+      required: false
+
+services:
+  exodus:
+    build:
+      context: ./exodus
+      dockerfile: Dockerfile
+    image: exodus:latest
+    container_name: exodus
+    hostname: exodus
+    <<: [*common, *logging, *env]
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}"
+      - "127.0.0.1:${METRICS_PORT:-3001}:${METRICS_PORT:-3001}"
+    volumes:
+      - panel-data:/app/data
+    depends_on:
+      exodus-db:
+        condition: service_healthy
+      exodus-redis:
+        condition: service_healthy
+
+  exodus-db:
+    image: postgres:18
+    container_name: exodus-db
+    hostname: exodus-db
+    <<: [*common, *logging, *env]
+    ports:
+      - "127.0.0.1:6868:5432"
+    volumes:
+      - exodus-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  exodus-redis:
+    image: valkey/valkey:9-alpine
+    container_name: exodus-redis
+    hostname: exodus-redis
+    <<: [*common, *logging]
+    command: >
+      valkey-server
+      --save ""
+      --appendonly no
+      --maxmemory-policy noeviction
+      --loglevel warning
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+networks:
+  exodus-network:
+    name: exodus-network
+    driver: bridge
+    external: false
+
+volumes:
+  panel-data:
+    name: panel-data
+  exodus-data:
+    name: exodus-data
 ```
 
-#### Поддерживаемые колонки:
+Полный `/home/docker/projectSB/docker-compose.yml` дополнительно поднимает `exodus-node`, `exodus-subscription`, HAProxy и nginx.
 
-* **Для server:**
+## Сброс Пароля Админа
 
-  * `source` — источник трафика (IP или hostname)
-  * `rate` — текущий трафик (бит/с)
-  * `uplink` — всего отправлено (байт)
-  * `downlink` — всего получено (байт)
-  * `sess_uplink` — отправлено в текущей сессии (байт)
-  * `sess_downlink` — получено в текущей сессии (байт)
-
-* **Для client:**
-
-  * `user` — имя пользователя или идентификатор
-  * `uuid` — уникальный идентификатор
-  * `last_seen` — время последней активности
-  * `rate` — текущий трафик (бит/с)
-  * `uplink` — всего отправлено (байт)
-  * `downlink` — всего получено (байт)
-  * `sess_uplink` — отправлено в текущей сессии (байт)
-  * `sess_downlink` — получено в текущей сессии (байт)
-  * `enabled` — включен ли пользователь
-  * `sub_end` — дата окончания подписки
-  * `renew` — статус/дата продления
-  * `lim_ip` — ограничение по IP
-  * `ips` — список IP-адресов
-  * `created` — дата создания
-
-#### Поведение по умолчанию:
-
-Если поле `columns` не указано или пустое, соответствующая статистика не отображается.
-
-Если поле `sort` не задано:
-
-* Для `server` используется `source ASC`
-* Для `client` используется `user ASC`
-
-Некорректные колонки или формат сортировки будут проигнорированы, и в логах появятся предупреждения.
-
-#### Пример конфигурации без статистики по серверу:
-
-```yaml
-stats_columns:
-  server:
-    columns: []
-  client:
-    columns:
-      - user
-      - rate
-      - uplink
-      - downlink
-```
-
-#### Параметры сортировки через URL
-
-Также можно переопределить сортировку для клиента через параметры запроса:
+В Exodus rescue CLI доступен короткой командой внутри контейнера, аналогично Remnawave:
 
 ```bash
-curl "http://127.0.0.1:9952/api/v1/stats?sort_by=rate&sort_order=DESC"
+docker exec -it exodus exodus
 ```
 
-### Статистика DNS
+В меню выберите `Reset admin password`. Команда интерактивно спросит username, новый пароль и подтверждение. После этого она:
 
-**GET** `/api/v1/dns_stats`
-- **Параметры**:
-  - `user`: Имя пользователя, для которого запрашивается статистика DNS.
-  - `count`: Количество записей DNS-запросов для возврата.
+- обновит пароль существующего admin;
+- включит password authentication в `exodus_settings`;
+- удалит активные сессии этого admin.
+
+Прямой non-menu вариант тоже доступен:
 
 ```bash
-curl -X GET "http://127.0.0.1:9952/api/v1/dns_stats?user=newuser&count=10"
+cd /home/docker/projectSB
+docker compose exec exodus exodus --reset-admin-password
 ```
 
-### Удаляет все записи из таблицы DNS-статистики
-
-**POST** `/api/v1/delete_dns_stats`
+Если контейнер `exodus` остановлен, сначала поднимите PostgreSQL и Redis, затем запустите одноразовый контейнер:
 
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/delete_dns_stats
+cd /home/docker/projectSB
+docker compose up -d exodus-db exodus-redis
+docker compose run --rm --no-deps --entrypoint /app/exodus exodus --reset-admin-password
 ```
 
-### Сброс трафика в таблице traffic_stats колонок `uplink` и `downlink`
+Admin должен уже существовать. На новой чистой БД первый admin создается через web login page.
 
-**POST** `/api/v1/reset_traffic_stats`
+## Сравнение С Remnawave
+
+В Remnawave backend - Node/NestJS сервис с отдельным rescue CLI. В его `Reset superadmin` flow первый admin удаляется, кэш настроек очищается, а новый admin затем регистрируется через web UI.
+
+Типичный flow Remnawave:
 
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/reset_traffic_stats
+docker compose exec remnawave remnawave
+# В интерактивном меню выбрать "Reset superadmin".
 ```
 
-### Сброс трафика в таблице clients_stats колонок `uplink` и `downlink`
-
-**POST** `/api/v1/reset_clients_stats`
+В Exodus модель проще: один Go-бинарник, который напрямую меняет пароль существующего admin и не удаляет аккаунт.
 
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/reset_clients_stats
+docker exec -it exodus exodus
 ```
 
-### Сбрасывает статистику сетевого трафика
+## Проверки Для Разработки
 
-**POST** `/api/v1/reset_traffic`
+Backend:
 
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/reset_traffic
+cd /home/docker/projectSB/exodus/backend
+go test ./...
+go build -trimpath -o /tmp/exodus-backend .
 ```
 
-### Добавление пользователя
-
-**POST** `/api/v1/add_user`
-- **Параметры**:
-  - `user`: Имя пользователя.
-  - `credential`: Идентификатор пользователя (UUID для VLESS или PASSWORD для Trojan).
-  - `inboundTag`: Тег входящего соединения (например, `vless-in` или `trojan-in`).
+Frontend audit:
 
 ```bash
-curl -X POST http://127.0.0.1:9952/api/v1/add_user -d "user=newuser&credential=123e4567-e89b-12d3-a456-426614174000&inboundTag=vless-in"
+cd /home/docker/projectSB/exodus/frontend
+npm audit --omit=dev
 ```
 
-### Массовое добавление пользователей
-
-**POST** `/api/v1/bulk_add_users`
-- **Параметры**:
-  - `users_file`: Файл с данными пользователей в формате `user,credential,inboundTag`.
-    - Формат файла:
-      - `user,credential,inboundTag`: Полный формат (например, `user1,550e8400-e29b-41d4-a716-446655440000,vless-in`).
-      - `user,credential`: Без `inboundTag`, используется значение по умолчанию.
-      - `user`: Только имя, `credential` (UUID) генерируется автоматически.
-      - `user,,inboundTag`: Имя и `inboundTag`, `credential` (UUID) генерируется автоматически.
+Docker image:
 
 ```bash
-curl -X POST "http://127.0.0.1:9952/api/v1/bulk_add_users" -F "users_file=@users.txt"
-```
- - Пример файла `users.txt`:
-```
-user1,550e8400-e29b-41d4-a716-446655440000,vless-in  # Полный формат
-user2,6ba7b810-9dad-11d1-80b4-00c04fd430c8           # Без inboundTag
-user3                                                # Только имя, UUID будет сгенерирован
-user4,,vless-in                                      # Имя и inboundTag, UUID будет сгенерирован
+cd /home/docker/projectSB
+docker compose build exodus
 ```
 
-### Удаление пользователя
+## Основные Возможности
 
-**DELETE** `/api/v1/delete_user`
-- **Параметры**:
-  - `user`: Имя пользователя.
-  - `inboundTag`: Тег входящего соединения (например, `vless-in`).
-
-```bash
-curl -X DELETE "http://127.0.0.1:9952/api/v1/delete_user?user=newuser&inboundTag=vless-in"
-```
-
-### Включение/отключение пользователя
-
-**PATCH** `/api/v1/set_enabled`  
-- **Параметры**:
-  - `user`: Имя пользователя.
-  - `enabled`: Статус активности пользователя (`true` — включить, `false` — отключить).
-
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/set_enabled -d "user=newuser&enabled=false"
-```
-
-### Изменение лимита IP для пользователя
-
-**PATCH** `/api/v1/update_lim_ip`
-- **Параметры**:
-  - `user`: Имя пользователя.
-  - `lim_ip`: Ограничение на количество IP-адресов.
-
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/update_lim_ip -d "user=newuser&lim_ip=5"
-```
-
-### Изменение даты подписки
-
-**PATCH** `/api/v1/adjust_date`
-- **Параметры**:
-  - `user`: Имя пользователя.
-  - `sub_end`: Смещение срока окончания подписки в формате `+6d:0d`, `-3d`, `3h`
-
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/adjust_date -d "user=newuser&sub_end=+30d13h"
-```
-
-### Настройка автопродления подписки
-
-**PATCH** `/api/v1/update_renew`
-- **Параметры**:
-  - `user`: Имя пользователя.
-  - `renew`: Период автопродления в днях.
-
-```bash
-curl -X PATCH http://127.0.0.1:9952/api/v1/update_renew -d "user=newuser&renew=30"
-```
-
----
-
-
-### Включение API для ядер
-
-Включение API для статистики и управления в ядрах **Singbox** и **Xray**.
-
-#### Singbox
-
-```json
-"experimental": {
-  "v2ray_api": {
-    "listen": "127.0.0.1:9953",
-    "stats": {
-      "enabled": true,
-      "inbounds": [
-        "trojan-in",
-        "vless-in"
-      ],
-      "outbounds": [
-        "warp",
-        "direct",
-        "IPv4"
-      ],
-      "users": [
-        "user1",
-        "user2"
-      ]
-    }
-  }
-}
-```
-
-#### Xray
-
-```json
-"api": {
-  "tag": "api",
-  "listen": "127.0.0.1:9953",
-  "services": [
-    "HandlerService",
-    "StatsService",
-    "ReflectionService"
-  ]
-},
-```
+- Панель и API на одном `APP_PORT`.
+- Emergency CLI для сброса пароля admin.
+- PostgreSQL baseline schema встроена в Go-бинарник.
+- Мониторинг нод и subscription нод через gRPC/mTLS.
+- Шаблоны подписок и response rules для Xray/Base64, Clash, Mihomo, Stash и Sing-box.
+- Управление hosts, config profiles, internal squads и external squads.
+- HWID device tracking и история запросов подписок.
+- Prometheus-compatible metrics endpoint.
