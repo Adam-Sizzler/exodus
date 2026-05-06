@@ -130,7 +130,7 @@ func detectSingboxVersion() string {
 		return "unknown"
 	}
 	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
-	// Example: "sing-box version 1.13.3"
+	// Example: "sing-box version 1.13.x"
 	if idx := strings.LastIndex(line, " "); idx > 0 && idx+1 < len(line) {
 		return strings.TrimSpace(line[idx+1:])
 	}

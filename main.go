@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"exodus-node/config"
@@ -32,8 +31,13 @@ func main() {
 		cfg.Logger.Error("Failed to create node server", "error", err)
 		os.Exit(1)
 	}
+	defer func() {
+		if err := nodeServer.Close(); err != nil {
+			cfg.Logger.Warn("Failed to close node server", "error", err)
+		}
+	}()
 
-	log.Printf("[START] exodus-node application %s", constant.Version)
+	cfg.Logger.Info("Starting exodus-node", "version", constant.Version)
 
 	if err := grpcserver.StartGRPCServer(&cfg, nodeServer); err != nil {
 		cfg.Logger.Error("Failed to start gRPC server", "error", err)

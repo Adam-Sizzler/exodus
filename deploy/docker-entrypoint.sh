@@ -24,6 +24,20 @@ installed_singbox_version() {
     normalize_version "$version"
 }
 
+detect_singbox_arch() {
+    case "$(uname -m)" in
+        x86_64|amd64)
+            printf '%s' "amd64"
+            ;;
+        aarch64|arm64)
+            printf '%s' "arm64"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 ensure_singbox_version() {
     local desired desired_tag desired_norm current_norm sb_arch url tmp_file validate_output
     local current_output has_working_current
@@ -53,7 +67,15 @@ ensure_singbox_version() {
         return 0
     fi
 
-    sb_arch="amd64"
+    if ! sb_arch="$(detect_singbox_arch)"; then
+        if [ "$has_working_current" -eq 1 ]; then
+            echo "[Entrypoint] Unsupported architecture for sing-box auto-download, continuing with current sing-box: $(uname -m)" >&2
+            return 0
+        fi
+        echo "[Entrypoint] Unsupported architecture for sing-box auto-download: $(uname -m)" >&2
+        exit 1
+    fi
+
     url="https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${desired_tag}/sing-box-linux-${sb_arch}"
     tmp_file="/usr/local/bin/.sing-box-${desired_tag}-${sb_arch}.tmp"
 

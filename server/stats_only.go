@@ -14,6 +14,11 @@ import (
 
 const statsOnlyMessage = "stats-only node: user management and task APIs are disabled for sing-box"
 
+const (
+	taskOperationDeployConfig = "deploy_config"
+	taskOperationSyncSRSLists = "sync_srs_lists"
+)
+
 func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest) (*proto.ListUsersResponse, error) {
 	_ = ctx
 	_ = req
@@ -49,7 +54,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 	s.Cfg.Logger.Info("SubmitTask received", "task_id", task.TaskId, "operation", task.Operation, "payload_bytes", len(task.Payload))
 
 	switch task.Operation {
-	case "deploy_config":
+	case taskOperationDeployConfig:
 		var payload DeployConfigTaskPayload
 		if err := json.Unmarshal(task.Payload, &payload); err != nil {
 			s.Cfg.Logger.Warn("Invalid deploy_config payload", "task_id", task.TaskId, "error", err)
@@ -86,7 +91,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 				summary.SRSDownloadedOnDeploy,
 			),
 		}, nil
-	case "sync_srs_lists":
+	case taskOperationSyncSRSLists:
 		var payload struct {
 			SRSLists []SRSListItem `json:"srs_lists"`
 		}

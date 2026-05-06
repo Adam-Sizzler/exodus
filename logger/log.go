@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -57,6 +58,7 @@ func ParseLevel(level string) (Level, error) {
 
 // Logger is a simple logger with level-based logging.
 type Logger struct {
+	mu       sync.Mutex
 	writer   io.Writer
 	level    Level
 	logMode  string
@@ -91,21 +93,24 @@ func (l *Logger) Log(level Level, msg string, args ...any) {
 	if l.level == LevelNone {
 		return
 	}
-	// Проверка в зависимости от режима логирования
 	if l.logMode == "inclusive" && level > l.level {
 		return
 	}
 	if l.logMode == "exclusive" && level != l.level {
 		return
 	}
-	// Формирование сообщения с датой в указанном часовом поясе
+
 	logMsg := fmt.Sprintf("%s [%s] %s", time.Now().In(l.timezone).Format("2006/01/02 15:04:05"), levelNames[level], msg)
 	for i := 0; i < len(args); i += 2 {
 		if i+1 < len(args) {
 			logMsg += fmt.Sprintf(", %v=%v", args[i], args[i+1])
 		}
 	}
+
+	l.mu.Lock()
 	fmt.Fprintln(l.writer, logMsg)
+	l.mu.Unlock()
+
 	if level == LevelFatal {
 		os.Exit(1)
 	}

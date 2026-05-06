@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -23,6 +24,16 @@ import (
 )
 
 func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) error {
+	if cfg == nil {
+		return fmt.Errorf("node config is nil")
+	}
+	if cfg.Logger == nil {
+		return fmt.Errorf("node logger is nil")
+	}
+	if nodeServer == nil {
+		return fmt.Errorf("node server is nil")
+	}
+
 	var opts []grpc.ServerOption
 	opts = append(opts,
 		grpc.ChainUnaryInterceptor(
@@ -87,8 +98,13 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 			"x_forwarded_proto", r.Header.Get("X-Forwarded-Proto"),
 		)
 
-		if pathPrefix != "" && strings.HasPrefix(r.URL.Path, pathPrefix) {
-			r.URL.Path = strings.TrimPrefix(r.URL.Path, pathPrefix)
+		if pathPrefix != "" {
+			var ok bool
+			r.URL.Path, ok = trimPathPrefix(r.URL.Path, pathPrefix)
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
 		}
 
 		grpcServer.ServeHTTP(w, r)
@@ -103,7 +119,10 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 
 	cfg.Logger.Info("Starting gRPC server", "address", addr)
 
-	httpServer := &http.Server{}
+	httpServer := &http.Server{
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
 	if tlsConfig != nil {
 		httpServer.Handler = mainHandler
 		httpServer.TLSConfig = tlsConfig
@@ -115,12 +134,25 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		httpServer.Handler = h2c.NewHandler(mainHandler, &http2.Server{})
 	}
 
-	if err := httpServer.Serve(listener); err != nil {
+	if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		cfg.Logger.Error("Failed to serve gRPC", "error", err)
 		return err
 	}
 
 	return nil
+}
+
+func trimPathPrefix(path string, prefix string) (string, bool) {
+	if prefix == "" {
+		return path, true
+	}
+	if path == prefix {
+		return "/", true
+	}
+	if strings.HasPrefix(path, prefix+"/") {
+		return strings.TrimPrefix(path, prefix), true
+	}
+	return path, false
 }
 
 func grpcPathValidationUnaryInterceptor() grpc.UnaryServerInterceptor {

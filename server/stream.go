@@ -1,0 +1,129 @@
+package server
+
+import (
+	"io"
+	"time"
+
+	"exodus-node/proto"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+const defaultStreamInterval = 20 * time.Second
+
+// StreamNodeData handles bidirectional streaming for node data.
+func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
+	reqCh := make(chan *proto.NodeDataRequest)
+	recvErrCh := make(chan error, 1)
+	sendErrCh := make(chan error, 1)
+	updateIntervalCh := make(chan time.Duration, 1)
+
+	go receiveStreamRequests(stream, reqCh, recvErrCh)
+	go s.sendStreamStats(stream, sendErrCh, updateIntervalCh)
+
+	s.Cfg.Logger.Info("Stream started, auto-push enabled", "interval_seconds", int(defaultStreamInterval/time.Second))
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			s.Cfg.Logger.Info("Stream context canceled", "error", stream.Context().Err())
+			return stream.Context().Err()
+		case err := <-sendErrCh:
+			s.Cfg.Logger.Error("Failed to send stream data", "error", err)
+			return err
+		case err := <-recvErrCh:
+			if err == io.EOF {
+				s.Cfg.Logger.Info("Stream closed by client")
+				return nil
+			}
+			s.Cfg.Logger.Error("Failed to receive stream request", "error", err)
+			return err
+		case req, ok := <-reqCh:
+			if !ok || req == nil {
+				continue
+			}
+			if err := s.handleStreamRequest(req, updateIntervalCh); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func receiveStreamRequests(stream proto.NodeService_StreamNodeDataServer, reqCh chan<- *proto.NodeDataRequest, recvErrCh chan<- error) {
+	defer close(reqCh)
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			recvErrCh <- err
+			return
+		}
+		select {
+		case reqCh <- req:
+		case <-stream.Context().Done():
+			return
+		}
+	}
+}
+
+func (s *NodeServer) sendStreamStats(
+	stream proto.NodeService_StreamNodeDataServer,
+	sendErrCh chan<- error,
+	updateIntervalCh <-chan time.Duration,
+) {
+	ticker := time.NewTicker(defaultStreamInterval)
+	defer ticker.Stop()
+
+	consecutiveStatsErrors := 0
+	for {
+		stats, err := s.GetApiStats(stream.Context(), &proto.GetApiStatsRequest{})
+		if err != nil {
+			consecutiveStatsErrors++
+			s.Cfg.Logger.Error("Failed to collect stats for stream", "error", err)
+			if consecutiveStatsErrors >= 3 {
+				diagnostic := s.diagnoseCoreFailure(stream.Context(), err)
+				sendErrCh <- status.Error(codes.Internal, diagnostic)
+				return
+			}
+		} else {
+			consecutiveStatsErrors = 0
+			if err := stream.Send(&proto.NodeDataResponse{
+				Response: &proto.NodeDataResponse_Stats{Stats: stats},
+			}); err != nil {
+				sendErrCh <- err
+				return
+			}
+		}
+
+		select {
+		case <-stream.Context().Done():
+			return
+		case next := <-updateIntervalCh:
+			ticker.Reset(next)
+		case <-ticker.C:
+		}
+	}
+}
+
+func (s *NodeServer) handleStreamRequest(req *proto.NodeDataRequest, updateIntervalCh chan time.Duration) error {
+	switch req.Request.(type) {
+	case *proto.NodeDataRequest_Config:
+		interval := req.GetConfig().IntervalSeconds
+		if interval <= 0 {
+			return status.Errorf(codes.InvalidArgument, "invalid interval: %d", interval)
+		}
+		next := time.Duration(interval) * time.Second
+		select {
+		case updateIntervalCh <- next:
+		default:
+			<-updateIntervalCh
+			updateIntervalCh <- next
+		}
+		s.Cfg.Logger.Info("Stream interval updated", "interval_seconds", interval)
+		return nil
+	case *proto.NodeDataRequest_ListUsers:
+		return status.Error(codes.Unimplemented, statsOnlyMessage)
+	default:
+		return status.Errorf(codes.InvalidArgument, "unknown request type")
+	}
+}
