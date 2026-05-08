@@ -1,6 +1,13 @@
 package grpcserver
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+)
 
 func TestTrimPathPrefix(t *testing.T) {
 	tests := []struct {
@@ -47,5 +54,17 @@ func TestTrimPathPrefix(t *testing.T) {
 				t.Fatalf("trimPathPrefix() = (%q, %t), want (%q, %t)", gotPath, gotMatch, tt.wantPath, tt.wantMatch)
 			}
 		})
+	}
+}
+
+func TestValidateIncomingGRPCToken(t *testing.T) {
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(grpcTokenHeader, "1234567890abcdef"))
+	if err := validateIncomingGRPCToken(ctx, "1234567890abcdef"); err != nil {
+		t.Fatalf("validateIncomingGRPCToken() error = %v", err)
+	}
+
+	err := validateIncomingGRPCToken(context.Background(), "1234567890abcdef")
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("validateIncomingGRPCToken() code = %s, want %s", status.Code(err), codes.Unauthenticated)
 	}
 }

@@ -4,9 +4,12 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
+
+var ErrSecretKeyNotSet = errors.New("SECRET_KEY is not set")
 
 type NodePayload struct {
 	CaCertPem    string `json:"caCertPem"`
@@ -18,7 +21,7 @@ type NodePayload struct {
 func ParseNodePayloadFromSecret() (NodePayload, error) {
 	secret, ok := lookupEnvTrimmed("SECRET_KEY")
 	if !ok {
-		return NodePayload{}, fmt.Errorf("SECRET_KEY is not set")
+		return NodePayload{}, ErrSecretKeyNotSet
 	}
 	secret = strings.Trim(secret, "\"'")
 

@@ -7,7 +7,7 @@
 ## Что Делает Нода
 
 - поднимает gRPC сервер на `NODE_GRPC_ADDRESS:NODE_GRPC_PORT`;
-- требует mTLS payload из `SECRET_KEY`;
+- поддерживает два режима подключения: `gRPC + mTLS` через `SECRET_KEY` или `gRPC + TLS + token` через nginx/reverse proxy и `NODE_GRPC_TOKEN`;
 - подключается к sing-box `experimental.v2ray_api` на `127.0.0.1:10085`;
 - стримит inbound/outbound/user traffic stats в панель;
 - добавляет/обновляет `experimental.v2ray_api` в полученном sing-box config;
@@ -20,8 +20,8 @@
 
 ```text
 main.go                    точка входа
-config/                    env config и SECRET_KEY payload
-grpcserver/                gRPC/mTLS HTTP2 сервер и interceptors
+config/                    env config, SECRET_KEY payload, token auth
+grpcserver/                gRPC HTTP2 сервер, mTLS/token interceptors
 server/                    NodeService handlers, deploy, stream, SRS, HAProxy
 api/                       facade над sing-box stats API
 sdk/                       sing-box v2ray_api gRPC client
@@ -32,7 +32,7 @@ Dockerfile                 multi-stage image: Go node + custom sing-box
 
 ## Runtime Переменные
 
-Обязательная:
+Для `gRPC + mTLS`:
 
 ```env
 SECRET_KEY=<base64-json-payload-from-panel>
@@ -49,18 +49,24 @@ Payload должен содержать:
 }
 ```
 
+Для `gRPC + TLS + token` за nginx/reverse proxy:
+
+```env
+NODE_GRPC_TOKEN=<grpc-token-from-panel>
+```
+
+В token-режиме TLS завершается на nginx, а сама нода слушает h2c внутри приватной сети или на localhost.
+
 Основные настройки:
 
 ```env
 NODE_GRPC_ADDRESS=0.0.0.0
 NODE_GRPC_PORT=2222
-NODE_GRPC_PATH=
+NODE_GRPC_PATH=/node/
 LOG_LEVEL=warn
 LOG_MODE=inclusive
 SINGBOX_VERSION=v1.13.5
 ```
-
-`SINGBOX_VERSION` берется из форка `Adam-Sizzler/sing-box-v2ray-api`. В образе по умолчанию используется последний найденный стабильный релиз этого форка на момент проверки: `v1.13.5`. Если нужен другой релиз, задайте переменную явно.
 
 ## Сборка
 

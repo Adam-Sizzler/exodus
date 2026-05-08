@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -11,9 +12,9 @@ import (
 
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
-	Log      LogConfig
-	Exodus   ExodusConfig
-	Logger   *logger.Logger
+	Log    LogConfig
+	Exodus ExodusConfig
+	Logger *logger.Logger
 }
 
 type LogConfig struct {
@@ -22,10 +23,12 @@ type LogConfig struct {
 }
 
 type ExodusConfig struct {
-	GrpcAddress string
-	GrpcPort    int
-	GrpcPath    string
-	MTLSConfig  *MTLSConfig
+	GrpcAddress      string
+	GrpcPort         int
+	GrpcPath         string
+	GRPCToken        string
+	RequireGRPCToken bool
+	MTLSConfig       *MTLSConfig
 }
 
 const (
@@ -86,22 +89,46 @@ func LoadNodeConfig() (NodeConfig, error) {
 	if value := firstEnv("NODE_GRPC_PATH", "GRPC_PATH"); value != "" {
 		cfg.Exodus.GrpcPath = strings.Trim(value, "/")
 	}
+	if value := firstEnv("NODE_GRPC_TOKEN", "GRPC_TOKEN"); value != "" {
+		cfg.Exodus.GRPCToken = value
+	}
 
 	nodePayload, err := ParseNodePayloadFromSecret()
-	if err != nil {
+	if err == nil {
+		cfg.Exodus.MTLSConfig = &MTLSConfig{
+			Cert:   nodePayload.NodeCertPem,
+			Key:    nodePayload.NodeKeyPem,
+			CACert: nodePayload.CaCertPem,
+		}
+	} else if !errors.Is(err, ErrSecretKeyNotSet) {
 		return cfg, err
 	}
-	cfg.Exodus.MTLSConfig = &MTLSConfig{
-		Cert:   nodePayload.NodeCertPem,
-		Key:    nodePayload.NodeKeyPem,
-		CACert: nodePayload.CaCertPem,
+
+	cfg.Exodus.RequireGRPCToken = cfg.Exodus.MTLSConfig == nil
+	if cfg.Exodus.GRPCToken != "" {
+		if len(cfg.Exodus.GRPCToken) < 16 {
+			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be at least 16 characters")
+		}
+		if len(cfg.Exodus.GRPCToken) > 512 {
+			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be less than 512 characters")
+		}
+	}
+	if cfg.Exodus.RequireGRPCToken && cfg.Exodus.GRPCToken == "" {
+		return cfg, fmt.Errorf("NODE_GRPC_TOKEN is required when SECRET_KEY is not provided")
 	}
 
 	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, "UTC", os.Stderr)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to initialize logger: %w", err)
 	}
-	cfg.Logger.Info("Node configuration validated", "address", cfg.Exodus.GrpcAddress, "port", cfg.Exodus.GrpcPort, "mtls_enabled", cfg.Exodus.MTLSConfig != nil)
+	cfg.Logger.Info(
+		"Node configuration validated",
+		"address", cfg.Exodus.GrpcAddress,
+		"port", cfg.Exodus.GrpcPort,
+		"path", cfg.Exodus.GrpcPath,
+		"mtls_enabled", cfg.Exodus.MTLSConfig != nil,
+		"token_required", cfg.Exodus.RequireGRPCToken,
+	)
 	return cfg, nil
 }
 

@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -19,9 +20,12 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
+
+const grpcTokenHeader = "x-exodus-grpc-token"
 
 func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) error {
 	if cfg == nil {
@@ -34,16 +38,30 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		return fmt.Errorf("node server is nil")
 	}
 
+	expectedToken := strings.TrimSpace(cfg.Exodus.GRPCToken)
+	unaryInterceptors := []grpc.UnaryServerInterceptor{
+		grpcPathValidationUnaryInterceptor(),
+		grpcUnaryRequestLogger(cfg),
+	}
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		grpcPathValidationStreamInterceptor(),
+		grpcStreamRequestLogger(cfg),
+	}
+	if cfg.Exodus.RequireGRPCToken {
+		if expectedToken == "" {
+			return fmt.Errorf("NODE_GRPC_TOKEN is required")
+		}
+		unaryInterceptors = append(unaryInterceptors, grpcTokenUnaryInterceptor(expectedToken))
+		streamInterceptors = append(streamInterceptors, grpcTokenStreamInterceptor(expectedToken))
+		cfg.Logger.Info("gRPC auth mode: TLS + token")
+	} else {
+		cfg.Logger.Info("gRPC auth mode: mTLS")
+	}
+
 	var opts []grpc.ServerOption
 	opts = append(opts,
-		grpc.ChainUnaryInterceptor(
-			grpcPathValidationUnaryInterceptor(),
-			grpcUnaryRequestLogger(cfg),
-		),
-		grpc.ChainStreamInterceptor(
-			grpcPathValidationStreamInterceptor(),
-			grpcStreamRequestLogger(cfg),
-		),
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
 	var tlsConfig *tls.Config
@@ -73,7 +91,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		if cfg.Exodus.GrpcAddress != "127.0.0.1" && cfg.Exodus.GrpcAddress != "localhost" {
 			cfg.Logger.Warn("Insecure gRPC on non-local address", "address", cfg.Exodus.GrpcAddress)
 		}
-		cfg.Logger.Debug("Using insecure gRPC server (no TLS configured inside Node)")
+		cfg.Logger.Debug("Using h2c gRPC server (for reverse proxy TLS termination)")
 	}
 
 	grpcServer := grpc.NewServer(opts...)
@@ -171,6 +189,43 @@ func grpcPathValidationStreamInterceptor() grpc.StreamServerInterceptor {
 		}
 		return handler(srv, ss)
 	}
+}
+
+func grpcTokenUnaryInterceptor(expectedToken string) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if err := validateIncomingGRPCToken(ctx, expectedToken); err != nil {
+			return nil, err
+		}
+		return handler(ctx, req)
+	}
+}
+
+func grpcTokenStreamInterceptor(expectedToken string) grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if err := validateIncomingGRPCToken(ss.Context(), expectedToken); err != nil {
+			return err
+		}
+		return handler(srv, ss)
+	}
+}
+
+func validateIncomingGRPCToken(ctx context.Context, expectedToken string) error {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return status.Error(codes.Unauthenticated, "missing grpc metadata")
+	}
+	values := md.Get(grpcTokenHeader)
+	if len(values) == 0 {
+		return status.Error(codes.Unauthenticated, "missing grpc token")
+	}
+	providedToken := strings.TrimSpace(values[0])
+	if providedToken == "" {
+		return status.Error(codes.Unauthenticated, "missing grpc token")
+	}
+	if subtle.ConstantTimeCompare([]byte(providedToken), []byte(expectedToken)) != 1 {
+		return status.Error(codes.Unauthenticated, "invalid grpc token")
+	}
+	return nil
 }
 
 func grpcUnaryRequestLogger(cfg *config.NodeConfig) grpc.UnaryServerInterceptor {

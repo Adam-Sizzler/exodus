@@ -7,8 +7,6 @@ ARG VERSION=unknown
 ARG REVISION=unknown
 ARG BUILD_TAGS=none
 ARG CGO_ENABLED_STATUS=enabled
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
 
 WORKDIR /build
 
@@ -36,8 +34,8 @@ RUN set -eu; \
         revision="unknown"; \
     fi; \
     CGO_ENABLED=1 \
-    GOOS="${TARGETOS}" \
-    GOARCH="${TARGETARCH}" \
+    GOOS=linux \
+    GOARCH=amd64 \
     go build \
         -tags "${BUILD_TAGS}" \
         -trimpath \
@@ -52,18 +50,12 @@ RUN set -eu; \
 
 FROM alpine:3.23
 
-ARG TARGETARCH=amd64
 ARG SINGBOX_VERSION=v1.13.5
 ENV SINGBOX_VERSION=${SINGBOX_VERSION}
 
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor
 
-RUN set -eu; \
-    case "${TARGETARCH}" in \
-        amd64|arm64) sb_arch="${TARGETARCH}" ;; \
-        *) echo "unsupported TARGETARCH for bundled sing-box: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac; \
-    curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-${sb_arch}" \
+RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
       -o /usr/local/bin/sing-box && \
     chmod +x /usr/local/bin/sing-box
 
