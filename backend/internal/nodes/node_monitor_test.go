@@ -49,3 +49,18 @@ func TestApplyConsumptionMultiplier(t *testing.T) {
 		t.Fatalf("unexpected 0 multiplier result: got %d want %d", got, 0)
 	}
 }
+
+func TestNormalizeNodeConnectionFields(t *testing.T) {
+	if got := normalizeNodeSchema("tls"); got != "tls" {
+		t.Fatalf("normalizeNodeSchema(tls) = %q", got)
+	}
+	if got := normalizeNodeSchema("grpcs"); got != "mtls" {
+		t.Fatalf("normalizeNodeSchema(grpcs) = %q", got)
+	}
+	if got := normalizeNodePath("node"); got != "/node" {
+		t.Fatalf("normalizeNodePath(node) = %q", got)
+	}
+	if got := normalizeNodePath("/"); got != "" {
+		t.Fatalf("normalizeNodePath(/) = %q", got)
+	}
+}

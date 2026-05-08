@@ -1,4 +1,3 @@
-import { CreateNodeCommand } from '@exodus/backend-contract'
 import { Button, Group, Skeleton, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'node_modules/react-i18next'
@@ -6,13 +5,13 @@ import { PiArrowLeft } from 'react-icons/pi'
 import { TbCheck } from 'react-icons/tb'
 
 import { ShowConfigProfilesWithInboundsFeature } from '@features/ui/dashboard/nodes/show-config-profiles-with-inbounds'
-import { useGetConfigProfiles } from '@shared/api/hooks'
+import { CreateNodeRequest, useGetConfigProfiles } from '@shared/api/hooks'
 
 import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    form: UseFormReturnType<CreateNodeCommand.Request, any>
+    form: UseFormReturnType<CreateNodeRequest, any>
     isCreating: boolean
     onCreateNode: () => void
     onPrev: () => void
@@ -91,7 +90,11 @@ export const CreateNodeStep2ConfigProfiles = ({
             </Stack>
 
             <Stack gap="xs" mt="auto">
-                <CopyDockerComposeWidget port={port} />
+                <CopyDockerComposeWidget
+                    apiPath={form.getValues().apiPath}
+                    apiSchema={form.getValues().apiSchema}
+                    port={port}
+                />
 
                 <Group justify="space-between">
                     <Button

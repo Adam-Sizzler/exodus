@@ -1,5 +1,4 @@
 import { em, Group, Modal, Progress, Stack, Transition } from '@mantine/core'
-import { CreateNodeCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useMediaQuery } from '@mantine/hooks'
@@ -8,7 +7,13 @@ import { useForm } from '@mantine/form'
 import { TbCpu } from 'react-icons/tb'
 
 import { useNodesStoreActions, useNodesStoreCreateModalIsOpen } from '@entities/dashboard/nodes'
-import { configProfilesQueryKeys, useCreateNode, useGetPubKey } from '@shared/api/hooks'
+import {
+    configProfilesQueryKeys,
+    CreateNodeRequest,
+    createNodeRequestSchema,
+    useCreateNode,
+    useGetPubKey
+} from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { gbToBytesUtil } from '@shared/utils/bytes'
 import { queryClient } from '@shared/api'
@@ -31,10 +36,10 @@ export const CreateNodeModalWidget = () => {
     const [createdNodeUuid, setCreatedNodeUuid] = useState<string>()
     const [selectedPort, setSelectedPort] = useState<number>(2222)
 
-    const form = useForm<CreateNodeCommand.Request>({
+    const form = useForm<CreateNodeRequest>({
         name: 'create-node-form',
         mode: 'uncontrolled',
-        validate: zodResolver(CreateNodeCommand.RequestSchema)
+        validate: zodResolver(createNodeRequestSchema)
     })
 
     const handleClose = () => {
@@ -64,11 +69,14 @@ export const CreateNodeModalWidget = () => {
 
     const handleCreateNode = () => {
         const values = form.getValues()
+        const schema = values.apiSchema === 'tls' ? 'tls' : 'mtls'
         createNode({
             variables: {
                 ...values,
                 name: values.name.trim(),
                 address: values.address.trim(),
+                apiSchema: schema,
+                apiPath: values.apiPath?.trim() || '/',
                 trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes)
             }
         })
@@ -83,7 +91,9 @@ export const CreateNodeModalWidget = () => {
         }
 
         form.setValues({
-            port: 2222
+            port: 2222,
+            apiSchema: 'mtls',
+            apiPath: '/'
         })
     }, [form])
 
@@ -152,8 +162,7 @@ export const CreateNodeModalWidget = () => {
                             <CreateNodeStep1Connection
                                 form={form}
                                 onNext={nextStep}
-                                port={selectedPort}
-                                pubKey={pubKey?.pubKey}
+                                pubKey={pubKey}
                             />
                         </div>
                     )}

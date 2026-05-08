@@ -81,11 +81,11 @@ export const UserIdentificationCard = memo((props: IProps) => {
     const subscriptionLinks = useMemo(
         () =>
             buildSubscriptionLinksFromNodes(
-                subscriptionConnections?.response ?? [],
+                subscriptionConnections ?? [],
                 user.shortUuid,
                 user.subscriptionUrl
             ),
-        [subscriptionConnections?.response, user.shortUuid, user.subscriptionUrl]
+        [subscriptionConnections, user.shortUuid, user.subscriptionUrl]
     )
 
     const getExpirationStyle = () => {
@@ -277,9 +277,13 @@ export const UserIdentificationCard = memo((props: IProps) => {
                                             {t('view-user-modal.widget.subscription-url')}
                                         </Text>
                                         <Text c="dimmed" size="sm">
-                                            {t('view-user-modal.widget.subscription-url-description-line-1')}
+                                            {t(
+                                                'view-user-modal.widget.subscription-url-description-line-1'
+                                            )}
                                             <br />
-                                            {t('view-user-modal.widget.subscription-url-description-line-2')}
+                                            {t(
+                                                'view-user-modal.widget.subscription-url-description-line-2'
+                                            )}
                                         </Text>
                                     </Stack>
                                 </HoverCard.Dropdown>

@@ -2,11 +2,50 @@ package subscription
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+func TestGetSubscriptionRefillDateAt(t *testing.T) {
+	loc := time.FixedZone("test", 7*60*60)
+	now := time.Date(2026, 5, 10, 13, 0, 0, 0, loc) // Sunday.
+
+	cases := []struct {
+		strategy string
+		want     time.Time
+	}{
+		{
+			strategy: "DAY",
+			want:     time.Date(2026, 5, 11, 0, 0, 0, 0, loc),
+		},
+		{
+			strategy: "WEEK",
+			want:     time.Date(2026, 5, 11, 0, 0, 0, 0, loc),
+		},
+		{
+			strategy: "MONTH",
+			want:     time.Date(2026, 6, 1, 0, 0, 0, 0, loc),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.strategy, func(t *testing.T) {
+			got := getSubscriptionRefillDateAt(tc.strategy, now)
+			want := fmt.Sprintf("%d", tc.want.Unix())
+			if got != want {
+				t.Fatalf("got %s, want %s", got, want)
+			}
+		})
+	}
+
+	if got := getSubscriptionRefillDateAt("NO_RESET", now); got != "" {
+		t.Fatalf("NO_RESET got %q, want empty", got)
+	}
+}
 
 func TestGenerateYAMLConfigPreservesTemplateOrderAndSelectorNodePlacement(t *testing.T) {
 	template := []byte(`allow-lan: true

@@ -1,4 +1,4 @@
-import { GetOneNodeCommand, GetPubKeyCommand, UpdateNodeCommand } from '@exodus/backend-contract'
+import { GetOneNodeCommand } from '@exodus/backend-contract'
 import { Button, CopyButton, em, Group, Menu, px, Stack } from '@mantine/core'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'
 import { UseFormReturnType } from '@mantine/form'
@@ -16,6 +16,7 @@ import { ResetNodeTrafficFeature } from '@features/ui/dashboard/nodes/reset-node
 import { ModalAccordionWidget } from '@widgets/dashboard/nodes/modal-accordeon-widget'
 import { DeleteNodeFeature } from '@features/ui/dashboard/nodes/delete-node'
 import { ModalFooter } from '@shared/ui/modal-footer'
+import { NodeKeygenResponse, UpdateNodeRequest } from '@shared/api/hooks'
 
 import { NodeTrackingAndBillingCard } from './node-tracking-and-billing.card'
 import { NodeConfigProfilesCard } from './node-config-profiles.card'
@@ -43,7 +44,7 @@ const cardVariants = {
     }
 }
 
-interface IProps<T extends UpdateNodeCommand.Request> {
+interface IProps<T extends UpdateNodeRequest> {
     advancedOpened: boolean
     form: UseFormReturnType<T>
     handleClose: () => void
@@ -51,11 +52,11 @@ interface IProps<T extends UpdateNodeCommand.Request> {
     isDataSubmitting: boolean
     node: GetOneNodeCommand.Response['response']
     nodeDetailsCard?: ReactNode
-    pubKey: GetPubKeyCommand.Response['response'] | undefined
+    pubKey: NodeKeygenResponse | undefined
     setAdvancedOpened: (value: boolean) => void
 }
 
-export const BaseNodeForm = <T extends UpdateNodeCommand.Request>(props: IProps<T>) => {
+export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
     const {
         form,
         node,

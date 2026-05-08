@@ -1047,6 +1047,9 @@ func validateCreateRequest(req createNodeRequest) error {
 	if req.APISchema != nil && strings.TrimSpace(*req.APISchema) == "" {
 		return fmt.Errorf("apiSchema cannot be empty")
 	}
+	if req.APISchema != nil && !isAllowedNodeAPISchema(*req.APISchema) {
+		return fmt.Errorf("apiSchema must be one of: mtls, tls")
+	}
 	if req.TrafficLimitBytes != nil && *req.TrafficLimitBytes < 0 {
 		return fmt.Errorf("trafficLimitBytes must be greater than or equal to 0")
 	}
@@ -1092,6 +1095,9 @@ func validateUpdateRequest(req updateNodeRequest) error {
 	}
 	if req.APISchema != nil && strings.TrimSpace(*req.APISchema) == "" {
 		return fmt.Errorf("apiSchema cannot be empty")
+	}
+	if req.APISchema != nil && !isAllowedNodeAPISchema(*req.APISchema) {
+		return fmt.Errorf("apiSchema must be one of: mtls, tls")
 	}
 	if req.TrafficLimitBytes != nil && *req.TrafficLimitBytes < 0 {
 		return fmt.Errorf("trafficLimitBytes must be greater than or equal to 0")
@@ -1230,8 +1236,8 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.Name = record.Name
 		item.Address = record.Address
 		item.Port = record.Port
-		item.APISchema = record.APISchema
-		item.APIPath = record.APIPath
+		item.APISchema = normalizeAPISchema(&record.APISchema)
+		item.APIPath = normalizeAPIPath(&record.APIPath)
 		item.IsConnected = record.IsConnected
 		item.IsDisabled = record.IsDisabled
 		item.IsConnecting = record.IsConnecting
@@ -1641,20 +1647,37 @@ func toNanoMultiplier(value float64) int64 {
 
 func normalizeAPISchema(value *string) string {
 	if value == nil {
-		return "grpcs"
+		return "mtls"
 	}
-	normalized := strings.TrimSpace(*value)
-	if normalized == "" {
-		return "grpcs"
+	normalized := strings.ToLower(strings.TrimSpace(*value))
+	switch normalized {
+	case "tls":
+		return "tls"
+	case "mtls", "grpc", "grpcs", "https", "":
+		return "mtls"
+	default:
+		return "mtls"
 	}
-	return normalized
 }
 
 func normalizeAPIPath(value *string) string {
 	if value == nil {
-		return ""
+		return "/"
 	}
-	return strings.TrimSpace(*value)
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" || trimmed == "/" {
+		return "/"
+	}
+	return "/" + strings.Trim(trimmed, "/")
+}
+
+func isAllowedNodeAPISchema(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "mtls", "tls", "grpc", "grpcs", "https":
+		return true
+	default:
+		return false
+	}
 }
 
 func fromNanoMultiplier(value int64) float64 {

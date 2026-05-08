@@ -17,6 +17,7 @@ type DBNode struct {
 	Port                    int
 	APISchema               string
 	APIPath                 string
+	GRPCAuthToken           string
 	IsDisabled              bool
 	ConsumptionMultiplier   int64
 	IsTrafficTrackingActive bool

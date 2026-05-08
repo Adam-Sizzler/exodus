@@ -1,4 +1,3 @@
-import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect, useState } from 'react'
 import { useForm } from '@mantine/form'
@@ -7,6 +6,8 @@ import { motion } from 'motion/react'
 import {
     configProfilesQueryKeys,
     nodesQueryKeys,
+    UpdateNodeRequest,
+    updateNodeFormSchema,
     useGetNode,
     useGetPubKey,
     useUpdateNode
@@ -28,10 +29,10 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
 
     const [advancedOpened, setAdvancedOpened] = useState(false)
 
-    const form = useForm<UpdateNodeCommand.Request>({
+    const form = useForm<UpdateNodeRequest>({
         name: 'edit-node-form',
         mode: 'uncontrolled',
-        validate: zodResolver(UpdateNodeCommand.RequestSchema.omit({ uuid: true }))
+        validate: zodResolver(updateNodeFormSchema)
     })
 
     const { data: pubKey } = useGetPubKey()
@@ -64,12 +65,16 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
     useEffect(() => {
         if (fetchedNode) {
             setAdvancedOpened(fetchedNode.isTrafficTrackingActive ?? false)
+            const normalizedFetchedSchema = (fetchedNode.apiSchema ?? '').toLowerCase()
+            const apiSchema: 'mtls' | 'tls' = normalizedFetchedSchema === 'tls' ? 'tls' : 'mtls'
             form.initialize({
                 uuid: fetchedNode.uuid,
                 countryCode: fetchedNode.countryCode,
                 name: fetchedNode.name,
                 address: fetchedNode.address,
                 port: fetchedNode.port ?? undefined,
+                apiSchema,
+                apiPath: fetchedNode.apiPath ?? '/',
                 isTrafficTrackingActive: fetchedNode.isTrafficTrackingActive ?? undefined,
                 trafficLimitBytes: bytesToGbUtil(fetchedNode.trafficLimitBytes ?? undefined),
                 trafficResetDay: fetchedNode.trafficResetDay ?? undefined,
@@ -100,6 +105,8 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 ...values,
                 name: values.name?.trim(),
                 address: values.address?.trim(),
+                apiSchema: values.apiSchema === 'tls' ? 'tls' : 'mtls',
+                apiPath: values.apiPath?.trim() || '/',
                 trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes),
                 configProfile: {
                     activeConfigProfileUuid: values.configProfile?.activeConfigProfileUuid ?? '',

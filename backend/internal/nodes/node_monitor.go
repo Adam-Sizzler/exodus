@@ -2,7 +2,9 @@ package users
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -21,8 +23,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+const nodeGRPCTokenHeader = "x-exodus-grpc-token"
 
 // NodeMonitor dynamically manages node monitoring with status tracking.
 type NodeMonitor struct {
@@ -68,32 +73,39 @@ type NodeMetricsSnapshot struct {
 }
 
 type nodeState struct {
-	nodeUUID     string
-	nodeName     string
-	address      string
-	port         int
-	apiSchema    string
-	apiPath      string
-	ctx          context.Context
-	cancel       context.CancelFunc
-	conn         *grpc.ClientConn
-	client       proto.NodeServiceClient
-	stream       proto.NodeService_StreamNodeDataClient
-	isConnected  bool
-	isConnecting bool
-	lastError    string
-	mutex        sync.RWMutex
+	nodeUUID      string
+	nodeName      string
+	address       string
+	port          int
+	apiSchema     string
+	apiPath       string
+	grpcAuthToken string
+	ctx           context.Context
+	cancel        context.CancelFunc
+	conn          *grpc.ClientConn
+	client        proto.NodeServiceClient
+	stream        proto.NodeService_StreamNodeDataClient
+	isConnected   bool
+	isConnecting  bool
+	lastError     string
+	mutex         sync.RWMutex
 }
 
-func pathPrefixUnaryInterceptor(prefix string) grpc.UnaryClientInterceptor {
+func pathPrefixUnaryInterceptor(prefix, authToken string) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if token := strings.TrimSpace(authToken); token != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, nodeGRPCTokenHeader, token)
+		}
 		newMethod := prefix + method
 		return invoker(ctx, newMethod, req, reply, cc, opts...)
 	}
 }
 
-func pathPrefixStreamInterceptor(prefix string) grpc.StreamClientInterceptor {
+func pathPrefixStreamInterceptor(prefix, authToken string) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		if token := strings.TrimSpace(authToken); token != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, nodeGRPCTokenHeader, token)
+		}
 		newMethod := prefix + method
 		return streamer(ctx, desc, cc, newMethod, opts...)
 	}
@@ -226,7 +238,42 @@ func (nm *NodeMonitor) syncNodes() {
 
 // loadActiveNodes loads enabled nodes from database.
 func (nm *NodeMonitor) loadActiveNodes() ([]db.DBNode, error) {
-	return db.LoadNodesFromDB(nm.manager, nm.cfg)
+	nodes, err := db.LoadNodesFromDB(nm.manager, nm.cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	grpcToken, err := nm.loadControlPlaneGRPCToken()
+	if err != nil {
+		return nil, err
+	}
+	for i := range nodes {
+		nodes[i].APISchema = normalizeNodeSchema(nodes[i].APISchema)
+		nodes[i].APIPath = normalizeNodePath(nodes[i].APIPath)
+		if nodes[i].APISchema == "tls" {
+			nodes[i].GRPCAuthToken = grpcToken
+		}
+	}
+	return nodes, nil
+}
+
+func (nm *NodeMonitor) loadControlPlaneGRPCToken() (string, error) {
+	var token sql.NullString
+	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRow(`
+			SELECT grpc_auth_token
+			FROM keygen
+			ORDER BY created_at ASC
+			LIMIT 1
+		`).Scan(&token)
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("query keygen grpc_auth_token: %w", err)
+	}
+	return strings.TrimSpace(token.String), nil
 }
 
 // startNode starts monitoring a single node.
@@ -234,14 +281,15 @@ func (nm *NodeMonitor) startNode(dbNode db.DBNode) {
 	ctx, cancel := context.WithCancel(nm.globalCtx)
 
 	state := &nodeState{
-		nodeUUID:  dbNode.UUID,
-		nodeName:  dbNode.Name,
-		address:   dbNode.Address,
-		port:      dbNode.Port,
-		apiSchema: dbNode.APISchema,
-		apiPath:   dbNode.APIPath,
-		ctx:       ctx,
-		cancel:    cancel,
+		nodeUUID:      dbNode.UUID,
+		nodeName:      dbNode.Name,
+		address:       dbNode.Address,
+		port:          dbNode.Port,
+		apiSchema:     dbNode.APISchema,
+		apiPath:       dbNode.APIPath,
+		grpcAuthToken: dbNode.GRPCAuthToken,
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 
 	nm.nodes[dbNode.Name] = state
@@ -310,8 +358,25 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		nm.cfg.Logger.Warn("Node address points to panel container loopback; use service name or host IP", "node", state.nodeName, "address", state.address)
 	}
 
-	apiSchema := strings.ToLower(strings.TrimSpace(state.apiSchema))
-	if apiSchema == "https" || apiSchema == "grpcs" || apiSchema == "tls" {
+	apiSchema := normalizeNodeSchema(state.apiSchema)
+	switch apiSchema {
+	case "tls":
+		if strings.TrimSpace(state.grpcAuthToken) == "" {
+			nm.cfg.Logger.Warn("Failed to connect to node: missing global gRPC token", "node", state.nodeName)
+			nm.updateConnectionStatus(state.nodeName, false, false, "Missing gRPC token in keygen")
+			state.mutex.Lock()
+			state.isConnecting = false
+			state.mutex.Unlock()
+			return
+		}
+		tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
+		if nm.cfg != nil && nm.cfg.Panel.AllowInsecureHTTP {
+			tlsCfg.InsecureSkipVerify = true
+			nm.cfg.Logger.Warn("Node TLS verification is disabled by EXODUS_ALLOW_INSECURE_HTTP", "node", state.nodeName)
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
+		nm.cfg.Logger.Debug("Using TLS + gRPC token for node gRPC", "node", state.nodeName, "address", state.address)
+	case "mtls":
 		tlsCfg, tlsErr := nm.loadNodeMTLSConfig(state.ctx)
 		if tlsErr != nil {
 			nm.cfg.Logger.Warn("Failed to build mTLS config for node", "node", state.nodeName, "error", tlsErr)
@@ -323,15 +388,15 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		}
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
 		nm.cfg.Logger.Debug("Using mTLS for node gRPC", "node", state.nodeName, "address", state.address)
-	} else {
+	default:
 		nm.cfg.Logger.Warn("Node gRPC connection is insecure", "node", state.nodeName, "schema", apiSchema)
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	if state.apiPath != "" {
-		cleanPath := "/" + strings.Trim(state.apiPath, "/")
-		opts = append(opts, grpc.WithUnaryInterceptor(pathPrefixUnaryInterceptor(cleanPath)))
-		opts = append(opts, grpc.WithStreamInterceptor(pathPrefixStreamInterceptor(cleanPath)))
+	cleanPath := normalizeNodePath(state.apiPath)
+	opts = append(opts, grpc.WithUnaryInterceptor(pathPrefixUnaryInterceptor(cleanPath, state.grpcAuthToken)))
+	opts = append(opts, grpc.WithStreamInterceptor(pathPrefixStreamInterceptor(cleanPath, state.grpcAuthToken)))
+	if cleanPath != "" {
 		nm.cfg.Logger.Debug("Using gRPC path prefix", "node", state.nodeName, "prefix", cleanPath)
 	}
 
@@ -930,16 +995,24 @@ func (nm *NodeMonitor) RequestSRSDeploy() {
 	}
 }
 
-func normalizeSchema(value string) string {
-	return strings.ToLower(strings.TrimSpace(value))
+func normalizeNodeSchema(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	switch normalized {
+	case "tls":
+		return "tls"
+	case "mtls", "grpc", "grpcs", "https", "":
+		return "mtls"
+	default:
+		return "mtls"
+	}
 }
 
-func normalizePath(value string) string {
+func normalizeNodePath(value string) string {
 	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
+	if trimmed == "" || trimmed == "/" {
 		return ""
 	}
-	return strings.Trim(trimmed, "/")
+	return "/" + strings.Trim(trimmed, "/")
 }
 
 func nodeConfigChanged(state *nodeState, desired db.DBNode) bool {
@@ -952,10 +1025,13 @@ func nodeConfigChanged(state *nodeState, desired db.DBNode) bool {
 	if state.port != desired.Port {
 		return true
 	}
-	if normalizeSchema(state.apiSchema) != normalizeSchema(desired.APISchema) {
+	if normalizeNodeSchema(state.apiSchema) != normalizeNodeSchema(desired.APISchema) {
 		return true
 	}
-	if normalizePath(state.apiPath) != normalizePath(desired.APIPath) {
+	if normalizeNodePath(state.apiPath) != normalizeNodePath(desired.APIPath) {
+		return true
+	}
+	if strings.TrimSpace(state.grpcAuthToken) != strings.TrimSpace(desired.GRPCAuthToken) {
 		return true
 	}
 	return false

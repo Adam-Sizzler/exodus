@@ -1,29 +1,57 @@
-import { CreateNodeCommand, GetPubKeyCommand, UpdateNodeCommand } from '@exodus/backend-contract'
-import { TbCertificate, TbMapPin, TbUserCheck, TbWorld } from 'react-icons/tb'
+import {
+    TbCertificate,
+    TbMapPin,
+    TbPlugConnected,
+    TbRoute2,
+    TbUserCheck,
+    TbWorld
+} from 'react-icons/tb'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { Group, NumberInput, Select, Stack, TextInput } from '@mantine/core'
+import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { HiOutlineServer } from 'react-icons/hi'
 import { useTranslation } from 'node_modules/react-i18next'
 
+import { NodeKeygenResponse } from '@shared/api/hooks'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
 import { COUNTRIES } from './constants'
 
-interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {
+interface NodeVitalsForm {
+    name?: string
+    address?: string
+    port?: number
+    apiSchema?: 'mtls' | 'tls'
+    apiPath?: string
+    countryCode?: string
+}
+
+interface IProps<T extends NodeVitalsForm> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
-    pubKey: GetPubKeyCommand.Response['response'] | undefined
+    pubKey: NodeKeygenResponse | undefined
 }
 
-export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeCommand.Request>(
-    props: IProps<T>
-) => {
+export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
     const { t } = useTranslation()
     const { cardVariants, form, motionWrapper, pubKey } = props
+    const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
+    const apiSchemaInputProps = form.getInputProps('apiSchema')
+    const credentialLabel =
+        apiSchema === 'tls'
+            ? t('base-node-form.grpc-token-node-grpc-token', {
+                  defaultValue: 'gRPC Token (NODE_GRPC_TOKEN)'
+              })
+            : t('base-node-form.secret-key-secret-key', {
+                  defaultValue: 'Secret Key (SECRET_KEY)'
+              })
+    const credentialValue =
+        apiSchema === 'tls'
+            ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
+            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
 
     const MotionWrapper = motionWrapper
 
@@ -65,7 +93,7 @@ export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeC
                             }}
                         />
 
-                        <Group gap="xs" grow justify="space-between" w="100%">
+                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
                             <TextInput
                                 key={form.key('address')}
                                 label={t('base-node-form.address')}
@@ -74,8 +102,7 @@ export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeC
                                 placeholder={t('base-node-form.e-g-example-com')}
                                 required
                                 styles={{
-                                    label: { fontWeight: 500 },
-                                    root: { flex: '1 1 70%' }
+                                    label: { fontWeight: 500 }
                                 }}
                             />
 
@@ -92,17 +119,58 @@ export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeC
                                 placeholder="2222"
                                 required
                                 styles={{
-                                    label: { fontWeight: 500 },
-                                    root: { flex: '1 1 25%' }
+                                    label: { fontWeight: 500 }
                                 }}
                             />
-                        </Group>
+                        </SimpleGrid>
+
+                        <Stack gap="xs">
+                            <Select
+                                key={form.key('apiSchema')}
+                                data={[
+                                    {
+                                        label: t('base-node-form.api-schema-mtls'),
+                                        value: 'mtls'
+                                    },
+                                    {
+                                        label: t('base-node-form.api-schema-tls-token'),
+                                        value: 'tls'
+                                    }
+                                ]}
+                                description={t('base-node-form.api-schema-description')}
+                                label={t('base-node-form.api-schema')}
+                                leftSection={<TbPlugConnected size={16} />}
+                                required
+                                size="sm"
+                                styles={{
+                                    label: { fontWeight: 500 }
+                                }}
+                                {...apiSchemaInputProps}
+                                onChange={(value) => {
+                                    apiSchemaInputProps.onChange(value)
+                                }}
+                            />
+
+                            <TextInput
+                                key={form.key('apiPath')}
+                                description={t('base-node-form.api-path-description')}
+                                label={t('base-node-form.api-path')}
+                                leftSection={<TbRoute2 size={16} />}
+                                placeholder={t('base-node-form.api-path-placeholder')}
+                                required
+                                size="sm"
+                                styles={{
+                                    label: { fontWeight: 500 }
+                                }}
+                                {...form.getInputProps('apiPath')}
+                            />
+                        </Stack>
 
                         <CopyableFieldShared
-                            label="Secret Key (SECRET_KEY)"
+                            label={credentialLabel}
                             leftSection={<TbCertificate size={16} />}
                             size="sm"
-                            value={`${pubKey?.pubKey.trimEnd() ?? 'Error loading...'}`}
+                            value={credentialValue}
                         />
                     </Stack>
                 </SectionCard.Section>

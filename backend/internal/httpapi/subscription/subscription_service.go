@@ -813,19 +813,26 @@ func getSubscriptionUserInfo(user SubscriptionUser) map[string]int64 {
 }
 
 func getSubscriptionRefillDate(strategy string) string {
-	now := time.Now()
+	return getSubscriptionRefillDateAt(strategy, time.Now())
+}
+
+func getSubscriptionRefillDateAt(strategy string, now time.Time) string {
+	now = now.Local()
 	switch strings.ToUpper(strategy) {
 	case "DAY":
 		now = now.AddDate(0, 0, 1)
 		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		return fmt.Sprintf("%d", now.Unix())
 	case "WEEK":
-		offset := 8 - int(now.Weekday())
+		offset := (int(time.Monday) - int(now.Weekday()) + 7) % 7
+		if offset == 0 {
+			offset = 7
+		}
 		now = now.AddDate(0, 0, offset)
-		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 5, 0, 0, now.Location())
+		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		return fmt.Sprintf("%d", now.Unix())
 	case "MONTH":
-		now = time.Date(now.Year(), now.Month(), 1, 0, 10, 0, 0, now.Location())
+		now = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		now = now.AddDate(0, 1, 0)
 		return fmt.Sprintf("%d", now.Unix())
 	default:

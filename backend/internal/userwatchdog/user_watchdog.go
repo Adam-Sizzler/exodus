@@ -88,9 +88,13 @@ func handleStatusUpdateResult(cfg *config.BackendConfig, statusName string, resu
 
 func runScheduledTrafficReset(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, now time.Time) {
 	for _, strategy := range scheduledResetStrategies(now) {
-		result, err := ResetTrafficByStrategy(ctx, manager, strategy)
+		result, err := ResetTrafficByStrategyAt(ctx, manager, strategy, now)
 		if err != nil {
 			cfg.Logger.Warn("Scheduled user traffic reset failed", "strategy", strategy, "error", err)
+			continue
+		}
+		if result.Users == 0 {
+			cfg.Logger.Debug("Scheduled user traffic reset found no users", "strategy", strategy)
 			continue
 		}
 		cfg.Logger.Info("Scheduled user traffic reset completed", "strategy", strategy, "users", result.Users, "node_targets", len(result.NodeUUIDs))
@@ -101,20 +105,8 @@ func runScheduledTrafficReset(ctx context.Context, manager *dbmanager.DatabaseMa
 }
 
 func scheduledResetStrategies(now time.Time) []string {
-	local := now.Local()
-	strategies := make([]string, 0, 3)
-
-	if local.Hour() == 0 && local.Minute() == 3 {
-		strategies = append(strategies, "DAY")
-	}
-	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 8 {
-		strategies = append(strategies, "WEEK")
-	}
-	if local.Day() == 1 && local.Hour() == 0 && local.Minute() == 10 {
-		strategies = append(strategies, "MONTH")
-	}
-
-	return strategies
+	_ = now
+	return []string{"DAY", "WEEK", "MONTH"}
 }
 
 func UpdateExpiredUsers(ctx context.Context, manager *dbmanager.DatabaseManager) (StatusUpdateResult, error) {
@@ -171,8 +163,17 @@ func UpdateExceededTrafficUsers(ctx context.Context, manager *dbmanager.Database
 }
 
 func ResetTrafficByStrategy(ctx context.Context, manager *dbmanager.DatabaseManager, strategy string) (StatusUpdateResult, error) {
+	return ResetTrafficByStrategyAt(ctx, manager, strategy, time.Now())
+}
+
+func ResetTrafficByStrategyAt(ctx context.Context, manager *dbmanager.DatabaseManager, strategy string, now time.Time) (StatusUpdateResult, error) {
 	normalizedStrategy := strings.ToUpper(strings.TrimSpace(strategy))
 	result := StatusUpdateResult{NodeUUIDs: []string{}}
+
+	boundary, ok := resetPeriodBoundary(normalizedStrategy, now)
+	if !ok {
+		return result, nil
+	}
 
 	err := manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(ctx, nil)
@@ -180,41 +181,58 @@ func ResetTrafficByStrategy(ctx context.Context, manager *dbmanager.DatabaseMana
 			return err
 		}
 
-		nodeUUIDs, err := queryLimitedUserNodeUUIDsByStrategyTx(ctx, tx, normalizedStrategy)
+		nodeUUIDs, err := queryLimitedUserNodeUUIDsByStrategyTx(ctx, tx, normalizedStrategy, boundary)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
 		}
 
-		updateResult, err := tx.ExecContext(ctx, `
-			UPDATE users
-			SET last_traffic_reset_at = CURRENT_TIMESTAMP,
-			    last_triggered_threshold = 0,
-			    status = CASE WHEN status = 'LIMITED' THEN 'ACTIVE' ELSE status END,
-			    updated_at = CURRENT_TIMESTAMP
-			WHERE traffic_limit_strategy = ?
-		`, normalizedStrategy)
+		err = tx.QueryRowContext(ctx, `
+			WITH affected_users AS (
+				UPDATE users
+				SET last_traffic_reset_at = CURRENT_TIMESTAMP,
+				    last_triggered_threshold = 0,
+				    status = CASE WHEN status = 'LIMITED' THEN 'ACTIVE' ELSE status END,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE traffic_limit_strategy = ?
+				  AND COALESCE(last_traffic_reset_at, created_at) < ?
+				RETURNING t_id
+			),
+			reset_traffic AS (
+				INSERT INTO user_traffic (t_id, used_traffic_bytes, lifetime_used_traffic_bytes)
+				SELECT t_id, 0, 0 FROM affected_users
+				ON CONFLICT (t_id)
+				DO UPDATE SET used_traffic_bytes = 0
+				RETURNING t_id
+			)
+			SELECT COUNT(*)::bigint FROM reset_traffic
+		`, normalizedStrategy, boundary).Scan(&result.Users)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
 		}
-
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE user_traffic
-			SET used_traffic_bytes = 0
-			WHERE t_id IN (SELECT t_id FROM users WHERE traffic_limit_strategy = ?)
-		`, normalizedStrategy); err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-
-		affectedRows, _ := updateResult.RowsAffected()
-		result.Users = affectedRows
 		result.NodeUUIDs = nodeUUIDs
 		return tx.Commit()
 	})
 
 	return result, err
+}
+
+func resetPeriodBoundary(strategy string, now time.Time) (time.Time, bool) {
+	local := now.Local()
+	dayStart := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, local.Location())
+
+	switch strings.ToUpper(strings.TrimSpace(strategy)) {
+	case "DAY":
+		return dayStart, true
+	case "WEEK":
+		daysSinceMonday := (int(local.Weekday()) - int(time.Monday) + 7) % 7
+		return dayStart.AddDate(0, 0, -daysSinceMonday), true
+	case "MONTH":
+		return time.Date(local.Year(), local.Month(), 1, 0, 0, 0, 0, local.Location()), true
+	default:
+		return time.Time{}, false
+	}
 }
 
 func updateUsersAndCollectNodes(ctx context.Context, manager *dbmanager.DatabaseManager, query string) (StatusUpdateResult, error) {
@@ -251,7 +269,7 @@ func updateUsersAndCollectNodes(ctx context.Context, manager *dbmanager.Database
 	return result, err
 }
 
-func queryLimitedUserNodeUUIDsByStrategyTx(ctx context.Context, tx dbmanager.TxExecutor, strategy string) ([]string, error) {
+func queryLimitedUserNodeUUIDsByStrategyTx(ctx context.Context, tx dbmanager.TxExecutor, strategy string, boundary time.Time) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid::text AS node_uuid
 		FROM users u
@@ -260,7 +278,8 @@ func queryLimitedUserNodeUUIDsByStrategyTx(ctx context.Context, tx dbmanager.TxE
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'LIMITED'
 		  AND u.traffic_limit_strategy = ?
-	`, strategy)
+		  AND COALESCE(u.last_traffic_reset_at, u.created_at) < ?
+	`, strategy, boundary)
 	if err != nil {
 		return nil, err
 	}

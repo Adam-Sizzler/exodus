@@ -6,10 +6,33 @@ import {
 } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
+import { z } from 'zod'
 
 import { sToMs } from '@shared/utils/time-utils'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
+
+const nodeResponseSchema = GetOneNodeCommand.ResponseSchema.shape.response.extend({
+    apiSchema: z.string().optional().default('mtls'),
+    apiPath: z.string().optional().default('/')
+})
+
+const getAllNodesResponseSchema = z.object({
+    response: z.array(nodeResponseSchema)
+})
+
+const getOneNodeResponseSchema = z.object({
+    response: nodeResponseSchema
+})
+
+const getPubKeyResponseSchema = z.object({
+    response: z.object({
+        pubKey: z.string(),
+        grpcToken: z.string().optional().default('')
+    })
+})
+
+export type NodeKeygenResponse = z.infer<typeof getPubKeyResponseSchema>['response']
 
 export const nodesQueryKeys = createQueryKeys('nodes', {
     getAllNodes: {
@@ -28,7 +51,7 @@ export const nodesQueryKeys = createQueryKeys('nodes', {
 
 export const useGetNodes = createGetQueryHook({
     endpoint: GetAllNodesCommand.TSQ_url,
-    responseSchema: GetAllNodesCommand.ResponseSchema,
+    responseSchema: getAllNodesResponseSchema,
     getQueryKey: () => nodesQueryKeys.getAllNodes.queryKey,
     rQueryParams: {
         refetchOnMount: true,
@@ -39,7 +62,7 @@ export const useGetNodes = createGetQueryHook({
 
 export const useGetNode = createGetQueryHook({
     endpoint: GetOneNodeCommand.TSQ_url,
-    responseSchema: GetOneNodeCommand.ResponseSchema,
+    responseSchema: getOneNodeResponseSchema,
     routeParamsSchema: GetOneNodeCommand.RequestSchema,
     getQueryKey: ({ route }) => nodesQueryKeys.getNode(route!).queryKey,
     rQueryParams: {
@@ -51,7 +74,7 @@ export const useGetNode = createGetQueryHook({
 })
 export const useGetPubKey = createGetQueryHook({
     endpoint: GetPubKeyCommand.TSQ_url,
-    responseSchema: GetPubKeyCommand.ResponseSchema,
+    responseSchema: getPubKeyResponseSchema,
     getQueryKey: () => nodesQueryKeys.getPubKey.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,

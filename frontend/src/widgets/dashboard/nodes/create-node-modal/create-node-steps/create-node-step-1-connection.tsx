@@ -6,43 +6,59 @@ import {
     Group,
     NumberInput,
     Select,
+    SimpleGrid,
     Stack,
     Text,
     TextInput
 } from '@mantine/core'
-import { TbCertificate, TbId, TbMapPin, TbWorld } from 'react-icons/tb'
-import { CreateNodeCommand } from '@exodus/backend-contract'
+import { TbCertificate, TbId, TbMapPin, TbPlugConnected, TbRoute2, TbWorld } from 'react-icons/tb'
 import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'node_modules/react-i18next'
 import { PiArrowRight } from 'react-icons/pi'
 
+import { CreateNodeRequest, NodeKeygenResponse } from '@shared/api/hooks'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { COUNTRIES } from '@shared/ui/forms/nodes/base-node-form/constants'
 
-import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
-
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    form: UseFormReturnType<CreateNodeCommand.Request, any>
+    form: UseFormReturnType<CreateNodeRequest, any>
     onNext: () => void
-    port: number
-    pubKey: string | undefined
+    pubKey: NodeKeygenResponse | undefined
 }
 
-export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps) => {
+export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
     const { t } = useTranslation()
+    const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
+    const apiSchemaInputProps = form.getInputProps('apiSchema')
+    const credentialLabel =
+        apiSchema === 'tls'
+            ? t('base-node-form.grpc-token-node-grpc-token', {
+                  defaultValue: 'gRPC Token (NODE_GRPC_TOKEN)'
+              })
+            : t('base-node-form.secret-key-secret-key', {
+                  defaultValue: 'Secret Key (SECRET_KEY)'
+              })
+    const credentialValue =
+        apiSchema === 'tls'
+            ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
+            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
 
     const handleNext = async () => {
         const nameErrors = form.validateField('name')
         const countryCodeErrors = form.validateField('countryCode')
         const addressErrors = form.validateField('address')
         const portErrors = form.validateField('port')
+        const apiSchemaErrors = form.validateField('apiSchema')
+        const apiPathErrors = form.validateField('apiPath')
 
         if (
             nameErrors.hasError ||
             countryCodeErrors.hasError ||
             addressErrors.hasError ||
-            portErrors.hasError
+            portErrors.hasError ||
+            apiSchemaErrors.hasError ||
+            apiPathErrors.hasError
         ) {
             return
         }
@@ -79,10 +95,10 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                 <Divider />
                 <Stack gap="xs">
                     <CopyableFieldShared
-                        label="Secret Key (SECRET_KEY)"
+                        label={credentialLabel}
                         leftSection={<TbCertificate size={16} />}
                         size="sm"
-                        value={`${pubKey?.trimEnd()}`}
+                        value={credentialValue}
                     />
 
                     <TextInput
@@ -112,7 +128,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                         }}
                     />
 
-                    <Group align="flex-start" gap="xs" w="100%">
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
                         <TextInput
                             key={form.key('address')}
                             label={t('create-node-step-1-connection.domain-or-ip')}
@@ -124,7 +140,6 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                             styles={{
                                 label: { fontWeight: 500 }
                             }}
-                            w="70%"
                         />
 
                         <NumberInput
@@ -143,25 +158,62 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                             styles={{
                                 label: { fontWeight: 500 }
                             }}
-                            w="25%"
                         />
-                    </Group>
+                    </SimpleGrid>
+
+                    <Stack gap="xs">
+                        <Select
+                            key={form.key('apiSchema')}
+                            data={[
+                                {
+                                    label: t('base-node-form.api-schema-mtls'),
+                                    value: 'mtls'
+                                },
+                                {
+                                    label: t('base-node-form.api-schema-tls-token'),
+                                    value: 'tls'
+                                }
+                            ]}
+                            description={t('base-node-form.api-schema-description')}
+                            label={t('base-node-form.api-schema')}
+                            leftSection={<TbPlugConnected size={16} />}
+                            required
+                            size="sm"
+                            styles={{
+                                label: { fontWeight: 500 }
+                            }}
+                            {...apiSchemaInputProps}
+                            onChange={(value) => {
+                                apiSchemaInputProps.onChange(value)
+                            }}
+                        />
+
+                        <TextInput
+                            key={form.key('apiPath')}
+                            description={t('base-node-form.api-path-description')}
+                            label={t('base-node-form.api-path')}
+                            leftSection={<TbRoute2 size={16} />}
+                            placeholder={t('base-node-form.api-path-placeholder')}
+                            required
+                            size="sm"
+                            styles={{
+                                label: { fontWeight: 500 }
+                            }}
+                            {...form.getInputProps('apiPath')}
+                        />
+                    </Stack>
                 </Stack>
 
-                <Stack gap="xs" mt="auto">
-                    <CopyDockerComposeWidget port={port} />
-
-                    <Group justify="flex-end" mt="auto">
-                        <Button
-                            color="teal"
-                            rightSection={<PiArrowRight size={18} />}
-                            size="md"
-                            type="submit"
-                        >
-                            {t('create-node-modal.widget.next')}
-                        </Button>
-                    </Group>
-                </Stack>
+                <Group justify="flex-end" mt="auto">
+                    <Button
+                        color="teal"
+                        rightSection={<PiArrowRight size={18} />}
+                        size="md"
+                        type="submit"
+                    >
+                        {t('create-node-modal.widget.next')}
+                    </Button>
+                </Group>
             </Stack>
         </form>
     )

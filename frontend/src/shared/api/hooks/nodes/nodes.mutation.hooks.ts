@@ -12,12 +12,28 @@ import {
     UpdateNodeCommand
 } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
+import { z } from 'zod'
 
 import { createMutationHook } from '../../tsq-helpers'
 
+const nodeConnectionSchema = {
+    apiSchema: z.enum(['mtls', 'tls']).default('mtls'),
+    apiPath: z.string().trim().min(1).default('/')
+}
+
+export const createNodeRequestSchema = CreateNodeCommand.RequestSchema.extend(nodeConnectionSchema)
+export type CreateNodeRequest = z.infer<typeof createNodeRequestSchema>
+
+export const updateNodeRequestSchema = UpdateNodeCommand.RequestSchema.extend({
+    apiSchema: nodeConnectionSchema.apiSchema.optional(),
+    apiPath: nodeConnectionSchema.apiPath.optional()
+})
+export const updateNodeFormSchema = updateNodeRequestSchema.omit({ uuid: true })
+export type UpdateNodeRequest = z.infer<typeof updateNodeRequestSchema>
+
 export const useCreateNode = createMutationHook({
     endpoint: CreateNodeCommand.TSQ_url,
-    bodySchema: CreateNodeCommand.RequestSchema,
+    bodySchema: createNodeRequestSchema,
     responseSchema: CreateNodeCommand.ResponseSchema,
     requestMethod: CreateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -41,7 +57,7 @@ export const useCreateNode = createMutationHook({
 
 export const useUpdateNode = createMutationHook({
     endpoint: UpdateNodeCommand.TSQ_url,
-    bodySchema: UpdateNodeCommand.RequestSchema,
+    bodySchema: updateNodeRequestSchema,
     responseSchema: UpdateNodeCommand.ResponseSchema,
     requestMethod: UpdateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
