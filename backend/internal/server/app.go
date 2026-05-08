@@ -456,7 +456,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Value:    sessionToken,
 		HttpOnly: true,
 		Secure:   true,
-		Path:     "/",
+		Path:     cookiePathForPrefix(a.cfg.SubPath),
 		MaxAge:   1800,
 	})
 

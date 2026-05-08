@@ -42,8 +42,8 @@ type MTLSConfig struct {
 }
 
 func Load() (Config, error) {
-	pathPrefix := normalizePathPrefix(firstEnv("SUB_GRPC_PATH", "NODE_GRPC_PATH", "GRPC_PATH"))
-	grpcToken := strings.TrimSpace(firstEnv("SUB_GRPC_TOKEN", "NODE_GRPC_TOKEN", "GRPC_TOKEN"))
+	pathPrefix := normalizePathPrefix(os.Getenv("SUB_PATH"))
+	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
 	cfg := Config{
 		AppPort:                         getEnvOrDefault("APP_PORT_SUB", DefaultPort),
@@ -58,7 +58,7 @@ func Load() (Config, error) {
 		AppVersion:                      strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
 	}
 
-	grpcPort, err := parsePort(firstEnv("SUB_GRPC_PORT", "NODE_GRPC_PORT", "NODE_PORT"), DefaultGRPCPort)
+	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultGRPCPort)
 	if err != nil {
 		return cfg, err
 	}
@@ -89,9 +89,6 @@ func Load() (Config, error) {
 	}
 
 	seed := strings.TrimSpace(os.Getenv("SUB_SECRET_KEY"))
-	if seed == "" {
-		seed = strings.TrimSpace(os.Getenv("SECRET_KEY"))
-	}
 	if seed == "" {
 		seed = cfg.GRPCToken
 	}

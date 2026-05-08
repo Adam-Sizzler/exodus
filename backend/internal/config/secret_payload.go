@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var ErrSecretKeyNotSet = errors.New("SECRET_KEY is not set")
+var ErrSecretKeyNotSet = errors.New("SUB_SECRET_KEY is not set")
 
 type NodePayload struct {
 	CaCertPem    string `json:"caCertPem"`
@@ -21,21 +21,18 @@ type NodePayload struct {
 func ParseNodePayloadFromSecret() (NodePayload, error) {
 	secret, ok := lookupEnvTrimmed("SUB_SECRET_KEY")
 	if !ok {
-		secret, ok = lookupEnvTrimmed("SECRET_KEY")
-	}
-	if !ok {
 		return NodePayload{}, ErrSecretKeyNotSet
 	}
 
 	secret = strings.Trim(secret, "\"'")
 	raw, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		return NodePayload{}, fmt.Errorf("SECRET_KEY is not valid base64 payload: %w", err)
+		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY is not valid base64 payload: %w", err)
 	}
 
 	var payload NodePayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return NodePayload{}, fmt.Errorf("SECRET_KEY contains invalid JSON payload: %w", err)
+		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY contains invalid JSON payload: %w", err)
 	}
 
 	payload.CaCertPem = normalizePEM(payload.CaCertPem)
@@ -44,11 +41,11 @@ func ParseNodePayloadFromSecret() (NodePayload, error) {
 	payload.NodeKeyPem = normalizePEM(payload.NodeKeyPem)
 
 	if payload.CaCertPem == "" || payload.NodeCertPem == "" || payload.NodeKeyPem == "" {
-		return NodePayload{}, fmt.Errorf("SECRET_KEY payload is missing mTLS fields")
+		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY payload is missing mTLS fields")
 	}
 
 	if _, err := tls.X509KeyPair([]byte(payload.NodeCertPem), []byte(payload.NodeKeyPem)); err != nil {
-		return NodePayload{}, fmt.Errorf("SECRET_KEY payload has invalid node certificate/key pair: %w", err)
+		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY payload has invalid node certificate/key pair: %w", err)
 	}
 
 	return payload, nil

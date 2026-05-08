@@ -5,11 +5,13 @@ import (
 	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/exodus/subscription-page/backend/internal/config"
 	"github.com/exodus/subscription-page/backend/internal/proto"
@@ -24,7 +26,11 @@ import (
 
 const grpcTokenHeader = "x-exodus-grpc-token"
 
-func Start(cfg config.Config, nodeService proto.NodeServiceServer) error {
+func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeServiceServer) error {
+	if nodeService == nil {
+		return fmt.Errorf("node service is required")
+	}
+
 	expectedToken := strings.TrimSpace(cfg.GRPCToken)
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
 		grpcPathValidationUnaryInterceptor(),
@@ -75,7 +81,10 @@ func Start(cfg config.Config, nodeService proto.NodeServiceServer) error {
 		return fmt.Errorf("listen grpc: %w", err)
 	}
 
-	httpServer := &http.Server{}
+	httpServer := &http.Server{
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
 	if cfg.MTLSConfig != nil {
 		tlsCfg, tlsErr := buildServerTLSConfig(cfg.MTLSConfig)
 		if tlsErr != nil {
@@ -94,7 +103,21 @@ func Start(cfg config.Config, nodeService proto.NodeServiceServer) error {
 	}
 
 	log.Printf("[CONFIG] gRPC listening on %s", addr)
-	return httpServer.Serve(listener)
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("[WARN] gRPC shutdown failed: %v", err)
+		}
+	}()
+
+	err = httpServer.Serve(listener)
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 func buildServerTLSConfig(material *config.MTLSConfig) (*tls.Config, error) {

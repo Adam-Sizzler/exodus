@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/exodus/subscription-page/backend/internal/config"
@@ -21,12 +24,15 @@ var semverPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("[FATAL] %v", err)
 	}
 
-	log.Printf("[CONFIG] SUB_GRPC_PATH: %s", config.DisplayPrefix(cfg.SubPath))
+	log.Printf("[CONFIG] SUB_PATH: %s", config.DisplayPrefix(cfg.SubPath))
 	log.Printf("[CONFIG] grpc target %s:%d", cfg.GRPCAddress, cfg.GRPCPort)
 	log.Printf("[CONFIG] http listening on :%s", cfg.AppPort)
 
@@ -49,7 +55,7 @@ func main() {
 	errCh := make(chan error, 2)
 
 	go func() {
-		if err := grpcserver.Start(cfg, nodeService); err != nil {
+		if err := grpcserver.Start(ctx, cfg, nodeService); err != nil {
 			errCh <- err
 		}
 	}()
@@ -60,9 +66,17 @@ func main() {
 		}
 	}()
 
-	err = <-errCh
-	if err != nil {
+	select {
+	case <-ctx.Done():
+		log.Printf("[INFO] shutdown signal received")
+	case err = <-errCh:
 		log.Fatalf("[FATAL] server failed: %v", err)
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("[WARN] http shutdown failed: %v", err)
 	}
 }
 
