@@ -135,6 +135,28 @@ type userAPI struct {
 	UserTraffic            userTrafficResponse     `json:"userTraffic"`
 }
 
+type userSubscriptionRequestHistoryRecord struct {
+	ID        int64   `json:"id"`
+	UserUUID  string  `json:"userUuid"`
+	RequestIP *string `json:"requestIp"`
+	UserAgent *string `json:"userAgent"`
+	RequestAt string  `json:"requestAt"`
+}
+
+type userAccessibleNode struct {
+	UUID              string                `json:"uuid"`
+	NodeName          string                `json:"nodeName"`
+	CountryCode       string                `json:"countryCode"`
+	ConfigProfileUUID string                `json:"configProfileUuid"`
+	ConfigProfileName string                `json:"configProfileName"`
+	ActiveSquads      []userAccessibleSquad `json:"activeSquads"`
+}
+
+type userAccessibleSquad struct {
+	SquadName      string   `json:"squadName"`
+	ActiveInbounds []string `json:"activeInbounds"`
+}
+
 type userRecord struct {
 	TID                      int64
 	UUID                     string
@@ -270,6 +292,24 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 			default:
 				http.NotFound(w, r)
 			}
+			return
+		}
+
+		if len(parts) == 2 && parts[1] == "subscription-request-history" {
+			if r.Method != http.MethodGet {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleGetUserSubscriptionRequestHistory(w, r, manager, cfg, userUUID)
+			return
+		}
+
+		if len(parts) == 2 && parts[1] == "accessible-nodes" {
+			if r.Method != http.MethodGet {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleGetUserAccessibleNodes(w, r, manager, cfg, userUUID)
 			return
 		}
 
@@ -678,6 +718,155 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		monitor.RequestNodeDeploy(true, deployNodeUUIDs...)
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
+}
+
+func handleGetUserSubscriptionRequestHistory(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+	records := make([]userSubscriptionRequestHistoryRecord, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var exists bool
+		if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE uuid = ?)`, userUUID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return errUserNotFound
+		}
+
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT id, user_uuid, request_ip, user_agent, request_at
+			FROM user_subscription_request_history
+			WHERE user_uuid = ?
+			ORDER BY request_at DESC
+			LIMIT 24
+		`, userUUID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var item userSubscriptionRequestHistoryRecord
+			var requestAt time.Time
+			if scanErr := rows.Scan(&item.ID, &item.UserUUID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
+				return scanErr
+			}
+			item.RequestAt = requestAt.UTC().Format("2006-01-02T15:04:05.000Z")
+			records = append(records, item)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		if errors.Is(err, errUserNotFound) {
+			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user subscription request history", err, cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"records": records,
+			"total":   len(records),
+		},
+	})
+}
+
+func handleGetUserAccessibleNodes(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+	activeNodes := make([]userAccessibleNode, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var userID int64
+		if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, userUUID).Scan(&userID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errUserNotFound
+			}
+			return err
+		}
+
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT
+				n.uuid,
+				n.name,
+				n.country_code,
+				cp.uuid,
+				cp.name,
+				sq.uuid,
+				sq.name,
+				cpi.tag
+			FROM nodes n
+			INNER JOIN config_profiles cp ON cp.uuid = n.active_config_profile_uuid
+			INNER JOIN config_profile_inbounds cpi ON cpi.profile_uuid = cp.uuid
+			INNER JOIN config_profile_inbounds_to_nodes cpin
+				ON cpin.config_profile_inbound_uuid = cpi.uuid
+				AND cpin.node_uuid = n.uuid
+			INNER JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpi.uuid
+			INNER JOIN internal_squads sq ON sq.uuid = isi.internal_squad_uuid
+			INNER JOIN internal_squad_members ism
+				ON ism.internal_squad_uuid = sq.uuid
+				AND ism.user_id = ?
+			ORDER BY n.view_position ASC, sq.view_position ASC, cpi.tag ASC
+		`, userID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		nodeIndexes := make(map[string]int)
+		squadIndexesByNode := make(map[string]map[string]int)
+		for rows.Next() {
+			var nodeUUID, nodeName, countryCode, profileUUID, profileName string
+			var squadUUID, squadName, inboundTag string
+			if scanErr := rows.Scan(&nodeUUID, &nodeName, &countryCode, &profileUUID, &profileName, &squadUUID, &squadName, &inboundTag); scanErr != nil {
+				return scanErr
+			}
+
+			nodeIndex, ok := nodeIndexes[nodeUUID]
+			if !ok {
+				activeNodes = append(activeNodes, userAccessibleNode{
+					UUID:              nodeUUID,
+					NodeName:          nodeName,
+					CountryCode:       countryCode,
+					ConfigProfileUUID: profileUUID,
+					ConfigProfileName: profileName,
+					ActiveSquads:      make([]userAccessibleSquad, 0),
+				})
+				nodeIndex = len(activeNodes) - 1
+				nodeIndexes[nodeUUID] = nodeIndex
+				squadIndexesByNode[nodeUUID] = make(map[string]int)
+			}
+
+			squadIndexes := squadIndexesByNode[nodeUUID]
+			squadIndex, ok := squadIndexes[squadUUID]
+			if !ok {
+				activeNodes[nodeIndex].ActiveSquads = append(activeNodes[nodeIndex].ActiveSquads, userAccessibleSquad{
+					SquadName:      squadName,
+					ActiveInbounds: make([]string, 0),
+				})
+				squadIndex = len(activeNodes[nodeIndex].ActiveSquads) - 1
+				squadIndexes[squadUUID] = squadIndex
+			}
+
+			activeNodes[nodeIndex].ActiveSquads[squadIndex].ActiveInbounds = append(
+				activeNodes[nodeIndex].ActiveSquads[squadIndex].ActiveInbounds,
+				inboundTag,
+			)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		if errors.Is(err, errUserNotFound) {
+			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user accessible nodes", err, cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"userUuid":    userUUID,
+			"activeNodes": activeNodes,
+		},
+	})
 }
 
 func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {

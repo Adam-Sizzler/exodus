@@ -64,6 +64,9 @@ export const UserHwidDevicesDrawerWidget = () => {
                     }).queryKey,
                     data
                 )
+                queryClient.invalidateQueries({
+                    queryKey: QueryKeys['hwid-user-devices']._def
+                })
             }
         }
     })
@@ -77,6 +80,9 @@ export const UserHwidDevicesDrawerWidget = () => {
                     }).queryKey,
                     data
                 )
+                queryClient.invalidateQueries({
+                    queryKey: QueryKeys['hwid-user-devices']._def
+                })
             }
         }
     })

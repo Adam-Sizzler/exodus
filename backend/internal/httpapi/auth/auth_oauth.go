@@ -1,0 +1,725 @@
+package auth
+
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"exodus/internal/config"
+	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/httpapi/middleware"
+	"exodus/internal/httpapi/shared"
+	"exodus/internal/security"
+)
+
+const (
+	oauthStateTTL        = 10 * time.Minute
+	oauthScope           = "openid email profile"
+	customOAuthClaimName = "remnawaveAccess"
+)
+
+var oauthStateCache = struct {
+	sync.Mutex
+	items map[string]oauthStateEntry
+}{items: map[string]oauthStateEntry{}}
+
+type oauthStateEntry struct {
+	State        string
+	CodeVerifier string
+	ExpiresAt    time.Time
+}
+
+type oauthAuthorizeRequest struct {
+	Provider string `json:"provider"`
+}
+
+type oauthCallbackRequest struct {
+	Provider string `json:"provider"`
+	Code     string `json:"code"`
+	State    string `json:"state"`
+}
+
+type telegramCallbackRequest struct {
+	ID        int64   `json:"id"`
+	FirstName string  `json:"first_name"`
+	LastName  *string `json:"last_name,omitempty"`
+	Username  *string `json:"username,omitempty"`
+	PhotoURL  *string `json:"photo_url,omitempty"`
+	AuthDate  int64   `json:"auth_date"`
+	Hash      string  `json:"hash"`
+}
+
+type oauthSettings struct {
+	Github   oauthProviderSettings `json:"github"`
+	PocketID oauthProviderSettings `json:"pocketid"`
+	Yandex   oauthProviderSettings `json:"yandex"`
+	Keycloak oauthProviderSettings `json:"keycloak"`
+	Generic  oauthProviderSettings `json:"generic"`
+}
+
+type oauthProviderSettings struct {
+	Enabled          bool     `json:"enabled"`
+	ClientID         string   `json:"clientId"`
+	ClientSecret     string   `json:"clientSecret"`
+	PlainDomain      string   `json:"plainDomain"`
+	Realm            string   `json:"realm"`
+	FrontendDomain   string   `json:"frontendDomain"`
+	KeycloakDomain   string   `json:"keycloakDomain"`
+	WithPKCE         bool     `json:"withPkce"`
+	AuthorizationURL string   `json:"authorizationUrl"`
+	TokenURL         string   `json:"tokenUrl"`
+	AllowedEmails    []string `json:"allowedEmails"`
+}
+
+type telegramAuthSettings struct {
+	Enabled  bool     `json:"enabled"`
+	BotToken string   `json:"botToken"`
+	AdminIDs []string `json:"adminIds"`
+}
+
+type oauthTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	IDToken     string `json:"id_token"`
+	Error       string `json:"error"`
+	Description string `json:"error_description"`
+}
+
+func OAuth2AuthorizeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		var req oauthAuthorizeRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+		provider := strings.ToLower(strings.TrimSpace(req.Provider))
+		if !isSupportedOAuthProvider(provider) {
+			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
+			return
+		}
+		if !isLoginAllowed(manager) {
+			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
+			return
+		}
+		settings, err := loadOAuthSettings(manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
+			return
+		}
+		providerSettings := getOAuthProviderSettings(settings, provider)
+		if !providerSettings.Enabled {
+			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
+			return
+		}
+
+		state, err := security.GenerateRandomToken(32)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to generate OAuth2 state", err, cfg)
+			return
+		}
+		codeVerifier := ""
+		authURL, err := buildAuthorizationURL(provider, providerSettings, state, &codeVerifier)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "OAuth2 authorize error", err, cfg)
+			return
+		}
+		storeOAuthState(provider, state, codeVerifier)
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{"authorizationUrl": authURL},
+		})
+	}
+}
+
+func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		var req oauthCallbackRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+		provider := strings.ToLower(strings.TrimSpace(req.Provider))
+		if !isSupportedOAuthProvider(provider) {
+			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
+			return
+		}
+		stateEntry, ok := takeOAuthState(provider)
+		if !ok || stateEntry.State != strings.TrimSpace(req.State) {
+			shared.SendError(w, http.StatusForbidden, "OAuth2 state mismatch", nil, cfg)
+			return
+		}
+		if !isLoginAllowed(manager) {
+			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
+			return
+		}
+		settings, err := loadOAuthSettings(manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
+			return
+		}
+		providerSettings := getOAuthProviderSettings(settings, provider)
+		if !providerSettings.Enabled {
+			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
+			return
+		}
+		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
+		if err != nil {
+			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
+			return
+		}
+		if email == "" || (!hasCustomClaim && !isEmailAllowed(email, providerSettings.AllowedEmails)) {
+			shared.SendError(w, http.StatusForbidden, "OAuth2 email is not allowed", nil, cfg)
+			return
+		}
+		token, err := createFirstAdminSession(w, r, manager, cfg)
+		if err != nil {
+			shared.SendError(w, http.StatusForbidden, "failed to create OAuth2 session", err, cfg)
+			return
+		}
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{"accessToken": token},
+		})
+	}
+}
+
+func TelegramCallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		var req telegramCallbackRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+			return
+		}
+		if !isLoginAllowed(manager) {
+			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
+			return
+		}
+		settings, err := loadTelegramAuthSettings(manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to load Telegram auth settings", err, cfg)
+			return
+		}
+		if !settings.Enabled || strings.TrimSpace(settings.BotToken) == "" {
+			shared.SendError(w, http.StatusForbidden, "Telegram authentication is disabled", nil, cfg)
+			return
+		}
+		if !containsString(settings.AdminIDs, strconv.FormatInt(req.ID, 10)) {
+			shared.SendError(w, http.StatusForbidden, "Telegram user is not allowed", nil, cfg)
+			return
+		}
+		if !verifyTelegramCallback(req, settings.BotToken) {
+			shared.SendError(w, http.StatusForbidden, "invalid Telegram callback hash", nil, cfg)
+			return
+		}
+		token, err := createFirstAdminSession(w, r, manager, cfg)
+		if err != nil {
+			shared.SendError(w, http.StatusForbidden, "failed to create Telegram session", err, cfg)
+			return
+		}
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{"accessToken": token},
+		})
+	}
+}
+
+func isLoginAllowed(manager *dbmanager.DatabaseManager) bool {
+	_, _, _, hasAdmin, err := getBootstrapData(manager)
+	return err == nil && hasAdmin
+}
+
+func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
+	var adminUUID string
+	sessionTTLMinutes := 60
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		row := db.QueryRowContext(r.Context(), `
+			SELECT uuid, session_ttl_minutes
+			FROM admin
+			WHERE UPPER(role) = 'ADMIN'
+			ORDER BY created_at ASC
+			LIMIT 1
+		`)
+		var ttl sql.NullInt64
+		if err := row.Scan(&adminUUID, &ttl); err != nil {
+			return err
+		}
+		if ttl.Valid && ttl.Int64 > 0 {
+			sessionTTLMinutes = int(ttl.Int64)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	sessionToken, err := security.GenerateRandomToken(48)
+	if err != nil {
+		return "", err
+	}
+	expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		if _, err := db.ExecContext(r.Context(), `DELETE FROM admin_sessions WHERE admin_uuid = ?`, adminUUID); err != nil {
+			return err
+		}
+		_, err := db.ExecContext(r.Context(), `
+			INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
+			VALUES (?, ?, ?)
+		`, sessionToken, adminUUID, expiresAt)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    sessionToken,
+		Path:     "/",
+		Expires:  time.Unix(expiresAt, 0).UTC(),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   middleware.IsSecureRequest(r, cfg),
+	})
+	return sessionToken, nil
+}
+
+func loadOAuthSettings(manager *dbmanager.DatabaseManager) (oauthSettings, error) {
+	var out oauthSettings
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var raw sql.NullString
+		if err := db.QueryRow(`SELECT oauth2_settings FROM exodus_settings WHERE id = 1 LIMIT 1`).Scan(&raw); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if raw.Valid && strings.TrimSpace(raw.String) != "" {
+			return json.Unmarshal([]byte(raw.String), &out)
+		}
+		return nil
+	})
+	return out, err
+}
+
+func loadTelegramAuthSettings(manager *dbmanager.DatabaseManager) (telegramAuthSettings, error) {
+	var out telegramAuthSettings
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var raw sql.NullString
+		if err := db.QueryRow(`SELECT tg_auth_settings FROM exodus_settings WHERE id = 1 LIMIT 1`).Scan(&raw); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if raw.Valid && strings.TrimSpace(raw.String) != "" {
+			return json.Unmarshal([]byte(raw.String), &out)
+		}
+		return nil
+	})
+	return out, err
+}
+
+func isSupportedOAuthProvider(provider string) bool {
+	switch provider {
+	case "github", "pocketid", "yandex", "keycloak", "generic":
+		return true
+	default:
+		return false
+	}
+}
+
+func getOAuthProviderSettings(settings oauthSettings, provider string) oauthProviderSettings {
+	switch provider {
+	case "github":
+		return settings.Github
+	case "pocketid":
+		return settings.PocketID
+	case "yandex":
+		return settings.Yandex
+	case "keycloak":
+		return settings.Keycloak
+	case "generic":
+		return settings.Generic
+	default:
+		return oauthProviderSettings{}
+	}
+}
+
+func buildAuthorizationURL(provider string, settings oauthProviderSettings, state string, codeVerifier *string) (string, error) {
+	switch provider {
+	case "github":
+		if settings.ClientID == "" || settings.ClientSecret == "" {
+			return "", errors.New("github OAuth2 settings are incomplete")
+		}
+		return makeOAuthURL("https://github.com/login/oauth/authorize", url.Values{
+			"client_id": {settings.ClientID},
+			"state":     {state},
+			"scope":     {"user:email"},
+		})
+	case "yandex":
+		if settings.ClientID == "" || settings.ClientSecret == "" {
+			return "", errors.New("yandex OAuth2 settings are incomplete")
+		}
+		return makeOAuthURL("https://oauth.yandex.ru/authorize", url.Values{
+			"response_type": {"code"},
+			"client_id":     {settings.ClientID},
+			"state":         {state},
+			"scope":         {"login:email"},
+		})
+	case "pocketid":
+		if settings.ClientID == "" || settings.ClientSecret == "" || settings.PlainDomain == "" {
+			return "", errors.New("pocketid OAuth2 settings are incomplete")
+		}
+		return makeOAuthURL("https://"+settings.PlainDomain+"/authorize", url.Values{
+			"response_type": {"code"},
+			"client_id":     {settings.ClientID},
+			"state":         {state},
+			"scope":         {oauthScope},
+		})
+	case "keycloak":
+		if settings.ClientID == "" || settings.ClientSecret == "" || settings.KeycloakDomain == "" || settings.Realm == "" || settings.FrontendDomain == "" {
+			return "", errors.New("keycloak OAuth2 settings are incomplete")
+		}
+		verifier, challenge, err := generatePKCEPair()
+		if err != nil {
+			return "", err
+		}
+		*codeVerifier = verifier
+		return makeOAuthURL(fmt.Sprintf("https://%s/realms/%s/protocol/openid-connect/auth", settings.KeycloakDomain, settings.Realm), url.Values{
+			"response_type":         {"code"},
+			"client_id":             {settings.ClientID},
+			"redirect_uri":          {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"state":                 {state},
+			"scope":                 {oauthScope},
+			"code_challenge_method": {"S256"},
+			"code_challenge":        {challenge},
+		})
+	case "generic":
+		if settings.ClientID == "" || settings.ClientSecret == "" || settings.AuthorizationURL == "" || settings.TokenURL == "" || settings.FrontendDomain == "" {
+			return "", errors.New("generic OAuth2 settings are incomplete")
+		}
+		values := url.Values{
+			"response_type": {"code"},
+			"client_id":     {settings.ClientID},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"state":         {state},
+			"scope":         {oauthScope},
+		}
+		if settings.WithPKCE {
+			verifier, challenge, err := generatePKCEPair()
+			if err != nil {
+				return "", err
+			}
+			*codeVerifier = verifier
+			values.Set("code_challenge_method", "S256")
+			values.Set("code_challenge", challenge)
+		}
+		return makeOAuthURL(settings.AuthorizationURL, values)
+	default:
+		return "", errors.New("unsupported OAuth2 provider")
+	}
+}
+
+func makeOAuthURL(rawURL string, values url.Values) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	for key, vals := range values {
+		if len(vals) > 0 && strings.TrimSpace(vals[0]) != "" {
+			q.Set(key, vals[0])
+		}
+	}
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
+func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProviderSettings, code, codeVerifier string) (string, bool, error) {
+	switch provider {
+	case "github":
+		token, err := requestOAuthToken(ctx, "https://github.com/login/oauth/access_token", url.Values{
+			"grant_type":    {"authorization_code"},
+			"client_id":     {settings.ClientID},
+			"client_secret": {settings.ClientSecret},
+			"code":          {code},
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return fetchGithubPrimaryEmail(ctx, token.AccessToken)
+	case "yandex":
+		token, err := requestOAuthToken(ctx, "https://oauth.yandex.ru/token", url.Values{
+			"grant_type":    {"authorization_code"},
+			"client_id":     {settings.ClientID},
+			"client_secret": {settings.ClientSecret},
+			"code":          {code},
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return fetchYandexEmail(ctx, token.AccessToken)
+	case "pocketid":
+		token, err := requestOAuthToken(ctx, "https://"+settings.PlainDomain+"/api/oidc/token", url.Values{
+			"grant_type":    {"authorization_code"},
+			"client_id":     {settings.ClientID},
+			"client_secret": {settings.ClientSecret},
+			"code":          {code},
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return extractEmailFromIDToken(token.IDToken)
+	case "keycloak":
+		token, err := requestOAuthToken(ctx, fmt.Sprintf("https://%s/realms/%s/protocol/openid-connect/token", settings.KeycloakDomain, settings.Realm), url.Values{
+			"grant_type":    {"authorization_code"},
+			"client_id":     {settings.ClientID},
+			"client_secret": {settings.ClientSecret},
+			"code":          {code},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"code_verifier": {codeVerifier},
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return extractEmailFromIDToken(token.IDToken)
+	case "generic":
+		values := url.Values{
+			"grant_type":    {"authorization_code"},
+			"client_id":     {settings.ClientID},
+			"client_secret": {settings.ClientSecret},
+			"code":          {code},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+		}
+		if settings.WithPKCE {
+			values.Set("code_verifier", codeVerifier)
+		}
+		token, err := requestOAuthToken(ctx, settings.TokenURL, values)
+		if err != nil {
+			return "", false, err
+		}
+		return extractEmailFromIDToken(token.IDToken)
+	default:
+		return "", false, errors.New("unsupported OAuth2 provider")
+	}
+}
+
+func requestOAuthToken(ctx context.Context, endpoint string, values url.Values) (oauthTokenResponse, error) {
+	var out oauthTokenResponse
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(values.Encode()))
+	if err != nil {
+		return out, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return out, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return out, fmt.Errorf("token endpoint returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return out, err
+	}
+	if out.Error != "" {
+		return out, fmt.Errorf("%s: %s", out.Error, out.Description)
+	}
+	return out, nil
+}
+
+func fetchGithubPrimaryEmail(ctx context.Context, accessToken string) (string, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/user/emails", nil)
+	if err != nil {
+		return "", false, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("User-Agent", "Exodus")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		return "", false, fmt.Errorf("github email endpoint returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var emails []struct {
+		Email   string `json:"email"`
+		Primary bool   `json:"primary"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
+		return "", false, err
+	}
+	for _, item := range emails {
+		if item.Primary {
+			return item.Email, false, nil
+		}
+	}
+	return "", false, errors.New("github primary email not found")
+}
+
+func fetchYandexEmail(ctx context.Context, accessToken string) (string, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://login.yandex.ru/info?format=json", nil)
+	if err != nil {
+		return "", false, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("User-Agent", "Exodus")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		return "", false, fmt.Errorf("yandex info endpoint returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var payload struct {
+		DefaultEmail string `json:"default_email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", false, err
+	}
+	if payload.DefaultEmail == "" {
+		return "", false, errors.New("yandex email not found")
+	}
+	return payload.DefaultEmail, false, nil
+}
+
+func extractEmailFromIDToken(idToken string) (string, bool, error) {
+	parts := strings.Split(idToken, ".")
+	if len(parts) < 2 {
+		return "", false, errors.New("invalid id_token")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", false, err
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return "", false, err
+	}
+	email, _ := claims["email"].(string)
+	customClaim, _ := claims[customOAuthClaimName].(bool)
+	if email == "" {
+		return "", customClaim, errors.New("missing email in id_token")
+	}
+	return email, customClaim, nil
+}
+
+func storeOAuthState(provider, state, codeVerifier string) {
+	oauthStateCache.Lock()
+	defer oauthStateCache.Unlock()
+	now := time.Now()
+	for key, item := range oauthStateCache.items {
+		if now.After(item.ExpiresAt) {
+			delete(oauthStateCache.items, key)
+		}
+	}
+	oauthStateCache.items[provider] = oauthStateEntry{
+		State:        state,
+		CodeVerifier: codeVerifier,
+		ExpiresAt:    now.Add(oauthStateTTL),
+	}
+}
+
+func takeOAuthState(provider string) (oauthStateEntry, bool) {
+	oauthStateCache.Lock()
+	defer oauthStateCache.Unlock()
+	item, ok := oauthStateCache.items[provider]
+	delete(oauthStateCache.items, provider)
+	if !ok || time.Now().After(item.ExpiresAt) {
+		return oauthStateEntry{}, false
+	}
+	return item, true
+}
+
+func generatePKCEPair() (string, string, error) {
+	verifier, err := security.GenerateRandomToken(64)
+	if err != nil {
+		return "", "", err
+	}
+	sum := sha256.Sum256([]byte(verifier))
+	return verifier, base64.RawURLEncoding.EncodeToString(sum[:]), nil
+}
+
+func oauthRedirectURI(frontendDomain, provider string) string {
+	return "https://" + strings.TrimRight(frontendDomain, "/") + "/oauth2/callback/" + provider
+}
+
+func isEmailAllowed(email string, allowed []string) bool {
+	email = strings.ToLower(strings.TrimSpace(email))
+	for _, item := range allowed {
+		if strings.ToLower(strings.TrimSpace(item)) == email {
+			return true
+		}
+	}
+	return false
+}
+
+func containsString(items []string, target string) bool {
+	target = strings.TrimSpace(target)
+	for _, item := range items {
+		if strings.TrimSpace(item) == target {
+			return true
+		}
+	}
+	return false
+}
+
+func verifyTelegramCallback(req telegramCallbackRequest, botToken string) bool {
+	if time.Since(time.Unix(req.AuthDate, 0)) > 15*time.Minute {
+		return false
+	}
+	fields := map[string]string{
+		"auth_date":  strconv.FormatInt(req.AuthDate, 10),
+		"first_name": req.FirstName,
+		"id":         strconv.FormatInt(req.ID, 10),
+	}
+	if req.LastName != nil {
+		fields["last_name"] = *req.LastName
+	}
+	if req.Username != nil {
+		fields["username"] = *req.Username
+	}
+	if req.PhotoURL != nil {
+		fields["photo_url"] = *req.PhotoURL
+	}
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		lines = append(lines, key+"="+fields[key])
+	}
+	secret := sha256.Sum256([]byte(botToken))
+	mac := hmac.New(sha256.New, secret[:])
+	_, _ = mac.Write([]byte(strings.Join(lines, "\n")))
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(strings.ToLower(req.Hash)))
+}

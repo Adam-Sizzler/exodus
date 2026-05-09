@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -13,14 +14,15 @@ import (
 )
 
 type BackendConfig struct {
-	Logger   *logger.Logger
-	Log      LogConfig
-	EXODUS   EXODUSConfig
-	Panel    PanelConfig
-	Metrics  MetricsConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	CORS     CORSConfig
+	Logger    *logger.Logger
+	Log       LogConfig
+	EXODUS    EXODUSConfig
+	Panel     PanelConfig
+	Metrics   MetricsConfig
+	Scheduler SchedulerConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	CORS      CORSConfig
 }
 
 type PanelConfig struct {
@@ -41,6 +43,15 @@ type MetricsConfig struct {
 	Port    int
 	User    string
 	Pass    string
+}
+
+type SchedulerConfig struct {
+	ServiceCleanUsageHistory                 bool
+	NotificationsEnabled                     bool
+	BandwidthUsageNotificationsEnabled       bool
+	BandwidthUsageNotificationsThreshold     []int
+	NotConnectedUsersNotificationsEnabled    bool
+	NotConnectedUsersNotificationsAfterHours []int
 }
 
 type LogConfig struct {
@@ -89,6 +100,14 @@ var defaultConfig = BackendConfig{
 		Port:    3001,
 		User:    "",
 		Pass:    "",
+	},
+	Scheduler: SchedulerConfig{
+		ServiceCleanUsageHistory:                 false,
+		NotificationsEnabled:                     false,
+		BandwidthUsageNotificationsEnabled:       false,
+		BandwidthUsageNotificationsThreshold:     nil,
+		NotConnectedUsersNotificationsEnabled:    false,
+		NotConnectedUsersNotificationsAfterHours: nil,
 	},
 	CORS: CORSConfig{
 		AllowedOrigins: []string{},
@@ -213,6 +232,39 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("FRONT_END_DOMAIN"); value != "" {
 		cfg.CORS.AllowedOrigins = splitCSV(value)
 	}
+
+	if value := envFirst("SERVICE_CLEAN_USAGE_HISTORY"); value != "" {
+		cfg.Scheduler.ServiceCleanUsageHistory = parseBoolEnv(value)
+	}
+	telegramNotifications := parseBoolEnv(envFirst("IS_TELEGRAM_NOTIFICATIONS_ENABLED"))
+	webhookNotifications := parseBoolEnv(envFirst("WEBHOOK_ENABLED"))
+	cfg.Scheduler.NotificationsEnabled = telegramNotifications || webhookNotifications
+	if value := envFirst("BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED"); value != "" {
+		cfg.Scheduler.BandwidthUsageNotificationsEnabled = parseBoolEnv(value)
+	}
+	if value := envFirst("BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD"); value != "" {
+		parsed, err := parseIntJSONArray(value)
+		if err != nil {
+			if cfg.Logger != nil {
+				cfg.Logger.Warn("Invalid BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD value, ignoring", "error", err)
+			}
+		} else {
+			cfg.Scheduler.BandwidthUsageNotificationsThreshold = parsed
+		}
+	}
+	if value := envFirst("NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED"); value != "" {
+		cfg.Scheduler.NotConnectedUsersNotificationsEnabled = parseBoolEnv(value)
+	}
+	if value := envFirst("NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS"); value != "" {
+		parsed, err := parseIntJSONArray(value)
+		if err != nil {
+			if cfg.Logger != nil {
+				cfg.Logger.Warn("Invalid NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS value, ignoring", "error", err)
+			}
+		} else {
+			cfg.Scheduler.NotConnectedUsersNotificationsAfterHours = parsed
+		}
+	}
 }
 
 func normalizePanelConfig(cfg *BackendConfig) {
@@ -291,6 +343,27 @@ func splitCSV(input string) []string {
 		}
 	}
 	return result
+}
+
+func parseBoolEnv(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "y", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func parseIntJSONArray(value string) ([]int, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil, nil
+	}
+	var result []int
+	if err := json.Unmarshal([]byte(trimmed), &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func normalizeBasePath(input string) string {

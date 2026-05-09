@@ -16,6 +16,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 	users "exodus/internal/nodes"
 	"exodus/internal/redisqueue"
+	"exodus/internal/scheduler"
 	"exodus/internal/srslists"
 	"exodus/internal/subscriptionnodes"
 	"exodus/internal/userwatchdog"
@@ -75,6 +76,7 @@ func Run() {
 	go subNodeMonitor.Start(ctx, &wg)
 	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	userwatchdog.Start(ctx, &wg, manager, &cfg)
+	scheduler.Start(ctx, &wg, manager, &cfg)
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
 	}

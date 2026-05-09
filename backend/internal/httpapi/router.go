@@ -47,6 +47,9 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/auth/login", auth.AuthLoginCompatHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/logout", auth.AuthLogoutHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/me", auth.AuthMeHandler(manager, cfg))
+	mux.HandleFunc("/api/auth/oauth2/authorize", auth.OAuth2AuthorizeHandler(manager, cfg))
+	mux.HandleFunc("/api/auth/oauth2/callback", auth.OAuth2CallbackHandler(manager, cfg))
+	mux.HandleFunc("/api/auth/oauth2/tg/callback", auth.TelegramCallbackHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/options", passkeys.AuthenticationOptionsHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/verify", passkeys.VerifyAuthenticationHandler(manager, cfg))
 
@@ -127,6 +130,8 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/srs-lists/actions/", srslists.SRSListsActionsHandler(manager, cfg))
 	mux.HandleFunc("/api/srs-lists/bulk/", srslists.SRSListsBulkHandler(manager, cfg))
 
+	mux.HandleFunc("/api/hwid/devices/delete-all", hwiduserdevices.HWIDCompatDeleteAllUserDevicesHandler(manager, cfg))
+	mux.HandleFunc("/api/hwid/devices/delete", hwiduserdevices.HWIDCompatDevicesHandler(manager, cfg))
 	mux.HandleFunc("/api/hwid/devices", hwiduserdevices.HWIDCompatDevicesHandler(manager, cfg))
 	mux.HandleFunc("/api/hwid/devices/", hwiduserdevices.HWIDCompatDevicesHandler(manager, cfg))
 	mux.HandleFunc("/api/hwid/devices/stats", hwiduserdevices.HWIDCompatStatsHandler(manager, cfg))
@@ -165,6 +170,9 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/system/stats/nodes", system.NodesStatsHandler(manager, cfg))
 	mux.HandleFunc("/api/system/nodes/metrics", system.NodesMetricsHandler(manager, cfg))
 	mux.HandleFunc("/api/system/health", system.HealthHandler(cfg))
+	mux.HandleFunc("/api/system/testers/srr-matcher", system.TestSRRMatcherHandler(cfg))
+	mux.HandleFunc("/api/system/tools/happ/encrypt", system.EncryptHappCryptoLinkHandler(cfg))
+	mux.HandleFunc("/api/system/tools/x25519/generate", system.GenerateX25519Handler(cfg))
 
 	mux.HandleFunc("/api/health", health.HealthHandler())
 

@@ -1,0 +1,120 @@
+package scheduler
+
+import (
+	"context"
+	"sync"
+	"time"
+
+	"exodus/internal/config"
+	dbmanager "exodus/internal/db/manager"
+)
+
+type Scheduler struct {
+	manager *dbmanager.DatabaseManager
+	cfg     *config.BackendConfig
+
+	mu                  sync.Mutex
+	lastRuns            map[string]string
+	nodeTrafficNotified map[string]bool
+}
+
+func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	if manager == nil || cfg == nil {
+		return
+	}
+
+	s := &Scheduler{
+		manager:             manager,
+		cfg:                 cfg,
+		lastRuns:            make(map[string]string),
+		nodeTrafficNotified: make(map[string]bool),
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.run(ctx)
+	}()
+}
+
+func (s *Scheduler) run(ctx context.Context) {
+	s.cfg.Logger.Info("Scheduler started")
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.cfg.Logger.Info("Scheduler stopped")
+			return
+		case now := <-ticker.C:
+			s.tick(ctx, now)
+		}
+	}
+}
+
+func (s *Scheduler) tick(ctx context.Context, now time.Time) {
+	local := now.Local()
+
+	if local.Minute() == 0 && s.shouldRun("reviewNodes", local.Format("2006-01-02T15")) {
+		s.runJob(ctx, "reviewNodes", s.reviewNodes)
+	}
+	if local.Hour() == 1 && local.Minute() == 0 && s.shouldRun("resetNodeTraffic", local.Format("2006-01-02")) {
+		s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
+	}
+	if s.shouldRun("expireUserNotifications", local.Format("2006-01-02T15:04")) {
+		s.runJob(ctx, "expireUserNotifications", s.findUsersForExpireNotifications)
+	}
+	if local.Minute()%5 == 0 && s.shouldRun("findUsersForThresholdNotification", local.Format("2006-01-02T15:04")) {
+		s.runJob(ctx, "findUsersForThresholdNotification", s.findUsersForThresholdNotification)
+	}
+	if local.Minute()%10 == 0 && s.shouldRun("findNotConnectedUsersNotification", local.Format("2006-01-02T15:04")) {
+		s.runJob(ctx, "findNotConnectedUsersNotification", s.findNotConnectedUsersNotification)
+	}
+	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 30 && s.shouldRun("cleanOldUsageRecords", local.Format("2006-01-02")) {
+		s.runJob(ctx, "cleanOldUsageRecords", s.cleanOldUsageRecords)
+	}
+	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 45 && s.shouldRun("vacuumTables", local.Format("2006-01-02")) {
+		s.runJob(ctx, "vacuumTables", s.vacuumTables)
+	}
+	if local.Hour() == 17 && local.Minute() == 0 && s.shouldRun("infraBillingNodesNotifications", local.Format("2006-01-02")) {
+		s.runJob(ctx, "infraBillingNodesNotifications", s.infraBillingNodesNotifications)
+	}
+}
+
+func (s *Scheduler) shouldRun(name, slot string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := name + ":" + slot
+	if s.lastRuns[name] == key {
+		return false
+	}
+	s.lastRuns[name] = key
+	return true
+}
+
+func (s *Scheduler) runJob(ctx context.Context, name string, fn func(context.Context) error) {
+	if ctx.Err() != nil {
+		return
+	}
+	start := time.Now()
+	if err := fn(ctx); err != nil {
+		s.cfg.Logger.Warn("Scheduler job failed", "job", name, "error", err, "duration", time.Since(start).String())
+		return
+	}
+	s.cfg.Logger.Debug("Scheduler job completed", "job", name, "duration", time.Since(start).String())
+}
+
+func startOfDay(t time.Time) time.Time {
+	local := t.Local()
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, local.Location())
+}
+
+func endOfDayExclusive(t time.Time) time.Time {
+	return startOfDay(t).AddDate(0, 0, 1)
+}
+
+func lastDayOfMonth(t time.Time) int {
+	return time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, t.Location()).Day()
+}

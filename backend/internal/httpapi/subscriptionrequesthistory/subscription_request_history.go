@@ -1,6 +1,9 @@
 package subscriptionrequesthistory
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +22,16 @@ type historyRecord struct {
 	RequestAt string  `json:"requestAt"`
 }
 
+type tableFilter struct {
+	ID    string `json:"id"`
+	Value any    `json:"value"`
+}
+
+type tableSorting struct {
+	ID   string `json:"id"`
+	Desc bool   `json:"desc"`
+}
+
 func SubscriptionRequestHistoryHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -28,31 +41,43 @@ func SubscriptionRequestHistoryHandler(manager *dbmanager.DatabaseManager, cfg *
 
 		start := parseInt(r.URL.Query().Get("start"), 0, 0, 1_000_000)
 		size := parseInt(r.URL.Query().Get("size"), 25, 1, 500)
+		columns := map[string]string{
+			"id":        "id",
+			"userUuid":  "user_uuid",
+			"requestIp": "request_ip",
+			"userAgent": "user_agent",
+			"requestAt": "request_at",
+		}
+		whereSQL, whereArgs := buildTableWhereClause(r, columns)
+		orderSQL := buildTableOrderClause(r, columns, "request_at DESC")
 
 		records := make([]historyRecord, 0)
 		total := 0
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			if err := db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM user_subscription_request_history`).Scan(&total); err != nil {
+			countQuery := `SELECT COUNT(*) FROM user_subscription_request_history` + whereSQL
+			if err := db.QueryRowContext(r.Context(), countQuery, whereArgs...).Scan(&total); err != nil {
 				return err
 			}
 
-			rows, err := db.QueryContext(r.Context(), `
+			args := append(append([]any{}, whereArgs...), start, size)
+			query := `
 				SELECT id, user_uuid, request_ip, user_agent, request_at
 				FROM user_subscription_request_history
-				ORDER BY request_at DESC
-				OFFSET ? LIMIT ?
-			`, start, size)
+			` + whereSQL + orderSQL + ` OFFSET ? LIMIT ?`
+			rows, err := db.QueryContext(r.Context(), query, args...)
 			if err != nil {
 				return err
 			}
 			defer rows.Close()
 			for rows.Next() {
 				var item historyRecord
-				var requestAt time.Time
+				var requestAt sql.NullTime
 				if scanErr := rows.Scan(&item.ID, &item.UserUUID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
 					return scanErr
 				}
-				item.RequestAt = requestAt.UTC().Format("2006-01-02T15:04:05.000Z")
+				if requestAt.Valid {
+					item.RequestAt = requestAt.Time.UTC().Format("2006-01-02T15:04:05.000Z")
+				}
 				records = append(records, item)
 			}
 			return rows.Err()
@@ -141,6 +166,92 @@ func SubscriptionRequestHistoryStatsHandler(manager *dbmanager.DatabaseManager, 
 				"hourlyRequestStats": hourly,
 			},
 		})
+	}
+}
+
+func buildTableWhereClause(r *http.Request, columns map[string]string) (string, []any) {
+	filters := parseTableFilters(r.URL.Query().Get("filters"))
+	if len(filters) == 0 {
+		return "", nil
+	}
+
+	parts := make([]string, 0, len(filters))
+	args := make([]any, 0, len(filters))
+	for _, filter := range filters {
+		column, ok := columns[filter.ID]
+		if !ok {
+			continue
+		}
+		value := tableFilterValue(filter.Value)
+		if value == "" {
+			continue
+		}
+		parts = append(parts, "LOWER(COALESCE("+column+"::text, '')) LIKE LOWER(?)")
+		args = append(args, "%"+value+"%")
+	}
+	if len(parts) == 0 {
+		return "", nil
+	}
+	return " WHERE " + strings.Join(parts, " AND "), args
+}
+
+func buildTableOrderClause(r *http.Request, columns map[string]string, fallback string) string {
+	sorting := parseTableSorting(r.URL.Query().Get("sorting"))
+	if len(sorting) == 0 {
+		return " ORDER BY " + fallback
+	}
+
+	parts := make([]string, 0, len(sorting))
+	for _, sort := range sorting {
+		column, ok := columns[sort.ID]
+		if !ok {
+			continue
+		}
+		direction := "ASC"
+		if sort.Desc {
+			direction = "DESC"
+		}
+		parts = append(parts, column+" "+direction+" NULLS LAST")
+	}
+	if len(parts) == 0 {
+		return " ORDER BY " + fallback
+	}
+	return " ORDER BY " + strings.Join(parts, ", ")
+}
+
+func parseTableFilters(raw string) []tableFilter {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
+	}
+	var filters []tableFilter
+	if err := json.Unmarshal([]byte(raw), &filters); err != nil {
+		return nil
+	}
+	return filters
+}
+
+func parseTableSorting(raw string) []tableSorting {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
+	}
+	var sorting []tableSorting
+	if err := json.Unmarshal([]byte(raw), &sorting); err != nil {
+		return nil
+	}
+	return sorting
+}
+
+func tableFilterValue(value any) string {
+	if value == nil {
+		return ""
+	}
+	switch v := value.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	default:
+		return strings.TrimSpace(fmt.Sprint(v))
 	}
 }
 
