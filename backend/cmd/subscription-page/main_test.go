@@ -17,7 +17,8 @@ func TestResolveNodeVersion(t *testing.T) {
 		{name: "config prefixed semver", configVersion: "v26.1.13", expected: "v26.1.13"},
 		{name: "config uppercase prefixed semver", configVersion: "V26.1.13", expected: "v26.1.13"},
 		{name: "fallback to build version", configVersion: "", expected: "v26.1.13"},
-		{name: "unknown sentinel", configVersion: "unknown", expected: "v0.0.0-dev"},
+		{name: "unknown sentinel falls back to build version", configVersion: "unknown", expected: "v26.1.13"},
+		{name: "release tag suffix is preserved", configVersion: "v26.5.8.s", expected: "v26.5.8.s"},
 	}
 
 	for _, testCase := range testCases {
@@ -27,5 +28,15 @@ func TestResolveNodeVersion(t *testing.T) {
 				t.Fatalf("unexpected version: got %q want %q", got, testCase.expected)
 			}
 		})
+	}
+}
+
+func TestResolveNodeVersionDevFallback(t *testing.T) {
+	prev := buildVersion
+	defer func() { buildVersion = prev }()
+
+	buildVersion = "unknown"
+	if got := resolveNodeVersion("unknown"); got != "v0.0.0-dev" {
+		t.Fatalf("unexpected dev fallback: got %q want %q", got, "v0.0.0-dev")
 	}
 }

@@ -81,18 +81,26 @@ func main() {
 }
 
 func resolveNodeVersion(configVersion string) string {
-	resolved := strings.TrimSpace(configVersion)
-	if resolved == "" {
-		resolved = strings.TrimSpace(buildVersion)
+	if resolved := normalizeNodeVersion(configVersion); resolved != "" {
+		return resolved
 	}
+	if resolved := normalizeNodeVersion(buildVersion); resolved != "" {
+		return resolved
+	}
+
+	return "v0.0.0-dev"
+}
+
+func normalizeNodeVersion(raw string) string {
+	resolved := strings.TrimSpace(raw)
 	if resolved == "" {
-		return "v0.0.0-dev"
+		return ""
 	}
 
 	lower := strings.ToLower(resolved)
 	switch lower {
 	case "unknown", "latest", "(devel)":
-		return "v0.0.0-dev"
+		return ""
 	}
 
 	if semverPattern.MatchString(resolved) {
