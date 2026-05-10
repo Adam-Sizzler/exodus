@@ -14,15 +14,16 @@ import (
 )
 
 type BackendConfig struct {
-	Logger    *logger.Logger
-	Log       LogConfig
-	EXODUS    EXODUSConfig
-	Panel     PanelConfig
-	Metrics   MetricsConfig
-	Scheduler SchedulerConfig
-	Database  DatabaseConfig
-	Redis     RedisConfig
-	CORS      CORSConfig
+	Logger        *logger.Logger
+	Log           LogConfig
+	EXODUS        EXODUSConfig
+	Panel         PanelConfig
+	Metrics       MetricsConfig
+	Notifications NotificationsConfig
+	Scheduler     SchedulerConfig
+	Database      DatabaseConfig
+	Redis         RedisConfig
+	CORS          CORSConfig
 }
 
 type PanelConfig struct {
@@ -39,10 +40,11 @@ type CORSConfig struct {
 }
 
 type MetricsConfig struct {
-	Address string
-	Port    int
-	User    string
-	Pass    string
+	Address         string
+	Port            int
+	User            string
+	Pass            string
+	CacheTTLSeconds int
 }
 
 type SchedulerConfig struct {
@@ -52,6 +54,21 @@ type SchedulerConfig struct {
 	BandwidthUsageNotificationsThreshold     []int
 	NotConnectedUsersNotificationsEnabled    bool
 	NotConnectedUsersNotificationsAfterHours []int
+}
+
+type NotificationsConfig struct {
+	TelegramEnabled       bool
+	TelegramBotToken      string
+	TelegramUsersChatID   string
+	TelegramUsersThreadID string
+	TelegramNodesChatID   string
+	TelegramNodesThreadID string
+	TelegramCRMChatID     string
+	TelegramCRMThreadID   string
+
+	WebhookEnabled bool
+	WebhookURLs    []string
+	WebhookSecret  string
 }
 
 type LogConfig struct {
@@ -96,11 +113,13 @@ var defaultConfig = BackendConfig{
 		trustedProxyNets:  nil,
 	},
 	Metrics: MetricsConfig{
-		Address: "0.0.0.0",
-		Port:    3001,
-		User:    "",
-		Pass:    "",
+		Address:         "0.0.0.0",
+		Port:            3001,
+		User:            "",
+		Pass:            "",
+		CacheTTLSeconds: 10,
 	},
+	Notifications: NotificationsConfig{},
 	Scheduler: SchedulerConfig{
 		ServiceCleanUsageHistory:                 false,
 		NotificationsEnabled:                     false,
@@ -201,6 +220,13 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("METRICS_PASS"); value != "" {
 		cfg.Metrics.Pass = value
 	}
+	if value := envFirst("METRICS_CACHE_TTL_SECONDS"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
+			cfg.Metrics.CacheTTLSeconds = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid METRICS_CACHE_TTL_SECONDS value, ignoring", "value", value)
+		}
+	}
 
 	if value := envFirst("EXODUS_ALLOW_INSECURE_HTTP"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
@@ -236,9 +262,18 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("SERVICE_CLEAN_USAGE_HISTORY"); value != "" {
 		cfg.Scheduler.ServiceCleanUsageHistory = parseBoolEnv(value)
 	}
-	telegramNotifications := parseBoolEnv(envFirst("IS_TELEGRAM_NOTIFICATIONS_ENABLED"))
-	webhookNotifications := parseBoolEnv(envFirst("WEBHOOK_ENABLED"))
-	cfg.Scheduler.NotificationsEnabled = telegramNotifications || webhookNotifications
+	cfg.Notifications.TelegramEnabled = parseBoolEnv(envFirst("IS_TELEGRAM_NOTIFICATIONS_ENABLED"))
+	cfg.Notifications.TelegramBotToken = envFirst("TELEGRAM_BOT_TOKEN")
+	cfg.Notifications.TelegramUsersChatID = envFirst("TELEGRAM_NOTIFY_USERS_CHAT_ID")
+	cfg.Notifications.TelegramUsersThreadID = envFirst("TELEGRAM_NOTIFY_USERS_THREAD_ID")
+	cfg.Notifications.TelegramNodesChatID = envFirst("TELEGRAM_NOTIFY_NODES_CHAT_ID")
+	cfg.Notifications.TelegramNodesThreadID = envFirst("TELEGRAM_NOTIFY_NODES_THREAD_ID")
+	cfg.Notifications.TelegramCRMChatID = envFirst("TELEGRAM_NOTIFY_CRM_CHAT_ID")
+	cfg.Notifications.TelegramCRMThreadID = envFirst("TELEGRAM_NOTIFY_CRM_THREAD_ID")
+	cfg.Notifications.WebhookEnabled = parseBoolEnv(envFirst("WEBHOOK_ENABLED"))
+	cfg.Notifications.WebhookURLs = splitCSV(envFirst("WEBHOOK_URL"))
+	cfg.Notifications.WebhookSecret = envFirst("WEBHOOK_SECRET_HEADER")
+	cfg.Scheduler.NotificationsEnabled = cfg.Notifications.TelegramEnabled || cfg.Notifications.WebhookEnabled
 	if value := envFirst("BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED"); value != "" {
 		cfg.Scheduler.BandwidthUsageNotificationsEnabled = parseBoolEnv(value)
 	}
@@ -287,6 +322,9 @@ func normalizePanelConfig(cfg *BackendConfig) {
 	}
 	if cfg.Metrics.Port < 1 || cfg.Metrics.Port > 65535 {
 		cfg.Metrics.Port = defaultConfig.Metrics.Port
+	}
+	if cfg.Metrics.CacheTTLSeconds < 0 {
+		cfg.Metrics.CacheTTLSeconds = defaultConfig.Metrics.CacheTTLSeconds
 	}
 
 	proxyNets, invalid := parseTrustedProxies(cfg.Panel.TrustedProxies)

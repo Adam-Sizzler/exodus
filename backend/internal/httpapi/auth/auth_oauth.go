@@ -23,6 +23,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/notifications"
 	"exodus/internal/security"
 )
 
@@ -160,15 +161,18 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 		}
 		provider := strings.ToLower(strings.TrimSpace(req.Provider))
 		if !isSupportedOAuthProvider(provider) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "unsupported_provider", r)
 			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
 			return
 		}
 		stateEntry, ok := takeOAuthState(provider)
 		if !ok || stateEntry.State != strings.TrimSpace(req.State) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "state_mismatch", r)
 			shared.SendError(w, http.StatusForbidden, "OAuth2 state mismatch", nil, cfg)
 			return
 		}
 		if !isLoginAllowed(manager) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "login_not_allowed", r)
 			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
 			return
 		}
@@ -179,23 +183,28 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 		}
 		providerSettings := getOAuthProviderSettings(settings, provider)
 		if !providerSettings.Enabled {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "provider_disabled", r)
 			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
 			return
 		}
 		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
 		if err != nil {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "callback_error", r)
 			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
 			return
 		}
 		if email == "" || (!hasCustomClaim && !isEmailAllowed(email, providerSettings.AllowedEmails)) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "email_not_allowed", r)
 			shared.SendError(w, http.StatusForbidden, "OAuth2 email is not allowed", nil, cfg)
 			return
 		}
-		token, err := createFirstAdminSession(w, r, manager, cfg)
+		token, adminUUID, err := createFirstAdminSession(w, r, manager, cfg)
 		if err != nil {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "session_create_failed", r)
 			shared.SendError(w, http.StatusForbidden, "failed to create OAuth2 session", err, cfg)
 			return
 		}
+		emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, "oauth2", provider, email, adminUUID, "", r)
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{"accessToken": token},
 		})
@@ -213,7 +222,9 @@ func TelegramCallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 			return
 		}
+		telegramID := strconv.FormatInt(req.ID, 10)
 		if !isLoginAllowed(manager) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "login_not_allowed", r)
 			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
 			return
 		}
@@ -223,22 +234,27 @@ func TelegramCallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 			return
 		}
 		if !settings.Enabled || strings.TrimSpace(settings.BotToken) == "" {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "telegram_disabled", r)
 			shared.SendError(w, http.StatusForbidden, "Telegram authentication is disabled", nil, cfg)
 			return
 		}
-		if !containsString(settings.AdminIDs, strconv.FormatInt(req.ID, 10)) {
+		if !containsString(settings.AdminIDs, telegramID) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "telegram_user_not_allowed", r)
 			shared.SendError(w, http.StatusForbidden, "Telegram user is not allowed", nil, cfg)
 			return
 		}
 		if !verifyTelegramCallback(req, settings.BotToken) {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "invalid_telegram_hash", r)
 			shared.SendError(w, http.StatusForbidden, "invalid Telegram callback hash", nil, cfg)
 			return
 		}
-		token, err := createFirstAdminSession(w, r, manager, cfg)
+		token, adminUUID, err := createFirstAdminSession(w, r, manager, cfg)
 		if err != nil {
+			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "session_create_failed", r)
 			shared.SendError(w, http.StatusForbidden, "failed to create Telegram session", err, cfg)
 			return
 		}
+		emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, "telegram", "telegram", telegramID, adminUUID, "", r)
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{"accessToken": token},
 		})
@@ -250,7 +266,7 @@ func isLoginAllowed(manager *dbmanager.DatabaseManager) bool {
 	return err == nil && hasAdmin
 }
 
-func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
+func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, string, error) {
 	var adminUUID string
 	sessionTTLMinutes := 60
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
@@ -271,11 +287,11 @@ func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *db
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	sessionToken, err := security.GenerateRandomToken(48)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
@@ -289,7 +305,7 @@ func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *db
 		return err
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -300,7 +316,34 @@ func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *db
 		SameSite: http.SameSiteLaxMode,
 		Secure:   middleware.IsSecureRequest(r, cfg),
 	})
-	return sessionToken, nil
+	return sessionToken, adminUUID, nil
+}
+
+func emitExternalLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, method, provider, identifier, adminUUID, reason string, r *http.Request) {
+	data := map[string]any{
+		"method":   method,
+		"provider": provider,
+	}
+	if identifier != "" {
+		data["identifier"] = identifier
+		data["username"] = identifier
+	}
+	if adminUUID != "" {
+		data["adminUuid"] = adminUUID
+	}
+	if reason != "" {
+		data["reason"] = reason
+	}
+	if r != nil {
+		data["remoteAddr"] = r.RemoteAddr
+		data["userAgent"] = r.UserAgent()
+		data["path"] = r.URL.Path
+	}
+	notifications.Emit(ctx, cfg, notifications.Event{
+		Scope: notifications.ScopeService,
+		Event: event,
+		Data:  data,
+	})
 }
 
 func loadOAuthSettings(manager *dbmanager.DatabaseManager) (oauthSettings, error) {

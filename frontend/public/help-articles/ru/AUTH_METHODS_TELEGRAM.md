@@ -9,18 +9,17 @@
 1. Откройте @BotFather (https://t.me/botfather)
 2. Откройте MiniApp кнопкой "Open"
 3. Выберите вашего бота и нажмите `Bot Settings`
-4. Если в разделе `Web Login` уже указан домен — удалите его.
-5. Нажмите кнопку Switch to OpenID Connect Login.  
-   `Если такой кнопки нет, после удаления домена вернитесь на пункт меню назад и повторите действия с шага 3`
-6. Нажмите Add an Allowed URL.  
-   Укажите следующие значения:
+4. Откройте раздел `Web Login`.
+5. Укажите домен панели командой `/setdomain` или через поле домена в `Web Login`.
+   Указывайте только домен без схемы и пути:
 
-- Trusted Origins: https://panel.domain.com
-- Redirect URIs: https://panel.domain.com/oauth2/callback/telegram
+- `panel.domain.com`
+
+Для панели, открытой по адресу `https://data.s-backup.online/panel/auth/login`, в BotFather должен быть указан домен `data.s-backup.online`.
 
 ### Настройка доступа
 
-После заполнения `Client ID`, `Client Secret` и `Frontend Domain`, вам необходимо указать список ID – администраторов, для которых будет доступен вход.
+После заполнения `Bot Token` вам необходимо указать список ID – администраторов, для которых будет доступен вход.
 
 1. С нужного аккаунта запустите бота – https://t.me/Get_myidrobot
 2. В ответ бот пришлет вам ваш ID, введите его в соответсвующее поле.
@@ -35,7 +34,7 @@
 
 ###### Ошибка: BOT_DOMAIN_INVALID
 
-Эта ошибка возникает из-за неправильной настройки домена бота – изучите пункт "Настройка бота" (выше). При необходимости выполните повторно этот пункт шаг за шагом.
+Эта ошибка возникает до запроса в backend, когда Telegram сравнивает `origin` страницы с доменом бота. Для адреса `https://data.s-backup.online/panel/auth/login` Telegram проверяет `https://data.s-backup.online`, поэтому в BotFather должен быть указан именно `data.s-backup.online`, без `/panel/auth/login`.
 
 ###### Ошибка: не приходит код подтверждения от Telegram при логине
 

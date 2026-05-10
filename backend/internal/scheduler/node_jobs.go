@@ -9,6 +9,7 @@ import (
 	"time"
 
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/notifications"
 )
 
 type nodeTrafficResetTarget struct {
@@ -90,6 +91,8 @@ func (s *Scheduler) resetNodeTraffic(ctx context.Context) error {
 type nodeReviewRecord struct {
 	UUID              string
 	Name              string
+	Address           string
+	Port              int
 	TrafficUsedBytes  int64
 	TrafficLimitBytes int64
 	NotifyPercent     int
@@ -99,7 +102,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 	nodes := make([]nodeReviewRecord, 0)
 	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-			SELECT uuid::text, name, COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(notify_percent, 0)
+			SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(notify_percent, 0)
 			FROM nodes
 			WHERE is_traffic_tracking_active = true
 			  AND COALESCE(notify_percent, 0) > 0
@@ -113,7 +116,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 
 		for rows.Next() {
 			var node nodeReviewRecord
-			if scanErr := rows.Scan(&node.UUID, &node.Name, &node.TrafficUsedBytes, &node.TrafficLimitBytes, &node.NotifyPercent); scanErr != nil {
+			if scanErr := rows.Scan(&node.UUID, &node.Name, &node.Address, &node.Port, &node.TrafficUsedBytes, &node.TrafficLimitBytes, &node.NotifyPercent); scanErr != nil {
 				return scanErr
 			}
 			nodes = append(nodes, node)
@@ -141,6 +144,19 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 				"percent", currentPercent,
 				"threshold", node.NotifyPercent,
 			)
+			s.notifier.Send(ctx, notifications.Event{
+				Scope: notifications.ScopeNode,
+				Event: notifications.EventNodeTrafficNotify,
+				Data: map[string]any{
+					"uuid":              node.UUID,
+					"name":              node.Name,
+					"address":           node.Address,
+					"port":              node.Port,
+					"trafficUsedBytes":  node.TrafficUsedBytes,
+					"trafficLimitBytes": node.TrafficLimitBytes,
+					"notifyPercent":     node.NotifyPercent,
+				},
+			})
 			continue
 		}
 		if currentPercent < node.NotifyPercent && alreadyNotified {

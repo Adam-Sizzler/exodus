@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"exodus/internal/config"
@@ -59,6 +60,12 @@ type metricTrafficPair struct {
 	Download float64
 }
 
+var prometheusMetricsCache = struct {
+	sync.Mutex
+	payload   string
+	expiresAt time.Time
+}{}
+
 func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -71,7 +78,7 @@ func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 			return
 		}
 
-		payload, err := renderPrometheusMetrics(r.Context(), manager)
+		payload, err := renderPrometheusMetricsCached(r.Context(), manager, cfg)
 		if err != nil {
 			if cfg != nil && cfg.Logger != nil {
 				cfg.Logger.Warn("Failed to render prometheus metrics", "error", err)
@@ -86,6 +93,43 @@ func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, payload)
 	}
+}
+
+func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
+	ttl := metricsCacheTTL(cfg)
+	if ttl <= 0 {
+		return renderPrometheusMetrics(ctx, manager)
+	}
+
+	now := time.Now()
+	prometheusMetricsCache.Lock()
+	if prometheusMetricsCache.payload != "" && now.Before(prometheusMetricsCache.expiresAt) {
+		payload := prometheusMetricsCache.payload
+		prometheusMetricsCache.Unlock()
+		return payload, nil
+	}
+	prometheusMetricsCache.Unlock()
+
+	payload, err := renderPrometheusMetrics(ctx, manager)
+	if err != nil {
+		return "", err
+	}
+
+	prometheusMetricsCache.Lock()
+	prometheusMetricsCache.payload = payload
+	prometheusMetricsCache.expiresAt = now.Add(ttl)
+	prometheusMetricsCache.Unlock()
+	return payload, nil
+}
+
+func metricsCacheTTL(cfg *config.BackendConfig) time.Duration {
+	if cfg == nil {
+		return 10 * time.Second
+	}
+	if cfg.Metrics.CacheTTLSeconds < 0 {
+		return 10 * time.Second
+	}
+	return time.Duration(cfg.Metrics.CacheTTLSeconds) * time.Second
 }
 
 func loadNodesMetricsViaPrometheus(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]nodeMetricsItem, error) {

@@ -9,18 +9,17 @@ To configure the "Login via Telegram" feature, you need a Telegram bot. Addition
 1. Open @BotFather (https://t.me/botfather)
 2. Open the MiniApp by pressing "Open"
 3. Select your bot and press `Bot Settings`
-4. If there is already a domain specified in the `Web Login` section — delete it.
-5. Press the Switch to OpenID Connect Login button.
-   `If this button is not available, after deleting the domain go back one menu level and repeat from step 3`
-6. Press Add an Allowed URL.
-   Specify the following values:
+4. Open the `Web Login` section.
+5. Set the panel domain with `/setdomain` or the domain field in `Web Login`.
+   Specify only the domain, without scheme and path:
 
-- Trusted Origins: https://panel.domain.com
-- Redirect URIs: https://panel.domain.com/oauth2/callback/telegram
+- `panel.domain.com`
+
+For a panel opened at `https://data.s-backup.online/panel/auth/login`, BotFather must contain `data.s-backup.online`.
 
 ### Access Configuration
 
-After filling in `Client ID`, `Client Secret` and `Frontend Domain`, you need to specify a list of administrator IDs who will have access to login.
+After filling in `Bot Token`, you need to specify a list of administrator IDs who will have access to login.
 
 1. From the required account, launch the bot – https://t.me/Get_myidrobot
 2. In response, the bot will send you your ID, enter it in the corresponding field.
@@ -35,7 +34,7 @@ Use the /oauth2/ path in your reverse proxy to resolve this issue
 
 ###### Error: BOT_DOMAIN_INVALID
 
-This error occurs due to incorrect bot domain configuration – review the "Bot Configuration" section (above). If necessary, repeat this step-by-step process.
+This error happens before the backend callback when Telegram compares the page `origin` with the bot domain. For `https://data.s-backup.online/panel/auth/login`, Telegram checks `https://data.s-backup.online`, so BotFather must contain `data.s-backup.online`, without `/panel/auth/login`.
 
 ###### Error: Telegram confirmation code not received during login
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/notifications"
 )
 
 type infraBillingNotificationWindow struct {
@@ -28,13 +29,13 @@ func (s *Scheduler) infraBillingNodesNotifications(ctx context.Context) error {
 
 	now := time.Now().Local()
 	windows := []infraBillingNotificationWindow{
-		{Name: "INFRA_BILLING_NODE_PAYMENT_IN_7_DAYS", Start: startOfDay(now.AddDate(0, 0, 7)), End: endOfDayExclusive(now.AddDate(0, 0, 7))},
-		{Name: "INFRA_BILLING_NODE_PAYMENT_IN_48HRS", Start: startOfDay(now.AddDate(0, 0, 2)), End: endOfDayExclusive(now.AddDate(0, 0, 2))},
-		{Name: "INFRA_BILLING_NODE_PAYMENT_IN_24HRS", Start: startOfDay(now.AddDate(0, 0, 1)), End: endOfDayExclusive(now.AddDate(0, 0, 1))},
-		{Name: "INFRA_BILLING_NODE_PAYMENT_DUE_TODAY", Start: startOfDay(now), End: endOfDayExclusive(now)},
-		{Name: "INFRA_BILLING_NODE_PAYMENT_OVERDUE_24HRS", Start: startOfDay(now.AddDate(0, 0, -1)), End: endOfDayExclusive(now.AddDate(0, 0, -1))},
-		{Name: "INFRA_BILLING_NODE_PAYMENT_OVERDUE_48HRS", Start: startOfDay(now.AddDate(0, 0, -2)), End: endOfDayExclusive(now.AddDate(0, 0, -2))},
-		{Name: "INFRA_BILLING_NODE_PAYMENT_OVERDUE_7_DAYS", Start: startOfDay(now.AddDate(0, 0, -7)), End: endOfDayExclusive(now.AddDate(0, 0, -7))},
+		{Name: notifications.EventInfraBillingIn7Days, Start: startOfDay(now.AddDate(0, 0, 7)), End: endOfDayExclusive(now.AddDate(0, 0, 7))},
+		{Name: notifications.EventInfraBillingIn48Hours, Start: startOfDay(now.AddDate(0, 0, 2)), End: endOfDayExclusive(now.AddDate(0, 0, 2))},
+		{Name: notifications.EventInfraBillingIn24Hours, Start: startOfDay(now.AddDate(0, 0, 1)), End: endOfDayExclusive(now.AddDate(0, 0, 1))},
+		{Name: notifications.EventInfraBillingDueToday, Start: startOfDay(now), End: endOfDayExclusive(now)},
+		{Name: notifications.EventInfraBillingOverdue24Hours, Start: startOfDay(now.AddDate(0, 0, -1)), End: endOfDayExclusive(now.AddDate(0, 0, -1))},
+		{Name: notifications.EventInfraBillingOverdue48Hours, Start: startOfDay(now.AddDate(0, 0, -2)), End: endOfDayExclusive(now.AddDate(0, 0, -2))},
+		{Name: notifications.EventInfraBillingOverdue7Days, Start: startOfDay(now.AddDate(0, 0, -7)), End: endOfDayExclusive(now.AddDate(0, 0, -7))},
 	}
 
 	total := 0
@@ -56,6 +57,16 @@ func (s *Scheduler) infraBillingNodesNotifications(ctx context.Context) error {
 				"login_url", item.LoginURL,
 				"next_billing_at", item.NextBillingAt.Format(time.RFC3339),
 			)
+			s.notifier.Send(ctx, notifications.Event{
+				Scope: notifications.ScopeCRM,
+				Event: window.Name,
+				Data: map[string]any{
+					"providerName":  item.ProviderName,
+					"nodeName":      item.NodeName,
+					"loginUrl":      item.LoginURL,
+					"nextBillingAt": item.NextBillingAt.UTC().Format(time.RFC3339),
+				},
+			})
 		}
 	}
 	if total > 0 {

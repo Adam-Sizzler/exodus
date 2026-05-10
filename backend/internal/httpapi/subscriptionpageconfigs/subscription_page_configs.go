@@ -16,6 +16,7 @@ import (
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/notifications"
 	monitor "exodus/internal/subscriptionnodes"
 
 	"github.com/google/uuid"
@@ -249,6 +250,7 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{
 		"response": created,
 	})
+	emitSubpageConfigChanged(ctx, cfg, "created", created, nil)
 	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, created.UUID)
 	if targetErr != nil {
 		cfg.Logger.Warn("Failed to resolve sub nodes for created subpage config push", "subpage_config_uuid", created.UUID, "error", targetErr)
@@ -348,6 +350,7 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": updated,
 	})
+	emitSubpageConfigChanged(ctx, cfg, "updated", updated, nil)
 	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, updated.UUID)
 	if targetErr != nil {
 		cfg.Logger.Warn("Failed to resolve sub nodes for updated subpage config push", "subpage_config_uuid", updated.UUID, "error", targetErr)
@@ -405,6 +408,7 @@ func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": subpageConfigDeleteResponse{IsDeleted: true},
 	})
+	emitSubpageConfigChanged(ctx, cfg, "deleted", SubscriptionPageConfig{UUID: uuidStr}, nil)
 	if len(targetNodeUUIDs) == 0 {
 		return
 	}
@@ -458,6 +462,7 @@ func handleReorderSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	emitSubpageConfigChanged(ctx, cfg, "reordered", SubscriptionPageConfig{}, map[string]any{"items": len(req.Items)})
 	// Return refreshed list
 	handleGetSubscriptionPageConfigs(w, r, manager, cfg)
 }
@@ -529,6 +534,7 @@ func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, m
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": created,
 	})
+	emitSubpageConfigChanged(ctx, cfg, "cloned", created, map[string]any{"cloneFromUuid": req.CloneFromUUID})
 	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, created.UUID)
 	if targetErr != nil {
 		cfg.Logger.Warn("Failed to resolve sub nodes for cloned subpage config push", "subpage_config_uuid", created.UUID, "error", targetErr)
@@ -582,6 +588,29 @@ func fetchSubscriptionPageConfig(ctx context.Context, manager *dbmanager.Databas
 	})
 
 	return cfgItem, err
+}
+
+func emitSubpageConfigChanged(ctx context.Context, cfg *config.BackendConfig, action string, item SubscriptionPageConfig, extra map[string]any) {
+	data := map[string]any{
+		"action": action,
+	}
+	if item.UUID != "" {
+		data["uuid"] = item.UUID
+	}
+	if item.Name != "" {
+		data["name"] = item.Name
+	}
+	if item.ViewPosition != 0 {
+		data["viewPosition"] = item.ViewPosition
+	}
+	for key, value := range extra {
+		data[key] = value
+	}
+	notifications.Emit(ctx, cfg, notifications.Event{
+		Scope: notifications.ScopeService,
+		Event: notifications.EventServiceSubpageChanged,
+		Data:  data,
+	})
 }
 
 func fetchDefaultSubpageConfig(ctx context.Context, dbExec dbmanager.DBExecutor) (json.RawMessage, error) {

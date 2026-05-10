@@ -14,6 +14,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/notifications"
 	"exodus/internal/security"
 
 	"github.com/google/uuid"
@@ -77,6 +78,28 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 	}
 	principal, ok := value.(*AuthPrincipal)
 	return principal, ok && principal != nil
+}
+
+func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, username, adminUUID, reason string, r *http.Request) {
+	data := map[string]any{
+		"username": username,
+	}
+	if adminUUID != "" {
+		data["adminUuid"] = adminUUID
+	}
+	if reason != "" {
+		data["reason"] = reason
+	}
+	if r != nil {
+		data["remoteAddr"] = r.RemoteAddr
+		data["userAgent"] = r.UserAgent()
+		data["path"] = r.URL.Path
+	}
+	notifications.Emit(ctx, cfg, notifications.Event{
+		Scope: notifications.ScopeService,
+		Event: event,
+		Data:  data,
+	})
 }
 
 func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, next http.Handler) http.Handler {
@@ -355,6 +378,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 
 		if !hasAdmin {
 			cfg.Logger.Warn("Auth login blocked: no admin configured", "username", username, "remote_addr", r.RemoteAddr)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", "no_admin_configured", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
 			return
 		}
@@ -369,6 +393,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		)
 		if !passwordEnabled {
 			cfg.Logger.Warn("Auth login blocked: password auth disabled", "username", username, "remote_addr", r.RemoteAddr)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", "password_auth_disabled", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
 			return
 		}
@@ -409,6 +434,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		}
 		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
 			cfg.Logger.Warn("Auth login failed: invalid credentials", "username", username, "remote_addr", r.RemoteAddr)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "invalid username or password")
 			return
 		}
@@ -436,6 +462,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 		cfg.Logger.Info("Auth login success", "username", username, "remote_addr", r.RemoteAddr)
+		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", r)
 
 		secureCookie := middleware.IsSecureRequest(r, cfg)
 		http.SetCookie(w, &http.Cookie{
@@ -707,6 +734,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusUnauthorized, "invalid username or password")
 			return
 		}
@@ -734,6 +762,8 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to persist session")
 			return
 		}
+
+		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", r)
 
 		secureCookie := middleware.IsSecureRequest(r, cfg)
 		http.SetCookie(w, &http.Cookie{

@@ -18,6 +18,7 @@ import (
 	"exodus/internal/dbutil"
 	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
+	"exodus/internal/notifications"
 
 	"github.com/google/uuid"
 )
@@ -474,6 +475,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return
 	}
+	emitNodeNotification(r.Context(), cfg, notifications.EventNodeCreated, node, nil)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
 }
 
@@ -613,10 +615,16 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return
 	}
+	emitNodeNotification(r.Context(), cfg, notifications.EventNodeModified, node, nil)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
 }
 
 func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
+	node, nodeErr := getNodeByUUID(r.Context(), manager, nodeUUID)
+	if nodeErr != nil && !errors.Is(nodeErr, sql.ErrNoRows) {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node", nodeErr, cfg)
+		return
+	}
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		result, err := db.ExecContext(r.Context(), `DELETE FROM nodes WHERE uuid = ?`, nodeUUID)
 		if err != nil {
@@ -642,6 +650,9 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	monitor.RequestNodeSync()
 	monitor.RequestNodeDeploy(true, nodeUUID)
+	if nodeErr == nil {
+		emitNodeNotification(r.Context(), cfg, notifications.EventNodeDeleted, node, nil)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -682,6 +693,9 @@ func handleEnableNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	monitor.RequestNodeSync()
 	monitor.RequestNodeDeploy(true, nodeUUID)
+	if updated, loadErr := getNodeByUUID(r.Context(), manager, nodeUUID); loadErr == nil {
+		emitNodeNotification(r.Context(), cfg, notifications.EventNodeEnabled, updated, nil)
+	}
 	sendUpdatedNodeResponse(w, r, manager, cfg, nodeUUID)
 }
 
@@ -724,6 +738,9 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 
 	monitor.RequestNodeSync()
 	monitor.RequestNodeDeploy(true, nodeUUID)
+	if updated, loadErr := getNodeByUUID(r.Context(), manager, nodeUUID); loadErr == nil {
+		emitNodeNotification(r.Context(), cfg, notifications.EventNodeDisabled, updated, nil)
+	}
 	sendUpdatedNodeResponse(w, r, manager, cfg, nodeUUID)
 }
 
@@ -941,6 +958,14 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, manager *dbm
 
 	monitor.RequestNodeSync()
 	monitor.RequestNodeDeploy(true, req.UUIDs...)
+	switch req.Action {
+	case "ENABLE":
+		emitNodesByUUIDsNotification(r.Context(), manager, cfg, notifications.EventNodeEnabled, req.UUIDs)
+	case "DISABLE":
+		emitNodesByUUIDsNotification(r.Context(), manager, cfg, notifications.EventNodeDisabled, req.UUIDs)
+	case "RESET_TRAFFIC":
+		emitNodesByUUIDsNotification(r.Context(), manager, cfg, notifications.EventNodeModified, req.UUIDs)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -1271,6 +1296,82 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	}
 
 	return response, nil
+}
+
+func emitNodeNotification(ctx context.Context, cfg *config.BackendConfig, event string, record nodeRecord, meta map[string]any) {
+	notifications.Emit(ctx, cfg, notifications.Event{
+		Scope: notifications.ScopeNode,
+		Event: event,
+		Data:  nodeRecordNotificationData(record),
+		Meta:  meta,
+	})
+}
+
+func emitNodesByUUIDsNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, nodeUUIDs []string) {
+	clean := dedupeStrings(nodeUUIDs)
+	if len(clean) == 0 {
+		return
+	}
+	skipTelegram := len(clean) >= 500
+	for _, nodeUUID := range clean {
+		meta := map[string]any{"bulk": true}
+		if skipTelegram {
+			meta["skipTelegramNotification"] = true
+		}
+		record, err := getNodeByUUID(ctx, manager, nodeUUID)
+		if err == nil {
+			emitNodeNotification(ctx, cfg, event, record, meta)
+			continue
+		}
+		notifications.Emit(ctx, cfg, notifications.Event{
+			Scope: notifications.ScopeNode,
+			Event: event,
+			Data:  map[string]any{"uuid": nodeUUID},
+			Meta:  meta,
+		})
+	}
+}
+
+func nodeRecordNotificationData(record nodeRecord) map[string]any {
+	return map[string]any{
+		"id":                      record.ID,
+		"uuid":                    record.UUID,
+		"name":                    record.Name,
+		"address":                 record.Address,
+		"port":                    record.Port,
+		"apiSchema":               record.APISchema,
+		"apiPath":                 record.APIPath,
+		"activeConfigProfileUuid": record.ActiveConfigProfileUUID,
+		"isConnected":             record.IsConnected,
+		"isConnecting":            record.IsConnecting,
+		"isDisabled":              record.IsDisabled,
+		"lastStatusChange":        optionalTimeString(record.LastStatusChange),
+		"lastStatusMessage":       record.LastStatusMessage,
+		"singboxVersion":          record.SingboxVersion,
+		"nodeVersion":             record.NodeVersion,
+		"singboxUptime":           record.SingboxUptime,
+		"usersOnline":             record.UsersOnline,
+		"consumptionMultiplier":   fromNanoMultiplier(record.ConsumptionMultiplier),
+		"isTrafficTrackingActive": record.IsTrafficTrackingActive,
+		"trafficResetDay":         record.TrafficResetDay,
+		"trafficLimitBytes":       record.TrafficLimitBytes,
+		"trafficUsedBytes":        record.TrafficUsedBytes,
+		"notifyPercent":           record.NotifyPercent,
+		"providerUuid":            record.ProviderUUID,
+		"viewPosition":            record.ViewPosition,
+		"countryCode":             record.CountryCode,
+		"tags":                    ensureStringSlice(record.Tags),
+		"createdAt":               record.CreatedAt.UTC().Format(time.RFC3339),
+		"updatedAt":               record.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+}
+
+func optionalTimeString(value *time.Time) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := value.UTC().Format(time.RFC3339)
+	return &formatted
 }
 
 func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nodeRecord, error) {

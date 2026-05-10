@@ -33,49 +33,65 @@ export const TelegramLoginButtonFeature = (props: IProps) => {
     }, [])
 
     const handleTelegramLogin = (data: false | ITelegramData) => {
-        if (data) {
-            telegramCallback(
-                {
-                    variables: {
-                        id: data.id,
-                        first_name: data.first_name,
-                        last_name: data.last_name,
-                        username: data.username,
-                        auth_date: data.auth_date,
-                        hash: data.hash,
-                        photo_url: data.photo_url
-                    }
-                },
-                {
-                    onError: (error) => {
-                        notifications.show({
-                            title: 'Login',
-                            message: error.message,
-                            color: 'red'
-                        })
-                    },
-                    onSuccess: () => {
-                        notifications.show({
-                            icon: (
-                                <Avatar
-                                    name={data.username ? `${data.username}` : data.first_name}
-                                    src={data.photo_url}
-                                    variant="filled"
-                                />
-                            ),
-                            message: `Logged as ${data.username ? `@${data.username}` : data.first_name}`,
-                            withBorder: true
-                        })
-
-                        setIsAuthenticated(true)
-                    }
-                }
-            )
+        if (!data) {
+            notifications.show({
+                title: 'Telegram',
+                message:
+                    'Telegram authentication was cancelled or the bot domain is invalid. Check BotFather Web Login domain.',
+                color: 'red'
+            })
+            return
         }
+
+        telegramCallback(
+            {
+                variables: {
+                    id: data.id,
+                    first_name: data.first_name,
+                    last_name: data.last_name,
+                    username: data.username,
+                    auth_date: data.auth_date,
+                    hash: data.hash,
+                    photo_url: data.photo_url
+                }
+            },
+            {
+                onError: (error) => {
+                    notifications.show({
+                        title: 'Login',
+                        message: error.message,
+                        color: 'red'
+                    })
+                },
+                onSuccess: () => {
+                    notifications.show({
+                        icon: (
+                            <Avatar
+                                name={data.username ? `${data.username}` : data.first_name}
+                                src={data.photo_url}
+                                variant="filled"
+                            />
+                        ),
+                        message: `Logged as ${data.username ? `@${data.username}` : data.first_name}`,
+                        withBorder: true
+                    })
+
+                    setIsAuthenticated(true)
+                }
+            }
+        )
     }
 
     const handleLogin = () => {
         if (!authentication.tgAuth.botId) return
+        if (!window.Telegram?.Login?.auth) {
+            notifications.show({
+                title: 'Telegram',
+                message: 'Telegram login widget is not loaded yet. Try again in a few seconds.',
+                color: 'red'
+            })
+            return
+        }
 
         window.Telegram.Login.auth(
             { bot_id: authentication.tgAuth.botId.toString(), request_access: true },

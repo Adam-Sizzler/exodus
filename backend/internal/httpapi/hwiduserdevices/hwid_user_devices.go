@@ -14,6 +14,7 @@ import (
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/notifications"
 
 	"github.com/google/uuid"
 )
@@ -248,10 +249,17 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 		return
 	}
 
+	emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceAdded, hwidRecordNotificationData(created), nil)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": convertHWIDRecordToAPI(created)})
 }
 
 func handleDeleteHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, deviceUUID string) {
+	deletedRecord, recordErr := getHWIDDeviceByUUID(r.Context(), manager, deviceUUID)
+	if recordErr != nil && !errors.Is(recordErr, sql.ErrNoRows) {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid device", recordErr, cfg)
+		return
+	}
+
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE uuid = ?`, deviceUUID)
 		if err != nil {
@@ -276,6 +284,9 @@ func handleDeleteHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 		return
 	}
 
+	if recordErr == nil {
+		emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceDeleted, hwidRecordNotificationData(deletedRecord), nil)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 

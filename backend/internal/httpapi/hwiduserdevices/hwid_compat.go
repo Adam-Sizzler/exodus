@@ -13,6 +13,7 @@ import (
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/notifications"
 
 	"github.com/google/uuid"
 )
@@ -179,6 +180,12 @@ func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, ma
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
 		return
 	}
+	for _, device := range devices {
+		if device.HWID == hwid && device.UserUUID == userUUID {
+			emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceAdded, hwidCompatNotificationData(device), nil)
+			break
+		}
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
 			"devices": devices,
@@ -204,6 +211,7 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, ma
 		return
 	}
 
+	var deletedDevice hwidCompatDevice
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var userExists bool
 		if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE uuid = ?)`, userUUID).Scan(&userExists); err != nil {
@@ -212,6 +220,20 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, ma
 		if !userExists {
 			return sql.ErrNoRows
 		}
+		row := db.QueryRowContext(r.Context(), `
+			SELECT h.hwid, h.user_uuid, h.platform, h.os_version, h.device_model, h.user_agent, h.created_at, h.updated_at
+			FROM hwid_user_devices h
+			WHERE h.hwid = ? AND h.user_uuid = ?
+			LIMIT 1
+		`, hwid, userUUID)
+		device, scanErr := scanHWIDCompatDevice(row)
+		if scanErr != nil {
+			if errors.Is(scanErr, sql.ErrNoRows) {
+				return errHWIDDeviceNotFound
+			}
+			return scanErr
+		}
+		deletedDevice = device
 		result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE hwid = ? AND user_uuid = ?`, hwid, userUUID)
 		if err != nil {
 			return err
@@ -242,6 +264,7 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, ma
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
 		return
 	}
+	emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceDeleted, hwidCompatNotificationData(deletedDevice), nil)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
 			"devices": devices,
@@ -268,6 +291,7 @@ func HWIDCompatDeleteAllUserDevicesHandler(manager *dbmanager.DatabaseManager, c
 			return
 		}
 
+		var deletedCount int64
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			var exists bool
 			if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE uuid = ?)`, userUUID).Scan(&exists); err != nil {
@@ -276,7 +300,11 @@ func HWIDCompatDeleteAllUserDevicesHandler(manager *dbmanager.DatabaseManager, c
 			if !exists {
 				return sql.ErrNoRows
 			}
-			_, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE user_uuid = ?`, userUUID)
+			result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE user_uuid = ?`, userUUID)
+			if err != nil {
+				return err
+			}
+			deletedCount, err = result.RowsAffected()
 			return err
 		})
 		if err != nil {
@@ -288,6 +316,13 @@ func HWIDCompatDeleteAllUserDevicesHandler(manager *dbmanager.DatabaseManager, c
 			return
 		}
 
+		if deletedCount > 0 {
+			emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceDeleted, map[string]any{
+				"userUuid":    userUUID,
+				"deletedAll":  true,
+				"deletedRows": deletedCount,
+			}, map[string]any{"bulk": true})
+		}
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{
 				"devices": []hwidCompatDevice{},

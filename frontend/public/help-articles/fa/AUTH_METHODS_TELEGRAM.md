@@ -9,18 +9,17 @@
 1. @BotFather را باز کنید (https://t.me/botfather)
 2. MiniApp را با دکمه "Open" باز کنید
 3. ربات خود را انتخاب کرده و `Bot Settings` را بزنید
-4. اگر در بخش `Web Login` دامنه‌ای از قبل مشخص شده — آن را حذف کنید.
-5. دکمه Switch to OpenID Connect Login را بزنید.
-   `اگر این دکمه موجود نیست، پس از حذف دامنه یک سطح به عقب برگردید و مراحل را از مرحله ۳ تکرار کنید`
-6. دکمه Add an Allowed URL را بزنید.
-   مقادیر زیر را وارد کنید:
+4. بخش `Web Login` را باز کنید.
+5. دامنه پنل را با `/setdomain` یا فیلد دامنه در `Web Login` تنظیم کنید.
+   فقط دامنه را وارد کنید، بدون scheme و path:
 
-- Trusted Origins: https://panel.domain.com
-- Redirect URIs: https://panel.domain.com/oauth2/callback/telegram
+- `panel.domain.com`
+
+برای پنلی با آدرس `https://data.s-backup.online/panel/auth/login`، مقدار BotFather باید `data.s-backup.online` باشد.
 
 ### پیکربندی دسترسی
 
-پس از تکمیل `Client ID`، `Client Secret` و `Frontend Domain`، باید فهرستی از شناسه‌های مدیرانی که اجازه ورود دارند را مشخص کنید.
+پس از تکمیل `Bot Token`، باید فهرستی از شناسه‌های مدیرانی که اجازه ورود دارند را مشخص کنید.
 
 1. از حساب مورد نظر، ربات را اجرا کنید – https://t.me/Get_myidrobot
 2. ربات در پاسخ شناسه شما را ارسال می‌کند، آن را در فیلد مربوطه وارد کنید.
@@ -35,7 +34,7 @@
 
 ###### خطا: BOT_DOMAIN_INVALID
 
-این خطا به دلیل پیکربندی نادرست دامنه ربات رخ می‌دهد — بخش «پیکربندی ربات» (بالا) را بررسی کنید. در صورت نیاز، مراحل را دوباره به‌ترتیب انجام دهید.
+این خطا قبل از backend callback رخ می‌دهد، زمانی که Telegram مقدار `origin` صفحه را با دامنه ربات مقایسه می‌کند. برای `https://data.s-backup.online/panel/auth/login`، Telegram مقدار `https://data.s-backup.online` را بررسی می‌کند؛ بنابراین BotFather باید `data.s-backup.online` را داشته باشد، بدون `/panel/auth/login`.
 
 ###### خطا: کد تأیید تلگرام هنگام ورود دریافت نمی‌شود
 

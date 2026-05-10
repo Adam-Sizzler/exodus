@@ -19,6 +19,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
+	"exodus/internal/notifications"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -546,6 +547,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	if strings.EqualFold(normalizeUserStatus(req.Status), "ACTIVE") && len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
+	emitUserNotification(r.Context(), cfg, notifications.EventUserCreated, record, nil)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
 }
 
@@ -717,6 +719,10 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	if (internalSquadsChanged || statusDeployRequired) && len(deployNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, deployNodeUUIDs...)
 	}
+	emitUserNotification(r.Context(), cfg, notifications.EventUserModified, updatedRecord, nil)
+	if statusChanged := userStatusChangedNotification(record.Status, updatedRecord.Status); statusChanged != "" {
+		emitUserNotification(r.Context(), cfg, statusChanged, updatedRecord, nil)
+	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
 }
 
@@ -870,6 +876,11 @@ func handleGetUserAccessibleNodes(w http.ResponseWriter, r *http.Request, manage
 }
 
 func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+	record, recordErr := getUserRecordByUUID(r.Context(), manager, userUUID)
+	if recordErr != nil && !errors.Is(recordErr, errUserNotFound) {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", recordErr, cfg)
+		return
+	}
 	internalSquadNodeUUIDs := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
@@ -927,6 +938,9 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	if len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	}
+	if recordErr == nil {
+		emitUserNotification(r.Context(), cfg, notifications.EventUserDeleted, record, nil)
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
@@ -1074,6 +1088,7 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 	if len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
+	emitUsersByUUIDsNotification(r.Context(), manager, cfg, notifications.EventUserDeleted, req.UUIDs)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -1096,6 +1111,7 @@ func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, manager
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
+	emitUsersByUUIDsNotification(r.Context(), manager, cfg, notifications.EventUserTrafficReset, req.UUIDs)
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
@@ -1109,6 +1125,7 @@ func handleBulkAllResetUsersTraffic(w http.ResponseWriter, r *http.Request, mana
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
+	emitBulkSummaryNotification(r.Context(), cfg, notifications.EventUserTrafficReset, affectedRows)
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
@@ -1136,6 +1153,7 @@ func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request,
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
+	emitUsersByUUIDsNotification(r.Context(), manager, cfg, notifications.EventUserModified, req.UUIDs)
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
@@ -1159,6 +1177,7 @@ func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Reque
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
+	emitBulkSummaryNotification(r.Context(), cfg, notifications.EventUserModified, affectedRows)
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
@@ -1172,6 +1191,9 @@ func handleEnableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
+	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
+		emitUserNotification(r.Context(), cfg, notifications.EventUserEnabled, record, nil)
+	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
@@ -1183,6 +1205,9 @@ func handleDisableUser(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	}
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
+	}
+	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
+		emitUserNotification(r.Context(), cfg, notifications.EventUserDisabled, record, nil)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
@@ -1247,6 +1272,12 @@ func handleResetUserTraffic(w http.ResponseWriter, r *http.Request, manager *dbm
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
+	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
+		emitUserNotification(r.Context(), cfg, notifications.EventUserTrafficReset, record, nil)
+		if strings.EqualFold(record.Status, "ACTIVE") {
+			emitUserNotification(r.Context(), cfg, notifications.EventUserEnabled, record, map[string]any{"reason": "traffic_reset"})
+		}
+	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
 
@@ -1278,6 +1309,9 @@ func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, manage
 	if err != nil {
 		handleUserWriteError(w, err, cfg)
 		return
+	}
+	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
+		emitUserNotification(r.Context(), cfg, notifications.EventUserRevoked, record, nil)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
@@ -1961,6 +1995,115 @@ func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	}
 
 	return response, nil
+}
+
+func emitUserNotification(ctx context.Context, cfg *config.BackendConfig, event string, record userRecord, meta map[string]any) {
+	notifications.Emit(ctx, cfg, notifications.Event{
+		Scope: notifications.ScopeUser,
+		Event: event,
+		Data:  userRecordNotificationData(record),
+		Meta:  meta,
+	})
+}
+
+func emitUsersByUUIDsNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, userUUIDs []string) {
+	clean := dedupeStrings(userUUIDs)
+	if len(clean) == 0 {
+		return
+	}
+	skipTelegram := len(clean) >= 500
+	for _, userUUID := range clean {
+		record, err := getUserRecordByUUID(ctx, manager, userUUID)
+		meta := map[string]any{"bulk": true}
+		if skipTelegram {
+			meta["skipTelegramNotification"] = true
+		}
+		if err == nil {
+			emitUserNotification(ctx, cfg, event, record, meta)
+			continue
+		}
+		notifications.Emit(ctx, cfg, notifications.Event{
+			Scope: notifications.ScopeUser,
+			Event: event,
+			Data:  map[string]any{"uuid": userUUID},
+			Meta:  meta,
+		})
+	}
+}
+
+func emitBulkSummaryNotification(ctx context.Context, cfg *config.BackendConfig, event string, affectedRows int64) {
+	if affectedRows <= 0 {
+		return
+	}
+	notifications.Emit(ctx, cfg, notifications.Event{
+		Scope: notifications.ScopeUser,
+		Event: event,
+		Data: map[string]any{
+			"affectedRows": affectedRows,
+		},
+		Meta: map[string]any{
+			"bulk":                     true,
+			"skipTelegramNotification": affectedRows >= 500,
+		},
+	})
+}
+
+func userRecordNotificationData(record userRecord) map[string]any {
+	return map[string]any{
+		"tId":                    record.TID,
+		"uuid":                   record.UUID,
+		"shortUuid":              record.ShortUUID,
+		"username":               record.Username,
+		"status":                 record.Status,
+		"trafficLimitBytes":      record.TrafficLimitBytes,
+		"trafficLimitStrategy":   record.TrafficLimitStrategy,
+		"expireAt":               record.ExpireAt.UTC().Format(time.RFC3339),
+		"telegramId":             record.TelegramID,
+		"email":                  record.Email,
+		"description":            record.Description,
+		"tag":                    record.Tag,
+		"hwidDeviceLimit":        record.HwidDeviceLimit,
+		"externalSquadUuid":      record.ExternalSquadUUID,
+		"lastTriggeredThreshold": record.LastTriggeredThreshold,
+		"subRevokedAt":           optionalTimeString(record.SubRevokedAt),
+		"subLastOpenedAt":        optionalTimeString(record.SubLastOpenedAt),
+		"lastTrafficResetAt":     optionalTimeString(record.LastTrafficResetAt),
+		"createdAt":              record.CreatedAt.UTC().Format(time.RFC3339),
+		"updatedAt":              record.UpdatedAt.UTC().Format(time.RFC3339),
+		"userTraffic": map[string]any{
+			"usedTrafficBytes":         record.UsedTrafficBytes,
+			"lifetimeUsedTrafficBytes": record.LifetimeUsedTrafficBytes,
+			"onlineAt":                 optionalTimeString(record.OnlineAt),
+			"firstConnectedAt":         optionalTimeString(record.FirstConnectedAt),
+			"lastConnectedNodeUuid":    record.LastConnectedNodeUUID,
+		},
+	}
+}
+
+func optionalTimeString(value *time.Time) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := value.UTC().Format(time.RFC3339)
+	return &formatted
+}
+
+func userStatusChangedNotification(previous, next string) string {
+	if strings.EqualFold(previous, next) {
+		return ""
+	}
+	switch strings.ToUpper(strings.TrimSpace(next)) {
+	case "ACTIVE":
+		return notifications.EventUserEnabled
+	case "DISABLED":
+		return notifications.EventUserDisabled
+	case "LIMITED":
+		return notifications.EventUserLimited
+	case "EXPIRED":
+		return notifications.EventUserExpired
+	default:
+		return ""
+	}
 }
 
 func getUsersActiveInternalSquads(ctx context.Context, manager *dbmanager.DatabaseManager, userUUIDs []string) (map[string][]internalSquadResponse, error) {

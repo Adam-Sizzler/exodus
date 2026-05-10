@@ -15,6 +15,7 @@ import (
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
 	users "exodus/internal/nodes"
+	"exodus/internal/notifications"
 	"exodus/internal/redisqueue"
 	"exodus/internal/scheduler"
 	"exodus/internal/srslists"
@@ -82,6 +83,13 @@ func Run() {
 	}
 
 	log.Printf("[START] exodus application %s", constant.Version)
+	notifications.Emit(context.Background(), &cfg, notifications.Event{
+		Scope: notifications.ScopeService,
+		Event: notifications.EventServicePanelStarted,
+		Data: map[string]any{
+			"version": constant.Version,
+		},
+	})
 
 	<-sigChan
 	cfg.Logger.Info("Received termination signal, saving data")

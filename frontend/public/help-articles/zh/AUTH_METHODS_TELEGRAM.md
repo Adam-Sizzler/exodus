@@ -9,18 +9,17 @@
 1. 打开 @BotFather（https://t.me/botfather）
 2. 点击"Open"按钮打开 MiniApp
 3. 选择您的机器人，然后点击 `Bot Settings`
-4. 如果 `Web Login` 部分已经指定了域名 — 请先删除它。
-5. 点击 Switch to OpenID Connect Login 按钮。
-   `如果没有看到此按钮，请在删除域名后返回上一级菜单，然后从步骤 3 重新操作`
-6. 点击 Add an Allowed URL。
-   填写以下值：
+4. 打开 `Web Login` 部分。
+5. 使用 `/setdomain` 或 `Web Login` 中的域名字段设置面板域名。
+   只填写域名，不要填写协议和路径：
 
-- Trusted Origins: https://panel.domain.com
-- Redirect URIs: https://panel.domain.com/oauth2/callback/telegram
+- `panel.domain.com`
+
+如果面板地址是 `https://data.s-backup.online/panel/auth/login`，BotFather 中应填写 `data.s-backup.online`。
 
 ### 访问权限配置
 
-在填写完 `Client ID`、`Client Secret` 和 `Frontend Domain` 后，您需要指定允许登录的管理员 ID 列表。
+填写 `Bot Token` 后，您需要指定允许登录的管理员 ID 列表。
 
 1. 使用对应账号打开机器人 – https://t.me/Get_myidrobot
 2. 机器人会返回您的用户 ID，将该 ID 填入对应的字段中。
@@ -35,7 +34,7 @@
 
 ###### 错误：BOT_DOMAIN_INVALID
 
-此错误是由于机器人域名配置不正确导致的 — 请查看上方"机器人配置"部分。如有必要，请逐步重新执行配置。
+此错误发生在 backend callback 之前，Telegram 会比较页面 `origin` 和机器人域名。对于 `https://data.s-backup.online/panel/auth/login`，Telegram 检查的是 `https://data.s-backup.online`，因此 BotFather 中必须填写 `data.s-backup.online`，不要包含 `/panel/auth/login`。
 
 ###### 错误：登录时未收到 Telegram 验证码
 

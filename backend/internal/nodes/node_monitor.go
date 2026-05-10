@@ -17,6 +17,7 @@ import (
 	"exodus/internal/config"
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/notifications"
 	"exodus/internal/proto"
 
 	"google.golang.org/grpc"
@@ -583,6 +584,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	usersOnline := trafficDelta.UsersOnline
 
 	persistedNodeUUID := ""
+	firstConnectedEvents := make([]notifications.Event, 0)
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var (
 			nodeUUID              string
@@ -672,6 +674,36 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			return rowsErr
 		}
 
+		firstConnectedByID := make(map[int64]bool, len(userIDs))
+		if len(userIDs) > 0 {
+			ids := make([]int64, 0, len(userIDs))
+			for _, userID := range userIDs {
+				ids = append(ids, userID)
+			}
+			firstRows, firstErr := db.Query(`
+				SELECT t_id, first_connected_at IS NOT NULL
+				FROM user_traffic
+				WHERE t_id = ANY(?)
+			`, ids)
+			if firstErr != nil {
+				return firstErr
+			}
+			defer firstRows.Close()
+			for firstRows.Next() {
+				var (
+					userID            int64
+					hasFirstConnected bool
+				)
+				if scanErr := firstRows.Scan(&userID, &hasFirstConnected); scanErr != nil {
+					return scanErr
+				}
+				firstConnectedByID[userID] = hasFirstConnected
+			}
+			if rowsErr := firstRows.Err(); rowsErr != nil {
+				return rowsErr
+			}
+		}
+
 		for username, rawBytes := range trafficDelta.UserBytesByName {
 			userID, ok := userIDs[username]
 			if !ok {
@@ -700,6 +732,20 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				return execErr
 			}
 
+			if !firstConnectedByID[userID] {
+				firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
+					Scope: notifications.ScopeUser,
+					Event: notifications.EventUserFirstConnected,
+					Data: map[string]any{
+						"tId":      userID,
+						"username": username,
+						"nodeUuid": nodeUUID,
+						"nodeName": nodeName,
+					},
+				})
+				firstConnectedByID[userID] = true
+			}
+
 			if _, execErr := db.Exec(`
 				INSERT INTO nodes_user_usage_history (node_id, user_id, total_bytes)
 				VALUES (?, ?, ?)
@@ -721,6 +767,9 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 
 	if persistedNodeUUID != "" {
 		nm.updateNodeMetricsSnapshot(persistedNodeUUID, usersOnline, trafficDelta)
+	}
+	for _, event := range firstConnectedEvents {
+		notifications.Emit(context.Background(), nm.cfg, event)
 	}
 }
 
@@ -873,13 +922,20 @@ func firstNonEmpty(values ...string) any {
 
 // updateConnectionStatus updates node connection status in database (only on change).
 func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isConnecting bool, message string) {
+	var notificationEvent notifications.Event
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		// Get current status
-		var currentConnected, currentConnecting bool
-		var currentMessage sql.NullString
+		var (
+			nodeUUID          string
+			nodeAddress       string
+			nodePort          sql.NullInt64
+			currentConnected  bool
+			currentConnecting bool
+			currentMessage    sql.NullString
+		)
 
-		err := db.QueryRow(`SELECT is_connected, is_connecting, last_status_message FROM nodes WHERE name = ?`, nodeName).
-			Scan(&currentConnected, &currentConnecting, &currentMessage)
+		err := db.QueryRow(`SELECT uuid, address, port, is_connected, is_connecting, last_status_message FROM nodes WHERE name = ?`, nodeName).
+			Scan(&nodeUUID, &nodeAddress, &nodePort, &currentConnected, &currentConnecting, &currentMessage)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				nm.cfg.Logger.Debug("Node not found in DB", "node", nodeName)
@@ -910,12 +966,35 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 			return fmt.Errorf("update node status: %w", err)
 		}
 
+		if currentConnected != isConnected {
+			eventName := notifications.EventNodeConnectionRestored
+			if !isConnected {
+				eventName = notifications.EventNodeConnectionLost
+			}
+			notificationEvent = notifications.Event{
+				Scope: notifications.ScopeNode,
+				Event: eventName,
+				Data: map[string]any{
+					"uuid":        nodeUUID,
+					"name":        nodeName,
+					"address":     nodeAddress,
+					"port":        nodePort.Int64,
+					"isConnected": isConnected,
+					"message":     message,
+				},
+			}
+		}
+
 		nm.cfg.Logger.Debug("Node status updated", "node", nodeName, "connected", isConnected, "message", message)
 		return nil
 	})
 
 	if err != nil {
 		nm.cfg.Logger.Warn("Failed to update node status", "node", nodeName, "error", err)
+		return
+	}
+	if notificationEvent.Event != "" {
+		notifications.Emit(context.Background(), nm.cfg, notificationEvent)
 	}
 }
 
