@@ -30,7 +30,7 @@ import (
 const (
 	oauthStateTTL        = 10 * time.Minute
 	oauthScope           = "openid email profile"
-	customOAuthClaimName = "remnawaveAccess"
+	customOAuthClaimName = "exodusAccess"
 )
 
 var oauthStateCache = struct {

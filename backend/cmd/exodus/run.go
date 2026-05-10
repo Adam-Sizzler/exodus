@@ -75,6 +75,7 @@ func Run() {
 	go startMetricsServer(ctx, manager, &cfg, &wg)
 	go nodeMonitor.Start(ctx, &wg)
 	go subNodeMonitor.Start(ctx, &wg)
+	notifications.StartDispatcher(ctx, &wg, manager, &cfg)
 	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	userwatchdog.Start(ctx, &wg, manager, &cfg)
 	scheduler.Start(ctx, &wg, manager, &cfg)

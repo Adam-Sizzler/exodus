@@ -49,7 +49,7 @@ func (s *Scheduler) findUsersForExpireNotifications(ctx context.Context) error {
 		if len(users) > 0 {
 			s.cfg.Logger.Info("Users found for expiration notification", "event", window.name, "users", len(users))
 			for _, user := range users {
-				s.notifier.Send(ctx, notifications.Event{
+				notifications.Emit(ctx, s.cfg, notifications.Event{
 					Scope: notifications.ScopeUser,
 					Event: window.name,
 					Data:  user.notificationData(),
@@ -123,7 +123,7 @@ func (s *Scheduler) findUsersForThresholdNotification(ctx context.Context) error
 		total += len(users)
 		skipTelegram := len(users) >= 500
 		if skipTelegram {
-			s.notifier.Send(ctx, notifications.Event{
+			notifications.Emit(ctx, s.cfg, notifications.Event{
 				Scope: notifications.ScopeErrors,
 				Event: notifications.EventBandwidthMaxNotification,
 				Data: map[string]any{
@@ -139,7 +139,7 @@ func (s *Scheduler) findUsersForThresholdNotification(ctx context.Context) error
 			if skipTelegram {
 				meta["skipTelegramNotification"] = true
 			}
-			s.notifier.Send(ctx, notifications.Event{
+			notifications.Emit(ctx, s.cfg, notifications.Event{
 				Scope: notifications.ScopeUser,
 				Event: notifications.EventUserBandwidthThreshold,
 				Data:  user.notificationData(),
@@ -263,7 +263,7 @@ func (s *Scheduler) findNotConnectedUsersNotification(ctx context.Context) error
 				if skipTelegram {
 					meta["skipTelegramNotification"] = true
 				}
-				s.notifier.Send(ctx, notifications.Event{
+				notifications.Emit(ctx, s.cfg, notifications.Event{
 					Scope: notifications.ScopeUser,
 					Event: notifications.EventUserNotConnected,
 					Data:  user.notificationData(),

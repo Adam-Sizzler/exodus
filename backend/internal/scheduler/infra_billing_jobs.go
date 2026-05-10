@@ -57,7 +57,7 @@ func (s *Scheduler) infraBillingNodesNotifications(ctx context.Context) error {
 				"login_url", item.LoginURL,
 				"next_billing_at", item.NextBillingAt.Format(time.RFC3339),
 			)
-			s.notifier.Send(ctx, notifications.Event{
+			notifications.Emit(ctx, s.cfg, notifications.Event{
 				Scope: notifications.ScopeCRM,
 				Event: window.Name,
 				Data: map[string]any{

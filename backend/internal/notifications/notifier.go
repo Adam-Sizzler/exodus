@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -93,6 +94,9 @@ func Emit(ctx context.Context, cfg *config.BackendConfig, event Event) {
 		return
 	}
 	copied := event
+	if enqueueWithGlobalDispatcher(ctx, copied) {
+		return
+	}
 	_ = ctx
 	go func() {
 		sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -102,7 +106,7 @@ func Emit(ctx context.Context, cfg *config.BackendConfig, event Event) {
 }
 
 func EmitSync(ctx context.Context, cfg *config.BackendConfig, event Event) {
-	New(cfg).Send(ctx, event)
+	_ = New(cfg).Send(ctx, event)
 }
 
 func (n *Notifier) Enabled() bool {
@@ -112,9 +116,9 @@ func (n *Notifier) Enabled() bool {
 	return n.telegramEnabled() || n.webhookEnabled()
 }
 
-func (n *Notifier) Send(ctx context.Context, event Event) {
+func (n *Notifier) Send(ctx context.Context, event Event) error {
 	if n == nil || !n.Enabled() {
-		return
+		return nil
 	}
 	if strings.TrimSpace(event.Timestamp) == "" {
 		event.Timestamp = time.Now().UTC().Format(time.RFC3339)
@@ -123,16 +127,24 @@ func (n *Notifier) Send(ctx context.Context, event Event) {
 		event.Data = map[string]any{}
 	}
 
-	if n.webhookEnabled() {
-		if err := n.sendWebhook(ctx, event); err != nil && n.cfg.Logger != nil {
-			n.cfg.Logger.Warn("Webhook notification failed", "event", event.Event, "error", err)
+	var errs []error
+	if n.webhookEnabled() && n.cfg.Notifications.EventChannelEnabled(event.Event, "webhook") {
+		if err := n.sendWebhook(ctx, event); err != nil {
+			if n.cfg.Logger != nil {
+				n.cfg.Logger.Warn("Webhook notification failed", "event", event.Event, "error", err)
+			}
+			errs = append(errs, err)
 		}
 	}
-	if n.telegramEnabled() && !boolValue(event.Meta, "skipTelegramNotification") {
-		if err := n.sendTelegram(ctx, event); err != nil && n.cfg.Logger != nil {
-			n.cfg.Logger.Warn("Telegram notification failed", "event", event.Event, "error", err)
+	if n.telegramEnabled() && n.cfg.Notifications.EventChannelEnabled(event.Event, "telegram") && !boolValue(event.Meta, "skipTelegramNotification") {
+		if err := n.sendTelegram(ctx, event); err != nil {
+			if n.cfg.Logger != nil {
+				n.cfg.Logger.Warn("Telegram notification failed", "event", event.Event, "error", err)
+			}
+			errs = append(errs, err)
 		}
 	}
+	return errors.Join(errs...)
 }
 
 func (n *Notifier) telegramEnabled() bool {
@@ -227,9 +239,45 @@ func (n *Notifier) sendTelegram(ctx context.Context, event Event) error {
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if retryAfter := telegramRetryAfter(respBody); retryAfter > 0 {
+				return RateLimitError{RetryAfter: retryAfter, Err: fmt.Errorf("telegram returned %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))}
+			}
+		}
 		return fmt.Errorf("telegram returned %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
 	return nil
+}
+
+type RateLimitError struct {
+	RetryAfter time.Duration
+	Err        error
+}
+
+func (e RateLimitError) Error() string {
+	if e.Err != nil {
+		return e.Err.Error()
+	}
+	return "notification rate limited"
+}
+
+func (e RateLimitError) Unwrap() error {
+	return e.Err
+}
+
+func telegramRetryAfter(body []byte) time.Duration {
+	var payload struct {
+		Parameters struct {
+			RetryAfter int `json:"retry_after"`
+		} `json:"parameters"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return 0
+	}
+	if payload.Parameters.RetryAfter <= 0 {
+		return 0
+	}
+	return time.Duration(payload.Parameters.RetryAfter) * time.Second
 }
 
 func (n *Notifier) telegramTarget(scope string) (string, string) {
@@ -288,38 +336,70 @@ func formatUserMessage(event Event) string {
 		username = html.EscapeString(stringValue(event.Data, "uuid"))
 	}
 	header := strings.TrimPrefix(event.Event, "user.")
+	fullInfo := fmt.Sprintf(
+		"<b>Username:</b> <code>%s</code>\n<b>Traffic limit:</b> <code>%s</code>\n<b>Valid until:</b> <code>%s</code>\n<b>Sub:</b> <code>%s</code>",
+		username,
+		html.EscapeString(formatBytes(int64Value(event.Data, "trafficLimitBytes"))),
+		html.EscapeString(stringValue(event.Data, "expireAt")),
+		html.EscapeString(stringValue(event.Data, "shortUuid")),
+	)
 	switch event.Event {
 	case EventUserBandwidthThreshold:
+		traffic := int64Value(event.Data, "usedTrafficBytes")
+		if traffic == 0 {
+			traffic = int64Value(nestedMap(event.Data, "userTraffic"), "usedTrafficBytes")
+		}
 		return fmt.Sprintf(
-			"<b>#%s</b>\n<b>Username:</b> <code>%s</code>\n<b>Traffic:</b> <code>%s</code>\n<b>Limit:</b> <code>%s</code>\n<b>Threshold:</b> <code>%d%%</code>",
+			"<b>#%s</b>\n---------\n<b>Username:</b> <code>%s</code>\n<b>Traffic:</b> <code>%s</code>\n<b>Limit:</b> <code>%s</code>\n<b>Threshold:</b> <code>%d%%</code>",
 			html.EscapeString(header),
 			username,
-			html.EscapeString(formatBytes(int64Value(event.Data, "usedTrafficBytes"))),
+			html.EscapeString(formatBytes(traffic)),
 			html.EscapeString(formatBytes(int64Value(event.Data, "trafficLimitBytes"))),
 			intValue(event.Data, "lastTriggeredThreshold"),
 		)
 	case EventUserNotConnected:
 		return fmt.Sprintf(
-			"<b>#not_connected_after_%d_hours</b>\n<b>Username:</b> <code>%s</code>",
+			"<b>#not_connected_after_%d_hours</b>\n---------\n<b>Username:</b> <code>%s</code>",
 			intValue(event.Meta, "notConnectedAfterHours"),
 			username,
 		)
+	case EventUserCreated, EventUserModified, EventUserRevoked:
+		return fmt.Sprintf("<b>#%s</b>\n---------\n%s", html.EscapeString(header), fullInfo)
+	case EventUserTrafficReset:
+		traffic := int64Value(event.Data, "usedTrafficBytes")
+		if traffic == 0 {
+			traffic = int64Value(nestedMap(event.Data, "userTraffic"), "usedTrafficBytes")
+		}
+		return fmt.Sprintf(
+			"<b>#traffic_reset</b>\n---------\n<b>Username:</b> <code>%s</code>\n<b>Traffic:</b> <code>%s</code>",
+			username,
+			html.EscapeString(formatBytes(traffic)),
+		)
 	default:
-		return fmt.Sprintf("<b>#%s</b>\n<b>Username:</b> <code>%s</code>", html.EscapeString(header), username)
+		return fmt.Sprintf("<b>#%s</b>\n---------\n<b>Username:</b> <code>%s</code>", html.EscapeString(header), username)
 	}
 }
 
 func formatNodeMessage(event Event) string {
 	if event.Event != EventNodeTrafficNotify {
-		return formatGenericMessage(event)
+		return fmt.Sprintf(
+			"<b>#%s</b>\n---------\n<b>Name:</b> <code>%s</code>\n<b>Address:</b> <code>%s:%d</code>\n<b>Reason:</b> <code>%s</code>\n<b>Last status change:</b> <code>%s</code>",
+			html.EscapeString(strings.TrimPrefix(event.Event, "node.")),
+			html.EscapeString(firstNonEmptyString(stringValue(event.Data, "name"), stringValue(event.Data, "nodeName"), stringValue(event.Data, "uuid"))),
+			html.EscapeString(stringValue(event.Data, "address")),
+			intValue(event.Data, "port"),
+			html.EscapeString(stringValue(event.Data, "lastStatusMessage")),
+			html.EscapeString(stringValue(event.Data, "lastStatusChange")),
+		)
 	}
 	return fmt.Sprintf(
-		"<b>#nodeTrafficNotify</b>\n<b>Name:</b> <code>%s</code>\n<b>Address:</b> <code>%s:%d</code>\n<b>Traffic:</b> <code>%s</code> / <code>%s</code>\n<b>Percent:</b> <code>%d%%</code>",
+		"<b>#nodeTrafficNotify</b>\n---------\n<b>Name:</b> <code>%s</code>\n<b>Address:</b> <code>%s:%d</code>\n<b>Traffic:</b> <code>%s</code> / <code>%s</code>\n<b>Traffic reset day:</b> <code>%d</code>\n<b>Percent:</b> <code>%d%%</code>",
 		html.EscapeString(stringValue(event.Data, "name")),
 		html.EscapeString(stringValue(event.Data, "address")),
 		intValue(event.Data, "port"),
 		html.EscapeString(formatBytes(int64Value(event.Data, "trafficUsedBytes"))),
 		html.EscapeString(formatBytes(int64Value(event.Data, "trafficLimitBytes"))),
+		intValue(event.Data, "trafficResetDay"),
 		intValue(event.Data, "notifyPercent"),
 	)
 }
@@ -330,14 +410,46 @@ func formatUserHWIDDeviceMessage(event Event) string {
 		username = html.EscapeString(stringValue(event.Data, "userUuid"))
 	}
 	return fmt.Sprintf(
-		"<b>#%s</b>\n<b>User:</b> <code>%s</code>\n<b>HWID:</b> <code>%s</code>",
+		"<b>#%s</b>\n---------\n<b>User:</b> <code>%s</code>\n<b>HWID:</b> <code>%s</code>\n<b>Platform:</b> <code>%s</code>\n<b>Model:</b> <code>%s</code>",
 		html.EscapeString(strings.TrimPrefix(event.Event, "user_hwid_devices.")),
 		username,
 		html.EscapeString(stringValue(event.Data, "hwid")),
+		html.EscapeString(stringValue(event.Data, "platform")),
+		html.EscapeString(stringValue(event.Data, "deviceModel")),
 	)
 }
 
 func formatGenericMessage(event Event) string {
+	switch event.Event {
+	case EventServicePanelStarted:
+		return fmt.Sprintf("<b>#panel_started</b>\n---------\nExodus <code>%s</code> is up and running.", html.EscapeString(firstNonEmptyString(stringValue(event.Data, "version"), stringValue(event.Data, "panelVersion"))))
+	case EventLoginAttemptFailed, EventLoginAttemptSuccess:
+		loginAttempt := nestedMap(event.Data, "loginAttempt")
+		if len(loginAttempt) == 0 {
+			loginAttempt = event.Data
+		}
+		return fmt.Sprintf(
+			"<b>#%s</b>\n---------\n<b>User:</b> <code>%s</code>\n<b>IP:</b> <code>%s</code>\n<b>User agent:</b> <code>%s</code>\n<b>Description:</b> <code>%s</code>",
+			html.EscapeString(strings.TrimPrefix(event.Event, "service.")),
+			html.EscapeString(stringValue(loginAttempt, "username")),
+			html.EscapeString(stringValue(loginAttempt, "ip")),
+			html.EscapeString(stringValue(loginAttempt, "userAgent")),
+			html.EscapeString(stringValue(loginAttempt, "description")),
+		)
+	case EventServiceSubpageChanged:
+		subpageConfig := nestedMap(event.Data, "subpageConfig")
+		return fmt.Sprintf(
+			"<b>#subpage_config_changed</b>\n---------\n<b>Action:</b> <code>%s</code>\n<b>UUID:</b> <code>%s</code>",
+			html.EscapeString(stringValue(subpageConfig, "action")),
+			html.EscapeString(stringValue(subpageConfig, "uuid")),
+		)
+	case EventBandwidthMaxNotification:
+		return fmt.Sprintf(
+			"<b>#bandwidth_usage_threshold_reached_max_notifications</b>\n---------\n<b>Batch:</b> <code>%d</code>\n<b>Total processed:</b> <code>%d</code>",
+			intValue(event.Data, "batchSize"),
+			intValue(event.Data, "totalProcessed"),
+		)
+	}
 	title := event.Event
 	if title == "" {
 		title = event.Scope
@@ -352,18 +464,32 @@ func formatGenericMessage(event Event) string {
 	if main == "" {
 		return fmt.Sprintf("<b>#%s</b>", html.EscapeString(title))
 	}
-	return fmt.Sprintf("<b>#%s</b>\n<b>Target:</b> <code>%s</code>", html.EscapeString(title), html.EscapeString(main))
+	return fmt.Sprintf("<b>#%s</b>\n---------\n<b>Target:</b> <code>%s</code>", html.EscapeString(title), html.EscapeString(main))
 }
 
 func formatCRMMessage(event Event) string {
 	return fmt.Sprintf(
-		"<b>#%s</b>\n<b>Provider:</b> <code>%s</code>\n<b>Node:</b> <code>%s</code>\n<b>Due date:</b> <code>%s</code>\n<a href=\"%s\">Open Provider Panel</a>",
+		"<b>#%s</b>\n---------\n<b>Provider:</b> <code>%s</code>\n<b>Node:</b> <code>%s</code>\n<b>Due date:</b> <code>%s</code>\n<a href=\"%s\">Open Provider Panel</a>",
 		html.EscapeString(strings.TrimPrefix(event.Event, "crm.")),
 		html.EscapeString(stringValue(event.Data, "providerName")),
 		html.EscapeString(stringValue(event.Data, "nodeName")),
 		html.EscapeString(stringValue(event.Data, "nextBillingAt")),
 		html.EscapeString(stringValue(event.Data, "loginUrl")),
 	)
+}
+
+func nestedMap(data map[string]any, key string) map[string]any {
+	if data == nil {
+		return nil
+	}
+	raw, exists := data[key]
+	if !exists || raw == nil {
+		return nil
+	}
+	if typed, ok := raw.(map[string]any); ok {
+		return typed
+	}
+	return nil
 }
 
 func firstNonEmptyString(values ...string) string {

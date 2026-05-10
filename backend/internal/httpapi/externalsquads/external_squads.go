@@ -155,16 +155,38 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 			return
 		}
 
-		if _, err := uuid.Parse(path); err != nil {
+		parts := strings.Split(path, "/")
+		squadUUID := strings.TrimSpace(parts[0])
+		if _, err := uuid.Parse(squadUUID); err != nil {
 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			return
+		}
+		if len(parts) > 1 {
+			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "add-users" {
+				if r.Method != http.MethodPost {
+					shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+					return
+				}
+				handleBulkAddUsersToExternalSquad(w, r, manager, cfg, squadUUID)
+				return
+			}
+			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "remove-users" {
+				if r.Method != http.MethodDelete {
+					shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+					return
+				}
+				handleBulkRemoveUsersFromExternalSquad(w, r, manager, cfg, squadUUID)
+				return
+			}
+			http.NotFound(w, r)
 			return
 		}
 
 		switch r.Method {
 		case http.MethodGet:
-			handleGetExternalSquadByUUID(w, r, manager, cfg, path)
+			handleGetExternalSquadByUUID(w, r, manager, cfg, squadUUID)
 		case http.MethodDelete:
-			handleDeleteExternalSquad(w, r, manager, cfg, path)
+			handleDeleteExternalSquad(w, r, manager, cfg, squadUUID)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -576,6 +598,74 @@ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, manager *
 	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
+}
+
+func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	var affected int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var exists int
+		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM external_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errExternalSquadNotFound
+			}
+			return err
+		}
+		result, err := db.ExecContext(r.Context(), `
+			UPDATE users
+			SET external_squad_uuid = ?::uuid, updated_at = CURRENT_TIMESTAMP
+			WHERE external_squad_uuid IS DISTINCT FROM ?::uuid
+		`, squadUUID, squadUUID)
+		if err != nil {
+			return err
+		}
+		affected, _ = result.RowsAffected()
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, errExternalSquadNotFound) {
+			shared.SendError(w, http.StatusNotFound, "external squad not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to add users to external squad", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("Users added to external squad", "squad_uuid", squadUUID, "affected_rows", affected)
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+}
+
+func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	var affected int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var exists int
+		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM external_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errExternalSquadNotFound
+			}
+			return err
+		}
+		result, err := db.ExecContext(r.Context(), `
+			UPDATE users
+			SET external_squad_uuid = NULL, updated_at = CURRENT_TIMESTAMP
+			WHERE external_squad_uuid = ?
+		`, squadUUID)
+		if err != nil {
+			return err
+		}
+		affected, _ = result.RowsAffected()
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, errExternalSquadNotFound) {
+			shared.SendError(w, http.StatusNotFound, "external squad not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to remove users from external squad", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("Users removed from external squad", "squad_uuid", squadUUID, "affected_rows", affected)
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
 func getExternalSquads(ctx context.Context, manager *dbmanager.DatabaseManager) ([]ExternalSquadRecord, error) {

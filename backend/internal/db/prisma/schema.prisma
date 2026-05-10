@@ -622,3 +622,17 @@ model SubscriptionPageConfig {
 
   @@map("subscription_page_config")
 }
+
+model NotificationDeliveryQueue {
+  id            BigInt    @id @default(autoincrement())
+  event         Json      @map("event")
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(dbgenerated("now()")) @map("next_attempt_at")
+  lastError     String?   @map("last_error")
+  failedAt      DateTime? @map("failed_at")
+  createdAt     DateTime  @default(dbgenerated("now()")) @map("created_at")
+  updatedAt     DateTime  @default(dbgenerated("now()")) @map("updated_at")
+
+  @@index([failedAt, nextAttemptAt, id], map: "notification_delivery_queue_due_idx")
+  @@map("notification_delivery_queue")
+}

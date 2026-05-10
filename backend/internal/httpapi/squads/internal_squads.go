@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/google/uuid"
 )
+
+var errInternalSquadNotFound = errors.New("internal squad not found")
 
 // InternalSquad represents an internal squad entity for API responses.
 type InternalSquad struct {
@@ -51,6 +54,15 @@ type InternalSquadAPI struct {
 	Inbounds     []InternalSquadInboundAPI `json:"inbounds"`
 	CreatedAt    time.Time                 `json:"createdAt"`
 	UpdatedAt    time.Time                 `json:"updatedAt"`
+}
+
+type InternalSquadAccessibleNode struct {
+	UUID              string   `json:"uuid"`
+	NodeName          string   `json:"nodeName"`
+	CountryCode       string   `json:"countryCode"`
+	ConfigProfileUUID string   `json:"configProfileUuid"`
+	ConfigProfileName string   `json:"configProfileName"`
+	ActiveInbounds    []string `json:"activeInbounds"`
 }
 
 // InternalSquadCreateRequest represents a request to create a new internal squad.
@@ -308,8 +320,8 @@ func handleCreateInternalSquad(w http.ResponseWriter, r *http.Request, manager *
 // InternalSquadByUUIDHandler handles GET/PATCH/DELETE /api/internal-squads/{uuid}
 func InternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		squadUUID := strings.TrimSpace(trimInternalSquadsPath(r.URL.Path))
-		if squadUUID == "" {
+		path := strings.TrimSpace(trimInternalSquadsPath(r.URL.Path))
+		if path == "" {
 			switch r.Method {
 			case http.MethodGet:
 				handleGetInternalSquads(w, r, manager, cfg)
@@ -334,8 +346,38 @@ func InternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 			return
 		}
 
+		parts := strings.Split(path, "/")
+		squadUUID := strings.TrimSpace(parts[0])
 		if _, err := uuid.Parse(squadUUID); err != nil {
 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			return
+		}
+		if len(parts) > 1 {
+			if len(parts) == 2 && parts[1] == "accessible-nodes" {
+				if r.Method != http.MethodGet {
+					http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+					return
+				}
+				handleGetInternalSquadAccessibleNodes(w, r, manager, cfg, squadUUID)
+				return
+			}
+			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "add-users" {
+				if r.Method != http.MethodPost {
+					http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+					return
+				}
+				handleBulkAddUsersToInternalSquad(w, r, manager, cfg, squadUUID)
+				return
+			}
+			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "remove-users" {
+				if r.Method != http.MethodDelete {
+					http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
+					return
+				}
+				handleBulkRemoveUsersFromInternalSquad(w, r, manager, cfg, squadUUID)
+				return
+			}
+			http.NotFound(w, r)
 			return
 		}
 
@@ -350,6 +392,153 @@ func InternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
 		}
 	}
+}
+
+func handleGetInternalSquadAccessibleNodes(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	nodes := make([]InternalSquadAccessibleNode, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var exists int
+		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM internal_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errInternalSquadNotFound
+			}
+			return err
+		}
+
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT
+				n.uuid,
+				n.name,
+				n.country_code,
+				cp.uuid,
+				cp.name,
+				cpi.tag
+			FROM internal_squad_inbounds isi
+			INNER JOIN config_profile_inbounds cpi ON cpi.uuid = isi.inbound_uuid
+			INNER JOIN config_profiles cp ON cp.uuid = cpi.profile_uuid
+			INNER JOIN config_profile_inbounds_to_nodes cpin
+				ON cpin.config_profile_inbound_uuid = cpi.uuid
+			INNER JOIN nodes n
+				ON n.uuid = cpin.node_uuid
+				AND n.active_config_profile_uuid = cp.uuid
+			WHERE isi.internal_squad_uuid = ?
+			ORDER BY n.view_position ASC, n.name ASC, cpi.tag ASC
+		`, squadUUID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		indexByNode := make(map[string]int)
+		inboundSeenByNode := make(map[string]map[string]bool)
+		for rows.Next() {
+			var nodeUUID, nodeName, countryCode, profileUUID, profileName, inboundTag string
+			if err := rows.Scan(&nodeUUID, &nodeName, &countryCode, &profileUUID, &profileName, &inboundTag); err != nil {
+				return err
+			}
+			idx, ok := indexByNode[nodeUUID]
+			if !ok {
+				nodes = append(nodes, InternalSquadAccessibleNode{
+					UUID:              nodeUUID,
+					NodeName:          nodeName,
+					CountryCode:       countryCode,
+					ConfigProfileUUID: profileUUID,
+					ConfigProfileName: profileName,
+					ActiveInbounds:    make([]string, 0),
+				})
+				idx = len(nodes) - 1
+				indexByNode[nodeUUID] = idx
+				inboundSeenByNode[nodeUUID] = make(map[string]bool)
+			}
+			if !inboundSeenByNode[nodeUUID][inboundTag] {
+				nodes[idx].ActiveInbounds = append(nodes[idx].ActiveInbounds, inboundTag)
+				inboundSeenByNode[nodeUUID][inboundTag] = true
+			}
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		if errors.Is(err, errInternalSquadNotFound) {
+			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squad accessible nodes", err, cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"squadUuid":       squadUUID,
+			"accessibleNodes": nodes,
+		},
+	})
+}
+
+func handleBulkAddUsersToInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	var affected int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var exists int
+		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM internal_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errInternalSquadNotFound
+			}
+			return err
+		}
+		result, err := db.ExecContext(r.Context(), `
+			INSERT INTO internal_squad_members (internal_squad_uuid, user_id)
+			SELECT ?::uuid, t_id
+			FROM users
+			ON CONFLICT (internal_squad_uuid, user_id) DO NOTHING
+		`, squadUUID)
+		if err != nil {
+			return err
+		}
+		affected, _ = result.RowsAffected()
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, errInternalSquadNotFound) {
+			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to add users to internal squad", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("Users added to internal squad", "squad_uuid", squadUUID, "affected_rows", affected)
+	monitor.RequestNodeDeploy(true)
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+}
+
+func handleBulkRemoveUsersFromInternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	var affected int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var exists int
+		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM internal_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errInternalSquadNotFound
+			}
+			return err
+		}
+		result, err := db.ExecContext(r.Context(), `DELETE FROM internal_squad_members WHERE internal_squad_uuid = ?`, squadUUID)
+		if err != nil {
+			return err
+		}
+		affected, _ = result.RowsAffected()
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, errInternalSquadNotFound) {
+			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to remove users from internal squad", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("Users removed from internal squad", "squad_uuid", squadUUID, "affected_rows", affected)
+	monitor.RequestNodeDeploy(true)
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
 func trimInternalSquadsPath(path string) string {

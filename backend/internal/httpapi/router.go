@@ -53,7 +53,6 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/auth/passkey/authentication/options", passkeys.AuthenticationOptionsHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/verify", passkeys.VerifyAuthenticationHandler(manager, cfg))
 
-	mux.HandleFunc("/api/settings", panelsettings.PanelSettingsHandler(manager, cfg))
 	mux.HandleFunc("/api/exodus-settings", panelsettings.ExodusSettingsHandler(manager, cfg))
 	mux.HandleFunc("/api/exodus-settings/", panelsettings.ExodusSettingsHandler(manager, cfg))
 	mux.HandleFunc("/api/tokens", panelsettings.PanelAPITokensHandler(manager, cfg))

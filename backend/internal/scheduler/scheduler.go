@@ -7,13 +7,11 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
-	"exodus/internal/notifications"
 )
 
 type Scheduler struct {
-	manager  *dbmanager.DatabaseManager
-	cfg      *config.BackendConfig
-	notifier *notifications.Notifier
+	manager *dbmanager.DatabaseManager
+	cfg     *config.BackendConfig
 
 	mu                  sync.Mutex
 	lastRuns            map[string]string
@@ -28,7 +26,6 @@ func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseM
 	s := &Scheduler{
 		manager:             manager,
 		cfg:                 cfg,
-		notifier:            notifications.New(cfg),
 		lastRuns:            make(map[string]string),
 		nodeTrafficNotified: make(map[string]bool),
 	}

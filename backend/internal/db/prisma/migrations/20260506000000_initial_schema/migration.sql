@@ -434,6 +434,16 @@ CREATE SEQUENCE public.user_subscription_request_history_id_seq
     NO MAXVALUE
     CACHE 1;
 ALTER SEQUENCE public.user_subscription_request_history_id_seq OWNED BY public.user_subscription_request_history.id;
+CREATE TABLE public.notification_delivery_queue (
+    id bigserial NOT NULL,
+    event jsonb NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp(3) without time zone DEFAULT now() NOT NULL,
+    last_error text,
+    failed_at timestamp(3) without time zone,
+    created_at timestamp(3) without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp(3) without time zone DEFAULT now() NOT NULL
+);
 CREATE TABLE public.user_traffic (
     t_id bigint NOT NULL,
     used_traffic_bytes bigint DEFAULT 0 NOT NULL,
@@ -561,6 +571,8 @@ ALTER TABLE ONLY public.user_traffic
     ADD CONSTRAINT user_traffic_pkey PRIMARY KEY (t_id);
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (t_id);
+ALTER TABLE ONLY public.notification_delivery_queue
+    ADD CONSTRAINT notification_delivery_queue_pkey PRIMARY KEY (id);
 CREATE INDEX admin_sessions_admin_uuid_idx ON public.admin_sessions USING btree (admin_uuid);
 CREATE INDEX admin_sessions_expires_at_idx ON public.admin_sessions USING btree (expires_at);
 CREATE UNIQUE INDEX admin_username_key ON public.admin USING btree (username);
@@ -580,6 +592,7 @@ CREATE INDEX nodes_id_idx ON public.nodes USING btree (id);
 CREATE UNIQUE INDEX nodes_id_key ON public.nodes USING btree (id);
 CREATE UNIQUE INDEX nodes_name_key ON public.nodes USING btree (name);
 CREATE INDEX nodes_usage_history_node_uuid_created_at_idx ON public.nodes_usage_history USING btree (node_uuid, created_at DESC);
+CREATE INDEX notification_delivery_queue_due_idx ON public.notification_delivery_queue USING btree (failed_at, next_attempt_at, id);
 CREATE INDEX passkeys_admin_uuid_idx ON public.passkeys USING btree (admin_uuid);
 CREATE INDEX passkeys_id_idx ON public.passkeys USING btree (id);
 CREATE UNIQUE INDEX srs_lists_file_name_key ON public.srs_lists USING btree (file_name);

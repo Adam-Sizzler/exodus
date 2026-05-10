@@ -144,7 +144,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 				"percent", currentPercent,
 				"threshold", node.NotifyPercent,
 			)
-			s.notifier.Send(ctx, notifications.Event{
+			notifications.Emit(ctx, s.cfg, notifications.Event{
 				Scope: notifications.ScopeNode,
 				Event: notifications.EventNodeTrafficNotify,
 				Data: map[string]any{

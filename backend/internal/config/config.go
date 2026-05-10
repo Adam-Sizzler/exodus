@@ -11,6 +11,7 @@ import (
 	"exodus/internal/logger"
 
 	"github.com/joho/godotenv"
+	"gopkg.in/yaml.v3"
 )
 
 type BackendConfig struct {
@@ -69,6 +70,14 @@ type NotificationsConfig struct {
 	WebhookEnabled bool
 	WebhookURLs    []string
 	WebhookSecret  string
+
+	ConfigPath    string
+	EventChannels map[string]NotificationEventChannelConfig
+}
+
+type NotificationEventChannelConfig struct {
+	Telegram *bool `yaml:"telegram" json:"telegram"`
+	Webhook  *bool `yaml:"webhook" json:"webhook"`
 }
 
 type LogConfig struct {
@@ -146,6 +155,7 @@ func LoadConfig() (BackendConfig, error) {
 	}
 
 	applyEnvOverrides(&cfg)
+	loadNotificationsYAMLConfig(&cfg)
 	normalizePanelConfig(&cfg)
 
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
@@ -299,6 +309,93 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		} else {
 			cfg.Scheduler.NotConnectedUsersNotificationsAfterHours = parsed
 		}
+	}
+}
+
+func loadNotificationsYAMLConfig(cfg *BackendConfig) {
+	if cfg == nil {
+		return
+	}
+
+	explicitPath := envFirst("NOTIFICATIONS_CONFIG_PATH", "EXODUS_NOTIFICATIONS_CONFIG_PATH")
+	candidates := []string{}
+	if explicitPath != "" {
+		candidates = append(candidates, explicitPath)
+	} else {
+		candidates = append(candidates,
+			"/var/lib/exodus/configs/notifications/notifications-config.yml",
+			"configs/notifications/notifications-config.yml",
+		)
+	}
+
+	var selected string
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate) == "" {
+			continue
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			selected = candidate
+			break
+		}
+	}
+	if selected == "" {
+		if explicitPath != "" && cfg.Logger != nil {
+			cfg.Logger.Warn("Notifications config file not found", "path", explicitPath)
+		}
+		cfg.Notifications.EventChannels = map[string]NotificationEventChannelConfig{}
+		return
+	}
+
+	content, err := os.ReadFile(selected)
+	if err != nil {
+		if cfg.Logger != nil {
+			cfg.Logger.Warn("Failed to read notifications config", "path", selected, "error", err)
+		}
+		cfg.Notifications.EventChannels = map[string]NotificationEventChannelConfig{}
+		return
+	}
+
+	var parsed struct {
+		Events map[string]NotificationEventChannelConfig `yaml:"events"`
+	}
+	if err := yaml.Unmarshal(content, &parsed); err != nil {
+		if cfg.Logger != nil {
+			cfg.Logger.Warn("Failed to parse notifications config", "path", selected, "error", err)
+		}
+		cfg.Notifications.EventChannels = map[string]NotificationEventChannelConfig{}
+		return
+	}
+	if parsed.Events == nil {
+		parsed.Events = map[string]NotificationEventChannelConfig{}
+	}
+	cfg.Notifications.ConfigPath = selected
+	cfg.Notifications.EventChannels = parsed.Events
+	if cfg.Logger != nil {
+		cfg.Logger.Info("Notifications event config loaded", "path", selected, "events", len(parsed.Events))
+	}
+}
+
+func (c NotificationsConfig) EventChannelEnabled(eventName, channel string) bool {
+	if strings.TrimSpace(eventName) == "" || strings.TrimSpace(channel) == "" {
+		return true
+	}
+	eventConfig, exists := c.EventChannels[eventName]
+	if !exists {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(channel)) {
+	case "telegram":
+		if eventConfig.Telegram == nil {
+			return true
+		}
+		return *eventConfig.Telegram
+	case "webhook":
+		if eventConfig.Webhook == nil {
+			return true
+		}
+		return *eventConfig.Webhook
+	default:
+		return true
 	}
 }
 

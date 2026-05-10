@@ -216,7 +216,7 @@ volumes:
 
 ## Сброс Пароля Админа
 
-В Exodus rescue CLI доступен короткой командой внутри контейнера, аналогично Remnawave:
+В Exodus rescue CLI доступен короткой командой внутри контейнера:
 
 ```bash
 docker exec -it exodus exodus
@@ -244,19 +244,6 @@ docker compose run --rm --no-deps --entrypoint /app/exodus exodus --reset-admin-
 ```
 
 Admin должен уже существовать. На новой чистой БД первый admin создается через web login page.
-
-## Сравнение С Remnawave
-
-В Remnawave backend - Node/NestJS сервис с отдельным rescue CLI. В его `Reset superadmin` flow первый admin удаляется, кэш настроек очищается, а новый admin затем регистрируется через web UI.
-
-Типичный flow Remnawave:
-
-```bash
-docker compose exec remnawave remnawave
-# В интерактивном меню выбрать "Reset superadmin".
-```
-
-В Exodus модель проще: один Go-бинарник, который напрямую меняет пароль существующего admin и не удаляет аккаунт.
 
 ```bash
 docker exec -it exodus exodus

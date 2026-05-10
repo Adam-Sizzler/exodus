@@ -1,0 +1,115 @@
+events:
+  user.created:
+    telegram: true
+    webhook: true
+  user.modified:
+    telegram: true
+    webhook: true
+  user.deleted:
+    telegram: true
+    webhook: true
+  user.revoked:
+    telegram: true
+    webhook: true
+  user.disabled:
+    telegram: true
+    webhook: true
+  user.enabled:
+    telegram: true
+    webhook: true
+  user.limited:
+    telegram: true
+    webhook: true
+  user.expired:
+    telegram: true
+    webhook: true
+  user.traffic_reset:
+    telegram: true
+    webhook: true
+  user.first_connected:
+    telegram: true
+    webhook: true
+  user.expires_in_72_hours:
+    telegram: true
+    webhook: true
+  user.expires_in_48_hours:
+    telegram: true
+    webhook: true
+  user.expires_in_24_hours:
+    telegram: true
+    webhook: true
+  user.expired_24_hours_ago:
+    telegram: true
+    webhook: true
+  user.bandwidth_usage_threshold_reached:
+    telegram: true
+    webhook: true
+  user.not_connected:
+    telegram: true
+    webhook: true
+  user_hwid_devices.added:
+    telegram: false
+    webhook: true
+  user_hwid_devices.deleted:
+    telegram: false
+    webhook: true
+  node.created:
+    telegram: true
+    webhook: true
+  node.modified:
+    telegram: true
+    webhook: true
+  node.disabled:
+    telegram: true
+    webhook: true
+  node.enabled:
+    telegram: true
+    webhook: true
+  node.deleted:
+    telegram: true
+    webhook: true
+  node.connection_lost:
+    telegram: true
+    webhook: true
+  node.connection_restored:
+    telegram: true
+    webhook: true
+  node.traffic_notify:
+    telegram: true
+    webhook: true
+  service.panel_started:
+    telegram: true
+    webhook: true
+  service.login_attempt_failed:
+    telegram: true
+    webhook: true
+  service.login_attempt_success:
+    telegram: true
+    webhook: true
+  service.subpage_config_changed:
+    telegram: true
+    webhook: true
+  errors.bandwidth_usage_threshold_reached_max_notifications:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_in_7_days:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_in_48hrs:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_in_24hrs:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_due_today:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_overdue_24hrs:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_overdue_48hrs:
+    telegram: true
+    webhook: true
+  crm.infra_billing_node_payment_overdue_7_days:
+    telegram: true
+    webhook: true

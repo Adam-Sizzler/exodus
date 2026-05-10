@@ -62,8 +62,10 @@ type metricTrafficPair struct {
 
 var prometheusMetricsCache = struct {
 	sync.Mutex
-	payload   string
-	expiresAt time.Time
+	payload    string
+	expiresAt  time.Time
+	refreshing bool
+	ready      chan struct{}
 }{}
 
 func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
@@ -108,8 +110,38 @@ func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.Datab
 		prometheusMetricsCache.Unlock()
 		return payload, nil
 	}
-	prometheusMetricsCache.Unlock()
-
+	if prometheusMetricsCache.refreshing {
+		ready := prometheusMetricsCache.ready
+		prometheusMetricsCache.Unlock()
+		select {
+		case <-ready:
+			prometheusMetricsCache.Lock()
+			if prometheusMetricsCache.payload != "" && time.Now().Before(prometheusMetricsCache.expiresAt) {
+				payload := prometheusMetricsCache.payload
+				prometheusMetricsCache.Unlock()
+				return payload, nil
+			}
+			prometheusMetricsCache.Unlock()
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	} else {
+		prometheusMetricsCache.refreshing = true
+		prometheusMetricsCache.ready = make(chan struct{})
+		prometheusMetricsCache.Unlock()
+		payload, err := renderPrometheusMetrics(ctx, manager)
+		prometheusMetricsCache.Lock()
+		prometheusMetricsCache.refreshing = false
+		ready := prometheusMetricsCache.ready
+		prometheusMetricsCache.ready = nil
+		if err == nil {
+			prometheusMetricsCache.payload = payload
+			prometheusMetricsCache.expiresAt = now.Add(ttl)
+		}
+		close(ready)
+		prometheusMetricsCache.Unlock()
+		return payload, err
+	}
 	payload, err := renderPrometheusMetrics(ctx, manager)
 	if err != nil {
 		return "", err
