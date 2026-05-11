@@ -1,1 +1,0 @@
-{"runId":"after-dbqueue-final-10k","baseUrl":"https://localhost","requestedUsers":10000,"createdUsers":10000,"concurrency":64,"readRequests":500,"timingsMs":{"create":56037,"read":16647,"delete":13199,"total":85922},"ratesPerSecond":{"create":178.45352178025234,"read":30.035441821349192,"delete":757.6331540268202}}

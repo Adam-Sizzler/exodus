@@ -1,1 +1,0 @@
-{"runId":"smoke-before","baseUrl":"https://localhost","requestedUsers":50,"createdUsers":50,"concurrency":8,"readRequests":10,"timingsMs":{"create":581,"read":91,"delete":328,"total":1021},"ratesPerSecond":{"create":86.05851979345955,"read":109.89010989010988,"delete":152.4390243902439}}

@@ -1,1 +1,0 @@
-{"runId":"before-dbqueue","baseUrl":"https://localhost","requestedUsers":1000,"createdUsers":1000,"concurrency":32,"readRequests":200,"timingsMs":{"create":7368,"read":2353,"delete":4069,"total":13807},"ratesPerSecond":{"create":135.72204125950054,"read":84.99787505312368,"delete":245.7606291472106}}
