@@ -3,6 +3,7 @@ package subscription
 import (
 	"encoding/json"
 	"fmt"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -415,5 +416,63 @@ func TestGenerateSingboxConfigKeepsURLTestOrderByHostOrder(t *testing.T) {
       ]
     }`) {
 		t.Fatalf("expected urltest to keep original host order, got:\n%s", rendered)
+	}
+}
+
+func TestExtractHwidHeadersRemnawaveCompatibleHeaders(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("X-HWID", "device-123")
+	req.Header.Set("X-Device-OS", "android")
+	req.Header.Set("X-Ver-OS", "15")
+	req.Header.Set("X-Device-Model", "Pixel 8 Pro")
+	req.Header.Set("User-Agent", "FlClash/0.8.86")
+
+	got := extractHwidHeaders(req)
+	if got == nil {
+		t.Fatal("expected hwid headers, got nil")
+	}
+	if got.Hwid != "device-123" {
+		t.Fatalf("unexpected hwid: %q", got.Hwid)
+	}
+	assertStringPtr(t, "platform", got.Platform, "android")
+	assertStringPtr(t, "os version", got.OsVersion, "15")
+	assertStringPtr(t, "device model", got.DeviceModel, "Pixel 8 Pro")
+	assertStringPtr(t, "user agent", got.UserAgent, "FlClash/0.8.86")
+}
+
+func TestExtractHwidHeadersSupportsHwidFallbackHeaders(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("X-HWID", "device-456")
+	req.Header.Set("X-HWID-Platform", "ios")
+	req.Header.Set("X-HWID-OS-Version", "18.1")
+	req.Header.Set("X-HWID-Device-Model", "iPhone")
+	req.Header.Set("X-HWID-User-Agent", "Shadowrocket/2.2.59")
+
+	got := extractHwidHeaders(req)
+	if got == nil {
+		t.Fatal("expected hwid headers, got nil")
+	}
+	assertStringPtr(t, "platform", got.Platform, "ios")
+	assertStringPtr(t, "os version", got.OsVersion, "18.1")
+	assertStringPtr(t, "device model", got.DeviceModel, "iPhone")
+	assertStringPtr(t, "user agent", got.UserAgent, "Shadowrocket/2.2.59")
+}
+
+func TestExtractHwidHeadersRequiresHwid(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("X-Device-OS", "android")
+
+	if got := extractHwidHeaders(req); got != nil {
+		t.Fatalf("expected nil without X-HWID, got %#v", got)
+	}
+}
+
+func assertStringPtr(t *testing.T, field string, got *string, want string) {
+	t.Helper()
+	if got == nil {
+		t.Fatalf("expected %s %q, got nil", field, want)
+	}
+	if *got != want {
+		t.Fatalf("unexpected %s: got %q, want %q", field, *got, want)
 	}
 }

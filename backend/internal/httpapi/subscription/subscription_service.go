@@ -201,10 +201,10 @@ type SubscriptionWithConfig struct {
 
 type HwidHeaders struct {
 	Hwid        string
-	Platform    string
-	OsVersion   string
-	DeviceModel string
-	UserAgent   string
+	Platform    *string
+	OsVersion   *string
+	DeviceModel *string
+	UserAgent   *string
 }
 
 // loadSubscriptionSettings loads and parses subscription settings.
@@ -634,11 +634,22 @@ func extractHwidHeaders(r *http.Request) *HwidHeaders {
 
 	return &HwidHeaders{
 		Hwid:        hwid,
-		Platform:    strings.TrimSpace(r.Header.Get("X-HWID-Platform")),
-		OsVersion:   strings.TrimSpace(r.Header.Get("X-HWID-OS-Version")),
-		DeviceModel: strings.TrimSpace(r.Header.Get("X-HWID-Device-Model")),
-		UserAgent:   strings.TrimSpace(r.Header.Get("X-HWID-User-Agent")),
+		Platform:    firstNonEmptyHeader(r, "X-Device-OS", "X-HWID-Platform"),
+		OsVersion:   firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version"),
+		DeviceModel: firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model"),
+		UserAgent:   firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent"),
 	}
+}
+
+func firstNonEmptyHeader(r *http.Request, names ...string) *string {
+	for _, name := range names {
+		value := strings.TrimSpace(r.Header.Get(name))
+		if value == "" {
+			continue
+		}
+		return &value
+	}
+	return nil
 }
 
 func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
