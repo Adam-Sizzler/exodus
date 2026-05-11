@@ -1059,8 +1059,14 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 		return
 	}
 
+	notificationRecords, err := getUserRecordsByUUIDs(r.Context(), manager, req.UUIDs)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch users", err, cfg)
+		return
+	}
+
 	internalSquadNodeUUIDs := make([]string, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
@@ -1088,7 +1094,7 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 	if len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
-	emitUsersByUUIDsNotification(r.Context(), manager, cfg, notifications.EventUserDeleted, req.UUIDs)
+	emitUsersNotificationFromRecords(r.Context(), cfg, notifications.EventUserDeleted, req.UUIDs, notificationRecords)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -1842,6 +1848,44 @@ func getUserRecordByUUID(ctx context.Context, manager *dbmanager.DatabaseManager
 	return record, err
 }
 
+func getUserRecordsByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManager, userUUIDs []string) (map[string]userRecord, error) {
+	clean := dedupeStrings(userUUIDs)
+	records := make(map[string]userRecord, len(clean))
+	if len(clean) == 0 {
+		return records, nil
+	}
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT
+				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+				u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
+				u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
+				u.last_triggered_threshold, u.created_at, u.updated_at,
+				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
+				ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
+			FROM users u
+			LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+			WHERE u.uuid = ANY(?)
+		`, clean)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			record, scanErr := scanUserRecord(rows)
+			if scanErr != nil {
+				return scanErr
+			}
+			records[record.UUID] = record
+		}
+		return rows.Err()
+	})
+	return records, err
+}
+
 func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 	var record userRecord
 	var (
@@ -2011,14 +2055,26 @@ func emitUsersByUUIDsNotification(ctx context.Context, manager *dbmanager.Databa
 	if len(clean) == 0 {
 		return
 	}
+	records, err := getUserRecordsByUUIDs(ctx, manager, clean)
+	if err != nil {
+		emitUsersNotificationFromRecords(ctx, cfg, event, clean, nil)
+		return
+	}
+	emitUsersNotificationFromRecords(ctx, cfg, event, clean, records)
+}
+
+func emitUsersNotificationFromRecords(ctx context.Context, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
+	clean := dedupeStrings(userUUIDs)
+	if len(clean) == 0 {
+		return
+	}
 	skipTelegram := len(clean) >= 500
 	for _, userUUID := range clean {
-		record, err := getUserRecordByUUID(ctx, manager, userUUID)
 		meta := map[string]any{"bulk": true}
 		if skipTelegram {
 			meta["skipTelegramNotification"] = true
 		}
-		if err == nil {
+		if record, ok := records[userUUID]; ok {
 			emitUserNotification(ctx, cfg, event, record, meta)
 			continue
 		}

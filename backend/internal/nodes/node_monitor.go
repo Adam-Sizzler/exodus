@@ -53,6 +53,8 @@ type NodeMonitor struct {
 	// Runtime traffic metrics snapshots by node UUID.
 	metricsByNodeUUID map[string]*NodeMetricsSnapshot
 	metricsLock       sync.RWMutex
+
+	usageRecorder NodeUserUsageRecorder
 }
 
 type deployRequest struct {
@@ -63,6 +65,17 @@ type deployRequest struct {
 type TagTrafficCounters struct {
 	UploadBytes   int64
 	DownloadBytes int64
+}
+
+type userUsageDelta struct {
+	UserID       int64
+	Username     string
+	TotalBytes   int64
+	HistoryBytes int64
+}
+
+type NodeUserUsageRecorder interface {
+	RecordNodeUserUsage(ctx context.Context, nodeID int64, userBytes map[int64]int64) error
 }
 
 type NodeMetricsSnapshot struct {
@@ -123,6 +136,10 @@ func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 		srsSyncNow:        make(chan struct{}, 1),
 		metricsByNodeUUID: make(map[string]*NodeMetricsSnapshot),
 	}
+}
+
+func (nm *NodeMonitor) SetNodeUserUsageRecorder(recorder NodeUserUsageRecorder) {
+	nm.usageRecorder = recorder
 }
 
 // Start begins the node monitoring loop.
@@ -260,7 +277,7 @@ func (nm *NodeMonitor) loadActiveNodes() ([]db.DBNode, error) {
 
 func (nm *NodeMonitor) loadControlPlaneGRPCToken() (string, error) {
 	var token sql.NullString
-	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := nm.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		return db.QueryRow(`
 			SELECT grpc_auth_token
 			FROM keygen
@@ -585,7 +602,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 
 	persistedNodeUUID := ""
 	firstConnectedEvents := make([]notifications.Event, 0)
-	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := nm.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		var (
 			nodeUUID              string
 			nodeID                int64
@@ -704,9 +721,14 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			}
 		}
 
+		usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
 		for username, rawBytes := range trafficDelta.UserBytesByName {
+			username = strings.TrimSpace(username)
 			userID, ok := userIDs[username]
 			if !ok {
+				continue
+			}
+			if nm.cfg != nil && nm.cfg.Redis.UserUsageIgnoreBelowBytes > 0 && rawBytes < nm.cfg.Redis.UserUsageIgnoreBelowBytes {
 				continue
 			}
 
@@ -715,22 +737,12 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				continue
 			}
 
-			if _, execErr := db.Exec(`
-				INSERT INTO user_traffic (
-					t_id, used_traffic_bytes, lifetime_used_traffic_bytes,
-					online_at, last_connected_node_uuid, first_connected_at
-				)
-				VALUES (?, ?, ?, now(), ?, now())
-				ON CONFLICT (t_id)
-				DO UPDATE SET
-					used_traffic_bytes = user_traffic.used_traffic_bytes + EXCLUDED.used_traffic_bytes,
-					lifetime_used_traffic_bytes = user_traffic.lifetime_used_traffic_bytes + EXCLUDED.lifetime_used_traffic_bytes,
-					online_at = now(),
-					last_connected_node_uuid = EXCLUDED.last_connected_node_uuid,
-					first_connected_at = COALESCE(user_traffic.first_connected_at, now())
-			`, userID, effectiveBytes, effectiveBytes, nodeUUID); execErr != nil {
-				return execErr
-			}
+			usageDeltas = append(usageDeltas, userUsageDelta{
+				UserID:       userID,
+				Username:     username,
+				TotalBytes:   effectiveBytes,
+				HistoryBytes: rawBytes,
+			})
 
 			if !firstConnectedByID[userID] {
 				firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
@@ -745,17 +757,23 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				})
 				firstConnectedByID[userID] = true
 			}
+		}
 
-			if _, execErr := db.Exec(`
-				INSERT INTO nodes_user_usage_history (node_id, user_id, total_bytes)
-				VALUES (?, ?, ?)
-				ON CONFLICT (node_id, created_at, user_id)
-				DO UPDATE SET
-					total_bytes = nodes_user_usage_history.total_bytes + EXCLUDED.total_bytes,
-					updated_at = now()
-			`, nodeID, userID, effectiveBytes); execErr != nil {
-				return execErr
-			}
+		if len(usageDeltas) == 0 {
+			return nil
+		}
+
+		bulkCtx := nm.globalCtx
+		if bulkCtx == nil {
+			bulkCtx = context.Background()
+		}
+
+		if execErr := bulkUpsertUserTraffic(bulkCtx, db, usageDeltas, nodeUUID); execErr != nil {
+			return execErr
+		}
+
+		if execErr := nm.recordNodeUserUsageHistory(bulkCtx, db, nodeID, usageDeltas); execErr != nil {
+			return execErr
 		}
 
 		return nil
@@ -889,6 +907,117 @@ func applyConsumptionMultiplier(totalBytes int64, multiplierNano int64) int64 {
 		return math.MaxInt64
 	}
 	return int64(scaled)
+}
+
+func (nm *NodeMonitor) recordNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor, nodeID int64, usageDeltas []userUsageDelta) error {
+	if len(usageDeltas) == 0 {
+		return nil
+	}
+	if nm.usageRecorder != nil {
+		userBytes := make(map[int64]int64, len(usageDeltas))
+		for _, delta := range usageDeltas {
+			if delta.UserID <= 0 || delta.HistoryBytes <= 0 {
+				continue
+			}
+			userBytes[delta.UserID] += delta.HistoryBytes
+		}
+		if len(userBytes) == 0 {
+			return nil
+		}
+		if err := nm.usageRecorder.RecordNodeUserUsage(ctx, nodeID, userBytes); err == nil {
+			return nil
+		} else if nm.cfg != nil && nm.cfg.Logger != nil {
+			nm.cfg.Logger.Warn("Failed to enqueue node user usage history in Redis, falling back to direct database write", "error", err)
+		}
+	}
+	return bulkUpsertNodeUserUsageHistory(ctx, db, nodeID, usageDeltas)
+}
+
+func bulkUpsertUserTraffic(ctx context.Context, db dbmanager.DBExecutor, usageDeltas []userUsageDelta, nodeUUID string) error {
+	const chunkSize = 1000
+
+	for start := 0; start < len(usageDeltas); start += chunkSize {
+		end := min(start+chunkSize, len(usageDeltas))
+		chunk := usageDeltas[start:end]
+
+		var query strings.Builder
+		args := make([]any, 0, len(chunk)*3)
+
+		query.WriteString(`
+			INSERT INTO user_traffic (
+				t_id, used_traffic_bytes, lifetime_used_traffic_bytes,
+				online_at, last_connected_node_uuid, first_connected_at
+			)
+			SELECT
+				v.t_id,
+				v.total_bytes,
+				v.total_bytes,
+				now(),
+				v.last_connected_node_uuid,
+				now()
+			FROM (VALUES `)
+
+		for i, delta := range chunk {
+			if i > 0 {
+				query.WriteString(", ")
+			}
+			query.WriteString("(?::bigint, ?::bigint, ?::uuid)")
+			args = append(args, delta.UserID, delta.TotalBytes, nodeUUID)
+		}
+
+		query.WriteString(`) AS v(t_id, total_bytes, last_connected_node_uuid)
+			ON CONFLICT (t_id)
+			DO UPDATE SET
+				used_traffic_bytes = user_traffic.used_traffic_bytes + EXCLUDED.used_traffic_bytes,
+				lifetime_used_traffic_bytes = user_traffic.lifetime_used_traffic_bytes + EXCLUDED.lifetime_used_traffic_bytes,
+				online_at = now(),
+				last_connected_node_uuid = EXCLUDED.last_connected_node_uuid,
+				first_connected_at = COALESCE(user_traffic.first_connected_at, now())
+		`)
+
+		if _, err := db.ExecContext(ctx, query.String(), args...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func bulkUpsertNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor, nodeID int64, usageDeltas []userUsageDelta) error {
+	const chunkSize = 1000
+
+	for start := 0; start < len(usageDeltas); start += chunkSize {
+		end := min(start+chunkSize, len(usageDeltas))
+		chunk := usageDeltas[start:end]
+
+		var query strings.Builder
+		args := make([]any, 0, len(chunk)*3)
+
+		query.WriteString(`
+			INSERT INTO nodes_user_usage_history (node_id, user_id, total_bytes)
+			VALUES `)
+
+		for i, delta := range chunk {
+			if i > 0 {
+				query.WriteString(", ")
+			}
+			query.WriteString("(?::bigint, ?::bigint, ?::bigint)")
+			args = append(args, nodeID, delta.UserID, delta.HistoryBytes)
+		}
+
+		query.WriteString(`
+			ON CONFLICT (node_id, created_at, user_id)
+			DO UPDATE SET
+				total_bytes = nodes_user_usage_history.total_bytes + EXCLUDED.total_bytes,
+				updated_at = now()
+		`)
+
+		if _, err := db.ExecContext(ctx, query.String(), args...); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func parseOptionalInt(value string) any {

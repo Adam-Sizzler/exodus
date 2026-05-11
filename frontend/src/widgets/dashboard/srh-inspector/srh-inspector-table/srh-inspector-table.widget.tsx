@@ -12,7 +12,7 @@ import {
 } from 'mantine-react-table'
 import { TbExternalLink, TbRefresh, TbReportAnalytics, TbRestore } from 'react-icons/tb'
 import { GetSubscriptionRequestHistoryCommand } from '@exodus/backend-contract'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { ActionIcon, ActionIconGroup, Tooltip } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
 import { PiUserCircle } from 'react-icons/pi'
@@ -28,10 +28,6 @@ export function SrhInspectorTableWidget() {
     const { t } = useTranslation()
 
     const tableColumns = useSrhInspectorTableColumns()
-    const defaultColumnFilterFns = useMemo(
-        () => Object.fromEntries(tableColumns.map(({ accessorKey }) => [accessorKey, 'contains'])),
-        [tableColumns]
-    )
     const userModalActions = useUserModalStoreActions()
 
     const [columnVisibility, setColumnVisibility] = useState<MRT_VisibilityState>({})
@@ -46,9 +42,8 @@ export function SrhInspectorTableWidget() {
 
     const [columnFilters, setColumnFilters] = useState<MRT_ColumnFiltersState>([])
     const [columnFilterFns, setColumnFilterFns] = useState<MRT_ColumnFilterFnsState>(
-        defaultColumnFilterFns
+        Object.fromEntries(tableColumns.map(({ accessorKey }) => [accessorKey, 'contains']))
     )
-    const [resetRequestedAt, setResetRequestedAt] = useState(0)
 
     useLayoutEffect(() => {
         document.body.addEventListener('wheel', preventBackScrollTables, {
@@ -81,12 +76,6 @@ export function SrhInspectorTableWidget() {
     })
 
     const filteredData = useMemo(() => usersResponse, [usersResponse])
-
-    useEffect(() => {
-        if (!resetRequestedAt) return
-        refetch()
-        setResetRequestedAt(0)
-    }, [resetRequestedAt, refetch])
 
     const table = useMantineReactTable({
         columns: tableColumns,
@@ -192,26 +181,6 @@ export function SrhInspectorTableWidget() {
         }
     })
 
-    const handleResetTable = () => {
-        setPagination({ pageIndex: 0, pageSize: 25 })
-        setSorting([])
-        setColumnFilters([])
-        setColumnFilterFns(defaultColumnFilterFns)
-        setColumnVisibility({})
-        setColumnPinning({})
-        setShowColumnFilters(false)
-
-        table.resetPageIndex(false)
-        table.resetSorting(true)
-        table.resetPagination(false)
-        table.resetColumnFilters(true)
-        table.resetGlobalFilter(true)
-        table.resetColumnVisibility(true)
-        table.resetColumnPinning(true)
-
-        setResetRequestedAt(Date.now())
-    }
-
     return (
         <DataTableShared.Container>
             <DataTableShared.Title
@@ -232,7 +201,13 @@ export function SrhInspectorTableWidget() {
                             <ActionIcon
                                 color="gray"
                                 loading={isLoading}
-                                onClick={handleResetTable}
+                                onClick={() => {
+                                    table.resetPageIndex(false)
+                                    table.resetSorting(true)
+                                    table.resetPagination(false)
+                                    table.resetColumnFilters(true)
+                                    table.resetGlobalFilter(true)
+                                }}
                                 size="input-md"
                                 variant="light"
                             >

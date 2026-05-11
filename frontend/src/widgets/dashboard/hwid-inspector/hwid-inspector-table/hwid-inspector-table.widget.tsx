@@ -11,7 +11,7 @@ import {
     useMantineReactTable
 } from 'mantine-react-table'
 import { TbDeviceAnalytics, TbRefresh, TbRestore } from 'react-icons/tb'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { GetAllHwidDevicesCommand } from '@exodus/backend-contract'
 import { ActionIcon, ActionIconGroup, Tooltip } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
@@ -28,10 +28,6 @@ export function HwidInspectorTableWidget() {
     const { t } = useTranslation()
 
     const tableColumns = useHwidInspectorTableColumns()
-    const defaultColumnFilterFns = useMemo(
-        () => Object.fromEntries(tableColumns.map(({ accessorKey }) => [accessorKey, 'contains'])),
-        [tableColumns]
-    )
     const userModalActions = useUserModalStoreActions()
 
     const [columnVisibility, setColumnVisibility] = useState<MRT_VisibilityState>({})
@@ -46,9 +42,8 @@ export function HwidInspectorTableWidget() {
 
     const [columnFilters, setColumnFilters] = useState<MRT_ColumnFiltersState>([])
     const [columnFilterFns, setColumnFilterFns] = useState<MRT_ColumnFilterFnsState>(
-        defaultColumnFilterFns
+        Object.fromEntries(tableColumns.map(({ accessorKey }) => [accessorKey, 'contains']))
     )
-    const [resetRequestedAt, setResetRequestedAt] = useState(0)
 
     const params = {
         start: pagination.pageIndex * pagination.pageSize,
@@ -81,12 +76,6 @@ export function HwidInspectorTableWidget() {
             document.body.removeEventListener('wheel', preventBackScrollTables)
         }
     }, [])
-
-    useEffect(() => {
-        if (!resetRequestedAt) return
-        refetch()
-        setResetRequestedAt(0)
-    }, [resetRequestedAt, refetch])
 
     const table = useMantineReactTable({
         columns: tableColumns,
@@ -175,26 +164,6 @@ export function HwidInspectorTableWidget() {
         getRowId: (originalRow) => `${originalRow.hwid}-${originalRow.userUuid}`
     })
 
-    const handleResetTable = () => {
-        setPagination({ pageIndex: 0, pageSize: 25 })
-        setSorting([])
-        setColumnFilters([])
-        setColumnFilterFns(defaultColumnFilterFns)
-        setColumnVisibility({})
-        setColumnPinning({})
-        setShowColumnFilters(false)
-
-        table.resetPageIndex(false)
-        table.resetSorting(true)
-        table.resetPagination(false)
-        table.resetColumnFilters(true)
-        table.resetGlobalFilter(true)
-        table.resetColumnVisibility(true)
-        table.resetColumnPinning(true)
-
-        setResetRequestedAt(Date.now())
-    }
-
     return (
         <DataTableShared.Container>
             <DataTableShared.Title
@@ -215,7 +184,13 @@ export function HwidInspectorTableWidget() {
                             <ActionIcon
                                 color="gray"
                                 loading={isLoading}
-                                onClick={handleResetTable}
+                                onClick={() => {
+                                    table.resetPageIndex(false)
+                                    table.resetSorting(true)
+                                    table.resetPagination(false)
+                                    table.resetColumnFilters(true)
+                                    table.resetGlobalFilter(true)
+                                }}
                                 size="input-md"
                                 variant="light"
                             >

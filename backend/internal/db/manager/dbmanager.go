@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	defaultMaxOpenConns = 10
-	defaultMaxIdleConns = 5
+	defaultMaxOpenConns = 32
+	defaultMaxIdleConns = 16
 )
 
 // DBExecutor abstracts SQL execution with rebinding support.
@@ -145,8 +145,8 @@ func NewDatabaseManager(db *sql.DB, ctx context.Context, workerCount, highPriori
 	}
 
 	// Configure connection pool
-	maxOpen := defaultMaxOpenConns
-	maxIdle := defaultMaxIdleConns
+	maxOpen := max(defaultMaxOpenConns, workerCount*4)
+	maxIdle := min(defaultMaxIdleConns, maxOpen)
 	db.SetMaxOpenConns(maxOpen)
 	db.SetMaxIdleConns(maxIdle)
 	db.SetConnMaxLifetime(0)

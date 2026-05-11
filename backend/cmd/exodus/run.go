@@ -48,7 +48,14 @@ func Run() {
 		cfg.Logger.Fatal("Failed to initialize database", "error", err)
 	}
 
-	manager, err := dbmanager.NewDatabaseManager(dbConn, ctx, 1, 300, 500, &cfg)
+	manager, err := dbmanager.NewDatabaseManager(
+		dbConn,
+		ctx,
+		cfg.Database.WorkerCount,
+		cfg.Database.HighPriorityBuffer,
+		cfg.Database.LowPriorityBuffer,
+		&cfg,
+	)
 	if err != nil {
 		cfg.Logger.Fatal("Failed to create DatabaseManager", "error", err)
 	}
@@ -62,6 +69,9 @@ func Run() {
 	redisWorker, err := redisqueue.NewWorker(&cfg, manager)
 	if err != nil {
 		cfg.Logger.Warn("Redis worker disabled", "error", err)
+	}
+	if redisWorker != nil {
+		nodeMonitor.SetNodeUserUsageRecorder(redisWorker)
 	}
 
 	sigChan := make(chan os.Signal, 1)

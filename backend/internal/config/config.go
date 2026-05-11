@@ -90,12 +90,22 @@ type EXODUSConfig struct {
 }
 
 type DatabaseConfig struct {
-	URL string
+	URL                string
+	WorkerCount        int
+	HighPriorityBuffer int
+	LowPriorityBuffer  int
 }
 
 type RedisConfig struct {
-	Host string
-	Port int
+	Host                         string
+	Port                         int
+	Password                     string
+	DB                           int
+	Socket                       string
+	UserUsageHistoryTTLSeconds   int
+	UserUsageHistoryDelaySeconds int
+	DisableUserUsageRecords      bool
+	UserUsageIgnoreBelowBytes    int64
 }
 
 var defaultConfig = BackendConfig{
@@ -107,11 +117,21 @@ var defaultConfig = BackendConfig{
 		Address: "0.0.0.0",
 	},
 	Database: DatabaseConfig{
-		URL: "",
+		URL:                "",
+		WorkerCount:        8,
+		HighPriorityBuffer: 1000,
+		LowPriorityBuffer:  2000,
 	},
 	Redis: RedisConfig{
-		Host: "",
-		Port: 6379,
+		Host:                         "",
+		Port:                         6379,
+		Password:                     "",
+		DB:                           0,
+		Socket:                       "",
+		UserUsageHistoryTTLSeconds:   10800,
+		UserUsageHistoryDelaySeconds: 120,
+		DisableUserUsageRecords:      false,
+		UserUsageIgnoreBelowBytes:    0,
 	},
 	Panel: PanelConfig{
 		StaticDir:         "/app/ui",
@@ -253,6 +273,27 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("DATABASE_URL"); value != "" {
 		cfg.Database.URL = value
 	}
+	if value := envFirst("DATABASE_WORKER_COUNT", "EXODUS_DATABASE_WORKER_COUNT"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.Database.WorkerCount = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid DATABASE_WORKER_COUNT value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("DATABASE_HIGH_PRIORITY_BUFFER", "EXODUS_DATABASE_HIGH_PRIORITY_BUFFER"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
+			cfg.Database.HighPriorityBuffer = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid DATABASE_HIGH_PRIORITY_BUFFER value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("DATABASE_LOW_PRIORITY_BUFFER", "EXODUS_DATABASE_LOW_PRIORITY_BUFFER"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
+			cfg.Database.LowPriorityBuffer = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid DATABASE_LOW_PRIORITY_BUFFER value, ignoring", "value", value)
+		}
+	}
 
 	if value := envFirst("REDIS_HOST"); value != "" {
 		cfg.Redis.Host = value
@@ -262,6 +303,43 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Redis.Port = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid REDIS_PORT value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("REDIS_PASSWORD"); value != "" {
+		cfg.Redis.Password = value
+	}
+	if value := envFirst("REDIS_DB"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
+			cfg.Redis.DB = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid REDIS_DB value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("REDIS_SOCKET"); value != "" {
+		cfg.Redis.Socket = value
+	}
+	if value := envFirst("NODE_USER_USAGE_REDIS_TTL_SECONDS", "EXODUS_NODE_USER_USAGE_REDIS_TTL_SECONDS"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.Redis.UserUsageHistoryTTLSeconds = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid NODE_USER_USAGE_REDIS_TTL_SECONDS value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("NODE_USER_USAGE_FLUSH_DELAY_SECONDS", "EXODUS_NODE_USER_USAGE_FLUSH_DELAY_SECONDS"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
+			cfg.Redis.UserUsageHistoryDelaySeconds = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid NODE_USER_USAGE_FLUSH_DELAY_SECONDS value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("SERVICE_DISABLE_USER_USAGE_RECORDS"); value != "" {
+		cfg.Redis.DisableUserUsageRecords = parseBoolEnv(value)
+	}
+	if value := envFirst("USER_USAGE_IGNORE_BELOW_BYTES"); value != "" {
+		if parsed, err := strconv.ParseInt(value, 10, 64); err == nil && parsed >= 0 {
+			cfg.Redis.UserUsageIgnoreBelowBytes = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid USER_USAGE_IGNORE_BELOW_BYTES value, ignoring", "value", value)
 		}
 	}
 

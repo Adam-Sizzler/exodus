@@ -725,7 +725,7 @@ func hwidDeviceExists(ctx context.Context, manager *dbmanager.DatabaseManager, u
 }
 
 func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, hwid HwidHeaders) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		_, err := db.ExecContext(ctx, `
             INSERT INTO hwid_user_devices (hwid, user_uuid, platform, os_version, device_model, user_agent)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -737,18 +737,39 @@ func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManage
 }
 
 func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID, userAgent, requestIP string) {
-	_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		_, _ = db.ExecContext(ctx, `
-            UPDATE users SET sub_last_opened_at = now(), sub_last_user_agent = ? WHERE uuid = ?
-        `, userAgent, userUUID)
+	_ = ctx
+	go func() {
+		jobCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
 
-		_, _ = db.ExecContext(ctx, `
-            INSERT INTO user_subscription_request_history (user_uuid, request_ip, user_agent)
-            VALUES (?, ?, ?)
-        `, userUUID, requestIP, userAgent)
+		_ = manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
+			if _, err := db.ExecContext(jobCtx, `
+	            UPDATE users SET sub_last_opened_at = now(), sub_last_user_agent = ? WHERE uuid = ?
+	        `, userAgent, userUUID); err != nil {
+				return err
+			}
 
-		return nil
-	})
+			if _, err := db.ExecContext(jobCtx, `
+	            INSERT INTO user_subscription_request_history (user_uuid, request_ip, user_agent)
+	            VALUES (?, ?, ?)
+	        `, userUUID, requestIP, userAgent); err != nil {
+				return err
+			}
+
+			_, err := db.ExecContext(jobCtx, `
+	            DELETE FROM user_subscription_request_history
+	            WHERE user_uuid = ?
+	              AND id NOT IN (
+                  SELECT id
+                  FROM user_subscription_request_history
+                  WHERE user_uuid = ?
+                  ORDER BY request_at DESC, id DESC
+	                  LIMIT 24
+	              )
+	        `, userUUID, userUUID)
+			return err
+		})
+	}()
 }
 
 func isJsonSubscriptionSupported(userAgent string) bool {
