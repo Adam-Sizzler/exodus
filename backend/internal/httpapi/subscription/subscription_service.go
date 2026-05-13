@@ -661,8 +661,8 @@ func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *H
 		}
 	}
 	clientApp := inferClientAppFromUserAgent(userAgent)
-	if deviceModel == nil && clientApp != "" {
-		deviceModel = &clientApp
+	if deviceModel == nil {
+		deviceModel = stringPtrIfNotEmpty("unknown")
 	}
 	if userAgent == "" && platform == nil && osVersion == nil && deviceModel == nil {
 		return nil

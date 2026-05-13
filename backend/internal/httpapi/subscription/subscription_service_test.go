@@ -482,7 +482,7 @@ func TestExtractSyntheticHwidHeadersFromV2rayNUserAgent(t *testing.T) {
 		t.Fatalf("unexpected synthetic hwid: %q", got.Hwid)
 	}
 	assertStringPtr(t, "platform", got.Platform, "windows")
-	assertStringPtr(t, "device model", got.DeviceModel, "v2rayN")
+	assertStringPtr(t, "device model", got.DeviceModel, "unknown")
 	assertStringPtr(t, "user agent", got.UserAgent, "v2rayN/7.16.4")
 }
 
@@ -495,7 +495,7 @@ func TestExtractSyntheticHwidHeadersFromPlatformUserAgent(t *testing.T) {
 		t.Fatal("expected synthetic hwid headers, got nil")
 	}
 	assertStringPtr(t, "platform", got.Platform, "windows")
-	assertStringPtr(t, "device model", got.DeviceModel, "FlClash")
+	assertStringPtr(t, "device model", got.DeviceModel, "unknown")
 }
 
 func TestExtractSyntheticHwidHeadersPrefersRealDeviceHeaders(t *testing.T) {
