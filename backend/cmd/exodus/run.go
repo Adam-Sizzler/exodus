@@ -14,6 +14,7 @@ import (
 	"exodus/internal/constant"
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/jobqueue"
 	users "exodus/internal/nodes"
 	"exodus/internal/notifications"
 	"exodus/internal/redisqueue"
@@ -89,6 +90,9 @@ func Run() {
 	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	userwatchdog.Start(ctx, &wg, manager, &cfg)
 	scheduler.Start(ctx, &wg, manager, &cfg)
+	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, manager, &cfg); err != nil {
+		cfg.Logger.Warn("Subscription job queue disabled", "error", err)
+	}
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
 	}

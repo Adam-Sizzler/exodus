@@ -2,6 +2,7 @@ package redisqueue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -11,25 +12,26 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/jobqueue"
 
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	scheduledKey           = "exodus:push_to_db:scheduled"
-	recordUserUsagePrefix  = "recordUserUsage:"
 	nodeUserUsagePrefix    = "node_user_usage:"
 	processingPostfix      = ":processing"
 	nodeUserUsageBatchSize = 10000
+	pushToDBQueueName      = "push_to_db"
+	recordUserUsageJobName = "record_user_usage"
 )
 
 type Worker struct {
-	client       *redis.Client
-	manager      *dbmanager.DatabaseManager
-	cfg          *config.BackendConfig
-	pollInterval time.Duration
-	delay        time.Duration
-	usageTTL     time.Duration
+	client    *redis.Client
+	manager   *dbmanager.DatabaseManager
+	cfg       *config.BackendConfig
+	processor *jobqueue.Processor
+	delay     time.Duration
+	usageTTL  time.Duration
 }
 
 type nodeUsageEntry struct {
@@ -37,69 +39,62 @@ type nodeUsageEntry struct {
 	TotalBytes int64
 }
 
+type recordUserUsagePayload struct {
+	RedisKey string `json:"redisKey"`
+}
+
 func NewWorker(cfg *config.BackendConfig, manager *dbmanager.DatabaseManager) (*Worker, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
 	}
-	if cfg.Redis.Host == "" && cfg.Redis.Socket == "" {
-		return nil, nil
+	client, err := jobqueue.NewRedisClient(cfg)
+	if err != nil || client == nil {
+		return nil, err
 	}
 
-	network := "tcp"
-	addr := fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port)
-	if strings.TrimSpace(cfg.Redis.Socket) != "" {
-		network = "unix"
-		addr = strings.TrimSpace(cfg.Redis.Socket)
+	worker := &Worker{
+		client:   client,
+		manager:  manager,
+		cfg:      cfg,
+		delay:    time.Duration(cfg.Redis.UserUsageHistoryDelaySeconds) * time.Second,
+		usageTTL: time.Duration(cfg.Redis.UserUsageHistoryTTLSeconds) * time.Second,
 	}
-
-	opts := &redis.Options{
-		Network:  network,
-		Addr:     addr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+	processor := jobqueue.NewProcessor(client, cfg)
+	visibility := time.Duration(cfg.Redis.JobQueueVisibilitySeconds) * time.Second
+	if visibility <= 0 {
+		visibility = 5 * time.Minute
 	}
-
-	client := redis.NewClient(opts)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("redis ping failed: %w", err)
+	if err := processor.RegisterQueue(jobqueue.QueueOptions{
+		Name:              pushToDBQueueName,
+		Concurrency:       cfg.Redis.PushToDBQueueConcurrency,
+		VisibilityTimeout: visibility,
+		SchedulerInterval: time.Second,
+		Retention:         500,
+	}, map[string]jobqueue.Handler{
+		recordUserUsageJobName: func(ctx context.Context, job jobqueue.Job) error {
+			var payload recordUserUsagePayload
+			if err := json.Unmarshal(job.Payload, &payload); err != nil {
+				return err
+			}
+			return worker.handleRecordUserUsage(ctx, payload.RedisKey)
+		},
+	}); err != nil {
+		_ = client.Close()
+		return nil, err
 	}
-
-	return &Worker{
-		client:       client,
-		manager:      manager,
-		cfg:          cfg,
-		pollInterval: 2 * time.Second,
-		delay:        time.Duration(cfg.Redis.UserUsageHistoryDelaySeconds) * time.Second,
-		usageTTL:     time.Duration(cfg.Redis.UserUsageHistoryTTLSeconds) * time.Second,
-	}, nil
+	worker.processor = processor
+	return worker, nil
 }
 
 func (w *Worker) Start(ctx context.Context, wg *sync.WaitGroup) {
 	if w == nil {
 		return
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		w.cfg.Logger.Info("Redis worker started")
-		if w.cfg.Redis.DisableUserUsageRecords {
-			w.cfg.Logger.Warn("SERVICE_DISABLE_USER_USAGE_RECORDS is enabled, node user usage history will not be recorded")
-		}
-		ticker := time.NewTicker(w.pollInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				w.cfg.Logger.Info("Redis worker stopped")
-				return
-			case <-ticker.C:
-				w.processDueJobs(ctx)
-			}
-		}
-	}()
+	w.cfg.Logger.Info("Redis worker started")
+	if w.cfg.Redis.DisableUserUsageRecords {
+		w.cfg.Logger.Warn("SERVICE_DISABLE_USER_USAGE_RECORDS is enabled, node user usage history will not be recorded")
+	}
+	w.processor.Start(ctx, wg)
 }
 
 func (w *Worker) Close() error {
@@ -137,9 +132,11 @@ func (w *Worker) RecordNodeUserUsage(ctx context.Context, nodeID int64, userByte
 	if w.usageTTL > 0 {
 		pipe.Expire(ctx, redisKey, w.usageTTL)
 	}
-	w.recordUserUsageDelayedPipeline(ctx, pipe, redisKey)
 	_, err := pipe.Exec(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	return w.recordUserUsageDelayed(ctx, redisKey)
 }
 
 // RecordUserUsageDelayed schedules a recordUserUsage job for the given redisKey.
@@ -151,51 +148,20 @@ func (w *Worker) RecordUserUsageDelayed(ctx context.Context, redisKey string) er
 }
 
 func (w *Worker) recordUserUsageDelayed(ctx context.Context, redisKey string) error {
-	member := recordUserUsagePrefix + redisKey
-	score := float64(time.Now().Add(w.delay).Unix())
-	return w.client.ZAddArgs(ctx, scheduledKey, redis.ZAddArgs{
-		NX:      true,
-		Members: []redis.Z{{Score: score, Member: member}},
-	}).Err()
-}
-
-func (w *Worker) recordUserUsageDelayedPipeline(ctx context.Context, pipe redis.Pipeliner, redisKey string) {
-	member := recordUserUsagePrefix + redisKey
-	score := float64(time.Now().Add(w.delay).Unix())
-	pipe.ZAddArgs(ctx, scheduledKey, redis.ZAddArgs{
-		NX:      true,
-		Members: []redis.Z{{Score: score, Member: member}},
+	if strings.TrimSpace(redisKey) == "" {
+		return nil
+	}
+	jobID := "recordUserUsage:" + redisKey
+	_, err := w.processor.Enqueue(ctx, pushToDBQueueName, recordUserUsageJobName, recordUserUsagePayload{
+		RedisKey: redisKey,
+	}, jobqueue.JobOptions{
+		ID:       jobID,
+		DedupeID: jobID,
+		Delay:    w.delay,
+		Attempts: 3,
+		Backoff:  time.Second,
 	})
-}
-
-func (w *Worker) processDueJobs(ctx context.Context) {
-	if w == nil {
-		return
-	}
-
-	now := fmt.Sprintf("%d", time.Now().Unix())
-	jobs, err := w.client.ZRangeByScore(ctx, scheduledKey, &redis.ZRangeBy{
-		Min:   "-inf",
-		Max:   now,
-		Count: 100,
-	}).Result()
-	if err != nil {
-		w.cfg.Logger.Warn("Failed to fetch redis jobs", "error", err)
-		return
-	}
-	for _, job := range jobs {
-		removed, err := w.client.ZRem(ctx, scheduledKey, job).Result()
-		if err != nil || removed == 0 {
-			continue
-		}
-		if strings.HasPrefix(job, recordUserUsagePrefix) {
-			redisKey := strings.TrimPrefix(job, recordUserUsagePrefix)
-			if err := w.handleRecordUserUsage(ctx, redisKey); err != nil {
-				w.cfg.Logger.Warn("Failed to handle recordUserUsage job", "error", err, "redis_key", redisKey)
-				_ = w.recordUserUsageDelayed(context.Background(), redisKey)
-			}
-		}
-	}
+	return err
 }
 
 func (w *Worker) handleRecordUserUsage(ctx context.Context, redisKey string) error {
@@ -215,20 +181,20 @@ func (w *Worker) handleRecordUserUsage(ctx context.Context, redisKey string) err
 	if err := w.client.Rename(ctx, redisKey, processingKey).Err(); err != nil {
 		return err
 	}
-	defer func() {
-		_ = w.client.Del(context.Background(), processingKey).Err()
-	}()
 
 	data, err := w.client.HGetAll(ctx, processingKey).Result()
 	if err != nil {
+		_ = w.restoreProcessingKey(context.Background(), redisKey, processingKey, nil)
 		return err
 	}
 	if len(data) == 0 {
+		_ = w.client.Del(context.Background(), processingKey).Err()
 		return nil
 	}
 
 	nodeID, err := parseNodeID(redisKey)
 	if err != nil {
+		_ = w.restoreProcessingKey(context.Background(), redisKey, processingKey, data)
 		return err
 	}
 
@@ -248,13 +214,14 @@ func (w *Worker) handleRecordUserUsage(ctx context.Context, redisKey string) err
 		})
 	}
 	if len(entries) == 0 {
+		_ = w.client.Del(context.Background(), processingKey).Err()
 		return nil
 	}
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].UserID < entries[j].UserID
 	})
 
-	return w.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
+	err = w.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		for start := 0; start < len(entries); start += nodeUserUsageBatchSize {
 			end := start + nodeUserUsageBatchSize
 			if end > len(entries) {
@@ -266,6 +233,40 @@ func (w *Worker) handleRecordUserUsage(ctx context.Context, redisKey string) err
 		}
 		return nil
 	})
+	if err != nil {
+		_ = w.restoreProcessingKey(context.Background(), redisKey, processingKey, data)
+		return err
+	}
+
+	return w.client.Del(ctx, processingKey).Err()
+}
+
+func (w *Worker) restoreProcessingKey(ctx context.Context, redisKey, processingKey string, data map[string]string) error {
+	if len(data) == 0 {
+		redisData, err := w.client.HGetAll(ctx, processingKey).Result()
+		if err != nil {
+			return err
+		}
+		data = redisData
+	}
+	if len(data) == 0 {
+		return w.client.Del(ctx, processingKey).Err()
+	}
+
+	pipe := w.client.Pipeline()
+	for userID, totalBytes := range data {
+		parsed, err := strconv.ParseInt(totalBytes, 10, 64)
+		if err != nil || parsed <= 0 {
+			continue
+		}
+		pipe.HIncrBy(ctx, redisKey, userID, parsed)
+	}
+	if w.usageTTL > 0 {
+		pipe.Expire(ctx, redisKey, w.usageTTL)
+	}
+	pipe.Del(ctx, processingKey)
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func bulkUpsertNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor, nodeID int64, entries []nodeUsageEntry) error {

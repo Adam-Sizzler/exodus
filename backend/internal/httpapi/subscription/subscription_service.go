@@ -3,10 +3,13 @@ package subscription
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -22,6 +25,7 @@ import (
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
+	"exodus/internal/jobqueue"
 
 	"github.com/iancoleman/orderedmap"
 	"golang.org/x/crypto/curve25519"
@@ -205,6 +209,7 @@ type HwidHeaders struct {
 	OsVersion   *string
 	DeviceModel *string
 	UserAgent   *string
+	Synthetic   bool
 }
 
 // loadSubscriptionSettings loads and parses subscription settings.
@@ -631,13 +636,54 @@ func extractHwidHeaders(r *http.Request) *HwidHeaders {
 	if hwid == "" {
 		return nil
 	}
-
-	return &HwidHeaders{
+	h := &HwidHeaders{
 		Hwid:        hwid,
-		Platform:    firstNonEmptyHeader(r, "X-Device-OS", "X-HWID-Platform"),
+		Platform:    firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform"),
 		OsVersion:   firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version"),
 		DeviceModel: firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model"),
 		UserAgent:   firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent"),
+	}
+	// временно
+	log.Printf("HWID extracted: hwid=%s platform=%v os=%v model=%v ua=%v",
+		h.Hwid, h.Platform, h.OsVersion, h.DeviceModel, h.UserAgent)
+	return h
+}
+
+func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *HwidHeaders {
+	userAgent := strings.TrimSpace(r.Header.Get("User-Agent"))
+	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform")
+	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version")
+	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model")
+
+	if platform == nil {
+		if inferred := inferPlatformFromUserAgent(userAgent); inferred != "" {
+			platform = &inferred
+		}
+	}
+	clientApp := inferClientAppFromUserAgent(userAgent)
+	if deviceModel == nil && clientApp != "" {
+		deviceModel = &clientApp
+	}
+	if userAgent == "" && platform == nil && osVersion == nil && deviceModel == nil {
+		return nil
+	}
+
+	signature := strings.Join([]string{
+		strings.TrimSpace(userUUID),
+		strings.ToLower(clientApp),
+		strings.ToLower(ptrString(platform)),
+		strings.ToLower(strings.TrimSpace(requestIP)),
+	}, "|")
+	sum := sha256.Sum256([]byte(signature))
+	hwid := "syn_" + hex.EncodeToString(sum[:])[:40]
+
+	return &HwidHeaders{
+		Hwid:        hwid,
+		Platform:    platform,
+		OsVersion:   osVersion,
+		DeviceModel: deviceModel,
+		UserAgent:   stringPtrIfNotEmpty(userAgent),
+		Synthetic:   true,
 	}
 }
 
@@ -652,11 +698,91 @@ func firstNonEmptyHeader(r *http.Request, names ...string) *string {
 	return nil
 }
 
+func firstNonEmptyLowerHeader(r *http.Request, names ...string) *string {
+	value := firstNonEmptyHeader(r, names...)
+	if value == nil {
+		return nil
+	}
+	return lowerStringPtr(value)
+}
+
+func stringPtrIfNotEmpty(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func lowerStringPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	lowered := strings.ToLower(strings.TrimSpace(*value))
+	if lowered == "" {
+		return nil
+	}
+	return &lowered
+}
+
+func ptrString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
+}
+
+func inferClientAppFromUserAgent(userAgent string) string {
+	userAgent = strings.TrimSpace(userAgent)
+	if userAgent == "" {
+		return ""
+	}
+	for _, sep := range []string{"/", " ", "(", ";"} {
+		if idx := strings.Index(userAgent, sep); idx > 0 {
+			return strings.TrimSpace(userAgent[:idx])
+		}
+	}
+	return userAgent
+}
+
+func inferPlatformFromUserAgent(userAgent string) string {
+	lower := strings.ToLower(userAgent)
+	if lower == "" {
+		return ""
+	}
+	if idx := strings.Index(lower, "platform/"); idx >= 0 {
+		rest := userAgent[idx+len("platform/"):]
+		for i, r := range rest {
+			if !(r == '-' || r == '_' || r == '.' || r == '/' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z') {
+				rest = rest[:i]
+				break
+			}
+		}
+		if rest = strings.Trim(rest, "/ "); rest != "" {
+			return strings.ToLower(rest)
+		}
+	}
+	switch {
+	case strings.Contains(lower, "windows") || strings.HasPrefix(lower, "v2rayn/"):
+		return "windows"
+	case strings.Contains(lower, "android") || strings.HasPrefix(lower, "v2rayng/"):
+		return "android"
+	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios") || strings.HasPrefix(lower, "streisand"):
+		return "ios"
+	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "darwin"):
+		return "macos"
+	case strings.Contains(lower, "linux"):
+		return "linux"
+	default:
+		return ""
+	}
+}
+
 func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
 	// returns (isAllowed, maxDeviceReached, hwidNotSupported)
 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
 		if hwid != nil {
-			_ = upsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
+			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
 		}
 		return true, false, false
 	}
@@ -667,7 +793,7 @@ func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManage
 
 	exists, err := hwidDeviceExists(ctx, manager, user.UUID, hwid.Hwid)
 	if err == nil && exists {
-		_ = upsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
+		_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
 		return true, false, false
 	}
 
@@ -725,6 +851,7 @@ func hwidDeviceExists(ctx context.Context, manager *dbmanager.DatabaseManager, u
 }
 
 func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, hwid HwidHeaders) error {
+	hwid.Platform = lowerStringPtr(hwid.Platform)
 	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		_, err := db.ExecContext(ctx, `
             INSERT INTO hwid_user_devices (hwid, user_uuid, platform, os_version, device_model, user_agent)
@@ -736,8 +863,36 @@ func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManage
 	})
 }
 
+func enqueueOrUpsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, hwid HwidHeaders) error {
+	hwid.Platform = lowerStringPtr(hwid.Platform)
+	queued, err := jobqueue.EnqueueUpsertHwidDevice(ctx, jobqueue.UpsertHwidDevicePayload{
+		UserUUID:    userUUID,
+		Hwid:        hwid.Hwid,
+		Platform:    hwid.Platform,
+		OsVersion:   hwid.OsVersion,
+		DeviceModel: hwid.DeviceModel,
+		UserAgent:   hwid.UserAgent,
+	})
+	if err == nil && queued {
+		return nil
+	}
+	return upsertHwidUserDevice(ctx, manager, userUUID, hwid)
+}
+
 func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID, userAgent, requestIP string) {
-	_ = ctx
+	updateQueued, updateErr := jobqueue.EnqueueUpdateUserSubscription(ctx, jobqueue.UpdateUserSubscriptionPayload{
+		UserUUID:  userUUID,
+		UserAgent: userAgent,
+	})
+	recordQueued, recordErr := jobqueue.EnqueueAddSubscriptionRequestRecord(ctx, jobqueue.AddSubscriptionRequestRecordPayload{
+		UserUUID:  userUUID,
+		RequestIP: requestIP,
+		UserAgent: userAgent,
+	})
+	if updateErr == nil && recordErr == nil && updateQueued && recordQueued {
+		return
+	}
+
 	go func() {
 		jobCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()

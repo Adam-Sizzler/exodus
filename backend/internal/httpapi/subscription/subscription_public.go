@@ -3,6 +3,8 @@ package subscription
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -109,17 +111,33 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, man
 func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID, clientType string) {
 	ctx := r.Context()
 
+	var headerDump strings.Builder
+	for name, values := range r.Header {
+		headerDump.WriteString(fmt.Sprintf("  %s: %s\n", name, strings.Join(values, ", ")))
+	}
+	log.Printf(">>> handlePublicSubscription called: shortUUID=%s\nHeaders:\n%s",
+		shortUUID,
+		headerDump.String(),
+	)
+
+	log.Printf(">>> [STEP 1] Loading subscription settings...")
 	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
 	if err != nil {
+		log.Printf(">>> [ERROR] loadSubscriptionSettings failed: %v", err)
 		shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
 		return
 	}
+	log.Printf(">>> [STEP 1] Settings loaded OK. HWID enabled=%v", settings.HwidSettings.Enabled)
 
+	log.Printf(">>> [STEP 2] Looking up user by shortUUID=%s...", shortUUID)
 	user, err := getSubscriptionUserByShortUUID(ctx, manager, shortUUID)
 	if err != nil {
+		log.Printf(">>> [ERROR] getSubscriptionUserByShortUUID failed: %v", err)
 		shared.SendError(w, http.StatusNotFound, "user not found", err, cfg)
 		return
 	}
+	log.Printf(">>> [STEP 2] User found: uuid=%s, status=%s, hwidLimit=%v",
+		user.UUID, user.Status, user.HwidDeviceLimit)
 
 	headersForMatch := r.Header.Clone()
 	headersForMatch.Set("x-exodus-injected-short-uuid", shortUUID)
@@ -127,8 +145,13 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		headersForMatch.Set("x-exodus-injected-client-type", clientType)
 	}
 
+	log.Printf(">>> [STEP 3] Matching response rules (clientType=%q)...", clientType)
 	matchResult := matchResponseRulesDetailed(settings.ResponseRules, headersForMatch, clientType)
+	log.Printf(">>> [STEP 3] Match result: Matched=%v, ResponseType=%q",
+		matchResult.Matched, matchResult.ResponseType)
+
 	if !matchResult.Matched || matchResult.ResponseType == "" {
+		log.Printf(">>> [STEP 3] No match or empty response type -> returning 403 Forbidden")
 		shared.SendError(w, http.StatusForbidden, "forbidden", nil, cfg)
 		return
 	}
@@ -137,6 +160,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	if responseType == "" {
 		responseType = defaultResponseType
 	}
+	log.Printf(">>> [STEP 3] Effective responseType=%q", responseType)
 
 	var extraHeaders map[string]string
 	var overrideTemplateName string
@@ -164,17 +188,22 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		}
 	}
 
+	// Проверяем специальные типы ответа, которые завершают обработку
 	switch responseType {
 	case responseTypeBlock:
+		log.Printf(">>> [STEP 4] Response type BLOCK -> returning 403")
 		shared.SendError(w, http.StatusForbidden, "forbidden", nil, cfg)
 		return
 	case responseTypeStatus404:
+		log.Printf(">>> [STEP 4] Response type 404 -> returning 404")
 		http.NotFound(w, r)
 		return
 	case responseTypeStatus451:
+		log.Printf(">>> [STEP 4] Response type 451 -> returning 451")
 		http.Error(w, "Unavailable For Legal Reasons", http.StatusUnavailableForLegalReasons)
 		return
 	case responseTypeSocketDrop:
+		log.Printf(">>> [STEP 4] Response type SOCKET_DROP -> dropping connection")
 		if hj, ok := w.(http.Hijacker); ok {
 			conn, _, err := hj.Hijack()
 			if err == nil {
@@ -186,12 +215,15 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	if responseType == responseTypeXrayBase64 && settings.Raw.ServeJSONAtBaseSubscription && !ignoreServeJsonAtBaseSubscription {
+		log.Printf(">>> [STEP 4] Switching responseType from XRAY_BASE64 to XRAY_JSON (ServeJSONAtBaseSubscription)")
 		responseType = responseTypeXrayJSON
 	}
 
 	if responseType == responseTypeBrowser {
+		log.Printf(">>> [STEP 5] BROWSER response type - generating info page")
 		hosts, err := getHostsForUser(ctx, manager, user)
 		if err != nil {
+			log.Printf(">>> [ERROR] getHostsForUser (browser) failed: %v", err)
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 			return
 		}
@@ -204,15 +236,29 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
+	log.Printf(">>> [STEP 6] Fetching hosts for user...")
 	hosts, err := getHostsForUser(ctx, manager, user)
 	if err != nil {
+		log.Printf(">>> [ERROR] getHostsForUser failed: %v", err)
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
+	log.Printf(">>> [STEP 6] Got %d hosts", len(hosts))
 
 	shuffleHostsIfNeeded(hosts, settings)
 
+	log.Printf(">>> [STEP 7] Extracting HWID headers...")
 	hwidHeaders := extractHwidHeaders(r)
+	requestIP := middleware.GetClientIP(r, cfg)
+	if hwidHeaders == nil && !settings.HwidSettings.Enabled {
+		hwidHeaders = extractSyntheticHwidHeaders(r, user.UUID, requestIP)
+		if hwidHeaders != nil {
+			log.Printf(">>> [STEP 7] Synthetic HWID generated: hwid=%s platform=%v model=%v ua=%v",
+				hwidHeaders.Hwid, hwidHeaders.Platform, hwidHeaders.DeviceModel, hwidHeaders.UserAgent)
+		}
+	}
+	log.Printf(">>> [STEP 7] HWID headers result: %+v", hwidHeaders)
+
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
 	headers := buildSubscriptionHeaders(user, settings, isHapp)
 	for key, value := range extraHeaders {
@@ -220,7 +266,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	if settings.HwidSettings.Enabled {
+		log.Printf(">>> [STEP 8] HWID enabled, checking device limit...")
 		allowed, maxReached, notSupported := checkHwidDeviceLimit(ctx, manager, user, hwidHeaders, settings.HwidSettings)
+		log.Printf(">>> [STEP 8] HWID check result: allowed=%v, maxReached=%v, notSupported=%v", allowed, maxReached, notSupported)
 		if !allowed {
 			headers["x-hwid-limit"] = "true"
 			if settings.HwidSettings.MaxDevicesAnnounce != nil {
@@ -236,7 +284,12 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		}
 	} else {
 		if hwidHeaders != nil {
-			_ = upsertHwidUserDevice(ctx, manager, user.UUID, *hwidHeaders)
+			log.Printf(">>> [STEP 8] HWID disabled, but inserting device record anyway...")
+			if err := enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwidHeaders); err != nil {
+				log.Printf(">>> [ERROR] upsertHwidUserDevice failed: %v", err)
+			} else {
+				log.Printf(">>> [STEP 8] HWID device record upserted successfully")
+			}
 		}
 	}
 
@@ -266,12 +319,15 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 
 	subscription, err := generateSubscriptionContent(responseType, templateData, filteredHosts, user)
 	if err != nil {
+		log.Printf(">>> [ERROR] generateSubscriptionContent failed: %v", err)
 		shared.SendError(w, http.StatusInternalServerError, "failed to generate subscription", err, cfg)
 		return
 	}
 
-	updateSubscriptionRequest(ctx, manager, user.UUID, r.Header.Get("User-Agent"), middleware.GetClientIP(r, cfg))
+	log.Printf(">>> [STEP 9] Updating subscription request history (async)...")
+	updateSubscriptionRequest(ctx, manager, user.UUID, r.Header.Get("User-Agent"), requestIP)
 
+	log.Printf(">>> [STEP 10] Writing subscription response (len=%d bytes)", len(subscription.Body))
 	writeSubscriptionResponse(w, headers, subscription.ContentType, subscription.Body)
 }
 

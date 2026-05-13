@@ -106,6 +106,9 @@ type RedisConfig struct {
 	UserUsageHistoryDelaySeconds int
 	DisableUserUsageRecords      bool
 	UserUsageIgnoreBelowBytes    int64
+	JobQueueVisibilitySeconds    int
+	SubscriptionQueueConcurrency int
+	PushToDBQueueConcurrency     int
 }
 
 var defaultConfig = BackendConfig{
@@ -132,6 +135,9 @@ var defaultConfig = BackendConfig{
 		UserUsageHistoryDelaySeconds: 120,
 		DisableUserUsageRecords:      false,
 		UserUsageIgnoreBelowBytes:    0,
+		JobQueueVisibilitySeconds:    300,
+		SubscriptionQueueConcurrency: 50,
+		PushToDBQueueConcurrency:     3,
 	},
 	Panel: PanelConfig{
 		StaticDir:         "/app/ui",
@@ -340,6 +346,27 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Redis.UserUsageIgnoreBelowBytes = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid USER_USAGE_IGNORE_BELOW_BYTES value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("JOB_QUEUE_VISIBILITY_SECONDS", "EXODUS_JOB_QUEUE_VISIBILITY_SECONDS"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.Redis.JobQueueVisibilitySeconds = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid JOB_QUEUE_VISIBILITY_SECONDS value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("SUBSCRIPTION_QUEUE_CONCURRENCY", "EXODUS_SUBSCRIPTION_QUEUE_CONCURRENCY"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.Redis.SubscriptionQueueConcurrency = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid SUBSCRIPTION_QUEUE_CONCURRENCY value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("PUSH_TO_DB_QUEUE_CONCURRENCY", "EXODUS_PUSH_TO_DB_QUEUE_CONCURRENCY"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.Redis.PushToDBQueueConcurrency = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid PUSH_TO_DB_QUEUE_CONCURRENCY value, ignoring", "value", value)
 		}
 	}
 

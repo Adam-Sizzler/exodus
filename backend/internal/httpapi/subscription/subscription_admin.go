@@ -208,6 +208,10 @@ func handleRawSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, ma
 	}
 
 	hwidHeaders := extractHwidHeaders(r)
+	requestIP := middleware.GetClientIP(r, cfg)
+	if hwidHeaders == nil && !settings.HwidSettings.Enabled {
+		hwidHeaders = extractSyntheticHwidHeaders(r, user.UUID, requestIP)
+	}
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
 	headers := buildSubscriptionHeaders(user, settings, isHapp)
 
@@ -220,11 +224,11 @@ func handleRawSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, ma
 		}
 	} else {
 		if hwidHeaders != nil {
-			_ = upsertHwidUserDevice(ctx, manager, user.UUID, *hwidHeaders)
+			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwidHeaders)
 		}
 	}
 
-	updateSubscriptionRequest(ctx, manager, user.UUID, r.Header.Get("User-Agent"), middleware.GetClientIP(r, cfg))
+	updateSubscriptionRequest(ctx, manager, user.UUID, r.Header.Get("User-Agent"), requestIP)
 
 	rawHosts := []RawHost{}
 	if !isHwidLimited {

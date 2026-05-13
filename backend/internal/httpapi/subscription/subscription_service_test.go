@@ -422,7 +422,7 @@ func TestGenerateSingboxConfigKeepsURLTestOrderByHostOrder(t *testing.T) {
 func TestExtractHwidHeadersRemnawaveCompatibleHeaders(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("X-HWID", "device-123")
-	req.Header.Set("X-Device-OS", "android")
+	req.Header.Set("X-Device-OS", "Android")
 	req.Header.Set("X-Ver-OS", "15")
 	req.Header.Set("X-Device-Model", "Pixel 8 Pro")
 	req.Header.Set("User-Agent", "FlClash/0.8.86")
@@ -465,6 +465,53 @@ func TestExtractHwidHeadersRequiresHwid(t *testing.T) {
 	if got := extractHwidHeaders(req); got != nil {
 		t.Fatalf("expected nil without X-HWID, got %#v", got)
 	}
+}
+
+func TestExtractSyntheticHwidHeadersFromV2rayNUserAgent(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("User-Agent", "v2rayN/7.16.4")
+
+	got := extractSyntheticHwidHeaders(req, "user-uuid", "203.0.113.10")
+	if got == nil {
+		t.Fatal("expected synthetic hwid headers, got nil")
+	}
+	if !got.Synthetic {
+		t.Fatal("expected synthetic flag")
+	}
+	if !strings.HasPrefix(got.Hwid, "syn_") || len(got.Hwid) != 44 {
+		t.Fatalf("unexpected synthetic hwid: %q", got.Hwid)
+	}
+	assertStringPtr(t, "platform", got.Platform, "windows")
+	assertStringPtr(t, "device model", got.DeviceModel, "v2rayN")
+	assertStringPtr(t, "user agent", got.UserAgent, "v2rayN/7.16.4")
+}
+
+func TestExtractSyntheticHwidHeadersFromPlatformUserAgent(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("User-Agent", "FlClash/v0.8.92 clash-verge Platform/windows")
+
+	got := extractSyntheticHwidHeaders(req, "user-uuid", "203.0.113.10")
+	if got == nil {
+		t.Fatal("expected synthetic hwid headers, got nil")
+	}
+	assertStringPtr(t, "platform", got.Platform, "windows")
+	assertStringPtr(t, "device model", got.DeviceModel, "FlClash")
+}
+
+func TestExtractSyntheticHwidHeadersPrefersRealDeviceHeaders(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("User-Agent", "UnknownClient/1.0")
+	req.Header.Set("X-Device-OS", "Android")
+	req.Header.Set("X-Ver-OS", "15")
+	req.Header.Set("X-Device-Model", "Pixel 8")
+
+	got := extractSyntheticHwidHeaders(req, "user-uuid", "203.0.113.10")
+	if got == nil {
+		t.Fatal("expected synthetic hwid headers, got nil")
+	}
+	assertStringPtr(t, "platform", got.Platform, "android")
+	assertStringPtr(t, "os version", got.OsVersion, "15")
+	assertStringPtr(t, "device model", got.DeviceModel, "Pixel 8")
 }
 
 func assertStringPtr(t *testing.T, field string, got *string, want string) {
