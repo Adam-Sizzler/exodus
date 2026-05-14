@@ -14,6 +14,11 @@
     box-shadow: var(--mantine-shadow-sm);
 }
 
+.item:hover,
+.item:focus-within {
+    border-color: light-dark(var(--mantine-color-blue-3), var(--mantine-color-blue-5)) !important;
+}
+
 .itemAvailable {
     background: linear-gradient(135deg, rgba(45, 212, 191, 0.15) 0%, var(--mantine-color-dark-7) 100%);
     border-color: rgba(45, 212, 191, 0.3) !important;
@@ -77,6 +82,7 @@
 
 .itemDragging {
     box-shadow: var(--mantine-shadow-xl);
+    border-color: light-dark(var(--mantine-color-blue-3), var(--mantine-color-blue-5)) !important;
     z-index: 1000;
 }
 
