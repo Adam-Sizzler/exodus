@@ -3,10 +3,8 @@ package subscription
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,6 +25,7 @@ import (
 	"exodus/internal/httpapi/subscriptionsettings"
 	"exodus/internal/jobqueue"
 
+	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
 	"golang.org/x/crypto/curve25519"
 	"gopkg.in/yaml.v3"
@@ -636,12 +635,18 @@ func extractHwidHeaders(r *http.Request) *HwidHeaders {
 	if hwid == "" {
 		return nil
 	}
+	userAgent := firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent")
+	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform")
+	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version")
+	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model")
+	platform, osVersion, deviceModel, userAgent = normalizeHwidMetadata(platform, osVersion, deviceModel, userAgent)
+
 	h := &HwidHeaders{
 		Hwid:        hwid,
-		Platform:    firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform"),
-		OsVersion:   firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version"),
-		DeviceModel: firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model"),
-		UserAgent:   firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent"),
+		Platform:    platform,
+		OsVersion:   osVersion,
+		DeviceModel: deviceModel,
+		UserAgent:   userAgent,
 	}
 	// временно
 	log.Printf("HWID extracted: hwid=%s platform=%v os=%v model=%v ua=%v",
@@ -650,41 +655,62 @@ func extractHwidHeaders(r *http.Request) *HwidHeaders {
 }
 
 func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *HwidHeaders {
+	_ = requestIP
+
 	userAgent := strings.TrimSpace(r.Header.Get("User-Agent"))
 	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform")
 	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version")
 	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model")
 
-	if platform == nil {
-		if inferred := inferPlatformFromUserAgent(userAgent); inferred != "" {
-			platform = &inferred
-		}
-	}
-	clientApp := inferClientAppFromUserAgent(userAgent)
-	if deviceModel == nil {
-		deviceModel = stringPtrIfNotEmpty("unknown")
-	}
-	if userAgent == "" && platform == nil && osVersion == nil && deviceModel == nil {
+	hasMetadata := userAgent != "" || platform != nil || osVersion != nil || deviceModel != nil
+	if !hasMetadata {
 		return nil
 	}
+	platform, osVersion, deviceModel, userAgentPtr := normalizeHwidMetadata(
+		platform,
+		osVersion,
+		deviceModel,
+		stringPtrIfNotEmpty(userAgent),
+	)
 
 	signature := strings.Join([]string{
-		strings.TrimSpace(userUUID),
-		strings.ToLower(clientApp),
-		strings.ToLower(ptrString(platform)),
-		strings.ToLower(strings.TrimSpace(requestIP)),
+		"exodus:synthetic-hwid:v1",
+		"ua=" + strings.ToLower(ptrString(userAgentPtr)),
+		"platform=" + strings.ToLower(ptrString(platform)),
+		"os=" + strings.ToLower(ptrString(osVersion)),
+		"model=" + strings.ToLower(ptrString(deviceModel)),
 	}, "|")
-	sum := sha256.Sum256([]byte(signature))
-	hwid := "syn_" + hex.EncodeToString(sum[:])[:40]
 
 	return &HwidHeaders{
-		Hwid:        hwid,
+		Hwid:        deterministicSyntheticHwid(userUUID, signature),
 		Platform:    platform,
 		OsVersion:   osVersion,
 		DeviceModel: deviceModel,
-		UserAgent:   stringPtrIfNotEmpty(userAgent),
+		UserAgent:   userAgentPtr,
 		Synthetic:   true,
 	}
+}
+
+func normalizeHwidMetadata(platform, osVersion, deviceModel, userAgent *string) (*string, *string, *string, *string) {
+	normalizedUserAgent := stringPtrIfNotEmpty(ptrString(userAgent))
+	normalizedPlatform := lowerStringPtr(platform)
+	if normalizedPlatform == nil {
+		if inferred := inferPlatformFromUserAgent(ptrString(normalizedUserAgent)); inferred != "" {
+			normalizedPlatform = &inferred
+		}
+	}
+	if deviceModel == nil {
+		deviceModel = stringPtrIfNotEmpty("unknown")
+	}
+	return normalizedPlatform, stringPtrIfNotEmpty(ptrString(osVersion)), stringPtrIfNotEmpty(ptrString(deviceModel)), normalizedUserAgent
+}
+
+func deterministicSyntheticHwid(userUUID, signature string) string {
+	namespace, err := uuid.Parse(strings.TrimSpace(userUUID))
+	if err != nil {
+		namespace = uuid.NameSpaceOID
+	}
+	return uuid.NewSHA1(namespace, []byte(signature)).String()
 }
 
 func firstNonEmptyHeader(r *http.Request, names ...string) *string {
@@ -745,11 +771,61 @@ func inferClientAppFromUserAgent(userAgent string) string {
 	return userAgent
 }
 
+func inferKnownClientPlatform(client string) string {
+	client = strings.ToLower(strings.TrimSpace(client))
+
+	switch client {
+	case "sfa",
+		"sfatv",
+		"sfandroidtv",
+		"v2rayng",
+		"exclave",
+		"nekoboxforandroid",
+		"matsuri",
+		"sagernet",
+		"clashforandroid",
+		"clashmetaforandroid",
+		"cmfa":
+		return "android"
+
+	case "sfi",
+		"streisand",
+		"v2box",
+		"rabbithole",
+		"shadowrocket":
+		return "ios"
+
+	case "sft":
+		return "tvos"
+
+	case "sfw":
+		return "windows"
+
+	case "sfm",
+		"v2rayu",
+		"v2rayx",
+		"v2rayxs",
+		"clashx":
+		return "macos"
+
+	case "sfl":
+		return "linux"
+
+	default:
+		return ""
+	}
+}
+
 func inferPlatformFromUserAgent(userAgent string) string {
 	lower := strings.ToLower(userAgent)
 	if lower == "" {
 		return ""
 	}
+
+	if platform := inferKnownClientPlatform(inferClientAppFromUserAgent(lower)); platform != "" {
+		return platform
+	}
+
 	if idx := strings.Index(lower, "platform/"); idx >= 0 {
 		rest := userAgent[idx+len("platform/"):]
 		for i, r := range rest {
@@ -762,14 +838,15 @@ func inferPlatformFromUserAgent(userAgent string) string {
 			return strings.ToLower(rest)
 		}
 	}
+
 	switch {
-	case strings.Contains(lower, "windows") || strings.HasPrefix(lower, "v2rayn/"):
+	case strings.Contains(lower, "windows"):
 		return "windows"
-	case strings.Contains(lower, "android") || strings.HasPrefix(lower, "v2rayng/"):
+	case strings.Contains(lower, "android"):
 		return "android"
-	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios") || strings.HasPrefix(lower, "streisand"):
+	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios"):
 		return "ios"
-	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "darwin"):
+	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "macintosh") || strings.Contains(lower, "darwin"):
 		return "macos"
 	case strings.Contains(lower, "linux"):
 		return "linux"

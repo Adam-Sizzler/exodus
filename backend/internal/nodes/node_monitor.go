@@ -446,7 +446,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	if err := stream.Send(&proto.NodeDataRequest{
 		Request: &proto.NodeDataRequest_Config{
 			Config: &proto.StreamConfig{
-				IntervalSeconds: 20, // Default interval
+				IntervalSeconds: 15,
 			},
 		},
 	}); err != nil {

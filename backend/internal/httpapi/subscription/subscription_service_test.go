@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 
@@ -458,6 +459,20 @@ func TestExtractHwidHeadersSupportsHwidFallbackHeaders(t *testing.T) {
 	assertStringPtr(t, "user agent", got.UserAgent, "Shadowrocket/2.2.59")
 }
 
+func TestExtractHwidHeadersInfersSingBoxPlatformFromUserAgent(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("X-HWID", "device-789")
+	req.Header.Set("User-Agent", "SFA/1.13.11 (662; sing-box 1.13.11; language ru_RU_u_fw_mon_ms_metric_mu_celsius)")
+
+	got := extractHwidHeaders(req)
+	if got == nil {
+		t.Fatal("expected hwid headers, got nil")
+	}
+	assertStringPtr(t, "platform", got.Platform, "android")
+	assertStringPtr(t, "device model", got.DeviceModel, "unknown")
+	assertStringPtr(t, "user agent", got.UserAgent, "SFA/1.13.11 (662; sing-box 1.13.11; language ru_RU_u_fw_mon_ms_metric_mu_celsius)")
+}
+
 func TestExtractHwidHeadersRequiresHwid(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("X-Device-OS", "android")
@@ -471,19 +486,57 @@ func TestExtractSyntheticHwidHeadersFromV2rayNUserAgent(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("User-Agent", "v2rayN/7.16.4")
 
-	got := extractSyntheticHwidHeaders(req, "user-uuid", "203.0.113.10")
+	got := extractSyntheticHwidHeaders(req, "1af12108-83fa-4f23-bacd-2fe7b4df3e71", "203.0.113.10")
 	if got == nil {
 		t.Fatal("expected synthetic hwid headers, got nil")
 	}
 	if !got.Synthetic {
 		t.Fatal("expected synthetic flag")
 	}
-	if !strings.HasPrefix(got.Hwid, "syn_") || len(got.Hwid) != 44 {
+	if _, err := uuid.Parse(got.Hwid); err != nil {
 		t.Fatalf("unexpected synthetic hwid: %q", got.Hwid)
 	}
 	assertStringPtr(t, "platform", got.Platform, "windows")
 	assertStringPtr(t, "device model", got.DeviceModel, "unknown")
 	assertStringPtr(t, "user agent", got.UserAgent, "v2rayN/7.16.4")
+}
+
+func TestExtractSyntheticHwidHeadersIsStableAcrossRequestIP(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("User-Agent", "SFA/1.13.11 (662; sing-box 1.13.11; language ru_RU_u_fw_mon_ms_metric_mu_celsius)")
+
+	first := extractSyntheticHwidHeaders(req, "1af12108-83fa-4f23-bacd-2fe7b4df3e71", "203.0.113.10")
+	second := extractSyntheticHwidHeaders(req, "1af12108-83fa-4f23-bacd-2fe7b4df3e71", "198.51.100.7")
+	if first == nil || second == nil {
+		t.Fatalf("expected synthetic hwid headers, got first=%#v second=%#v", first, second)
+	}
+	if first.Hwid != second.Hwid {
+		t.Fatalf("expected stable hwid across IPs, got %q and %q", first.Hwid, second.Hwid)
+	}
+	if _, err := uuid.Parse(first.Hwid); err != nil {
+		t.Fatalf("expected UUID synthetic hwid, got %q", first.Hwid)
+	}
+	assertStringPtr(t, "platform", first.Platform, "android")
+	assertStringPtr(t, "device model", first.DeviceModel, "unknown")
+}
+
+func TestExtractSyntheticHwidHeadersChangesWhenAdditionalMetadataAppears(t *testing.T) {
+	userUUID := "1af12108-83fa-4f23-bacd-2fe7b4df3e71"
+	req := httptest.NewRequest("GET", "/api/sub/short", nil)
+	req.Header.Set("User-Agent", "SFA/1.13.11 (662; sing-box 1.13.11; language ru_RU_u_fw_mon_ms_metric_mu_celsius)")
+
+	withModel := httptest.NewRequest("GET", "/api/sub/short", nil)
+	withModel.Header.Set("User-Agent", "SFA/1.13.11 (662; sing-box 1.13.11; language ru_RU_u_fw_mon_ms_metric_mu_celsius)")
+	withModel.Header.Set("X-Device-Model", "Pixel 8")
+
+	first := extractSyntheticHwidHeaders(req, userUUID, "203.0.113.10")
+	second := extractSyntheticHwidHeaders(withModel, userUUID, "203.0.113.10")
+	if first == nil || second == nil {
+		t.Fatalf("expected synthetic hwid headers, got first=%#v second=%#v", first, second)
+	}
+	if first.Hwid == second.Hwid {
+		t.Fatalf("expected different hwid when device metadata appears, got %q", first.Hwid)
+	}
 }
 
 func TestExtractSyntheticHwidHeadersFromPlatformUserAgent(t *testing.T) {
