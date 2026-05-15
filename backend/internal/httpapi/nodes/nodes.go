@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"regexp"
@@ -745,6 +746,12 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 }
 
 func handleRestartNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
+	req, err := decodeOptionalRestartNodesRequest(r)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+
 	node, err := getNodeByUUID(r.Context(), manager, nodeUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -760,7 +767,7 @@ func handleRestartNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true, nodeUUID)
+	monitor.RequestNodeDeployWithForce(true, isForceRestartRequested(req), nodeUUID)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
 }
 
@@ -806,16 +813,14 @@ func handleResetNodeTraffic(w http.ResponseWriter, r *http.Request, manager *dbm
 }
 
 func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	var req restartAllNodesRequest
-	if len(strings.TrimSpace(r.Header.Get("Content-Length"))) != 0 || r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-			return
-		}
+	req, err := decodeOptionalRestartNodesRequest(r)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
 	}
 
 	var enabledCount int
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		return db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM nodes WHERE is_disabled = false`).Scan(&enabledCount)
 	})
 	if err != nil {
@@ -827,10 +832,27 @@ func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, manager *dbma
 		return
 	}
 
-	_ = req
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true)
+	monitor.RequestNodeDeployWithForce(true, isForceRestartRequested(req))
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+}
+
+func decodeOptionalRestartNodesRequest(r *http.Request) (restartAllNodesRequest, error) {
+	var req restartAllNodesRequest
+	if r.Body == nil || r.ContentLength == 0 {
+		return req, nil
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if errors.Is(err, io.EOF) {
+			return req, nil
+		}
+		return req, err
+	}
+	return req, nil
+}
+
+func isForceRestartRequested(req restartAllNodesRequest) bool {
+	return req.ForceRestart != nil && *req.ForceRestart
 }
 
 func handleReorderNodes(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {

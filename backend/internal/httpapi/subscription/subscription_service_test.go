@@ -501,6 +501,31 @@ func TestExtractSyntheticHwidHeadersFromV2rayNUserAgent(t *testing.T) {
 	assertStringPtr(t, "user agent", got.UserAgent, "v2rayN/7.16.4")
 }
 
+func TestInferKnownSinglePlatformClientsFromUserAgent(t *testing.T) {
+	cases := map[string]string{
+		"v2rayN/7.16.4":      "windows",
+		"v2rayNG/1.10.31":    "android",
+		"Streisand/1.7.8":    "ios",
+		"V2Box/1.5.5":        "ios",
+		"rabbithole/1.0":     "ios",
+		"Exclave/1.0":        "android",
+		"SFW/26.4.12":        "windows",
+		"SFA/1.13.11 (662)":  "android",
+		"SFI/1.13.11 (662)":  "ios",
+		"SFM/1.13.11 (662)":  "macos",
+		"SFL/1.13.11 (662)":  "linux",
+		"SFATV/1.13.11 (12)": "android",
+	}
+
+	for userAgent, want := range cases {
+		t.Run(userAgent, func(t *testing.T) {
+			if got := inferPlatformFromUserAgent(userAgent); got != want {
+				t.Fatalf("unexpected platform: got %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestExtractSyntheticHwidHeadersIsStableAcrossRequestIP(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("User-Agent", "SFA/1.13.11 (662; sing-box 1.13.11; language ru_RU_u_fw_mon_ms_metric_mu_celsius)")

@@ -58,8 +58,9 @@ type NodeMonitor struct {
 }
 
 type deployRequest struct {
-	Restart   bool
-	NodeUUIDs []string
+	Restart      bool
+	ForceRestart bool
+	NodeUUIDs    []string
 }
 
 type TagTrafficCounters struct {
@@ -177,8 +178,13 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 			nm.cfg.Logger.Debug("Node monitor manual sync requested")
 			nm.syncNodes()
 		case deployReq := <-nm.deployNow:
-			nm.cfg.Logger.Info("Node monitor deploy requested", "restart", deployReq.Restart, "node_targets", len(deployReq.NodeUUIDs))
-			nm.deployToConnectedNodes(deployReq.Restart, deployReq.NodeUUIDs)
+			nm.cfg.Logger.Info(
+				"Node monitor deploy requested",
+				"restart", deployReq.Restart,
+				"force_restart", deployReq.ForceRestart,
+				"node_targets", len(deployReq.NodeUUIDs),
+			)
+			nm.deployToConnectedNodes(deployReq.Restart, deployReq.ForceRestart, deployReq.NodeUUIDs)
 		case <-nm.srsSyncNow:
 			nm.cfg.Logger.Info("Node monitor SRS sync requested")
 			nm.syncSRSListsToConnectedNodes()
@@ -1161,21 +1167,27 @@ func (nm *NodeMonitor) RequestSync() {
 
 // RequestDeploy triggers config deploy to connected nodes (non-blocking).
 func (nm *NodeMonitor) RequestDeploy(restart bool, nodeUUIDs ...string) {
+	nm.RequestDeployWithForce(restart, false, nodeUUIDs...)
+}
+
+// RequestDeployWithForce triggers config deploy and can force core reload even when config is unchanged.
+func (nm *NodeMonitor) RequestDeployWithForce(restart bool, forceRestart bool, nodeUUIDs ...string) {
 	if nm == nil {
 		return
 	}
 	normalizedTargets := normalizeNodeUUIDTargets(nodeUUIDs)
 	req := deployRequest{
-		Restart:   restart,
-		NodeUUIDs: normalizedTargets,
+		Restart:      restart,
+		ForceRestart: forceRestart,
+		NodeUUIDs:    normalizedTargets,
 	}
 	if nm.cfg != nil && nm.cfg.Logger != nil {
-		nm.cfg.Logger.Debug("Node deploy requested", "restart", restart, "node_targets", len(normalizedTargets))
+		nm.cfg.Logger.Debug("Node deploy requested", "restart", restart, "force_restart", forceRestart, "node_targets", len(normalizedTargets))
 	}
 	select {
 	case nm.deployNow <- req:
 		if nm.cfg != nil && nm.cfg.Logger != nil {
-			nm.cfg.Logger.Trace("Node deploy enqueued", "restart", restart, "node_targets", len(normalizedTargets))
+			nm.cfg.Logger.Trace("Node deploy enqueued", "restart", restart, "force_restart", forceRestart, "node_targets", len(normalizedTargets))
 		}
 	default:
 		select {
@@ -1184,7 +1196,7 @@ func (nm *NodeMonitor) RequestDeploy(restart bool, nodeUUIDs ...string) {
 		}
 		nm.deployNow <- req
 		if nm.cfg != nil && nm.cfg.Logger != nil {
-			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart, "node_targets", len(normalizedTargets))
+			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart, "force_restart", forceRestart, "node_targets", len(normalizedTargets))
 		}
 	}
 }

@@ -34,6 +34,16 @@ func RequestNodeDeploy(restart bool, nodeUUIDs ...string) {
 	}
 }
 
+// RequestNodeDeployWithForce triggers config deploy and forces core reload on target nodes.
+func RequestNodeDeployWithForce(restart bool, forceRestart bool, nodeUUIDs ...string) {
+	globalMonitorMu.RLock()
+	nm := globalMonitor
+	globalMonitorMu.RUnlock()
+	if nm != nil {
+		nm.RequestDeployWithForce(restart, forceRestart, nodeUUIDs...)
+	}
+}
+
 // RequestSRSDeploy triggers SRS lists sync to connected nodes.
 func RequestSRSDeploy() {
 	globalMonitorMu.RLock()

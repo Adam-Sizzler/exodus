@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -648,9 +647,6 @@ func extractHwidHeaders(r *http.Request) *HwidHeaders {
 		DeviceModel: deviceModel,
 		UserAgent:   userAgent,
 	}
-	// временно
-	log.Printf("HWID extracted: hwid=%s platform=%v os=%v model=%v ua=%v",
-		h.Hwid, h.Platform, h.OsVersion, h.DeviceModel, h.UserAgent)
 	return h
 }
 
@@ -798,7 +794,8 @@ func inferKnownClientPlatform(client string) string {
 	case "sft":
 		return "tvos"
 
-	case "sfw":
+	case "sfw",
+		"v2rayn":
 		return "windows"
 
 	case "sfm",

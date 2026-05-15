@@ -18,10 +18,11 @@ import (
 )
 
 type deployTaskPayload struct {
-	Config   json.RawMessage         `json:"config"`
-	Restart  *bool                   `json:"restart,omitempty"`
-	SRSLists []srscore.NodeSyncItem  `json:"srs_lists,omitempty"`
-	Modules  *deployModulesTaskBlock `json:"modules,omitempty"`
+	Config       json.RawMessage         `json:"config"`
+	Restart      *bool                   `json:"restart,omitempty"`
+	ForceRestart *bool                   `json:"force_restart,omitempty"`
+	SRSLists     []srscore.NodeSyncItem  `json:"srs_lists,omitempty"`
+	Modules      *deployModulesTaskBlock `json:"modules,omitempty"`
 }
 
 type deployModulesTaskBlock struct {
@@ -57,11 +58,11 @@ func normalizeTagValue(tag string) string {
 	return strings.TrimSpace(tag)
 }
 
-func (nm *NodeMonitor) deployToConnectedNodes(restart bool, requestedNodeUUIDs []string) {
+func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, requestedNodeUUIDs []string) {
 	if nm == nil {
 		return
 	}
-	nm.cfg.Logger.Info("Deploying node configs", "restart", restart, "requested_node_targets", len(requestedNodeUUIDs))
+	nm.cfg.Logger.Info("Deploying node configs", "restart", restart, "force_restart", forceRestart, "requested_node_targets", len(requestedNodeUUIDs))
 
 	dbNodes, err := nm.loadActiveNodes()
 	if err != nil {
@@ -112,7 +113,7 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, requestedNodeUUIDs [
 		})
 	}
 	nm.nodesLock.RUnlock()
-	nm.cfg.Logger.Debug("Prepared deploy targets", "active_nodes", len(dbNodes), "connected_targets", len(targets), "requested_node_targets", len(targetFilter), "restart", restart)
+	nm.cfg.Logger.Debug("Prepared deploy targets", "active_nodes", len(dbNodes), "connected_targets", len(targets), "requested_node_targets", len(targetFilter), "restart", restart, "force_restart", forceRestart)
 
 	if len(targets) == 0 {
 		nm.cfg.Logger.Warn("No connected nodes to deploy")
@@ -147,11 +148,13 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, requestedNodeUUIDs [
 		}
 
 		restartFlag := restart
+		forceRestartFlag := forceRestart
 		taskPayload, err := json.Marshal(deployTaskPayload{
-			Config:   configJSON,
-			Restart:  &restartFlag,
-			SRSLists: srsLists,
-			Modules:  modules,
+			Config:       configJSON,
+			Restart:      &restartFlag,
+			ForceRestart: &forceRestartFlag,
+			SRSLists:     srsLists,
+			Modules:      modules,
 		})
 		if err != nil {
 			nm.cfg.Logger.Warn("Failed to serialize deploy payload", "node", target.name, "error", err)
@@ -163,7 +166,7 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, requestedNodeUUIDs [
 			ctxBase = context.Background()
 		}
 		ctx, cancel := context.WithTimeout(ctxBase, 60*time.Second)
-		nm.cfg.Logger.Debug("Submitting deploy task", "node", target.name, "payload_bytes", len(taskPayload), "restart", restart)
+		nm.cfg.Logger.Debug("Submitting deploy task", "node", target.name, "payload_bytes", len(taskPayload), "restart", restart, "force_restart", forceRestart)
 		resp, err := target.client.SubmitTask(ctx, &proto.NodeTask{
 			TaskId:    fmt.Sprintf("deploy-%d", time.Now().UnixNano()),
 			Operation: "deploy_config",
@@ -184,7 +187,7 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, requestedNodeUUIDs [
 			continue
 		}
 
-		nm.cfg.Logger.Info("Node config deployed", "node", target.name, "restart", restart, "message", resp.Message)
+		nm.cfg.Logger.Info("Node config deployed", "node", target.name, "restart", restart, "force_restart", forceRestart, "message", resp.Message)
 	}
 }
 

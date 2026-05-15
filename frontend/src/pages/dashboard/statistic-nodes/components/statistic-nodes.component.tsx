@@ -12,6 +12,7 @@ import { TopLeaderboardCardShared } from '@shared/ui/leaderboard-item-card'
 import { CountryFlag } from '@shared/ui/get-country-flag'
 import { useGetStatsNodesUsage } from '@shared/api/hooks'
 import { Page, PageHeaderShared } from '@shared/ui'
+import { sToMs } from '@shared/utils/time-utils'
 
 const TOP_NODES_LIMIT_OPTIONS = [
     { value: '5', label: 'Top 5' },
@@ -57,7 +58,8 @@ export const StatisticNodesPage = () => {
             topNodesLimit
         },
         rQueryParams: {
-            enabled: Boolean(queryRange.start && queryRange.end)
+            enabled: Boolean(queryRange.start && queryRange.end),
+            refetchInterval: sToMs(60)
         }
     })
 
