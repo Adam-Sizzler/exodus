@@ -1328,7 +1328,7 @@
         "feature": {
             "create-config-profile": "Создать профиль",
             "create-a-new-config-profile-by-entering-a-name-below": "Создайте новый профиль, введя имя ниже.",
-            "you-can-customize-xray-config-after-creation": "Вы можете настроить конфигурацию XRay после создания.",
+            "you-can-customize-xray-config-after-creation": "Вы можете настроить конфигурацию Sing-box после создания.",
             "profile-name": "Имя профиля",
             "enter-profile-name": "Введите имя профиля"
         }

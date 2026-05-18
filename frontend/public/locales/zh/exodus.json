@@ -1304,7 +1304,7 @@
         "feature": {
             "create-config-profile": "创建配置文件",
             "create-a-new-config-profile-by-entering-a-name-below": "在下方输入名称以创建新的配置文件。",
-            "you-can-customize-xray-config-after-creation": "创建后可以自定义 XRay 配置。",
+            "you-can-customize-xray-config-after-creation": "创建后可以自定义 Sing-box 配置。",
             "profile-name": "配置文件名称",
             "enter-profile-name": "输入配置文件名称"
         }

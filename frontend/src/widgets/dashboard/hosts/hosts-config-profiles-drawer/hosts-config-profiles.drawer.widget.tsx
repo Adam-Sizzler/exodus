@@ -20,7 +20,7 @@ import { Virtuoso } from 'react-virtuoso'
 import { ConfigProfileCardShared } from '@shared/ui/config-profiles/config-profile-card/config-profile-card.shared'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetConfigProfiles } from '@shared/api/hooks'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import classes from './hosts-config-profiles.module.css'
 import { IProps } from './interfaces'
@@ -134,7 +134,7 @@ export const HostsConfigProfilesDrawer = (props: IProps) => {
             }}
             title={
                 <BaseOverlayHeader
-                    IconComponent={XrayLogo}
+                    IconComponent={SingboxLogo}
                     iconVariant="gradient-teal"
                     title={t('constants.config-profiles')}
                 />

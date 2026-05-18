@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import clsx from 'clsx'
 
 import { ConfigProfilesDrawer } from '@widgets/dashboard/subscription-connections/config-profiles-drawer/config-profiles.drawer.widget'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import { IProps } from './interfaces'
 
@@ -45,7 +45,7 @@ export function ShowConfigProfilesWithInboundsFeature(props: IProps) {
         <Stack gap="md">
             <Stack gap="xs">
                 <Group gap="xs">
-                    <XrayLogo size={16} />
+                    <SingboxLogo size={16} />
                     <Text fw={600} size="sm">
                         {t('show-config-profiles-with-inbounds.feature.config-profile')}
                     </Text>

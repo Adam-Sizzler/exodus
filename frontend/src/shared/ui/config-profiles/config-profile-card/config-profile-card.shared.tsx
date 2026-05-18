@@ -17,7 +17,7 @@ import { modals } from '@mantine/modals'
 import { memo } from 'react'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import type { IProps } from './interfaces/props.interface'
 
@@ -55,7 +55,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
             ),
             title: (
                 <BaseOverlayHeader
-                    IconComponent={XrayLogo}
+                    IconComponent={SingboxLogo}
                     iconVariant="gradient-teal"
                     title={profile.name}
                 />
@@ -109,7 +109,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                             size="lg"
                             variant="subtle"
                         >
-                            <XrayLogo size={16} />
+                            <SingboxLogo size={16} />
                         </ActionIcon>
                     </ActionIconGroup>
                 </Group>

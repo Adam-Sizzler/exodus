@@ -82,7 +82,7 @@ export const useMenuSections = (): MenuItem[] => {
                 {
                     name: t('constants.config-profiles'),
                     href: ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES,
-                    icon: XrayLogo,
+                    icon: SingboxLogo,
                     id: 'config-profiles'
                 },
                 {

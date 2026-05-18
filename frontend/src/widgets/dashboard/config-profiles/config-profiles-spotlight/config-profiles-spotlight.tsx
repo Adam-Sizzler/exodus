@@ -5,7 +5,7 @@ import { Badge, Group } from '@mantine/core'
 
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 import { formatInt } from '@shared/utils/misc'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { ROUTES } from '@shared/constants'
 
 interface IProps {
@@ -30,7 +30,7 @@ export const ConfigProfilesSpotlightWidget = (props: IProps) => {
             actions={configProfiles.map((configProfile) => ({
                 label: configProfile.name,
                 id: configProfile.uuid,
-                leftSection: <XrayLogo color="var(--mantine-color-gray-5)" size={16} />,
+                leftSection: <SingboxLogo color="var(--mantine-color-gray-5)" size={16} />,
                 rightSection: (
                     <Group gap="xs" wrap="nowrap">
                         <Badge

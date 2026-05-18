@@ -11,24 +11,21 @@ import {
 } from '@mantine/core'
 import { CreateConfigProfileCommand } from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
-import { TbCode, TbPlus, TbRefresh } from 'react-icons/tb'
+import { TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useField } from '@mantine/form'
 
-import { CONFIG_PROFILES_VIEW_MODE } from '@pages/dashboard/config-profiles/components/interfaces'
 import { QueryKeys, useCreateConfigProfile, useGetConfigProfiles } from '@shared/api/hooks'
 import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { HelpActionIconShared } from '@shared/ui/help-drawer'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { ROUTES } from '@shared/constants'
 import { queryClient } from '@shared/api'
 
 interface IProps {
     configProfileCount: number
-    setViewMode: (viewMode: CONFIG_PROFILES_VIEW_MODE) => void
-    viewMode: CONFIG_PROFILES_VIEW_MODE
 }
 
 const generateDefaultConfig = () => {
@@ -72,7 +69,7 @@ const generateDefaultConfig = () => {
 }
 
 export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
-    const { configProfileCount, setViewMode, viewMode } = props
+    const { configProfileCount } = props
     const { isFetching } = useGetConfigProfiles()
     const { t } = useTranslation()
 
@@ -117,27 +114,6 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
             {configProfileCount > 0 && <UniversalSpotlightActionIconShared />}
 
             <ActionIconGroup>
-                <ActionIcon
-                    color="gray"
-                    onClick={() =>
-                        setViewMode(
-                            viewMode === CONFIG_PROFILES_VIEW_MODE.PROFILES
-                                ? CONFIG_PROFILES_VIEW_MODE.SNIPPETS
-                                : CONFIG_PROFILES_VIEW_MODE.PROFILES
-                        )
-                    }
-                    size="input-md"
-                    variant="light"
-                >
-                    {viewMode === CONFIG_PROFILES_VIEW_MODE.PROFILES ? (
-                        <TbCode size="24px" />
-                    ) : (
-                        <XrayLogo size="24px" />
-                    )}
-                </ActionIcon>
-            </ActionIconGroup>
-
-            <ActionIconGroup>
                 <Tooltip label={t('common.update')} withArrow>
                     <ActionIcon
                         loading={isFetching}
@@ -168,7 +144,7 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                 size="md"
                 title={
                     <BaseOverlayHeader
-                        IconComponent={XrayLogo}
+                        IconComponent={SingboxLogo}
                         iconVariant="gradient-teal"
                         title={t(
                             'config-profiles-header-action-buttons.feature.create-config-profile'

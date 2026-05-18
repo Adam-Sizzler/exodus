@@ -565,15 +565,6 @@ model HostsToNodes {
   @@map("hosts_to_nodes")
 }
 
-model ConfigProfileSnippets {
-  name    String @id @map("name") @db.VarChar(255)
-  snippet Json   @map("snippet")
-
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-
-  @@map("config_profile_snippets")
-}
-
 model ExternalSquads {
   uuid                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   viewPosition         Int    @default(autoincrement()) @map("view_position")
