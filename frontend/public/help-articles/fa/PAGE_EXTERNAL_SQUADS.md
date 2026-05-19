@@ -39,5 +39,3 @@ For example, in general settings my profile header is set as "Exodus", but for 1
 Based on the logic from the previous point – in this section you can completely override some parameters that you might have noticed in the card of each **host** you created.
 
 **Values overridden here will be applied to all hosts that the user receives in the subscription.**
-
-For example, by overriding `vlessRouteId` we can assign a specific value and thus "_route_" an entire group of users (those who will be in this squad). Naturally, the other half of such routing settings is located in the server configuration – the Config Profile.

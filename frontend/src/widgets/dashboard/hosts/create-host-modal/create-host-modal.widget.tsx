@@ -20,9 +20,7 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { queryClient } from '@shared/api'
 
-type OptionalJSONParseResult =
-    | { ok: false }
-    | { ok: true; value: null | unknown }
+type OptionalJSONParseResult = { ok: false } | { ok: true; value: null | unknown }
 
 const parseOptionalJSONValue = (value: unknown): OptionalJSONParseResult => {
     if (value === null || value === undefined) {
@@ -82,11 +80,6 @@ export const CreateHostModalWidget = () => {
         mode: 'uncontrolled',
         name: 'create-host-form',
         validateInputOnBlur: true,
-        onValuesChange: (values) => {
-            if (typeof values.vlessRouteId === 'string' && values.vlessRouteId === '') {
-                form.setFieldValue('vlessRouteId', null)
-            }
-        },
         validate: zodResolver(CreateHostCommand.RequestSchema),
 
         initialValues: {
@@ -95,11 +88,13 @@ export const CreateHostModalWidget = () => {
             remark: '',
             address: '',
             selectorNodesFirst: false,
+            overrideProtocolCredential: false,
+            protocolCredential: null,
             inbound: {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''
             }
-        }
+        } as CreateHostCommand.Request
     })
 
     const handleClose = () => {
@@ -123,6 +118,11 @@ export const CreateHostModalWidget = () => {
     })
 
     const handleSubmit = form.onSubmit(async (values) => {
+        const valuesAny = values as CreateHostCommand.Request & {
+            overrideProtocolCredential?: boolean
+            protocolCredential?: string | null
+        }
+
         if (!values.inbound.configProfileInboundUuid || !values.inbound.configProfileUuid) {
             notifications.show({
                 title: t('create-host-modal.widget.error'),
@@ -160,6 +160,10 @@ export const CreateHostModalWidget = () => {
             variables: {
                 ...values,
                 isDisabled: !values.isDisabled,
+                overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),
+                protocolCredential: valuesAny.overrideProtocolCredential
+                    ? valuesAny.protocolCredential || null
+                    : null,
                 sockoptParams,
                 muxParams: null,
                 singboxMuxParams,
@@ -168,7 +172,7 @@ export const CreateHostModalWidget = () => {
                     configProfileInboundUuid: values.inbound.configProfileInboundUuid,
                     configProfileUuid: values.inbound.configProfileUuid
                 }
-            }
+            } as any
         })
 
         return null

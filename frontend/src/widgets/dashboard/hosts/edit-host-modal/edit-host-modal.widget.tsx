@@ -24,9 +24,7 @@ import { cloneString } from '@shared/utils/misc/clone-string'
 import { queryClient } from '@shared/api'
 import {} from '@entities/dashboard'
 
-type OptionalJSONParseResult =
-    | { ok: false }
-    | { ok: true; value: null | unknown }
+type OptionalJSONParseResult = { ok: false } | { ok: true; value: null | unknown }
 
 const parseOptionalJSONValue = (value: unknown): OptionalJSONParseResult => {
     if (value === null || value === undefined) {
@@ -86,11 +84,6 @@ export const EditHostModalWidget = memo(() => {
         name: 'edit-host-form',
         mode: 'uncontrolled',
         validateInputOnBlur: true,
-        onValuesChange: (values) => {
-            if (typeof values.vlessRouteId === 'string' && values.vlessRouteId === '') {
-                form.setFieldValue('vlessRouteId', null)
-            }
-        },
         validate: zodResolver(UpdateHostCommand.RequestSchema.omit({ uuid: true }))
     })
 
@@ -142,7 +135,10 @@ export const EditHostModalWidget = memo(() => {
 
             if (typeof hostAny.clashMuxParams === 'string') {
                 clashMuxParamsParsed = hostAny.clashMuxParams
-            } else if (typeof hostAny.clashMuxParams === 'object' && hostAny.clashMuxParams !== null) {
+            } else if (
+                typeof hostAny.clashMuxParams === 'object' &&
+                hostAny.clashMuxParams !== null
+            ) {
                 clashMuxParamsParsed = JSON.stringify(hostAny.clashMuxParams, null, 2)
             } else {
                 clashMuxParamsParsed = ''
@@ -178,7 +174,8 @@ export const EditHostModalWidget = memo(() => {
                 isHidden: host.isHidden,
                 overrideSniFromAddress: host.overrideSniFromAddress,
                 keepSniBlank: host.keepSniBlank,
-                vlessRouteId: host.vlessRouteId ?? undefined,
+                overrideProtocolCredential: hostAny.overrideProtocolCredential ?? false,
+                protocolCredential: hostAny.protocolCredential ?? undefined,
                 allowInsecure: host.allowInsecure ?? undefined,
                 shuffleHost: host.shuffleHost ?? undefined,
                 selectorNodesFirst: hostAny.selectorNodesFirst ?? undefined,
@@ -187,7 +184,7 @@ export const EditHostModalWidget = memo(() => {
                 xrayJsonTemplateUuid: host.xrayJsonTemplateUuid ?? undefined,
                 excludedInternalSquads: host.excludedInternalSquads ?? undefined,
                 excludeFromSubscriptionTypes: host.excludeFromSubscriptionTypes ?? undefined
-            })
+            } as any)
         }
     }, [host, configProfiles])
 
@@ -238,6 +235,11 @@ export const EditHostModalWidget = memo(() => {
             return
         }
 
+        const valuesAny = values as UpdateHostCommand.Request & {
+            overrideProtocolCredential?: boolean
+            protocolCredential?: string | null
+        }
+
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
@@ -266,12 +268,16 @@ export const EditHostModalWidget = memo(() => {
                 ...values,
                 isDisabled: !values.isDisabled,
                 uuid: host.uuid,
+                overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),
+                protocolCredential: valuesAny.overrideProtocolCredential
+                    ? valuesAny.protocolCredential || null
+                    : null,
                 muxParams: null,
                 singboxMuxParams,
                 clashMuxParams,
                 sockoptParams,
                 tag: values.tag === '' ? null : values.tag
-            }
+            } as any
         })
     })
 
@@ -315,13 +321,16 @@ export const EditHostModalWidget = memo(() => {
                 tag: host.tag ?? undefined,
                 overrideSniFromAddress: host.overrideSniFromAddress,
                 keepSniBlank: host.keepSniBlank,
-                vlessRouteId: host.vlessRouteId ?? undefined,
+                overrideProtocolCredential: (host as any).overrideProtocolCredential ?? undefined,
+                protocolCredential: (host as any).overrideProtocolCredential
+                    ? ((host as any).protocolCredential ?? undefined)
+                    : null,
                 allowInsecure: host.allowInsecure ?? undefined,
                 selectorNodesFirst: (host as any).selectorNodesFirst ?? undefined,
                 nodes: host.nodes ?? undefined,
                 xrayJsonTemplateUuid: host.xrayJsonTemplateUuid ?? undefined,
                 excludedInternalSquads: host.excludedInternalSquads ?? undefined
-            }
+            } as any
         })
     }
 

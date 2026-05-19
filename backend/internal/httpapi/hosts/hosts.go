@@ -20,9 +20,10 @@ import (
 )
 
 var (
-	hostTagRegex          = regexp.MustCompile(`^[A-Z0-9_:]+$`)
-	allowedSecurityLayers = map[string]struct{}{"DEFAULT": {}, "TLS": {}, "NONE": {}}
-	allowedAlpn           = map[string]struct{}{
+	hostTagRegex                = regexp.MustCompile(`^[A-Z0-9_:]+$`)
+	maxProtocolCredentialLength = 256
+	allowedSecurityLayers       = map[string]struct{}{"DEFAULT": {}, "TLS": {}, "NONE": {}}
+	allowedAlpn                 = map[string]struct{}{
 		"h3":             {},
 		"h2":             {},
 		"http/1.1":       {},
@@ -59,36 +60,37 @@ var (
 )
 
 type hostRecord struct {
-	UUID                     string
-	ViewPosition             int
-	Remark                   string
-	Address                  string
-	Port                     int
-	Path                     *string
-	SNI                      *string
-	Host                     *string
-	ALPN                     *string
-	Fingerprint              *string
-	SecurityLayer            string
-	MuxParams                json.RawMessage
-	SingboxMuxParams         json.RawMessage
-	ClashMuxParams           json.RawMessage
-	SockoptParams            json.RawMessage
-	IsDisabled               bool
-	ServerDescription        *string
-	VLESSRouteID             *int64
-	AllowInsecure            bool
-	ShuffleHost              bool
-	SelectorNodesFirst       bool
-	MihomoX25519             bool
-	XrayJSONTemplateUUID     *string
-	KeepSNIBlank             bool
-	Tag                      *string
-	IsHidden                 bool
-	OverrideSNIFromAddress   bool
-	ConfigProfileUUID        *string
-	ConfigProfileInboundUUID *string
-	ExcludeTypes             []string
+	UUID                       string
+	ViewPosition               int
+	Remark                     string
+	Address                    string
+	Port                       int
+	Path                       *string
+	SNI                        *string
+	Host                       *string
+	ALPN                       *string
+	Fingerprint                *string
+	SecurityLayer              string
+	MuxParams                  json.RawMessage
+	SingboxMuxParams           json.RawMessage
+	ClashMuxParams             json.RawMessage
+	SockoptParams              json.RawMessage
+	IsDisabled                 bool
+	ServerDescription          *string
+	OverrideProtocolCredential bool
+	ProtocolCredential         *string
+	AllowInsecure              bool
+	ShuffleHost                bool
+	SelectorNodesFirst         bool
+	MihomoX25519               bool
+	XrayJSONTemplateUUID       *string
+	KeepSNIBlank               bool
+	Tag                        *string
+	IsHidden                   bool
+	OverrideSNIFromAddress     bool
+	ConfigProfileUUID          *string
+	ConfigProfileInboundUUID   *string
+	ExcludeTypes               []string
 }
 
 type HostInbound struct {
@@ -115,25 +117,6 @@ func (o *OptionalString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type OptionalInt64 struct {
-	Set   bool
-	Value *int64
-}
-
-func (o *OptionalInt64) UnmarshalJSON(data []byte) error {
-	o.Set = true
-	if string(data) == "null" {
-		o.Value = nil
-		return nil
-	}
-	var value int64
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
-	}
-	o.Value = &value
-	return nil
-}
-
 type OptionalJSON struct {
 	Set bool
 	Raw json.RawMessage
@@ -146,102 +129,105 @@ func (o *OptionalJSON) UnmarshalJSON(data []byte) error {
 }
 
 type HostAPI struct {
-	UUID                    string      `json:"uuid"`
-	ViewPosition            int         `json:"viewPosition"`
-	Remark                  string      `json:"remark"`
-	Address                 string      `json:"address"`
-	Port                    int         `json:"port"`
-	Path                    *string     `json:"path"`
-	SNI                     *string     `json:"sni"`
-	Host                    *string     `json:"host"`
-	ALPN                    *string     `json:"alpn"`
-	Fingerprint             *string     `json:"fingerprint"`
-	IsDisabled              bool        `json:"isDisabled"`
-	SecurityLayer           string      `json:"securityLayer"`
-	MuxParams               interface{} `json:"muxParams"`
-	SingboxMuxParams        interface{} `json:"singboxMuxParams"`
-	ClashMuxParams          interface{} `json:"clashMuxParams"`
-	SockoptParams           interface{} `json:"sockoptParams"`
-	Inbound                 HostInbound `json:"inbound"`
-	ServerDescription       *string     `json:"serverDescription"`
-	Tag                     *string     `json:"tag"`
-	IsHidden                bool        `json:"isHidden"`
-	OverrideSNIFromAddress  bool        `json:"overrideSniFromAddress"`
-	KeepSNIBlank            bool        `json:"keepSniBlank"`
-	VLESSRouteID            *int64      `json:"vlessRouteId"`
-	AllowInsecure           bool        `json:"allowInsecure"`
-	ShuffleHost             bool        `json:"shuffleHost"`
-	SelectorNodesFirst      bool        `json:"selectorNodesFirst"`
-	MihomoX25519            bool        `json:"mihomoX25519"`
-	Nodes                   []string    `json:"nodes"`
-	XrayJSONTemplateUUID    *string     `json:"xrayJsonTemplateUuid"`
-	ExcludedInternalSquads  []string    `json:"excludedInternalSquads"`
-	ExcludeFromSubscription []string    `json:"excludeFromSubscriptionTypes"`
+	UUID                       string      `json:"uuid"`
+	ViewPosition               int         `json:"viewPosition"`
+	Remark                     string      `json:"remark"`
+	Address                    string      `json:"address"`
+	Port                       int         `json:"port"`
+	Path                       *string     `json:"path"`
+	SNI                        *string     `json:"sni"`
+	Host                       *string     `json:"host"`
+	ALPN                       *string     `json:"alpn"`
+	Fingerprint                *string     `json:"fingerprint"`
+	IsDisabled                 bool        `json:"isDisabled"`
+	SecurityLayer              string      `json:"securityLayer"`
+	MuxParams                  interface{} `json:"muxParams"`
+	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
+	ClashMuxParams             interface{} `json:"clashMuxParams"`
+	SockoptParams              interface{} `json:"sockoptParams"`
+	Inbound                    HostInbound `json:"inbound"`
+	ServerDescription          *string     `json:"serverDescription"`
+	Tag                        *string     `json:"tag"`
+	IsHidden                   bool        `json:"isHidden"`
+	OverrideSNIFromAddress     bool        `json:"overrideSniFromAddress"`
+	KeepSNIBlank               bool        `json:"keepSniBlank"`
+	OverrideProtocolCredential bool        `json:"overrideProtocolCredential"`
+	ProtocolCredential         *string     `json:"protocolCredential"`
+	AllowInsecure              bool        `json:"allowInsecure"`
+	ShuffleHost                bool        `json:"shuffleHost"`
+	SelectorNodesFirst         bool        `json:"selectorNodesFirst"`
+	MihomoX25519               bool        `json:"mihomoX25519"`
+	Nodes                      []string    `json:"nodes"`
+	XrayJSONTemplateUUID       *string     `json:"xrayJsonTemplateUuid"`
+	ExcludedInternalSquads     []string    `json:"excludedInternalSquads"`
+	ExcludeFromSubscription    []string    `json:"excludeFromSubscriptionTypes"`
 }
 
 type HostCreateRequestAPI struct {
-	Inbound                 HostInbound      `json:"inbound"`
-	Remark                  string           `json:"remark"`
-	Address                 string           `json:"address"`
-	Port                    int              `json:"port"`
-	Path                    *string          `json:"path,omitempty"`
-	SNI                     *string          `json:"sni,omitempty"`
-	Host                    *string          `json:"host,omitempty"`
-	ALPN                    *string          `json:"alpn,omitempty"`
-	Fingerprint             *string          `json:"fingerprint,omitempty"`
-	IsDisabled              *bool            `json:"isDisabled,omitempty"`
-	SecurityLayer           *string          `json:"securityLayer,omitempty"`
-	MuxParams               *json.RawMessage `json:"muxParams,omitempty"`
-	SingboxMuxParams        *json.RawMessage `json:"singboxMuxParams,omitempty"`
-	ClashMuxParams          *json.RawMessage `json:"clashMuxParams,omitempty"`
-	SockoptParams           *json.RawMessage `json:"sockoptParams,omitempty"`
-	ServerDescription       *string          `json:"serverDescription,omitempty"`
-	Tag                     *string          `json:"tag,omitempty"`
-	IsHidden                *bool            `json:"isHidden,omitempty"`
-	OverrideSNIFromAddress  *bool            `json:"overrideSniFromAddress,omitempty"`
-	KeepSNIBlank            *bool            `json:"keepSniBlank,omitempty"`
-	AllowInsecure           *bool            `json:"allowInsecure,omitempty"`
-	VLESSRouteID            *int64           `json:"vlessRouteId,omitempty"`
-	ShuffleHost             *bool            `json:"shuffleHost,omitempty"`
-	SelectorNodesFirst      *bool            `json:"selectorNodesFirst,omitempty"`
-	MihomoX25519            *bool            `json:"mihomoX25519,omitempty"`
-	Nodes                   []string         `json:"nodes,omitempty"`
-	XrayJSONTemplateUUID    *string          `json:"xrayJsonTemplateUuid,omitempty"`
-	ExcludedInternalSquads  []string         `json:"excludedInternalSquads,omitempty"`
-	ExcludeFromSubscription []string         `json:"excludeFromSubscriptionTypes,omitempty"`
+	Inbound                    HostInbound      `json:"inbound"`
+	Remark                     string           `json:"remark"`
+	Address                    string           `json:"address"`
+	Port                       int              `json:"port"`
+	Path                       *string          `json:"path,omitempty"`
+	SNI                        *string          `json:"sni,omitempty"`
+	Host                       *string          `json:"host,omitempty"`
+	ALPN                       *string          `json:"alpn,omitempty"`
+	Fingerprint                *string          `json:"fingerprint,omitempty"`
+	IsDisabled                 *bool            `json:"isDisabled,omitempty"`
+	SecurityLayer              *string          `json:"securityLayer,omitempty"`
+	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
+	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
+	ClashMuxParams             *json.RawMessage `json:"clashMuxParams,omitempty"`
+	SockoptParams              *json.RawMessage `json:"sockoptParams,omitempty"`
+	ServerDescription          *string          `json:"serverDescription,omitempty"`
+	Tag                        *string          `json:"tag,omitempty"`
+	IsHidden                   *bool            `json:"isHidden,omitempty"`
+	OverrideSNIFromAddress     *bool            `json:"overrideSniFromAddress,omitempty"`
+	KeepSNIBlank               *bool            `json:"keepSniBlank,omitempty"`
+	AllowInsecure              *bool            `json:"allowInsecure,omitempty"`
+	OverrideProtocolCredential *bool            `json:"overrideProtocolCredential,omitempty"`
+	ProtocolCredential         *string          `json:"protocolCredential,omitempty"`
+	ShuffleHost                *bool            `json:"shuffleHost,omitempty"`
+	SelectorNodesFirst         *bool            `json:"selectorNodesFirst,omitempty"`
+	MihomoX25519               *bool            `json:"mihomoX25519,omitempty"`
+	Nodes                      []string         `json:"nodes,omitempty"`
+	XrayJSONTemplateUUID       *string          `json:"xrayJsonTemplateUuid,omitempty"`
+	ExcludedInternalSquads     []string         `json:"excludedInternalSquads,omitempty"`
+	ExcludeFromSubscription    []string         `json:"excludeFromSubscriptionTypes,omitempty"`
 }
 
 type HostUpdateRequestAPI struct {
-	UUID                    string         `json:"uuid"`
-	Inbound                 *HostInbound   `json:"inbound,omitempty"`
-	Remark                  OptionalString `json:"remark,omitempty"`
-	Address                 OptionalString `json:"address,omitempty"`
-	Port                    *int           `json:"port,omitempty"`
-	Path                    OptionalString `json:"path,omitempty"`
-	SNI                     OptionalString `json:"sni,omitempty"`
-	Host                    OptionalString `json:"host,omitempty"`
-	ALPN                    OptionalString `json:"alpn,omitempty"`
-	Fingerprint             OptionalString `json:"fingerprint,omitempty"`
-	IsDisabled              *bool          `json:"isDisabled,omitempty"`
-	SecurityLayer           *string        `json:"securityLayer,omitempty"`
-	MuxParams               OptionalJSON   `json:"muxParams,omitempty"`
-	SingboxMuxParams        OptionalJSON   `json:"singboxMuxParams,omitempty"`
-	ClashMuxParams          OptionalJSON   `json:"clashMuxParams,omitempty"`
-	SockoptParams           OptionalJSON   `json:"sockoptParams,omitempty"`
-	ServerDescription       OptionalString `json:"serverDescription,omitempty"`
-	Tag                     OptionalString `json:"tag,omitempty"`
-	IsHidden                *bool          `json:"isHidden,omitempty"`
-	OverrideSNIFromAddress  *bool          `json:"overrideSniFromAddress,omitempty"`
-	KeepSNIBlank            *bool          `json:"keepSniBlank,omitempty"`
-	AllowInsecure           *bool          `json:"allowInsecure,omitempty"`
-	VLESSRouteID            OptionalInt64  `json:"vlessRouteId,omitempty"`
-	ShuffleHost             *bool          `json:"shuffleHost,omitempty"`
-	SelectorNodesFirst      *bool          `json:"selectorNodesFirst,omitempty"`
-	MihomoX25519            *bool          `json:"mihomoX25519,omitempty"`
-	Nodes                   []string       `json:"nodes,omitempty"`
-	XrayJSONTemplateUUID    OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
-	ExcludedInternalSquads  []string       `json:"excludedInternalSquads,omitempty"`
-	ExcludeFromSubscription []string       `json:"excludeFromSubscriptionTypes,omitempty"`
+	UUID                       string         `json:"uuid"`
+	Inbound                    *HostInbound   `json:"inbound,omitempty"`
+	Remark                     OptionalString `json:"remark,omitempty"`
+	Address                    OptionalString `json:"address,omitempty"`
+	Port                       *int           `json:"port,omitempty"`
+	Path                       OptionalString `json:"path,omitempty"`
+	SNI                        OptionalString `json:"sni,omitempty"`
+	Host                       OptionalString `json:"host,omitempty"`
+	ALPN                       OptionalString `json:"alpn,omitempty"`
+	Fingerprint                OptionalString `json:"fingerprint,omitempty"`
+	IsDisabled                 *bool          `json:"isDisabled,omitempty"`
+	SecurityLayer              *string        `json:"securityLayer,omitempty"`
+	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
+	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
+	ClashMuxParams             OptionalJSON   `json:"clashMuxParams,omitempty"`
+	SockoptParams              OptionalJSON   `json:"sockoptParams,omitempty"`
+	ServerDescription          OptionalString `json:"serverDescription,omitempty"`
+	Tag                        OptionalString `json:"tag,omitempty"`
+	IsHidden                   *bool          `json:"isHidden,omitempty"`
+	OverrideSNIFromAddress     *bool          `json:"overrideSniFromAddress,omitempty"`
+	KeepSNIBlank               *bool          `json:"keepSniBlank,omitempty"`
+	AllowInsecure              *bool          `json:"allowInsecure,omitempty"`
+	OverrideProtocolCredential *bool          `json:"overrideProtocolCredential,omitempty"`
+	ProtocolCredential         OptionalString `json:"protocolCredential,omitempty"`
+	ShuffleHost                *bool          `json:"shuffleHost,omitempty"`
+	SelectorNodesFirst         *bool          `json:"selectorNodesFirst,omitempty"`
+	MihomoX25519               *bool          `json:"mihomoX25519,omitempty"`
+	Nodes                      []string       `json:"nodes,omitempty"`
+	XrayJSONTemplateUUID       OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
+	ExcludedInternalSquads     []string       `json:"excludedInternalSquads,omitempty"`
+	ExcludeFromSubscription    []string       `json:"excludeFromSubscriptionTypes,omitempty"`
 }
 
 type reorderHostsRequest struct {
@@ -500,12 +486,12 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
                 uuid, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
                 mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
-                is_disabled, server_description, vless_route_id,
+                is_disabled, server_description, override_protocol_credential, protocol_credential,
                 allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 exclude_from_subscription_types, tag, is_hidden,
                 override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
 			hostUUID,
 			req.Remark,
@@ -523,7 +509,8 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			sockopt,
 			coalesceBool(req.IsDisabled, false),
 			normalizeOptionalStringAllowEmpty(req.ServerDescription),
-			req.VLESSRouteID,
+			coalesceBool(req.OverrideProtocolCredential, false),
+			normalizeProtocolCredentialForCreate(req.OverrideProtocolCredential, req.ProtocolCredential),
 			coalesceBool(req.AllowInsecure, false),
 			coalesceBool(req.ShuffleHost, false),
 			coalesceBool(req.SelectorNodesFirst, false),
@@ -738,11 +725,20 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 				add("server_description", strings.TrimSpace(*req.ServerDescription.Value))
 			}
 		}
-		if req.VLESSRouteID.Set {
-			if req.VLESSRouteID.Value == nil {
-				clauses = append(clauses, "vless_route_id = NULL")
+		protocolCredentialCleared := false
+		if req.OverrideProtocolCredential != nil {
+			add("override_protocol_credential", *req.OverrideProtocolCredential)
+			if !*req.OverrideProtocolCredential {
+				clauses = append(clauses, "protocol_credential = NULL")
+				protocolCredentialCleared = true
+			}
+		}
+		if req.ProtocolCredential.Set && !protocolCredentialCleared {
+			normalizedCredential := normalizeProtocolCredentialPointer(req.ProtocolCredential.Value)
+			if normalizedCredential == nil {
+				clauses = append(clauses, "protocol_credential = NULL")
 			} else {
-				add("vless_route_id", *req.VLESSRouteID.Value)
+				add("protocol_credential", *normalizedCredential)
 			}
 		}
 		if req.AllowInsecure != nil {
@@ -1073,8 +1069,8 @@ func validateCreateRequest(req HostCreateRequestAPI) error {
 	if req.ServerDescription != nil && len(*req.ServerDescription) > 30 {
 		return fmt.Errorf("serverDescription must be less than 30 characters")
 	}
-	if req.VLESSRouteID != nil && (*req.VLESSRouteID < 0 || *req.VLESSRouteID > 65535) {
-		return fmt.Errorf("vlessRouteId must be between 0 and 65535")
+	if err := validateProtocolCredentialCreate(req.OverrideProtocolCredential, req.ProtocolCredential); err != nil {
+		return err
 	}
 	if req.SecurityLayer != nil {
 		if strings.TrimSpace(*req.SecurityLayer) == "" {
@@ -1157,10 +1153,8 @@ func validateUpdateRequest(req HostUpdateRequestAPI) error {
 			return fmt.Errorf("serverDescription must be less than 30 characters")
 		}
 	}
-	if req.VLESSRouteID.Set && req.VLESSRouteID.Value != nil {
-		if *req.VLESSRouteID.Value < 0 || *req.VLESSRouteID.Value > 65535 {
-			return fmt.Errorf("vlessRouteId must be between 0 and 65535")
-		}
+	if err := validateProtocolCredentialUpdate(req.OverrideProtocolCredential, req.ProtocolCredential); err != nil {
+		return err
 	}
 	if req.SecurityLayer != nil {
 		if strings.TrimSpace(*req.SecurityLayer) == "" {
@@ -1238,11 +1232,61 @@ func validateTemplateTypes(values []string) error {
 	return nil
 }
 
+func validateProtocolCredentialCreate(override *bool, value *string) error {
+	if err := validateProtocolCredentialValue(value); err != nil {
+		return err
+	}
+	if coalesceBool(override, false) && normalizeProtocolCredentialPointer(value) == nil {
+		return fmt.Errorf("protocolCredential is required when overrideProtocolCredential is enabled")
+	}
+	return nil
+}
+
+func validateProtocolCredentialUpdate(override *bool, value OptionalString) error {
+	if value.Set {
+		if err := validateProtocolCredentialValue(value.Value); err != nil {
+			return err
+		}
+	}
+	if override != nil && *override && value.Set && normalizeProtocolCredentialPointer(value.Value) == nil {
+		return fmt.Errorf("protocolCredential is required when overrideProtocolCredential is enabled")
+	}
+	return nil
+}
+
+func validateProtocolCredentialValue(value *string) error {
+	if value == nil {
+		return nil
+	}
+	if len(strings.TrimSpace(*value)) > maxProtocolCredentialLength {
+		return fmt.Errorf("protocolCredential must be less than 256 characters")
+	}
+	return nil
+}
+
 func normalizeOptionalStringAllowEmpty(value *string) interface{} {
 	if value == nil {
 		return nil
 	}
 	return strings.TrimSpace(*value)
+}
+
+func normalizeProtocolCredentialForCreate(override *bool, value *string) *string {
+	if !coalesceBool(override, false) {
+		return nil
+	}
+	return normalizeProtocolCredentialPointer(value)
+}
+
+func normalizeProtocolCredentialPointer(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func normalizeSecurityLayer(value *string) string {
@@ -1300,36 +1344,37 @@ func coalesceBool(value *bool, fallback bool) bool {
 
 func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostAPI {
 	return HostAPI{
-		UUID:                   rec.UUID,
-		ViewPosition:           rec.ViewPosition,
-		Remark:                 rec.Remark,
-		Address:                rec.Address,
-		Port:                   rec.Port,
-		Path:                   rec.Path,
-		SNI:                    rec.SNI,
-		Host:                   rec.Host,
-		ALPN:                   rec.ALPN,
-		Fingerprint:            rec.Fingerprint,
-		IsDisabled:             rec.IsDisabled,
-		SecurityLayer:          rec.SecurityLayer,
-		MuxParams:              parseJSONAny(rec.MuxParams),
-		SingboxMuxParams:       parseJSONAny(rec.SingboxMuxParams),
-		ClashMuxParams:         parseJSONAny(rec.ClashMuxParams),
-		SockoptParams:          parseJSONAny(rec.SockoptParams),
-		Inbound:                HostInbound{ConfigProfileUUID: rec.ConfigProfileUUID, ConfigProfileInboundUUID: rec.ConfigProfileInboundUUID},
-		ServerDescription:      rec.ServerDescription,
-		Tag:                    rec.Tag,
-		IsHidden:               rec.IsHidden,
-		OverrideSNIFromAddress: rec.OverrideSNIFromAddress,
-		KeepSNIBlank:           rec.KeepSNIBlank,
-		VLESSRouteID:           rec.VLESSRouteID,
-		AllowInsecure:          rec.AllowInsecure,
-		ShuffleHost:            rec.ShuffleHost,
-		SelectorNodesFirst:     rec.SelectorNodesFirst,
-		MihomoX25519:           rec.MihomoX25519,
-		Nodes:                  ensureStringSlice(nodes),
-		XrayJSONTemplateUUID:   rec.XrayJSONTemplateUUID,
-		ExcludedInternalSquads: ensureStringSlice(excluded),
+		UUID:                       rec.UUID,
+		ViewPosition:               rec.ViewPosition,
+		Remark:                     rec.Remark,
+		Address:                    rec.Address,
+		Port:                       rec.Port,
+		Path:                       rec.Path,
+		SNI:                        rec.SNI,
+		Host:                       rec.Host,
+		ALPN:                       rec.ALPN,
+		Fingerprint:                rec.Fingerprint,
+		IsDisabled:                 rec.IsDisabled,
+		SecurityLayer:              rec.SecurityLayer,
+		MuxParams:                  parseJSONAny(rec.MuxParams),
+		SingboxMuxParams:           parseJSONAny(rec.SingboxMuxParams),
+		ClashMuxParams:             parseJSONAny(rec.ClashMuxParams),
+		SockoptParams:              parseJSONAny(rec.SockoptParams),
+		Inbound:                    HostInbound{ConfigProfileUUID: rec.ConfigProfileUUID, ConfigProfileInboundUUID: rec.ConfigProfileInboundUUID},
+		ServerDescription:          rec.ServerDescription,
+		Tag:                        rec.Tag,
+		IsHidden:                   rec.IsHidden,
+		OverrideSNIFromAddress:     rec.OverrideSNIFromAddress,
+		KeepSNIBlank:               rec.KeepSNIBlank,
+		OverrideProtocolCredential: rec.OverrideProtocolCredential,
+		ProtocolCredential:         rec.ProtocolCredential,
+		AllowInsecure:              rec.AllowInsecure,
+		ShuffleHost:                rec.ShuffleHost,
+		SelectorNodesFirst:         rec.SelectorNodesFirst,
+		MihomoX25519:               rec.MihomoX25519,
+		Nodes:                      ensureStringSlice(nodes),
+		XrayJSONTemplateUUID:       rec.XrayJSONTemplateUUID,
+		ExcludedInternalSquads:     ensureStringSlice(excluded),
 		ExcludeFromSubscription: func() []string {
 			if len(rec.ExcludeTypes) == 0 {
 				return []string{}
@@ -1366,7 +1411,7 @@ func getHosts(ctx context.Context, manager *dbmanager.DatabaseManager) ([]hostRe
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
                 mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
-                is_disabled, server_description, vless_route_id,
+                is_disabled, server_description, override_protocol_credential, protocol_credential,
                 allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 tag, is_hidden, override_sni_from_address,
@@ -1399,7 +1444,7 @@ func getHostByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, host
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
                 mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
-                is_disabled, server_description, vless_route_id,
+                is_disabled, server_description, override_protocol_credential, protocol_credential,
                 allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 tag, is_hidden, override_sni_from_address,
@@ -1419,10 +1464,9 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var rec hostRecord
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var serverDescription, tag sql.NullString
-	var vlessRouteID sql.NullInt64
+	var serverDescription, protocolCredential, tag sql.NullString
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
-	var isDisabled, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 	var muxParams, singboxMuxParams, clashMuxParams, sockoptParams []byte
 	var excludeTypes dbutil.StringArray
 
@@ -1444,7 +1488,8 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&sockoptParams,
 		&isDisabled,
 		&serverDescription,
-		&vlessRouteID,
+		&overrideProtocolCredential,
+		&protocolCredential,
 		&allowInsecure,
 		&shuffleHost,
 		&selectorNodesFirst,
@@ -1503,8 +1548,11 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	if serverDescription.Valid {
 		rec.ServerDescription = &serverDescription.String
 	}
-	if vlessRouteID.Valid {
-		rec.VLESSRouteID = &vlessRouteID.Int64
+	if overrideProtocolCredential.Valid {
+		rec.OverrideProtocolCredential = overrideProtocolCredential.Bool
+	}
+	if protocolCredential.Valid {
+		rec.ProtocolCredential = &protocolCredential.String
 	}
 	if allowInsecure.Valid {
 		rec.AllowInsecure = allowInsecure.Bool

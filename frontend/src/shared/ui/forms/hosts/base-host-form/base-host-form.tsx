@@ -40,8 +40,18 @@ import {
     SUBSCRIPTION_TEMPLATE_TYPE,
     UpdateHostCommand
 } from '@exodus/backend-contract'
-import { TbCirclesRelation, TbCloudNetwork, TbEye, TbServer2 } from 'react-icons/tb'
+import {
+    TbBan,
+    TbCirclesRelation,
+    TbCloudNetwork,
+    TbEye,
+    TbFingerprint,
+    TbKey,
+    TbRefresh,
+    TbServer2
+} from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { generate } from 'generate-password-ts'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useEffect, useState } from 'react'
@@ -118,6 +128,56 @@ const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
     CLASH: 'https://wiki.metacubex.one/en/config/proxies/'
 }
 
+type ConfigProfileInbound =
+    IProps<CreateHostCommand.Request>['configProfiles'][number]['inbounds'][number]
+
+type HostCredentialProtocol = 'vless' | 'trojan' | 'shadowsocks' | 'anytls' | 'naive'
+
+const normalizeCredentialProtocol = (protocol?: string | null): HostCredentialProtocol | null => {
+    const normalized = protocol?.trim().toLowerCase()
+
+    switch (normalized) {
+        case 'vless':
+        case 'trojan':
+        case 'anytls':
+        case 'naive':
+            return normalized
+        case 'shadowsocks':
+        case 'ss':
+            return 'shadowsocks'
+        default:
+            return null
+    }
+}
+
+const generateUuid = () => {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return globalThis.crypto.randomUUID()
+    }
+
+    const bytes = new Uint8Array(16)
+    globalThis.crypto?.getRandomValues(bytes)
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
+        16,
+        20
+    )}-${hex.slice(20)}`
+}
+
+const generatePassword = () => {
+    return generate({
+        length: 16,
+        numbers: true,
+        symbols: false,
+        uppercase: false,
+        lowercase: true,
+        strict: true
+    })
+}
+
 export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCommand.Request>(
     props: IProps<T>
 ) => {
@@ -135,6 +195,9 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<null | string>('basic')
     const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('SINGBOX')
+    const [activeCredentialInbound, setActiveCredentialInbound] =
+        useState<ConfigProfileInbound | null>(null)
+    const [protocolCredentialEnabled, setProtocolCredentialEnabled] = useState(false)
 
     const [muxParamsOpened, { open: openMuxParams, close: closeMuxParams }] = useDisclosure(false)
     const [sockoptParamsOpened, { open: openSockoptParams, close: closeSockoptParams }] =
@@ -146,13 +209,43 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
         [SECURITY_LAYERS.DEFAULT]: t('base-host-form.inbounds-default')
     }
 
+    const resolveInbound = (
+        configProfileUuid?: string | null,
+        configProfileInboundUuid?: string | null
+    ) => {
+        if (!configProfileUuid || !configProfileInboundUuid) {
+            return null
+        }
+
+        return (
+            configProfiles
+                .find((profile) => profile.uuid === configProfileUuid)
+                ?.inbounds.find((inbound) => inbound.uuid === configProfileInboundUuid) ?? null
+        )
+    }
+
     const saveInbound = (inbound: string, configProfileUuid: string) => {
+        const nextInbound = resolveInbound(configProfileUuid, inbound)
+        const nextProtocol = normalizeCredentialProtocol(nextInbound?.type)
+        const currentProtocol = normalizeCredentialProtocol(activeCredentialInbound?.type)
+
         form.setValues({
             inbound: {
                 configProfileInboundUuid: inbound,
                 configProfileUuid
             }
         } as Partial<T>)
+
+        setActiveCredentialInbound(nextInbound)
+
+        if (!nextProtocol) {
+            form.setFieldValue('overrideProtocolCredential' as any, false as never)
+            form.setFieldValue('protocolCredential' as any, null as never)
+            setProtocolCredentialEnabled(false)
+        } else if (nextProtocol !== currentProtocol) {
+            form.setFieldValue('protocolCredential' as any, null as never)
+        }
+
         form.setTouched({
             configProfileInboundUuid: true,
             configProfileUuid: true
@@ -219,34 +312,6 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                     </Text>
                                 </Stack>
                             )}
-                        </Stack>
-                    </Stack>
-                </HoverCard.Dropdown>
-            </HoverCard>
-        )
-    }
-
-    const vlessRouteHoverCard = () => {
-        return (
-            <HoverCard shadow="md" width={300} withArrow>
-                <HoverCard.Target>
-                    <ActionIcon color="gray" size="xs" variant="subtle">
-                        <HiQuestionMarkCircle size={20} />
-                    </ActionIcon>
-                </HoverCard.Target>
-                <HoverCard.Dropdown>
-                    <Stack gap="md">
-                        <Stack gap="sm">
-                            <Text c="dimmed" size="sm">
-                                Refer to the{' '}
-                                <Link
-                                    target="_blank"
-                                    to="https://xtls.github.io/config/routing.html"
-                                >
-                                    XTLS Documentation
-                                </Link>{' '}
-                                for more information.
-                            </Text>
                         </Stack>
                     </Stack>
                 </HoverCard.Dropdown>
@@ -327,6 +392,85 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const isClashMuxCore = activeMuxCore === 'CLASH'
     const activeMuxCoreLabel =
         MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Singbox'
+    const activeCredentialProtocol = normalizeCredentialProtocol(activeCredentialInbound?.type)
+    const activeCredentialProtocolLabel =
+        activeCredentialProtocol === 'shadowsocks'
+            ? 'SHADOWSOCKS'
+            : (activeCredentialProtocol?.toUpperCase() ?? '')
+    const isUUIDCredential = activeCredentialProtocol === 'vless'
+    const credentialKindLabel = isUUIDCredential
+        ? t('base-host-form.uuid-for-all-users')
+        : t('base-host-form.password-for-all-users')
+
+    const resolveSelectedInbound = () => {
+        const values = form.getValues() as {
+            inbound?: {
+                configProfileUuid?: string | null
+                configProfileInboundUuid?: string | null
+            }
+        }
+
+        return resolveInbound(
+            values.inbound?.configProfileUuid,
+            values.inbound?.configProfileInboundUuid
+        )
+    }
+
+    const syncCredentialInbound = () => {
+        const inbound = resolveSelectedInbound()
+        const protocol = normalizeCredentialProtocol(inbound?.type)
+
+        setActiveCredentialInbound(inbound)
+
+        if (!protocol) {
+            form.setFieldValue('overrideProtocolCredential' as any, false as never)
+            form.setFieldValue('protocolCredential' as any, null as never)
+            setProtocolCredentialEnabled(false)
+            return
+        }
+
+        const values = form.getValues() as { overrideProtocolCredential?: boolean }
+        setProtocolCredentialEnabled(Boolean(values.overrideProtocolCredential))
+    }
+
+    const handleProtocolCredentialSwitch = (checked: boolean) => {
+        form.setFieldValue('overrideProtocolCredential' as any, checked as never)
+        setProtocolCredentialEnabled(checked)
+
+        if (!checked) {
+            form.setFieldValue('protocolCredential' as any, null as never)
+            return
+        }
+
+        const values = form.getValues() as { protocolCredential?: string | null }
+        if (!values.protocolCredential && activeCredentialProtocol) {
+            form.setFieldValue(
+                'protocolCredential' as any,
+                (isUUIDCredential ? generateUuid() : generatePassword()) as never
+            )
+        }
+    }
+
+    const handleGenerateProtocolCredential = () => {
+        if (!activeCredentialProtocol) {
+            return
+        }
+
+        form.setFieldValue(
+            'protocolCredential' as any,
+            (isUUIDCredential ? generateUuid() : generatePassword()) as never
+        )
+    }
+
+    useEffect(() => {
+        syncCredentialInbound()
+    }, [configProfiles])
+
+    form.watch('inbound.configProfileUuid' as any, syncCredentialInbound)
+    form.watch('inbound.configProfileInboundUuid' as any, syncCredentialInbound)
+    form.watch('overrideProtocolCredential' as any, ({ value }) => {
+        setProtocolCredentialEnabled(Boolean(value))
+    })
 
     return (
         <form onSubmit={handleSubmit}>
@@ -821,22 +965,153 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                                 />
                                             </Group>
 
-                                            <NumberInput
-                                                key={form.key('vlessRouteId')}
-                                                label="Vless Route ID"
-                                                {...form.getInputProps('vlessRouteId')}
-                                                allowDecimal={false}
-                                                allowNegative={false}
-                                                clampBehavior="strict"
-                                                decimalScale={0}
-                                                description={t(
-                                                    'base-host-form.vless-route-description'
-                                                )}
-                                                hideControls
-                                                max={65535}
-                                                min={0}
-                                                rightSection={vlessRouteHoverCard()}
-                                            />
+                                            <Stack
+                                                gap="xs"
+                                                mt="xs"
+                                                pt="sm"
+                                                style={{
+                                                    borderTop:
+                                                        '1px solid var(--mantine-color-dark-4)'
+                                                }}
+                                            >
+                                                <Group
+                                                    gap="xs"
+                                                    justify="space-between"
+                                                    wrap="nowrap"
+                                                >
+                                                    <Group gap="xs" miw={0} wrap="nowrap">
+                                                        <ThemeIcon
+                                                            color={
+                                                                activeCredentialProtocol
+                                                                    ? 'teal'
+                                                                    : 'gray'
+                                                            }
+                                                            size="md"
+                                                            variant="light"
+                                                        >
+                                                            {activeCredentialProtocol ? (
+                                                                <TbKey size={16} />
+                                                            ) : (
+                                                                <TbBan size={16} />
+                                                            )}
+                                                        </ThemeIcon>
+
+                                                        <Stack gap={2} miw={0}>
+                                                            <Text fw={600} size="sm">
+                                                                {t(
+                                                                    'base-host-form.override-protocol-credential'
+                                                                )}
+                                                            </Text>
+                                                            {activeCredentialProtocol ? (
+                                                                <Group gap={5} wrap="nowrap">
+                                                                    <Badge
+                                                                        color="teal"
+                                                                        size="xs"
+                                                                        variant="light"
+                                                                    >
+                                                                        {
+                                                                            activeCredentialProtocolLabel
+                                                                        }
+                                                                    </Badge>
+                                                                    <Text
+                                                                        c="dimmed"
+                                                                        size="xs"
+                                                                        truncate
+                                                                    >
+                                                                        {credentialKindLabel}
+                                                                    </Text>
+                                                                </Group>
+                                                            ) : (
+                                                                <Text c="dimmed" size="xs" truncate>
+                                                                    {activeCredentialInbound
+                                                                        ? t(
+                                                                              'base-host-form.override-protocol-credential-unsupported'
+                                                                          )
+                                                                        : t(
+                                                                              'base-host-form.override-protocol-credential-select-inbound'
+                                                                          )}
+                                                                </Text>
+                                                            )}
+                                                        </Stack>
+                                                    </Group>
+
+                                                    {activeCredentialProtocol ? (
+                                                        <Switch
+                                                            checked={protocolCredentialEnabled}
+                                                            color="teal.8"
+                                                            onChange={(event) =>
+                                                                handleProtocolCredentialSwitch(
+                                                                    event.currentTarget.checked
+                                                                )
+                                                            }
+                                                            size="md"
+                                                        />
+                                                    ) : (
+                                                        <Badge
+                                                            color="gray"
+                                                            leftSection={<TbBan size={12} />}
+                                                            variant="light"
+                                                        >
+                                                            N/A
+                                                        </Badge>
+                                                    )}
+                                                </Group>
+
+                                                {activeCredentialProtocol &&
+                                                    protocolCredentialEnabled && (
+                                                        <Stack
+                                                            gap={6}
+                                                            p="sm"
+                                                            style={{
+                                                                border: '1px solid var(--mantine-color-dark-4)',
+                                                                borderRadius: 8
+                                                            }}
+                                                        >
+                                                            <Group
+                                                                align="flex-end"
+                                                                gap="xs"
+                                                                wrap="nowrap"
+                                                            >
+                                                                <TextInput
+                                                                    key={form.key(
+                                                                        'protocolCredential'
+                                                                    )}
+                                                                    label={`${isUUIDCredential ? t('base-host-form.uuid-override') : t('base-host-form.password-override')} (${activeCredentialProtocolLabel})`}
+                                                                    leftSection={
+                                                                        <TbFingerprint size={16} />
+                                                                    }
+                                                                    style={{ flex: 1 }}
+                                                                    {...form.getInputProps(
+                                                                        'protocolCredential' as any
+                                                                    )}
+                                                                />
+                                                                <Tooltip
+                                                                    label={t(
+                                                                        'base-host-form.generate-protocol-credential'
+                                                                    )}
+                                                                    withArrow
+                                                                >
+                                                                    <ActionIcon
+                                                                        color="teal"
+                                                                        h={36}
+                                                                        onClick={
+                                                                            handleGenerateProtocolCredential
+                                                                        }
+                                                                        variant="light"
+                                                                        w={36}
+                                                                    >
+                                                                        <TbRefresh size={18} />
+                                                                    </ActionIcon>
+                                                                </Tooltip>
+                                                            </Group>
+                                                            <Text c="dimmed" size="xs">
+                                                                {t(
+                                                                    'base-host-form.replaces-user-credential'
+                                                                )}
+                                                            </Text>
+                                                        </Stack>
+                                                    )}
+                                            </Stack>
                                         </Stack>
                                     </SectionCard.Section>
 
@@ -1060,9 +1335,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                             <Group gap="xs" justify="space-between">
                                                 <Group gap={4}>
                                                     <Text fw={600} size="sm">
-                                                        {t(
-                                                            'base-host-form.selector-nodes-first'
-                                                        )}
+                                                        {t('base-host-form.selector-nodes-first')}
                                                     </Text>
                                                     {selectorNodesFirstHoverCard()}
                                                 </Group>
@@ -1199,8 +1472,12 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                         </Text>
                         <Text size="sm">
                             {isClashMuxCore
-                                ? t('base-host-form.please-ensure-you-provide-a-valid-yaml-mux-object')
-                                : t('base-host-form.please-ensure-you-provide-a-valid-json-mux-object')}
+                                ? t(
+                                      'base-host-form.please-ensure-you-provide-a-valid-yaml-mux-object'
+                                  )
+                                : t(
+                                      'base-host-form.please-ensure-you-provide-a-valid-json-mux-object'
+                                  )}
                         </Text>
                         <Text size="sm">
                             {t('base-host-form.for-more-information-refer-to')}{' '}
@@ -1238,7 +1515,10 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                         color="gray"
                         leftSection={<PiArrowUpDuotone size={px('1.2rem')} />}
                         onClick={() => {
-                            form.setFieldValue(activeMuxField as never, activeMuxPlaceholder as never)
+                            form.setFieldValue(
+                                activeMuxField as never,
+                                activeMuxPlaceholder as never
+                            )
                         }}
                         variant="light"
                     >

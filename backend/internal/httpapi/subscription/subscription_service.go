@@ -111,7 +111,8 @@ type SubscriptionHost struct {
 	SockoptParams                *string
 	IsDisabled                   bool
 	ServerDescription            *string
-	VLESSRouteID                 *int64
+	OverrideProtocolCredential   bool
+	ProtocolCredential           *string
 	AllowInsecure                bool
 	ShuffleHost                  bool
 	SelectorNodesFirst           bool
@@ -408,7 +409,7 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
                 SELECT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
                        h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
-                       h.server_description, h.vless_route_id, h.allow_insecure, h.shuffle_host,
+                       h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
                        h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
                        h.config_profile_uuid, h.config_profile_inbound_uuid,
@@ -422,7 +423,7 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
                 SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
                        h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
-                       h.server_description, h.vless_route_id, h.allow_insecure, h.shuffle_host,
+                       h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
                        h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
                        h.config_profile_uuid, h.config_profile_inbound_uuid,
@@ -463,14 +464,13 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription sql.NullString
-	var vlessRouteID sql.NullInt64
+	var muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription, protocolCredential sql.NullString
 	var xrayJSONTemplateUUID, tag, configProfileUUID, configProfileInboundUUID sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
 	var excludeTypes dbutil.StringArray
-	var isDisabled, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 
 	err := scanner.Scan(
 		&h.UUID,
@@ -490,7 +490,8 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&sockoptParams,
 		&isDisabled,
 		&serverDescription,
-		&vlessRouteID,
+		&overrideProtocolCredential,
+		&protocolCredential,
 		&allowInsecure,
 		&shuffleHost,
 		&selectorNodesFirst,
@@ -555,8 +556,11 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if serverDescription.Valid {
 		h.ServerDescription = &serverDescription.String
 	}
-	if vlessRouteID.Valid {
-		h.VLESSRouteID = &vlessRouteID.Int64
+	if overrideProtocolCredential.Valid {
+		h.OverrideProtocolCredential = overrideProtocolCredential.Bool
+	}
+	if protocolCredential.Valid {
+		h.ProtocolCredential = &protocolCredential.String
 	}
 	if allowInsecure.Valid {
 		h.AllowInsecure = allowInsecure.Bool
@@ -1231,10 +1235,7 @@ func buildSubscriptionLinks(hosts []SubscriptionHost, user SubscriptionUser) ([]
 }
 
 func buildHostLink(host SubscriptionHost, user SubscriptionUser) (string, string) {
-	protocol := ""
-	if host.InboundType != nil {
-		protocol = strings.ToLower(*host.InboundType)
-	}
+	protocol := normalizedHostProtocol(host)
 	if protocol == "" {
 		return "", ""
 	}
@@ -1253,8 +1254,43 @@ func buildHostLink(host SubscriptionHost, user SubscriptionUser) (string, string
 	}
 }
 
+func normalizedHostProtocol(host SubscriptionHost) string {
+	if host.InboundType == nil {
+		return ""
+	}
+	protocol := strings.ToLower(strings.TrimSpace(*host.InboundType))
+	if protocol == "ss" {
+		return "shadowsocks"
+	}
+	return protocol
+}
+
+func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) string {
+	if host.OverrideProtocolCredential && host.ProtocolCredential != nil {
+		if credential := strings.TrimSpace(*host.ProtocolCredential); credential != "" {
+			return credential
+		}
+	}
+
+	switch normalizedHostProtocol(host) {
+	case "vless":
+		return strings.TrimSpace(user.VlessUUID)
+	case "trojan", "anytls", "naive":
+		return strings.TrimSpace(user.TrojanPassword)
+	case "shadowsocks":
+		return strings.TrimSpace(user.SSPassword)
+	default:
+		return ""
+	}
+}
+
+func effectiveNaiveUsername(user SubscriptionUser) string {
+	return firstNonEmpty(user.Username, user.ShortUUID, user.UUID)
+}
+
 func buildVlessLink(host SubscriptionHost, user SubscriptionUser) string {
-	if user.VlessUUID == "" {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
 		return ""
 	}
 	params := url.Values{}
@@ -1265,11 +1301,12 @@ func buildVlessLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("vless://%s@%s:%d?%s#%s", user.VlessUUID, host.Address, host.Port, params.Encode(), url.QueryEscape(remark))
+	return fmt.Sprintf("vless://%s@%s:%d?%s#%s", credential, host.Address, host.Port, params.Encode(), url.QueryEscape(remark))
 }
 
 func buildTrojanLink(host SubscriptionHost, user SubscriptionUser) string {
-	if user.TrojanPassword == "" {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
 		return ""
 	}
 	params := url.Values{}
@@ -1279,7 +1316,7 @@ func buildTrojanLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("trojan://%s@%s:%d?%s#%s", url.QueryEscape(user.TrojanPassword), host.Address, host.Port, params.Encode(), url.QueryEscape(remark))
+	return fmt.Sprintf("trojan://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, params.Encode(), url.QueryEscape(remark))
 }
 
 func buildShadowsocksLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -1287,11 +1324,12 @@ func buildShadowsocksLink(host SubscriptionHost, user SubscriptionUser) string {
 	if method == "" {
 		method = "aes-128-gcm"
 	}
-	if user.SSPassword == "" {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
 		return ""
 	}
 
-	creds := fmt.Sprintf("%s:%s", method, user.SSPassword)
+	creds := fmt.Sprintf("%s:%s", method, credential)
 	encoded := base64.RawURLEncoding.EncodeToString([]byte(creds))
 
 	remark := host.Remark
@@ -1444,10 +1482,7 @@ func generateXrayJSONConfig(templateJSON []byte, hosts []SubscriptionHost, user 
 }
 
 func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
-	protocol := ""
-	if host.InboundType != nil {
-		protocol = strings.ToLower(*host.InboundType)
-	}
+	protocol := normalizedHostProtocol(host)
 	if protocol == "" {
 		return nil
 	}
@@ -1530,6 +1565,10 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 
 	switch protocol {
 	case "vless":
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
 		outbound["settings"] = map[string]interface{}{
 			"vnext": []interface{}{
 				map[string]interface{}{
@@ -1537,7 +1576,7 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 					"port":    host.Port,
 					"users": []interface{}{
 						map[string]interface{}{
-							"id":         user.VlessUUID,
+							"id":         credential,
 							"encryption": "none",
 						},
 					},
@@ -1545,16 +1584,24 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 			},
 		}
 	case "trojan":
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
 		outbound["settings"] = map[string]interface{}{
 			"servers": []interface{}{
 				map[string]interface{}{
 					"address":  host.Address,
 					"port":     host.Port,
-					"password": user.TrojanPassword,
+					"password": credential,
 				},
 			},
 		}
-	case "shadowsocks", "ss":
+	case "shadowsocks":
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
 		method := extractShadowsocksMethod(host.InboundRaw)
 		if method == "" {
 			method = "aes-128-gcm"
@@ -1566,7 +1613,7 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 					"address":  host.Address,
 					"port":     host.Port,
 					"method":   method,
-					"password": user.SSPassword,
+					"password": credential,
 				},
 			},
 		}
@@ -1772,19 +1819,17 @@ type singboxInboundDefaults struct {
 }
 
 func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *orderedmap.OrderedMap {
-	protocol := ""
-	if host.InboundType != nil {
-		protocol = strings.ToLower(strings.TrimSpace(*host.InboundType))
-	}
+	protocol := normalizedHostProtocol(host)
 	if protocol == "" {
 		return nil
 	}
 
-	if protocol == "ss" {
-		protocol = "shadowsocks"
+	if protocol != "vless" && protocol != "trojan" && protocol != "shadowsocks" && protocol != "anytls" && protocol != "naive" {
+		return nil
 	}
 
-	if protocol != "vless" && protocol != "trojan" && protocol != "shadowsocks" {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
 		return nil
 	}
 
@@ -1810,20 +1855,27 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		if defaults.flow == "xtls-rprx-vision" {
 			outbound.Set("flow", "xtls-rprx-vision")
 		}
-		outbound.Set("uuid", user.VlessUUID)
-	case "trojan":
-		outbound.Set("password", user.TrojanPassword)
+		outbound.Set("uuid", credential)
+	case "trojan", "anytls":
+		outbound.Set("password", credential)
+	case "naive":
+		username := effectiveNaiveUsername(user)
+		if username == "" {
+			return nil
+		}
+		outbound.Set("username", username)
+		outbound.Set("password", credential)
 	case "shadowsocks":
 		method := extractShadowsocksMethod(host.InboundRaw)
 		if method == "" {
 			method = "chacha20-ietf-poly1305"
 		}
-		outbound.Set("password", user.SSPassword)
+		outbound.Set("password", credential)
 		outbound.Set("method", method)
 		outbound.Set("network", "tcp")
 	}
 
-	if defaults.security == "tls" || defaults.security == "reality" {
+	if defaults.security == "tls" || defaults.security == "reality" || protocol == "anytls" || protocol == "naive" {
 		tlsCfg := orderedmap.New()
 		tlsCfg.Set("enabled", true)
 
@@ -2770,10 +2822,7 @@ func extractYAMLTopLevelKey(line string) (string, bool) {
 }
 
 func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
-	protocol := ""
-	if host.InboundType != nil {
-		protocol = strings.ToLower(*host.InboundType)
-	}
+	protocol := normalizedHostProtocol(host)
 	if protocol == "" {
 		return nil
 	}
@@ -2797,12 +2846,24 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 	}
 
 	if protocol == "vless" {
-		proxy["uuid"] = user.VlessUUID
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
+		proxy["uuid"] = credential
 	} else if protocol == "trojan" {
-		proxy["password"] = user.TrojanPassword
-	} else if protocol == "shadowsocks" || protocol == "ss" {
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
+		proxy["password"] = credential
+	} else if protocol == "shadowsocks" {
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
 		proxy["type"] = "ss"
-		proxy["password"] = user.SSPassword
+		proxy["password"] = credential
 		method := extractShadowsocksMethod(host.InboundRaw)
 		if method == "" {
 			method = "aes-128-gcm"

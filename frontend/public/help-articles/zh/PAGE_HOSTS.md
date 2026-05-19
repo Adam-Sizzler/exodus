@@ -65,6 +65,4 @@ _你还可以在地址栏中输入多个域名，例如: `node-1.com,node-2.com,
 
 默认情况下，Exodus 会取入站中 `serverNames` 数组的第一个值，作为客户端的 SNI。 若启用此选项，系统将使用你在“**基础设置**”中指定的地址作为 SNI 传递给客户端。
 
-除此之外，本节中还值得注意的是 `vlessRouteId` 字段。 该字段是对 Xray Core 的一个小型抽象层，允许你更方便地使用 Xray 的 `vlessRoute` 功能。 <a href="https://xtls.github.io/en/config/routing.html#ruleobject">了解更多关于路由规则.</a>
-
 ---

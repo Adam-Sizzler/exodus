@@ -62,6 +62,4 @@ Such a connection will not work, as `example.com` is not in the list of allowed 
 
 By default, Exodus takes the first object from the `serverNames` array (of the inbound) to add SNI to the client host. If you enable this parameter - Exodus will take the address (which you specified in the **Basic** section) and pass it to the client.
 
-Among other items in this section, the `vlessRouteId` field is also worth noting, which is a small abstraction layer over Xray Core and provides you with a simple way to use the `vlessRoute` functionality that Xray provides. <a href="https://xtls.github.io/en/config/routing.html#ruleobject">Learn more about routing rules.</a>
-
 ---

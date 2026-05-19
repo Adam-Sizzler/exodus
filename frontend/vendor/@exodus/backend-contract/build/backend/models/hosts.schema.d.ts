@@ -35,7 +35,8 @@ export declare const HostsSchema: z.ZodObject<{
     isHidden: z.ZodDefault<z.ZodBoolean>;
     overrideSniFromAddress: z.ZodDefault<z.ZodBoolean>;
     keepSniBlank: z.ZodDefault<z.ZodBoolean>;
-    vlessRouteId: z.ZodNullable<z.ZodNumber>;
+    overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
+    protocolCredential: z.ZodNullable<z.ZodString>;
     allowInsecure: z.ZodDefault<z.ZodBoolean>;
     shuffleHost: z.ZodBoolean;
     selectorNodesFirst: z.ZodDefault<z.ZodBoolean>;
@@ -74,7 +75,8 @@ export declare const HostsSchema: z.ZodObject<{
     isHidden: boolean;
     overrideSniFromAddress: boolean;
     keepSniBlank: boolean;
-    vlessRouteId: number | null;
+    overrideProtocolCredential: boolean;
+    protocolCredential: string | null;
     allowInsecure: boolean;
     shuffleHost: boolean;
     selectorNodesFirst: boolean;
@@ -104,7 +106,7 @@ export declare const HostsSchema: z.ZodObject<{
         configProfileInboundUuid: string | null;
     };
     serverDescription: string | null;
-    vlessRouteId: number | null;
+    protocolCredential: string | null;
     shuffleHost: boolean;
     selectorNodesFirst?: boolean | undefined;
     mihomoX25519: boolean;
@@ -119,6 +121,7 @@ export declare const HostsSchema: z.ZodObject<{
     isHidden?: boolean | undefined;
     overrideSniFromAddress?: boolean | undefined;
     keepSniBlank?: boolean | undefined;
+    overrideProtocolCredential?: boolean | undefined;
     allowInsecure?: boolean | undefined;
     excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
 }>;
