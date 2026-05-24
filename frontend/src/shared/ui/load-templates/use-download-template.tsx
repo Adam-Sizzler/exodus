@@ -1,8 +1,8 @@
 import type { editor } from 'monaco-editor'
 
 import { TSubscriptionTemplateType } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'node_modules/react-i18next'
+import { notifications } from '@mantine/notifications'
 import { TbDownload } from 'react-icons/tb'
 import { modals } from '@mantine/modals'
 import { RefObject } from 'react'
@@ -14,9 +14,9 @@ import { TemplateDownloadModal } from './template-selector.modal'
 
 interface IProps {
     editorRef?: RefObject<editor.IStandaloneCodeEditor | null>
-    editorType: 'SRR' | 'SUBPAGE_CONFIG' | 'SUBSCRIPTION' | 'XRAY_CORE'
+    editorType: 'NODE_PLUGIN' | 'SRR' | 'SUBPAGE_CONFIG' | 'SUBSCRIPTION' | 'XRAY_CORE'
     onLoadTemplate?: (content: string) => Promise<void>
-    templateType: 'SRR' | 'SUBPAGE_CONFIG' | TSubscriptionTemplateType
+    templateType: 'NODE_PLUGIN' | 'SRR' | 'SUBPAGE_CONFIG' | TSubscriptionTemplateType
 }
 
 export const useDownloadTemplate = (props: IProps) => {

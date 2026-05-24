@@ -16,6 +16,7 @@ import (
 	"exodus/internal/httpapi/keygen"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/modulessettings"
+	"exodus/internal/httpapi/nodeplugins"
 	"exodus/internal/httpapi/nodes"
 	"exodus/internal/httpapi/panelsettings"
 	"exodus/internal/httpapi/passkeys"
@@ -67,6 +68,8 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/nodes/bulk-actions/", nodes.NodesBulkActionsHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes/tags", nodes.NodesTagsHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes-with-config", squads.NodesWithConfigHandler(manager, cfg))
+	mux.HandleFunc("/api/node-plugins", nodeplugins.Handler(manager, cfg))
+	mux.HandleFunc("/api/node-plugins/", nodeplugins.Handler(manager, cfg))
 
 	mux.HandleFunc("/api/subscription-connections", subscriptionconnections.NodesHandler(manager, cfg))
 	mux.HandleFunc("/api/subscription-connections/", subscriptionconnections.NodeByUUIDHandler(manager, cfg))

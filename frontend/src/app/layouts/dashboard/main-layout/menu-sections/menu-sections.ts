@@ -1,4 +1,16 @@
 import {
+    TbChartArcs,
+    TbCirclesRelation,
+    TbDeviceAnalytics,
+    TbFolder,
+    TbHexagon,
+    TbListDetails,
+    TbPackage,
+    TbReportAnalytics,
+    TbRoute,
+    TbWebhook
+} from 'react-icons/tb'
+import {
     PiAirTrafficControlDuotone,
     PiArrowsInCardinalFill,
     PiChartLine,
@@ -7,20 +19,8 @@ import {
     PiStarDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import {
-    TbChartArcs,
-    TbCirclesRelation,
-    TbDeviceAnalytics,
-    TbFolder,
-    TbHexagon,
-    TbListDetails,
-    TbPackages,
-    TbReportAnalytics,
-    TbRoute,
-    TbWebhook
-} from 'react-icons/tb'
-import { SUBSCRIPTION_TEMPLATE_TYPE } from '@exodus/backend-contract'
 import { HiChartPie, HiCurrencyDollar, HiServer } from 'react-icons/hi'
+import { SUBSCRIPTION_TEMPLATE_TYPE } from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { useHotkeys } from '@mantine/hooks'
 import { useState } from 'react'
@@ -104,6 +104,12 @@ export const useMenuSections = (): MenuItem[] => {
                             id: 'management'
                         },
 
+                        {
+                            name: `${t('constants.node-plugins', { defaultValue: 'Plugins' })} β`,
+                            href: ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT,
+                            icon: TbPackage,
+                            id: 'node-plugins'
+                        },
                         {
                             name: t('constants.nodes-statistics'),
                             href: ROUTES.DASHBOARD.MANAGEMENT.NODES_STATS,
@@ -240,12 +246,6 @@ export const useMenuSections = (): MenuItem[] => {
                     icon: TbReportAnalytics,
                     id: 'srh-inspector'
                 },
-                {
-                    name: t('constants.modules', { defaultValue: 'Modules' }),
-                    href: ROUTES.DASHBOARD.TOOLS.MODULES,
-                    icon: TbPackages,
-                    id: 'modules'
-                }
             ]
         },
         {

@@ -12,9 +12,56 @@ import { sToMs } from '@shared/utils/time-utils'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
+const nodeSystemInterfaceSchema = z.object({
+    interface: z.string(),
+    rxBytesPerSec: z.number().optional().default(0),
+    txBytesPerSec: z.number().optional().default(0),
+    rxTotal: z.number().optional().default(0),
+    txTotal: z.number().optional().default(0)
+})
+
+const nodeSystemSchema = z.object({
+    info: z.object({
+        arch: z.string().optional().default('unknown'),
+        cpus: z.number().optional().default(1),
+        cpuModel: z.string().optional().default('unknown'),
+        memoryTotal: z.number().optional().default(0),
+        hostname: z.string().optional().default('unknown'),
+        platform: z.string().optional().default('unknown'),
+        release: z.string().optional().default('unknown'),
+        type: z.string().optional().default('unknown'),
+        version: z.string().optional().default('unknown'),
+        networkInterfaces: z.array(z.string()).optional().default([])
+    }),
+    stats: z.object({
+        memoryFree: z.number().optional().default(0),
+        memoryUsed: z.number().optional().default(0),
+        uptime: z.number().optional().default(0),
+        loadAvg: z.array(z.number()).optional().default([0, 0, 0]),
+        interface: nodeSystemInterfaceSchema.nullable().optional().default(null)
+    })
+})
+
+const nodePluginSchema = z.object({
+    uuid: z.string(),
+    name: z.string(),
+    pluginConfig: z.record(z.unknown()).default({}),
+    viewPosition: z.number().optional().default(0)
+})
+
 const nodeResponseSchema = GetOneNodeCommand.ResponseSchema.shape.response.extend({
     apiSchema: z.string().optional().default('mtls'),
-    apiPath: z.string().optional().default('/')
+    apiPath: z.string().optional().default('/'),
+    activePluginUuid: z.string().nullable().optional().default(null),
+    system: nodeSystemSchema.nullable().optional().default(null),
+    versions: z
+        .object({
+            singbox: z.string().optional().default('unknown'),
+            node: z.string().optional().default('unknown')
+        })
+        .nullable()
+        .optional()
+        .default(null)
 })
 
 const getAllNodesResponseSchema = z.object({
@@ -32,7 +79,20 @@ const getPubKeyResponseSchema = z.object({
     })
 })
 
+const getNodePluginsResponseSchema = z.object({
+    response: z.object({
+        nodePlugins: z.array(nodePluginSchema).optional().default([]),
+        total: z.number().optional().default(0)
+    })
+})
+
+const getNodePluginResponseSchema = z.object({
+    response: nodePluginSchema
+})
+
 export type NodeKeygenResponse = z.infer<typeof getPubKeyResponseSchema>['response']
+export type NodePluginResponse = z.infer<typeof nodePluginSchema>
+export type NodeResponse = z.infer<typeof nodeResponseSchema>
 
 export const nodesQueryKeys = createQueryKeys('nodes', {
     getAllNodes: {
@@ -44,6 +104,12 @@ export const nodesQueryKeys = createQueryKeys('nodes', {
     getPubKey: {
         queryKey: null
     },
+    getNodePlugins: {
+        queryKey: null
+    },
+    getNodePlugin: (route: { uuid: string }) => ({
+        queryKey: [route]
+    }),
     getAllTags: {
         queryKey: null
     }
@@ -84,6 +150,27 @@ export const useGetPubKey = createGetQueryHook({
     },
 
     errorHandler: (error) => errorHandler(error, 'Get PubKey')
+})
+
+export const useGetNodePlugins = createGetQueryHook({
+    endpoint: '/api/node-plugins',
+    responseSchema: getNodePluginsResponseSchema,
+    getQueryKey: () => nodesQueryKeys.getNodePlugins.queryKey,
+    rQueryParams: {
+        staleTime: sToMs(30)
+    },
+    errorHandler: (error) => errorHandler(error, 'Get Node Plugins')
+})
+
+export const useGetNodePlugin = createGetQueryHook({
+    endpoint: '/api/node-plugins/:uuid',
+    responseSchema: getNodePluginResponseSchema,
+    routeParamsSchema: z.object({ uuid: z.string().uuid() }),
+    getQueryKey: ({ route }) => nodesQueryKeys.getNodePlugin(route!).queryKey,
+    rQueryParams: {
+        staleTime: sToMs(5)
+    },
+    errorHandler: (error) => errorHandler(error, 'Get Node Plugin')
 })
 
 export const useGetNodesTags = createGetQueryHook({

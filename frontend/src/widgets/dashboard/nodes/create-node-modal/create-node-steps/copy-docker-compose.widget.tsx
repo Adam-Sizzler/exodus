@@ -6,9 +6,9 @@ import { PiCheck } from 'react-icons/pi'
 import { useGetPubKey } from '@shared/api/hooks'
 
 interface IProps {
-    port?: number
     apiPath?: string
     apiSchema?: 'mtls' | 'tls'
+    port?: number
 }
 
 const normalizePath = (value?: string) => {
@@ -37,10 +37,13 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema }: IProps) =>
     hostname: exodus-node
     image: ghcr.io/teamdominant/exodus-node:latest
     restart: always
+    network_mode: host
     cap_add:
       - NET_ADMIN
-    ports:
-      - "${grpcPort}:${grpcPort}"
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       - NODE_GRPC_ADDRESS=0.0.0.0
       - NODE_GRPC_PORT=${grpcPort}

@@ -9,24 +9,27 @@ import {
 import { SubpageConfigEditorPageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-editor-page.connector'
 import { ConfigProfileByUuidPageConnector } from '@pages/dashboard/config-profiles/connectors/config-profile-by-uuid.page.connector'
 import { SubpageConfigBasePageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-base-page.connector'
+import {
+    NodePluginEditorPageConnector,
+    NodePluginsBasePageConnector
+} from '@pages/dashboard/node-plugins/ui/connectors'
 import { InternalSquadsPageConnector } from '@pages/dashboard/internal-squads/connectors/internal-squads.page.connector'
-import { SRSListsPageConnector } from '@pages/dashboard/srs-lists/connectors'
 import { InfraBillingPageConnector } from '@pages/dashboard/crm/infra-billing/connectors/infra-billing.page.connector'
 import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
 import { TemplateEditorPageConnector } from '@pages/dashboard/templates/ui/connectors/template-editor-page.connector'
 import { TemplateBasePageConnector } from '@pages/dashboard/templates/ui/connectors/template-base-page.connector'
+import { SubscriptionConnectionsPageConnector } from '@pages/dashboard/subscription-connections/ui/connectors'
 import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
 import { SubscriptionSettingsConnector } from '@pages/dashboard/subscription-settings/connectors'
-import { ExodusSettingsConnector } from '@pages/dashboard/exodus-settings/connectors'
 import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
-import { ModulesPageConnector } from '@pages/dashboard/modules/ui/connectors'
 import { ConfigProfilesPageConnector } from '@pages/dashboard/config-profiles/connectors'
 import { ExternalSquadsPageConnector } from '@pages/dashboard/external-squads/connectors'
 import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
 import { SrhInspectorPageConnector } from '@pages/dashboard/srh-inspector/ui/connectors'
+import { ExodusSettingsConnector } from '@pages/dashboard/exodus-settings/connectors'
 import { StatisticNodesConnector } from '@pages/dashboard/statistic-nodes/connectors'
-import { SubscriptionConnectionsPageConnector } from '@pages/dashboard/subscription-connections/ui/connectors'
 import { Oauth2CallbackPage } from '@pages/auth/oauth2-callback/oauth2-callback.page'
+import { SRSListsPageConnector } from '@pages/dashboard/srs-lists/connectors'
 import { HostsPageConnector } from '@pages/dashboard/hosts/ui/connectors'
 import { UsersPageConnector } from '@pages/dashboard/users/ui/connectors'
 import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
@@ -34,9 +37,9 @@ import { HomePageConnector } from '@pages/dashboard/home/connectors'
 import { NotFoundPageComponent } from '@pages/errors/4xx-error'
 import { ErrorBoundaryHoc } from '@shared/hocs/error-boundary'
 import { ErrorPageComponent } from '@pages/errors/5xx-error'
+import { APP_BASE_PATH } from '@shared/constants/base-path'
 import { AuthGuard } from '@shared/hocs/guards/auth-guard'
 import { LoginPage } from '@pages/auth/login'
-import { APP_BASE_PATH } from '@shared/constants/base-path'
 
 import { MainLayout } from '../layouts/dashboard/main-layout/main.layout'
 import { ROUTES } from '../../shared/constants'
@@ -75,6 +78,14 @@ const router = createBrowserRouter(
                         <Route
                             element={<NodesPageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.NODES}
+                        />
+                        <Route
+                            element={<NodePluginsBasePageConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT}
+                        />
+                        <Route
+                            element={<NodePluginEditorPageConnector />}
+                            path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.NODE_PLUGIN_BY_UUID}
                         />
                         <Route
                             element={<NodesBandwidthTablePageConnector />}
@@ -136,10 +147,6 @@ const router = createBrowserRouter(
                         <Route
                             element={<SrhInspectorPageConnector />}
                             path={ROUTES.DASHBOARD.TOOLS.SRH_INSPECTOR}
-                        />
-                        <Route
-                            element={<ModulesPageConnector />}
-                            path={ROUTES.DASHBOARD.TOOLS.MODULES}
                         />
                     </Route>
 

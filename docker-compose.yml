@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VERSION: ${EXODUS_VERSION:-latest}
+        VERSION: ${EXODUS_VERSION:-2.7.4}
         REVISION: ${EXODUS_REVISION:-unknown}
         FRONTEND_REVISION: ${EXODUS_FRONTEND_COMMIT:-unknown}
         BUILD_BRANCH: ${EXODUS_GIT_BRANCH:-unknown}
@@ -36,6 +36,8 @@ services:
     container_name: exodus
     hostname: exodus
     <<: [*common, *logging, *env]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - 127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}
     volumes:
@@ -50,12 +52,21 @@ services:
     build:
       context: ../exodus-node
       dockerfile: Dockerfile
+      args:
+        VERSION: ${EXODUS_NODE_VERSION:-2.7.4}
+        REVISION: ${EXODUS_NODE_REVISION:-unknown}
     image: exodus-node:latest
     container_name: exodus-node
     hostname: exodus-node
-    <<: [*common, *logging]
-    ports:
-      - "9253:9253"
+    <<: [*logging]
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     volumes:
       - ./backend/node/config.yml:/app/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock

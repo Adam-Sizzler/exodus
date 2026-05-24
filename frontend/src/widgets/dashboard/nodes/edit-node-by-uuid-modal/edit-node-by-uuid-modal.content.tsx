@@ -6,9 +6,10 @@ import { motion } from 'motion/react'
 import {
     configProfilesQueryKeys,
     nodesQueryKeys,
-    UpdateNodeRequest,
     updateNodeFormSchema,
+    UpdateNodeRequest,
     useGetNode,
+    useGetNodePlugins,
     useGetPubKey,
     useUpdateNode
 } from '@shared/api/hooks'
@@ -18,6 +19,7 @@ import { LoaderModalShared } from '@shared/ui/loader-modal'
 import { queryClient } from '@shared/api'
 
 import { NodeDetailsCardWidget } from '../node-details-card/node-details-card.widget'
+import { NodeSystemCardWidget } from '../node-system-card/node-system-card.widget'
 
 interface IProps {
     nodeUuid: string
@@ -36,6 +38,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
     })
 
     const { data: pubKey } = useGetPubKey()
+    const { data: nodePlugins } = useGetNodePlugins()
 
     const { data: fetchedNode } = useGetNode({
         route: {
@@ -75,6 +78,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 port: fetchedNode.port ?? undefined,
                 apiSchema,
                 apiPath: fetchedNode.apiPath ?? '/',
+                activePluginUuid: fetchedNode.activePluginUuid ?? null,
                 isTrafficTrackingActive: fetchedNode.isTrafficTrackingActive ?? undefined,
                 trafficLimitBytes: bytesToGbUtil(fetchedNode.trafficLimitBytes ?? undefined),
                 trafficResetDay: fetchedNode.trafficResetDay ?? undefined,
@@ -107,6 +111,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 address: values.address?.trim(),
                 apiSchema: values.apiSchema === 'tls' ? 'tls' : 'mtls',
                 apiPath: values.apiPath?.trim() || '/',
+                activePluginUuid: values.activePluginUuid || null,
                 trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes),
                 configProfile: {
                     activeConfigProfileUuid: values.configProfile?.activeConfigProfileUuid ?? '',
@@ -137,6 +142,10 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             isDataSubmitting={isUpdateNodePending}
             node={fetchedNode}
             nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode} />}
+            nodePlugins={nodePlugins?.nodePlugins ?? []}
+            nodeSystemCard={
+                fetchedNode.isConnected ? <NodeSystemCardWidget node={fetchedNode} /> : null
+            }
             pubKey={pubKey}
             setAdvancedOpened={setAdvancedOpened}
         />

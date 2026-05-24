@@ -1,53 +1,56 @@
 import {
     TbCertificate,
     TbMapPin,
+    TbPackage,
     TbPlugConnected,
     TbRoute2,
     TbUserCheck,
     TbWorld
 } from 'react-icons/tb'
-import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
+import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
+import { useTranslation } from 'node_modules/react-i18next'
 import { UseFormReturnType } from '@mantine/form'
 import { HiOutlineServer } from 'react-icons/hi'
-import { useTranslation } from 'node_modules/react-i18next'
 
-import { NodeKeygenResponse } from '@shared/api/hooks'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { NodeKeygenResponse, NodePluginResponse } from '@shared/api/hooks'
 import { SectionCard } from '@shared/ui/section-card'
 
 import { COUNTRIES } from './constants'
 
 interface NodeVitalsForm {
-    name?: string
+    activePluginUuid?: null | string
     address?: string
-    port?: number
-    apiSchema?: 'mtls' | 'tls'
     apiPath?: string
+    apiSchema?: 'mtls' | 'tls'
     countryCode?: string
+    name?: string
+    port?: number
 }
 
 interface IProps<T extends NodeVitalsForm> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
+    nodePlugins: NodePluginResponse[]
     pubKey: NodeKeygenResponse | undefined
 }
 
 export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
     const { t } = useTranslation()
-    const { cardVariants, form, motionWrapper, pubKey } = props
+    const { cardVariants, form, motionWrapper, nodePlugins, pubKey } = props
     const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
     const apiSchemaInputProps = form.getInputProps('apiSchema')
     const credentialLabel =
         apiSchema === 'tls'
             ? t('base-node-form.grpc-token-node-grpc-token', {
-                  defaultValue: 'gRPC Token (NODE_GRPC_TOKEN)'
-              })
+                defaultValue: 'gRPC Token (NODE_GRPC_TOKEN)'
+            })
             : t('base-node-form.secret-key-secret-key', {
-                  defaultValue: 'Secret Key (SECRET_KEY)'
-              })
+                defaultValue: 'Secret Key (SECRET_KEY)'
+            })
     const credentialValue =
         apiSchema === 'tls'
             ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
@@ -126,7 +129,6 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
 
                         <Stack gap="xs">
                             <Select
-                                key={form.key('apiSchema')}
                                 data={[
                                     {
                                         label: t('base-node-form.api-schema-mtls'),
@@ -138,6 +140,7 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                                     }
                                 ]}
                                 description={t('base-node-form.api-schema-description')}
+                                key={form.key('apiSchema')}
                                 label={t('base-node-form.api-schema')}
                                 leftSection={<TbPlugConnected size={16} />}
                                 required
@@ -152,8 +155,8 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                             />
 
                             <TextInput
-                                key={form.key('apiPath')}
                                 description={t('base-node-form.api-path-description')}
+                                key={form.key('apiPath')}
                                 label={t('base-node-form.api-path')}
                                 leftSection={<TbRoute2 size={16} />}
                                 placeholder={t('base-node-form.api-path-placeholder')}
@@ -171,6 +174,36 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                             leftSection={<TbCertificate size={16} />}
                             size="sm"
                             value={credentialValue}
+                        />
+
+                        <Select
+                            key={form.key('activePluginUuid')}
+                            label={t('node-vitals.card.plugin', { defaultValue: 'Plugin' })}
+                            {...form.getInputProps('activePluginUuid')}
+                            allowDeselect
+                            clearable
+                            data={nodePlugins.map((nodePlugin) => ({
+                                label: nodePlugin.name,
+                                value: nodePlugin.uuid
+                            }))}
+                            description={t(
+                                'node-vitals.card.review-documentation-for-more-information',
+                                {
+                                    defaultValue:
+                                        'Review documentation for more information about node plugins.'
+                                }
+                            )}
+                            leftSection={<TbPackage size={16} />}
+                            nothingFoundMessage={t('node-vitals.card.nothing-found', {
+                                defaultValue: 'Nothing found'
+                            })}
+                            placeholder={t('node-vitals.card.select-plugin', {
+                                defaultValue: 'Select plugin'
+                            })}
+                            searchable
+                            styles={{
+                                label: { fontWeight: 500 }
+                            }}
                         />
                     </Stack>
                 </SectionCard.Section>

@@ -124,11 +124,6 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 	if srsErr != nil {
 		nm.cfg.Logger.Warn("Failed to load SRS lists for deploy payload", "error", srsErr)
 	}
-	haproxyEnabled, modulesErr := nm.loadHaproxyModuleEnabled(context.Background())
-	if modulesErr != nil {
-		nm.cfg.Logger.Warn("Failed to load HAPROXY module settings for deploy payload", "error", modulesErr)
-	}
-
 	for _, target := range targets {
 		nm.cfg.Logger.Debug("Building deploy config for node", "node", target.name, "node_uuid", target.uuid)
 		configJSON, err := nm.buildNodeConfigForDeploy(nm.globalCtx, target.uuid)
@@ -137,6 +132,10 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			continue
 		}
 
+		haproxyEnabled, modulesErr := nm.loadNodeHaproxyPluginEnabled(nm.globalCtx, target.uuid)
+		if modulesErr != nil {
+			nm.cfg.Logger.Warn("Failed to load HAPROXY plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
+		}
 		modules := &deployModulesTaskBlock{HaproxyEnabled: haproxyEnabled}
 		if haproxyEnabled {
 			haproxyUsers, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid)
@@ -191,20 +190,42 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 	}
 }
 
-func (nm *NodeMonitor) loadHaproxyModuleEnabled(ctx context.Context) (bool, error) {
+func (nm *NodeMonitor) loadNodeHaproxyPluginEnabled(ctx context.Context, nodeUUID string) (bool, error) {
+	if strings.TrimSpace(nodeUUID) == "" {
+		return false, fmt.Errorf("node uuid is empty")
+	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	enabled := false
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `SELECT haproxy_enabled FROM modules_settings WHERE id = 1`)
-		if err := row.Scan(&enabled); err != nil {
+		var rawConfig sql.NullString
+		row := db.QueryRowContext(ctx, `
+			SELECT np.plugin_config::text
+			FROM nodes n
+			JOIN node_plugins np ON np.uuid = n.active_plugin_uuid
+			WHERE n.uuid::text = ?
+			LIMIT 1
+		`, nodeUUID)
+		if err := row.Scan(&rawConfig); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil
 			}
 			return err
 		}
+		if !rawConfig.Valid || strings.TrimSpace(rawConfig.String) == "" {
+			return nil
+		}
+		var pluginConfig struct {
+			HaproxyAuth struct {
+				Enabled bool `json:"enabled"`
+			} `json:"haproxyAuth"`
+		}
+		if err := json.Unmarshal([]byte(rawConfig.String), &pluginConfig); err != nil {
+			return err
+		}
+		enabled = pluginConfig.HaproxyAuth.Enabled
 		return nil
 	})
 	return enabled, err

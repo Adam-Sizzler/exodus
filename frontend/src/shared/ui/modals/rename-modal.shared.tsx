@@ -2,13 +2,14 @@ import {
     UpdateConfigProfileCommand,
     UpdateExternalSquadCommand,
     UpdateInternalSquadCommand,
+    UpdateNodeCommand,
     UpdatePasskeyCommand,
     UpdateSubscriptionPageConfigCommand,
     UpdateSubscriptionTemplateCommand
 } from '@exodus/backend-contract'
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core'
-import { TbDeviceFloppy, TbPencil } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
+import { TbDeviceFloppy, TbPencil } from 'react-icons/tb'
 import { useField } from '@mantine/form'
 
 import {
@@ -16,6 +17,7 @@ import {
     useUpdateConfigProfile,
     useUpdateExternalSquad,
     useUpdateInternalSquad,
+    useUpdateNodePlugin,
     useUpdatePasskey,
     useUpdateSubscriptionPageConfig,
     useUpdateSubscriptionTemplate
@@ -29,6 +31,7 @@ type RenameType =
     | 'configProfile'
     | 'externalSquad'
     | 'internalSquad'
+    | 'nodePlugin'
     | 'passkey'
     | 'subpageConfig'
     | 'template'
@@ -76,6 +79,12 @@ export function RenameModalShared({ renameFrom }: IProps) {
                     return UpdateSubscriptionPageConfigCommand.RequestSchema.omit({
                         uuid: true
                     }).safeParse({
+                        name: value
+                    })
+                }
+
+                if (renameFrom === 'nodePlugin') {
+                    return UpdateNodeCommand.RequestSchema.pick({ name: true }).safeParse({
                         name: value
                     })
                 }
@@ -167,6 +176,17 @@ export function RenameModalShared({ renameFrom }: IProps) {
             }
         })
 
+    const { mutate: updateNodePlugin, isPending: isUpdatingNodePlugin } = useUpdateNodePlugin({
+        mutationFns: {
+            onSuccess: () => {
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.nodes.getNodePlugins.queryKey
+                })
+                handleModalClose()
+            }
+        }
+    })
+
     const handleSave = async () => {
         if (await nameField.validate()) return
 
@@ -224,6 +244,17 @@ export function RenameModalShared({ renameFrom }: IProps) {
                     name: nameField.getValue()
                 }
             })
+        } else if (renameFrom === 'nodePlugin') {
+            if (!internalState) return
+
+            updateNodePlugin({
+                route: {
+                    uuid: internalState.uuid
+                },
+                variables: {
+                    name: nameField.getValue()
+                }
+            })
         }
     }
 
@@ -233,7 +264,8 @@ export function RenameModalShared({ renameFrom }: IProps) {
         isUpdatingTemplate ||
         isUpdatingExternalSquad ||
         isUpdatingPasskey ||
-        isUpdatingSubpageConfig
+        isUpdatingSubpageConfig ||
+        isUpdatingNodePlugin
 
     return (
         <Modal

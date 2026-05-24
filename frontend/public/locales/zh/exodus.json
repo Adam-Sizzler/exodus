@@ -891,7 +891,20 @@
             "total-download": "总下载",
             "average-bps": "带宽使用平均值",
             "active-nodes": "活动节点",
-            "current-hour": "当前小时"
+            "current-hour": "当前小时",
+            "download-speed": "下载速度",
+            "upload-speed": "上传速度",
+            "download-total": "下载总量",
+            "ram-usage": "RAM 使用量",
+            "for-all-nodes": "所有节点"
+        }
+    },
+    "node-vitals": {
+        "card": {
+            "plugin": "Plugin",
+            "select-plugin": "Select plugin",
+            "nothing-found": "Nothing found",
+            "review-documentation-for-more-information": "Review documentation for more information about node plugins."
         }
     },
     "node-users-usage-drawer": {
@@ -1334,6 +1347,20 @@
             "config-profile-or-inbounds-is-missing": "缺少配置文件或者入站配置",
             "singbox-core-version": "Singbox 核心版本",
             "exodus-node-version": "节点版本，@exodus/节点"
+        }
+    },
+    "node-system-card": {
+        "widget": {
+            "system-info": "系统信息",
+            "memory": "内存",
+            "used": "已使用",
+            "free": "可用",
+            "total": "总计",
+            "system": "系统",
+            "system-uptime": "系统运行时间",
+            "network": "网络",
+            "kernel": "内核",
+            "interface": "接口"
         }
     },
     "config-profiles": {

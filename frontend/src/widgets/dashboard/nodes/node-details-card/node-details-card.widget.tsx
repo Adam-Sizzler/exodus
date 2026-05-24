@@ -2,6 +2,7 @@ import {
     ActionIcon,
     Badge,
     Box,
+    Divider,
     Group,
     Loader,
     Paper,
@@ -17,13 +18,15 @@ import {
     PiUsersDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import { GetOneNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
+import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
-import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'node_modules/react-i18next'
+import { memo, useCallback, useMemo } from 'react'
 
+import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/nodes/get-node-linked-hosts'
+import { GetNodeUsersUsageFeature } from '@features/ui/dashboard/nodes/get-node-users-usage'
+import { NodeResponse, QueryKeys, useDisableNode, useEnableNode } from '@shared/api/hooks'
 import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
-import { QueryKeys, useDisableNode, useEnableNode } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
@@ -32,12 +35,13 @@ import { queryClient } from '@shared/api'
 import { Logo } from '@shared/ui'
 
 interface IProps {
-    node: GetOneNodeCommand.Response['response']
+    node: NodeResponse
 }
 
 export const NodeDetailsCardWidget = memo((props: IProps) => {
     const { node } = props
-    const nodeSingboxVersion = node.singboxVersion
+    const nodeSingboxVersion = node.versions?.singbox ?? node.singboxVersion
+    const nodeVersion = node.versions?.node ?? node.nodeVersion
     const nodeSingboxUptime = node.singboxUptime
 
     const { t } = useTranslation()
@@ -151,7 +155,9 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                     <Group gap="xs">
                         {node.isConnected && (
                             <Tooltip
-                                label={t('node-stats.card.represents-the-uptime-of-the-singbox-core')}
+                                label={t(
+                                    'node-stats.card.represents-the-uptime-of-the-singbox-core'
+                                )}
                             >
                                 <Badge
                                     color="teal"
@@ -245,6 +251,19 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                 </Group>
             </SectionCard.Section>
             <SectionCard.Section>
+                <Group gap="xs" justify="flex-end">
+                    <Group gap="xs" justify="center">
+                        <GetNodeLinkedHostsFeature nodeUuid={node.uuid} renderAs="action" />
+                    </Group>
+
+                    <Divider opacity={0.3} orientation="vertical" />
+
+                    <Group gap="xs" justify="center">
+                        <GetNodeUsersUsageFeature nodeUuid={node.uuid} renderAs="action" />
+                    </Group>
+                </Group>
+            </SectionCard.Section>
+            <SectionCard.Section>
                 <Box>
                     <Group gap="xs" justify="space-between" mb={6}>
                         <Group gap={6}>
@@ -333,7 +352,10 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             >
                                 <Tooltip label={t('node-details-card.widget.singbox-core-version')}>
                                     <Group gap="xs" justify="center">
-                                        <SingboxLogo color="var(--mantine-color-violet-5)" size={16} />
+                                        <SingboxLogo
+                                            color="var(--mantine-color-violet-5)"
+                                            size={16}
+                                        />
                                         <Text c="violet.5" fw={600} size="sm">
                                             {nodeSingboxVersion}
                                         </Text>
@@ -358,7 +380,10 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     )}
                                 >
                                     <Group gap="xs" justify="center">
-                                        <SingboxLogo color="var(--mantine-color-teal-5)" size={16} />
+                                        <SingboxLogo
+                                            color="var(--mantine-color-teal-5)"
+                                            size={16}
+                                        />
                                         <Text
                                             c="teal.5"
                                             fw={600}
@@ -372,7 +397,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             </Paper>
                         )}
 
-                        {node.nodeVersion && (
+                        {nodeVersion && (
                             <Paper
                                 p="xs"
                                 radius="md"
@@ -381,13 +406,11 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     border: '1px solid rgba(99, 102, 241, 0.2)'
                                 }}
                             >
-                                <Tooltip
-                                    label={t('node-details-card.widget.exodus-node-version')}
-                                >
+                                <Tooltip label={t('node-details-card.widget.exodus-node-version')}>
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />
                                         <Text c="indigo.5" fw={600} size="sm">
-                                            {node.nodeVersion}
+                                            {nodeVersion}
                                         </Text>
                                     </Group>
                                 </Tooltip>

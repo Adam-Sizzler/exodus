@@ -2,7 +2,7 @@
   "name": "@exodus/frontend",
   "private": false,
   "type": "module",
-  "version": "2.6.4",
+  "version": "2.7.4",
   "license": "AGPL-3.0-only",
   "author": "EXODUS <github.com/exodus>",
   "homepage": "https://github.com/teamdominant",

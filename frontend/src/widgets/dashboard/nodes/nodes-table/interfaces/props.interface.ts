@@ -1,5 +1,5 @@
-import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { NodeResponse } from '@shared/api/hooks'
 
 export interface IProps {
-    nodes: GetAllNodesCommand.Response['response'] | undefined
+    nodes: NodeResponse[] | undefined
 }

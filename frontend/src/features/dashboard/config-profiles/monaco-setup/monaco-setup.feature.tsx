@@ -6,6 +6,7 @@ import zodToJsonSchema, { jsonDescription } from 'zod-to-json-schema'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola'
 import axios from 'axios'
+import { z } from 'zod'
 
 import { monacoTheme } from '@shared/constants/monaco-theme'
 import { app } from 'src/config'
@@ -179,6 +180,90 @@ export const MonacoSetupResponseRulesFeature = {
             })
         } catch (error) {
             consola.error('Failed to load JSON schema:', error)
+        }
+    }
+}
+
+const ipListSchema = z.array(z.string()).default([])
+
+export const NodePluginSchema = z
+    .object({
+        ingressFilter: z
+            .object({
+                enabled: z.boolean().default(false),
+                blockedIps: ipListSchema
+            })
+            .optional()
+            .describe('Ingress traffic filter.'),
+        egressFilter: z
+            .object({
+                enabled: z.boolean().default(false),
+                blockedIps: ipListSchema,
+                blockedPorts: z.array(z.number()).default([])
+            })
+            .optional()
+            .describe('Egress traffic filter.'),
+        haproxyAuth: z
+            .object({
+                enabled: z.boolean().default(false)
+            })
+            .optional()
+            .describe('Enable HAProxy authorization for the selected node.'),
+        sharedLists: z
+            .array(
+                z.object({
+                    name: z.string(),
+                    type: z.literal('ipList'),
+                    items: z.array(z.string())
+                })
+            )
+            .default([])
+    })
+    .strict()
+
+export const MonacoSetupNodePluginEditorFeature = {
+    setup: async (monaco: Monaco) => {
+        try {
+            const schema = zodToJsonSchema(NodePluginSchema, {
+                name: 'Node Plugin Config Schema',
+                applyRegexFlags: true,
+                errorMessages: true,
+                postProcess: jsonDescription
+            })
+
+            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                schemaValidation: 'error',
+                comments: 'error',
+                trailingCommas: 'error',
+                schemas: [
+                    {
+                        fileMatch: ['node-plugin://*'],
+                        schema,
+                        uri: 'https://node-plugin-schema.json'
+                    }
+                ],
+                validate: true
+            })
+
+            monaco.languages.json.jsonDefaults.setModeConfiguration({
+                documentFormattingEdits: true,
+                documentRangeFormattingEdits: true,
+                completionItems: true,
+                hovers: true,
+                documentSymbols: true,
+                tokens: true,
+                colors: true,
+                foldingRanges: true,
+                diagnostics: true,
+                selectionRanges: true
+            })
+
+            monaco.editor.defineTheme('GithubDark', {
+                ...monacoTheme,
+                base: 'vs-dark'
+            })
+        } catch (error) {
+            consola.error('Failed to load node plugin JSON schema:', error)
         }
     }
 }

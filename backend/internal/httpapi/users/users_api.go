@@ -241,6 +241,18 @@ type bulkAllExtendExpirationDateRequest struct {
 	ExtendDays int `json:"extendDays"`
 }
 
+type bulkAllUpdateUsersRequest struct {
+	Status               *string        `json:"status,omitempty"`
+	TrafficLimitBytes    *int64         `json:"trafficLimitBytes,omitempty"`
+	TrafficLimitStrategy *string        `json:"trafficLimitStrategy,omitempty"`
+	ExpireAt             *string        `json:"expireAt,omitempty"`
+	Description          OptionalString `json:"description,omitempty"`
+	Tag                  OptionalString `json:"tag,omitempty"`
+	TelegramID           OptionalInt64  `json:"telegramId,omitempty"`
+	Email                OptionalString `json:"email,omitempty"`
+	HwidDeviceLimit      OptionalInt    `json:"hwidDeviceLimit,omitempty"`
+}
+
 func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -348,6 +360,8 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			handleBulkAllResetUsersTraffic(w, r, manager, cfg)
 		case "all/extend-expiration-date":
 			handleBulkAllExtendUsersExpirationDate(w, r, manager, cfg)
+		case "all/update":
+			handleBulkAllUpdateUsers(w, r, manager, cfg)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1188,6 +1202,99 @@ func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Reque
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
 
+func handleBulkAllUpdateUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req bulkAllUpdateUsersRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if err := validateBulkAllUpdateUsersRequest(req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
+	clauses := make([]string, 0)
+	args := make([]any, 0)
+	add := func(column string, value any) {
+		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
+		args = append(args, value)
+	}
+
+	if req.Status != nil {
+		add("status", strings.ToUpper(strings.TrimSpace(*req.Status)))
+	}
+	if req.TrafficLimitBytes != nil {
+		add("traffic_limit_bytes", *req.TrafficLimitBytes)
+	}
+	if req.TrafficLimitStrategy != nil {
+		add("traffic_limit_strategy", strings.ToUpper(strings.TrimSpace(*req.TrafficLimitStrategy)))
+	}
+	if req.ExpireAt != nil {
+		parsed, _ := time.Parse(time.RFC3339, strings.TrimSpace(*req.ExpireAt))
+		add("expire_at", parsed.UTC())
+	}
+	if req.Description.Set {
+		if req.Description.Value == nil || strings.TrimSpace(*req.Description.Value) == "" {
+			clauses = append(clauses, "description = NULL")
+		} else {
+			add("description", strings.TrimSpace(*req.Description.Value))
+		}
+	}
+	if req.Tag.Set {
+		if req.Tag.Value == nil || strings.TrimSpace(*req.Tag.Value) == "" {
+			clauses = append(clauses, "tag = NULL")
+		} else {
+			add("tag", strings.ToUpper(strings.TrimSpace(*req.Tag.Value)))
+		}
+	}
+	if req.TelegramID.Set {
+		if req.TelegramID.Value == nil {
+			clauses = append(clauses, "telegram_id = NULL")
+		} else {
+			add("telegram_id", *req.TelegramID.Value)
+		}
+	}
+	if req.Email.Set {
+		if req.Email.Value == nil || strings.TrimSpace(*req.Email.Value) == "" {
+			clauses = append(clauses, "email = NULL")
+		} else {
+			add("email", strings.TrimSpace(*req.Email.Value))
+		}
+	}
+	if req.HwidDeviceLimit.Set {
+		if req.HwidDeviceLimit.Value == nil {
+			clauses = append(clauses, "hwid_device_limit = NULL")
+		} else {
+			add("hwid_device_limit", *req.HwidDeviceLimit.Value)
+		}
+	}
+
+	var affectedRows int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		query := fmt.Sprintf("UPDATE users SET %s, updated_at = CURRENT_TIMESTAMP", strings.Join(clauses, ", "))
+		result, execErr := db.ExecContext(r.Context(), query, args...)
+		if execErr != nil {
+			return mapUserWriteError(execErr)
+		}
+		rows, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			return rowsErr
+		}
+		affectedRows = rows
+		return nil
+	})
+	if err != nil {
+		handleUserWriteError(w, err, cfg)
+		return
+	}
+
+	if affectedRows > 0 {
+		monitor.RequestNodeDeploy(true)
+		emitBulkSummaryNotification(r.Context(), cfg, notifications.EventUserModified, affectedRows)
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": affectedRows > 0}})
+}
+
 func handleEnableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
 	nodeUUIDs, err := updateUserStatus(r.Context(), manager, userUUID, "ACTIVE")
 	if err != nil {
@@ -1785,6 +1892,55 @@ func validateUpdateUserRequest(req updateUserRequest) error {
 		if _, err := uuid.Parse(strings.TrimSpace(*req.ExternalSquadUUID.Value)); err != nil {
 			return fmt.Errorf("invalid externalSquadUuid")
 		}
+	}
+	return nil
+}
+
+func validateBulkAllUpdateUsersRequest(req bulkAllUpdateUsersRequest) error {
+	hasUpdate := req.Status != nil ||
+		req.TrafficLimitBytes != nil ||
+		req.TrafficLimitStrategy != nil ||
+		req.ExpireAt != nil ||
+		req.Description.Set ||
+		req.Tag.Set ||
+		req.TelegramID.Set ||
+		req.Email.Set ||
+		req.HwidDeviceLimit.Set
+	if !hasUpdate {
+		return fmt.Errorf("at least one field must be provided")
+	}
+	if req.Status != nil && !isValidUserStatus(*req.Status) {
+		return fmt.Errorf("invalid status")
+	}
+	if req.TrafficLimitBytes != nil && *req.TrafficLimitBytes < 0 {
+		return fmt.Errorf("trafficLimitBytes must be non-negative")
+	}
+	if req.TrafficLimitStrategy != nil && !isValidTrafficStrategy(*req.TrafficLimitStrategy) {
+		return fmt.Errorf("invalid trafficLimitStrategy")
+	}
+	if req.ExpireAt != nil {
+		parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(*req.ExpireAt))
+		if err != nil {
+			return fmt.Errorf("expireAt must be RFC3339")
+		}
+		if !parsed.After(time.Now().UTC()) {
+			return fmt.Errorf("expireAt must be in the future")
+		}
+	}
+	if req.Tag.Set && req.Tag.Value != nil && strings.TrimSpace(*req.Tag.Value) != "" {
+		tag := strings.ToUpper(strings.TrimSpace(*req.Tag.Value))
+		if len(tag) > 16 || !userTagRegex.MatchString(tag) {
+			return fmt.Errorf("tag can only contain uppercase letters, numbers, underscores and be up to 16 chars")
+		}
+	}
+	if req.Email.Set && req.Email.Value != nil && strings.TrimSpace(*req.Email.Value) != "" && !strings.Contains(strings.TrimSpace(*req.Email.Value), "@") {
+		return fmt.Errorf("invalid email")
+	}
+	if req.HwidDeviceLimit.Set && req.HwidDeviceLimit.Value != nil && *req.HwidDeviceLimit.Value < 0 {
+		return fmt.Errorf("hwidDeviceLimit must be non-negative")
+	}
+	if req.TelegramID.Set && req.TelegramID.Value != nil && *req.TelegramID.Value < 0 {
+		return fmt.Errorf("telegramId must be non-negative")
 	}
 	return nil
 }

@@ -33,6 +33,18 @@ model ModulesSettings {
   @@map("modules_settings")
 }
 
+model NodePlugins {
+  uuid         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String @unique @map("name")
+  pluginConfig Json   @map("plugin_config")
+  viewPosition Int    @default(autoincrement()) @map("view_position")
+
+  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
+  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+
+  @@map("node_plugins")
+}
+
 model Users {
   tId                    BigInt    @id @default(autoincrement()) @map("t_id")
   uuid                   String    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -178,6 +190,7 @@ model Nodes {
   apiPath   String @default("") @map("api_path")
 
   activeConfigProfileUuid String? @map("active_config_profile_uuid") @db.Uuid
+  activePluginUuid        String? @map("active_plugin_uuid") @db.Uuid
 
   isConnected  Boolean @default(false) @map("is_connected")
   isConnecting Boolean @default(false) @map("is_connecting")
@@ -207,6 +220,8 @@ model Nodes {
   cpuCount Int?    @map("cpu_count")
   cpuModel String? @map("cpu_model")
   totalRam String? @map("total_ram")
+  systemInfo Json? @map("system_info")
+  systemStats Json? @map("system_stats")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -500,8 +501,17 @@ func (nm *NodeMonitor) receiveStream(state *nodeState) {
 					return
 				}
 				if st.Code() == codes.Unavailable {
-					nm.cfg.Logger.Warn("Node unavailable", "node", state.nodeName)
-					nm.handleDisconnect(state, "Node unavailable")
+					reason := "Node unavailable"
+					if strings.TrimSpace(st.Message()) != "" {
+						reason = fmt.Sprintf("Node unavailable: %s", st.Message())
+					}
+					nm.cfg.Logger.Warn(
+						"Node unavailable",
+						"node", state.nodeName,
+						"code", st.Code().String(),
+						"message", st.Message(),
+					)
+					nm.handleDisconnect(state, reason)
 					return
 				}
 			}
@@ -604,6 +614,8 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	cpuCount := parseOptionalInt(values["cpu_count"])
 	cpuModel := parseOptionalString(values["cpu_model"])
 	totalRAM := parseOptionalString(values["total_ram"])
+	systemInfo := parseOptionalJSON(values["system_info"])
+	systemStats := parseOptionalJSON(values["system_stats"])
 	usersOnline := trafficDelta.UsersOnline
 
 	persistedNodeUUID := ""
@@ -627,10 +639,12 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			    cpu_count = COALESCE(?, cpu_count),
 			    cpu_model = COALESCE(?, cpu_model),
 			    total_ram = COALESCE(?, total_ram),
+			    system_info = COALESCE(?::jsonb, system_info),
+			    system_stats = COALESCE(?::jsonb, system_stats),
 			    users_online = COALESCE(?, users_online),
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE name = ?`
-		if _, execErr := db.Exec(query, singboxVersion, nodeVersion, singboxUptime, cpuCount, cpuModel, totalRAM, usersOnline, nodeName); execErr != nil {
+		if _, execErr := db.Exec(query, singboxVersion, nodeVersion, singboxUptime, cpuCount, cpuModel, totalRAM, systemInfo, systemStats, usersOnline, nodeName); execErr != nil {
 			return execErr
 		}
 
@@ -1040,6 +1054,18 @@ func parseOptionalInt(value string) any {
 func parseOptionalString(value string) any {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
+		return nil
+	}
+	return trimmed
+}
+
+func parseOptionalJSON(value string) any {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	var raw json.RawMessage
+	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil || len(raw) == 0 {
 		return nil
 	}
 	return trimmed

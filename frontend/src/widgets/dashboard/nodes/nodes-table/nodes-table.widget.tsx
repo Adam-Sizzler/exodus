@@ -13,14 +13,13 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useListState, useMediaQuery } from '@mantine/hooks'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { Box, Container, em, Stack } from '@mantine/core'
 
+import { NodeResponse, nodesQueryKeys, useGetNodes, useReorderNodes } from '@shared/api/hooks'
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { nodesQueryKeys, useGetNodes, useReorderNodes } from '@shared/api/hooks'
 import { EmptyPageLayout } from '@shared/ui/layouts/empty-page'
 import { sToMs } from '@shared/utils/time-utils'
 import { queryClient } from '@shared/api'
@@ -36,9 +35,7 @@ export const NodesTableWidget = memo((props: IProps) => {
 
     const openModalWithData = useModalsStoreOpenWithData()
     const [isPollingEnabled, setIsPollingEnabled] = useState(true)
-    const [draggedNode, setDraggedNode] = useState<
-        GetAllNodesCommand.Response['response'][number] | null
-    >(null)
+    const [draggedNode, setDraggedNode] = useState<NodeResponse | null>(null)
     const listRef = useRef<HTMLDivElement | null>(null)
     const parentOffsetRef = useRef(0)
     const prevStateRef = useRef(state)
@@ -64,7 +61,7 @@ export const NodesTableWidget = memo((props: IProps) => {
 
     const virtualizer = useWindowVirtualizer({
         count: state.length,
-        estimateSize: () => (isMobile ? 169 : 64),
+        estimateSize: () => (isMobile ? 190 : 90),
         overscan: 7,
         scrollMargin: parentOffsetRef.current,
         getItemKey: (index) => state[index].uuid

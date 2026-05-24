@@ -1,8 +1,8 @@
-import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { NodeResponse } from '@shared/api/hooks'
 
 export interface IProps {
     handleViewNode: (nodeUuid: string) => void
     isDragOverlay?: boolean
     isMobile: boolean
-    node: GetAllNodesCommand.Response['response'][number]
+    node: NodeResponse
 }

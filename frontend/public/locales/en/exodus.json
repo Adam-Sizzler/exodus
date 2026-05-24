@@ -915,7 +915,20 @@
             "total-download": "Total download",
             "average-bps": "Average BPS",
             "active-nodes": "Active nodes",
-            "current-hour": "Current hour"
+            "current-hour": "Current hour",
+            "download-speed": "Download Speed",
+            "upload-speed": "Upload Speed",
+            "download-total": "Download Total",
+            "ram-usage": "RAM Usage",
+            "for-all-nodes": "For all nodes"
+        }
+    },
+    "node-vitals": {
+        "card": {
+            "plugin": "Plugin",
+            "select-plugin": "Select plugin",
+            "nothing-found": "Nothing found",
+            "review-documentation-for-more-information": "Review documentation for more information about node plugins."
         }
     },
     "node-users-usage-drawer": {
@@ -1358,6 +1371,20 @@
             "config-profile-or-inbounds-is-missing": "Config profile or inbounds is missing",
             "singbox-core-version": "Singbox Core Version",
             "exodus-node-version": "Node version, @exodus/node"
+        }
+    },
+    "node-system-card": {
+        "widget": {
+            "system-info": "System Info",
+            "memory": "Memory",
+            "used": "Used",
+            "free": "Free",
+            "total": "Total",
+            "system": "System",
+            "system-uptime": "System Uptime",
+            "network": "Network",
+            "kernel": "Kernel",
+            "interface": "Interface"
         }
     },
     "config-profiles": {

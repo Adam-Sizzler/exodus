@@ -891,7 +891,20 @@
             "total-download": "مجموع دانلود",
             "average-bps": "میانگین BPS",
             "active-nodes": "نودهای فعال",
-            "current-hour": "ساعت کنونی"
+            "current-hour": "ساعت کنونی",
+            "download-speed": "سرعت دانلود",
+            "upload-speed": "سرعت آپلود",
+            "download-total": "مجموع دانلود",
+            "ram-usage": "مصرف RAM",
+            "for-all-nodes": "برای همه نودها"
+        }
+    },
+    "node-vitals": {
+        "card": {
+            "plugin": "Plugin",
+            "select-plugin": "Select plugin",
+            "nothing-found": "Nothing found",
+            "review-documentation-for-more-information": "Review documentation for more information about node plugins."
         }
     },
     "node-users-usage-drawer": {
@@ -1334,6 +1347,20 @@
             "config-profile-or-inbounds-is-missing": "پروفایل پیکربندی یا اینباند وجود ندارد",
             "singbox-core-version": "نسخه هسته Singbox",
             "exodus-node-version": "نسخه نود، @exodus/node"
+        }
+    },
+    "node-system-card": {
+        "widget": {
+            "system-info": "System Info",
+            "memory": "Memory",
+            "used": "Used",
+            "free": "Free",
+            "total": "Total",
+            "system": "System",
+            "system-uptime": "System Uptime",
+            "network": "Network",
+            "kernel": "Kernel",
+            "interface": "Interface"
         }
     },
     "config-profiles": {

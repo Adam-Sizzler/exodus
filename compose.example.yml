@@ -27,7 +27,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VERSION: ${EXODUS_VERSION:-latest}
+        VERSION: ${EXODUS_VERSION:-2.7.4}
         REVISION: ${EXODUS_REVISION:-unknown}
         FRONTEND_REVISION: ${EXODUS_FRONTEND_COMMIT:-unknown}
         BUILD_BRANCH: ${EXODUS_GIT_BRANCH:-unknown}

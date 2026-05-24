@@ -1,6 +1,6 @@
-import { PiChartBarDuotone } from 'react-icons/pi'
 import { useTranslation } from 'node_modules/react-i18next'
-import { Menu } from '@mantine/core'
+import { ActionIcon, Menu, Tooltip } from '@mantine/core'
+import { PiChartBarDuotone } from 'react-icons/pi'
 import { memo } from 'react'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
@@ -8,22 +8,30 @@ import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-st
 import { IProps } from './interfaces'
 
 const GetNodeUsersUsageFeatureComponent = (props: IProps) => {
-    const { nodeUuid } = props
+    const { nodeUuid, renderAs = 'menu' } = props
     const { t } = useTranslation()
 
     const openModalWithData = useModalsStoreOpenWithData()
+    const label = t('get-user-usage.feature.show-usage')
+    const handleOpen = () => {
+        openModalWithData(MODALS.SHOW_NODE_USERS_USAGE_DRAWER, {
+            nodeUuid
+        })
+    }
+
+    if (renderAs === 'action') {
+        return (
+            <Tooltip label={label} withArrow>
+                <ActionIcon color="grape" onClick={handleOpen} size="md" variant="light">
+                    <PiChartBarDuotone size="16px" />
+                </ActionIcon>
+            </Tooltip>
+        )
+    }
 
     return (
-        <Menu.Item
-            color="grape"
-            leftSection={<PiChartBarDuotone size="16px" />}
-            onClick={() => {
-                openModalWithData(MODALS.SHOW_NODE_USERS_USAGE_DRAWER, {
-                    nodeUuid
-                })
-            }}
-        >
-            {t('get-user-usage.feature.show-usage')}
+        <Menu.Item color="grape" leftSection={<PiChartBarDuotone size="16px" />} onClick={handleOpen}>
+            {label}
         </Menu.Item>
     )
 }

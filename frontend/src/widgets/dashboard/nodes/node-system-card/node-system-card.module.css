@@ -1,0 +1,63 @@
+.wrapper {
+    min-width: 0;
+    width: 100%;
+}
+
+.memorySection,
+.interfaceSection,
+.infoSection {
+    padding: 8px 12px;
+    border-radius: var(--mantine-radius-sm);
+    border: 1px solid transparent;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.memorySection {
+    background: rgb(45 212 191 / 6%);
+    border-color: rgb(45 212 191 / 12%);
+}
+
+.interfaceSection {
+    background: rgb(34 211 238 / 6%);
+    border-color: rgb(34 211 238 / 12%);
+}
+
+.infoSection {
+    background: rgb(139 92 246 / 6%);
+    border-color: rgb(139 92 246 / 12%);
+}
+
+.statLabel {
+    color: var(--mantine-color-dimmed);
+    font-size: var(--mantine-font-size-xs);
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.statValue {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--mantine-color-white-5);
+    font-family: var(--mantine-font-family-monospace);
+    font-size: var(--mantine-font-size-xs);
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.memoryValues {
+    color: var(--mantine-color-white-5);
+    font-family: var(--mantine-font-family-monospace);
+    font-size: var(--mantine-font-size-xs);
+    font-weight: 600;
+}
+
+.memoryPercent {
+    color: var(--mantine-color-dimmed);
+    font-family: var(--mantine-font-family-monospace);
+    font-size: var(--mantine-font-size-xs);
+}

@@ -71,36 +71,78 @@ type providerResponse struct {
 	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
+type nodeSystemInfoResponse struct {
+	Arch              string   `json:"arch"`
+	CPUs              int      `json:"cpus"`
+	CPUModel          string   `json:"cpuModel"`
+	MemoryTotal       uint64   `json:"memoryTotal"`
+	Hostname          string   `json:"hostname"`
+	Platform          string   `json:"platform"`
+	Release           string   `json:"release"`
+	Type              string   `json:"type"`
+	Version           string   `json:"version"`
+	NetworkInterfaces []string `json:"networkInterfaces"`
+}
+
+type nodeSystemInterfaceResponse struct {
+	Interface     string  `json:"interface"`
+	RXBytesPerSec float64 `json:"rxBytesPerSec"`
+	TXBytesPerSec float64 `json:"txBytesPerSec"`
+	RXTotal       uint64  `json:"rxTotal"`
+	TXTotal       uint64  `json:"txTotal"`
+}
+
+type nodeSystemStatsResponse struct {
+	MemoryFree uint64                       `json:"memoryFree"`
+	MemoryUsed uint64                       `json:"memoryUsed"`
+	Uptime     float64                      `json:"uptime"`
+	LoadAvg    []float64                    `json:"loadAvg"`
+	Interface  *nodeSystemInterfaceResponse `json:"interface"`
+}
+
+type nodeSystemResponse struct {
+	Info  nodeSystemInfoResponse  `json:"info"`
+	Stats nodeSystemStatsResponse `json:"stats"`
+}
+
+type nodeVersionsResponse struct {
+	Singbox string `json:"singbox"`
+	Node    string `json:"node"`
+}
+
 type nodeAPI struct {
-	UUID                    string     `json:"uuid"`
-	Name                    string     `json:"name"`
-	Address                 string     `json:"address"`
-	Port                    *int       `json:"port"`
-	APISchema               string     `json:"apiSchema"`
-	APIPath                 string     `json:"apiPath"`
-	IsConnected             bool       `json:"isConnected"`
-	IsDisabled              bool       `json:"isDisabled"`
-	IsConnecting            bool       `json:"isConnecting"`
-	LastStatusChange        *time.Time `json:"lastStatusChange"`
-	LastStatusMessage       *string    `json:"lastStatusMessage"`
-	SingboxVersion          *string    `json:"singboxVersion"`
-	NodeVersion             *string    `json:"nodeVersion"`
-	SingboxUptime           string     `json:"singboxUptime"`
-	IsTrafficTrackingActive bool       `json:"isTrafficTrackingActive"`
-	TrafficResetDay         *int       `json:"trafficResetDay"`
-	TrafficLimitBytes       *int64     `json:"trafficLimitBytes"`
-	TrafficUsedBytes        *int64     `json:"trafficUsedBytes"`
-	NotifyPercent           *int       `json:"notifyPercent"`
-	UsersOnline             *int       `json:"usersOnline"`
-	ViewPosition            int        `json:"viewPosition"`
-	CountryCode             string     `json:"countryCode"`
-	ConsumptionMultiplier   float64    `json:"consumptionMultiplier"`
-	Tags                    []string   `json:"tags"`
-	CPUCount                *int       `json:"cpuCount"`
-	CPUModel                *string    `json:"cpuModel"`
-	TotalRAM                *string    `json:"totalRam"`
-	CreatedAt               time.Time  `json:"createdAt"`
-	UpdatedAt               time.Time  `json:"updatedAt"`
+	UUID                    string                `json:"uuid"`
+	Name                    string                `json:"name"`
+	Address                 string                `json:"address"`
+	Port                    *int                  `json:"port"`
+	APISchema               string                `json:"apiSchema"`
+	APIPath                 string                `json:"apiPath"`
+	ActivePluginUUID        *string               `json:"activePluginUuid"`
+	IsConnected             bool                  `json:"isConnected"`
+	IsDisabled              bool                  `json:"isDisabled"`
+	IsConnecting            bool                  `json:"isConnecting"`
+	LastStatusChange        *time.Time            `json:"lastStatusChange"`
+	LastStatusMessage       *string               `json:"lastStatusMessage"`
+	SingboxVersion          *string               `json:"singboxVersion"`
+	NodeVersion             *string               `json:"nodeVersion"`
+	SingboxUptime           string                `json:"singboxUptime"`
+	IsTrafficTrackingActive bool                  `json:"isTrafficTrackingActive"`
+	TrafficResetDay         *int                  `json:"trafficResetDay"`
+	TrafficLimitBytes       *int64                `json:"trafficLimitBytes"`
+	TrafficUsedBytes        *int64                `json:"trafficUsedBytes"`
+	NotifyPercent           *int                  `json:"notifyPercent"`
+	UsersOnline             *int                  `json:"usersOnline"`
+	ViewPosition            int                   `json:"viewPosition"`
+	CountryCode             string                `json:"countryCode"`
+	ConsumptionMultiplier   float64               `json:"consumptionMultiplier"`
+	Tags                    []string              `json:"tags"`
+	CPUCount                *int                  `json:"cpuCount"`
+	CPUModel                *string               `json:"cpuModel"`
+	TotalRAM                *string               `json:"totalRam"`
+	System                  *nodeSystemResponse   `json:"system"`
+	Versions                *nodeVersionsResponse `json:"versions"`
+	CreatedAt               time.Time             `json:"createdAt"`
+	UpdatedAt               time.Time             `json:"updatedAt"`
 	ConfigProfile           struct {
 		ActiveConfigProfileUUID *string                        `json:"activeConfigProfileUuid"`
 		ActiveInbounds          []configProfileInboundResponse `json:"activeInbounds"`
@@ -118,6 +160,7 @@ type nodeRecord struct {
 	APISchema               string
 	APIPath                 string
 	ActiveConfigProfileUUID *string
+	ActivePluginUUID        *string
 	IsConnected             bool
 	IsConnecting            bool
 	IsDisabled              bool
@@ -140,6 +183,8 @@ type nodeRecord struct {
 	CPUCount                *int
 	CPUModel                *string
 	TotalRAM                *string
+	SystemInfoRaw           []byte
+	SystemStatsRaw          []byte
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 }
@@ -155,6 +200,7 @@ type createNodeRequest struct {
 	Port                    *int                    `json:"port,omitempty"`
 	APISchema               *string                 `json:"apiSchema,omitempty"`
 	APIPath                 *string                 `json:"apiPath,omitempty"`
+	ActivePluginUUID        *string                 `json:"activePluginUuid,omitempty"`
 	IsTrafficTrackingActive *bool                   `json:"isTrafficTrackingActive,omitempty"`
 	TrafficLimitBytes       *int64                  `json:"trafficLimitBytes,omitempty"`
 	NotifyPercent           *int                    `json:"notifyPercent,omitempty"`
@@ -173,6 +219,7 @@ type updateNodeRequest struct {
 	Port                    *int                     `json:"port,omitempty"`
 	APISchema               *string                  `json:"apiSchema,omitempty"`
 	APIPath                 *string                  `json:"apiPath,omitempty"`
+	ActivePluginUUID        OptionalString           `json:"activePluginUuid,omitempty"`
 	IsTrafficTrackingActive *bool                    `json:"isTrafficTrackingActive,omitempty"`
 	TrafficLimitBytes       *int64                   `json:"trafficLimitBytes,omitempty"`
 	NotifyPercent           *int                     `json:"notifyPercent,omitempty"`
@@ -412,12 +459,12 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 		_, err = tx.ExecContext(r.Context(), `
 			INSERT INTO nodes (
-				uuid, name, address, port, api_schema, api_path, active_config_profile_uuid,
+				uuid, name, address, port, api_schema, api_path, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, country_code, tags, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`,
 			nodeUUID,
 			strings.TrimSpace(req.Name),
@@ -426,6 +473,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			normalizeAPISchema(req.APISchema),
 			normalizeAPIPath(req.APIPath),
 			req.ConfigProfile.ActiveConfigProfileUUID,
+			normalizeNullableString(req.ActivePluginUUID),
 			false,
 			false,
 			false,
@@ -561,6 +609,13 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 				clauses = append(clauses, "provider_uuid = NULL")
 			} else {
 				add("provider_uuid", strings.TrimSpace(*req.ProviderUUID.Value))
+			}
+		}
+		if req.ActivePluginUUID.Set {
+			if req.ActivePluginUUID.Value == nil || strings.TrimSpace(*req.ActivePluginUUID.Value) == "" {
+				clauses = append(clauses, "active_plugin_uuid = NULL")
+			} else {
+				add("active_plugin_uuid", strings.TrimSpace(*req.ActivePluginUUID.Value))
 			}
 		}
 		if req.ConfigProfile != nil {
@@ -1109,6 +1164,11 @@ func validateCreateRequest(req createNodeRequest) error {
 	if req.ConsumptionMultiplier != nil && (*req.ConsumptionMultiplier < 0 || *req.ConsumptionMultiplier > 100) {
 		return fmt.Errorf("consumptionMultiplier must be between 0 and 100")
 	}
+	if req.ActivePluginUUID != nil && strings.TrimSpace(*req.ActivePluginUUID) != "" {
+		if _, err := uuid.Parse(strings.TrimSpace(*req.ActivePluginUUID)); err != nil {
+			return fmt.Errorf("invalid activePluginUuid")
+		}
+	}
 	if _, err := uuid.Parse(req.ConfigProfile.ActiveConfigProfileUUID); err != nil {
 		return fmt.Errorf("invalid activeConfigProfileUuid")
 	}
@@ -1157,6 +1217,11 @@ func validateUpdateRequest(req updateNodeRequest) error {
 	}
 	if req.ConsumptionMultiplier != nil && (*req.ConsumptionMultiplier < 0 || *req.ConsumptionMultiplier > 100) {
 		return fmt.Errorf("consumptionMultiplier must be between 0 and 100")
+	}
+	if req.ActivePluginUUID.Set && req.ActivePluginUUID.Value != nil && strings.TrimSpace(*req.ActivePluginUUID.Value) != "" {
+		if _, err := uuid.Parse(strings.TrimSpace(*req.ActivePluginUUID.Value)); err != nil {
+			return fmt.Errorf("invalid activePluginUuid")
+		}
 	}
 	if req.ConfigProfile != nil {
 		if _, err := uuid.Parse(req.ConfigProfile.ActiveConfigProfileUUID); err != nil {
@@ -1285,6 +1350,7 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.Port = record.Port
 		item.APISchema = normalizeAPISchema(&record.APISchema)
 		item.APIPath = normalizeAPIPath(&record.APIPath)
+		item.ActivePluginUUID = record.ActivePluginUUID
 		item.IsConnected = record.IsConnected
 		item.IsDisabled = record.IsDisabled
 		item.IsConnecting = record.IsConnecting
@@ -1306,6 +1372,8 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.CPUCount = record.CPUCount
 		item.CPUModel = record.CPUModel
 		item.TotalRAM = record.TotalRAM
+		item.System = buildNodeSystem(record.SystemInfoRaw, record.SystemStatsRaw)
+		item.Versions = buildNodeVersions(record.SingboxVersion, record.NodeVersion)
 		item.CreatedAt = record.CreatedAt
 		item.UpdatedAt = record.UpdatedAt
 		item.ConfigProfile.ActiveConfigProfileUUID = record.ActiveConfigProfileUUID
@@ -1318,6 +1386,49 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	}
 
 	return response, nil
+}
+
+func buildNodeSystem(infoRaw []byte, statsRaw []byte) *nodeSystemResponse {
+	if len(infoRaw) == 0 || len(statsRaw) == 0 {
+		return nil
+	}
+
+	var info nodeSystemInfoResponse
+	if err := json.Unmarshal(infoRaw, &info); err != nil {
+		return nil
+	}
+	var stats nodeSystemStatsResponse
+	if err := json.Unmarshal(statsRaw, &stats); err != nil {
+		return nil
+	}
+	if stats.LoadAvg == nil {
+		stats.LoadAvg = []float64{0, 0, 0}
+	}
+	if info.NetworkInterfaces == nil {
+		info.NetworkInterfaces = []string{}
+	}
+
+	return &nodeSystemResponse{
+		Info:  info,
+		Stats: stats,
+	}
+}
+
+func buildNodeVersions(singboxVersion *string, nodeVersion *string) *nodeVersionsResponse {
+	if singboxVersion == nil && nodeVersion == nil {
+		return nil
+	}
+	versions := &nodeVersionsResponse{
+		Singbox: "unknown",
+		Node:    "unknown",
+	}
+	if singboxVersion != nil && strings.TrimSpace(*singboxVersion) != "" {
+		versions.Singbox = strings.TrimSpace(*singboxVersion)
+	}
+	if nodeVersion != nil && strings.TrimSpace(*nodeVersion) != "" {
+		versions.Node = strings.TrimSpace(*nodeVersion)
+	}
+	return versions
 }
 
 func emitNodeNotification(ctx context.Context, cfg *config.BackendConfig, event string, record nodeRecord, meta map[string]any) {
@@ -1364,6 +1475,7 @@ func nodeRecordNotificationData(record nodeRecord) map[string]any {
 		"apiSchema":               record.APISchema,
 		"apiPath":                 record.APIPath,
 		"activeConfigProfileUuid": record.ActiveConfigProfileUUID,
+		"activePluginUuid":        record.ActivePluginUUID,
 		"isConnected":             record.IsConnected,
 		"isConnecting":            record.IsConnecting,
 		"isDisabled":              record.IsDisabled,
@@ -1401,12 +1513,12 @@ func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
 			SELECT
-				uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
+					uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, view_position, country_code, tags,
-				cpu_count, cpu_model, total_ram, created_at, updated_at
+				cpu_count, cpu_model, total_ram, system_info, system_stats, created_at, updated_at
 			FROM nodes
 			ORDER BY view_position ASC
 		`)
@@ -1431,12 +1543,12 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
 			SELECT
-				uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid,
+					uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, view_position, country_code, tags,
-				cpu_count, cpu_model, total_ram, created_at, updated_at
+				cpu_count, cpu_model, total_ram, system_info, system_stats, created_at, updated_at
 			FROM nodes
 			WHERE uuid = ?
 		`, nodeUUID)
@@ -1452,6 +1564,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var id sql.NullInt64
 	var port sql.NullInt64
 	var activeConfigProfileUUID sql.NullString
+	var activePluginUUID sql.NullString
 	var lastStatusChange sql.NullTime
 	var lastStatusMessage sql.NullString
 	var singboxVersion sql.NullString
@@ -1465,6 +1578,8 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var cpuCount sql.NullInt64
 	var cpuModel sql.NullString
 	var totalRAM sql.NullString
+	var systemInfoRaw []byte
+	var systemStatsRaw []byte
 	var tags dbutil.StringArray
 
 	err := scanner.Scan(
@@ -1476,6 +1591,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.APISchema,
 		&node.APIPath,
 		&activeConfigProfileUUID,
+		&activePluginUUID,
 		&node.IsConnected,
 		&node.IsConnecting,
 		&node.IsDisabled,
@@ -1498,6 +1614,8 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&cpuCount,
 		&cpuModel,
 		&totalRAM,
+		&systemInfoRaw,
+		&systemStatsRaw,
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
@@ -1514,6 +1632,9 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	}
 	if activeConfigProfileUUID.Valid {
 		node.ActiveConfigProfileUUID = &activeConfigProfileUUID.String
+	}
+	if activePluginUUID.Valid {
+		node.ActivePluginUUID = &activePluginUUID.String
 	}
 	if lastStatusChange.Valid {
 		node.LastStatusChange = &lastStatusChange.Time
@@ -1557,6 +1678,12 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	}
 	if totalRAM.Valid {
 		node.TotalRAM = &totalRAM.String
+	}
+	if len(systemInfoRaw) > 0 {
+		node.SystemInfoRaw = append([]byte(nil), systemInfoRaw...)
+	}
+	if len(systemStatsRaw) > 0 {
+		node.SystemStatsRaw = append([]byte(nil), systemStatsRaw...)
 	}
 	node.Tags = tags.Slice()
 

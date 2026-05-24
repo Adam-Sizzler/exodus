@@ -915,7 +915,20 @@
             "total-download": "Всего скачано",
             "average-bps": "Средняя скорость",
             "active-nodes": "Активные ноды",
-            "current-hour": "Текущий час"
+            "current-hour": "Текущий час",
+            "download-speed": "Скорость скачивания",
+            "upload-speed": "Скорость загрузки",
+            "download-total": "Всего скачано",
+            "ram-usage": "Использование RAM",
+            "for-all-nodes": "По всем нодам"
+        }
+    },
+    "node-vitals": {
+        "card": {
+            "plugin": "Плагин",
+            "select-plugin": "Выберите плагин",
+            "nothing-found": "Ничего не найдено",
+            "review-documentation-for-more-information": "Смотрите документацию для подробностей о плагинах нод."
         }
     },
     "node-users-usage-drawer": {
@@ -1358,6 +1371,20 @@
             "config-profile-or-inbounds-is-missing": "Профиль или инбаунд не выбран",
             "singbox-core-version": "Версия ядра Singbox",
             "exodus-node-version": "Версия модуля @exodus/node"
+        }
+    },
+    "node-system-card": {
+        "widget": {
+            "system-info": "Система",
+            "memory": "Память",
+            "used": "Использовано",
+            "free": "Свободно",
+            "total": "Всего",
+            "system": "Система",
+            "system-uptime": "Время работы системы",
+            "network": "Сеть",
+            "kernel": "Ядро",
+            "interface": "Интерфейс"
         }
     },
     "config-profiles": {
