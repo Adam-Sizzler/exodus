@@ -1,7 +1,8 @@
 package server
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,13 +17,15 @@ import (
 // DeployConfigTaskPayload is JSON payload for SubmitTask(operation=deploy_config).
 // It accepts either "config" or "singbox_config" with raw sing-box JSON.
 type DeployConfigTaskPayload struct {
-	Config        json.RawMessage       `json:"config"`
-	SingboxConfig json.RawMessage       `json:"singbox_config"`
-	Listen        string                `json:"listen"`
-	Restart       *bool                 `json:"restart"`
-	Stats         DeployConfigTaskStats `json:"stats"`
-	SRSLists      []SRSListItem         `json:"srs_lists"`
-	Modules       DeployModulesPayload  `json:"modules"`
+	Config            json.RawMessage       `json:"config"`
+	SingboxConfig     json.RawMessage       `json:"singbox_config"`
+	Listen            string                `json:"listen"`
+	Restart           *bool                 `json:"restart"`
+	ForceRestart      *bool                 `json:"force_restart"`
+	ForceRestartCamel *bool                 `json:"forceRestart"`
+	Stats             DeployConfigTaskStats `json:"stats"`
+	SRSLists          []SRSListItem         `json:"srs_lists"`
+	Modules           DeployModulesPayload  `json:"modules"`
 }
 
 type DeployConfigTaskStats struct {
@@ -50,6 +53,7 @@ type DeploySummary struct {
 	Outbounds             int
 	Users                 int
 	Restarted             bool
+	ForceRestart          bool
 	ConfigChanged         bool
 	HaproxyUsersChanged   bool
 	SRSDownloadedOnDeploy bool
@@ -98,9 +102,10 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		return DeploySummary{}, fmt.Errorf("create config dir: %w", err)
 	}
 
+	finalConfigHash := sha256Hex(finalConfig)
 	configChanged := true
 	if currentConfig, err := os.ReadFile(configPath); err == nil {
-		configChanged = !bytes.Equal(currentConfig, finalConfig)
+		configChanged = sha256Hex(currentConfig) != finalConfigHash
 	} else if !os.IsNotExist(err) {
 		return DeploySummary{}, fmt.Errorf("read current config: %w", err)
 	}
@@ -133,12 +138,17 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		s.Cfg.Logger.Debug("HAProxy users unchanged, runtime reload skipped")
 	}
 
-	shouldRestart := task.Restart != nil && *task.Restart
+	shouldRestart := task.restartRequested()
+	forceRestart := task.forceRestartRequested()
 
 	restarted := false
 	if shouldRestart {
-		if configChanged {
-			s.Cfg.Logger.Info("Core reload requested by deploy payload")
+		if shouldReloadCore(task, configChanged) {
+			if forceRestart && !configChanged {
+				s.Cfg.Logger.Warn("Core force reload requested by deploy payload")
+			} else {
+				s.Cfg.Logger.Info("Core reload requested by deploy payload")
+			}
 			if err := reloadCoreProcess(s.Cfg); err != nil {
 				return DeploySummary{}, err
 			}
@@ -157,10 +167,37 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		Outbounds:             len(summary.Outbounds),
 		Users:                 len(summary.Users),
 		Restarted:             restarted,
+		ForceRestart:          forceRestart,
 		ConfigChanged:         configChanged,
 		HaproxyUsersChanged:   haproxyUsersChanged,
 		SRSDownloadedOnDeploy: srsDownloadedOnDeploy,
 	}, nil
+}
+
+func (task DeployConfigTaskPayload) restartRequested() bool {
+	if task.forceRestartRequested() {
+		return true
+	}
+	return task.Restart != nil && *task.Restart
+}
+
+func (task DeployConfigTaskPayload) forceRestartRequested() bool {
+	if task.ForceRestart != nil {
+		return *task.ForceRestart
+	}
+	return task.ForceRestartCamel != nil && *task.ForceRestartCamel
+}
+
+func shouldReloadCore(task DeployConfigTaskPayload, configChanged bool) bool {
+	if !task.restartRequested() {
+		return false
+	}
+	return configChanged || task.forceRestartRequested()
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 type BuildOptions struct {

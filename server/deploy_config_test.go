@@ -81,6 +81,59 @@ func TestBuildSingboxConfigWithV2RayAPIPreservesNestedObjectOrder(t *testing.T) 
 	}
 }
 
+func TestShouldReloadCoreHonorsForceRestart(t *testing.T) {
+	restart := true
+	noRestart := false
+	force := true
+	soft := false
+
+	cases := []struct {
+		name          string
+		task          DeployConfigTaskPayload
+		configChanged bool
+		want          bool
+	}{
+		{
+			name:          "soft restart changed config",
+			task:          DeployConfigTaskPayload{Restart: &restart, ForceRestart: &soft},
+			configChanged: true,
+			want:          true,
+		},
+		{
+			name:          "soft restart unchanged config",
+			task:          DeployConfigTaskPayload{Restart: &restart, ForceRestart: &soft},
+			configChanged: false,
+			want:          false,
+		},
+		{
+			name:          "force restart unchanged config",
+			task:          DeployConfigTaskPayload{Restart: &restart, ForceRestart: &force},
+			configChanged: false,
+			want:          true,
+		},
+		{
+			name:          "camel force restart unchanged config",
+			task:          DeployConfigTaskPayload{Restart: &restart, ForceRestartCamel: &force},
+			configChanged: false,
+			want:          true,
+		},
+		{
+			name:          "restart disabled",
+			task:          DeployConfigTaskPayload{Restart: &noRestart},
+			configChanged: true,
+			want:          false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := shouldReloadCore(tc.task, tc.configChanged); got != tc.want {
+				t.Fatalf("unexpected reload decision: got=%v want=%v", got, tc.want)
+			}
+		})
+	}
+}
+
 func mustGet(t *testing.T, o orderedmap.OrderedMap, key string) any {
 	t.Helper()
 	v, ok := o.Get(key)
@@ -107,4 +160,3 @@ func mustArray(t *testing.T, v any) []any {
 	}
 	return arr
 }
-
