@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -352,26 +351,54 @@ func detectLoadAverage() []float64 {
 
 func detectNetworkInterfaces() []string {
 	seen := make(map[string]struct{})
+	interfaces := make([]string, 0)
+
+	appendInterface := func(name string) {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		interfaces = append(interfaces, name)
+	}
 
 	ifaces, err := net.Interfaces()
 	if err == nil {
 		for _, iface := range ifaces {
-			if strings.TrimSpace(iface.Name) != "" {
-				seen[iface.Name] = struct{}{}
-			}
+			appendInterface(iface.Name)
 		}
 	}
 
-	counters := readNetworkCounters()
-	for iface := range counters {
-		seen[iface] = struct{}{}
+	for _, iface := range readNetworkInterfaceOrder() {
+		appendInterface(iface)
 	}
 
-	interfaces := make([]string, 0, len(seen))
-	for iface := range seen {
-		interfaces = append(interfaces, iface)
+	return interfaces
+}
+
+func readNetworkInterfaceOrder() []string {
+	content, err := os.ReadFile("/proc/net/dev")
+	if err != nil {
+		return nil
 	}
-	sort.Strings(interfaces)
+	interfaces := make([]string, 0)
+	for _, line := range strings.Split(string(content), "\n")[2:] {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		iface := strings.TrimSpace(parts[0])
+		if iface != "" {
+			interfaces = append(interfaces, iface)
+		}
+	}
 	return interfaces
 }
 
@@ -434,12 +461,7 @@ func (s *Service) collectInterfaceStats() *systemInterfaceStats {
 		s.defaultInterface = detectDefaultInterface()
 	}
 	if s.defaultInterface == "" {
-		interfaces := make([]string, 0, len(current))
-		for iface := range current {
-			interfaces = append(interfaces, iface)
-		}
-		sort.Strings(interfaces)
-		for _, iface := range interfaces {
+		for _, iface := range readNetworkInterfaceOrder() {
 			if iface != "lo" {
 				s.defaultInterface = iface
 				break
