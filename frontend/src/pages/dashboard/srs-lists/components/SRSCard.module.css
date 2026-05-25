@@ -165,17 +165,23 @@
 
 .rightMeta {
     margin-left: auto;
-    flex-shrink: 0;
+    flex: 0 0 auto;
     min-width: 0;
     justify-content: flex-end;
-    max-width: 45%;
+    max-width: min(45%, 180px);
 }
 
 .intervalBadge {
+    min-width: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.intervalBadge :global(.mantine-Badge-label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mobileAddress {

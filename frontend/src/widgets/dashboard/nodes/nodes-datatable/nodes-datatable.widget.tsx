@@ -1,21 +1,25 @@
 import { DataTable, useDataTableColumns } from 'mantine-datatable'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { Box, Button, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'node_modules/react-i18next'
 import { PiEmpty } from 'react-icons/pi'
 import { memo, useState } from 'react'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { useGetConfigProfiles, useGetNodes } from '@shared/api/hooks'
+import {
+    NodeResponse,
+    useGetConfigProfiles,
+    useGetNodePlugins,
+    useGetNodes
+} from '@shared/api/hooks'
 import { sToMs } from '@shared/utils/time-utils'
 import { LoadingScreen } from '@shared/ui'
 
 import { getNodesTableColumns } from './use-nodes-table-widget'
 
 interface IProps {
-    nodes: GetAllNodesCommand.Response['response'] | undefined
-    selectedRecords: GetAllNodesCommand.Response['response'][number][]
-    setSelectedRecords: (records: GetAllNodesCommand.Response['response'][number][]) => void
+    nodes: NodeResponse[] | undefined
+    selectedRecords: NodeResponse[]
+    setSelectedRecords: (records: NodeResponse[]) => void
 }
 
 const PAGE_SIZE = 20
@@ -30,6 +34,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
     const [page, setPage] = useState(1)
 
     const { data: configProfiles } = useGetConfigProfiles({})
+    const { data: nodePlugins } = useGetNodePlugins({})
 
     const openModalWithData = useModalsStoreOpenWithData()
 
@@ -46,7 +51,12 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
     const { effectiveColumns } = useDataTableColumns({
         key: NODES_CACHE_KEY,
-        columns: getNodesTableColumns(t, configProfiles?.configProfiles ?? [], handleViewNode)
+        columns: getNodesTableColumns(
+            t,
+            configProfiles?.configProfiles ?? [],
+            nodePlugins?.nodePlugins ?? [],
+            handleViewNode
+        )
     })
 
     const handleChangePageSize = (pageSize: number) => {
@@ -54,7 +64,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
         setPage(1)
     }
 
-    if (!nodes || !configProfiles) return <LoadingScreen height="60vh" />
+    if (!nodes || !configProfiles || !nodePlugins) return <LoadingScreen height="60vh" />
 
     return (
         <DataTable

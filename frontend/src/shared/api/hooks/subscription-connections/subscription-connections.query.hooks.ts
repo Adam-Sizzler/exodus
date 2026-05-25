@@ -1,7 +1,4 @@
-import {
-    GetAllNodesTagsCommand,
-    GetOneNodeCommand
-} from '@exodus/backend-contract'
+import { GetAllNodesTagsCommand, GetOneNodeCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 import { z } from 'zod'
@@ -37,6 +34,8 @@ const getSubscriptionConnectionsPubKeyResponseSchema = z.object({
         grpcToken: z.string().optional().default('')
     })
 })
+
+export type SubscriptionConnectionResponse = z.infer<typeof subscriptionConnectionNodeSchema>
 
 export const subscriptionConnectionsQueryKeys = createQueryKeys('subscriptionConnections', {
     getAllNodes: {

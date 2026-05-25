@@ -1,5 +1,3 @@
-/* eslint-disable no-nested-ternary */
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'node_modules/react-i18next'
 import { Grid, Stack } from '@mantine/core'
 import { HiServer } from 'react-icons/hi'
@@ -15,6 +13,7 @@ import { NodesRealtimeUsageMetrics } from '@widgets/dashboard/nodes/nodes-realti
 import { NodeUsersUsageDrawer } from '@widgets/dashboard/nodes/node-users-usage-statistic'
 import { CreateNodeModalWidget } from '@widgets/dashboard/nodes/create-node-modal'
 import { NodesTableWidget } from '@widgets/dashboard/nodes/nodes-table'
+import { NodeResponse } from '@shared/api/hooks'
 import { LoadingScreen, Page, PageHeaderShared } from '@shared/ui'
 
 import { IProps, NodesViewMode } from './interfaces'
@@ -25,9 +24,7 @@ export default function NodesPageComponent(props: IProps) {
     const { t } = useTranslation()
 
     const [viewMode, setViewMode] = useState<NodesViewMode>(NodesViewMode.CARDS)
-    const [selectedRecords, setSelectedRecords] = useState<
-        GetAllNodesCommand.Response['response'][number][]
-    >([])
+    const [selectedRecords, setSelectedRecords] = useState<NodeResponse[]>([])
 
     return (
         <Page title={t('constants.nodes')}>

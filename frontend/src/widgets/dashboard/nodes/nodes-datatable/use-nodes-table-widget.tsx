@@ -1,4 +1,4 @@
-import { GetAllNodesCommand, GetConfigProfilesCommand } from '@exodus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { ActionIcon, Avatar, Badge, Group, Text } from '@mantine/core'
 import { DataTableColumn } from 'mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'
@@ -7,7 +7,9 @@ import { TbEdit } from 'react-icons/tb'
 import { TFunction } from 'i18next'
 import sortBy from 'lodash/sortBy'
 
-import { prettyBytesUtil } from '@shared/utils/bytes'
+import { prettyBytesUtil, prettySiBytesUtil, prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
+import { getSingboxUptimeUtil, formatDurationUtil } from '@shared/utils/time-utils'
+import { NodePluginResponse, NodeResponse } from '@shared/api/hooks'
 import { faviconResolver } from '@shared/utils/misc'
 
 import { NodeStatusSimplfiedBadgeWidget } from '../node-status-simplfied-badge'
@@ -15,8 +17,9 @@ import { NodeStatusSimplfiedBadgeWidget } from '../node-status-simplfied-badge'
 export function getNodesTableColumns(
     t: TFunction,
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles'],
+    nodePlugins: NodePluginResponse[],
     handleViewNode: (nodeUuid: string) => void
-): DataTableColumn<GetAllNodesCommand.Response['response'][number]>[] {
+): DataTableColumn<NodeResponse>[] {
     return [
         {
             accessor: 'actions',
@@ -132,11 +135,19 @@ export function getNodesTableColumns(
         },
         {
             accessor: 'singboxVersion',
-            title: t('use-nodes-table-widget.singbox-v')
+            title: t('use-nodes-table-widget.singbox-v'),
+            render: ({ versions, singboxVersion }) => versions?.singbox ?? singboxVersion ?? '-'
         },
         {
             accessor: 'nodeVersion',
-            title: t('use-nodes-table-widget.node-v')
+            title: t('use-nodes-table-widget.node-v'),
+            render: ({ versions, nodeVersion }) => versions?.node ?? nodeVersion ?? '-'
+        },
+        {
+            accessor: 'singboxUptime',
+            title: 'Sing-box Uptime',
+            render: ({ singboxUptime }) =>
+                singboxUptime && singboxUptime !== '0' ? getSingboxUptimeUtil(singboxUptime) : '-'
         },
         {
             accessor: 'provider.name',
@@ -169,12 +180,83 @@ export function getNodesTableColumns(
             render: ({ tags }) => tags?.join(', ') ?? '-'
         },
         {
+            accessor: 'activePluginUuid',
+            title: 'Plugin',
+            render: ({ activePluginUuid }) =>
+                nodePlugins.find((plugin) => plugin.uuid === activePluginUuid)?.name ?? '-'
+        },
+        {
+            accessor: 'system.info.cpus',
+            title: 'CPU Cores',
+            render: ({ system, cpuCount }) => system?.info.cpus ?? cpuCount ?? '-'
+        },
+        {
+            accessor: 'system.stats.memoryFree',
+            title: 'Free RAM',
+            render: ({ system }) => (system ? prettyBytesUtil(system.stats.memoryFree, false) : '-')
+        },
+        {
+            accessor: 'system.stats.memoryUsed',
+            title: 'Used RAM',
+            render: ({ system }) => (system ? prettyBytesUtil(system.stats.memoryUsed, false) : '-')
+        },
+        {
             accessor: 'totalRam',
-            title: t('use-nodes-table-widget.total-ram')
+            title: t('use-nodes-table-widget.total-ram'),
+            render: ({ system, totalRam }) =>
+                system ? prettyBytesUtil(system.info.memoryTotal, false) : (totalRam ?? '-')
         },
         {
             accessor: 'cpuModel',
-            title: t('use-nodes-table-widget.cpu-model')
+            title: t('use-nodes-table-widget.cpu-model'),
+            render: ({ system, cpuModel }) => system?.info.cpuModel ?? cpuModel ?? '-'
+        },
+        {
+            accessor: 'system.stats.uptime',
+            title: 'Server Uptime',
+            render: ({ system }) => (system ? formatDurationUtil(system.stats.uptime) : '-')
+        },
+        {
+            accessor: 'system.info.networkInterfaces',
+            title: 'Network Interfaces',
+            render: ({ system }) => (system ? system.info.networkInterfaces.join(', ') : '-')
+        },
+        {
+            accessor: 'system.stats.interface.rxBytesPerSec',
+            title: 'RX Speed',
+            render: ({ system }) =>
+                system?.stats.interface
+                    ? prettySiRealtimeBytesUtil(system.stats.interface.rxBytesPerSec, true, true)
+                    : '-'
+        },
+        {
+            accessor: 'system.stats.interface.txBytesPerSec',
+            title: 'TX Speed',
+            render: ({ system }) =>
+                system?.stats.interface
+                    ? prettySiRealtimeBytesUtil(system.stats.interface.txBytesPerSec, true, true)
+                    : '-'
+        },
+        {
+            accessor: 'system.stats.interface.rxTotal',
+            title: 'RX Total',
+            render: ({ system }) =>
+                system?.stats.interface
+                    ? prettySiBytesUtil(system.stats.interface.rxTotal, true)
+                    : '-'
+        },
+        {
+            accessor: 'system.stats.interface.txTotal',
+            title: 'TX Total',
+            render: ({ system }) =>
+                system?.stats.interface
+                    ? prettySiBytesUtil(system.stats.interface.txTotal, true)
+                    : '-'
+        },
+        {
+            accessor: 'system.info.release',
+            title: 'OS Release',
+            render: ({ system }) => system?.info.release ?? '-'
         }
     ]
 }

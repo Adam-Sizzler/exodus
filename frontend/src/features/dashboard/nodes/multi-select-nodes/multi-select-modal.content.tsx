@@ -1,18 +1,14 @@
-import {
-    GetAllNodesCommand,
-    NODES_BULK_ACTIONS,
-    TNodesBulkActions
-} from '@exodus/backend-contract'
+import { NODES_BULK_ACTIONS, TNodesBulkActions } from '@exodus/backend-contract'
 import { TbCheck, TbPlayerStop, TbRefresh, TbRocket } from 'react-icons/tb'
 import { useTranslation } from 'node_modules/react-i18next'
 import { modals } from '@mantine/modals'
 import { Stack } from '@mantine/core'
 
-import { QueryKeys, useBulkNodesActions } from '@shared/api/hooks'
+import { NodeResponse, QueryKeys, useBulkNodesActions } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
 import { ActionCardShared } from '@shared/ui'
 
-type NodeType = GetAllNodesCommand.Response['response'][number]
+type NodeType = NodeResponse
 
 interface IProps {
     selectedRecords: NodeType[]

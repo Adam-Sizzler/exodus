@@ -21,7 +21,9 @@ import {
     TbServer2
 } from 'react-icons/tb'
 import ReactCountryFlag from 'react-country-flag'
+import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
+import { z } from 'zod'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { NodeResponse, useNodePluginExecutor } from '@shared/api/hooks'
@@ -44,14 +46,12 @@ const UNBLOCK_PLACEHOLDER = `192.168.1.1
 10.0.0.1
 172.16.0.1`
 
-const isValidIP = (value: string) => {
-    const ipv4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/
-    const ipv6 = /^(([0-9a-f]{1,4}:){2,7}[0-9a-f]{1,4}|::1|::)$/i
-    return ipv4.test(value) || ipv6.test(value)
-}
+const ipSchema = z.string().ip({ message: 'Invalid IP address' })
 
 export const NodePluginExecutorContent = (props: IProps) => {
     const { nodes, onClose } = props
+    const { t } = useTranslation()
+    const tr = (key: string, defaultValue: string) => t(key, { defaultValue })
 
     const { mutate: executeNodePlugin, isPending } = useNodePluginExecutor({
         mutationFns: {
@@ -112,8 +112,9 @@ export const NodePluginExecutorContent = (props: IProps) => {
             const ip = parts[0]?.trim() ?? ''
             const timeout = parseInt(parts[1]?.trim() ?? '0', 10)
 
-            if (!isValidIP(ip)) {
-                errors.push(`Line ${index + 1}: "${ip}" is not a valid IP address`)
+            const result = ipSchema.safeParse(ip)
+            if (!result.success) {
+                errors.push(`Line ${index + 1}: "${ip}" - ${result.error.errors[0].message}`)
             } else {
                 entries.push({ ip, timeout: Number.isNaN(timeout) ? 0 : timeout })
             }
@@ -131,8 +132,9 @@ export const NodePluginExecutorContent = (props: IProps) => {
         const ips: string[] = []
 
         lines.forEach((line, index) => {
-            if (!isValidIP(line)) {
-                errors.push(`Line ${index + 1}: "${line}" is not a valid IP address`)
+            const result = ipSchema.safeParse(line)
+            if (!result.success) {
+                errors.push(`Line ${index + 1}: "${line}" - ${result.error.errors[0].message}`)
             } else {
                 ips.push(line)
             }
@@ -145,7 +147,12 @@ export const NodePluginExecutorContent = (props: IProps) => {
         if (command === 'blockIps') {
             const { entries, errors } = parseBlockText()
             if (entries.length === 0 && errors.length === 0) {
-                setTextError('Enter at least one IP address')
+                setTextError(
+                    tr(
+                        'node-plugin-executor.content.enter-at-least-one-ip-address',
+                        'Enter at least one IP address'
+                    )
+                )
                 return false
             }
             if (errors.length > 0) {
@@ -157,7 +164,12 @@ export const NodePluginExecutorContent = (props: IProps) => {
         if (command === 'unblockIps') {
             const { errors, ips } = parseUnblockText()
             if (ips.length === 0 && errors.length === 0) {
-                setTextError('Enter at least one IP address')
+                setTextError(
+                    tr(
+                        'node-plugin-executor.content.enter-at-least-one-ip-address',
+                        'Enter at least one IP address'
+                    )
+                )
                 return false
             }
             if (errors.length > 0) {
@@ -178,14 +190,20 @@ export const NodePluginExecutorContent = (props: IProps) => {
 
         if (command === 'blockIps') {
             executeNodePlugin({
-                variables: { command: { command: 'blockIps', ips: parseBlockText().entries }, targetNodes }
+                variables: {
+                    command: { command: 'blockIps', ips: parseBlockText().entries },
+                    targetNodes
+                }
             })
             return
         }
 
         if (command === 'unblockIps') {
             executeNodePlugin({
-                variables: { command: { command: 'unblockIps', ips: parseUnblockText().ips }, targetNodes }
+                variables: {
+                    command: { command: 'unblockIps', ips: parseUnblockText().ips },
+                    targetNodes
+                }
             })
             return
         }
@@ -214,11 +232,14 @@ export const NodePluginExecutorContent = (props: IProps) => {
                     <SectionCard.Root>
                         <SectionCard.Section>
                             <BaseOverlayHeader
-                                actionIconProps={{ color: 'orange' }}
+                                iconColor="orange"
                                 IconComponent={TbAlertTriangle}
                                 iconVariant="light"
-                                subtitle="Execute plugin maintenance commands on selected online nodes."
-                                title="Warning"
+                                subtitle={tr(
+                                    'node-plugin-executor.content.executor-description',
+                                    'Execute plugin maintenance commands on selected online nodes.'
+                                )}
+                                title={tr('node-plugins-grid.widget.warning', 'Warning')}
                                 titleOrder={5}
                             />
                         </SectionCard.Section>
@@ -226,24 +247,45 @@ export const NodePluginExecutorContent = (props: IProps) => {
 
                     <Stack gap="xs">
                         <ActionCardShared
-                            description="Block specific IP addresses on selected nodes"
+                            description={t(
+                                'node-plugin-executor.content.block-specific-ip-addresses-on-selected-nodes',
+                                {
+                                    defaultValue: 'Block specific IP addresses on selected nodes'
+                                }
+                            )}
                             icon={<TbLock size={20} />}
+                            iconColor="red"
                             onClick={() => selectCommand('blockIps')}
-                            title="Block IPs"
+                            title={tr('node-plugin-executor.content.block-ips', 'Block IPs')}
                             variant="light"
                         />
                         <ActionCardShared
-                            description="Remove IP blocks on selected nodes"
+                            description={t(
+                                'node-plugin-executor.content.remove-ip-blocks-on-selected-nodes',
+                                {
+                                    defaultValue: 'Remove IP blocks on selected nodes'
+                                }
+                            )}
                             icon={<TbLockOpen size={20} />}
+                            iconColor="teal"
                             onClick={() => selectCommand('unblockIps')}
-                            title="Unblock IPs"
+                            title={tr('node-plugin-executor.content.unblock-ips', 'Unblock IPs')}
                             variant="light"
                         />
                         <ActionCardShared
-                            description="Recreate plugin runtime rules on selected nodes"
+                            description={t(
+                                'node-plugin-executor.content.recreate-nftables-rules-on-selected-nodes',
+                                {
+                                    defaultValue: 'Recreate plugin runtime rules on selected nodes'
+                                }
+                            )}
                             icon={<TbRefresh size={20} />}
+                            iconColor="orange"
                             onClick={() => selectCommand('recreateTables')}
-                            title="Recreate Tables"
+                            title={tr(
+                                'node-plugin-executor.content.recreate-tables',
+                                'Recreate Tables'
+                            )}
                             variant="light"
                         />
                     </Stack>
@@ -261,11 +303,31 @@ export const NodePluginExecutorContent = (props: IProps) => {
                     <SectionCard.Section>
                         <Group align="flex-start" justify="space-between">
                             <BaseOverlayHeader
-                                actionIconProps={{ color: isBlock ? 'cyan' : 'teal' }}
+                                iconColor={isBlock ? 'cyan' : 'teal'}
                                 IconComponent={isBlock ? TbLock : TbLockOpen}
                                 iconVariant="light"
-                                subtitle={isBlock ? 'Format: IP;timeout' : 'Format: IP'}
-                                title={isBlock ? 'IPs to block' : 'IPs to unblock'}
+                                subtitle={
+                                    isBlock
+                                        ? tr(
+                                              'node-plugin-executor.content.block-ips-decription',
+                                              'Format: IP;timeout'
+                                          )
+                                        : tr(
+                                              'node-plugin-executor.content.unblock-ips-decription',
+                                              'Format: IP'
+                                          )
+                                }
+                                title={
+                                    isBlock
+                                        ? tr(
+                                              'node-plugin-executor.content.ips-to-block',
+                                              'IPs to block'
+                                          )
+                                        : tr(
+                                              'node-plugin-executor.content.ips-to-unblock',
+                                              'IPs to unblock'
+                                          )
+                                }
                                 titleOrder={5}
                             />
                             <ActionIcon onClick={goBack} size="lg" variant="default">
@@ -276,7 +338,11 @@ export const NodePluginExecutorContent = (props: IProps) => {
 
                     <SectionCard.Section>
                         <Text c="dimmed" mb="xs" size="xs">
-                            Format one per line: <Code>{isBlock ? 'IP;timeout' : 'IP'}</Code>
+                            {tr(
+                                'node-plugin-executor.content.format-one-per-line',
+                                'Format one per line:'
+                            )}{' '}
+                            <Code>{isBlock ? 'IP;timeout' : 'IP'}</Code>
                         </Text>
                         <Textarea
                             autosize
@@ -304,7 +370,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                                     if (validateAndProceed()) setStep('target')
                                 }}
                             >
-                                Next
+                                {tr('node-plugin-executor.content.next', 'Next')}
                             </Button>
                         </Group>
                     </SectionCard.Section>
@@ -319,11 +385,11 @@ export const NodePluginExecutorContent = (props: IProps) => {
                 <SectionCard.Section>
                     <Group align="flex-start" justify="space-between">
                         <BaseOverlayHeader
-                            actionIconProps={{ color: 'violet' }}
+                            iconColor="violet"
                             IconComponent={TbServer2}
                             iconVariant="light"
                             subtitle={`${selectedNodeUuids.size} selected`}
-                            title="Nodes"
+                            title={t('constants.nodes')}
                             titleOrder={5}
                         />
                         <ActionIcon onClick={goBack} size="lg" variant="default">
@@ -392,7 +458,10 @@ export const NodePluginExecutorContent = (props: IProps) => {
                 {connectedNodes.length === 0 && (
                     <SectionCard.Section>
                         <Text c="dimmed" py="md" size="sm" ta="center">
-                            No connected nodes available
+                            {tr(
+                                'node-plugin-executor.content.no-connected-nodes-available',
+                                'No connected nodes available'
+                            )}
                         </Text>
                     </SectionCard.Section>
                 )}
@@ -414,8 +483,11 @@ export const NodePluginExecutorContent = (props: IProps) => {
                                 variant="subtle"
                             >
                                 {selectedNodeUuids.size === connectedNodes.length
-                                    ? 'Deselect all'
-                                    : 'Select all'}
+                                    ? tr(
+                                          'node-plugin-executor.content.deselect-all',
+                                          'Deselect all'
+                                      )
+                                    : tr('node-plugin-executor.content.select-all', 'Select all')}
                             </Button>
                         )}
 
@@ -426,7 +498,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             onClick={handleSubmit}
                             rightSection={<TbSend size={16} />}
                         >
-                            Execute
+                            {tr('node-plugin-executor.content.execute', 'Execute')}
                         </Button>
                     </Group>
                 </SectionCard.Section>

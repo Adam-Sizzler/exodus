@@ -1,12 +1,11 @@
 import { Affix, Badge, Button, Group, Paper, Stack, Transition } from '@mantine/core'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'node_modules/react-i18next'
 import { modals } from '@mantine/modals'
 import { TbDots } from 'react-icons/tb'
 
 import { ConfigProfilesDrawer } from '@widgets/dashboard/nodes/config-profiles-drawer'
-import { QueryKeys, useBulkNodesProfileModification } from '@shared/api/hooks'
+import { NodeResponse, QueryKeys, useBulkNodesProfileModification } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { XrayLogo } from '@shared/ui/logos'
 import { queryClient } from '@shared/api'
@@ -14,8 +13,8 @@ import { queryClient } from '@shared/api'
 import { MultiSelectNodesModalContent } from './multi-select-modal.content'
 
 interface IProps {
-    selectedRecords: GetAllNodesCommand.Response['response'][number][]
-    setSelectedRecords: (records: GetAllNodesCommand.Response['response'][number][]) => void
+    selectedRecords: NodeResponse[]
+    setSelectedRecords: (records: NodeResponse[]) => void
 }
 
 export const MultiSelectNodesFeature = (props: IProps) => {

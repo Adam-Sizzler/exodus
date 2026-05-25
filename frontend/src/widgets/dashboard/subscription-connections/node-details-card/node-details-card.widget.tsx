@@ -11,18 +11,19 @@ import {
     ThemeIconProps,
     Tooltip
 } from '@mantine/core'
-import {
-    PiArrowsCounterClockwise,
-    PiCloudArrowUpDuotone,
-    PiWarningCircle
-} from 'react-icons/pi'
-import { GetOneNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
+import { PiArrowsCounterClockwise, PiCloudArrowUpDuotone, PiWarningCircle } from 'react-icons/pi'
+import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'node_modules/react-i18next'
 
 import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
-import { QueryKeys, useDisableSubscriptionConnection, useEnableSubscriptionConnection } from '@shared/api/hooks'
+import {
+    QueryKeys,
+    SubscriptionConnectionResponse,
+    useDisableSubscriptionConnection,
+    useEnableSubscriptionConnection
+} from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
@@ -30,7 +31,7 @@ import { queryClient } from '@shared/api'
 import { Logo } from '@shared/ui'
 
 interface IProps {
-    node: GetOneNodeCommand.Response['response']
+    node: SubscriptionConnectionResponse
 }
 
 export const NodeDetailsCardWidget = memo((props: IProps) => {
@@ -53,15 +54,14 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
         }
     }
 
-    const { mutate: disableNode, isPending: isDisableNodePending } = useDisableSubscriptionConnection(mutationParams)
-    const { mutate: enableNode, isPending: isEnableNodePending } = useEnableSubscriptionConnection(mutationParams)
+    const { mutate: disableNode, isPending: isDisableNodePending } =
+        useDisableSubscriptionConnection(mutationParams)
+    const { mutate: enableNode, isPending: isEnableNodePending } =
+        useEnableSubscriptionConnection(mutationParams)
 
     const isConfigMissing = useMemo(() => {
-        return (
-            node.configProfile.activeConfigProfileUuid === null ||
-            node.configProfile.activeInbounds.length === 0
-        )
-    }, [node.configProfile])
+        return !node.subpageConfigUuid
+    }, [node.subpageConfigUuid])
 
     const { IconComponent, themeIconVariant } = useMemo(() => {
         let IconComponent: React.ComponentType<{ size: number }>
@@ -214,11 +214,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                         )}
 
                         {isConfigMissing && (
-                            <Tooltip
-                                label={t(
-                                    'node-details-card.widget.config-profile-or-inbounds-is-missing'
-                                )}
-                            >
+                            <Tooltip label={t('base-node-form.select-subscription-profile')}>
                                 <ActionIcon
                                     color="gray"
                                     disabled
@@ -325,9 +321,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     border: '1px solid rgba(99, 102, 241, 0.2)'
                                 }}
                             >
-                                <Tooltip
-                                    label={t('node-details-card.widget.exodus-node-version')}
-                                >
+                                <Tooltip label={t('node-details-card.widget.exodus-node-version')}>
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />
                                         <Text c="indigo.5" fw={600} size="sm">

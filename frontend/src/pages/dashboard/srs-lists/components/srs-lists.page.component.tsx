@@ -214,6 +214,7 @@ function SRSListCard(props: {
                 <Box
                     className={classes.contentArea}
                     flex={1}
+                    miw={0}
                     onClick={() => onEdit(item)}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
@@ -268,7 +269,13 @@ function SRSListCard(props: {
                         </Group>
 
                         <Group className={classes.rightMeta} gap="md" wrap="nowrap">
-                            <Badge className={classes.intervalBadge} color="gray" leftSection={<PiTag size={12} />} size="md" variant="outline">
+                            <Badge
+                                className={classes.intervalBadge}
+                                color="gray"
+                                leftSection={<PiTag size={12} />}
+                                size="md"
+                                variant="outline"
+                            >
                                 {item.updateInterval}
                             </Badge>
                         </Group>
@@ -328,7 +335,9 @@ export function SRSListsPageComponent(props: Props) {
                 setUrlsText('')
                 setUpdateInterval('1d')
                 setCreateEnabled(true)
-                await queryClient.refetchQueries({ queryKey: QueryKeys.srsLists.getSRSLists.queryKey })
+                await queryClient.refetchQueries({
+                    queryKey: QueryKeys.srsLists.getSRSLists.queryKey
+                })
             }
         }
     })
@@ -346,9 +355,15 @@ export function SRSListsPageComponent(props: Props) {
         setSelected([])
     }
 
-    const { mutate: bulkDelete } = useBulkDeleteSRSLists({ mutationFns: { onSuccess: mutationRefetch } })
-    const { mutate: bulkEnable } = useBulkEnableSRSLists({ mutationFns: { onSuccess: mutationRefetch } })
-    const { mutate: bulkDisable } = useBulkDisableSRSLists({ mutationFns: { onSuccess: mutationRefetch } })
+    const { mutate: bulkDelete } = useBulkDeleteSRSLists({
+        mutationFns: { onSuccess: mutationRefetch }
+    })
+    const { mutate: bulkEnable } = useBulkEnableSRSLists({
+        mutationFns: { onSuccess: mutationRefetch }
+    })
+    const { mutate: bulkDisable } = useBulkDisableSRSLists({
+        mutationFns: { onSuccess: mutationRefetch }
+    })
     const { mutate: bulkSetInterval } = useBulkSetIntervalSRSLists({
         mutationFns: {
             onSuccess: async () => {
@@ -361,7 +376,9 @@ export function SRSListsPageComponent(props: Props) {
     const { mutate: checkLists, isPending: isChecking } = useCheckSRSLists({
         mutationFns: {
             onSuccess: async () => {
-                await queryClient.refetchQueries({ queryKey: QueryKeys.srsLists.getSRSLists.queryKey })
+                await queryClient.refetchQueries({
+                    queryKey: QueryKeys.srsLists.getSRSLists.queryKey
+                })
             }
         }
     })
@@ -406,7 +423,10 @@ export function SRSListsPageComponent(props: Props) {
 
     const tagOptions = useMemo(() => {
         const uniq = Array.from(new Set(state.map((item) => item.tag).filter(Boolean)))
-        return [{ value: '', label: tr('srs-lists.feature.all-tags', 'All tags') }, ...uniq.map((value) => ({ value, label: value }))]
+        return [
+            { value: '', label: tr('srs-lists.feature.all-tags', 'All tags') },
+            ...uniq.map((value) => ({ value, label: value }))
+        ]
     }, [state])
 
     const searchNameOptions = useMemo(
@@ -597,7 +617,10 @@ export function SRSListsPageComponent(props: Props) {
 
                                 <ActionIconGroup>
                                     <Tooltip
-                                        label={tr('srs-lists.feature.sync-to-nodes', 'Sync to nodes')}
+                                        label={tr(
+                                            'srs-lists.feature.sync-to-nodes',
+                                            'Sync to nodes'
+                                        )}
                                         withArrow
                                     >
                                         <ActionIcon
@@ -658,7 +681,10 @@ export function SRSListsPageComponent(props: Props) {
                                                 leftSection={<TbTagStarred size="16px" />}
                                                 leftSectionPointerEvents="none"
                                                 onChange={handleTagFilter}
-                                                placeholder={tr('srs-lists.feature.filter-by-tags', 'Filter by tags')}
+                                                placeholder={tr(
+                                                    'srs-lists.feature.filter-by-tags',
+                                                    'Filter by tags'
+                                                )}
                                                 size="sm"
                                                 value={selectedTag || ''}
                                             />
@@ -668,7 +694,10 @@ export function SRSListsPageComponent(props: Props) {
                                                 data={searchNameOptions}
                                                 leftSection={<PiMagnifyingGlass size={16} />}
                                                 onChange={handleSearchSelect}
-                                                placeholder={tr('srs-lists.feature.search-by-name', 'Search by name')}
+                                                placeholder={tr(
+                                                    'srs-lists.feature.search-by-name',
+                                                    'Search by name'
+                                                )}
                                                 searchable
                                                 value={selectedNameUuid}
                                             />
@@ -678,7 +707,10 @@ export function SRSListsPageComponent(props: Props) {
                                                 data={searchURLOptions}
                                                 leftSection={<PiMagnifyingGlass size={16} />}
                                                 onChange={handleURLSearchSelect}
-                                                placeholder={tr('srs-lists.feature.search-by-url', 'Search by URL')}
+                                                placeholder={tr(
+                                                    'srs-lists.feature.search-by-url',
+                                                    'Search by URL'
+                                                )}
                                                 searchable
                                                 value={selectedURLUuid}
                                             />
@@ -696,12 +728,15 @@ export function SRSListsPageComponent(props: Props) {
                             <PiEmpty size={48} style={{ opacity: 0.5 }} />
                             <div>
                                 <Title c="dimmed" order={4} ta="center">
-                                    {tr('srs-lists.feature.no-srs-lists-found', 'SRS списки не найдены')}
+                                    {tr(
+                                        'srs-lists.feature.no-srs-lists-found',
+                                        'SRS списки не найдены'
+                                    )}
                                 </Title>
                                 <Text c="dimmed" mt="xs" size="sm" ta="center">
                                     {tr(
                                         'srs-lists.feature.create-your-first-srs-list-to-get-started',
-                                        'Создайте свой первый SRS список, чтобы начать работу',
+                                        'Создайте свой первый SRS список, чтобы начать работу'
                                     )}
                                 </Text>
                             </div>
@@ -757,10 +792,14 @@ export function SRSListsPageComponent(props: Props) {
                                                         >
                                                             <SRSListCard
                                                                 highlightedUuid={highlightedUuid}
-                                                                isSelected={selectedSet.has(item.uuid)}
+                                                                isSelected={selectedSet.has(
+                                                                    item.uuid
+                                                                )}
                                                                 item={item}
                                                                 onEdit={openEditModal}
-                                                                onSelect={() => toggleSelect(item.uuid)}
+                                                                onSelect={() =>
+                                                                    toggleSelect(item.uuid)
+                                                                }
                                                                 selectedNameUuid={selectedNameUuid}
                                                                 selectedTag={selectedTag}
                                                                 selectedURLUuid={selectedURLUuid}
@@ -804,22 +843,39 @@ export function SRSListsPageComponent(props: Props) {
                         <Paper
                             p="md"
                             shadow="md"
-                            style={{ ...styles, width: '300px', maxWidth: '1200px', margin: '0 auto' }}
+                            style={{
+                                ...styles,
+                                width: '300px',
+                                maxWidth: '1200px',
+                                margin: '0 auto'
+                            }}
                             withBorder
                         >
                             <Stack>
                                 <Group justify="flex-start">
                                     <Group justify="center" w="100%">
                                         <Badge color="blue" size="lg">
-                                            {tr('srs-lists.feature.selected-count', 'Selected')}: {selectedCount}
+                                            {tr('srs-lists.feature.selected-count', 'Selected')}:{' '}
+                                            {selectedCount}
                                         </Badge>
                                     </Group>
-                                    <Group grow justify="apart" preventGrowOverflow={false} wrap="wrap">
+                                    <Group
+                                        grow
+                                        justify="apart"
+                                        preventGrowOverflow={false}
+                                        wrap="wrap"
+                                    >
                                         <Button onClick={clearSelection} variant="subtle">
-                                            {tr('multi-select-hosts.feature.clear-selection', 'Clear selection')}
+                                            {tr(
+                                                'multi-select-hosts.feature.clear-selection',
+                                                'Clear selection'
+                                            )}
                                         </Button>
                                         <Button onClick={selectAll} variant="subtle">
-                                            {tr('multi-select-hosts.feature.select-all', 'Select all')}
+                                            {tr(
+                                                'multi-select-hosts.feature.select-all',
+                                                'Select all'
+                                            )}
                                         </Button>
                                     </Group>
                                 </Group>
@@ -827,18 +883,25 @@ export function SRSListsPageComponent(props: Props) {
                                 <Group grow justify="apart" preventGrowOverflow={false} wrap="wrap">
                                     <Button
                                         color="green"
-                                        onClick={() => bulkEnable({ variables: { uuids: selected } })}
+                                        onClick={() =>
+                                            bulkEnable({ variables: { uuids: selected } })
+                                        }
                                     >
                                         {tr('common.enable', 'Enable')}
                                     </Button>
                                     <Button
                                         color="gray"
-                                        onClick={() => bulkDisable({ variables: { uuids: selected } })}
+                                        onClick={() =>
+                                            bulkDisable({ variables: { uuids: selected } })
+                                        }
                                     >
                                         {tr('common.disable', 'Disable')}
                                     </Button>
                                     <Button color="cyan" onClick={intervalModalHandlers.open}>
-                                        {tr('srs-lists.feature.set-update-interval', 'Set update interval')}
+                                        {tr(
+                                            'srs-lists.feature.set-update-interval',
+                                            'Set update interval'
+                                        )}
                                     </Button>
                                     <Button color="red" onClick={deleteSelected}>
                                         {tr('common.delete', 'Delete')}
@@ -881,7 +944,10 @@ export function SRSListsPageComponent(props: Props) {
                                     <PiInfo size={18} />
                                 </ThemeIcon>
                                 <Title c="white" order={5}>
-                                    {tr('srs-lists.feature.direct-link-required', 'Direct link required')}
+                                    {tr(
+                                        'srs-lists.feature.direct-link-required',
+                                        'Direct link required'
+                                    )}
                                 </Title>
                             </Group>
                             <Divider opacity={0.3} />
@@ -948,8 +1014,14 @@ export function SRSListsPageComponent(props: Props) {
                             />
                             <Select
                                 data={[
-                                    { value: 'enabled', label: tr('srs-lists.feature.enabled', 'Enabled') },
-                                    { value: 'disabled', label: tr('srs-lists.feature.disabled', 'Disabled') }
+                                    {
+                                        value: 'enabled',
+                                        label: tr('srs-lists.feature.enabled', 'Enabled')
+                                    },
+                                    {
+                                        value: 'disabled',
+                                        label: tr('srs-lists.feature.disabled', 'Disabled')
+                                    }
                                 ]}
                                 label={tr('srs-lists.feature.status', 'Status')}
                                 onChange={(value) => setCreateEnabled(value !== 'disabled')}
@@ -1003,7 +1075,10 @@ export function SRSListsPageComponent(props: Props) {
                     <Select
                         data={[
                             { value: 'enabled', label: tr('srs-lists.feature.enabled', 'Enabled') },
-                            { value: 'disabled', label: tr('srs-lists.feature.disabled', 'Disabled') }
+                            {
+                                value: 'disabled',
+                                label: tr('srs-lists.feature.disabled', 'Disabled')
+                            }
                         ]}
                         label={tr('srs-lists.feature.status', 'Status')}
                         onChange={(value) => setEditEnabled(value !== 'disabled')}

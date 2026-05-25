@@ -6,6 +6,7 @@ type IProps = {
     actionIconProps?: ThemeIconProps
     countryCode?: string
     IconComponent: React.ComponentType<{ size: number }>
+    iconColor?: ThemeIconProps['color']
     iconSize?: number
     iconVariant: ThemeIconProps['variant']
     subtitle?: string
@@ -19,6 +20,7 @@ export const BaseOverlayHeader = (props: IProps) => {
         actionIconProps,
         IconComponent,
         countryCode,
+        iconColor,
         iconSize = 20,
         iconVariant,
         subtitle,
@@ -31,7 +33,7 @@ export const BaseOverlayHeader = (props: IProps) => {
 
     return (
         <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size="lg" variant={iconVariant} {...actionIconProps}>
+            <ThemeIcon color={iconColor} size="lg" variant={iconVariant} {...actionIconProps}>
                 <IconComponent size={iconSize} />
             </ThemeIcon>
 

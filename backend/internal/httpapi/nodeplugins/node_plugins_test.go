@@ -33,8 +33,25 @@ func TestNormalizePluginConfigDefaults(t *testing.T) {
 	}
 }
 
-func TestNormalizePluginConfigAddsHaproxyAuth(t *testing.T) {
+func TestNormalizePluginConfigPreservesPartialConfig(t *testing.T) {
 	raw := json.RawMessage(`{"ingressFilter":{"enabled":true,"blockedIps":["203.0.113.1"]},"sharedLists":[]}`)
+
+	normalized, err := normalizePluginConfig(raw)
+	if err != nil {
+		t.Fatalf("normalizePluginConfig returned error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(normalized, &config); err != nil {
+		t.Fatalf("normalized config is not valid JSON: %v", err)
+	}
+	if _, ok := config["haproxyAuth"]; ok {
+		t.Fatal("normalized config should not add missing haproxyAuth")
+	}
+}
+
+func TestNormalizePluginConfigAddsOnlySharedListsToHaproxyConfig(t *testing.T) {
+	raw := json.RawMessage(`{"haproxyAuth":{"enabled":false}}`)
 
 	normalized, err := normalizePluginConfig(raw)
 	if err != nil {
@@ -47,6 +64,15 @@ func TestNormalizePluginConfigAddsHaproxyAuth(t *testing.T) {
 	}
 	if _, ok := config["haproxyAuth"]; !ok {
 		t.Fatal("normalized config is missing haproxyAuth")
+	}
+	if _, ok := config["sharedLists"]; !ok {
+		t.Fatal("normalized config is missing sharedLists")
+	}
+	if _, ok := config["ingressFilter"]; ok {
+		t.Fatal("normalized config should not add ingressFilter")
+	}
+	if _, ok := config["egressFilter"]; ok {
+		t.Fatal("normalized config should not add egressFilter")
 	}
 }
 

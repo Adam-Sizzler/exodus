@@ -363,12 +363,8 @@ func normalizePluginConfig(raw json.RawMessage) (json.RawMessage, error) {
 		return nil, fmt.Errorf("connectionDrop plugin is not supported by sing-box core")
 	}
 
-	defaults := map[string]any{}
-	_ = json.Unmarshal(defaultPluginConfig, &defaults)
-	for key, value := range defaults {
-		if _, ok := obj[key]; !ok {
-			obj[key] = value
-		}
+	if _, ok := obj["sharedLists"]; !ok {
+		obj["sharedLists"] = []any{}
 	}
 
 	normalized, err := json.Marshal(obj)
