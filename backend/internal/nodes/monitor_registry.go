@@ -1,6 +1,10 @@
 package users
 
-import "sync"
+import (
+	"encoding/json"
+	"fmt"
+	"sync"
+)
 
 var (
 	globalMonitorMu sync.RWMutex
@@ -42,6 +46,17 @@ func RequestNodeDeployWithForce(restart bool, forceRestart bool, nodeUUIDs ...st
 	if nm != nil {
 		nm.RequestDeployWithForce(restart, forceRestart, nodeUUIDs...)
 	}
+}
+
+// RequestNodePluginExecutor sends a node-plugin runtime command to connected nodes.
+func RequestNodePluginExecutor(command json.RawMessage, nodeUUIDs ...string) error {
+	globalMonitorMu.RLock()
+	nm := globalMonitor
+	globalMonitorMu.RUnlock()
+	if nm == nil {
+		return fmt.Errorf("node monitor is not ready")
+	}
+	return nm.ExecuteNodePluginCommand(nil, command, nodeUUIDs)
 }
 
 // RequestSRSDeploy triggers SRS lists sync to connected nodes.

@@ -26,14 +26,47 @@ type deployTaskPayload struct {
 }
 
 type deployModulesTaskBlock struct {
-	HaproxyEnabled bool                    `json:"haproxy_enabled"`
-	HaproxyUsers   []deployHaproxyUserItem `json:"haproxy_users,omitempty"`
+	HaproxyEnabled bool                     `json:"haproxy_enabled"`
+	HaproxyUsers   []deployHaproxyUserItem  `json:"haproxy_users,omitempty"`
+	IngressFilter  deployIngressFilterBlock `json:"ingress_filter"`
+	EgressFilter   deployEgressFilterBlock  `json:"egress_filter"`
 }
 
 type deployHaproxyUserItem struct {
 	Username       string `json:"username"`
 	VLESSUUID      string `json:"vless_uuid"`
 	TrojanPassword string `json:"trojan_password"`
+}
+
+type deployIngressFilterBlock struct {
+	Enabled    bool     `json:"enabled"`
+	BlockedIPs []string `json:"blocked_ips,omitempty"`
+}
+
+type deployEgressFilterBlock struct {
+	Enabled      bool     `json:"enabled"`
+	BlockedIPs   []string `json:"blocked_ips,omitempty"`
+	BlockedPorts []int    `json:"blocked_ports,omitempty"`
+}
+
+type activeNodePluginRuntimeConfig struct {
+	SharedLists []struct {
+		Name  string   `json:"name"`
+		Type  string   `json:"type"`
+		Items []string `json:"items"`
+	} `json:"sharedLists"`
+	IngressFilter struct {
+		Enabled    bool     `json:"enabled"`
+		BlockedIPs []string `json:"blockedIps"`
+	} `json:"ingressFilter"`
+	EgressFilter struct {
+		Enabled      bool     `json:"enabled"`
+		BlockedIPs   []string `json:"blockedIps"`
+		BlockedPorts []int    `json:"blockedPorts"`
+	} `json:"egressFilter"`
+	HaproxyAuth struct {
+		Enabled bool `json:"enabled"`
+	} `json:"haproxyAuth"`
 }
 
 type deployTarget struct {
@@ -132,12 +165,24 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			continue
 		}
 
-		haproxyEnabled, modulesErr := nm.loadNodeHaproxyPluginEnabled(nm.globalCtx, target.uuid)
+		pluginConfig, modulesErr := nm.loadNodePluginRuntimeConfig(nm.globalCtx, target.uuid)
 		if modulesErr != nil {
-			nm.cfg.Logger.Warn("Failed to load HAPROXY plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
+			nm.cfg.Logger.Warn("Failed to load node plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
 		}
-		modules := &deployModulesTaskBlock{HaproxyEnabled: haproxyEnabled}
-		if haproxyEnabled {
+		sharedLists := pluginConfig.sharedIPLists()
+		modules := &deployModulesTaskBlock{
+			HaproxyEnabled: pluginConfig.HaproxyAuth.Enabled,
+			IngressFilter: deployIngressFilterBlock{
+				Enabled:    pluginConfig.IngressFilter.Enabled,
+				BlockedIPs: normalizeStringSlice(resolvePluginIPRefs(pluginConfig.IngressFilter.BlockedIPs, sharedLists)),
+			},
+			EgressFilter: deployEgressFilterBlock{
+				Enabled:      pluginConfig.EgressFilter.Enabled,
+				BlockedIPs:   normalizeStringSlice(resolvePluginIPRefs(pluginConfig.EgressFilter.BlockedIPs, sharedLists)),
+				BlockedPorts: normalizePortSlice(pluginConfig.EgressFilter.BlockedPorts),
+			},
+		}
+		if modules.HaproxyEnabled {
 			haproxyUsers, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid)
 			if usersErr != nil {
 				nm.cfg.Logger.Warn("Failed to load node users for HAPROXY payload", "node", target.name, "node_uuid", target.uuid, "error", usersErr)
@@ -190,15 +235,15 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 	}
 }
 
-func (nm *NodeMonitor) loadNodeHaproxyPluginEnabled(ctx context.Context, nodeUUID string) (bool, error) {
+func (nm *NodeMonitor) loadNodePluginRuntimeConfig(ctx context.Context, nodeUUID string) (activeNodePluginRuntimeConfig, error) {
 	if strings.TrimSpace(nodeUUID) == "" {
-		return false, fmt.Errorf("node uuid is empty")
+		return activeNodePluginRuntimeConfig{}, fmt.Errorf("node uuid is empty")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	enabled := false
+	var pluginConfig activeNodePluginRuntimeConfig
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var rawConfig sql.NullString
 		row := db.QueryRowContext(ctx, `
@@ -217,18 +262,76 @@ func (nm *NodeMonitor) loadNodeHaproxyPluginEnabled(ctx context.Context, nodeUUI
 		if !rawConfig.Valid || strings.TrimSpace(rawConfig.String) == "" {
 			return nil
 		}
-		var pluginConfig struct {
-			HaproxyAuth struct {
-				Enabled bool `json:"enabled"`
-			} `json:"haproxyAuth"`
-		}
 		if err := json.Unmarshal([]byte(rawConfig.String), &pluginConfig); err != nil {
 			return err
 		}
-		enabled = pluginConfig.HaproxyAuth.Enabled
 		return nil
 	})
-	return enabled, err
+	return pluginConfig, err
+}
+
+func (cfg activeNodePluginRuntimeConfig) sharedIPLists() map[string][]string {
+	result := make(map[string][]string, len(cfg.SharedLists))
+	for _, list := range cfg.SharedLists {
+		if strings.TrimSpace(list.Type) != "ipList" {
+			continue
+		}
+		name := strings.TrimSpace(list.Name)
+		if name == "" {
+			continue
+		}
+		result[name] = append([]string(nil), list.Items...)
+	}
+	return result
+}
+
+func resolvePluginIPRefs(raw []string, sharedLists map[string][]string) []string {
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		value := strings.TrimSpace(item)
+		if value == "" {
+			continue
+		}
+		if strings.HasPrefix(value, "ext:") {
+			result = append(result, sharedLists[value]...)
+			continue
+		}
+		result = append(result, value)
+	}
+	return result
+}
+
+func normalizeStringSlice(raw []string) []string {
+	seen := make(map[string]struct{}, len(raw))
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		value := strings.TrimSpace(item)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+func normalizePortSlice(raw []int) []int {
+	seen := make(map[int]struct{}, len(raw))
+	result := make([]int, 0, len(raw))
+	for _, port := range raw {
+		if port < 1 || port > 65535 {
+			continue
+		}
+		if _, ok := seen[port]; ok {
+			continue
+		}
+		seen[port] = struct{}{}
+		result = append(result, port)
+	}
+	return result
 }
 
 func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string) ([]deployHaproxyUserItem, error) {

@@ -285,7 +285,11 @@ func handleExecutor(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 		"command", command,
 		"nodes", strings.Join(targetNodeUUIDs, ","),
 	)
-	monitor.RequestNodeDeploy(true, targetNodeUUIDs...)
+	if err := monitor.RequestNodePluginExecutor(req.Command.Raw, targetNodeUUIDs...); err != nil {
+		cfg.Logger.Warn("Failed to send node plugin executor command", "command", command, "error", err)
+		shared.WriteJSONError(w, http.StatusBadGateway, err.Error())
+		return
+	}
 	shared.WriteJSON(w, http.StatusOK, responseEnvelope[map[string]bool]{Response: map[string]bool{"eventSent": true}})
 }
 
