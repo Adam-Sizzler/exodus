@@ -36,8 +36,10 @@ type DeployConfigTaskStats struct {
 }
 
 type DeployModulesPayload struct {
-	HaproxyEnabled bool               `json:"haproxy_enabled"`
-	HaproxyUsers   []HaproxyUserEntry `json:"haproxy_users"`
+	HaproxyEnabled bool                    `json:"haproxy_enabled"`
+	HaproxyUsers   []HaproxyUserEntry      `json:"haproxy_users"`
+	IngressFilter  NftIngressFilterPayload `json:"ingress_filter"`
+	EgressFilter   NftEgressFilterPayload  `json:"egress_filter"`
 }
 
 type HaproxyUserEntry struct {
@@ -121,6 +123,9 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 
 	haproxyUsersChanged, err := applyHaproxyModule(task.Modules)
 	if err != nil {
+		return DeploySummary{}, err
+	}
+	if err := applyNftablesModule(task.Modules); err != nil {
 		return DeploySummary{}, err
 	}
 

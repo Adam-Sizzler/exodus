@@ -53,7 +53,7 @@ FROM alpine:3.23
 ARG SINGBOX_VERSION=v1.13.5
 ENV SINGBOX_VERSION=${SINGBOX_VERSION}
 
-RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor
+RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor nftables
 
 RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
       -o /usr/local/bin/sing-box && \

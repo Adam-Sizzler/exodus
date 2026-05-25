@@ -15,8 +15,9 @@ import (
 const statsOnlyMessage = "stats-only node: user management and task APIs are disabled for sing-box"
 
 const (
-	taskOperationDeployConfig = "deploy_config"
-	taskOperationSyncSRSLists = "sync_srs_lists"
+	taskOperationDeployConfig       = "deploy_config"
+	taskOperationSyncSRSLists       = "sync_srs_lists"
+	taskOperationNodePluginExecutor = "node_plugin_executor"
 )
 
 func (s *NodeServer) ListUsers(ctx context.Context, req *proto.ListUsersRequest) (*proto.ListUsersResponse, error) {
@@ -119,6 +120,19 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 				summary.Downloaded,
 				summary.Failed,
 			),
+		}, nil
+	case taskOperationNodePluginExecutor:
+		accepted, err := ExecuteNodePluginCommand(task.Payload)
+		if err != nil {
+			s.Cfg.Logger.Warn("Node plugin executor command failed", "task_id", task.TaskId, "error", err)
+			return &rpcstatus.Status{
+				Code:    int32(codes.FailedPrecondition),
+				Message: err.Error(),
+			}, nil
+		}
+		return &rpcstatus.Status{
+			Code:    int32(codes.OK),
+			Message: fmt.Sprintf("success: accepted=%t", accepted),
 		}, nil
 
 	default:
