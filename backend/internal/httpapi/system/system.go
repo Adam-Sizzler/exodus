@@ -32,6 +32,18 @@ type bandwidthStat struct {
 	Previous   string `json:"previous"`
 }
 
+type usersRecap struct {
+	total             int64
+	newUsersThisMonth int64
+}
+
+type nodesRecap struct {
+	total             int64
+	totalRam          string
+	totalCpuCores     int64
+	distinctCountries int64
+}
+
 type nodesMetricsResponse struct {
 	Nodes []nodeMetricsItem `json:"nodes"`
 }
@@ -207,6 +219,77 @@ func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 		}
 
 		cfg.Logger.Trace("System stats requested", "remote_addr", r.RemoteAddr, "total_users", totalUsers)
+		shared.WriteJSON(w, http.StatusOK, payload)
+	}
+}
+
+func RecapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		now := time.Now().UTC()
+		startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Nanosecond)
+
+		users, err := readUsersRecap(r.Context(), manager, startOfMonth)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read users recap", err, cfg)
+			return
+		}
+
+		nodes, err := readNodesRecap(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes recap", err, cfg)
+			return
+		}
+
+		lifetimeTraffic, err := readLifetimeTrafficBytes(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read lifetime traffic recap", err, cfg)
+			return
+		}
+
+		monthTraffic, err := readUsageBytesTextByRange(r.Context(), manager, usageRange{start: startOfMonth, end: endOfMonth})
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read month traffic recap", err, cfg)
+			return
+		}
+
+		initDate, err := readInitDate(r.Context(), manager)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read init date recap", err, cfg)
+			return
+		}
+
+		version, _, _, _ := readBuildMetadata()
+		if version == "" || version == "unknown" {
+			version = constant.Version
+		}
+		version = normalizeVersion(version)
+
+		payload := map[string]any{
+			"response": map[string]any{
+				"thisMonth": map[string]any{
+					"users":   users.newUsersThisMonth,
+					"traffic": monthTraffic,
+				},
+				"total": map[string]any{
+					"users":             users.total,
+					"nodes":             nodes.total,
+					"traffic":           lifetimeTraffic,
+					"nodesRam":          nodes.totalRam,
+					"nodesCpuCores":     nodes.totalCpuCores,
+					"distinctCountries": nodes.distinctCountries,
+				},
+				"version":  version,
+				"initDate": initDate.UTC().Format(time.RFC3339),
+			},
+		}
+
+		cfg.Logger.Trace("System recap requested", "remote_addr", r.RemoteAddr, "total_users", users.total, "total_nodes", nodes.total)
 		shared.WriteJSON(w, http.StatusOK, payload)
 	}
 }
@@ -461,6 +544,81 @@ func readLifetimeTrafficBytes(ctx context.Context, manager *dbmanager.DatabaseMa
 		`).Scan(&total)
 	})
 	return total, err
+}
+
+func readUsersRecap(ctx context.Context, manager *dbmanager.DatabaseManager, startOfMonth time.Time) (usersRecap, error) {
+	recap := usersRecap{}
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT
+				COUNT(*)::bigint AS total,
+				COUNT(*) FILTER (WHERE created_at >= ?)::bigint AS new_users_this_month
+			FROM users
+		`, startOfMonth).Scan(&recap.total, &recap.newUsersThisMonth)
+	})
+	return recap, err
+}
+
+func readNodesRecap(ctx context.Context, manager *dbmanager.DatabaseManager) (nodesRecap, error) {
+	recap := nodesRecap{}
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT
+				COUNT(*)::bigint AS total,
+				COALESCE(SUM(
+					CASE
+						WHEN system_info IS NOT NULL AND system_info->>'memoryTotal' IS NOT NULL
+						THEN (system_info->>'memoryTotal')::bigint
+						ELSE 0
+					END
+				), 0)::text AS total_ram,
+				COALESCE(SUM(
+					CASE
+						WHEN system_info IS NOT NULL AND system_info->>'cpus' IS NOT NULL
+						THEN (system_info->>'cpus')::bigint
+						ELSE 0
+					END
+				), 0)::bigint AS total_cpu_cores,
+				COUNT(DISTINCT CASE
+					WHEN country_code IS NOT NULL AND country_code <> '' AND country_code <> 'XX'
+					THEN country_code
+					ELSE NULL
+				END)::bigint AS distinct_countries
+			FROM nodes
+		`).Scan(&recap.total, &recap.totalRam, &recap.totalCpuCores, &recap.distinctCountries)
+	})
+	return recap, err
+}
+
+func readUsageBytesTextByRange(ctx context.Context, manager *dbmanager.DatabaseManager, dtRange usageRange) (string, error) {
+	var total string
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(total_bytes), 0)::text
+			FROM nodes_usage_history
+			WHERE created_at >= ? AND created_at <= ?
+		`, dtRange.start, dtRange.end).Scan(&total)
+	})
+	return total, err
+}
+
+func readInitDate(ctx context.Context, manager *dbmanager.DatabaseManager) (time.Time, error) {
+	var initDate time.Time
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx, `
+			SELECT COALESCE(
+				(SELECT started_at FROM schema_migrations ORDER BY started_at ASC LIMIT 1),
+				NOW()
+			)
+		`).Scan(&initDate)
+	})
+	if err != nil {
+		return time.Now().UTC(), err
+	}
+	if initDate.IsZero() {
+		return time.Now().UTC(), nil
+	}
+	return initDate, nil
 }
 
 func readUsageComparison(ctx context.Context, manager *dbmanager.DatabaseManager, ranges [2]usageRange) (bandwidthStat, error) {

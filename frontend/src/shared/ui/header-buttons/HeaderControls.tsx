@@ -7,6 +7,7 @@ import { SupportControl } from './SupportControl'
 import { VersionControl } from './VersionControl'
 import { GithubControl } from './GithubControl'
 import { LogoutControl } from './LogoutControl'
+import { RecapControl } from './RecapControl'
 
 interface HeaderControlsProps extends BoxProps {
     githubLink?: string
@@ -16,6 +17,7 @@ interface HeaderControlsProps extends BoxProps {
     withGithub?: boolean
     withLanguage?: boolean
     withLogout?: boolean
+    withRecap?: boolean
     withRefresh?: boolean
     withSupport?: boolean
     withTelegram?: boolean
@@ -31,6 +33,7 @@ export function HeaderControls({
     withRefresh = true,
     withLanguage = true,
     withVersion = true,
+    withRecap = false,
     telegramLink,
     stars,
     isGithubLoading,
@@ -44,6 +47,7 @@ export function HeaderControls({
             {withGithub && (
                 <GithubControl isLoading={isGithubLoading} link={githubLink!} stars={stars} />
             )}
+            {withRecap && <RecapControl />}
             {withLanguage && <LanguageControl />}
             {withRefresh && <RefreshControl />}
             {withLogout && <LogoutControl />}

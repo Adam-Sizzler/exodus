@@ -82,6 +82,7 @@ export function MainLayout() {
                                 stars={exodusInfo.starsCount || undefined}
                                 telegramLink="https://t.me/exodus"
                                 withGithub={!isSocialButton}
+                                withRecap={!isSocialButton}
                                 withSupport={!isSocialButton}
                                 withTelegram={!isSocialButton}
                             />

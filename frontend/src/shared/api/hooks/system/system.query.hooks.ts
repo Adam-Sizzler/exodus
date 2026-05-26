@@ -8,6 +8,7 @@ import {
 } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
+import { z } from 'zod'
 
 import { getUserTimezoneUtil, sToMs } from '@shared/utils/time-utils'
 
@@ -15,6 +16,31 @@ import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 const STALE_TIME = 5_000
 const REFETCH_INTERVAL = 5_100
+
+const GetRecapCommand = {
+    TSQ_url: '/api/system/stats/recap',
+    ResponseSchema: z.object({
+        response: z.object({
+            thisMonth: z.object({
+                users: z.number(),
+                traffic: z.string()
+            }),
+            total: z.object({
+                users: z.number(),
+                nodes: z.number(),
+                traffic: z.string(),
+                nodesRam: z.string(),
+                nodesCpuCores: z.number(),
+                distinctCountries: z.number()
+            }),
+            version: z.string(),
+            initDate: z
+                .string()
+                .datetime({ local: true, offset: true })
+                .transform((str) => new Date(str))
+        })
+    })
+}
 
 export const systemQueryKeys = createQueryKeys('system', {
     getSystemStats: {
@@ -33,6 +59,9 @@ export const systemQueryKeys = createQueryKeys('system', {
         queryKey: null
     },
     getExodusMetadata: {
+        queryKey: null
+    },
+    getRecap: {
         queryKey: null
     }
 })
@@ -119,4 +148,16 @@ export const useGetExodusMetadata = createGetQueryHook({
         staleTime: sToMs(3_600)
     },
     errorHandler: (error) => errorHandler(error, 'Get Exodus Metadata')
+})
+
+export const useGetRecap = createGetQueryHook({
+    endpoint: GetRecapCommand.TSQ_url,
+    responseSchema: GetRecapCommand.ResponseSchema,
+    getQueryKey: () => systemQueryKeys.getRecap.queryKey,
+    rQueryParams: {
+        placeholderData: keepPreviousData,
+        refetchOnMount: true,
+        staleTime: sToMs(60)
+    },
+    errorHandler: (error) => errorHandler(error, 'Get Recap')
 })
