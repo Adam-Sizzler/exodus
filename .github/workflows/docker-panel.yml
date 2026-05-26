@@ -1,53 +1,182 @@
 name: Build And Push Panel Image
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Docker image tag, for example v1.2.3"
+        required: true
+        type: string
   push:
     tags:
-      - '*'
+      - "*"
+
+permissions:
+  contents: read
 
 jobs:
-  docker-panel:
+  prepare-metadata:
+    name: "1. Prepare build metadata"
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      revision: ${{ steps.meta.outputs.revision }}
+      frontend_revision: ${{ steps.meta.outputs.frontend_revision }}
+      branch: ${{ steps.meta.outputs.branch }}
+      build_time: ${{ steps.meta.outputs.build_time }}
+      build_number: ${{ steps.meta.outputs.build_number }}
+      repository_url: ${{ steps.meta.outputs.repository_url }}
+      image_base: ${{ steps.meta.outputs.image_base }}
+      image_version: ${{ steps.meta.outputs.image_version }}
+      image_latest: ${{ steps.meta.outputs.image_latest }}
+      image_tags: ${{ steps.meta.outputs.image_tags }}
 
     steps:
-      - name: Send Telegram start notification
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve build metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            BRANCH="${GITHUB_REF_NAME:-${DEFAULT_BRANCH:-unknown}}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+            git fetch --force --prune origin "+refs/heads/*:refs/remotes/origin/*"
+            BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
+              | sed 's#^origin/##' \
+              | grep -Fx "${DEFAULT_BRANCH}" \
+              | head -n 1 || true)"
+            if [ -z "${BRANCH}" ]; then
+              BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
+                | sed 's#^origin/##' \
+                | grep -v '^HEAD$' \
+                | head -n 1 || true)"
+            fi
+            if [ -z "${BRANCH}" ]; then
+              BRANCH="${DEFAULT_BRANCH:-unknown}"
+            fi
+          fi
+
+          VERSION="$(printf '%s' "${VERSION}" | tr -d '[:space:]')"
+          if [ -z "${VERSION}" ]; then
+            echo "Version must not be empty" >&2
+            exit 1
+          fi
+          if ! printf '%s' "${VERSION}" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$'; then
+            echo "Version must be a valid Docker tag, for example v1.2.3 or 1.2.3" >&2
+            exit 1
+          fi
+
+          OWNER_LC="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_BASE="ghcr.io/${OWNER_LC}/exodus"
+          IMAGE_VERSION="${IMAGE_BASE}:${VERSION}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+          BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          REPOSITORY_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "frontend_revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "branch=${BRANCH}" >> "${GITHUB_OUTPUT}"
+          echo "build_time=${BUILD_TIME}" >> "${GITHUB_OUTPUT}"
+          echo "build_number=${GITHUB_RUN_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "repository_url=${REPOSITORY_URL}" >> "${GITHUB_OUTPUT}"
+          echo "image_base=${IMAGE_BASE}" >> "${GITHUB_OUTPUT}"
+          echo "image_version=${IMAGE_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "image_latest=${IMAGE_LATEST}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "image_tags<<EOF_TAGS"
+            echo "${IMAGE_VERSION}"
+            echo "${IMAGE_LATEST}"
+            echo "EOF_TAGS"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Show summary
+        shell: bash
+        run: |
+          cat >> "${GITHUB_STEP_SUMMARY}" <<EOF_SUMMARY
+          ## Build metadata
+
+          | Field | Value |
+          |---|---|
+          | Version | `${{ steps.meta.outputs.version }}` |
+          | Branch | `${{ steps.meta.outputs.branch }}` |
+          | Image | `${{ steps.meta.outputs.image_version }}` |
+          | Latest | `${{ steps.meta.outputs.image_latest }}` |
+          | Commit | `${GITHUB_SHA}` |
+          EOF_SUMMARY
+
+  notify-start:
+    name: "2. Telegram: build started"
+    runs-on: ubuntu-latest
+    needs: prepare-metadata
+
+    steps:
+      - name: Send start notification
         continue-on-error: true
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          DEFAULT_TELEGRAM_CHAT_ID: "-1003917042520"
+        shell: bash
         run: |
-          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
-            echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
+          set -euo pipefail
+
+          CHAT_ID="${TELEGRAM_CHAT_ID:-${DEFAULT_TELEGRAM_CHAT_ID}}"
+
+          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
+            echo "Telegram notification skipped: TELEGRAM_TOKEN or chat_id is missing."
             exit 0
           fi
 
-          TEXT="🚀 <b>Panel image build started</b>
+          TEXT="$(cat <<EOF_TEXT
+          🚀 <b>Panel image build started</b>
 
           <b>Repository:</b> ${GITHUB_REPOSITORY}
-          <b>Tag:</b> ${GITHUB_REF_NAME}
+          <b>Version:</b> ${{ needs.prepare-metadata.outputs.version }}
+          <b>Branch:</b> ${{ needs.prepare-metadata.outputs.branch }}
           <b>Commit:</b> ${GITHUB_SHA}
           <b>Workflow:</b> ${GITHUB_WORKFLOW}
-          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF_TEXT
+          )"
 
           ARGS=(
             -sS
             -X POST
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
-            -d "chat_id=${TELEGRAM_CHAT_ID}"
+            -d "chat_id=${CHAT_ID}"
             -d "parse_mode=HTML"
             --data-urlencode "text=${TEXT}"
           )
 
-          if [ -n "${TELEGRAM_TOPIC_ID}" ]; then
+          if [ -n "${TELEGRAM_TOPIC_ID:-}" ]; then
             ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
           fi
 
           curl "${ARGS[@]}"
 
+  build-and-push-image:
+    name: "3. Build and push Docker image"
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-metadata
+      - notify-start
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -66,138 +195,143 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/exodus
-          tags: |
-            type=ref,event=tag
-            type=raw,value=latest
-
-      - name: Resolve build metadata
-        id: build_meta
-        shell: bash
-        run: |
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-          BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          REPOSITORY_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-
-          git fetch --force --prune origin "+refs/heads/*:refs/remotes/origin/*"
-
-          BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
-            | sed 's#^origin/##' \
-            | grep -Fx "${DEFAULT_BRANCH}" \
-            | head -n 1 || true)"
-
-          if [ -z "${BRANCH}" ]; then
-            BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
-              | sed 's#^origin/##' \
-              | grep -v '^HEAD$' \
-              | head -n 1 || true)"
-          fi
-
-          if [ -z "${BRANCH}" ]; then
-            BRANCH="${DEFAULT_BRANCH:-unknown}"
-          fi
-
-          echo "version=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
-          echo "revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
-          echo "frontend_revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
-          echo "branch=${BRANCH}" >> "${GITHUB_OUTPUT}"
-          echo "build_time=${BUILD_TIME}" >> "${GITHUB_OUTPUT}"
-          echo "build_number=${GITHUB_RUN_NUMBER}" >> "${GITHUB_OUTPUT}"
-          echo "repository_url=${REPOSITORY_URL}" >> "${GITHUB_OUTPUT}"
-
       - name: Build and push image
-        id: build_push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ needs.prepare-metadata.outputs.image_tags }}
+          labels: |
+            org.opencontainers.image.title=exodus
+            org.opencontainers.image.description=Exodus panel image
+            org.opencontainers.image.url=${{ needs.prepare-metadata.outputs.repository_url }}
+            org.opencontainers.image.source=${{ needs.prepare-metadata.outputs.repository_url }}
+            org.opencontainers.image.version=${{ needs.prepare-metadata.outputs.version }}
+            org.opencontainers.image.revision=${{ needs.prepare-metadata.outputs.revision }}
+            org.opencontainers.image.created=${{ needs.prepare-metadata.outputs.build_time }}
           build-args: |
-            VERSION=${{ steps.build_meta.outputs.version }}
-            REVISION=${{ steps.build_meta.outputs.revision }}
-            FRONTEND_REVISION=${{ steps.build_meta.outputs.frontend_revision }}
-            BUILD_BRANCH=${{ steps.build_meta.outputs.branch }}
-            BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
-            BUILD_NUMBER=${{ steps.build_meta.outputs.build_number }}
-            REPOSITORY_URL=${{ steps.build_meta.outputs.repository_url }}
+            VERSION=${{ needs.prepare-metadata.outputs.version }}
+            REVISION=${{ needs.prepare-metadata.outputs.revision }}
+            FRONTEND_REVISION=${{ needs.prepare-metadata.outputs.frontend_revision }}
+            BUILD_BRANCH=${{ needs.prepare-metadata.outputs.branch }}
+            BUILD_TIME=${{ needs.prepare-metadata.outputs.build_time }}
+            BUILD_NUMBER=${{ needs.prepare-metadata.outputs.build_number }}
+            REPOSITORY_URL=${{ needs.prepare-metadata.outputs.repository_url }}
 
-      - name: Send Telegram success notification
-        if: success()
-        continue-on-error: true
+      - name: Write build summary
         shell: bash
+        run: |
+          cat >> "${GITHUB_STEP_SUMMARY}" <<EOF_SUMMARY
+          ## Docker image pushed
+
+          - `${{ needs.prepare-metadata.outputs.image_version }}`
+          - `${{ needs.prepare-metadata.outputs.image_latest }}`
+          EOF_SUMMARY
+
+  notify-success:
+    name: "4a. Telegram: build succeeded"
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-metadata
+      - build-and-push-image
+    if: ${{ always() && needs.build-and-push-image.result == 'success' }}
+
+    steps:
+      - name: Send success notification
+        continue-on-error: true
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          DEFAULT_TELEGRAM_CHAT_ID: "-1003917042520"
+        shell: bash
         run: |
-          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
-            echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
+          set -euo pipefail
+
+          CHAT_ID="${TELEGRAM_CHAT_ID:-${DEFAULT_TELEGRAM_CHAT_ID}}"
+
+          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
+            echo "Telegram notification skipped: TELEGRAM_TOKEN or chat_id is missing."
             exit 0
           fi
 
-          TEXT="✅ <b>Panel image build finished successfully</b>
+          TEXT="$(cat <<EOF_TEXT
+          ✅ <b>Panel image build finished successfully</b>
 
           <b>Repository:</b> ${GITHUB_REPOSITORY}
-          <b>Tag:</b> ${GITHUB_REF_NAME}
-          <b>Image:</b> ghcr.io/${{ github.repository_owner }}/exodus:${GITHUB_REF_NAME}
-          <b>Latest:</b> ghcr.io/${{ github.repository_owner }}/exodus:latest
+          <b>Version:</b> ${{ needs.prepare-metadata.outputs.version }}
+          <b>Image:</b> ${{ needs.prepare-metadata.outputs.image_version }}
+          <b>Latest:</b> ${{ needs.prepare-metadata.outputs.image_latest }}
           <b>Commit:</b> ${GITHUB_SHA}
-          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF_TEXT
+          )"
 
           ARGS=(
             -sS
             -X POST
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
-            -d "chat_id=${TELEGRAM_CHAT_ID}"
+            -d "chat_id=${CHAT_ID}"
             -d "parse_mode=HTML"
             --data-urlencode "text=${TEXT}"
           )
 
-          if [ -n "${TELEGRAM_TOPIC_ID}" ]; then
+          if [ -n "${TELEGRAM_TOPIC_ID:-}" ]; then
             ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
           fi
 
           curl "${ARGS[@]}"
 
-      - name: Send Telegram failure notification
-        if: failure()
+  notify-failure:
+    name: "4b. Telegram: build failed"
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-metadata
+      - build-and-push-image
+    if: ${{ always() && needs.build-and-push-image.result == 'failure' }}
+
+    steps:
+      - name: Send failure notification
         continue-on-error: true
-        shell: bash
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          DEFAULT_TELEGRAM_CHAT_ID: "-1003917042520"
+        shell: bash
         run: |
-          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
-            echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
+          set -euo pipefail
+
+          CHAT_ID="${TELEGRAM_CHAT_ID:-${DEFAULT_TELEGRAM_CHAT_ID}}"
+
+          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
+            echo "Telegram notification skipped: TELEGRAM_TOKEN or chat_id is missing."
             exit 0
           fi
 
-          TEXT="❌ <b>Panel image build failed</b>
+          TEXT="$(cat <<EOF_TEXT
+          ❌ <b>Panel image build failed</b>
 
           <b>Repository:</b> ${GITHUB_REPOSITORY}
-          <b>Tag:</b> ${GITHUB_REF_NAME}
+          <b>Version:</b> ${{ needs.prepare-metadata.outputs.version }}
           <b>Commit:</b> ${GITHUB_SHA}
           <b>Workflow:</b> ${GITHUB_WORKFLOW}
-          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF_TEXT
+          )"
 
           ARGS=(
             -sS
             -X POST
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
-            -d "chat_id=${TELEGRAM_CHAT_ID}"
+            -d "chat_id=${CHAT_ID}"
             -d "parse_mode=HTML"
             --data-urlencode "text=${TEXT}"
           )
 
-          if [ -n "${TELEGRAM_TOPIC_ID}" ]; then
+          if [ -n "${TELEGRAM_TOPIC_ID:-}" ]; then
             ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
           fi
 
