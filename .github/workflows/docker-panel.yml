@@ -13,6 +13,41 @@ jobs:
       packages: write
 
     steps:
+      - name: Send Telegram start notification
+        continue-on-error: true
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+        run: |
+          if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
+            exit 0
+          fi
+
+          TEXT="🚀 <b>Panel image build started</b>
+          
+<b>Repository:</b> ${GITHUB_REPOSITORY}
+<b>Tag:</b> ${GITHUB_REF_NAME}
+<b>Commit:</b> ${GITHUB_SHA}
+<b>Workflow:</b> ${GITHUB_WORKFLOW}
+<b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          ARGS=(
+            -sS
+            -X POST
+            "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
+            -d "chat_id=${TELEGRAM_CHAT_ID}"
+            -d "parse_mode=HTML"
+            --data-urlencode "text=${TEXT}"
+          )
+
+          if [ -n "$TELEGRAM_TOPIC_ID" ]; then
+            ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
+          fi
+
+          curl "${ARGS[@]}"
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -70,6 +105,7 @@ jobs:
           echo "repository_url=${REPOSITORY_URL}" >> "${GITHUB_OUTPUT}"
 
       - name: Build and push image
+        id: build_push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -86,3 +122,76 @@ jobs:
             BUILD_TIME=${{ steps.build_meta.outputs.build_time }}
             BUILD_NUMBER=${{ steps.build_meta.outputs.build_number }}
             REPOSITORY_URL=${{ steps.build_meta.outputs.repository_url }}
+
+      - name: Send Telegram success notification
+        if: success()
+        continue-on-error: true
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+        run: |
+          if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
+            exit 0
+          fi
+
+          TEXT="✅ <b>Panel image build finished successfully</b>
+          
+<b>Repository:</b> ${GITHUB_REPOSITORY}
+<b>Tag:</b> ${GITHUB_REF_NAME}
+<b>Image:</b> ghcr.io/${{ github.repository_owner }}/exodus:${GITHUB_REF_NAME}
+<b>Latest:</b> ghcr.io/${{ github.repository_owner }}/exodus:latest
+<b>Commit:</b> ${GITHUB_SHA}
+<b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          ARGS=(
+            -sS
+            -X POST
+            "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
+            -d "chat_id=${TELEGRAM_CHAT_ID}"
+            -d "parse_mode=HTML"
+            --data-urlencode "text=${TEXT}"
+          )
+
+          if [ -n "$TELEGRAM_TOPIC_ID" ]; then
+            ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
+          fi
+
+          curl "${ARGS[@]}"
+
+      - name: Send Telegram failure notification
+        if: failure()
+        continue-on-error: true
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+        run: |
+          if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
+            exit 0
+          fi
+
+          TEXT="❌ <b>Panel image build failed</b>
+          
+<b>Repository:</b> ${GITHUB_REPOSITORY}
+<b>Tag:</b> ${GITHUB_REF_NAME}
+<b>Commit:</b> ${GITHUB_SHA}
+<b>Workflow:</b> ${GITHUB_WORKFLOW}
+<b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          ARGS=(
+            -sS
+            -X POST
+            "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
+            -d "chat_id=${TELEGRAM_CHAT_ID}"
+            -d "parse_mode=HTML"
+            --data-urlencode "text=${TEXT}"
+          )
+
+          if [ -n "$TELEGRAM_TOPIC_ID" ]; then
+            ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
+          fi
+
+          curl "${ARGS[@]}"
