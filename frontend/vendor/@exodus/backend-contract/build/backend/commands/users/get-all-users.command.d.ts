@@ -88,8 +88,6 @@ export declare namespace GetAllUsersCommand {
                 ssPassword: z.ZodString;
                 lastTriggeredThreshold: z.ZodDefault<z.ZodNumber>;
                 subRevokedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                subLastUserAgent: z.ZodNullable<z.ZodString>;
-                subLastOpenedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
                 lastTrafficResetAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
                 createdAt: z.ZodEffects<z.ZodString, Date, string>;
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
@@ -146,8 +144,6 @@ export declare namespace GetAllUsersCommand {
                 ssPassword: string;
                 lastTriggeredThreshold: number;
                 subRevokedAt: Date | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: Date | null;
                 lastTrafficResetAt: Date | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -179,8 +175,6 @@ export declare namespace GetAllUsersCommand {
                 vlessUuid: string;
                 ssPassword: string;
                 subRevokedAt: string | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: string | null;
                 lastTrafficResetAt: string | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -223,8 +217,6 @@ export declare namespace GetAllUsersCommand {
                 ssPassword: string;
                 lastTriggeredThreshold: number;
                 subRevokedAt: Date | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: Date | null;
                 lastTrafficResetAt: Date | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -259,8 +251,6 @@ export declare namespace GetAllUsersCommand {
                 vlessUuid: string;
                 ssPassword: string;
                 subRevokedAt: string | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: string | null;
                 lastTrafficResetAt: string | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -305,8 +295,6 @@ export declare namespace GetAllUsersCommand {
                 ssPassword: string;
                 lastTriggeredThreshold: number;
                 subRevokedAt: Date | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: Date | null;
                 lastTrafficResetAt: Date | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -343,8 +331,6 @@ export declare namespace GetAllUsersCommand {
                 vlessUuid: string;
                 ssPassword: string;
                 subRevokedAt: string | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: string | null;
                 lastTrafficResetAt: string | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {

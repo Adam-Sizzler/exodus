@@ -33,11 +33,6 @@ exports.UsersSchema = zod_1.z.object({
         .string()
         .datetime()
         .transform((str) => new Date(str))),
-    subLastUserAgent: zod_1.z.nullable(zod_1.z.string()),
-    subLastOpenedAt: zod_1.z.nullable(zod_1.z
-        .string()
-        .datetime()
-        .transform((str) => new Date(str))),
     lastTrafficResetAt: zod_1.z.nullable(zod_1.z
         .string()
         .datetime()

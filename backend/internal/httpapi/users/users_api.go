@@ -126,8 +126,6 @@ type userAPI struct {
 	SSPassword             string                  `json:"ssPassword"`
 	LastTriggeredThreshold int                     `json:"lastTriggeredThreshold"`
 	SubRevokedAt           *time.Time              `json:"subRevokedAt"`
-	SubLastUserAgent       *string                 `json:"subLastUserAgent"`
-	SubLastOpenedAt        *time.Time              `json:"subLastOpenedAt"`
 	LastTrafficResetAt     *time.Time              `json:"lastTrafficResetAt"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
@@ -167,8 +165,6 @@ type userRecord struct {
 	TrafficLimitBytes        int64
 	TrafficLimitStrategy     string
 	ExpireAt                 time.Time
-	SubLastUserAgent         *string
-	SubLastOpenedAt          *time.Time
 	LastTrafficResetAt       *time.Time
 	SubRevokedAt             *time.Time
 	TrojanPassword           string
@@ -485,10 +481,10 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		insertErr := tx.QueryRowContext(r.Context(), `
 			INSERT INTO users (
 				uuid, short_uuid, username, status, traffic_limit_bytes, traffic_limit_strategy,
-				expire_at, sub_last_user_agent, sub_last_opened_at, last_traffic_reset_at, sub_revoked_at,
+				expire_at, last_traffic_reset_at, sub_revoked_at,
 				trojan_password, vless_uuid, ss_password, description, tag, telegram_id, email,
 				hwid_device_limit, external_squad_uuid, last_triggered_threshold, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 			RETURNING t_id
 		`,
 			userUUID,
@@ -1951,8 +1947,8 @@ func getAllUserRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 		rows, err := db.QueryContext(ctx, `
 			SELECT
 				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
-				u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
-				u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+				u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
+				u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
 				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
 				u.last_triggered_threshold, u.created_at, u.updated_at,
 				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
@@ -1984,8 +1980,8 @@ func getUserRecordByUUID(ctx context.Context, manager *dbmanager.DatabaseManager
 		row := db.QueryRowContext(ctx, `
 			SELECT
 				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
-				u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
-				u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+				u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
+				u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
 				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
 				u.last_triggered_threshold, u.created_at, u.updated_at,
 				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
@@ -2015,8 +2011,8 @@ func getUserRecordsByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManag
 		rows, err := db.QueryContext(ctx, `
 			SELECT
 				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
-				u.traffic_limit_strategy, u.expire_at, u.sub_last_user_agent, u.sub_last_opened_at,
-				u.last_traffic_reset_at, u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+				u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
+				u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
 				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
 				u.last_triggered_threshold, u.created_at, u.updated_at,
 				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
@@ -2045,8 +2041,6 @@ func getUserRecordsByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManag
 func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 	var record userRecord
 	var (
-		subLastUserAgent sql.NullString
-		subLastOpenedAt  sql.NullTime
 		lastTrafficReset sql.NullTime
 		subRevokedAt     sql.NullTime
 		description      sql.NullString
@@ -2069,8 +2063,6 @@ func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 		&record.TrafficLimitBytes,
 		&record.TrafficLimitStrategy,
 		&record.ExpireAt,
-		&subLastUserAgent,
-		&subLastOpenedAt,
 		&lastTrafficReset,
 		&subRevokedAt,
 		&record.TrojanPassword,
@@ -2095,12 +2087,6 @@ func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 		return record, err
 	}
 
-	if subLastUserAgent.Valid {
-		record.SubLastUserAgent = &subLastUserAgent.String
-	}
-	if subLastOpenedAt.Valid {
-		record.SubLastOpenedAt = &subLastOpenedAt.Time
-	}
 	if lastTrafficReset.Valid {
 		record.LastTrafficResetAt = &lastTrafficReset.Time
 	}
@@ -2177,8 +2163,6 @@ func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 			SSPassword:             record.SSPassword,
 			LastTriggeredThreshold: record.LastTriggeredThreshold,
 			SubRevokedAt:           record.SubRevokedAt,
-			SubLastUserAgent:       record.SubLastUserAgent,
-			SubLastOpenedAt:        record.SubLastOpenedAt,
 			LastTrafficResetAt:     record.LastTrafficResetAt,
 			CreatedAt:              record.CreatedAt,
 			UpdatedAt:              record.UpdatedAt,
@@ -2278,7 +2262,6 @@ func userRecordNotificationData(record userRecord) map[string]any {
 		"externalSquadUuid":      record.ExternalSquadUUID,
 		"lastTriggeredThreshold": record.LastTriggeredThreshold,
 		"subRevokedAt":           optionalTimeString(record.SubRevokedAt),
-		"subLastOpenedAt":        optionalTimeString(record.SubLastOpenedAt),
 		"lastTrafficResetAt":     optionalTimeString(record.LastTrafficResetAt),
 		"createdAt":              record.CreatedAt.UTC().Format(time.RFC3339),
 		"updatedAt":              record.UpdatedAt.UTC().Format(time.RFC3339),

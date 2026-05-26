@@ -13,6 +13,7 @@ import * as dotenv from 'dotenv'
 dotenv.config({ path: `${__dirname}/.env`, override: true })
 
 export default defineConfig({
+    assetsInclude: ['**/*.lottie'],
     base: './',
     plugins: [
         react(),
@@ -53,11 +54,6 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    assets: [
-                        '/src/shared/assets/lotties/satellite.json',
-                        '/src/shared/assets/lotties/checkmark.json',
-                        '/src/shared/assets/lotties/stop-v2.json'
-                    ],
                     react: [
                         'react',
                         'react-dom',
@@ -66,8 +62,12 @@ export default defineConfig({
                         'react-dom/client'
                     ],
                     markdown: ['react-markdown', 'remark-gfm', 'rehype-raw'],
-                    icons: ['react-icons/pi', 'react-icons/fa', 'react-icons/tb', 'lottie-web'],
-                    date: ['dayjs'],
+                    icons: [
+                        'react-icons/pi',
+                        'react-icons/fa',
+                        'react-icons/tb',
+                        '@lottiefiles/dotlottie-react'
+                    ],
                     zod: ['axios', 'zod', 'zustand', 'xbytes', 'zod-to-json-schema'],
                     utils: [
                         'nanoid',
@@ -79,7 +79,8 @@ export default defineConfig({
                         'is-svg',
                         'sax',
                         'jsonc-parser',
-                        'json-edit-react'
+                        'json-edit-react',
+                        'dayjs'
                     ],
                     mantine: [
                         '@mantine/core',
@@ -95,7 +96,7 @@ export default defineConfig({
                     ],
                     i18n: ['i18next', 'i18next-http-backend', 'i18next-browser-languagedetector'],
                     motion: ['framer-motion', 'motion-dom', 'motion-utils', 'motion'],
-                    crypto: ['crypto-js', '@stablelib/base64', '@stablelib/x25519'],
+                    crypto: ['@stablelib/base64', '@stablelib/x25519'],
                     charts: ['recharts', 'highcharts', '@highcharts/react'],
                     dnd: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
                     mantinetable: ['mantine-react-table', 'mantine-datatable'],

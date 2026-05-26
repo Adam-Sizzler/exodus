@@ -157,8 +157,9 @@ export const CreateUserModalWidget = () => {
             size="1000px"
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbUser}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft"
                     title={t('create-user-modal.widget.create-user')}
                 />
             }
@@ -262,7 +263,7 @@ export const CreateUserModalWidget = () => {
                 </Group>
             )}
 
-            <ModalFooter>
+            <ModalFooter isMobile={isMobile}>
                 <Button
                     color="teal"
                     leftSection={<PiFloppyDiskDuotone size="16px" />}

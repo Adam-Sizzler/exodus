@@ -1,7 +1,7 @@
-import Lottie from 'lottie-react'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
+import { withBasePath } from '@shared/constants/base-path'
 import { FC } from 'react'
 
-import link from '../../../assets/lotties/satellite.json'
 import { IProps } from './interfaces/props.interface'
 
 export const LottieLinkShared: FC<IProps> = (props) => {
@@ -9,7 +9,15 @@ export const LottieLinkShared: FC<IProps> = (props) => {
 
     return (
         <div style={{ width, height }}>
-            <Lottie animationData={link} autoplay controls loop />
+            <DotLottieReact
+                autoplay
+                loop
+                renderConfig={{
+                    autoResize: true,
+                    devicePixelRatio: window.devicePixelRatio || 2
+                }}
+                src={withBasePath('/lotties/satellite.lottie')}
+            />
         </div>
     )
 }

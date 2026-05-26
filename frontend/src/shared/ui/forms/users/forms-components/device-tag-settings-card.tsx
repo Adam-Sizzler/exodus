@@ -1,8 +1,4 @@
-import {
-    CreateUserCommand,
-    GetAllTagsCommand,
-    UpdateUserCommand
-} from '@exodus/backend-contract'
+import { CreateUserCommand, GetAllTagsCommand, UpdateUserCommand } from '@exodus/backend-contract'
 import { Anchor, Checkbox, Code, Input, NumberInput, Stack, Text, Textarea } from '@mantine/core'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbDevices2, TbSettings } from 'react-icons/tb'
@@ -34,9 +30,10 @@ export function DeviceTagSettingsCard<
             <SectionCard.Root>
                 <SectionCard.Section>
                     <BaseOverlayHeader
+                        iconColor="orange"
                         IconComponent={TbSettings}
                         iconSize={20}
-                        iconVariant="gradient-orange"
+                        iconVariant="soft"
                         title={t('device-tag-settings-card.device-and-tag-settings')}
                         titleOrder={5}
                     />

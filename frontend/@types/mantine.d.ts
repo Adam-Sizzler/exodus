@@ -1,6 +1,7 @@
-import { BadgeVariant, ThemeIconVariant } from '@mantine/core'
+import { ActionIconVariant, BadgeVariant, ThemeIconVariant } from '@mantine/core'
 
 type ExtendedThemeIconVariant =
+    | 'soft'
     | 'gradient-blue'
     | 'gradient-cyan'
     | 'gradient-gray'
@@ -16,6 +17,7 @@ type ExtendedThemeIconVariant =
     | ThemeIconVariant
 
 type ExtendedBadgeVariant =
+    | 'soft'
     | 'gradient-blue'
     | 'gradient-cyan'
     | 'gradient-gray'
@@ -30,6 +32,8 @@ type ExtendedBadgeVariant =
     | 'gradient-yellow'
     | BadgeVariant
 
+type ExtendedActionIconVariant = ExtendedThemeIconVariant | ActionIconVariant
+
 declare module '@mantine/core' {
     export interface ThemeIconProps {
         variant?: ExtendedThemeIconVariant
@@ -37,5 +41,9 @@ declare module '@mantine/core' {
 
     export interface BadgeProps {
         variant?: ExtendedBadgeVariant
+    }
+
+    export interface ActionIconProps {
+        variant?: ExtendedActionIconVariant
     }
 }

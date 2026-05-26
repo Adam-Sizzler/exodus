@@ -153,14 +153,7 @@ func updateUserSubscription(ctx context.Context, manager *dbmanager.DatabaseMana
 	if payload.UserUUID == "" {
 		return nil
 	}
-	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(ctx, `
-			UPDATE users
-			SET sub_last_opened_at = now(), sub_last_user_agent = ?
-			WHERE uuid = ?
-		`, payload.UserAgent, payload.UserUUID)
-		return err
-	})
+	return nil
 }
 
 func addSubscriptionRequestRecord(ctx context.Context, manager *dbmanager.DatabaseManager, payload AddSubscriptionRequestRecordPayload) error {

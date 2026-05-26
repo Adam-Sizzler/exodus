@@ -87,8 +87,6 @@ type SubscriptionUser struct {
 	SSPassword           string
 	HwidDeviceLimit      *int
 	ExternalSquadUUID    *string
-	SubLastUserAgent     *string
-	SubLastOpenedAt      *time.Time
 	UsedTrafficBytes     int64
 	LifetimeUsedBytes    int64
 }
@@ -305,7 +303,6 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
                    u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
                    u.trojan_password, u.vless_uuid, u.ss_password,
                    u.hwid_device_limit, u.external_squad_uuid,
-                   u.sub_last_user_agent, u.sub_last_opened_at,
                    COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
             FROM users u
             LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
@@ -317,8 +314,6 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 
 		var hwidDeviceLimit sql.NullInt64
 		var externalSquadUUID sql.NullString
-		var subLastUserAgent sql.NullString
-		var subLastOpenedAt sql.NullTime
 		if err := row.Scan(
 			&user.TID,
 			&user.UUID,
@@ -333,8 +328,6 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 			&user.SSPassword,
 			&hwidDeviceLimit,
 			&externalSquadUUID,
-			&subLastUserAgent,
-			&subLastOpenedAt,
 			&user.UsedTrafficBytes,
 			&user.LifetimeUsedBytes,
 		); err != nil {
@@ -348,14 +341,6 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 		if externalSquadUUID.Valid {
 			v := externalSquadUUID.String
 			user.ExternalSquadUUID = &v
-		}
-		if subLastUserAgent.Valid {
-			v := subLastUserAgent.String
-			user.SubLastUserAgent = &v
-		}
-		if subLastOpenedAt.Valid {
-			v := subLastOpenedAt.Time
-			user.SubLastOpenedAt = &v
 		}
 		return nil
 	})
@@ -976,12 +961,6 @@ func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseM
 		defer cancel()
 
 		_ = manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-			if _, err := db.ExecContext(jobCtx, `
-	            UPDATE users SET sub_last_opened_at = now(), sub_last_user_agent = ? WHERE uuid = ?
-	        `, userAgent, userUUID); err != nil {
-				return err
-			}
-
 			if _, err := db.ExecContext(jobCtx, `
 	            INSERT INTO user_subscription_request_history (user_uuid, request_ip, user_agent)
 	            VALUES (?, ?, ?)
@@ -3102,7 +3081,6 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
                    u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
                    u.trojan_password, u.vless_uuid, u.ss_password,
                    u.hwid_device_limit, u.external_squad_uuid,
-                   u.sub_last_user_agent, u.sub_last_opened_at,
                    COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
             FROM users u
             LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
@@ -3118,8 +3096,6 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 			var user SubscriptionUser
 			var hwidDeviceLimit sql.NullInt64
 			var externalSquadUUID sql.NullString
-			var subLastUserAgent sql.NullString
-			var subLastOpenedAt sql.NullTime
 
 			if err := rows.Scan(
 				&user.TID,
@@ -3135,8 +3111,6 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 				&user.SSPassword,
 				&hwidDeviceLimit,
 				&externalSquadUUID,
-				&subLastUserAgent,
-				&subLastOpenedAt,
 				&user.UsedTrafficBytes,
 				&user.LifetimeUsedBytes,
 			); err != nil {
@@ -3150,14 +3124,6 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 			if externalSquadUUID.Valid {
 				v := externalSquadUUID.String
 				user.ExternalSquadUUID = &v
-			}
-			if subLastUserAgent.Valid {
-				v := subLastUserAgent.String
-				user.SubLastUserAgent = &v
-			}
-			if subLastOpenedAt.Valid {
-				v := subLastOpenedAt.Time
-				user.SubLastOpenedAt = &v
 			}
 
 			users = append(users, user)
