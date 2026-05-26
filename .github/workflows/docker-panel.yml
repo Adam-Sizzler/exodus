@@ -20,18 +20,18 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
         run: |
-          if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
             echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
             exit 0
           fi
 
           TEXT="🚀 <b>Panel image build started</b>
-          
-<b>Repository:</b> ${GITHUB_REPOSITORY}
-<b>Tag:</b> ${GITHUB_REF_NAME}
-<b>Commit:</b> ${GITHUB_SHA}
-<b>Workflow:</b> ${GITHUB_WORKFLOW}
-<b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          <b>Repository:</b> ${GITHUB_REPOSITORY}
+          <b>Tag:</b> ${GITHUB_REF_NAME}
+          <b>Commit:</b> ${GITHUB_SHA}
+          <b>Workflow:</b> ${GITHUB_WORKFLOW}
+          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           ARGS=(
             -sS
@@ -42,7 +42,7 @@ jobs:
             --data-urlencode "text=${TEXT}"
           )
 
-          if [ -n "$TELEGRAM_TOPIC_ID" ]; then
+          if [ -n "${TELEGRAM_TOPIC_ID}" ]; then
             ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
           fi
 
@@ -77,21 +77,26 @@ jobs:
 
       - name: Resolve build metadata
         id: build_meta
+        shell: bash
         run: |
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
           BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           REPOSITORY_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+
           git fetch --force --prune origin "+refs/heads/*:refs/remotes/origin/*"
+
           BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
             | sed 's#^origin/##' \
             | grep -Fx "${DEFAULT_BRANCH}" \
             | head -n 1 || true)"
+
           if [ -z "${BRANCH}" ]; then
             BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
               | sed 's#^origin/##' \
               | grep -v '^HEAD$' \
               | head -n 1 || true)"
           fi
+
           if [ -z "${BRANCH}" ]; then
             BRANCH="${DEFAULT_BRANCH:-unknown}"
           fi
@@ -126,24 +131,25 @@ jobs:
       - name: Send Telegram success notification
         if: success()
         continue-on-error: true
+        shell: bash
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
           TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
         run: |
-          if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
             echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
             exit 0
           fi
 
           TEXT="✅ <b>Panel image build finished successfully</b>
-          
-<b>Repository:</b> ${GITHUB_REPOSITORY}
-<b>Tag:</b> ${GITHUB_REF_NAME}
-<b>Image:</b> ghcr.io/${{ github.repository_owner }}/exodus:${GITHUB_REF_NAME}
-<b>Latest:</b> ghcr.io/${{ github.repository_owner }}/exodus:latest
-<b>Commit:</b> ${GITHUB_SHA}
-<b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          <b>Repository:</b> ${GITHUB_REPOSITORY}
+          <b>Tag:</b> ${GITHUB_REF_NAME}
+          <b>Image:</b> ghcr.io/${{ github.repository_owner }}/exodus:${GITHUB_REF_NAME}
+          <b>Latest:</b> ghcr.io/${{ github.repository_owner }}/exodus:latest
+          <b>Commit:</b> ${GITHUB_SHA}
+          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           ARGS=(
             -sS
@@ -154,7 +160,7 @@ jobs:
             --data-urlencode "text=${TEXT}"
           )
 
-          if [ -n "$TELEGRAM_TOPIC_ID" ]; then
+          if [ -n "${TELEGRAM_TOPIC_ID}" ]; then
             ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
           fi
 
@@ -163,23 +169,24 @@ jobs:
       - name: Send Telegram failure notification
         if: failure()
         continue-on-error: true
+        shell: bash
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
           TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
         run: |
-          if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+          if [ -z "${TELEGRAM_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
             echo "Telegram notification skipped: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing."
             exit 0
           fi
 
           TEXT="❌ <b>Panel image build failed</b>
-          
-<b>Repository:</b> ${GITHUB_REPOSITORY}
-<b>Tag:</b> ${GITHUB_REF_NAME}
-<b>Commit:</b> ${GITHUB_SHA}
-<b>Workflow:</b> ${GITHUB_WORKFLOW}
-<b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          <b>Repository:</b> ${GITHUB_REPOSITORY}
+          <b>Tag:</b> ${GITHUB_REF_NAME}
+          <b>Commit:</b> ${GITHUB_SHA}
+          <b>Workflow:</b> ${GITHUB_WORKFLOW}
+          <b>Run:</b> ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           ARGS=(
             -sS
@@ -190,7 +197,7 @@ jobs:
             --data-urlencode "text=${TEXT}"
           )
 
-          if [ -n "$TELEGRAM_TOPIC_ID" ]; then
+          if [ -n "${TELEGRAM_TOPIC_ID}" ]; then
             ARGS+=(-d "message_thread_id=${TELEGRAM_TOPIC_ID}")
           fi
 
