@@ -28,6 +28,10 @@ exports.UsersSchema = zod_1.z.object({
     trojanPassword: zod_1.z.string(),
     vlessUuid: zod_1.z.string().uuid(),
     ssPassword: zod_1.z.string(),
+    naivePassword: zod_1.z.string(),
+    shadowtlsPassword: zod_1.z.string(),
+    hysteria2Password: zod_1.z.string(),
+    anytlsPassword: zod_1.z.string(),
     lastTriggeredThreshold: zod_1.z.number().int().default(0),
     subRevokedAt: zod_1.z.nullable(zod_1.z
         .string()

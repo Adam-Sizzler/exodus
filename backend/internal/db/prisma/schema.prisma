@@ -61,6 +61,10 @@ model Users {
   trojanPassword         String    @map("trojan_password")
   vlessUuid              String    @map("vless_uuid") @db.Uuid
   ssPassword             String    @map("ss_password")
+  naivePassword          String?   @map("naive_password")
+  shadowtlsPassword      String?   @map("shadowtls_password")
+  hysteria2Password      String?   @map("hysteria2_password")
+  anytlsPassword         String?   @map("anytls_password")
   description            String?   @map("description")
   tag                    String?   @map("tag")
   telegramId             BigInt?   @map("telegram_id")

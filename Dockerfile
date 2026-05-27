@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # Multistage build for exodus panel (frontend + backend)
 FROM node:20-alpine AS panel-ui
 WORKDIR /ui
@@ -17,7 +15,7 @@ RUN set -eu; \
       [ -n "$url" ] || return 0; \
       n=1; ok=0; \
       while [ "$n" -le 4 ]; do \
-        if wget -qO "$out" "$url"; then \
+        if wget -T 12 -t 1 -qO "$out" "$url"; then \
           ok=1; break; \
         fi; \
         echo "WARN: download failed for $name (attempt $n/4): $url"; \
@@ -105,8 +103,10 @@ ENV EXODUS_VERSION="${VERSION}" \
     EXODUS_BUILD_NUMBER="${BUILD_NUMBER}" \
     EXODUS_REPOSITORY_URL="${REPOSITORY_URL}"
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+# Runtime certs/timezone data come from the builder stage to keep the final
+# image independent from Alpine repository availability during local rebuilds.
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 WORKDIR /app
 

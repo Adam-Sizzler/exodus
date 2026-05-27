@@ -23,6 +23,11 @@ const DEFAULT_VISIBILITY: MRT_VisibilityState = {
     externalSquadUuid: false,
     vlessUuid: false,
     trojanPassword: false,
+    ssPassword: false,
+    naivePassword: false,
+    shadowtlsPassword: false,
+    hysteria2Password: false,
+    anytlsPassword: false,
     hwidDeviceLimit: false
 }
 

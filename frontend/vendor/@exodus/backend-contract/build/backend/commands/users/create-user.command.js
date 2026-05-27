@@ -53,6 +53,10 @@ var CreateUserCommand;
             .max(32, 'SS password must be less than 32 characters')
             .optional()
             .describe('Optional. Password for Shadowsocks protocol. Must be 8-32 characters.'),
+        naivePassword: zod_1.z.string().max(256, 'Naive password must be less than 256 characters').optional(),
+        shadowtlsPassword: zod_1.z.string().max(256, 'ShadowTLS password must be less than 256 characters').optional(),
+        hysteria2Password: zod_1.z.string().max(256, 'Hysteria2 password must be less than 256 characters').optional(),
+        anytlsPassword: zod_1.z.string().max(256, 'AnyTLS password must be less than 256 characters').optional(),
         trafficLimitBytes: zod_1.z
             .number({
             invalid_type_error: 'Traffic limit must be a number',

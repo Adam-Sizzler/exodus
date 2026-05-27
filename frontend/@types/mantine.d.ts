@@ -1,4 +1,4 @@
-import { ActionIconVariant, BadgeVariant, ThemeIconVariant } from '@mantine/core'
+import { ActionIconVariant, BadgeVariant, ButtonVariant, ThemeIconVariant } from '@mantine/core'
 
 type ExtendedThemeIconVariant =
     | 'soft'
@@ -33,6 +33,7 @@ type ExtendedBadgeVariant =
     | BadgeVariant
 
 type ExtendedActionIconVariant = ExtendedThemeIconVariant | ActionIconVariant
+type ExtendedButtonVariant = ExtendedThemeIconVariant | ButtonVariant
 
 declare module '@mantine/core' {
     export interface ThemeIconProps {
@@ -45,5 +46,9 @@ declare module '@mantine/core' {
 
     export interface ActionIconProps {
         variant?: ExtendedActionIconVariant
+    }
+
+    export interface ButtonProps {
+        variant?: ExtendedButtonVariant
     }
 }

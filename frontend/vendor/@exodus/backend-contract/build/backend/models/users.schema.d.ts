@@ -27,6 +27,10 @@ export declare const UsersSchema: z.ZodObject<{
     trojanPassword: z.ZodString;
     vlessUuid: z.ZodString;
     ssPassword: z.ZodString;
+    naivePassword: z.ZodString;
+    shadowtlsPassword: z.ZodString;
+    hysteria2Password: z.ZodString;
+    anytlsPassword: z.ZodString;
     lastTriggeredThreshold: z.ZodDefault<z.ZodNumber>;
     subRevokedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
     lastTrafficResetAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
@@ -52,6 +56,10 @@ export declare const UsersSchema: z.ZodObject<{
     trojanPassword: string;
     vlessUuid: string;
     ssPassword: string;
+    naivePassword: string;
+    shadowtlsPassword: string;
+    hysteria2Password: string;
+    anytlsPassword: string;
     lastTriggeredThreshold: number;
     subRevokedAt: Date | null;
     lastTrafficResetAt: Date | null;
@@ -72,6 +80,10 @@ export declare const UsersSchema: z.ZodObject<{
     trojanPassword: string;
     vlessUuid: string;
     ssPassword: string;
+    naivePassword: string;
+    shadowtlsPassword: string;
+    hysteria2Password: string;
+    anytlsPassword: string;
     subRevokedAt: string | null;
     lastTrafficResetAt: string | null;
     status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;

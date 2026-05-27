@@ -28,6 +28,11 @@ body {
     background-color: var(--mantine-color-dark-5) !important;
 }
 
+.mantine-ActionIcon-root[data-variant='light'],
+.mantine-ThemeIcon-root[data-variant='light'] {
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+
 @supports (padding: env(safe-area-inset-bottom)) {
     .safe-area-bottom {
         position: fixed;

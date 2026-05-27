@@ -262,6 +262,35 @@ export const DetailedUserInfoDrawerWidget = () => {
                                     label={t('detailed-user-info-drawer.widget.ss-password')}
                                     value={user.ssPassword}
                                 />
+                                {(() => {
+                                    const protocolCredentials = user as typeof user & {
+                                        naivePassword?: string
+                                        shadowtlsPassword?: string
+                                        hysteria2Password?: string
+                                        anytlsPassword?: string
+                                    }
+
+                                    return (
+                                        <>
+                                            <CopyableFieldShared
+                                                label="Naive Password"
+                                                value={protocolCredentials.naivePassword ?? '—'}
+                                            />
+                                            <CopyableFieldShared
+                                                label="ShadowTLS Password"
+                                                value={protocolCredentials.shadowtlsPassword ?? '—'}
+                                            />
+                                            <CopyableFieldShared
+                                                label="Hysteria2 Password"
+                                                value={protocolCredentials.hysteria2Password ?? '—'}
+                                            />
+                                            <CopyableFieldShared
+                                                label="AnyTLS Password"
+                                                value={protocolCredentials.anytlsPassword ?? '—'}
+                                            />
+                                        </>
+                                    )
+                                })()}
                                 <CopyableFieldShared
                                     label={t('detailed-user-info-drawer.widget.first-connected-at')}
                                     value={formatDate(user.userTraffic.firstConnectedAt)}

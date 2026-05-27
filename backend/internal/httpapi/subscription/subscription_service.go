@@ -85,6 +85,10 @@ type SubscriptionUser struct {
 	TrojanPassword       string
 	VlessUUID            string
 	SSPassword           string
+	NaivePassword        string
+	ShadowtlsPassword    string
+	Hysteria2Password    string
+	AnytlsPassword       string
 	HwidDeviceLimit      *int
 	ExternalSquadUUID    *string
 	UsedTrafficBytes     int64
@@ -301,8 +305,9 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 		query := fmt.Sprintf(`
             SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
                    u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
-                   u.trojan_password, u.vless_uuid, u.ss_password,
-                   u.hwid_device_limit, u.external_squad_uuid,
+	                   u.trojan_password, u.vless_uuid, u.ss_password,
+	                   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+	                   u.hwid_device_limit, u.external_squad_uuid,
                    COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
             FROM users u
             LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
@@ -314,6 +319,7 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 
 		var hwidDeviceLimit sql.NullInt64
 		var externalSquadUUID sql.NullString
+		var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
 		if err := row.Scan(
 			&user.TID,
 			&user.UUID,
@@ -326,6 +332,10 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 			&user.TrojanPassword,
 			&user.VlessUUID,
 			&user.SSPassword,
+			&naivePassword,
+			&shadowtlsPassword,
+			&hysteria2Password,
+			&anytlsPassword,
 			&hwidDeviceLimit,
 			&externalSquadUUID,
 			&user.UsedTrafficBytes,
@@ -342,6 +352,10 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 			v := externalSquadUUID.String
 			user.ExternalSquadUUID = &v
 		}
+		user.NaivePassword = firstNonEmpty(nullableSQLString(naivePassword), user.TrojanPassword)
+		user.ShadowtlsPassword = firstNonEmpty(nullableSQLString(shadowtlsPassword), user.SSPassword)
+		user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.VlessUUID)
+		user.AnytlsPassword = firstNonEmpty(nullableSQLString(anytlsPassword), user.TrojanPassword)
 		return nil
 	})
 	if err != nil {
@@ -1241,6 +1255,9 @@ func normalizedHostProtocol(host SubscriptionHost) string {
 	if protocol == "ss" {
 		return "shadowsocks"
 	}
+	if protocol == "hy2" || protocol == "hysteria" {
+		return "hysteria2"
+	}
 	return protocol
 }
 
@@ -1254,10 +1271,18 @@ func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) s
 	switch normalizedHostProtocol(host) {
 	case "vless":
 		return strings.TrimSpace(user.VlessUUID)
-	case "trojan", "anytls", "naive":
+	case "trojan":
 		return strings.TrimSpace(user.TrojanPassword)
+	case "anytls":
+		return firstNonEmpty(user.AnytlsPassword, user.TrojanPassword)
+	case "naive":
+		return firstNonEmpty(user.NaivePassword, user.TrojanPassword)
 	case "shadowsocks":
 		return strings.TrimSpace(user.SSPassword)
+	case "shadowtls":
+		return firstNonEmpty(user.ShadowtlsPassword, user.SSPassword)
+	case "hysteria2":
+		return firstNonEmpty(user.Hysteria2Password, user.VlessUUID)
 	default:
 		return ""
 	}
@@ -1803,7 +1828,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		return nil
 	}
 
-	if protocol != "vless" && protocol != "trojan" && protocol != "shadowsocks" && protocol != "anytls" && protocol != "naive" {
+	if protocol != "vless" && protocol != "trojan" && protocol != "shadowsocks" && protocol != "anytls" && protocol != "naive" && protocol != "shadowtls" && protocol != "hysteria2" {
 		return nil
 	}
 
@@ -1835,7 +1860,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 			outbound.Set("flow", "xtls-rprx-vision")
 		}
 		outbound.Set("uuid", credential)
-	case "trojan", "anytls":
+	case "trojan", "anytls", "hysteria2", "shadowtls":
 		outbound.Set("password", credential)
 	case "naive":
 		username := effectiveNaiveUsername(user)
@@ -1854,7 +1879,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		outbound.Set("network", "tcp")
 	}
 
-	if defaults.security == "tls" || defaults.security == "reality" || protocol == "anytls" || protocol == "naive" {
+	if defaults.security == "tls" || defaults.security == "reality" || protocol == "anytls" || protocol == "naive" || protocol == "hysteria2" || protocol == "shadowtls" {
 		tlsCfg := orderedmap.New()
 		tlsCfg.Set("enabled", true)
 
@@ -2184,6 +2209,13 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func nullableSQLString(value sql.NullString) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.String
 }
 
 func deriveRealityPublicKey(privateKey string) string {
@@ -3079,8 +3111,9 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 		rows, err := db.QueryContext(ctx, `
             SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
                    u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
-                   u.trojan_password, u.vless_uuid, u.ss_password,
-                   u.hwid_device_limit, u.external_squad_uuid,
+	                   u.trojan_password, u.vless_uuid, u.ss_password,
+	                   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+	                   u.hwid_device_limit, u.external_squad_uuid,
                    COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
             FROM users u
             LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
@@ -3096,6 +3129,7 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 			var user SubscriptionUser
 			var hwidDeviceLimit sql.NullInt64
 			var externalSquadUUID sql.NullString
+			var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
 
 			if err := rows.Scan(
 				&user.TID,
@@ -3109,6 +3143,10 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 				&user.TrojanPassword,
 				&user.VlessUUID,
 				&user.SSPassword,
+				&naivePassword,
+				&shadowtlsPassword,
+				&hysteria2Password,
+				&anytlsPassword,
 				&hwidDeviceLimit,
 				&externalSquadUUID,
 				&user.UsedTrafficBytes,
@@ -3125,6 +3163,10 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 				v := externalSquadUUID.String
 				user.ExternalSquadUUID = &v
 			}
+			user.NaivePassword = firstNonEmpty(nullableSQLString(naivePassword), user.TrojanPassword)
+			user.ShadowtlsPassword = firstNonEmpty(nullableSQLString(shadowtlsPassword), user.SSPassword)
+			user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.VlessUUID)
+			user.AnytlsPassword = firstNonEmpty(nullableSQLString(anytlsPassword), user.TrojanPassword)
 
 			users = append(users, user)
 		}

@@ -36,6 +36,8 @@ type deployHaproxyUserItem struct {
 	Username       string `json:"username"`
 	VLESSUUID      string `json:"vless_uuid"`
 	TrojanPassword string `json:"trojan_password"`
+	NaivePassword  string `json:"naive_password,omitempty"`
+	AnytlsPassword string `json:"anytls_password,omitempty"`
 }
 
 type deployIngressFilterBlock struct {
@@ -85,6 +87,10 @@ type inboundUserCredentials struct {
 	VLESSUUID      string
 	TrojanPassword string
 	SSPassword     string
+	NaivePassword  string
+	ShadowTLSPass  string
+	Hysteria2Pass  string
+	AnytlsPassword string
 }
 
 func normalizeTagValue(tag string) string {
@@ -345,26 +351,34 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 	items := make([]deployHaproxyUserItem, 0)
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-				SELECT
-					u.username,
-					CASE
-						WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid::text
-						ELSE ''
-					END AS vless_uuid,
-				CASE
-					WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
-					ELSE ''
-				END AS trojan_password
-				FROM config_profile_inbounds_to_nodes cpitn
-				JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
-				JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
-				JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-				JOIN users u ON u.t_id = ism.user_id
-			WHERE cpitn.node_uuid::text = ? AND u.status = 'ACTIVE'
-				GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password
-				HAVING bool_or(lower(cpi.type) IN ('vless', 'trojan'))
-				ORDER BY u.t_id ASC
-		`, nodeUUID)
+					SELECT
+						u.username,
+						CASE
+							WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid::text
+							ELSE ''
+						END AS vless_uuid,
+						CASE
+							WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
+							ELSE ''
+						END AS trojan_password,
+						CASE
+							WHEN bool_or(lower(cpi.type) = 'naive') THEN COALESCE(NULLIF(u.naive_password, ''), u.trojan_password)
+							ELSE ''
+						END AS naive_password,
+						CASE
+							WHEN bool_or(lower(cpi.type) = 'anytls') THEN COALESCE(NULLIF(u.anytls_password, ''), u.trojan_password)
+							ELSE ''
+						END AS anytls_password
+					FROM config_profile_inbounds_to_nodes cpitn
+					JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+					JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
+					JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
+					JOIN users u ON u.t_id = ism.user_id
+				WHERE cpitn.node_uuid::text = ? AND u.status = 'ACTIVE'
+					GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
+					HAVING bool_or(lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls'))
+					ORDER BY u.t_id ASC
+			`, nodeUUID)
 		if err != nil {
 			return err
 		}
@@ -372,7 +386,7 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 
 		for rows.Next() {
 			var item deployHaproxyUserItem
-			if err := rows.Scan(&item.Username, &item.VLESSUUID, &item.TrojanPassword); err != nil {
+			if err := rows.Scan(&item.Username, &item.VLESSUUID, &item.TrojanPassword, &item.NaivePassword, &item.AnytlsPassword); err != nil {
 				return err
 			}
 			item.Username = strings.TrimSpace(item.Username)
@@ -458,10 +472,19 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 
 	err = nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-			SELECT isi.inbound_uuid, u.username, u.vless_uuid, u.trojan_password, u.ss_password
-			FROM internal_squad_inbounds isi
-			JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-			JOIN users u ON u.t_id = ism.user_id
+				SELECT
+					isi.inbound_uuid,
+					u.username,
+					u.vless_uuid,
+					u.trojan_password,
+					u.ss_password,
+					COALESCE(NULLIF(u.naive_password, ''), u.trojan_password),
+					COALESCE(NULLIF(u.shadowtls_password, ''), u.ss_password),
+					COALESCE(NULLIF(u.hysteria2_password, ''), u.vless_uuid::text),
+					COALESCE(NULLIF(u.anytls_password, ''), u.trojan_password)
+				FROM internal_squad_inbounds isi
+				JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
+				JOIN users u ON u.t_id = ism.user_id
 			WHERE isi.inbound_uuid = ANY(?) AND u.status = 'ACTIVE'
 			ORDER BY u.t_id ASC
 		`, inboundUUIDs)
@@ -475,7 +498,17 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 				inboundUUID string
 				user        inboundUserCredentials
 			)
-			if err := rows.Scan(&inboundUUID, &user.Username, &user.VLESSUUID, &user.TrojanPassword, &user.SSPassword); err != nil {
+			if err := rows.Scan(
+				&inboundUUID,
+				&user.Username,
+				&user.VLESSUUID,
+				&user.TrojanPassword,
+				&user.SSPassword,
+				&user.NaivePassword,
+				&user.ShadowTLSPass,
+				&user.Hysteria2Pass,
+				&user.AnytlsPassword,
+			); err != nil {
 				return err
 			}
 			binding, ok := bindingByInboundUUID[inboundUUID]
@@ -623,7 +656,14 @@ func isUnsecureInbound(inboundType string) bool {
 
 func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any {
 	result := make([]any, 0, len(users))
-	switch strings.ToLower(strings.TrimSpace(inboundType)) {
+	normalizedType := strings.ToLower(strings.TrimSpace(inboundType))
+	if normalizedType == "ss" {
+		normalizedType = "shadowsocks"
+	}
+	if normalizedType == "hy2" || normalizedType == "hysteria" {
+		normalizedType = "hysteria2"
+	}
+	switch normalizedType {
 	case "vless":
 		for _, user := range users {
 			result = append(result, map[string]any{
@@ -643,6 +683,34 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 			result = append(result, map[string]any{
 				"name":     user.Username,
 				"password": user.SSPassword,
+			})
+		}
+	case "naive":
+		for _, user := range users {
+			result = append(result, map[string]any{
+				"username": user.Username,
+				"password": user.NaivePassword,
+			})
+		}
+	case "anytls":
+		for _, user := range users {
+			result = append(result, map[string]any{
+				"name":     user.Username,
+				"password": user.AnytlsPassword,
+			})
+		}
+	case "shadowtls":
+		for _, user := range users {
+			result = append(result, map[string]any{
+				"name":     user.Username,
+				"password": user.ShadowTLSPass,
+			})
+		}
+	case "hysteria2":
+		for _, user := range users {
+			result = append(result, map[string]any{
+				"name":     user.Username,
+				"password": user.Hysteria2Pass,
 			})
 		}
 	default:

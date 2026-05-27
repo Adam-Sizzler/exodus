@@ -64,6 +64,13 @@ var UpdateUserCommand;
         telegramId: zod_1.z.optional(zod_1.z.number().int().nullable()),
         email: zod_1.z.optional(zod_1.z.string().email('Invalid email format').nullable()),
         hwidDeviceLimit: zod_1.z.optional(zod_1.z.number().int().min(0, 'Device limit must be non-negative').nullable()),
+        trojanPassword: zod_1.z.optional(zod_1.z.string().max(256)),
+        vlessUuid: zod_1.z.optional(zod_1.z.string().uuid()),
+        ssPassword: zod_1.z.optional(zod_1.z.string().max(256)),
+        naivePassword: zod_1.z.optional(zod_1.z.string().max(256).nullable()),
+        shadowtlsPassword: zod_1.z.optional(zod_1.z.string().max(256).nullable()),
+        hysteria2Password: zod_1.z.optional(zod_1.z.string().max(256).nullable()),
+        anytlsPassword: zod_1.z.optional(zod_1.z.string().max(256).nullable()),
         activeInternalSquads: zod_1.z
             .array(zod_1.z.string().uuid(), {
             invalid_type_error: 'Enabled internal squads must be an array of UUIDs',

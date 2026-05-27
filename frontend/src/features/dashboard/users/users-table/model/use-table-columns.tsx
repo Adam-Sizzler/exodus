@@ -420,6 +420,69 @@ export const useUserTableColumns = (
                 }
             },
             {
+                accessorKey: 'ssPassword',
+                header: 'Shadowsocks Password',
+                accessorFn: (originalRow) => originalRow.ssPassword,
+                minSize: 400,
+                maxSize: 800,
+                enableColumnFilterModes: false,
+                mantineTableBodyCellProps: {
+                    align: 'center'
+                }
+            },
+            {
+                accessorKey: 'naivePassword',
+                header: 'Naive Password',
+                accessorFn: (originalRow) =>
+                    (originalRow as typeof originalRow & { naivePassword?: string })
+                        .naivePassword ?? '',
+                minSize: 400,
+                maxSize: 800,
+                enableColumnFilterModes: false,
+                mantineTableBodyCellProps: {
+                    align: 'center'
+                }
+            },
+            {
+                accessorKey: 'shadowtlsPassword',
+                header: 'ShadowTLS Password',
+                accessorFn: (originalRow) =>
+                    (originalRow as typeof originalRow & { shadowtlsPassword?: string })
+                        .shadowtlsPassword ?? '',
+                minSize: 400,
+                maxSize: 800,
+                enableColumnFilterModes: false,
+                mantineTableBodyCellProps: {
+                    align: 'center'
+                }
+            },
+            {
+                accessorKey: 'hysteria2Password',
+                header: 'Hysteria2 Password',
+                accessorFn: (originalRow) =>
+                    (originalRow as typeof originalRow & { hysteria2Password?: string })
+                        .hysteria2Password ?? '',
+                minSize: 400,
+                maxSize: 800,
+                enableColumnFilterModes: false,
+                mantineTableBodyCellProps: {
+                    align: 'center'
+                }
+            },
+            {
+                accessorKey: 'anytlsPassword',
+                header: 'AnyTLS Password',
+                accessorFn: (originalRow) =>
+                    (originalRow as typeof originalRow & { anytlsPassword?: string })
+                        .anytlsPassword ?? '',
+                minSize: 400,
+                maxSize: 800,
+                enableColumnFilterModes: false,
+                mantineTableBodyCellProps: {
+                    align: 'center'
+                }
+            },
+            {
                 accessorKey: 'hwidDeviceLimit',
                 header: 'HWID Device Limit',
                 accessorFn: (originalRow) => originalRow.hwidDeviceLimit ?? '–',

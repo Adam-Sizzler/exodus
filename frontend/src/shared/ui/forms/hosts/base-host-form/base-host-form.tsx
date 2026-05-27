@@ -131,7 +131,14 @@ const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
 type ConfigProfileInbound =
     IProps<CreateHostCommand.Request>['configProfiles'][number]['inbounds'][number]
 
-type HostCredentialProtocol = 'vless' | 'trojan' | 'shadowsocks' | 'anytls' | 'naive'
+type HostCredentialProtocol =
+    | 'vless'
+    | 'trojan'
+    | 'shadowsocks'
+    | 'anytls'
+    | 'naive'
+    | 'shadowtls'
+    | 'hysteria2'
 
 const normalizeCredentialProtocol = (protocol?: string | null): HostCredentialProtocol | null => {
     const normalized = protocol?.trim().toLowerCase()
@@ -141,10 +148,15 @@ const normalizeCredentialProtocol = (protocol?: string | null): HostCredentialPr
         case 'trojan':
         case 'anytls':
         case 'naive':
+        case 'shadowtls':
             return normalized
         case 'shadowsocks':
         case 'ss':
             return 'shadowsocks'
+        case 'hysteria':
+        case 'hy2':
+        case 'hysteria2':
+            return 'hysteria2'
         default:
             return null
     }
@@ -396,11 +408,10 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const activeCredentialProtocolLabel =
         activeCredentialProtocol === 'shadowsocks'
             ? 'SHADOWSOCKS'
-            : (activeCredentialProtocol?.toUpperCase() ?? '')
+            : activeCredentialProtocol === 'hysteria2'
+              ? 'HYSTERIA2'
+              : (activeCredentialProtocol?.toUpperCase() ?? '')
     const isUUIDCredential = activeCredentialProtocol === 'vless'
-    const credentialKindLabel = isUUIDCredential
-        ? t('base-host-form.uuid-for-all-users')
-        : t('base-host-form.password-for-all-users')
 
     const resolveSelectedInbound = () => {
         const values = form.getValues() as {
@@ -1002,26 +1013,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                                                     'base-host-form.override-protocol-credential'
                                                                 )}
                                                             </Text>
-                                                            {activeCredentialProtocol ? (
-                                                                <Group gap={5} wrap="nowrap">
-                                                                    <Badge
-                                                                        color="teal"
-                                                                        size="xs"
-                                                                        variant="light"
-                                                                    >
-                                                                        {
-                                                                            activeCredentialProtocolLabel
-                                                                        }
-                                                                    </Badge>
-                                                                    <Text
-                                                                        c="dimmed"
-                                                                        size="xs"
-                                                                        truncate
-                                                                    >
-                                                                        {credentialKindLabel}
-                                                                    </Text>
-                                                                </Group>
-                                                            ) : (
+                                                            {!activeCredentialProtocol && (
                                                                 <Text c="dimmed" size="xs" truncate>
                                                                     {activeCredentialInbound
                                                                         ? t(
@@ -1059,16 +1051,9 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
 
                                                 {activeCredentialProtocol &&
                                                     protocolCredentialEnabled && (
-                                                        <Stack
-                                                            gap={6}
-                                                            p="sm"
-                                                            style={{
-                                                                border: '1px solid var(--mantine-color-dark-4)',
-                                                                borderRadius: 8
-                                                            }}
-                                                        >
+                                                        <Stack gap={6}>
                                                             <Group
-                                                                align="flex-end"
+                                                                align="flex-start"
                                                                 gap="xs"
                                                                 wrap="nowrap"
                                                             >
@@ -1077,6 +1062,9 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                                                         'protocolCredential'
                                                                     )}
                                                                     label={`${isUUIDCredential ? t('base-host-form.uuid-override') : t('base-host-form.password-override')} (${activeCredentialProtocolLabel})`}
+                                                                    description={t(
+                                                                        'base-host-form.replaces-user-credential'
+                                                                    )}
                                                                     leftSection={
                                                                         <TbFingerprint size={16} />
                                                                     }
@@ -1094,21 +1082,17 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                                                     <ActionIcon
                                                                         color="teal"
                                                                         h={36}
+                                                                        mt={25}
                                                                         onClick={
                                                                             handleGenerateProtocolCredential
                                                                         }
-                                                                        variant="light"
+                                                                        variant="soft"
                                                                         w={36}
                                                                     >
                                                                         <TbRefresh size={18} />
                                                                     </ActionIcon>
                                                                 </Tooltip>
                                                             </Group>
-                                                            <Text c="dimmed" size="xs">
-                                                                {t(
-                                                                    'base-host-form.replaces-user-credential'
-                                                                )}
-                                                            </Text>
                                                         </Stack>
                                                     )}
                                             </Stack>

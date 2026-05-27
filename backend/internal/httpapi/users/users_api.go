@@ -124,6 +124,10 @@ type userAPI struct {
 	TrojanPassword         string                  `json:"trojanPassword"`
 	VlessUUID              string                  `json:"vlessUuid"`
 	SSPassword             string                  `json:"ssPassword"`
+	NaivePassword          string                  `json:"naivePassword"`
+	ShadowtlsPassword      string                  `json:"shadowtlsPassword"`
+	Hysteria2Password      string                  `json:"hysteria2Password"`
+	AnytlsPassword         string                  `json:"anytlsPassword"`
 	LastTriggeredThreshold int                     `json:"lastTriggeredThreshold"`
 	SubRevokedAt           *time.Time              `json:"subRevokedAt"`
 	LastTrafficResetAt     *time.Time              `json:"lastTrafficResetAt"`
@@ -170,6 +174,10 @@ type userRecord struct {
 	TrojanPassword           string
 	VlessUUID                string
 	SSPassword               string
+	NaivePassword            *string
+	ShadowtlsPassword        *string
+	Hysteria2Password        *string
+	AnytlsPassword           *string
 	Description              *string
 	Tag                      *string
 	TelegramID               *int64
@@ -194,6 +202,10 @@ type createUserRequest struct {
 	TrojanPassword       *string  `json:"trojanPassword,omitempty"`
 	VlessUUID            *string  `json:"vlessUuid,omitempty"`
 	SSPassword           *string  `json:"ssPassword,omitempty"`
+	NaivePassword        *string  `json:"naivePassword,omitempty"`
+	ShadowtlsPassword    *string  `json:"shadowtlsPassword,omitempty"`
+	Hysteria2Password    *string  `json:"hysteria2Password,omitempty"`
+	AnytlsPassword       *string  `json:"anytlsPassword,omitempty"`
 	TrafficLimitBytes    *int64   `json:"trafficLimitBytes,omitempty"`
 	TrafficLimitStrategy *string  `json:"trafficLimitStrategy,omitempty"`
 	ExpireAt             string   `json:"expireAt"`
@@ -220,6 +232,13 @@ type updateUserRequest struct {
 	TelegramID           OptionalInt64  `json:"telegramId,omitempty"`
 	Email                OptionalString `json:"email,omitempty"`
 	HwidDeviceLimit      OptionalInt    `json:"hwidDeviceLimit,omitempty"`
+	TrojanPassword       OptionalString `json:"trojanPassword,omitempty"`
+	VlessUUID            OptionalString `json:"vlessUuid,omitempty"`
+	SSPassword           OptionalString `json:"ssPassword,omitempty"`
+	NaivePassword        OptionalString `json:"naivePassword,omitempty"`
+	ShadowtlsPassword    OptionalString `json:"shadowtlsPassword,omitempty"`
+	Hysteria2Password    OptionalString `json:"hysteria2Password,omitempty"`
+	AnytlsPassword       OptionalString `json:"anytlsPassword,omitempty"`
 	ActiveInternalSquads *[]string      `json:"activeInternalSquads,omitempty"`
 	ExternalSquadUUID    OptionalString `json:"externalSquadUuid,omitempty"`
 }
@@ -452,8 +471,12 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	trojanPassword := coalesceRandomString(req.TrojanPassword, 16)
 	vlessUUID := coalesceUUID(req.VlessUUID)
 	ssPassword := coalesceRandomString(req.SSPassword, 16)
+	naivePassword := coalesceRandomString(req.NaivePassword, 16)
+	shadowtlsPassword := coalesceRandomString(req.ShadowtlsPassword, 16)
+	hysteria2Password := coalesceRandomString(req.Hysteria2Password, 16)
+	anytlsPassword := coalesceRandomString(req.AnytlsPassword, 16)
 
-	if trojanPassword == "" || ssPassword == "" {
+	if trojanPassword == "" || ssPassword == "" || naivePassword == "" || shadowtlsPassword == "" || hysteria2Password == "" || anytlsPassword == "" {
 		shared.SendError(w, http.StatusInternalServerError, "failed to generate user credentials", nil, cfg)
 		return
 	}
@@ -480,13 +503,14 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		var tID int64
 		insertErr := tx.QueryRowContext(r.Context(), `
 			INSERT INTO users (
-				uuid, short_uuid, username, status, traffic_limit_bytes, traffic_limit_strategy,
-				expire_at, last_traffic_reset_at, sub_revoked_at,
-				trojan_password, vless_uuid, ss_password, description, tag, telegram_id, email,
-				hwid_device_limit, external_squad_uuid, last_triggered_threshold, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-			RETURNING t_id
-		`,
+					uuid, short_uuid, username, status, traffic_limit_bytes, traffic_limit_strategy,
+					expire_at, last_traffic_reset_at, sub_revoked_at,
+					trojan_password, vless_uuid, ss_password, naive_password, shadowtls_password, hysteria2_password, anytls_password,
+					description, tag, telegram_id, email,
+					hwid_device_limit, external_squad_uuid, last_triggered_threshold, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+				RETURNING t_id
+			`,
 			userUUID,
 			shortUUID,
 			strings.TrimSpace(req.Username),
@@ -498,6 +522,10 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			trojanPassword,
 			vlessUUID,
 			ssPassword,
+			naivePassword,
+			shadowtlsPassword,
+			hysteria2Password,
+			anytlsPassword,
 			normalizeNullableString(req.Description),
 			normalizeUserTag(req.Tag),
 			req.TelegramID,
@@ -667,6 +695,25 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 				add("hwid_device_limit", *req.HwidDeviceLimit.Value)
 			}
 		}
+		addOptionalCredential := func(field OptionalString, column string, nullable bool) {
+			if !field.Set {
+				return
+			}
+			if field.Value == nil {
+				if nullable {
+					clauses = append(clauses, fmt.Sprintf("%s = NULL", column))
+				}
+				return
+			}
+			add(column, strings.TrimSpace(*field.Value))
+		}
+		addOptionalCredential(req.TrojanPassword, "trojan_password", false)
+		addOptionalCredential(req.VlessUUID, "vless_uuid", false)
+		addOptionalCredential(req.SSPassword, "ss_password", false)
+		addOptionalCredential(req.NaivePassword, "naive_password", true)
+		addOptionalCredential(req.ShadowtlsPassword, "shadowtls_password", true)
+		addOptionalCredential(req.Hysteria2Password, "hysteria2_password", true)
+		addOptionalCredential(req.AnytlsPassword, "anytls_password", true)
 		if req.ExternalSquadUUID.Set {
 			if req.ExternalSquadUUID.Value == nil || strings.TrimSpace(*req.ExternalSquadUUID.Value) == "" {
 				clauses = append(clauses, "external_squad_uuid = NULL")
@@ -1833,6 +1880,18 @@ func validateCreateUserRequest(req createUserRequest) error {
 			return fmt.Errorf("invalid vlessUuid")
 		}
 	}
+	for name, value := range map[string]*string{
+		"trojanPassword":    req.TrojanPassword,
+		"ssPassword":        req.SSPassword,
+		"naivePassword":     req.NaivePassword,
+		"shadowtlsPassword": req.ShadowtlsPassword,
+		"hysteria2Password": req.Hysteria2Password,
+		"anytlsPassword":    req.AnytlsPassword,
+	} {
+		if value != nil && len(strings.TrimSpace(*value)) > 256 {
+			return fmt.Errorf("%s must be less than 256 characters", name)
+		}
+	}
 	if req.ExternalSquadUUID != nil && strings.TrimSpace(*req.ExternalSquadUUID) != "" {
 		if _, err := uuid.Parse(strings.TrimSpace(*req.ExternalSquadUUID)); err != nil {
 			return fmt.Errorf("invalid externalSquadUuid")
@@ -1882,6 +1941,38 @@ func validateUpdateUserRequest(req updateUserRequest) error {
 	if req.ActiveInternalSquads != nil {
 		if err := validateUUIDListAllowEmpty(*req.ActiveInternalSquads); err != nil {
 			return err
+		}
+	}
+	if req.VlessUUID.Set {
+		if req.VlessUUID.Value == nil || strings.TrimSpace(*req.VlessUUID.Value) == "" {
+			return fmt.Errorf("vlessUuid cannot be empty")
+		}
+		if _, err := uuid.Parse(strings.TrimSpace(*req.VlessUUID.Value)); err != nil {
+			return fmt.Errorf("invalid vlessUuid")
+		}
+	}
+	for name, field := range map[string]OptionalString{
+		"trojanPassword":    req.TrojanPassword,
+		"ssPassword":        req.SSPassword,
+		"naivePassword":     req.NaivePassword,
+		"shadowtlsPassword": req.ShadowtlsPassword,
+		"hysteria2Password": req.Hysteria2Password,
+		"anytlsPassword":    req.AnytlsPassword,
+	} {
+		if !field.Set {
+			continue
+		}
+		if field.Value == nil {
+			if name == "trojanPassword" || name == "ssPassword" {
+				return fmt.Errorf("%s cannot be empty", name)
+			}
+			continue
+		}
+		if (name == "trojanPassword" || name == "ssPassword") && strings.TrimSpace(*field.Value) == "" {
+			return fmt.Errorf("%s cannot be empty", name)
+		}
+		if len(strings.TrimSpace(*field.Value)) > 256 {
+			return fmt.Errorf("%s must be less than 256 characters", name)
 		}
 	}
 	if req.ExternalSquadUUID.Set && req.ExternalSquadUUID.Value != nil && strings.TrimSpace(*req.ExternalSquadUUID.Value) != "" {
@@ -1948,8 +2039,9 @@ func getAllUserRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 			SELECT
 				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 				u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
-				u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
-				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
+					u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+					u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+					u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
 				u.last_triggered_threshold, u.created_at, u.updated_at,
 				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 				ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
@@ -1981,8 +2073,9 @@ func getUserRecordByUUID(ctx context.Context, manager *dbmanager.DatabaseManager
 			SELECT
 				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 				u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
-				u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
-				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
+					u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+					u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+					u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
 				u.last_triggered_threshold, u.created_at, u.updated_at,
 				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 				ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
@@ -2012,8 +2105,9 @@ func getUserRecordsByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManag
 			SELECT
 				u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 				u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
-				u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
-				u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
+					u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+					u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+					u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
 				u.last_triggered_threshold, u.created_at, u.updated_at,
 				COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 				ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
@@ -2043,6 +2137,10 @@ func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 	var (
 		lastTrafficReset sql.NullTime
 		subRevokedAt     sql.NullTime
+		naivePassword    sql.NullString
+		shadowtlsPass    sql.NullString
+		hysteria2Pass    sql.NullString
+		anytlsPass       sql.NullString
 		description      sql.NullString
 		tag              sql.NullString
 		telegramID       sql.NullInt64
@@ -2068,6 +2166,10 @@ func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 		&record.TrojanPassword,
 		&record.VlessUUID,
 		&record.SSPassword,
+		&naivePassword,
+		&shadowtlsPass,
+		&hysteria2Pass,
+		&anytlsPass,
 		&description,
 		&tag,
 		&telegramID,
@@ -2092,6 +2194,18 @@ func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 	}
 	if subRevokedAt.Valid {
 		record.SubRevokedAt = &subRevokedAt.Time
+	}
+	if naivePassword.Valid {
+		record.NaivePassword = &naivePassword.String
+	}
+	if shadowtlsPass.Valid {
+		record.ShadowtlsPassword = &shadowtlsPass.String
+	}
+	if hysteria2Pass.Valid {
+		record.Hysteria2Password = &hysteria2Pass.String
+	}
+	if anytlsPass.Valid {
+		record.AnytlsPassword = &anytlsPass.String
 	}
 	if description.Valid {
 		record.Description = &description.String
@@ -2161,6 +2275,10 @@ func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 			TrojanPassword:         record.TrojanPassword,
 			VlessUUID:              record.VlessUUID,
 			SSPassword:             record.SSPassword,
+			NaivePassword:          protocolCredentialString(record.NaivePassword, record.TrojanPassword),
+			ShadowtlsPassword:      protocolCredentialString(record.ShadowtlsPassword, record.SSPassword),
+			Hysteria2Password:      protocolCredentialString(record.Hysteria2Password, record.VlessUUID),
+			AnytlsPassword:         protocolCredentialString(record.AnytlsPassword, record.TrojanPassword),
 			LastTriggeredThreshold: record.LastTriggeredThreshold,
 			SubRevokedAt:           record.SubRevokedAt,
 			LastTrafficResetAt:     record.LastTrafficResetAt,
@@ -2260,6 +2378,13 @@ func userRecordNotificationData(record userRecord) map[string]any {
 		"tag":                    record.Tag,
 		"hwidDeviceLimit":        record.HwidDeviceLimit,
 		"externalSquadUuid":      record.ExternalSquadUUID,
+		"trojanPassword":         record.TrojanPassword,
+		"vlessUuid":              record.VlessUUID,
+		"ssPassword":             record.SSPassword,
+		"naivePassword":          protocolCredentialString(record.NaivePassword, record.TrojanPassword),
+		"shadowtlsPassword":      protocolCredentialString(record.ShadowtlsPassword, record.SSPassword),
+		"hysteria2Password":      protocolCredentialString(record.Hysteria2Password, record.VlessUUID),
+		"anytlsPassword":         protocolCredentialString(record.AnytlsPassword, record.TrojanPassword),
 		"lastTriggeredThreshold": record.LastTriggeredThreshold,
 		"subRevokedAt":           optionalTimeString(record.SubRevokedAt),
 		"lastTrafficResetAt":     optionalTimeString(record.LastTrafficResetAt),
@@ -2589,6 +2714,13 @@ func normalizeNullableString(value *string) any {
 		return nil
 	}
 	return strings.TrimSpace(*value)
+}
+
+func protocolCredentialString(value *string, fallback string) string {
+	if value != nil && strings.TrimSpace(*value) != "" {
+		return strings.TrimSpace(*value)
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func normalizeUserTag(value *string) any {
