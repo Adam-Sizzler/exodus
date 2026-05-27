@@ -15,23 +15,32 @@ permissions:
   contents: read
 
 jobs:
-  prepare-metadata:
-    name: "1. Prepare build metadata"
+  send-start-deploy-telegram-message:
+    name: Send Telegram message
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      revision: ${{ steps.meta.outputs.revision }}
-      frontend_revision: ${{ steps.meta.outputs.frontend_revision }}
-      branch: ${{ steps.meta.outputs.branch }}
-      build_time: ${{ steps.meta.outputs.build_time }}
-      build_number: ${{ steps.meta.outputs.build_number }}
-      repository_url: ${{ steps.meta.outputs.repository_url }}
-      image_base: ${{ steps.meta.outputs.image_base }}
-      image_version: ${{ steps.meta.outputs.image_version }}
-      image_latest: ${{ steps.meta.outputs.image_latest }}
-      image_tags: ${{ steps.meta.outputs.image_tags }}
+      - name: Send Telegram message
+        uses: proDreams/actions-telegram-notifier@main
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          status: info
+          notify_fields: 'repository,branch,commit,workflow'
+          title: 'Build started'
 
+  build-docker-image:
+    runs-on: ubuntu-latest
+    needs: [send-start-deploy-telegram-message]
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKER_BUILD_SUMMARY: "false"
+      DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,46 +111,6 @@ jobs:
             echo "EOF_TAGS"
           } >> "${GITHUB_OUTPUT}"
 
-  notify-start:
-    name: "2. Telegram: build started"
-    runs-on: ubuntu-latest
-    needs:
-      - prepare-metadata
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Send start notification
-        uses: proDreams/actions-telegram-notifier@main
-        with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: info
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build started'
-
-  build-and-push-image:
-    name: "3. Build and push Docker image"
-    runs-on: ubuntu-latest
-    needs:
-      - prepare-metadata
-      - notify-start
-
-    permissions:
-      contents: read
-      packages: write
-
-    env:
-      DOCKER_BUILD_SUMMARY: "false"
-      DOCKER_BUILD_RECORD_UPLOAD: "false"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -162,36 +131,33 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ needs.prepare-metadata.outputs.image_tags }}
+          tags: ${{ steps.meta.outputs.image_tags }}
           labels: |
             org.opencontainers.image.title=exodus
             org.opencontainers.image.description=Exodus panel image
-            org.opencontainers.image.url=${{ needs.prepare-metadata.outputs.repository_url }}
-            org.opencontainers.image.source=${{ needs.prepare-metadata.outputs.repository_url }}
-            org.opencontainers.image.version=${{ needs.prepare-metadata.outputs.version }}
-            org.opencontainers.image.revision=${{ needs.prepare-metadata.outputs.revision }}
-            org.opencontainers.image.created=${{ needs.prepare-metadata.outputs.build_time }}
+            org.opencontainers.image.url=${{ steps.meta.outputs.repository_url }}
+            org.opencontainers.image.source=${{ steps.meta.outputs.repository_url }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_time }}
           build-args: |
-            VERSION=${{ needs.prepare-metadata.outputs.version }}
-            REVISION=${{ needs.prepare-metadata.outputs.revision }}
-            FRONTEND_REVISION=${{ needs.prepare-metadata.outputs.frontend_revision }}
-            BUILD_BRANCH=${{ needs.prepare-metadata.outputs.branch }}
-            BUILD_TIME=${{ needs.prepare-metadata.outputs.build_time }}
-            BUILD_NUMBER=${{ needs.prepare-metadata.outputs.build_number }}
-            REPOSITORY_URL=${{ needs.prepare-metadata.outputs.repository_url }}
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ steps.meta.outputs.revision }}
+            FRONTEND_REVISION=${{ steps.meta.outputs.frontend_revision }}
+            BUILD_BRANCH=${{ steps.meta.outputs.branch }}
+            BUILD_TIME=${{ steps.meta.outputs.build_time }}
+            BUILD_NUMBER=${{ steps.meta.outputs.build_number }}
+            REPOSITORY_URL=${{ steps.meta.outputs.repository_url }}
 
-  notify-success:
-    name: "4a. Telegram: build succeeded"
+  send-telegram-message:
+    name: Send Telegram message
+    needs: [build-docker-image]
     runs-on: ubuntu-latest
-    needs:
-      - prepare-metadata
-      - build-and-push-image
-    if: ${{ always() && needs.build-and-push-image.result == 'success' }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Send success notification
+      - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
@@ -201,18 +167,15 @@ jobs:
           notify_fields: 'repository,branch,commit,workflow'
           title: 'Build finished'
 
-  notify-failure:
-    name: "4b. Telegram: build failed"
+  notify-on-error:
     runs-on: ubuntu-latest
-    needs:
-      - prepare-metadata
-      - build-and-push-image
-    if: ${{ always() && needs.build-and-push-image.result == 'failure' }}
+    needs: [build-docker-image]
+    if: failure()
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Send failure notification
+      - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
