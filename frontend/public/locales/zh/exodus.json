@@ -1028,8 +1028,7 @@
             "nodes": "节点",
             "download": "下载",
             "quick-view": "快速查看",
-            "edit-xray-config": "Edit Config",
-            "xray-config": "Config"
+            "edit-singbox-config": "Singbox 配置"
         }
     },
     "config-profiles-header": {

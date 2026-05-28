@@ -1052,8 +1052,7 @@
             "nodes": "Nodes",
             "download": "Download",
             "quick-view": "Quick view",
-            "edit-xray-config": "Edit Config",
-            "xray-config": "Config"
+            "edit-singbox-config": "Singbox Config"
         }
     },
     "config-profiles-header": {

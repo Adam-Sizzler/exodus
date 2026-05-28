@@ -1052,8 +1052,7 @@
             "nodes": "Ноды",
             "download": "Скачать",
             "quick-view": "Быстрый просмотр",
-            "edit-xray-config": "Изменить Config",
-            "xray-config": "Config"
+            "edit-singbox-config": "Singbox Конфиг"
         }
     },
     "config-profiles-header": {
