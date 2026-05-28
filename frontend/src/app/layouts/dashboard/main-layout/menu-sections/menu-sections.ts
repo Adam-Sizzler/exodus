@@ -156,9 +156,7 @@ export const useMenuSections = (): MenuItem[] => {
                     id: 'subscription-settings'
                 },
                 {
-                    name: t('constants.subscription-connections', {
-                        defaultValue: 'Nodes'
-                    }),
+                    name: t('constants.subscription-connections'),
                     href: ROUTES.DASHBOARD.MANAGEMENT.SUBSCRIPTION_CONNECTIONS,
                     icon: PiCpu,
                     id: 'subscription-connections'

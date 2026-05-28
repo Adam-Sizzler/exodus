@@ -28,7 +28,7 @@ export default function NodesPageComponent(props: IProps) {
     >([])
 
     return (
-        <Page title={t('constants.subscription-connections', { defaultValue: 'Nodes' })}>
+        <Page title={t('constants.subscription-connections')}>
             <Grid>
                 <Grid.Col span={12}>
                     <Stack>
@@ -40,9 +40,7 @@ export default function NodesPageComponent(props: IProps) {
                                 />
                             }
                             icon={<HiServer size={24} />}
-                            title={t('constants.subscription-connections', {
-                                defaultValue: 'Nodes'
-                            })}
+                            title={t('constants.subscription-connections')}
                         />
                     </Stack>
 
