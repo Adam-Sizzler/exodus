@@ -334,7 +334,7 @@
             "subscription-qr-code": "اشتراک کد QR",
             "edit-user-headline": "ویرایش کاربر",
             "subscription-url-description-line-1": "لینک‌ها از تمام نودهای اشتراک فعال (دامنه/مسیر هر نود) ساخته می‌شوند.",
-            "subscription-url-description-line-2": "برای تغییر، فیلدهای «دامنه عمومی URL اشتراک» و «مسیر API» را در بخش «اشتراک → اتصال‌ها» ویرایش کنید.",
+            "subscription-url-description-line-2": "برای تغییر، فیلدهای «دامنه عمومی URL اشتراک» و «مسیر API» را در بخش «اشتراک → نودها» ویرایش کنید.",
             "view-accessible-nodes": "مشاهده نودهای در دسترس",
             "fetching-user-data": "درحال دریافت اطلاعات کاربر",
             "more-actions": "عملیات بیشتر",

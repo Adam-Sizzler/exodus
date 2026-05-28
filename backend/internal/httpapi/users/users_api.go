@@ -508,7 +508,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 					trojan_password, vless_uuid, ss_password, naive_password, shadowtls_password, hysteria2_password, anytls_password,
 					description, tag, telegram_id, email,
 					hwid_device_limit, external_squad_uuid, last_triggered_threshold, created_at, updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 				RETURNING t_id
 			`,
 			userUUID,

@@ -335,7 +335,7 @@
             "subscription-qr-code": "Subscription QR Code",
             "edit-user-headline": "Edit user",
             "subscription-url-description-line-1": "Links are generated for every active subscription node (each node domain/path).",
-            "subscription-url-description-line-2": "Change “Subscription URL public domain” and “API Path” in Subscription -> Connections.",
+            "subscription-url-description-line-2": "Change “Subscription URL public domain” and “API Path” in Subscription -> Nodes.",
             "view-accessible-nodes": "View accessible nodes",
             "fetching-user-data": "Fetching user data...",
             "more-actions": "More Actions",

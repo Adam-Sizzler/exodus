@@ -335,7 +335,7 @@
             "subscription-qr-code": "QR-код ссылки-подписки",
             "edit-user-headline": "Редактирование",
             "subscription-url-description-line-1": "Ссылки формируются для всех активных нод подписки (домен/путь каждой ноды).",
-            "subscription-url-description-line-2": "Измените поля «Публичный домен URL подписки» и «Путь API» в разделе «Подписка → Подключения».",
+            "subscription-url-description-line-2": "Измените поля «Публичный домен URL подписки» и «Путь API» в разделе «Подписка → Ноды.",
             "view-accessible-nodes": "Доступные ноды",
             "fetching-user-data": "Получение данных пользователя...",
             "more-actions": "Действия",
