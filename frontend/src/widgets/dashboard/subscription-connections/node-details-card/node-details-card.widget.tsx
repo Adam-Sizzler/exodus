@@ -1,23 +1,21 @@
 import {
     ActionIcon,
     Badge,
-    Box,
     Group,
     Loader,
     Paper,
-    Progress,
     SimpleGrid,
     Text,
     ThemeIconProps,
     Tooltip
 } from '@mantine/core'
-import { PiArrowsCounterClockwise, PiCloudArrowUpDuotone, PiWarningCircle } from 'react-icons/pi'
+import { PiCloudArrowUpDuotone, PiWarningCircle } from 'react-icons/pi'
 import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'node_modules/react-i18next'
 
-import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
+import { getSingboxUptimeUtil } from '@shared/utils/time-utils'
 import {
     QueryKeys,
     SubscriptionConnectionResponse,
@@ -25,7 +23,6 @@ import {
     useEnableSubscriptionConnection
 } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
 import { queryClient } from '@shared/api'
 import { Logo } from '@shared/ui'
@@ -92,38 +89,6 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
 
         return { IconComponent, themeIconVariant }
     }, [node.isConnected, node.isConnecting, node.isDisabled, isConfigMissing])
-
-    const trafficData = useMemo(() => {
-        let maxData = '∞'
-        let percentage = 0
-
-        const prettyUsedData = prettyBytesToAnyUtil(node.trafficUsedBytes || 0) || '0 B'
-
-        if (node.isTrafficTrackingActive) {
-            maxData = prettyBytesToAnyUtil(node.trafficLimitBytes || 0) || '∞'
-            if (node.trafficLimitBytes === 0) {
-                percentage = 100
-            } else {
-                percentage = Math.floor(
-                    ((node.trafficUsedBytes ?? 0) * 100) / (node.trafficLimitBytes ?? 0)
-                )
-            }
-        }
-
-        return {
-            maxData,
-            percentage,
-            prettyUsedData,
-            isUnlimited: !node.isTrafficTrackingActive || node.trafficLimitBytes === 0
-        }
-    }, [node.trafficUsedBytes, node.trafficLimitBytes, node.isTrafficTrackingActive])
-
-    const getProgressColor = useCallback(() => {
-        if (trafficData.isUnlimited) return 'teal'
-        if (trafficData.percentage > 95) return 'red'
-        if (trafficData.percentage > 80) return 'yellow.4'
-        return 'teal'
-    }, [trafficData.percentage, trafficData.isUnlimited])
 
     const handleToggleNodeStatus = () => {
         if (node.isDisabled) {
@@ -239,40 +204,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                     </Group>
                 </Group>
             </SectionCard.Section>
-            <SectionCard.Section>
-                <Box>
-                    <Group gap="xs" justify="space-between" mb={6}>
-                        <Group gap={6}>
-                            <Text c="gray.3" ff="monospace" fw={600} size="sm">
-                                {trafficData.prettyUsedData}
-                            </Text>
-                        </Group>
-                        <Text c="dimmed" size="xs">
-                            {trafficData.maxData}
-                        </Text>
-                    </Group>
 
-                    <Progress
-                        color={getProgressColor()}
-                        radius="sm"
-                        size="sm"
-                        value={trafficData.isUnlimited ? 100 : trafficData.percentage}
-                    />
-
-                    {node.isTrafficTrackingActive && node.trafficResetDay && (
-                        <Group gap={4} justify="center" mt={6}>
-                            <PiArrowsCounterClockwise
-                                color="var(--mantine-color-dimmed)"
-                                size={12}
-                            />
-                            <Text c="dimmed" size="xs">
-                                {t('node-stats.card.traffic-refill-in-days')}{' '}
-                                {getNodeResetDaysUtil(node.trafficResetDay)}
-                            </Text>
-                        </Group>
-                    )}
-                </Box>
-            </SectionCard.Section>
             {node.isConnected && (
                 <SectionCard.Section>
                     <SimpleGrid

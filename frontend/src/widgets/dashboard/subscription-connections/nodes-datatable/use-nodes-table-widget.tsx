@@ -6,7 +6,6 @@ import { TbEdit } from 'react-icons/tb'
 import { TFunction } from 'i18next'
 import sortBy from 'lodash/sortBy'
 
-import { prettyBytesUtil } from '@shared/utils/bytes'
 import { faviconResolver } from '@shared/utils/misc'
 
 import { NodeStatusSimplfiedBadgeWidget } from '../node-status-simplfied-badge'
@@ -93,11 +92,6 @@ export function getNodesTableColumns(
             accessor: 'address',
             title: t('use-nodes-table-widget.address'),
             render: ({ address, port }) => `${address}:${port}`
-        },
-        {
-            accessor: 'trafficUsedBytes',
-            title: t('use-nodes-table-widget.traffic-used'),
-            render: ({ trafficUsedBytes }) => prettyBytesUtil(trafficUsedBytes, false)
         },
         {
             accessor: 'configProfile.activeConfigProfileUuid',

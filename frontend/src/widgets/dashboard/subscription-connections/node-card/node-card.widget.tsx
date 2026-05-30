@@ -1,9 +1,5 @@
-import {
-    PiArrowsCounterClockwise,
-    PiDotsSixVertical,
-    PiGlobeSimple
-} from 'react-icons/pi'
-import { Avatar, Badge, Box, Flex, Grid, Progress, Text } from '@mantine/core'
+import { PiDotsSixVertical, PiGlobeSimple } from 'react-icons/pi'
+import { Avatar, Badge, Box, Flex, Grid, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import ReactCountryFlag from 'react-country-flag'
 import { useSortable } from '@dnd-kit/sortable'
@@ -13,8 +9,7 @@ import { CSSProperties, memo } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 
-import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
-import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
+import { getSingboxUptimeUtil } from '@shared/utils/time-utils'
 import { faviconResolver } from '@shared/utils/misc'
 import { Logo } from '@shared/ui'
 
@@ -51,13 +46,6 @@ const getNodeColors = (node: IProps['node']) => {
     }
 }
 
-const getProgressColor = (percentage: number, fallback: boolean) => {
-    if (fallback) return 'teal.6'
-    if (percentage > 95) return 'red.6'
-    if (percentage > 80) return 'yellow.6'
-    return 'teal.6'
-}
-
 export const NodeCardWidget = memo((props: IProps) => {
     const { t } = useTranslation()
     const { handleViewNode, node, isDragOverlay = false, isMobile } = props
@@ -75,23 +63,9 @@ export const NodeCardWidget = memo((props: IProps) => {
         zIndex: isDragging ? 1000 : 'auto'
     }
 
-    const prettyUsedData = prettyBytesToAnyUtil(node.trafficUsedBytes || 0) || '0 B'
-    const maxData = node.isTrafficTrackingActive
-        ? prettyBytesToAnyUtil(node.trafficLimitBytes || 0) || '∞'
-        : '∞'
-
-    const calcPercentage = () => {
-        if (!node.isTrafficTrackingActive) return 0
-        if (node.trafficLimitBytes === 0) return 100
-        return Math.floor(((node.trafficUsedBytes ?? 0) * 100) / (node.trafficLimitBytes ?? 0))
-    }
-    const percentage = calcPercentage()
-    const fallbackProgress = node.isTrafficTrackingActive && node.trafficLimitBytes === 0
-
     const nodeSingboxUptime = node.singboxUptime
     const isOnline = node.isConnected && nodeSingboxUptime !== '0' && !node.isDisabled
     const { backgroundColor, borderColor, boxShadow } = getNodeColors(node)
-    const progressColor = getProgressColor(percentage, fallbackProgress)
 
     const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -134,7 +108,7 @@ export const NodeCardWidget = memo((props: IProps) => {
 
             {!isMobile && (
                 <Grid align="center" className={classes.desktopGrid} gutter="md">
-                    <Grid.Col span={{ base: 12, sm: 5.5 }}>
+                    <Grid.Col span={{ base: 12, sm: 6.5 }}>
                         <Flex align="center" gap="sm">
                             <NodeStatusBadgeWidget node={node} withText={false} />
 
@@ -193,7 +167,7 @@ export const NodeCardWidget = memo((props: IProps) => {
                         </Flex>
                     </Grid.Col>
 
-                    <Grid.Col span={{ base: 12, sm: 2.5 }}>
+                    <Grid.Col span={{ base: 12, sm: 3 }}>
                         <Flex align="center" gap="xs">
                             <PiGlobeSimple className={classes.icon} size={14} />
                             <Text
@@ -207,49 +181,13 @@ export const NodeCardWidget = memo((props: IProps) => {
                         </Flex>
                     </Grid.Col>
 
-                    <Grid.Col span={{ base: 12, sm: 2 }}>
-                        <Box>
-                            <Flex direction="column" gap={4}>
-                                <Flex align="center" justify="space-between">
-                                    <Text c="dimmed" ff="monospace" fw={600} size="sm" truncate>
-                                        {prettyUsedData}
-                                    </Text>
-                                    <Text c="dimmed" size="xs" truncate>
-                                        {maxData}
-                                    </Text>
-                                </Flex>
-                                <Progress
-                                    color={node.isTrafficTrackingActive ? progressColor : 'teal'}
-                                    radius="sm"
-                                    size="sm"
-                                    value={node.isTrafficTrackingActive ? percentage : 100}
-                                />
-                            </Flex>
-                        </Box>
-                    </Grid.Col>
 
-                    <Grid.Col span={{ base: 12, sm: 2 }}>
-                        <Flex align="center" gap="xs" justify="space-between">
-                            {node.isTrafficTrackingActive ? (
-                                <Flex align="center" gap={4}>
-                                    <PiArrowsCounterClockwise className={classes.icon} size={14} />
-                                    <Text c="dimmed" size="sm">
-                                        {getNodeResetDaysUtil(node.trafficResetDay ?? 1)}
-                                    </Text>
-                                </Flex>
-                            ) : (
-                                <Box />
-                            )}
-
+                    <Grid.Col span={{ base: 12, sm: 2.5 }}>
+                        <Flex align="center" gap="xs" justify="flex-end">
                             {isOnline && (
                                 <Flex align="center" gap={4}>
                                     <Logo size={14} />
-                                    <Text
-                                        c={isOnline ? 'teal' : 'red'}
-                                        fw={isOnline ? 600 : 500}
-                                        size="sm"
-                                        truncate
-                                    >
+                                    <Text c="teal" fw={600} size="sm" truncate>
                                         {getSingboxUptimeUtil(nodeSingboxUptime)}
                                     </Text>
                                 </Flex>
@@ -335,40 +273,8 @@ export const NodeCardWidget = memo((props: IProps) => {
                         </Flex>
                     </Box>
 
-                    <Box mb="xs">
-                        <Flex direction="column" gap={2}>
-                            <Flex align="center" justify="space-between">
-                                <Text c="dimmed" ff="monospace" fw={600} size="sm" truncate>
-                                    {prettyUsedData}
-                                </Text>
-                                <Text c="dimmed" size="xs">
-                                    {maxData}
-                                </Text>
-                            </Flex>
-                        </Flex>
-                    </Box>
 
-                    <Progress
-                        color={
-                            node.isTrafficTrackingActive && percentage >= 0 ? progressColor : 'teal'
-                        }
-                        radius="sm"
-                        size="xs"
-                        value={node.isTrafficTrackingActive && percentage >= 0 ? percentage : 100}
-                    />
-
-                    <Flex align="center" justify="space-between" mt="xs">
-                        {node.isTrafficTrackingActive ? (
-                            <Flex align="center" gap={4}>
-                                <PiArrowsCounterClockwise className={classes.icon} size={12} />
-                                <Text c="dimmed" size="xs">
-                                    {getNodeResetDaysUtil(node.trafficResetDay ?? 1)}
-                                </Text>
-                            </Flex>
-                        ) : (
-                            <Box />
-                        )}
-
+                    <Flex align="center" justify="flex-end" mt="xs">
                         <Flex align="center" gap={4}>
                             <Logo size={12} />
                             <Text
