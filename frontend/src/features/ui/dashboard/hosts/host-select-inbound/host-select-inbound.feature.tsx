@@ -5,7 +5,7 @@ import { useTranslation } from 'node_modules/react-i18next'
 import cx from 'clsx'
 
 import { HostsConfigProfilesDrawer } from '@widgets/dashboard/hosts/hosts-config-profiles-drawer/hosts-config-profiles.drawer.widget'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import classes from './host-select-inbound.module.css'
 import { IProps } from './interfaces'
@@ -45,7 +45,7 @@ export function HostSelectInboundFeature(props: IProps) {
                             <Group gap="xs" miw={0} style={{ flex: 1 }}>
                                 <Box className={classes.iconWrapper}>
                                     <ActionIcon color="teal" size="lg" variant="light">
-                                        <XrayLogo size={24} />
+                                        <SingboxLogo size={24} />
                                     </ActionIcon>
                                 </Box>
 

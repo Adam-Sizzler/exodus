@@ -14,7 +14,7 @@ import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-st
 import { resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
 import { SEARCH_PARAMS } from '@shared/constants/search-params'
 import { useHostsStoreFilters } from '@entities/dashboard'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 import classes from './HostCard.module.css'
 import { IProps } from './interfaces'
@@ -196,7 +196,7 @@ export function HostCardWidget(props: IProps) {
                                     color={configProfile?.uuid ? ch.hex(configProfile.uuid) : 'red'}
                                     leftSection={
                                         configProfile?.uuid ? (
-                                            <XrayLogo size={12} />
+                                            <SingboxLogo size={12} />
                                         ) : (
                                             <TbAlertCircle size={12} />
                                         )
@@ -380,7 +380,7 @@ export function HostCardWidget(props: IProps) {
                                 color={configProfile?.uuid ? ch.hex(configProfile.uuid) : 'red'}
                                 leftSection={
                                     configProfile?.uuid ? (
-                                        <XrayLogo size={12} />
+                                        <SingboxLogo size={12} />
                                     ) : (
                                         <TbAlertCircle size={12} />
                                     )
