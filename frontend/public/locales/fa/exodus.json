@@ -370,6 +370,8 @@
         "path-e-g-ws": "مسیر (مثلا /ws)",
         "security-layer": "لایه امنیتی",
         "tls-transport-layer-security": "TLS (امنیت لایه حمل و نقل)",
+        "uuid-override-placeholder": "UUID (برای مثال، 00000000-0000-0000-0000-000000000000)",
+        "password-override-placeholder": "رمز عبور (برای مثال، my-secret-password)",
         "none": "هیچ کدام",
         "inbounds-default": "پیش فرض اینباند",
         "here-you-can-override-security-settings-from-xtls-config": "در اینجا می توانید تنظیمات امنیتی را از پیکربندی XTLS نادیده بگیرید.",

@@ -370,6 +370,8 @@
         "path-e-g-ws": "路径 (例如 /ws)",
         "security-layer": "安全层",
         "tls-transport-layer-security": "TLS (传输层安全)",
+        "uuid-override-placeholder": "UUID（例如 00000000-0000-0000-0000-000000000000）",
+        "password-override-placeholder": "密码（例如 my-secret-password）",
         "none": "None",
         "inbounds-default": "入站默认值",
         "here-you-can-override-security-settings-from-xtls-config": "您可以在此处覆盖 XTLS 配置中的安全设置。",

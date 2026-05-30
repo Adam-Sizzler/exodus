@@ -371,6 +371,8 @@
         "path-e-g-ws": "путь (например, /ws)",
         "security-layer": "Security Layer",
         "tls-transport-layer-security": "TLS (Transport Layer Security)",
+        "uuid-override-placeholder": "UUID (например, 00000000-0000-0000-0000-000000000000)",
+        "password-override-placeholder": "Пароль (например, my-secret-password)",
         "none": "None",
         "inbounds-default": "По умолчанию",
         "here-you-can-override-security-settings-from-xtls-config": "Здесь вы можете переопределить настройки безопасности из конфигурации XTLS.",
