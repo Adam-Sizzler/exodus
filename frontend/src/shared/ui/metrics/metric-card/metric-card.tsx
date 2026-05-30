@@ -39,11 +39,6 @@ export function MetricCardShared(props: IMetricCardProps) {
                     size="xl"
                     variant={iconVariant}
                     {...themeIconProps}
-                    style={{
-                        boxShadow:
-                            'inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent)',
-                        ...themeIconProps?.style
-                    }}
                 >
                     <IconComponent size={iconSize} />
                 </ThemeIcon>
