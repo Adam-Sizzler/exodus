@@ -27,6 +27,19 @@ export const theme = createTheme({
     white: '#ffffff',
     black: '#24292f',
     colors: {
+        exodus: [
+            '#eef3f5',
+            '#d6e0e3',
+            '#b5c5cb',
+            '#91a7af',
+            '#6f8992',
+            '#526b74',
+            '#36474f',
+            '#2d3b42',
+            '#243037',
+            '#1b252a'
+        ],
+
         dark: [
             '#c9d1d9',
             '#b1bac4',
