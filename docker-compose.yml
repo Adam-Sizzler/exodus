@@ -1,3 +1,5 @@
+name: exodus
+
 x-common: &common
   ulimits:
     nofile:
@@ -16,7 +18,7 @@ x-logging: &logging
 
 x-env: &env
   env_file:
-    - path: ./.env
+    - path: .env
       required: false
 
 services:
@@ -36,10 +38,9 @@ services:
     container_name: exodus
     hostname: exodus
     <<: [*common, *logging, *env]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
-      - 127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}
+      - "127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}"
+      - "127.0.0.1:${METRICS_PORT:-3001}:${METRICS_PORT:-3001}"
     volumes:
       - panel-data:/app/data
     depends_on:
@@ -48,65 +49,23 @@ services:
       exodus-redis:
         condition: service_healthy
 
-  exodus-node:
-    build:
-      context: ../exodus-node
-      dockerfile: Dockerfile
-      args:
-        VERSION: ${EXODUS_NODE_VERSION:-2.7.4}
-        REVISION: ${EXODUS_NODE_REVISION:-unknown}
-    image: exodus-node:latest
-    container_name: exodus-node
-    hostname: exodus-node
-    <<: [*logging]
-    restart: always
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-    ulimits:
-      nofile:
-        soft: 1048576
-        hard: 1048576
-    volumes:
-      - ./backend/node/config.yml:/app/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  exodus-subscription:
-    build:
-      context: ../exodus-subscription
-      dockerfile: Dockerfile
-    image: exodus-subscription:latest
-    container_name: exodus-subscription
-    hostname: exodus-subscription
-    <<: [*common, *logging, *env]
-    env_file:
-      - path: ./.env
-        required: false
-      - path: ../exodus-subscription/.env
-        required: false
-    ports:
-      - 127.0.0.1:${APP_PORT_SUB:-3010}:${APP_PORT_SUB:-3010}
-    depends_on:
-      exodus:
-        condition: service_started
-
   exodus-db:
     image: postgres:18
     container_name: exodus-db
     hostname: exodus-db
     <<: [*common, *logging, *env]
     ports:
-      - 127.0.0.1:6868:5432
+      - "127.0.0.1:6868:5432"
     volumes:
       - exodus-data:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}"']
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
       interval: 3s
       timeout: 10s
-      retries: 3
+      retries: 10
 
   exodus-redis:
-    image: valkey/valkey:8.1-alpine
+    image: valkey/valkey:9-alpine
     container_name: exodus-redis
     hostname: exodus-redis
     <<: [*common, *logging]
@@ -117,10 +76,10 @@ services:
       --maxmemory-policy noeviction
       --loglevel warning
     healthcheck:
-      test: ['CMD', 'valkey-cli', 'ping']
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 3s
       timeout: 3s
-      retries: 3
+      retries: 10
 
 networks:
   exodus-network:
