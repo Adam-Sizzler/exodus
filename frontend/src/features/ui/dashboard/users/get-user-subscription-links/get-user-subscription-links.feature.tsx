@@ -23,7 +23,7 @@ import {
     Tooltip
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import { useEffect } from 'react'
 import { renderSVG } from 'uqr'

@@ -2,7 +2,7 @@ import { GetSubscriptionTemplatesCommand } from '@exodus/backend-contract'
 import { PiCheck, PiCopy, PiPencil, PiTrashDuotone } from 'react-icons/pi'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { CopyButton, Menu } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbEdit } from 'react-icons/tb'
 import { ReactNode } from 'react'
 

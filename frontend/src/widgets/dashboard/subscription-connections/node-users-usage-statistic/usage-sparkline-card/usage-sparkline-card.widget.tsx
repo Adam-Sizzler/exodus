@@ -1,5 +1,5 @@
 import { Box, Card, SimpleGrid, Skeleton, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Sparkline } from '@mantine/charts'
 
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'

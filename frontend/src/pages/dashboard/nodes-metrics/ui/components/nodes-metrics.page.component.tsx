@@ -1,4 +1,4 @@
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiSpeedometer } from 'react-icons/pi'
 
 import { EditNodeByUuidModalWidget } from '@widgets/dashboard/nodes/edit-node-by-uuid-modal'

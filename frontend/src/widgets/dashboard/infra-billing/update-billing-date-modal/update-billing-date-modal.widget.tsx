@@ -1,5 +1,5 @@
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { DatePicker } from '@mantine/dates'
 import { useEffect, useState } from 'react'
 import { TbCalendar } from 'react-icons/tb'

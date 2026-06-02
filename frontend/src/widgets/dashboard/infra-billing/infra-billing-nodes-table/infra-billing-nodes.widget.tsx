@@ -11,7 +11,7 @@ import {
 import { TbCalendar, TbPlus, TbRefresh, TbServer, TbTrash } from 'react-icons/tb'
 import { GetInfraBillingNodesCommand } from '@exodus/backend-contract'
 import { AnimatePresence, motion } from 'motion/react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { DataTable } from 'mantine-datatable'
 import { useMemo, useState } from 'react'
 import { PiEmpty } from 'react-icons/pi'

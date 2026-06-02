@@ -5,7 +5,7 @@ import Editor, { Monaco } from '@monaco-editor/react'
 import 'monaco-yaml/yaml.worker'
 import { Box, Card, Paper } from '@mantine/core'
 import { useLayoutEffect, useRef } from 'react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { TemplateEditorActionsFeature } from '@features/dashboard/subscription-templates/template-editor-actions'
 import { monacoTheme } from '@shared/constants/monaco-theme/monaco-theme'

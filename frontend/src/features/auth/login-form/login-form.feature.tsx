@@ -2,7 +2,7 @@ import { Button, Container, Paper, PasswordInput, TextInput } from '@mantine/cor
 import { LoginCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { PiSignInDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useForm } from '@mantine/form'
 
 import { handleFormErrors } from '@shared/utils/misc'

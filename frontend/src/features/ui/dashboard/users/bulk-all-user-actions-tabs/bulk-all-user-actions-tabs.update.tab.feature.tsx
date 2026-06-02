@@ -23,7 +23,7 @@ import {
 } from 'react-icons/pi'
 import { BulkAllUpdateUsersCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { Trans, useTranslation } from 'node_modules/react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { DateTimePicker } from '@mantine/dates'
 import { TbDevices2 } from 'react-icons/tb'
 import { useForm } from '@mantine/form'

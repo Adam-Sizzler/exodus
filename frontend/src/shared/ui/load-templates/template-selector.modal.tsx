@@ -1,5 +1,5 @@
 import { Button, Center, Group, LoadingOverlay, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useFetch } from '@mantine/hooks'
 import { useState } from 'react'
 

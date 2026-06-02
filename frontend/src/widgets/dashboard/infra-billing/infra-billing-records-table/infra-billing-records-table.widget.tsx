@@ -9,7 +9,7 @@ import {
     Tooltip
 } from '@mantine/core'
 import { TbCreditCard, TbPlus, TbRefresh } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { DataTable } from 'mantine-datatable'
 import { useHotkeys } from '@mantine/hooks'
 import { useMemo, useState } from 'react'

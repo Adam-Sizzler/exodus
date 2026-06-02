@@ -20,7 +20,7 @@ import {
 import { IconArrowDown, IconArrowUp, IconChevronRight, IconTrash } from '@tabler/icons-react'
 import { TbExternalLink } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { TemplateInfoPopoverShared } from '@shared/ui/popovers'
 

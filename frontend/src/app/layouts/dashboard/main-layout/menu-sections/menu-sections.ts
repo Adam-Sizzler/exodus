@@ -21,7 +21,7 @@ import {
 } from 'react-icons/pi'
 import { HiChartPie, HiCurrencyDollar, HiServer } from 'react-icons/hi'
 import { SUBSCRIPTION_TEMPLATE_TYPE } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useHotkeys } from '@mantine/hooks'
 import { useState } from 'react'
 

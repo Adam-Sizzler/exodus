@@ -14,7 +14,7 @@ import { TbExternalLink, TbRefresh, TbReportAnalytics, TbRestore } from 'react-i
 import { GetSubscriptionRequestHistoryCommand } from '@exodus/backend-contract'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { ActionIcon, ActionIconGroup, Tooltip } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiUserCircle } from 'react-icons/pi'
 
 import { useSrhInspectorTableColumns } from '@features/dashboard/srh-inspector/srh-inspector-table/model/use-srh-inspector-table-columns'

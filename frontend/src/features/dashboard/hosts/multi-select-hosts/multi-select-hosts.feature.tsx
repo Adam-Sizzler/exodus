@@ -18,7 +18,7 @@ import {
     Transition
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useDisclosure } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
 import { useField } from '@mantine/form'

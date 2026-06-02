@@ -13,7 +13,7 @@ import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbChartLine, TbMinus, TbPlus } from 'react-icons/tb'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useRef } from 'react'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

@@ -4,7 +4,7 @@ import { TbDeviceFloppy, TbDevices2, TbListLetters, TbX } from 'react-icons/tb'
 import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useState } from 'react'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'

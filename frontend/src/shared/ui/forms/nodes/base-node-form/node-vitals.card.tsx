@@ -9,7 +9,7 @@ import {
 } from 'react-icons/tb'
 import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { UseFormReturnType } from '@mantine/form'
 import { HiOutlineServer } from 'react-icons/hi'
 

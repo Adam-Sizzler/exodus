@@ -11,7 +11,7 @@ import {
     Transition
 } from '@mantine/core'
 import { TbDevices, TbRefresh, TbRewindBackward50 } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

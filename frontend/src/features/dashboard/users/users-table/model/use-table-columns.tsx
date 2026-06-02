@@ -8,7 +8,7 @@ import {
 } from '@exodus/backend-contract'
 import { Badge, Group, Stack, Text, Tooltip } from '@mantine/core'
 import { MRT_ColumnDef } from 'mantine-react-table'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
 import dayjs from 'dayjs'
 

@@ -24,7 +24,7 @@ import {
 import { BulkUpdateUsersCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { TbDevices2, TbWebhook } from 'react-icons/tb'
-import { Trans, useTranslation } from 'node_modules/react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { DateTimePicker } from '@mantine/dates'
 import { useForm } from '@mantine/form'
 import dayjs from 'dayjs'

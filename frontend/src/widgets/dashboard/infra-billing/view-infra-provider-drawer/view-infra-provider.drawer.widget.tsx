@@ -1,7 +1,7 @@
 import { UpdateInfraProviderCommand } from '@exodus/backend-contract'
 import { Button, Drawer, Stack, TextInput } from '@mantine/core'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbServer } from 'react-icons/tb'
 import { useForm } from '@mantine/form'
 import { useEffect } from 'react'

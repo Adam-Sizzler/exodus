@@ -1,7 +1,7 @@
 import { ActionIcon, Center, CopyButton, Group, Paper, Stack, Text, Tooltip } from '@mantine/core'
 import { PiCheck, PiCopy, PiCpu } from 'react-icons/pi'
 import ReactCountryFlag from 'react-country-flag'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import type { IProps } from './interfaces/props.interface'
 

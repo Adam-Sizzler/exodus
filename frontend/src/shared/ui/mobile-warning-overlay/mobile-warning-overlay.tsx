@@ -12,7 +12,7 @@ import {
 } from '@mantine/core'
 import { TbBaselineDensitySmall, TbColumns, TbMaximize, TbRotate2 } from 'react-icons/tb'
 import { PiDeviceMobile, PiMonitor, PiWarning } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 
 import { useMiscStoreActions, useMobileWarningClosed } from '@entities/dashboard/misc-store'

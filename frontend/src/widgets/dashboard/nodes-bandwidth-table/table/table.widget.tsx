@@ -1,6 +1,6 @@
 import { ListViewTable } from '@gfazioli/mantine-list-view-table'
 import { GetAllNodesCommand } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbChartArcs } from 'react-icons/tb'
 import { Table } from '@mantine/core'
 import dayjs from 'dayjs'

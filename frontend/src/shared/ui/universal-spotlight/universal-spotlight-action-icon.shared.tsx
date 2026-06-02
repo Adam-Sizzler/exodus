@@ -1,6 +1,6 @@
 import { ActionIcon, ActionIconGroup, Tooltip } from '@mantine/core'
 import { spotlight } from '@mantine/spotlight'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbSearch } from 'react-icons/tb'
 
 export const UniversalSpotlightActionIconShared = () => {

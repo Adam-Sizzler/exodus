@@ -3,7 +3,7 @@ import { TbCheck as IconCheck, TbX as IconX } from 'react-icons/tb'
 import { Button, Group, Select, Stack } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { PiClockDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import { useState } from 'react'
 

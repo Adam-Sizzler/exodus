@@ -23,7 +23,7 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useDisclosure } from '@mantine/hooks'
 
 import { BulkAllUserActionsDrawerWidget } from '@widgets/dashboard/users/bulk-all-user-actions-drawer/bulk-all-user-actions-drawer.widget'

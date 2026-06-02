@@ -11,7 +11,7 @@ import {
 } from '@mantine/core'
 import { PiCheck, PiCopy, PiCpu } from 'react-icons/pi'
 import ReactCountryFlag from 'react-country-flag'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbServer } from 'react-icons/tb'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'

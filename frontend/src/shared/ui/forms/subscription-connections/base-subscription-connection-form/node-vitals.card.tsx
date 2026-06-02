@@ -3,7 +3,7 @@ import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { HiOutlineServer } from 'react-icons/hi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

@@ -1,7 +1,7 @@
 import { Badge, Box, Center, Drawer, Group, Loader, Stack, Text } from '@mantine/core'
 import { GetInternalSquadAccessibleNodesCommand } from '@exodus/backend-contract'
 import { TbChevronRight, TbServer } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { DataTable } from 'mantine-datatable'
 import { PiTag } from 'react-icons/pi'
 import { useState } from 'react'

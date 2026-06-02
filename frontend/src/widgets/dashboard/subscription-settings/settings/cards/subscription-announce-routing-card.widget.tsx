@@ -2,7 +2,7 @@ import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { Button, Group, px, Stack, Textarea } from '@mantine/core'
 import { PiDeviceMobile, PiGear } from 'react-icons/pi'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useForm } from '@mantine/form'
 
 import { QueryKeys, useUpdateSubscriptionSettings } from '@shared/api/hooks'

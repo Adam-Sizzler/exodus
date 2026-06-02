@@ -22,7 +22,7 @@ import {
     TbWebhook
 } from 'react-icons/tb'
 import { PiCheck, PiCopy, PiIdentificationBadge, PiListChecks, PiUsers } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { memo, useState } from 'react'
 
 import {

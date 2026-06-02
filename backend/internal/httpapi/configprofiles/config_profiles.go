@@ -22,6 +22,11 @@ import (
 
 var errConfigProfileNotFound = errors.New("config profile not found")
 
+const (
+	errMessageConfigProfileNameAlreadyExists = "Config profile name already exists in database. Config profile names must be unique."
+	errMessageInboundTagsMustBeUnique        = "Inbounds with same tag already exists in database. Inbound tags must be unique."
+)
+
 type ConfigProfileInbound struct {
 	UUID         string          `json:"uuid"`
 	ProfileUUID  string          `json:"profileUuid"`
@@ -712,24 +717,24 @@ func handleConfigProfileWriteError(w http.ResponseWriter, err error, cfg *config
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			switch pgErr.ConstraintName {
 			case "config_profiles_name_key":
-				shared.SendError(w, http.StatusConflict, "config profile name already exists", nil, cfg)
+				shared.SendError(w, http.StatusConflict, errMessageConfigProfileNameAlreadyExists, nil, cfg)
 			case "config_profile_inbounds_tag_key":
-				shared.SendError(w, http.StatusConflict, "inbound tag must be globally unique across all config profiles", nil, cfg)
+				shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
 			default:
-				shared.SendError(w, http.StatusConflict, "config profile name already exists or inbound tags are not unique", nil, cfg)
+				shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
 			}
 			return
 		}
 		if strings.Contains(err.Error(), "config_profiles_name_key") || strings.Contains(err.Error(), "config_profiles.name") {
-			shared.SendError(w, http.StatusConflict, "config profile name already exists", nil, cfg)
+			shared.SendError(w, http.StatusConflict, errMessageConfigProfileNameAlreadyExists, nil, cfg)
 			return
 		}
 		if strings.Contains(err.Error(), "config_profile_inbounds_tag_key") || strings.Contains(err.Error(), "config_profile_inbounds.tag") {
-			shared.SendError(w, http.StatusConflict, "inbound tag must be globally unique across all config profiles", nil, cfg)
+			shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
 			return
 		}
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			shared.SendError(w, http.StatusConflict, "config profile name already exists or inbound tags are not unique", nil, cfg)
+			shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
 			return
 		}
 		shared.SendError(w, http.StatusInternalServerError, "failed to write config profile", err, cfg)

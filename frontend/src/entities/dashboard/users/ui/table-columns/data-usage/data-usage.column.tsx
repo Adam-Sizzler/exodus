@@ -1,6 +1,6 @@
 import { RESET_PERIODS } from '@exodus/backend-contract'
 import { Box, Group, Progress, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { IProps } from '@entities/dashboard/users/ui/table-columns/username/interface'
 import { prettyBytesUtil } from '@shared/utils/bytes'

@@ -1,7 +1,7 @@
 import { ActionIcon, Badge, Checkbox, Group, Text } from '@mantine/core'
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import { TbCode } from 'react-icons/tb'
 import { useCallback } from 'react'

@@ -6,7 +6,7 @@ import {
 } from '@exodus/subscription-page-types'
 import { IconChevronRight, IconPalette, IconPlus } from '@tabler/icons-react'
 import { Button, Card, Drawer, Stack, Text, TextInput } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

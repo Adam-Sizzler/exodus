@@ -8,7 +8,7 @@ import {
 import { useLayoutEffect, useMemo, useState } from 'react'
 import { notifications } from '@mantine/notifications'
 import { PiUsersDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import {
     useUsersTableStoreActions,

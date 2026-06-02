@@ -1,7 +1,7 @@
 import { ListViewTableColumn } from '@gfazioli/mantine-list-view-table'
 import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { Flex, Progress, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
 
 import { getNodeResetPeriodUtil } from '@shared/utils/time-utils/get-node-reset-days'

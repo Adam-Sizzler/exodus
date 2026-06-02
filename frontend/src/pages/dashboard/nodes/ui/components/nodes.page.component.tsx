@@ -1,4 +1,4 @@
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Grid, Stack } from '@mantine/core'
 import { HiServer } from 'react-icons/hi'
 import { motion } from 'motion/react'

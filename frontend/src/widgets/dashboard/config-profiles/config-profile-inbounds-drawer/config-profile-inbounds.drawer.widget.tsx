@@ -15,7 +15,7 @@ import {
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { TbCirclesRelation, TbTag } from 'react-icons/tb'
 import { PiCheck, PiCopy } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import ColorHash from 'color-hash'
 

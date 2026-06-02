@@ -1,7 +1,7 @@
 import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { Button, Group, Stack, Switch } from '@mantine/core'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiGear } from 'react-icons/pi'
 import { useForm } from '@mantine/form'
 

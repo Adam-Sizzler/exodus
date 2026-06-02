@@ -1,7 +1,7 @@
 import { TSubscriptionPageTemplateKey } from '@exodus/subscription-page-types'
 import { TEMPLATE_KEYS, TemplateKeys } from '@exodus/backend-contract'
 import { ActionIcon, SimpleGrid, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useMediaQuery } from '@mantine/hooks'
 import { TbInfoSquare } from 'react-icons/tb'
 import { modals } from '@mantine/modals'

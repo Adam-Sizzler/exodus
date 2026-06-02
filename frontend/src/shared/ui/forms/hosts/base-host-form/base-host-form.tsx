@@ -50,14 +50,15 @@ import {
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { generate } from 'generate-password-ts'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
     BASIC_CLASH_MUX_PARAMS,
     BASIC_SINGBOX_MUX_PARAMS,
-    BASIC_SOCKOPT_PARAMS
+    BASIC_SOCKOPT_PARAMS,
+    BASIC_XRAY_MUX_PARAMS
 } from '@shared/constants'
 import { HostSelectInboundFeature } from '@features/ui/dashboard/hosts/host-select-inbound/host-select-inbound.feature'
 import { HostTagsInputWidget } from '@widgets/dashboard/hosts/host-tags-input/host-tags-input'
@@ -104,23 +105,27 @@ const SUBSCRIPTION_TYPES = {
 } as const
 
 const MUX_CORE_OPTIONS = [
+    { value: 'XRAY', label: 'Xray/XHTTP' },
     { value: 'SINGBOX', label: 'Singbox' },
     { value: 'CLASH', label: 'Clash/Mihomo' }
 ] as const
 
 type MuxCore = (typeof MUX_CORE_OPTIONS)[number]['value']
 
-const MUX_FIELD_BY_CORE: Record<MuxCore, 'singboxMuxParams' | 'clashMuxParams'> = {
+const MUX_FIELD_BY_CORE: Record<MuxCore, 'muxParams' | 'singboxMuxParams' | 'clashMuxParams'> = {
+    XRAY: 'muxParams',
     SINGBOX: 'singboxMuxParams',
     CLASH: 'clashMuxParams'
 }
 
 const MUX_PLACEHOLDER_BY_CORE: Record<MuxCore, string> = {
+    XRAY: BASIC_XRAY_MUX_PARAMS,
     SINGBOX: BASIC_SINGBOX_MUX_PARAMS,
     CLASH: BASIC_CLASH_MUX_PARAMS
 }
 
 const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
+    XRAY: 'https://xtls.github.io/ru/config/outbound.html#muxobject',
     SINGBOX: 'https://sing-box.sagernet.org/configuration/shared/multiplex/',
     CLASH: 'https://wiki.metacubex.one/en/config/proxies/'
 }
@@ -203,7 +208,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
 
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<null | string>('basic')
-    const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('SINGBOX')
+    const [activeMuxCore, setActiveMuxCore] = useState<MuxCore>('XRAY')
     const [activeCredentialInbound, setActiveCredentialInbound] =
         useState<ConfigProfileInbound | null>(null)
     const [protocolCredentialValue, setProtocolCredentialValue] = useState('')
@@ -402,7 +407,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const activeMuxPlaceholder = MUX_PLACEHOLDER_BY_CORE[activeMuxCore]
     const isClashMuxCore = activeMuxCore === 'CLASH'
     const activeMuxCoreLabel =
-        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Singbox'
+        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Xray/XHTTP'
     const activeCredentialProtocol = normalizeCredentialProtocol(activeCredentialInbound?.type)
     const activeCredentialProtocolLabel =
         activeCredentialProtocol === 'shadowsocks'
@@ -1370,7 +1375,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                             value: option.value
                         }))}
                         label={t('base-host-form.mux-core')}
-                        onChange={(value) => setActiveMuxCore((value as MuxCore) || 'SINGBOX')}
+                        onChange={(value) => setActiveMuxCore((value as MuxCore) || 'XRAY')}
                         value={activeMuxCore}
                     />
 

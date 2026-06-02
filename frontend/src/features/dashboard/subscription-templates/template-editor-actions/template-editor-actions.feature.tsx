@@ -16,7 +16,7 @@ import {
 import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { PiCheckSquareOffset, PiFloppyDisk } from 'react-icons/pi'
 import { ActionIcon, Button, Group, Menu } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { RefObject } from 'react'
 
 import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'

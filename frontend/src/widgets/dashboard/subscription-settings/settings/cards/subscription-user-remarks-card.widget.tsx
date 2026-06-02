@@ -5,7 +5,7 @@ import { Button, Card, Group, Stack } from '@mantine/core'
 import { useCallback, useEffect, useState } from 'react'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import Masonry from 'react-layout-masonry'
 import { useForm } from '@mantine/form'
 

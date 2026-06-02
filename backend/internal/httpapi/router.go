@@ -105,6 +105,9 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/config-profiles/", configprofiles.ConfigProfileByUUIDHandler(manager, cfg))
 	mux.HandleFunc("/api/config-profiles/actions/", configprofiles.ConfigProfilesActionsHandler(manager, cfg))
 	mux.HandleFunc("/api/config-profiles/inbounds", configprofiles.ConfigProfilesInboundsHandler(manager, cfg))
+	mux.HandleFunc("/api/config-profiles/snippets", configprofiles.ConfigProfileSnippetsHandler(manager, cfg))
+	mux.HandleFunc("/api/snippets", configprofiles.ConfigProfileSnippetsHandler(manager, cfg))
+	mux.HandleFunc("/api/snippets/", configprofiles.ConfigProfileSnippetsHandler(manager, cfg))
 	mux.HandleFunc("/api/config-profiles-with-inbounds", squads.ConfigProfilesWithInboundsHandler(manager, cfg))
 
 	mux.HandleFunc("/api/internal-squads", squads.InternalSquadsHandler(manager, cfg))

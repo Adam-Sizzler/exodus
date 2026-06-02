@@ -9,7 +9,7 @@ import {
     PiUsersDuotone
 } from 'react-icons/pi'
 import { Avatar, Badge, Box, Flex, Grid, Progress, Stack, Text, Tooltip } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { notifications } from '@mantine/notifications'
 import { CSSProperties, memo, useMemo } from 'react'
 import ReactCountryFlag from 'react-country-flag'

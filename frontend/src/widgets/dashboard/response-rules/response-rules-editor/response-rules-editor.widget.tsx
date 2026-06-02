@@ -3,7 +3,7 @@ import type { editor } from 'monaco-editor'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, Card, Code, Paper, Text } from '@mantine/core'
 import Editor, { Monaco } from '@monaco-editor/react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useBlocker } from 'react-router-dom'
 import { modals } from '@mantine/modals'
 

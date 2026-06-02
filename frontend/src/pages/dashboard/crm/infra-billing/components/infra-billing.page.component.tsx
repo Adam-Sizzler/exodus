@@ -1,6 +1,6 @@
 import { Split } from '@gfazioli/mantine-split-pane'
 import { useEffect, useLayoutEffect } from 'react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Stack } from '@mantine/core'
 import { motion } from 'motion/react'
 

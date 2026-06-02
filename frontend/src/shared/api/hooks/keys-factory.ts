@@ -13,6 +13,7 @@ import { bandwidthStatsQueryKeys } from './bandwidth-stats/bandwidth-stats.query
 import { infraBillingQueryKeys } from './infra-billing/infra-billing.query.hooks'
 import { apiTokensQueryKeys } from './api-tokens/api-tokens.query.hooks'
 import { ipControlQueryKeys } from './ip-control/ip-control.query.hooks'
+import { snippetsQueryKeys } from './snippets/snippets.query.hooks'
 import { passkeysQueryKeys } from './passkeys/passkeys.query.hooks'
 import { srsListsQueryKeys } from './srs-lists/srs-lists.query.hooks'
 import { systemQueryKeys } from './system/system.query.hooks'
@@ -37,6 +38,7 @@ export const QueryKeys = mergeQueryKeys(
     internalSquadsQueryKeys,
     infraBillingQueryKeys,
     subscriptionRequestHistoryQueryKeys,
+    snippetsQueryKeys,
     externalSquadsQueryKeys,
     exodusSettingsQueryKeys,
     passkeysQueryKeys,

@@ -16,7 +16,7 @@ import {
 } from '@exodus/subscription-page-types'
 import { IconLanguage } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

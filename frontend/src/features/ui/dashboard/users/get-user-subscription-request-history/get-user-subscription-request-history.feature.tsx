@@ -1,5 +1,5 @@
 import { ActionIcon, Tooltip } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbTimeline } from 'react-icons/tb'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'

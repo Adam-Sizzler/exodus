@@ -1,6 +1,6 @@
 import { Alert, Button, Divider, Group, Paper, Stack, Text } from '@mantine/core'
 import { PiTrash, PiWarning } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

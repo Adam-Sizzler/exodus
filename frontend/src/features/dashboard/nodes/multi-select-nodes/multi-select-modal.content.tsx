@@ -1,6 +1,6 @@
 import { NODES_BULK_ACTIONS, TNodesBulkActions } from '@exodus/backend-contract'
 import { TbCheck, TbPlayerStop, TbRefresh, TbRocket } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import { Stack } from '@mantine/core'
 

@@ -2,7 +2,7 @@ import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { Button, Paper, Select, Stack, Text } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
 import { TbDeviceFloppy } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 
 import { QueryKeys, useGetSubscriptionPageConfigs, useUpdateExternalSquad } from '@shared/api/hooks'

@@ -1,6 +1,6 @@
 import { ActionIcon, Tooltip } from '@mantine/core'
 import { PiChartBarDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { UserUsageModalWidget } from '@widgets/dashboard/users/user-usage-modal/user-usage-modal.widget'
 

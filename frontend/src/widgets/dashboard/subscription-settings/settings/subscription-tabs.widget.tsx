@@ -1,6 +1,6 @@
 import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { TbListLetters, TbPrescription } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import Masonry from 'react-layout-masonry'
 import { px, Tabs } from '@mantine/core'
 import { PiInfo } from 'react-icons/pi'

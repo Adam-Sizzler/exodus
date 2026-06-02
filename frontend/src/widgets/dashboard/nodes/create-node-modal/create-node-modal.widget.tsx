@@ -1,6 +1,6 @@
 import { em, Group, Modal, Progress, Stack, Transition } from '@mantine/core'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useMediaQuery } from '@mantine/hooks'
 import { useEffect, useState } from 'react'
 import { useForm } from '@mantine/form'

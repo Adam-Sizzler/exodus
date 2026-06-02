@@ -2,7 +2,7 @@ import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { Select, Skeleton, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { SiSecurityscorecard } from 'react-icons/si'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { useGetSubscriptionPageConfigs } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

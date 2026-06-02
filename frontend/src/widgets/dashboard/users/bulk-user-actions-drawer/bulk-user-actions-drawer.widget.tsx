@@ -1,6 +1,6 @@
 import { Badge, Box, Drawer, Group, Tabs, Text, Transition } from '@mantine/core'
 import { PiInfo, PiPencil, PiWarning } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 
 import {

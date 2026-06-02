@@ -1,7 +1,7 @@
 import { TbCalendar, TbChartArcs, TbRefresh, TbUsers } from 'react-icons/tb'
 import { ActionIcon, Drawer, Group, Select, Stack } from '@mantine/core'
 import { DatePickerInput, DatesRangeValue } from '@mantine/dates'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import dayjs from 'dayjs'
 

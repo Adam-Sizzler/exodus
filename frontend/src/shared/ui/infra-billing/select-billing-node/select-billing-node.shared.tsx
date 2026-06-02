@@ -1,6 +1,6 @@
 import { ComboboxItem, Group, Select, Text } from '@mantine/core'
 import ReactCountryFlag from 'react-country-flag'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { forwardRef, useState } from 'react'
 
 import { useGetInfraBillingNodes } from '@shared/api/hooks'

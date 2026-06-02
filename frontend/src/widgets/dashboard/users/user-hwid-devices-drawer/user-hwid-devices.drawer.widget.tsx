@@ -13,7 +13,7 @@ import {
 } from '@mantine/core'
 import { TbDevices, TbRefresh, TbSearch, TbTrash } from 'react-icons/tb'
 import { useDebouncedValue } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Virtuoso } from 'react-virtuoso'
 import { useMemo, useState } from 'react'
 import { modals } from '@mantine/modals'

@@ -10,7 +10,7 @@ import {
 } from '@mantine/core'
 import { GetInfraProvidersCommand } from '@exodus/backend-contract'
 import { TbCloud, TbPlus, TbRefresh } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { DataTable } from 'mantine-datatable'
 import { PiEmpty } from 'react-icons/pi'
 import { modals } from '@mantine/modals'

@@ -1,6 +1,6 @@
 import { ActionIcon, ActionIconGroup, Group, Tooltip } from '@mantine/core'
 import { TbPlus, TbRefresh } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { HelpActionIconShared } from '@shared/ui/help-drawer/help-action-icon.shared'
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'

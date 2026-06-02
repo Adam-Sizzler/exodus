@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { CloseButton, Combobox, InputBase, Loader, useCombobox } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiTagDuotone } from 'react-icons/pi'
 import { useEffect, useState } from 'react'
 

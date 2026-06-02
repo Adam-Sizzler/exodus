@@ -1,7 +1,7 @@
 import { Box, Center, Code, Drawer, Stack, Title, Typography } from '@mantine/core'
 import { TbAlertCircle, TbQuestionMark } from 'react-icons/tb'
 import { memo, useEffect, useState } from 'react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'

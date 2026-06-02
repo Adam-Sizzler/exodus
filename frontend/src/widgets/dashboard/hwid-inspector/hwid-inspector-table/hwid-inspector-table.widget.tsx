@@ -14,7 +14,7 @@ import { TbDeviceAnalytics, TbRefresh, TbRestore } from 'react-icons/tb'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { GetAllHwidDevicesCommand } from '@exodus/backend-contract'
 import { ActionIcon, ActionIconGroup, Tooltip } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiUserCircle } from 'react-icons/pi'
 
 import { useHwidInspectorTableColumns } from '@features/dashboard/hwid-inspector/hwid-inspector-table/model/use-hwid-inspector-table-columns'

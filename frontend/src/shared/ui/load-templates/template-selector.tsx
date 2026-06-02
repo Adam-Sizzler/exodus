@@ -11,7 +11,7 @@ import {
     UnstyledButton
 } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import ColorHash from 'color-hash'
 import { useState } from 'react'
 

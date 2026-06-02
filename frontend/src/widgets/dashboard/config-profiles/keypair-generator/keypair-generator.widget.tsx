@@ -6,7 +6,7 @@ import { ml_kem768 } from '@noble/post-quantum/ml-kem.js'
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js'
 import { generateKeyPair } from '@stablelib/x25519'
 import { encodeURLSafe } from '@stablelib/base64'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { PiKey } from 'react-icons/pi'
 

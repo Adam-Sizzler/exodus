@@ -8,7 +8,7 @@ import {
 import { Accordion, ActionIcon, Button, Center, Divider, Drawer, Group, Stack } from '@mantine/core'
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

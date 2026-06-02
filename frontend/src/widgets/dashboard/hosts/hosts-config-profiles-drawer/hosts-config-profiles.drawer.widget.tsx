@@ -14,7 +14,7 @@ import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TbDeviceFloppy, TbSearch, TbX } from 'react-icons/tb'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Virtuoso } from 'react-virtuoso'
 
 import { ConfigProfileCardShared } from '@shared/ui/config-profiles/config-profile-card/config-profile-card.shared'

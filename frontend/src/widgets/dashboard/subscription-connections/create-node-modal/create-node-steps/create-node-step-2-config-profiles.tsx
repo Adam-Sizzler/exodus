@@ -1,7 +1,7 @@
 import { CreateNodeCommand } from '@exodus/backend-contract'
 import { Button, Group, Skeleton, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiArrowLeft } from 'react-icons/pi'
 import { TbCheck } from 'react-icons/tb'
 

@@ -1,5 +1,5 @@
 import { Button, Divider, Group, NumberInput, Paper, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiClockUser } from 'react-icons/pi'
 import { modals } from '@mantine/modals'
 

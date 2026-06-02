@@ -1,4 +1,4 @@
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { ActionIcon, Menu, Tooltip } from '@mantine/core'
 import { PiChartBarDuotone } from 'react-icons/pi'
 import { memo } from 'react'

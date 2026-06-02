@@ -6,7 +6,7 @@ import {
 import { Badge, Card, Divider, Group, ScrollArea, SimpleGrid, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { IconGlobe } from '@tabler/icons-react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

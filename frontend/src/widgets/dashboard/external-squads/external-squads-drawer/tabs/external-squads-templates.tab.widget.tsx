@@ -6,7 +6,7 @@ import {
 import { Button, Paper, Select, Stack, Text } from '@mantine/core'
 import { useEffect, useMemo, useState } from 'react'
 import { TbDeviceFloppy } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { useGetSubscriptionTemplates } from '@shared/api/hooks/subscription-template/subscription-template.query.hooks'
 import { MihomoLogo, SingboxLogo, StashLogo, XrayLogo } from '@shared/ui/logos'

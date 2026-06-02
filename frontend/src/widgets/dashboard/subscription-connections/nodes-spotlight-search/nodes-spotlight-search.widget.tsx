@@ -4,7 +4,7 @@ import { PiEmptyDuotone } from 'react-icons/pi'
 import { TbServer, TbServer2 } from 'react-icons/tb'
 import ReactCountryFlag from 'react-country-flag'
 import { Spotlight } from '@mantine/spotlight'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 

@@ -4,7 +4,7 @@ import { PiCheck, PiCopy, PiPencil, PiTrashDuotone } from 'react-icons/pi'
 import { TbCopyCheck, TbEdit, TbFile } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { CopyButton, Menu } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'

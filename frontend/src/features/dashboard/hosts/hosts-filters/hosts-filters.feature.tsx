@@ -1,6 +1,6 @@
 import { PiBookmarks, PiListChecks, PiMagnifyingGlass, PiTag } from 'react-icons/pi'
 import { Accordion, ActionIcon, Group, Select, Stack, Title } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbTagStarred } from 'react-icons/tb'
 import { HiFilter } from 'react-icons/hi'
 import { useMemo } from 'react'

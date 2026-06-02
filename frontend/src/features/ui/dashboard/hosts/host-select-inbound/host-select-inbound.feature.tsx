@@ -1,7 +1,7 @@
 import { ActionIcon, Box, Button, Group, Stack, Text } from '@mantine/core'
 import { TbFile, TbSettings } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import cx from 'clsx'
 
 import { HostsConfigProfilesDrawer } from '@widgets/dashboard/hosts/hosts-config-profiles-drawer/hosts-config-profiles.drawer.widget'

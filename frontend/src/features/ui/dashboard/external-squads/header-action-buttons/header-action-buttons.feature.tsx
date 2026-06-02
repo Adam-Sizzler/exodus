@@ -11,7 +11,7 @@ import {
 import { CreateExternalSquadCommand } from '@exodus/backend-contract'
 import { TbPlus, TbRefresh, TbWebhook } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'

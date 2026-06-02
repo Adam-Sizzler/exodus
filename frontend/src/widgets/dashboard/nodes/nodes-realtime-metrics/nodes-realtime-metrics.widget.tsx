@@ -1,5 +1,5 @@
 import { PiArrowDownDuotone, PiArrowUpDuotone, PiPulse, PiWarningCircle } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbServer2, TbSum, TbUsers } from 'react-icons/tb'
 import { SimpleGrid } from '@mantine/core'
 import { motion } from 'motion/react'

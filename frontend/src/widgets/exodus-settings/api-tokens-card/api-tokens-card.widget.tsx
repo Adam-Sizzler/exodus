@@ -15,7 +15,7 @@ import { CreateApiTokenCommand, FindAllApiTokensCommand } from '@exodus/backend-
 import { PiBookOpenTextDuotone, PiEmpty } from 'react-icons/pi'
 import { TbCookie, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { SiSwagger } from 'react-icons/si'
 import { useField } from '@mantine/form'
 import { Link } from 'react-router-dom'

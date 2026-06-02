@@ -3,6 +3,13 @@ export const BASIC_SINGBOX_MUX_PARAMS = `{
   "padding": true
 }`
 
+export const BASIC_XRAY_MUX_PARAMS = `{
+  "enabled": true,
+  "concurrency": -1,
+  "xudpConcurrency": 16,
+  "xudpProxyUDP443": "reject"
+}`
+
 export const BASIC_CLASH_MUX_PARAMS = `enabled: true
 protocol: smux
 max-connections: 4

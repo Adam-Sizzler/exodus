@@ -1,4 +1,4 @@
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useMediaQuery } from '@mantine/hooks'
 import { em, Modal } from '@mantine/core'
 import { TbCpu } from 'react-icons/tb'

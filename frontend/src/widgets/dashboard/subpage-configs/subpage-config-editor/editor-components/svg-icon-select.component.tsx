@@ -11,7 +11,7 @@ import {
 import { TSubscriptionPageSvgLibrary } from '@exodus/subscription-page-types'
 import { IconCheck, IconPhoto, IconX } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
 import isSvg from 'is-svg'
 

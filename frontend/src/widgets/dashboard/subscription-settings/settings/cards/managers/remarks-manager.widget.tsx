@@ -14,7 +14,7 @@ import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useCallback, useEffect, useState } from 'react'
 import { useDebouncedValue } from '@mantine/hooks'
 import { PiPlus, PiTrash } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { TemplateInfoPopoverShared } from '@shared/ui/popovers/template-info-popover/template-info-popover.shared'
 

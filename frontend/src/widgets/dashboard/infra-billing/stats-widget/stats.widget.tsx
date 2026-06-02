@@ -1,5 +1,5 @@
 import { MdCalendarToday, MdPayment, MdTrendingUp } from 'react-icons/md'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { FaServer } from 'react-icons/fa'
 import { Grid } from '@mantine/core'
 import dayjs from 'dayjs'

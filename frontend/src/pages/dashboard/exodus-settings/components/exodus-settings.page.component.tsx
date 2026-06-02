@@ -1,5 +1,5 @@
 import { FindAllApiTokensCommand, GetExodusSettingsCommand } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import Masonry from 'react-layout-masonry'
 import { Container } from '@mantine/core'
 

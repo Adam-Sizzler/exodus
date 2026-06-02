@@ -12,7 +12,7 @@ import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbChartBar, TbChartLine } from 'react-icons/tb'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiTagDuotone } from 'react-icons/pi'
 
 import { SelectInfraProviderShared } from '@shared/ui/infra-billing/select-infra-provider/select-infra-provider.shared'

@@ -1,7 +1,7 @@
 import { CreateHostCommand, SECURITY_LAYERS } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiListChecks } from 'react-icons/pi'
 import { useForm } from '@mantine/form'
 import { Drawer } from '@mantine/core'
@@ -52,6 +52,13 @@ const parseOptionalJSONValue = (value: unknown): OptionalJSONParseResult => {
     }
 
     if (typeof value === 'object') {
+        if (!Array.isArray(value) && Object.keys(value).length === 0) {
+            return {
+                ok: true,
+                value: null
+            }
+        }
+
         return {
             ok: true,
             value
@@ -133,9 +140,21 @@ export const CreateHostModalWidget = () => {
             return null
         }
 
+        let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
+
+        const muxParamsResult = parseOptionalJSONValue(values.muxParams)
+        if (!muxParamsResult.ok) {
+            notifications.show({
+                title: t('create-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return null
+        }
+        muxParams = muxParamsResult.value
 
         const singboxMuxParamsResult = parseOptionalJSONValue(values.singboxMuxParams)
         if (!singboxMuxParamsResult.ok) {
@@ -165,7 +184,7 @@ export const CreateHostModalWidget = () => {
                     ? valuesAny.protocolCredential || null
                     : null,
                 sockoptParams,
-                muxParams: null,
+                muxParams,
                 singboxMuxParams,
                 clashMuxParams,
                 inbound: {

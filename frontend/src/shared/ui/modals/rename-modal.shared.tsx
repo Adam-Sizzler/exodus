@@ -8,7 +8,7 @@ import {
     UpdateSubscriptionTemplateCommand
 } from '@exodus/backend-contract'
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbDeviceFloppy, TbPencil } from 'react-icons/tb'
 import { useField } from '@mantine/form'
 

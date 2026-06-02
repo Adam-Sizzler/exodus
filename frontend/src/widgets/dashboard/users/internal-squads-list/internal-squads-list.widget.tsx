@@ -1,7 +1,7 @@
 import { Checkbox, Stack, Text, TextInput } from '@mantine/core'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { TbCirclesRelation } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiEmpty } from 'react-icons/pi'
 import { memo, useRef } from 'react'
 

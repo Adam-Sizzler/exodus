@@ -1,6 +1,6 @@
 import { Button, Group, Stack, Text } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiArrowLeft, PiArrowRight } from 'react-icons/pi'
 
 import { CreateSubscriptionConnectionRequest } from '@shared/api/hooks'

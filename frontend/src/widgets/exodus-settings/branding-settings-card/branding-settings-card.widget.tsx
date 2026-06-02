@@ -17,7 +17,7 @@ import {
 import { TbAlertCircle, TbLink, TbStar } from 'react-icons/tb'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import { useForm } from '@mantine/form'
 

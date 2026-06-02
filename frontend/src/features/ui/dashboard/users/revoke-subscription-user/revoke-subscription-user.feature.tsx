@@ -1,5 +1,5 @@
 import { TbAlertTriangle, TbKey } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiKeyDuotone } from 'react-icons/pi'
 import { Menu, Stack } from '@mantine/core'
 import { modals } from '@mantine/modals'

@@ -2,7 +2,7 @@ import { ActionIcon, Badge, Box, Center, Drawer, Group, Stack, Text } from '@man
 import { PiListChecks, PiProhibit, PiPulse, PiTag } from 'react-icons/pi'
 import { createSearchParams, useNavigate } from 'react-router-dom'
 import { TbAlertCircle, TbEyeOff } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import ColorHash from 'color-hash'
 import { memo } from 'react'
 

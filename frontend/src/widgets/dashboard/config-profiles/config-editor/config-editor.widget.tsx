@@ -1,9 +1,10 @@
 import type { editor } from 'monaco-editor'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { GetSnippetsCommand } from '@exodus/backend-contract'
 import { Box, Card, Code, Paper, Text } from '@mantine/core'
 import Editor, { Monaco } from '@monaco-editor/react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useBlocker } from 'react-router-dom'
 import { modals } from '@mantine/modals'
 
@@ -19,12 +20,15 @@ import { IProps } from './interfaces'
 export function ConfigEditorWidget(props: IProps) {
     const { t, i18n } = useTranslation()
 
-    const { configProfile } = props
+    const { configProfile, snippets } = props
 
     const [result, setResult] = useState('')
     const [isConfigValid, setIsConfigValid] = useState(false)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [originalValue, setOriginalValue] = useState('')
+    const [snippetsMap, setSnippetsMap] = useState<
+        Map<string, GetSnippetsCommand.Response['response']['snippets'][number]['snippet']>
+    >(new Map())
 
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
     const monacoRef = useRef<Monaco | null>(null)
@@ -38,8 +42,12 @@ export function ConfigEditorWidget(props: IProps) {
     useEffect(() => {
         if (!monacoRef.current) return
 
-        MonacoSetupFeature.setup(monacoRef.current, i18n.language)
-    }, [monacoRef.current, i18n.language])
+        MonacoSetupFeature.setup(monacoRef.current, i18n.language, snippets.snippets)
+    }, [monacoRef.current, i18n.language, snippets])
+
+    useEffect(() => {
+        setSnippetsMap(new Map(snippets.snippets.map((s) => [s.name, s.snippet])))
+    }, [snippets])
 
     const blocker = useBlocker(
         ({ currentLocation, nextLocation }) =>
@@ -151,7 +159,8 @@ export function ConfigEditorWidget(props: IProps) {
                             editorRef,
                             monacoRef,
                             setResult,
-                            setIsConfigValid
+                            setIsConfigValid,
+                            snippetsMap
                         )
                         checkForChanges()
                     }}
@@ -163,7 +172,8 @@ export function ConfigEditorWidget(props: IProps) {
                             editorRef,
                             monacoRef,
                             setResult,
-                            setIsConfigValid
+                            setIsConfigValid,
+                            snippetsMap
                         )
                     }}
                     options={{

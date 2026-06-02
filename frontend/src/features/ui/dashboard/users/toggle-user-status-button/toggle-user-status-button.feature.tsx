@@ -1,6 +1,6 @@
 import { PiCellSignalFullDuotone, PiCellSignalSlashDuotone, PiTrashDuotone } from 'react-icons/pi'
 import { USERS_STATUS } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Loader, Menu } from '@mantine/core'
 
 import { useDisableUser, useEnableUser, usersQueryKeys } from '@shared/api/hooks'

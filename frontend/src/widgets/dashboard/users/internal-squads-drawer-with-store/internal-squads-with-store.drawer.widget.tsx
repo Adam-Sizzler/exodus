@@ -19,7 +19,7 @@ import { PiCheck, PiCopy, PiList, PiTag, PiTreeView, PiUsers } from 'react-icons
 import { TbCirclesRelation, TbDeviceFloppy, TbSearch } from 'react-icons/tb'
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Virtuoso } from 'react-virtuoso'
 
 import { VirtualizedFlatInboundsListShared } from '@shared/ui/config-profiles/virtualized-flat-inbounds-list/virtualized-flat-inbounds-list.shared'

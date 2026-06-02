@@ -11,7 +11,7 @@ import {
     Text
 } from '@mantine/core'
 import { GetStatsNodesUsageCommand } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbChartBar } from 'react-icons/tb'
 import { Chart } from '@highcharts/react'
 import { PiEmpty } from 'react-icons/pi'

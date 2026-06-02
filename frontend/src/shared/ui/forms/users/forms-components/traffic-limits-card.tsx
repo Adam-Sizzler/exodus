@@ -3,7 +3,7 @@ import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { NumberInput, Select, Stack, Text } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { PiClockDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbChartLine } from 'react-icons/tb'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

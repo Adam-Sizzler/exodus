@@ -7,7 +7,7 @@ import {
 import { Button, Card, Group, Stack, Switch, TextInput } from '@mantine/core'
 import { IconChevronRight, IconPlus, IconStar } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

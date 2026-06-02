@@ -3,7 +3,7 @@ import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { SiSecurityscorecard } from 'react-icons/si'
 import { UseFormReturnType } from '@mantine/form'
 import { Skeleton, Stack } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { ShowConfigProfilesWithInboundsFeature } from '@features/ui/dashboard/nodes/show-config-profiles-with-inbounds'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

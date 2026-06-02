@@ -13,7 +13,7 @@ import { PiCloudArrowUpDuotone, PiWarningCircle } from 'react-icons/pi'
 import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
 import { memo, useMemo } from 'react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { getSingboxUptimeUtil } from '@shared/utils/time-utils'
 import {

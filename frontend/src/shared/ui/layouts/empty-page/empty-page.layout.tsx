@@ -1,5 +1,5 @@
 import { Center, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiEmpty } from 'react-icons/pi'
 
 export const EmptyPageLayout = () => {

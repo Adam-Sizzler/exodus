@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Card, CardProps, Group, Stack, Text, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { forwardRef, ReactNode } from 'react'
 import { useClipboard } from '@mantine/hooks'
 import { motion } from 'motion/react'

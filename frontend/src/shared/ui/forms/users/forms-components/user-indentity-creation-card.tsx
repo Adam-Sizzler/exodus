@@ -3,7 +3,7 @@ import { CreateUserCommand } from '@exodus/backend-contract'
 import { HiIdentification } from 'react-icons/hi'
 import { UseFormReturnType } from '@mantine/form'
 import { PiUserDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TextInput } from '@mantine/core'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

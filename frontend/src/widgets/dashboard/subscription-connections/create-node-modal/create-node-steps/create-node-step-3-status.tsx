@@ -1,6 +1,6 @@
 import { Alert, Badge, Button, Code, Group, Paper, Stack, Text } from '@mantine/core'
 import { TbAlertCircle, TbCheck, TbLink, TbX } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'

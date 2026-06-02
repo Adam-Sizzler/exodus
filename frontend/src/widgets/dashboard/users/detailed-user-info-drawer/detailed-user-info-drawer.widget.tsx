@@ -7,7 +7,7 @@ import {
     PiUserDuotone
 } from 'react-icons/pi'
 import { Box, Center, Drawer, Group, Stack } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
 

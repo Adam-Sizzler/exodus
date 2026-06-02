@@ -2,7 +2,7 @@
 
 import { Badge, Button, Flex, Group, Paper, Stack, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbFile, TbTag } from 'react-icons/tb'
 import { useMemo } from 'react'
 import clsx from 'clsx'

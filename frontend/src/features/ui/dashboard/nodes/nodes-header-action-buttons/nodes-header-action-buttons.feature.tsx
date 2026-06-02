@@ -8,7 +8,7 @@ import {
     TbTable
 } from 'react-icons/tb'
 import { ActionIcon, ActionIconGroup, Group, Stack, Tooltip } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { spotlight } from '@mantine/spotlight'
 import { PiSpiral } from 'react-icons/pi'
 import { modals } from '@mantine/modals'

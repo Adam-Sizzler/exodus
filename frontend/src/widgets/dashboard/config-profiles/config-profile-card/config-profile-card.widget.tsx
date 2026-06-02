@@ -5,7 +5,7 @@ import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 
 import { useGetComputedConfigProfile } from '@shared/api/hooks/config-profiles/config-profiles.query.hooks'

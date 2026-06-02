@@ -11,7 +11,7 @@ import {
 import { CreateInternalSquadCommand } from '@exodus/backend-contract'
 import { TbCirclesRelation, TbPlus, TbRefresh } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
 
 import { QueryKeys, useCreateInternalSquad, useGetInternalSquads } from '@shared/api/hooks'

@@ -2,7 +2,7 @@ import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
 import { Card, Divider, Stack, TextInput } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

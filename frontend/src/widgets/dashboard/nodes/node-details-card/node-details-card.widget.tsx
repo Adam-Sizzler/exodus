@@ -20,7 +20,7 @@ import {
 } from 'react-icons/pi'
 import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { memo, useCallback, useMemo } from 'react'
 
 import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/nodes/get-node-linked-hosts'

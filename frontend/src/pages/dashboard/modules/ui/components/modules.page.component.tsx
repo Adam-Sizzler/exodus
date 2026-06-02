@@ -10,7 +10,7 @@ import {
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbPackages } from 'react-icons/tb'
 import { useState } from 'react'
 

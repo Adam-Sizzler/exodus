@@ -2,7 +2,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import { useLayoutEffect, useState } from 'react'
 import { consola } from 'consola/browser'
 
-import { useGetConfigProfile } from '@shared/api/hooks'
+import { useGetConfigProfile, useGetSnippets } from '@shared/api/hooks'
 import { fetchWithProgress } from '@shared/utils/fetch-with-progress'
 import { ROUTES } from '@shared/constants'
 import { LoadingScreen } from '@shared/ui'
@@ -23,6 +23,8 @@ export function ConfigProfileByUuidPageConnector() {
             refetchOnWindowFocus: false
         }
     })
+
+    const { data: snippets, isLoading: isSnippetsLoading } = useGetSnippets({})
 
     useLayoutEffect(() => {
         const initWasm = async () => {
@@ -91,9 +93,9 @@ export function ConfigProfileByUuidPageConnector() {
         return <Navigate to={ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES} />
     }
 
-    if (isLoading || isConfigProfileLoading || !configProfile) {
+    if (isLoading || isConfigProfileLoading || !configProfile || isSnippetsLoading || !snippets) {
         return <LoadingScreen text="WASM module is loading..." value={downloadProgress} />
     }
 
-    return <ConfigProfileByUuidPageComponent configProfile={configProfile} />
+    return <ConfigProfileByUuidPageComponent configProfile={configProfile} snippets={snippets} />
 }

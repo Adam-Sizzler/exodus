@@ -3,7 +3,7 @@ import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { PiEnvelopeDuotone, PiTelegramLogoDuotone } from 'react-icons/pi'
 import { NumberInput, Stack, TextInput } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbMail } from 'react-icons/tb'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

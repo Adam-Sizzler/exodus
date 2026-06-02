@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { Box, Card, Center, Group, Loader, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core'
 import { PiChartBar, PiChartPieDuotone } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Chart } from '@highcharts/react'
 import { useMemo } from 'react'
 import dayjs from 'dayjs'

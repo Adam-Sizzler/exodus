@@ -8,7 +8,7 @@ import {
 } from 'react-icons/pi'
 import { ActionIcon, Divider, Group, Stack, Text, ThemeIcon } from '@mantine/core'
 import { GetUserHwidDevicesCommand } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'

@@ -16,7 +16,7 @@ import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { useEffect, useMemo, useState } from 'react'
 import { PiPlus, PiTrash } from 'react-icons/pi'
 import { TbDeviceFloppy } from 'react-icons/tb'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TFunction } from 'i18next'
 import { z } from 'zod'
 

@@ -1,4 +1,5 @@
 import {
+    TbBraces,
     TbClipboardCopy,
     TbClipboardText,
     TbCut,
@@ -12,10 +13,16 @@ import { ActionIcon, Button, CopyButton, Group, Menu, Text } from '@mantine/core
 import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { UpdateConfigProfileCommand } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import consola from 'consola/browser'
 
+import {
+    MODALS,
+    useModalClose,
+    useModalsStoreOpenWithData,
+    useModalState
+} from '@entities/dashboard/modal-store'
 import { KeypairGeneratorWidget } from '@widgets/dashboard/config-profiles/keypair-generator/keypair-generator.widget'
 import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -24,6 +31,8 @@ import { queryClient } from '@shared/api'
 
 import classes from './config-editor-actions.module.css'
 import { Props } from './interfaces'
+
+const MODAL_KEY = MODALS.CONFIG_PROFILE_SHOW_SNIPPETS_DRAWER
 
 export function ConfigEditorActionsFeature(props: Props) {
     const {
@@ -41,6 +50,10 @@ export function ConfigEditorActionsFeature(props: Props) {
 
     const isMobile = useMediaQuery('(max-width: 48em)')
     const clipboard = useClipboard({ timeout: 500 })
+
+    const { isOpen } = useModalState(MODAL_KEY)
+    const close = useModalClose(MODAL_KEY)
+    const openWithData = useModalsStoreOpenWithData()
 
     const [opened, handlers] = useDisclosure(false)
 
@@ -314,6 +327,20 @@ export function ConfigEditorActionsFeature(props: Props) {
                     {t('config-editor-actions.feature.format')}
                 </Button>
 
+                <ActionIcon
+                    className={classes.actionIconRight}
+                    onClick={() => {
+                        if (isOpen) {
+                            close()
+                        } else {
+                            openWithData(MODAL_KEY, undefined)
+                        }
+                    }}
+                    size={36}
+                    variant={isOpen ? 'filled' : 'default'}
+                >
+                    <TbBraces size={20} />
+                </ActionIcon>
             </Group>
         </Group>
     )

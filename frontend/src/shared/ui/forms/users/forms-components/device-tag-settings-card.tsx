@@ -2,7 +2,7 @@ import { CreateUserCommand, GetAllTagsCommand, UpdateUserCommand } from '@exodus
 import { Anchor, Checkbox, Code, Input, NumberInput, Stack, Text, Textarea } from '@mantine/core'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
 import { TbDevices2, TbSettings } from 'react-icons/tb'
-import { Trans, useTranslation } from 'node_modules/react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { UseFormReturnType } from '@mantine/form'
 
 import { CreateableTagInputShared } from '@shared/ui/createable-tag-input/createable-tag-input'

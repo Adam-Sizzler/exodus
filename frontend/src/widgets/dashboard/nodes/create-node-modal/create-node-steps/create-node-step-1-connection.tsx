@@ -13,7 +13,7 @@ import {
 } from '@mantine/core'
 import { TbCertificate, TbId, TbMapPin, TbPlugConnected, TbRoute2, TbWorld } from 'react-icons/tb'
 import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { PiArrowRight } from 'react-icons/pi'
 
 import { CreateNodeRequest, NodeKeygenResponse } from '@shared/api/hooks'

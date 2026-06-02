@@ -39,6 +39,9 @@ export * from './passkeys/passkeys.query.hooks'
 export * from './exodus-settings/exodus-settings.mutation.hooks'
 
 export * from './exodus-settings/exodus-settings.query.hooks'
+export * from './snippets/snippets.mutation.hooks'
+
+export * from './snippets/snippets.query.hooks'
 export * from './subpage-configs/subpage-configs.mutation.hooks'
 
 export * from './subpage-configs/subpage-configs.query.hooks'

@@ -1,6 +1,6 @@
 import { Avatar, ComboboxItem, Group, Select, Skeleton, Stack, Text } from '@mantine/core'
 import { forwardRef, useEffect, useState } from 'react'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { useGetInfraProviders } from '@shared/api/hooks'
 import { faviconResolver } from '@shared/utils/misc'

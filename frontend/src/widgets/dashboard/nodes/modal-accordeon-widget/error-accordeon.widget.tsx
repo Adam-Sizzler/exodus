@@ -1,6 +1,6 @@
 import { Accordion, Code, Text } from '@mantine/core'
 import { PiNetworkSlash } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 
 import { IProps } from './interfaces'

@@ -1,7 +1,7 @@
 import type { editor } from 'monaco-editor'
 
 import { TSubscriptionTemplateType } from '@exodus/backend-contract'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { notifications } from '@mantine/notifications'
 import { TbDownload } from 'react-icons/tb'
 import { modals } from '@mantine/modals'

@@ -1,5 +1,5 @@
 import LanguageDetector from 'i18next-browser-languagedetector/cjs'
-import { initReactI18next } from 'node_modules/react-i18next'
+import { initReactI18next } from 'react-i18next'
 import HttpApi from 'i18next-http-backend'
 import i18n from 'i18next'
 import { withBasePath } from '@shared/constants/base-path'

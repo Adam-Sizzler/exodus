@@ -1,6 +1,6 @@
 import { Button, Group, Text } from '@mantine/core'
 import { PiClockClockwise } from 'react-icons/pi'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 
 import { useBulkUsersActionsStoreActions } from '@entities/dashboard/users/bulk-users-actions-store'
 

@@ -1,6 +1,6 @@
 import { notifications } from '@mantine/notifications'
 import { ActionIcon, Tooltip } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { DataTable } from 'mantine-datatable'
 import { useClipboard } from '@mantine/hooks'
 import { TbRefresh } from 'react-icons/tb'

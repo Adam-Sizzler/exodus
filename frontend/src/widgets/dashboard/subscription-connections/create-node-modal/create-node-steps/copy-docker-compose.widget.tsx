@@ -1,5 +1,5 @@
 import { Badge, Button, CopyButton, Skeleton, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { SiDocker } from 'react-icons/si'
 import { PiCheck } from 'react-icons/pi'
 

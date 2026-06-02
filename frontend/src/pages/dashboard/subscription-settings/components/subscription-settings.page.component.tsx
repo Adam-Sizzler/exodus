@@ -1,4 +1,4 @@
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { TbHexagon } from 'react-icons/tb'
 import { Container } from '@mantine/core'
 

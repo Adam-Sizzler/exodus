@@ -51,7 +51,7 @@ import {
 import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { modals } from '@mantine/modals'
-import { useTranslation } from 'node_modules/react-i18next'
+import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TbPlus, TbRefresh, TbTagStarred } from 'react-icons/tb'
 import { useSortable } from '@dnd-kit/sortable'
