@@ -30,6 +30,7 @@ import {
     PiListChecks,
     PiNetwork,
     PiNoteDuotone,
+    PiPencilDuotone,
     PiTag
 } from 'react-icons/pi'
 import {
@@ -58,7 +59,9 @@ import {
     BASIC_CLASH_MUX_PARAMS,
     BASIC_SINGBOX_MUX_PARAMS,
     BASIC_SOCKOPT_PARAMS,
-    BASIC_XRAY_MUX_PARAMS
+    BASIC_XHTTP_EXTRA_PARAMS,
+    BASIC_XRAY_MUX_PARAMS,
+    PASTE_BASIC_XHTTP_EXTRA_PARAMS
 } from '@shared/constants'
 import { HostSelectInboundFeature } from '@features/ui/dashboard/hosts/host-select-inbound/host-select-inbound.feature'
 import { HostTagsInputWidget } from '@widgets/dashboard/hosts/host-tags-input/host-tags-input'
@@ -213,6 +216,10 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
         useState<ConfigProfileInbound | null>(null)
     const [protocolCredentialValue, setProtocolCredentialValue] = useState('')
 
+    const [
+        xhttpExtraParamsOpened,
+        { open: openXhttpExtraParams, close: closeXhttpExtraParams }
+    ] = useDisclosure(false)
     const [muxParamsOpened, { open: openMuxParams, close: closeMuxParams }] = useDisclosure(false)
     const [sockoptParamsOpened, { open: openSockoptParams, close: closeSockoptParams }] =
         useDisclosure(false)
@@ -235,6 +242,15 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
             configProfiles
                 .find((profile) => profile.uuid === configProfileUuid)
                 ?.inbounds.find((inbound) => inbound.uuid === configProfileInboundUuid) ?? null
+        )
+    }
+
+    const isXhttpExtraButtonDisabled = () => {
+        const { inbound } = form.getValues()
+
+        return (
+            resolveInbound(inbound?.configProfileUuid, inbound?.configProfileInboundUuid)?.network !==
+            'xhttp'
         )
     }
 
@@ -1136,6 +1152,14 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                                             w="100%"
                                         >
                                             <Button
+                                                disabled={isXhttpExtraButtonDisabled()}
+                                                leftSection={<PiPencilDuotone />}
+                                                onClick={openXhttpExtraParams}
+                                            >
+                                                xHTTP
+                                            </Button>
+
+                                            <Button
                                                 leftSection={<TbCloudNetwork />}
                                                 onClick={openMuxParams}
                                             >
@@ -1352,6 +1376,50 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
                     </Group>
                 </Group>
             </DrawerFooter>
+
+            <Drawer
+                onClose={closeXhttpExtraParams}
+                opened={xhttpExtraParamsOpened}
+                padding="lg"
+                position="right"
+                size="lg"
+                title={
+                    <BaseOverlayHeader
+                        IconComponent={PiPencilDuotone}
+                        iconVariant="gradient-teal"
+                        title={t('base-host-form.xhttp-extra-params')}
+                    />
+                }
+            >
+                <Stack gap="md">
+                    <Text size="sm">{t('base-host-form.extra-xhttp-description')}</Text>
+                    <JsonInput
+                        autosize
+                        formatOnBlur
+                        key={form.key('xHttpExtraParams')}
+                        minRows={15}
+                        placeholder={BASIC_XHTTP_EXTRA_PARAMS}
+                        validationError={t('base-host-form.invalid-json')}
+                        {...form.getInputProps('xHttpExtraParams')}
+                    />
+
+                    <Button
+                        color="gray"
+                        leftSection={<PiArrowUpDuotone size={px('1.2rem')} />}
+                        onClick={() => {
+                            form.setFieldValue(
+                                'xHttpExtraParams' as never,
+                                PASTE_BASIC_XHTTP_EXTRA_PARAMS as never
+                            )
+                        }}
+                        variant="light"
+                    >
+                        {t('base-host-form.fill-with-sample-xhttp-extra-params')}
+                    </Button>
+
+                    <Button onClick={closeXhttpExtraParams}>{t('common.close')}</Button>
+                </Stack>
+            </Drawer>
 
             <Drawer
                 onClose={closeMuxParams}

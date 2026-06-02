@@ -190,6 +190,7 @@ model Nodes {
   port    Int?   @map("port")
   apiSchema String @default("grpc") @map("api_schema")
   apiPath   String @default("") @map("api_path")
+  grpcAuthToken String @default(dbgenerated("encode(gen_random_bytes(32), 'hex'::text)")) @map("grpc_auth_token")
 
   activeConfigProfileUuid String? @map("active_config_profile_uuid") @db.Uuid
   activePluginUuid        String? @map("active_plugin_uuid") @db.Uuid
@@ -298,6 +299,7 @@ model Hosts {
   alpn                         String?  @map("alpn") // ENUM: h2, http/1.1, h2,http/1.1 
   fingerprint                  String?  @map("fingerprint") // ENUM: chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized
   securityLayer                String   @default("DEFAULT") @map("security_layer") // ENUM: DEFAULT, TLS, NONE
+  xHttpExtraParams             Json?    @map("xhttp_extra_params")
   muxParams                    Json?    @map("mux_params")
   singboxMuxParams             Json?    @map("singbox_mux_params")
   clashMuxParams               Json?    @map("clash_mux_params")

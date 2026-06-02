@@ -21,6 +21,7 @@ export declare namespace GetAllHostsCommand {
                 readonly TLS: "TLS";
                 readonly NONE: "NONE";
             }>>;
+            xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
@@ -82,6 +83,7 @@ export declare namespace GetAllHostsCommand {
             mihomoX25519: boolean;
             xrayJsonTemplateUuid: string | null;
             excludedInternalSquads: string[];
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
@@ -110,6 +112,7 @@ export declare namespace GetAllHostsCommand {
             excludedInternalSquads: string[];
             isDisabled?: boolean | undefined;
             securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             isHidden?: boolean | undefined;
@@ -148,6 +151,7 @@ export declare namespace GetAllHostsCommand {
             mihomoX25519: boolean;
             xrayJsonTemplateUuid: string | null;
             excludedInternalSquads: string[];
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
@@ -178,6 +182,7 @@ export declare namespace GetAllHostsCommand {
             excludedInternalSquads: string[];
             isDisabled?: boolean | undefined;
             securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             isHidden?: boolean | undefined;

@@ -140,10 +140,22 @@ export const CreateHostModalWidget = () => {
             return null
         }
 
+        let xHttpExtraParams
         let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
+
+        const xHttpExtraParamsResult = parseOptionalJSONValue(values.xHttpExtraParams)
+        if (!xHttpExtraParamsResult.ok) {
+            notifications.show({
+                title: t('create-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return null
+        }
+        xHttpExtraParams = xHttpExtraParamsResult.value
 
         const muxParamsResult = parseOptionalJSONValue(values.muxParams)
         if (!muxParamsResult.ok) {
@@ -183,6 +195,7 @@ export const CreateHostModalWidget = () => {
                 protocolCredential: valuesAny.overrideProtocolCredential
                     ? valuesAny.protocolCredential || null
                     : null,
+                xHttpExtraParams,
                 sockoptParams,
                 muxParams,
                 singboxMuxParams,

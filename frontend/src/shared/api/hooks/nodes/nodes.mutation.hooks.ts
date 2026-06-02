@@ -19,6 +19,7 @@ import { createMutationHook } from '../../tsq-helpers'
 const nodeConnectionSchema = {
     apiSchema: z.enum(['mtls', 'tls']).default('mtls'),
     apiPath: z.string().trim().min(1).default('/'),
+    grpcAuthToken: z.string().trim().length(64).optional(),
     activePluginUuid: z.string().uuid().nullable().optional()
 }
 
@@ -28,6 +29,7 @@ export type CreateNodeRequest = z.infer<typeof createNodeRequestSchema>
 export const updateNodeRequestSchema = UpdateNodeCommand.RequestSchema.extend({
     apiSchema: nodeConnectionSchema.apiSchema.optional(),
     apiPath: nodeConnectionSchema.apiPath.optional(),
+    grpcAuthToken: nodeConnectionSchema.grpcAuthToken,
     activePluginUuid: nodeConnectionSchema.activePluginUuid
 })
 export const updateNodeFormSchema = updateNodeRequestSchema.omit({ uuid: true })

@@ -137,7 +137,14 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             isDataSubmitting={isUpdateNodePending}
             node={fetchedNode}
             nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode} />}
-            pubKey={pubKey}
+            pubKey={
+                pubKey
+                    ? {
+                          ...pubKey,
+                          grpcToken: fetchedNode.grpcAuthToken || pubKey.grpcToken
+                      }
+                    : pubKey
+            }
         />
     )
 }

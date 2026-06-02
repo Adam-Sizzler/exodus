@@ -45,6 +45,7 @@ export declare namespace CreateHostCommand {
             readonly TLS: "TLS";
             readonly NONE: "NONE";
         }>>>;
+        xHttpExtraParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         muxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         singboxMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         clashMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
@@ -87,6 +88,7 @@ export declare namespace CreateHostCommand {
         fingerprint?: "chrome" | "firefox" | "safari" | "ios" | "android" | "edge" | "qq" | "random" | "randomized" | null | undefined;
         isDisabled?: boolean | undefined;
         securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+        xHttpExtraParams?: unknown;
         muxParams?: unknown;
         singboxMuxParams?: unknown;
         clashMuxParams?: unknown;
@@ -120,6 +122,7 @@ export declare namespace CreateHostCommand {
         fingerprint?: "chrome" | "firefox" | "safari" | "ios" | "android" | "edge" | "qq" | "random" | "randomized" | null | undefined;
         isDisabled?: boolean | undefined;
         securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+        xHttpExtraParams?: unknown;
         muxParams?: unknown;
         singboxMuxParams?: unknown;
         clashMuxParams?: unknown;
@@ -156,6 +159,7 @@ export declare namespace CreateHostCommand {
                 readonly TLS: "TLS";
                 readonly NONE: "NONE";
             }>>;
+            xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
@@ -217,6 +221,7 @@ export declare namespace CreateHostCommand {
             mihomoX25519: boolean;
             xrayJsonTemplateUuid: string | null;
             excludedInternalSquads: string[];
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
@@ -245,6 +250,7 @@ export declare namespace CreateHostCommand {
             excludedInternalSquads: string[];
             isDisabled?: boolean | undefined;
             securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             isHidden?: boolean | undefined;
@@ -283,6 +289,7 @@ export declare namespace CreateHostCommand {
             mihomoX25519: boolean;
             xrayJsonTemplateUuid: string | null;
             excludedInternalSquads: string[];
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
@@ -313,6 +320,7 @@ export declare namespace CreateHostCommand {
             excludedInternalSquads: string[];
             isDisabled?: boolean | undefined;
             securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             isHidden?: boolean | undefined;

@@ -17,6 +17,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/dbutil"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/security"
 	monitor "exodus/internal/subscriptionnodes"
 
 	"github.com/google/uuid"
@@ -75,6 +76,7 @@ type nodeAPI struct {
 	Port                    *int       `json:"port"`
 	APISchema               string     `json:"apiSchema"`
 	APIPath                 string     `json:"apiPath"`
+	GRPCAuthToken           string     `json:"grpcAuthToken"`
 	SubpageConfigUUID       *string    `json:"subpageConfigUuid,omitempty"`
 	IsConnected             bool       `json:"isConnected"`
 	IsDisabled              bool       `json:"isDisabled"`
@@ -116,6 +118,7 @@ type nodeRecord struct {
 	Port                    *int
 	APISchema               string
 	APIPath                 string
+	GRPCAuthToken           string
 	SubpageConfigUUID       *string
 	ActiveConfigProfileUUID *string
 	IsConnected             bool
@@ -156,6 +159,7 @@ type createNodeRequest struct {
 	Port              *int     `json:"port,omitempty"`
 	APISchema         *string  `json:"apiSchema,omitempty"`
 	APIPath           *string  `json:"apiPath,omitempty"`
+	GRPCAuthToken     *string  `json:"grpcAuthToken,omitempty"`
 	SubpageConfigUUID *string  `json:"subpageConfigUuid,omitempty"`
 	ProviderUUID      *string  `json:"providerUuid,omitempty"`
 	Tags              []string `json:"tags,omitempty"`
@@ -169,6 +173,7 @@ type updateNodeRequest struct {
 	Port              *int           `json:"port,omitempty"`
 	APISchema         *string        `json:"apiSchema,omitempty"`
 	APIPath           *string        `json:"apiPath,omitempty"`
+	GRPCAuthToken     *string        `json:"grpcAuthToken,omitempty"`
 	SubpageConfigUUID OptionalString `json:"subpageConfigUuid,omitempty"`
 	ProviderUUID      OptionalString `json:"providerUuid,omitempty"`
 	Tags              *[]string      `json:"tags,omitempty"`
@@ -388,6 +393,15 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 	}
 	schema := normalizeAPISchema(req.APISchema)
+	grpcAuthToken := ""
+	if req.GRPCAuthToken != nil {
+		grpcAuthToken = *req.GRPCAuthToken
+	}
+	grpcAuthToken, err := security.ResolveGRPCAuthToken(grpcAuthToken)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
 	subpageConfigUUID := normalizeNullableUUID(req.SubpageConfigUUID)
 	if subpageConfigUUID != nil {
 		if _, err := uuid.Parse(*subpageConfigUUID); err != nil {
@@ -407,7 +421,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	nodeUUID := uuid.NewString()
 	now := time.Now().UTC()
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
@@ -415,9 +429,9 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 		_, err = tx.ExecContext(r.Context(), `
 				INSERT INTO sub_nodes (
-					uuid, name, address, public_domain, port, api_schema, api_path,
+					uuid, name, address, public_domain, port, api_schema, api_path, grpc_auth_token,
 					is_connected, is_connecting, is_disabled, provider_uuid, tags, created_at, updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`,
 			nodeUUID,
 			strings.TrimSpace(req.Name),
@@ -426,6 +440,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			req.Port,
 			schema,
 			normalizeAPIPath(req.APIPath),
+			grpcAuthToken,
 			false,
 			false,
 			false,
@@ -504,6 +519,15 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			return
 		}
 	}
+	var grpcAuthToken *string
+	if req.GRPCAuthToken != nil {
+		token, err := security.ResolveGRPCAuthToken(*req.GRPCAuthToken)
+		if err != nil {
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			return
+		}
+		grpcAuthToken = &token
+	}
 
 	currentNode, err := getNodeByUUID(r.Context(), manager, req.UUID)
 	if err != nil {
@@ -576,6 +600,9 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 		if req.APIPath != nil {
 			add("api_path", normalizeAPIPath(req.APIPath))
+		}
+		if grpcAuthToken != nil {
+			add("grpc_auth_token", *grpcAuthToken)
 		}
 		if req.Tags != nil {
 			add("tags", normalizeTags(*req.Tags))
@@ -1093,6 +1120,7 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.Port = record.Port
 		item.APISchema = normalizeSubNodeSchema(record.APISchema)
 		item.APIPath = record.APIPath
+		item.GRPCAuthToken = record.GRPCAuthToken
 		item.SubpageConfigUUID = record.SubpageConfigUUID
 		item.IsConnected = record.IsConnected
 		item.IsDisabled = record.IsDisabled
@@ -1175,7 +1203,7 @@ func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
 				SELECT
-					n.uuid, n.id, n.name, n.address, n.public_domain, n.port, n.api_schema, n.api_path, sns.subpage_config_uuid,
+					n.uuid, n.id, n.name, n.address, n.public_domain, n.port, n.api_schema, n.api_path, n.grpc_auth_token, sns.subpage_config_uuid,
 					n.is_connected, n.is_connecting, n.is_disabled,
 					n.last_status_change, n.last_status_message,
 					n.provider_uuid, n.view_position, n.tags, n.created_at, n.updated_at
@@ -1204,7 +1232,7 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
 				SELECT
-					n.uuid, n.id, n.name, n.address, n.public_domain, n.port, n.api_schema, n.api_path, sns.subpage_config_uuid,
+					n.uuid, n.id, n.name, n.address, n.public_domain, n.port, n.api_schema, n.api_path, n.grpc_auth_token, sns.subpage_config_uuid,
 					n.is_connected, n.is_connecting, n.is_disabled,
 					n.last_status_change, n.last_status_message,
 					n.provider_uuid, n.view_position, n.tags, n.created_at, n.updated_at
@@ -1239,6 +1267,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&port,
 		&node.APISchema,
 		&node.APIPath,
+		&node.GRPCAuthToken,
 		&subpageConfigUUID,
 		&node.IsConnected,
 		&node.IsConnecting,

@@ -40,6 +40,7 @@ var CreateHostCommand;
         fingerprint: zod_1.z.optional(zod_1.z.nativeEnum(constants_1.FINGERPRINTS).nullable()),
         isDisabled: zod_1.z.optional(zod_1.z.boolean().default(false)),
         securityLayer: zod_1.z.optional(zod_1.z.nativeEnum(constants_1.SECURITY_LAYERS).default(constants_1.SECURITY_LAYERS.DEFAULT)),
+        xHttpExtraParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
         muxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
         singboxMuxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
         clashMuxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),

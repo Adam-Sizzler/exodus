@@ -146,7 +146,14 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             nodeSystemCard={
                 fetchedNode.isConnected ? <NodeSystemCardWidget node={fetchedNode} /> : null
             }
-            pubKey={pubKey}
+            pubKey={
+                pubKey
+                    ? {
+                          ...pubKey,
+                          grpcToken: fetchedNode.grpcAuthToken || pubKey.grpcToken
+                      }
+                    : pubKey
+            }
             setAdvancedOpened={setAdvancedOpened}
         />
     )

@@ -17,6 +17,7 @@ exports.HostsSchema = zod_1.z.object({
     fingerprint: zod_1.z.string().nullable(),
     isDisabled: zod_1.z.boolean().default(false),
     securityLayer: zod_1.z.nativeEnum(hosts_1.SECURITY_LAYERS).default(hosts_1.SECURITY_LAYERS.DEFAULT),
+    xHttpExtraParams: zod_1.z.nullable(zod_1.z.unknown()),
     muxParams: zod_1.z.nullable(zod_1.z.unknown()),
     singboxMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
     clashMuxParams: zod_1.z.nullable(zod_1.z.unknown()),

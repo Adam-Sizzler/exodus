@@ -35,7 +35,7 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		query := `
-			SELECT uuid, name, address, port, api_schema, api_path,
+			SELECT uuid, name, address, port, api_schema, api_path, grpc_auth_token,
 			       is_disabled, consumption_multiplier, is_traffic_tracking_active,
 			       traffic_reset_day, traffic_limit_bytes, notify_percent,
 			       view_position, country_code, tags
@@ -52,13 +52,13 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 		for rows.Next() {
 			var n DBNode
 			var port sql.NullInt64
-			var apiSchema, apiPath, countryCode sql.NullString
+			var apiSchema, apiPath, grpcAuthToken, countryCode sql.NullString
 			var tags dbutil.StringArray
 			var consumptionMultiplier, trafficLimitBytes, trafficResetDay, notifyPercent, viewPosition sql.NullInt64
 			var isTrafficTrackingActive sql.NullBool
 
 			err := rows.Scan(
-				&n.UUID, &n.Name, &n.Address, &port, &apiSchema, &apiPath,
+				&n.UUID, &n.Name, &n.Address, &port, &apiSchema, &apiPath, &grpcAuthToken,
 				&n.IsDisabled, &consumptionMultiplier, &isTrafficTrackingActive,
 				&trafficResetDay, &trafficLimitBytes, &notifyPercent, &viewPosition,
 				&countryCode, &tags,
@@ -81,6 +81,9 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 				n.APIPath = apiPath.String
 			} else {
 				n.APIPath = ""
+			}
+			if grpcAuthToken.Valid {
+				n.GRPCAuthToken = grpcAuthToken.String
 			}
 			if consumptionMultiplier.Valid {
 				n.ConsumptionMultiplier = consumptionMultiplier.Int64

@@ -25,7 +25,7 @@ export const CreateNodeModalWidget = () => {
     const isModalOpen = useSubscriptionConnectionsStoreCreateModalIsOpen()
     const actions = useSubscriptionConnectionsStoreActions()
 
-    const { data: pubKey } = useGetSubscriptionConnectionsPubKey()
+    const { data: pubKey, refetch: refetchPubKey } = useGetSubscriptionConnectionsPubKey()
 
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
@@ -72,10 +72,17 @@ export const CreateNodeModalWidget = () => {
                 publicDomain: (values.publicDomain ?? '').trim() || null,
                 apiSchema: schema,
                 apiPath: values.apiPath.trim() || '/',
+                grpcAuthToken: schema === 'tls' ? pubKey?.grpcToken?.trim() : undefined,
                 subpageConfigUuid: (values.subpageConfigUuid ?? '').trim() || null
             }
         })
     }
+
+    useEffect(() => {
+        if (isModalOpen) {
+            void refetchPubKey()
+        }
+    }, [isModalOpen, refetchPubKey])
 
     useEffect(() => {
         if (form.getValues().port) {

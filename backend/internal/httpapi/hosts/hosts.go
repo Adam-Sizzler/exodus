@@ -71,6 +71,7 @@ type hostRecord struct {
 	ALPN                       *string
 	Fingerprint                *string
 	SecurityLayer              string
+	XHTTPExtraParams           json.RawMessage
 	MuxParams                  json.RawMessage
 	SingboxMuxParams           json.RawMessage
 	ClashMuxParams             json.RawMessage
@@ -141,6 +142,7 @@ type HostAPI struct {
 	Fingerprint                *string     `json:"fingerprint"`
 	IsDisabled                 bool        `json:"isDisabled"`
 	SecurityLayer              string      `json:"securityLayer"`
+	XHTTPExtraParams           interface{} `json:"xHttpExtraParams"`
 	MuxParams                  interface{} `json:"muxParams"`
 	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
 	ClashMuxParams             interface{} `json:"clashMuxParams"`
@@ -175,6 +177,7 @@ type HostCreateRequestAPI struct {
 	Fingerprint                *string          `json:"fingerprint,omitempty"`
 	IsDisabled                 *bool            `json:"isDisabled,omitempty"`
 	SecurityLayer              *string          `json:"securityLayer,omitempty"`
+	XHTTPExtraParams           *json.RawMessage `json:"xHttpExtraParams,omitempty"`
 	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
 	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             *json.RawMessage `json:"clashMuxParams,omitempty"`
@@ -209,6 +212,7 @@ type HostUpdateRequestAPI struct {
 	Fingerprint                OptionalString `json:"fingerprint,omitempty"`
 	IsDisabled                 *bool          `json:"isDisabled,omitempty"`
 	SecurityLayer              *string        `json:"securityLayer,omitempty"`
+	XHTTPExtraParams           OptionalJSON   `json:"xHttpExtraParams,omitempty"`
 	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
 	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             OptionalJSON   `json:"clashMuxParams,omitempty"`
@@ -460,6 +464,11 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			return err
 		}
 
+		xhttpExtra, err := normalizeJSONValue(req.XHTTPExtraParams, true)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
 		mux, err := normalizeJSONValue(req.MuxParams, true)
 		if err != nil {
 			_ = tx.Rollback()
@@ -485,13 +494,13 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
             INSERT INTO hosts (
                 uuid, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
                 allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
                 exclude_from_subscription_types, tag, is_hidden,
                 override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
 			hostUUID,
 			req.Remark,
@@ -503,6 +512,7 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			normalizeOptionalStringAllowEmpty(req.ALPN),
 			normalizeOptionalStringAllowEmpty(req.Fingerprint),
 			normalizeSecurityLayer(req.SecurityLayer),
+			xhttpExtra,
 			mux,
 			singboxMux,
 			clashMux,
@@ -674,6 +684,16 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			add("security_layer", normalizeSecurityLayer(req.SecurityLayer))
 		}
 
+		if set, val, err := normalizeOptionalJSONField(req.XHTTPExtraParams, true); err != nil {
+			_ = tx.Rollback()
+			return err
+		} else if set {
+			if val == nil {
+				clauses = append(clauses, "xhttp_extra_params = NULL")
+			} else {
+				add("xhttp_extra_params", val)
+			}
+		}
 		if set, val, err := normalizeOptionalJSONField(req.MuxParams, true); err != nil {
 			_ = tx.Rollback()
 			return err
@@ -1356,6 +1376,7 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 		Fingerprint:                rec.Fingerprint,
 		IsDisabled:                 rec.IsDisabled,
 		SecurityLayer:              rec.SecurityLayer,
+		XHTTPExtraParams:           parseJSONAny(rec.XHTTPExtraParams),
 		MuxParams:                  parseJSONAny(rec.MuxParams),
 		SingboxMuxParams:           parseJSONAny(rec.SingboxMuxParams),
 		ClashMuxParams:             parseJSONAny(rec.ClashMuxParams),
@@ -1410,7 +1431,7 @@ func getHosts(ctx context.Context, manager *dbmanager.DatabaseManager) ([]hostRe
             SELECT
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
                 allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
@@ -1443,7 +1464,7 @@ func getHostByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, host
             SELECT
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
                 allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
                 xray_json_template_uuid, keep_sni_blank,
@@ -1467,7 +1488,7 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var serverDescription, protocolCredential, tag sql.NullString
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
 	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
-	var muxParams, singboxMuxParams, clashMuxParams, sockoptParams []byte
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams []byte
 	var excludeTypes dbutil.StringArray
 
 	err := scanner.Scan(
@@ -1482,6 +1503,7 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&alpn,
 		&fingerprint,
 		&securityLayer,
+		&xhttpExtraParams,
 		&muxParams,
 		&singboxMuxParams,
 		&clashMuxParams,
@@ -1529,6 +1551,9 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		rec.SecurityLayer = securityLayer.String
 	} else {
 		rec.SecurityLayer = "DEFAULT"
+	}
+	if len(xhttpExtraParams) > 0 {
+		rec.XHTTPExtraParams = json.RawMessage(xhttpExtraParams)
 	}
 	if len(muxParams) > 0 {
 		rec.MuxParams = json.RawMessage(muxParams)

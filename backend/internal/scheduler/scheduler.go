@@ -39,6 +39,8 @@ func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseM
 
 func (s *Scheduler) run(ctx context.Context) {
 	s.cfg.Logger.Info("Scheduler started")
+	s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
+
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
@@ -59,7 +61,7 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	if local.Minute() == 0 && s.shouldRun("reviewNodes", local.Format("2006-01-02T15")) {
 		s.runJob(ctx, "reviewNodes", s.reviewNodes)
 	}
-	if local.Hour() == 1 && local.Minute() == 0 && s.shouldRun("resetNodeTraffic", local.Format("2006-01-02")) {
+	if local.Minute() == 0 && s.shouldRun("resetNodeTraffic", local.Format("2006-01-02T15")) {
 		s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
 	}
 	if s.shouldRun("expireUserNotifications", local.Format("2006-01-02T15:04")) {

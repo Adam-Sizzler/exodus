@@ -49,6 +49,61 @@ func TestGetSubscriptionRefillDateAt(t *testing.T) {
 	}
 }
 
+func TestBuildXrayOutboundIncludesXHTTPExtraAndSockopt(t *testing.T) {
+	protocol := "vless"
+	network := "xhttp"
+	path := "/host-path"
+	hostHeader := "cdn.example.com"
+	xhttpExtra := `{"xPaddingBytes":"100-1000","xmux":{"maxConcurrency":"16-32"}}`
+	sockopt := `{"tcpNoDelay":true}`
+
+	outbound := buildXrayOutbound(SubscriptionHost{
+		Remark:           "xhttp",
+		Address:          "edge.example.com",
+		Port:             443,
+		Path:             &path,
+		Host:             &hostHeader,
+		InboundType:      &protocol,
+		InboundNetwork:   &network,
+		XHTTPExtraParams: &xhttpExtra,
+		SockoptParams:    &sockopt,
+		InboundRaw: json.RawMessage(`{
+			"streamSettings": {
+				"xhttpSettings": {
+					"mode": "auto",
+					"path": "/inbound-path"
+				}
+			}
+		}`),
+	}, SubscriptionUser{VlessUUID: "9f76f8d8-daf1-4db6-b045-0987cd5e09a2"})
+
+	streamSettings, ok := outbound["streamSettings"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected streamSettings map, got %#v", outbound["streamSettings"])
+	}
+	xhttpSettings, ok := streamSettings["xhttpSettings"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected xhttpSettings map, got %#v", streamSettings["xhttpSettings"])
+	}
+	if got := xhttpSettings["mode"]; got != "auto" {
+		t.Fatalf("expected inbound xhttp mode to be preserved, got %#v", got)
+	}
+	if got := xhttpSettings["path"]; got != path {
+		t.Fatalf("expected host path override %q, got %#v", path, got)
+	}
+	if got := xhttpSettings["host"]; got != hostHeader {
+		t.Fatalf("expected host header override %q, got %#v", hostHeader, got)
+	}
+	extra, ok := xhttpSettings["extra"].(map[string]interface{})
+	if !ok || extra["xPaddingBytes"] != "100-1000" {
+		t.Fatalf("expected XHTTP extra params, got %#v", xhttpSettings["extra"])
+	}
+	gotSockopt, ok := streamSettings["sockopt"].(map[string]interface{})
+	if !ok || gotSockopt["tcpNoDelay"] != true {
+		t.Fatalf("expected SockOpt params, got %#v", streamSettings["sockopt"])
+	}
+}
+
 func TestGenerateYAMLConfigPreservesTemplateOrderAndSelectorNodePlacement(t *testing.T) {
 	template := []byte(`allow-lan: true
 mode: rule

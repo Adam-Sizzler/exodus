@@ -1,3 +1,48 @@
+export const BASIC_XHTTP_EXTRA_PARAMS = `{
+  "headers": {},
+  "xPaddingBytes": "100-1000",
+  "noGRPCHeader": false,
+  "scMaxEachPostBytes": 1000000,
+  "scMinPostsIntervalMs": 30,
+  "scStreamUpServerSecs": "20-80",
+  "xmux": {
+    "maxConcurrency": "16-32",
+    "maxConnections": 0,
+    "cMaxReuseTimes": 0,
+    "hMaxRequestTimes": "600-900",
+    "hMaxReusableSecs": "1800-3000",
+    "hKeepAlivePeriod": 0
+  },
+  "downloadSettings": {
+    "address": "",
+    "port": 443,
+    "network": "xhttp",
+    "security": "tls",
+    "tlsSettings": {},
+    "xhttpSettings": {
+      "path": "/yourpath"
+    },
+    "sockopt": {}
+  }
+}`
+
+export const PASTE_BASIC_XHTTP_EXTRA_PARAMS = `{
+  "headers": {},
+  "xPaddingBytes": "100-1000",
+  "noGRPCHeader": false,
+  "scMaxEachPostBytes": 1000000,
+  "scMinPostsIntervalMs": 30,
+  "scStreamUpServerSecs": "20-80",
+  "xmux": {
+    "maxConcurrency": "16-32",
+    "maxConnections": 0,
+    "cMaxReuseTimes": 0,
+    "hMaxRequestTimes": "600-900",
+    "hMaxReusableSecs": "1800-3000",
+    "hKeepAlivePeriod": 0
+  }
+}`
+
 export const BASIC_SINGBOX_MUX_PARAMS = `{
   "enabled": true,
   "padding": true

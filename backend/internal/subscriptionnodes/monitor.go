@@ -248,7 +248,7 @@ func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 	}
 	err = sm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.Query(`
-			SELECT n.uuid, n.name, n.address, n.port, n.api_schema, n.api_path,
+			SELECT n.uuid, n.name, n.address, n.port, n.api_schema, n.api_path, n.grpc_auth_token,
 			       sns.subpage_config_uuid
 			FROM sub_nodes n
 			LEFT JOIN sub_nodes_to_subscription_page_config sns ON sns.node_uuid = n.uuid
@@ -264,9 +264,10 @@ func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 			var (
 				n             dbSubNode
 				port          sql.NullInt64
+				grpcAuthToken sql.NullString
 				subpageConfig sql.NullString
 			)
-			if err := rows.Scan(&n.UUID, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &subpageConfig); err != nil {
+			if err := rows.Scan(&n.UUID, &n.Name, &n.Address, &port, &n.APISchema, &n.APIPath, &grpcAuthToken, &subpageConfig); err != nil {
 				return fmt.Errorf("scan sub_node: %w", err)
 			}
 			if port.Valid {
@@ -276,7 +277,10 @@ func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 			}
 			n.APISchema = normalizeSubSchema(n.APISchema)
 			if n.APISchema == "tls" {
-				n.GRPCAuthToken = globalGRPCToken
+				n.GRPCAuthToken = strings.TrimSpace(grpcAuthToken.String)
+				if n.GRPCAuthToken == "" {
+					n.GRPCAuthToken = globalGRPCToken
+				}
 			} else {
 				n.GRPCAuthToken = ""
 			}

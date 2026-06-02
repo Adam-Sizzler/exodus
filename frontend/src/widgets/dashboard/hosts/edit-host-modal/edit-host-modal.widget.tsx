@@ -130,10 +130,20 @@ export const EditHostModalWidget = memo(() => {
     useEffect(() => {
         if (host && configProfiles) {
             const hostAny = host as any
+            let xHttpExtraParamsParsed: null | object | string
             let muxParamsParsed: null | object | string
             let singboxMuxParamsParsed: null | object | string
             let clashMuxParamsParsed: null | object | string
             let sockoptParamsParsed: null | object | string
+
+            if (
+                typeof hostAny.xHttpExtraParams === 'object' &&
+                hostAny.xHttpExtraParams !== null
+            ) {
+                xHttpExtraParamsParsed = JSON.stringify(hostAny.xHttpExtraParams, null, 2)
+            } else {
+                xHttpExtraParamsParsed = ''
+            }
 
             if (typeof hostAny.muxParams === 'object' && hostAny.muxParams !== null) {
                 muxParamsParsed = JSON.stringify(hostAny.muxParams, null, 2)
@@ -181,6 +191,7 @@ export const EditHostModalWidget = memo(() => {
                     configProfileInboundUuid: host.inbound.configProfileInboundUuid ?? ''
                 },
                 serverDescription: host.serverDescription ?? undefined,
+                xHttpExtraParams: xHttpExtraParamsParsed,
                 muxParams: muxParamsParsed,
                 singboxMuxParams: singboxMuxParamsParsed,
                 clashMuxParams: clashMuxParamsParsed,
@@ -255,10 +266,22 @@ export const EditHostModalWidget = memo(() => {
             protocolCredential?: string | null
         }
 
+        let xHttpExtraParams
         let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
+
+        const xHttpExtraParamsResult = parseOptionalJSONValue(values.xHttpExtraParams)
+        if (!xHttpExtraParamsResult.ok) {
+            notifications.show({
+                title: t('edit-host-modal.widget.error'),
+                message: t('base-host-form.invalid-json'),
+                color: 'red'
+            })
+            return
+        }
+        xHttpExtraParams = xHttpExtraParamsResult.value
 
         const muxParamsResult = parseOptionalJSONValue(values.muxParams)
         if (!muxParamsResult.ok) {
@@ -299,6 +322,7 @@ export const EditHostModalWidget = memo(() => {
                 protocolCredential: valuesAny.overrideProtocolCredential
                     ? valuesAny.protocolCredential || null
                     : null,
+                xHttpExtraParams,
                 muxParams,
                 singboxMuxParams,
                 clashMuxParams,
@@ -334,6 +358,7 @@ export const EditHostModalWidget = memo(() => {
                 sni: host.sni ?? undefined,
                 host: host.host ?? undefined,
                 alpn: (host.alpn as UpdateHostCommand.Request['alpn']) ?? undefined,
+                xHttpExtraParams: (host as any).xHttpExtraParams ?? undefined,
                 muxParams: (host as any).muxParams ?? undefined,
                 singboxMuxParams: (host as any).singboxMuxParams ?? undefined,
                 clashMuxParams: (host as any).clashMuxParams ?? undefined,

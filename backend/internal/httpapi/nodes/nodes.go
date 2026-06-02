@@ -20,6 +20,7 @@ import (
 	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
 	"exodus/internal/notifications"
+	"exodus/internal/security"
 
 	"github.com/google/uuid"
 )
@@ -117,6 +118,7 @@ type nodeAPI struct {
 	Port                    *int                  `json:"port"`
 	APISchema               string                `json:"apiSchema"`
 	APIPath                 string                `json:"apiPath"`
+	GRPCAuthToken           string                `json:"grpcAuthToken"`
 	ActivePluginUUID        *string               `json:"activePluginUuid"`
 	IsConnected             bool                  `json:"isConnected"`
 	IsDisabled              bool                  `json:"isDisabled"`
@@ -159,6 +161,7 @@ type nodeRecord struct {
 	Port                    *int
 	APISchema               string
 	APIPath                 string
+	GRPCAuthToken           string
 	ActiveConfigProfileUUID *string
 	ActivePluginUUID        *string
 	IsConnected             bool
@@ -200,6 +203,7 @@ type createNodeRequest struct {
 	Port                    *int                    `json:"port,omitempty"`
 	APISchema               *string                 `json:"apiSchema,omitempty"`
 	APIPath                 *string                 `json:"apiPath,omitempty"`
+	GRPCAuthToken           *string                 `json:"grpcAuthToken,omitempty"`
 	ActivePluginUUID        *string                 `json:"activePluginUuid,omitempty"`
 	IsTrafficTrackingActive *bool                   `json:"isTrafficTrackingActive,omitempty"`
 	TrafficLimitBytes       *int64                  `json:"trafficLimitBytes,omitempty"`
@@ -219,6 +223,7 @@ type updateNodeRequest struct {
 	Port                    *int                     `json:"port,omitempty"`
 	APISchema               *string                  `json:"apiSchema,omitempty"`
 	APIPath                 *string                  `json:"apiPath,omitempty"`
+	GRPCAuthToken           *string                  `json:"grpcAuthToken,omitempty"`
 	ActivePluginUUID        OptionalString           `json:"activePluginUuid,omitempty"`
 	IsTrafficTrackingActive *bool                    `json:"isTrafficTrackingActive,omitempty"`
 	TrafficLimitBytes       *int64                   `json:"trafficLimitBytes,omitempty"`
@@ -448,10 +453,19 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			return
 		}
 	}
+	grpcAuthToken := ""
+	if req.GRPCAuthToken != nil {
+		grpcAuthToken = *req.GRPCAuthToken
+	}
+	grpcAuthToken, err := security.ResolveGRPCAuthToken(grpcAuthToken)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
 
 	nodeUUID := uuid.NewString()
 	now := time.Now().UTC()
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
@@ -459,12 +473,12 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 		_, err = tx.ExecContext(r.Context(), `
 			INSERT INTO nodes (
-				uuid, name, address, port, api_schema, api_path, active_config_profile_uuid, active_plugin_uuid,
+				uuid, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, country_code, tags, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`,
 			nodeUUID,
 			strings.TrimSpace(req.Name),
@@ -472,6 +486,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			req.Port,
 			normalizeAPISchema(req.APISchema),
 			normalizeAPIPath(req.APIPath),
+			grpcAuthToken,
 			req.ConfigProfile.ActiveConfigProfileUUID,
 			normalizeNullableString(req.ActivePluginUUID),
 			false,
@@ -554,6 +569,15 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			return
 		}
 	}
+	var grpcAuthToken *string
+	if req.GRPCAuthToken != nil {
+		token, err := security.ResolveGRPCAuthToken(*req.GRPCAuthToken)
+		if err != nil {
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+			return
+		}
+		grpcAuthToken = &token
+	}
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
@@ -582,6 +606,9 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		}
 		if req.APIPath != nil {
 			add("api_path", normalizeAPIPath(req.APIPath))
+		}
+		if grpcAuthToken != nil {
+			add("grpc_auth_token", *grpcAuthToken)
 		}
 		if req.IsTrafficTrackingActive != nil {
 			add("is_traffic_tracking_active", *req.IsTrafficTrackingActive)
@@ -1350,6 +1377,7 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.Port = record.Port
 		item.APISchema = normalizeAPISchema(&record.APISchema)
 		item.APIPath = normalizeAPIPath(&record.APIPath)
+		item.GRPCAuthToken = record.GRPCAuthToken
 		item.ActivePluginUUID = record.ActivePluginUUID
 		item.IsConnected = record.IsConnected
 		item.IsDisabled = record.IsDisabled
@@ -1513,7 +1541,7 @@ func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
 			SELECT
-					uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid, active_plugin_uuid,
+					uuid, id, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
@@ -1543,7 +1571,7 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
 			SELECT
-					uuid, id, name, address, port, api_schema, api_path, active_config_profile_uuid, active_plugin_uuid,
+					uuid, id, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
@@ -1590,6 +1618,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&port,
 		&node.APISchema,
 		&node.APIPath,
+		&node.GRPCAuthToken,
 		&activeConfigProfileUUID,
 		&activePluginUUID,
 		&node.IsConnected,

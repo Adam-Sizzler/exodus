@@ -16,6 +16,7 @@ export declare const HostsSchema: z.ZodObject<{
         readonly TLS: "TLS";
         readonly NONE: "NONE";
     }>>;
+    xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
     muxParams: z.ZodNullable<z.ZodUnknown>;
     singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
     clashMuxParams: z.ZodNullable<z.ZodUnknown>;
@@ -83,6 +84,7 @@ export declare const HostsSchema: z.ZodObject<{
     mihomoX25519: boolean;
     xrayJsonTemplateUuid: string | null;
     excludedInternalSquads: string[];
+    xHttpExtraParams?: unknown;
     muxParams?: unknown;
     singboxMuxParams?: unknown;
     clashMuxParams?: unknown;
@@ -114,6 +116,7 @@ export declare const HostsSchema: z.ZodObject<{
     excludedInternalSquads: string[];
     isDisabled?: boolean | undefined;
     securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+    xHttpExtraParams?: unknown;
     muxParams?: unknown;
     singboxMuxParams?: unknown;
     clashMuxParams?: unknown;

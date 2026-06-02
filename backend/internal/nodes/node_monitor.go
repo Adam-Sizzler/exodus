@@ -276,7 +276,11 @@ func (nm *NodeMonitor) loadActiveNodes() ([]db.DBNode, error) {
 		nodes[i].APISchema = normalizeNodeSchema(nodes[i].APISchema)
 		nodes[i].APIPath = normalizeNodePath(nodes[i].APIPath)
 		if nodes[i].APISchema == "tls" {
-			nodes[i].GRPCAuthToken = grpcToken
+			if strings.TrimSpace(nodes[i].GRPCAuthToken) == "" {
+				nodes[i].GRPCAuthToken = grpcToken
+			}
+		} else {
+			nodes[i].GRPCAuthToken = ""
 		}
 	}
 	return nodes, nil

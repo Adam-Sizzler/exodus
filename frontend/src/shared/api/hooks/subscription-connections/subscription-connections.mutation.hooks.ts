@@ -77,6 +77,7 @@ const createSubscriptionConnectionSchemaBase = z.object({
     port: z.number().int().min(1).max(65535).optional(),
     apiSchema: z.enum(['mtls', 'tls']).default('mtls'),
     apiPath: z.string().trim().min(1).default('/'),
+    grpcAuthToken: z.string().trim().length(64).optional(),
     subpageConfigUuid: z.string().uuid().nullable().optional(),
     providerUuid: z.string().uuid().nullable().optional(),
     tags: z.array(z.string().regex(TAG_REGEX).max(36)).max(10).optional()
@@ -94,6 +95,7 @@ const updateSubscriptionConnectionSchemaBase = z.object({
     port: z.number().int().min(1).max(65535).optional(),
     apiSchema: z.enum(['mtls', 'tls']).optional(),
     apiPath: z.string().trim().min(1).optional(),
+    grpcAuthToken: z.string().trim().length(64).optional(),
     subpageConfigUuid: z.string().uuid().nullable().optional(),
     providerUuid: z.string().uuid().nullable().optional(),
     tags: z.array(z.string().regex(TAG_REGEX).max(36)).max(10).optional()

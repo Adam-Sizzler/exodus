@@ -107,6 +107,7 @@ type SubscriptionHost struct {
 	ALPN                         *string
 	Fingerprint                  *string
 	SecurityLayer                string
+	XHTTPExtraParams             *string
 	MuxParams                    *string
 	SingboxMuxParams             *string
 	ClashMuxParams               *string
@@ -407,7 +408,7 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
 			rows, err = db.QueryContext(ctx, `
                 SELECT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
+                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
                        h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
                        h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
@@ -421,7 +422,7 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
 			rows, err = db.QueryContext(ctx, `
                 SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
+                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
                        h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
                        h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
@@ -463,7 +464,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription, protocolCredential sql.NullString
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription, protocolCredential sql.NullString
 	var xrayJSONTemplateUUID, tag, configProfileUUID, configProfileInboundUUID sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
@@ -483,6 +484,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&alpn,
 		&fingerprint,
 		&securityLayer,
+		&xhttpExtraParams,
 		&muxParams,
 		&singboxMuxParams,
 		&clashMuxParams,
@@ -536,6 +538,9 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		h.SecurityLayer = securityLayer.String
 	} else {
 		h.SecurityLayer = "DEFAULT"
+	}
+	if xhttpExtraParams.Valid {
+		h.XHTTPExtraParams = &xhttpExtraParams.String
 	}
 	if muxParams.Valid {
 		h.MuxParams = &muxParams.String
@@ -1559,6 +1564,24 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 			grpcSettings["serviceName"] = *host.Path
 		}
 		streamSettings["grpcSettings"] = grpcSettings
+	}
+
+	if network == "xhttp" {
+		xhttpSettings := readMap(readMap(parseInboundRaw(host.InboundRaw), "streamSettings"), "xhttpSettings")
+		if host.Path != nil && *host.Path != "" {
+			xhttpSettings["path"] = *host.Path
+		}
+		if host.Host != nil && *host.Host != "" {
+			xhttpSettings["host"] = *host.Host
+		}
+		if extra := parseJSONMapString(host.XHTTPExtraParams); extra != nil {
+			xhttpSettings["extra"] = extra
+		}
+		streamSettings["xhttpSettings"] = xhttpSettings
+	}
+
+	if sockopt := parseJSONMapString(host.SockoptParams); sockopt != nil {
+		streamSettings["sockopt"] = sockopt
 	}
 
 	outbound := map[string]interface{}{

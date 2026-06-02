@@ -16,6 +16,7 @@ const SUBSCRIPTION_CONNECTIONS_API = {
 const subscriptionConnectionNodeSchema = GetOneNodeCommand.ResponseSchema.shape.response.extend({
     apiSchema: z.string().optional().default('mtls'),
     apiPath: z.string().optional().default('/'),
+    grpcAuthToken: z.string().optional().default(''),
     publicDomain: z.string().nullable().optional(),
     subpageConfigUuid: z.string().uuid().nullable().optional()
 })
@@ -83,8 +84,7 @@ export const useGetSubscriptionConnectionsPubKey = createGetQueryHook({
     rQueryParams: {
         placeholderData: keepPreviousData,
         refetchOnMount: true,
-        staleTime: sToMs(5),
-        refetchInterval: sToMs(5)
+        staleTime: sToMs(5)
     },
 
     errorHandler: (error) => errorHandler(error, 'Get Subscription Connection PubKey')

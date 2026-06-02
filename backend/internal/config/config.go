@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -91,6 +92,7 @@ type EXODUSConfig struct {
 
 type DatabaseConfig struct {
 	URL                string
+	Socket             string
 	WorkerCount        int
 	HighPriorityBuffer int
 	LowPriorityBuffer  int
@@ -278,6 +280,13 @@ func applyEnvOverrides(cfg *BackendConfig) {
 
 	if value := envFirst("DATABASE_URL"); value != "" {
 		cfg.Database.URL = value
+	}
+	if value := envFirst("DATABASE_SOCKET", "POSTGRES_SOCKET"); value != "" {
+		cfg.Database.Socket = value
+		cfg.Database.URL = postgresSocketDatabaseURL(value)
+	}
+	if strings.TrimSpace(cfg.Database.URL) == "" {
+		cfg.Database.URL = postgresTCPDatabaseURL()
 	}
 	if value := envFirst("DATABASE_WORKER_COUNT", "EXODUS_DATABASE_WORKER_COUNT"); value != "" {
 		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
@@ -604,6 +613,74 @@ func parseIntJSONArray(value string) ([]int, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func postgresSocketDatabaseURL(socketDir string) string {
+	socketDir = strings.TrimSpace(socketDir)
+	if socketDir == "" {
+		return ""
+	}
+
+	user, password, database := postgresCredentials()
+
+	dsn := url.URL{
+		Scheme: "postgresql",
+		Host:   "localhost",
+		Path:   "/" + database,
+	}
+	if password != "" {
+		dsn.User = url.UserPassword(user, password)
+	} else if user != "" {
+		dsn.User = url.User(user)
+	}
+
+	query := dsn.Query()
+	query.Set("host", socketDir)
+	dsn.RawQuery = query.Encode()
+
+	return dsn.String()
+}
+
+func postgresTCPDatabaseURL() string {
+	user, password, database := postgresCredentials()
+
+	host := envFirst("DATABASE_HOST", "POSTGRES_HOST")
+	if host == "" {
+		host = "exodus-db"
+	}
+	port := envFirst("DATABASE_PORT", "POSTGRES_PORT")
+	if port == "" {
+		port = "5432"
+	}
+
+	dsn := url.URL{
+		Scheme: "postgresql",
+		Host:   net.JoinHostPort(host, port),
+		Path:   "/" + database,
+	}
+	if password != "" {
+		dsn.User = url.UserPassword(user, password)
+	} else if user != "" {
+		dsn.User = url.User(user)
+	}
+
+	return dsn.String()
+}
+
+func postgresCredentials() (user string, password string, database string) {
+	user = envFirst("POSTGRES_USER")
+	if user == "" {
+		user = "postgres"
+	}
+	password = envFirst("POSTGRES_PASSWORD")
+	if password == "" {
+		password = "postgres"
+	}
+	database = envFirst("POSTGRES_DB")
+	if database == "" {
+		database = "postgres"
+	}
+	return user, password, database
 }
 
 func normalizeBasePath(input string) string {

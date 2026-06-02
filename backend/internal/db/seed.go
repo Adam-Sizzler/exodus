@@ -2,9 +2,7 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -243,7 +241,7 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 			INSERT INTO keygen (uuid, priv_key, pub_key, ca_cert, ca_key, client_cert, client_key, grpc_auth_token)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		`)
-		grpcAuthToken, err := generateGRPCAuthToken()
+		grpcAuthToken, err := security.GenerateGRPCAuthToken()
 		if err != nil {
 			return fmt.Errorf("generate grpc auth token: %w", err)
 		}
@@ -307,7 +305,7 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 		args = append(args, masterCerts.CACertPEM, masterCerts.CAKeyPEM, masterCerts.ClientCertPEM, masterCerts.ClientKeyPEM)
 	}
 	if needGRPCToken {
-		token, err := generateGRPCAuthToken()
+		token, err := security.GenerateGRPCAuthToken()
 		if err != nil {
 			return fmt.Errorf("regenerate grpc auth token: %w", err)
 		}
@@ -333,12 +331,4 @@ func joinWithComma(parts []string) string {
 		out += ", " + parts[i]
 	}
 	return out
-}
-
-func generateGRPCAuthToken() (string, error) {
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(raw), nil
 }

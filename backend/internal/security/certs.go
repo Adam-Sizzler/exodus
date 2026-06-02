@@ -7,9 +7,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 )
 
@@ -23,6 +25,27 @@ type MasterCerts struct {
 type NodeCert struct {
 	NodeCertPEM string
 	NodeKeyPEM  string
+}
+
+func GenerateGRPCAuthToken() (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate grpc auth token: %w", err)
+	}
+	return hex.EncodeToString(raw), nil
+}
+
+func ResolveGRPCAuthToken(value string) (string, error) {
+	token := strings.ToLower(strings.TrimSpace(value))
+	if token == "" {
+		return GenerateGRPCAuthToken()
+	}
+
+	raw, err := hex.DecodeString(token)
+	if err != nil || len(raw) != 32 {
+		return "", fmt.Errorf("grpc auth token must be a 64-character hexadecimal string")
+	}
+	return token, nil
 }
 
 func GenerateJWTKeypair() (publicKeyPEM string, privateKeyPEM string, err error) {

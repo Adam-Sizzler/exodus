@@ -52,6 +52,7 @@ const nodePluginSchema = z.object({
 const nodeResponseSchema = GetOneNodeCommand.ResponseSchema.shape.response.extend({
     apiSchema: z.string().optional().default('mtls'),
     apiPath: z.string().optional().default('/'),
+    grpcAuthToken: z.string().optional().default(''),
     activePluginUuid: z.string().nullable().optional().default(null),
     system: nodeSystemSchema.nullable().optional().default(null),
     versions: z
@@ -145,8 +146,7 @@ export const useGetPubKey = createGetQueryHook({
     rQueryParams: {
         placeholderData: keepPreviousData,
         refetchOnMount: true,
-        staleTime: sToMs(5),
-        refetchInterval: sToMs(5)
+        staleTime: sToMs(5)
     },
 
     errorHandler: (error) => errorHandler(error, 'Get PubKey')

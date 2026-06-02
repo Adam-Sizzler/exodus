@@ -28,7 +28,7 @@ export const CreateNodeModalWidget = () => {
     const isModalOpen = useNodesStoreCreateModalIsOpen()
     const actions = useNodesStoreActions()
 
-    const { data: pubKey } = useGetPubKey()
+    const { data: pubKey, refetch: refetchPubKey } = useGetPubKey()
 
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
@@ -77,6 +77,7 @@ export const CreateNodeModalWidget = () => {
                 address: values.address.trim(),
                 apiSchema: schema,
                 apiPath: values.apiPath?.trim() || '/',
+                grpcAuthToken: schema === 'tls' ? pubKey?.grpcToken?.trim() : undefined,
                 trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes)
             }
         })
@@ -84,6 +85,12 @@ export const CreateNodeModalWidget = () => {
 
     const nextStep = () => setActiveStep((current) => (current < 2 ? current + 1 : current))
     const prevStep = () => setActiveStep((current) => (current > 0 ? current - 1 : current))
+
+    useEffect(() => {
+        if (isModalOpen) {
+            void refetchPubKey()
+        }
+    }, [isModalOpen, refetchPubKey])
 
     useEffect(() => {
         if (form.getValues().port) {

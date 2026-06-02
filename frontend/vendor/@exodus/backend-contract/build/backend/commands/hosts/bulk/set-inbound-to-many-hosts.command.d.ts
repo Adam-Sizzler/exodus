@@ -35,6 +35,7 @@ export declare namespace SetInboundToManyHostsCommand {
                 readonly TLS: "TLS";
                 readonly NONE: "NONE";
             }>>;
+            xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
@@ -96,6 +97,7 @@ export declare namespace SetInboundToManyHostsCommand {
             mihomoX25519: boolean;
             xrayJsonTemplateUuid: string | null;
             excludedInternalSquads: string[];
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
@@ -124,6 +126,7 @@ export declare namespace SetInboundToManyHostsCommand {
             excludedInternalSquads: string[];
             isDisabled?: boolean | undefined;
             securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             isHidden?: boolean | undefined;
@@ -162,6 +165,7 @@ export declare namespace SetInboundToManyHostsCommand {
             mihomoX25519: boolean;
             xrayJsonTemplateUuid: string | null;
             excludedInternalSquads: string[];
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
@@ -192,6 +196,7 @@ export declare namespace SetInboundToManyHostsCommand {
             excludedInternalSquads: string[];
             isDisabled?: boolean | undefined;
             securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
+            xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
             isHidden?: boolean | undefined;

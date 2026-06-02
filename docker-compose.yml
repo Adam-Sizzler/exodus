@@ -41,8 +41,16 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}"
       - "127.0.0.1:${METRICS_PORT:-3001}:${METRICS_PORT:-3001}"
+    environment:
+      DATABASE_SOCKET: ${DATABASE_SOCKET-/var/run/postgresql}
+      REDIS_HOST: ${REDIS_HOST-exodus-redis}
+      REDIS_PORT: ${REDIS_PORT-6379}
+      REDIS_SOCKET: ${REDIS_SOCKET-/var/run/valkey/valkey.sock}
+      REDIS_TRANSPORT: ${REDIS_TRANSPORT:-socket}
     volumes:
       - panel-data:/app/data
+      - postgres-socket:/var/run/postgresql
+      - valkey-socket:/var/run/valkey
     depends_on:
       exodus-db:
         condition: service_healthy
@@ -58,6 +66,7 @@ services:
       - "127.0.0.1:6868:5432"
     volumes:
       - exodus-data:/var/lib/postgresql
+      - postgres-socket:/var/run/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
       interval: 3s
@@ -69,14 +78,32 @@ services:
     container_name: exodus-redis
     hostname: exodus-redis
     <<: [*common, *logging]
-    command: >
-      valkey-server
-      --save ""
-      --appendonly no
-      --maxmemory-policy noeviction
-      --loglevel warning
+    environment:
+      REDIS_SOCKET: ${REDIS_SOCKET-/var/run/valkey/valkey.sock}
+      REDIS_TRANSPORT: ${REDIS_TRANSPORT:-socket}
+    volumes:
+      - valkey-socket:/var/run/valkey
+    command:
+      - sh
+      - -ec
+      - |
+        if [ "${REDIS_TRANSPORT:-socket}" = "tcp" ]; then
+          exec valkey-server \
+            --save "" \
+            --appendonly no \
+            --maxmemory-policy noeviction \
+            --loglevel warning;
+        fi;
+        exec valkey-server \
+          --save "" \
+          --appendonly no \
+          --maxmemory-policy noeviction \
+          --loglevel warning \
+          --unixsocket "${REDIS_SOCKET:-/var/run/valkey/valkey.sock}" \
+          --unixsocketperm 777 \
+          --port 0
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD-SHELL", "if [ \"${REDIS_TRANSPORT:-socket}\" = \"tcp\" ]; then valkey-cli ping; else valkey-cli -s \"${REDIS_SOCKET:-/var/run/valkey/valkey.sock}\" ping; fi"]
       interval: 3s
       timeout: 3s
       retries: 10
@@ -93,5 +120,13 @@ volumes:
     driver: local
   exodus-data:
     name: exodus-data
+    driver: local
+    external: false
+  postgres-socket:
+    name: postgres-socket
+    driver: local
+    external: false
+  valkey-socket:
+    name: valkey-socket
     driver: local
     external: false

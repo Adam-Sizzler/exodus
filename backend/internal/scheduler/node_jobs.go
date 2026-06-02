@@ -13,27 +13,32 @@ import (
 )
 
 type nodeTrafficResetTarget struct {
-	UUID  string
-	Bytes int64
+	UUID        string
+	Bytes       int64
+	ResetDay    int
+	CreatedAt   time.Time
+	LastResetAt sql.NullTime
+	ScheduledAt time.Time
 }
 
 func (s *Scheduler) resetNodeTraffic(ctx context.Context) error {
 	now := time.Now()
-	day := now.Local().Day()
-	lastDay := lastDayOfMonth(now.Local())
 	targets := make([]nodeTrafficResetTarget, 0)
 
 	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-			SELECT uuid::text, COALESCE(traffic_used_bytes, 0)
-			FROM nodes
-			WHERE is_traffic_tracking_active = true
-			  AND (
-			    COALESCE(traffic_reset_day, 1) = ?
-			    OR (COALESCE(traffic_reset_day, 1) > ? AND ? = ?)
-			  )
-			ORDER BY view_position ASC, name ASC
-		`, day, lastDay, day, lastDay)
+			SELECT
+				n.uuid::text,
+				COALESCE(n.traffic_used_bytes, 0),
+				COALESCE(n.traffic_reset_day, 1),
+				n.created_at,
+				MAX(nth.reset_at)
+			FROM nodes n
+			LEFT JOIN nodes_traffic_usage_history nth ON nth.node_uuid = n.uuid
+			WHERE n.is_traffic_tracking_active = true
+			GROUP BY n.uuid, n.traffic_used_bytes, n.traffic_reset_day, n.created_at, n.view_position, n.name
+			ORDER BY n.view_position ASC, n.name ASC
+		`)
 		if err != nil {
 			return err
 		}
@@ -41,9 +46,14 @@ func (s *Scheduler) resetNodeTraffic(ctx context.Context) error {
 
 		for rows.Next() {
 			var target nodeTrafficResetTarget
-			if scanErr := rows.Scan(&target.UUID, &target.Bytes); scanErr != nil {
+			if scanErr := rows.Scan(&target.UUID, &target.Bytes, &target.ResetDay, &target.CreatedAt, &target.LastResetAt); scanErr != nil {
 				return scanErr
 			}
+			scheduledAt, due := nodeTrafficResetDue(now, target.ResetDay, target.CreatedAt, target.LastResetAt)
+			if !due {
+				continue
+			}
+			target.ScheduledAt = scheduledAt
 			targets = append(targets, target)
 		}
 		if rowsErr := rows.Err(); rowsErr != nil {
@@ -83,9 +93,56 @@ func (s *Scheduler) resetNodeTraffic(ctx context.Context) error {
 		return err
 	}
 	if len(targets) > 0 {
-		s.cfg.Logger.Info("Node traffic reset completed", "nodes", len(targets))
+		s.cfg.Logger.Info("Node traffic reset completed", "nodes", len(targets), "scheduled_at", targets[0].ScheduledAt.Format(time.RFC3339))
 	}
 	return nil
+}
+
+func nodeTrafficResetDue(now time.Time, resetDay int, createdAt time.Time, lastResetAt sql.NullTime) (time.Time, bool) {
+	scheduledAt := latestNodeTrafficResetBoundary(now.Local(), resetDay)
+	if scheduledAt.IsZero() {
+		return time.Time{}, false
+	}
+	if createdAt.After(scheduledAt) {
+		return scheduledAt, false
+	}
+	if lastResetAt.Valid && !lastResetAt.Time.Before(scheduledAt) {
+		return scheduledAt, false
+	}
+
+	return scheduledAt, true
+}
+
+func latestNodeTrafficResetBoundary(now time.Time, resetDay int) time.Time {
+	resetDay = clampResetDay(resetDay)
+	local := now.Local()
+	candidate := nodeTrafficResetBoundary(local.Year(), local.Month(), resetDay, local.Location())
+	if local.Before(candidate) {
+		previousMonth := local.AddDate(0, -1, 0)
+		return nodeTrafficResetBoundary(previousMonth.Year(), previousMonth.Month(), resetDay, local.Location())
+	}
+
+	return candidate
+}
+
+func nodeTrafficResetBoundary(year int, month time.Month, resetDay int, location *time.Location) time.Time {
+	if location == nil {
+		location = time.Local
+	}
+
+	day := min(clampResetDay(resetDay), lastDayOfMonth(time.Date(year, month, 1, 0, 0, 0, 0, location)))
+	return time.Date(year, month, day, 1, 0, 0, 0, location)
+}
+
+func clampResetDay(day int) int {
+	if day < 1 {
+		return 1
+	}
+	if day > 31 {
+		return 31
+	}
+
+	return day
 }
 
 type nodeReviewRecord struct {

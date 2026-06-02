@@ -27,18 +27,17 @@ func KeygenHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 		}
 
 		var (
-			pubKey    string
-			caCert    string
-			caKey     string
-			grpcToken string
+			pubKey string
+			caCert string
+			caKey  string
 		)
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			return db.QueryRowContext(r.Context(), `
-				SELECT pub_key, ca_cert, ca_key, grpc_auth_token
+				SELECT pub_key, ca_cert, ca_key
 				FROM keygen
 				ORDER BY created_at ASC
 				LIMIT 1
-			`).Scan(&pubKey, &caCert, &caKey, &grpcToken)
+			`).Scan(&pubKey, &caCert, &caKey)
 		})
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch keygen data", err, cfg)
@@ -62,6 +61,11 @@ func KeygenHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			return
 		}
 		payload := base64.StdEncoding.EncodeToString(raw)
+		grpcToken, err := security.GenerateGRPCAuthToken()
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to generate grpc auth token", err, cfg)
+			return
+		}
 
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{

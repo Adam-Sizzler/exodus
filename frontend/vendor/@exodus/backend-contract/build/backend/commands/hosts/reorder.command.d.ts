@@ -21,6 +21,7 @@ export declare namespace ReorderHostCommand {
                 readonly TLS: "TLS";
                 readonly NONE: "NONE";
             }>>;
+            xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
