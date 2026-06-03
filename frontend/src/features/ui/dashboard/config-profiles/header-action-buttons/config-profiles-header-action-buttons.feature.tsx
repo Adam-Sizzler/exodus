@@ -127,7 +127,7 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                         )
                     }
                     size="input-md"
-                    variant="light"
+                    variant="soft"
                 >
                     {viewMode === CONFIG_PROFILES_VIEW_MODE.PROFILES ? (
                         <TbCode size="24px" />
@@ -143,7 +143,7 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                         loading={isFetching}
                         onClick={handleUpdate}
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         <TbRefresh size="24px" />
                     </ActionIcon>
@@ -155,7 +155,7 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                     label={t('config-profiles-header-action-buttons.feature.create-config-profile')}
                     withArrow
                 >
-                    <ActionIcon color="teal" onClick={open} size="input-md" variant="light">
+                    <ActionIcon color="teal" onClick={open} size="input-md" variant="soft">
                         <TbPlus size="24px" />
                     </ActionIcon>
                 </Tooltip>
@@ -169,7 +169,8 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                 title={
                     <BaseOverlayHeader
                         IconComponent={SingboxLogo}
-                        iconVariant="soft" iconColor="teal"
+                        iconVariant="soft"
+                        iconColor="teal"
                         title={t(
                             'config-profiles-header-action-buttons.feature.create-config-profile'
                         )}

@@ -16,7 +16,10 @@ import { modals } from '@mantine/modals'
 import { useSubscriptionConnectionsStoreActions } from '@entities/dashboard/subscription-connections/nodes-store/nodes-store'
 import { NodesViewMode } from '@pages/dashboard/subscription-connections/ui/components/interfaces'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { useGetSubscriptionConnections, useRestartAllSubscriptionConnections } from '@shared/api/hooks'
+import {
+    useGetSubscriptionConnections,
+    useRestartAllSubscriptionConnections
+} from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui'
 
 interface IProps {
@@ -41,14 +44,16 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
         isPending,
         isRefetching
     } = useGetSubscriptionConnections()
-    const { mutate: restartAllNodes, isPending: isRestartAllNodesPending } = useRestartAllSubscriptionConnections()
+    const { mutate: restartAllNodes, isPending: isRestartAllNodesPending } =
+        useRestartAllSubscriptionConnections()
 
     const openRestartAllNodesModal = () => {
         modals.open({
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbRocket}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
+                    iconColor="teal"
                     title={t('nodes-header-action-buttons.feature.restart-all-nodes')}
                 />
             ),
@@ -71,7 +76,8 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             modals.closeAll()
                         }}
                         title={t('nodes-header-action-buttons.feature.force')}
-                        variant="soft" color="red"
+                        iconColor="red"
+                        variant="soft"
                     />
 
                     <ActionCardShared
@@ -89,7 +95,8 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             modals.closeAll()
                         }}
                         title={t('nodes-header-action-buttons.feature.graceful')}
-                        variant="soft" color="teal"
+                        iconColor="teal"
+                        variant="soft"
                     />
                 </Stack>
             )
@@ -105,7 +112,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             color="gray"
                             onClick={spotlight.open}
                             size="input-md"
-                            variant="light"
+                            variant="soft"
                         >
                             <TbSearch size="24px" />
                         </ActionIcon>
@@ -125,7 +132,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             )
                         }
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         {viewMode === NodesViewMode.CARDS ? (
                             <TbTable size="24px" />
@@ -147,7 +154,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             openRestartAllNodesModal()
                         }}
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         <PiSpiral size="24px" />
                     </ActionIcon>
@@ -159,7 +166,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                         loading={isGetNodesPending || isPending || isRefetching}
                         onClick={() => refetchNodes()}
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         <TbRefresh size="24px" />
                     </ActionIcon>
@@ -172,7 +179,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                     })}
                     withArrow
                 >
-                    <ActionIcon color="teal" onClick={handleCreate} size="input-md" variant="light">
+                    <ActionIcon color="teal" onClick={handleCreate} size="input-md" variant="soft">
                         <TbPlus size="24px" />
                     </ActionIcon>
                 </Tooltip>

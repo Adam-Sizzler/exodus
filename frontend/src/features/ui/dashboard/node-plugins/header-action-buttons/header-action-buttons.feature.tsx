@@ -1,4 +1,13 @@
-import { ActionIcon, ActionIconGroup, Button, Group, Modal, Stack, TextInput, Tooltip } from '@mantine/core'
+import {
+    ActionIcon,
+    ActionIconGroup,
+    Button,
+    Group,
+    Modal,
+    Stack,
+    TextInput,
+    Tooltip
+} from '@mantine/core'
 import { TbBook, TbPackage, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { useDisclosure } from '@mantine/hooks'
@@ -55,7 +64,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
                 href="https://docs.rw/docs/learn/node-plugins"
                 size="input-md"
                 target="_blank"
-                variant="light"
+                variant="soft"
             >
                 <TbBook size={24} />
             </ActionIcon>
@@ -70,7 +79,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
                             openModalWithData(MODALS.NODE_PLUGIN_EXECUTOR_DRAWER, undefined)
                         }
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         <TbTerminal size="24px" />
                     </ActionIcon>
@@ -83,7 +92,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
                         loading={isFetching}
                         onClick={handleRefresh}
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         <TbRefresh size="24px" />
                     </ActionIcon>
@@ -91,7 +100,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
             </ActionIconGroup>
 
             <ActionIconGroup>
-                <ActionIcon color="teal" onClick={open} size="input-md" variant="light">
+                <ActionIcon color="teal" onClick={open} size="input-md" variant="soft">
                     <TbPlus size="24px" />
                 </ActionIcon>
             </ActionIconGroup>
@@ -103,7 +112,8 @@ export function NodePluginsHeaderActionButtonsFeature() {
                 title={
                     <BaseOverlayHeader
                         IconComponent={TbPackage}
-                        iconVariant="soft" iconColor="teal"
+                        iconVariant="soft"
+                        iconColor="teal"
                         title="Create"
                     />
                 }

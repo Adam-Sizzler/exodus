@@ -55,5 +55,5 @@ func runConfiguredCLI(flags cliFlags, cfg *config.BackendConfig) bool {
 }
 
 func printRescueHint() {
-	fmt.Println("Hint: run `docker exec -it exodus exodus` for rescue CLI.")
+	fmt.Println("Hint: run `docker exec -it exodus cli` for rescue CLI.")
 }

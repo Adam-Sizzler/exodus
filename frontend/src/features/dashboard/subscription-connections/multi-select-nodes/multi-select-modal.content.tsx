@@ -1,8 +1,4 @@
-import {
-    GetAllNodesCommand,
-    NODES_BULK_ACTIONS,
-    TNodesBulkActions
-} from '@exodus/backend-contract'
+import { GetAllNodesCommand, NODES_BULK_ACTIONS, TNodesBulkActions } from '@exodus/backend-contract'
 import { TbCheck, TbPlayerStop, TbRefresh, TbRocket } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
@@ -30,7 +26,9 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
         if (isPending || uuids.length === 0) return
         await bulkAction({ variables: { uuids, action } })
 
-        queryClient.refetchQueries({ queryKey: QueryKeys.subscriptionConnections.getAllNodes.queryKey })
+        queryClient.refetchQueries({
+            queryKey: QueryKeys.subscriptionConnections.getAllNodes.queryKey
+        })
         modals.closeAll()
         setSelectedRecords([])
     }
@@ -43,7 +41,8 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.RESTART)}
                 title={t('restart-node-button.feature.restart')}
-                variant="soft" color="teal"
+                iconColor="teal"
+                variant="soft"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
@@ -51,7 +50,8 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.DISABLE)}
                 title={t('common.disable')}
-                variant="soft" color="orange"
+                iconColor="orange"
+                variant="soft"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
@@ -59,7 +59,8 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.ENABLE)}
                 title={t('common.enable')}
-                variant="soft" color="cyan"
+                iconColor="cyan"
+                variant="soft"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
@@ -67,7 +68,8 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.RESET_TRAFFIC)}
                 title={t('reset-node-traffic.feature.reset-traffic')}
-                variant="soft" color="violet"
+                iconColor="violet"
+                variant="soft"
             />
         </Stack>
     )

@@ -113,8 +113,8 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/exodus /app/
 
-# Keep /app/exodus as the server entrypoint, and expose a short rescue command
-# for `docker exec -it exodus exodus`.
+# Keep /app/exodus as the server entrypoint, and expose rescue commands
+# for `docker exec -it exodus cli` and `docker exec -it exodus exodus`.
 RUN printf '%s\n' \
       '#!/bin/sh' \
       'if [ "$#" -eq 0 ]; then' \
@@ -122,7 +122,11 @@ RUN printf '%s\n' \
       'fi' \
       'exec /app/exodus "$@"' \
     > /usr/local/bin/exodus \
-    && chmod +x /usr/local/bin/exodus
+    && printf '%s\n' \
+      '#!/bin/sh' \
+      'exec /app/exodus --rescue "$@"' \
+    > /usr/local/bin/cli \
+    && chmod +x /usr/local/bin/exodus /usr/local/bin/cli
 
 # Copy built frontend
 COPY --from=panel-ui /ui/dist /app/ui

@@ -52,6 +52,10 @@ docker-compose*.yml
 
 # Node modules (if any)
 node_modules/
+**/node_modules/
+frontend/node_modules/
 
 # Build cache
 .cache/
+**/.cache/
+frontend/dist/

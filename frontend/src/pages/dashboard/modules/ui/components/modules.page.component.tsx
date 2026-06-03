@@ -1,13 +1,4 @@
-import {
-    Accordion,
-    Button,
-    Center,
-    Container,
-    Group,
-    Switch,
-    Text,
-    ThemeIcon
-} from '@mantine/core'
+import { Accordion, Button, Center, Container, Group, Switch, Text, ThemeIcon } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -97,7 +88,9 @@ export default function ModulesPageComponent() {
     const { isLoading } = useQuery({
         queryKey: ['modules-settings'],
         queryFn: async () => {
-            const response = await instance.get<ModulesSettingsResponse>(createUrl('/api/modules-settings'))
+            const response = await instance.get<ModulesSettingsResponse>(
+                createUrl('/api/modules-settings')
+            )
             const nextEnabled = Boolean(response.data?.response?.haproxy?.enabled)
             setEnabled(nextEnabled)
             return response.data

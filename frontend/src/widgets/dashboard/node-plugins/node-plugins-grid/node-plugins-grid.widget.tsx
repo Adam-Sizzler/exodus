@@ -90,7 +90,8 @@ export function NodePluginsGridWidget(props: IProps) {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbPackage}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
+                    iconColor="teal"
                     title="Active on nodes"
                 />
             ),
@@ -114,7 +115,7 @@ export function NodePluginsGridWidget(props: IProps) {
             <SectionCard.Root p="xl">
                 <SectionCard.Section>
                     <BaseOverlayHeader
-                        actionIconProps={{ color: 'orange' }}
+                        themeIconProps={{ color: 'orange' }}
                         IconComponent={TbAlertTriangle}
                         iconVariant="light"
                         subtitle="Node Plugins are an advanced feature. Please review the documentation before use."

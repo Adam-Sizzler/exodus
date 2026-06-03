@@ -78,7 +78,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                 <SectionCard.Section>
                     <Group justify="space-between" wrap="nowrap">
                         <BaseOverlayHeader
-                            actionIconProps={{ color: 'violet' }}
+                            themeIconProps={{ color: 'violet' }}
                             IconComponent={PiDesktopTowerDuotone}
                             iconSize={20}
                             iconVariant="light"

@@ -11,10 +11,7 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
-import {
-    GetExodusSettingsCommand,
-    UpdateExodusSettingsCommand
-} from '@exodus/backend-contract'
+import { GetExodusSettingsCommand, UpdateExodusSettingsCommand } from '@exodus/backend-contract'
 import { TbAlertCircle, TbFingerprint, TbKey, TbPassword, TbServer } from 'react-icons/tb'
 import { BiLogoGithub, BiLogoTelegram } from 'react-icons/bi'
 import { zodResolver } from 'mantine-form-zod-resolver'
@@ -39,12 +36,8 @@ import { queryClient } from '@shared/api'
 
 interface IProps {
     oauth2Settings: NonNullable<GetExodusSettingsCommand.Response['response']['oauth2Settings']>
-    passkeySettings: NonNullable<
-        GetExodusSettingsCommand.Response['response']['passkeySettings']
-    >
-    passwordSettings: NonNullable<
-        GetExodusSettingsCommand.Response['response']['passwordSettings']
-    >
+    passkeySettings: NonNullable<GetExodusSettingsCommand.Response['response']['passkeySettings']>
+    passwordSettings: NonNullable<GetExodusSettingsCommand.Response['response']['passwordSettings']>
     tgAuthSettings: NonNullable<GetExodusSettingsCommand.Response['response']['tgAuthSettings']>
 }
 
@@ -230,7 +223,8 @@ export const AuthentificationSettingsCardWidget = (props: IProps) => {
                     title: (
                         <BaseOverlayHeader
                             IconComponent={TbAlertCircle}
-                            iconVariant="soft" iconColor="red"
+                            iconVariant="soft"
+                            iconColor="red"
                             title={t('auth-settings.error-modal.title')}
                         />
                     ),
