@@ -355,7 +355,7 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 		}
 		user.NaivePassword = firstNonEmpty(nullableSQLString(naivePassword), user.TrojanPassword)
 		user.ShadowtlsPassword = firstNonEmpty(nullableSQLString(shadowtlsPassword), user.SSPassword)
-		user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.VlessUUID)
+		user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.TrojanPassword)
 		user.AnytlsPassword = firstNonEmpty(nullableSQLString(anytlsPassword), user.TrojanPassword)
 		return nil
 	})
@@ -1260,7 +1260,7 @@ func normalizedHostProtocol(host SubscriptionHost) string {
 	if protocol == "ss" {
 		return "shadowsocks"
 	}
-	if protocol == "hy2" || protocol == "hysteria" {
+	if protocol == "hy2" {
 		return "hysteria2"
 	}
 	return protocol
@@ -1274,9 +1274,9 @@ func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) s
 	}
 
 	switch normalizedHostProtocol(host) {
-	case "vless":
+	case "vless", "vmess":
 		return strings.TrimSpace(user.VlessUUID)
-	case "trojan":
+	case "trojan", "tuic":
 		return strings.TrimSpace(user.TrojanPassword)
 	case "anytls":
 		return firstNonEmpty(user.AnytlsPassword, user.TrojanPassword)
@@ -1286,8 +1286,8 @@ func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) s
 		return strings.TrimSpace(user.SSPassword)
 	case "shadowtls":
 		return firstNonEmpty(user.ShadowtlsPassword, user.SSPassword)
-	case "hysteria2":
-		return firstNonEmpty(user.Hysteria2Password, user.VlessUUID)
+	case "hysteria", "hysteria2":
+		return firstNonEmpty(user.Hysteria2Password, user.TrojanPassword)
 	default:
 		return ""
 	}
@@ -1851,7 +1851,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		return nil
 	}
 
-	if protocol != "vless" && protocol != "trojan" && protocol != "shadowsocks" && protocol != "anytls" && protocol != "naive" && protocol != "shadowtls" && protocol != "hysteria2" {
+	if protocol != "vless" && protocol != "vmess" && protocol != "trojan" && protocol != "shadowsocks" && protocol != "anytls" && protocol != "naive" && protocol != "shadowtls" && protocol != "hysteria" && protocol != "hysteria2" && protocol != "tuic" {
 		return nil
 	}
 
@@ -1862,7 +1862,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 
 	defaults := resolveSingboxInboundDefaults(host)
 
-	if !isSupportedSingboxTransport(defaults.network) {
+	if !isSupportedSingboxTransport(protocol, defaults.network) {
 		return nil
 	}
 
@@ -1883,7 +1883,14 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 			outbound.Set("flow", "xtls-rprx-vision")
 		}
 		outbound.Set("uuid", credential)
+	case "vmess":
+		outbound.Set("uuid", credential)
 	case "trojan", "anytls", "hysteria2", "shadowtls":
+		outbound.Set("password", credential)
+	case "hysteria":
+		outbound.Set("auth_str", credential)
+	case "tuic":
+		outbound.Set("uuid", strings.TrimSpace(user.VlessUUID))
 		outbound.Set("password", credential)
 	case "naive":
 		username := effectiveNaiveUsername(user)
@@ -1902,7 +1909,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		outbound.Set("network", "tcp")
 	}
 
-	if defaults.security == "tls" || defaults.security == "reality" || protocol == "anytls" || protocol == "naive" || protocol == "hysteria2" || protocol == "shadowtls" {
+	if defaults.security == "tls" || defaults.security == "reality" || protocol == "anytls" || protocol == "naive" || protocol == "hysteria" || protocol == "hysteria2" || protocol == "shadowtls" || protocol == "tuic" {
 		tlsCfg := orderedmap.New()
 		tlsCfg.Set("enabled", true)
 
@@ -2000,7 +2007,12 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 	return outbound
 }
 
-func isSupportedSingboxTransport(network string) bool {
+func isSupportedSingboxTransport(protocol, network string) bool {
+	switch protocol {
+	case "anytls", "hysteria", "hysteria2", "naive", "shadowtls", "tuic":
+		return true
+	}
+
 	switch network {
 	case "", "tcp", "raw", "ws", "httpupgrade":
 		return true
@@ -3188,7 +3200,7 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 			}
 			user.NaivePassword = firstNonEmpty(nullableSQLString(naivePassword), user.TrojanPassword)
 			user.ShadowtlsPassword = firstNonEmpty(nullableSQLString(shadowtlsPassword), user.SSPassword)
-			user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.VlessUUID)
+			user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.TrojanPassword)
 			user.AnytlsPassword = firstNonEmpty(nullableSQLString(anytlsPassword), user.TrojanPassword)
 
 			users = append(users, user)

@@ -480,7 +480,7 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 					u.ss_password,
 					COALESCE(NULLIF(u.naive_password, ''), u.trojan_password),
 					COALESCE(NULLIF(u.shadowtls_password, ''), u.ss_password),
-					COALESCE(NULLIF(u.hysteria2_password, ''), u.vless_uuid::text),
+					COALESCE(NULLIF(u.hysteria2_password, ''), u.trojan_password),
 					COALESCE(NULLIF(u.anytls_password, ''), u.trojan_password)
 				FROM internal_squad_inbounds isi
 				JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
@@ -660,16 +660,20 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 	if normalizedType == "ss" {
 		normalizedType = "shadowsocks"
 	}
-	if normalizedType == "hy2" || normalizedType == "hysteria" {
+	if normalizedType == "hy2" {
 		normalizedType = "hysteria2"
 	}
 	switch normalizedType {
-	case "vless":
+	case "vless", "vmess":
 		for _, user := range users {
-			result = append(result, map[string]any{
+			item := map[string]any{
 				"name": user.Username,
 				"uuid": user.VLESSUUID,
-			})
+			}
+			if normalizedType == "vmess" {
+				item["alterId"] = 0
+			}
+			result = append(result, item)
 		}
 	case "trojan":
 		for _, user := range users {
@@ -706,11 +710,26 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 				"password": user.ShadowTLSPass,
 			})
 		}
+	case "hysteria":
+		for _, user := range users {
+			result = append(result, map[string]any{
+				"name":     user.Username,
+				"auth_str": user.Hysteria2Pass,
+			})
+		}
 	case "hysteria2":
 		for _, user := range users {
 			result = append(result, map[string]any{
 				"name":     user.Username,
 				"password": user.Hysteria2Pass,
+			})
+		}
+	case "tuic":
+		for _, user := range users {
+			result = append(result, map[string]any{
+				"name":     user.Username,
+				"uuid":     user.VLESSUUID,
+				"password": user.TrojanPassword,
 			})
 		}
 	default:

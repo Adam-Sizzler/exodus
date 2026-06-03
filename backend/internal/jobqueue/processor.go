@@ -14,7 +14,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const defaultPrefix = "exodus:jobqueue"
+const (
+	defaultPrefix             = "exodus:jobqueue"
+	defaultBlockTimeout       = 30 * time.Second
+	notifyListMaxPendingItems = 1024
+)
 
 type Handler func(ctx context.Context, job Job) error
 
@@ -32,6 +36,7 @@ type QueueOptions struct {
 	Concurrency       int
 	VisibilityTimeout time.Duration
 	SchedulerInterval time.Duration
+	BlockTimeout      time.Duration
 	Retention         int64
 }
 
@@ -58,6 +63,7 @@ type Job struct {
 type queueRuntime struct {
 	options  QueueOptions
 	handlers map[string]Handler
+	wake     chan struct{}
 }
 
 func NewRedisClient(cfg *config.BackendConfig) (*redis.Client, error) {
@@ -120,13 +126,20 @@ func (p *Processor) RegisterQueue(options QueueOptions, handlers map[string]Hand
 	if options.SchedulerInterval <= 0 {
 		options.SchedulerInterval = time.Second
 	}
+	if options.BlockTimeout <= 0 {
+		options.BlockTimeout = defaultBlockTimeout
+	}
 	if options.Retention <= 0 {
 		options.Retention = 500
 	}
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.queues[options.Name] = &queueRuntime{options: options, handlers: handlers}
+	p.queues[options.Name] = &queueRuntime{
+		options:  options,
+		handlers: handlers,
+		wake:     make(chan struct{}, options.Concurrency),
+	}
 	return nil
 }
 
@@ -209,7 +222,7 @@ func (p *Processor) Enqueue(ctx context.Context, queueName, jobName string, payl
 			Member: string(jobBytes),
 		}).Err()
 	} else {
-		err = p.client.RPush(ctx, p.waitingKey(queueName), string(jobBytes)).Err()
+		err = p.pushWaitingJob(ctx, queueName, string(jobBytes))
 	}
 	if err != nil {
 		p.releaseDedupe(context.Background(), job.DedupeKey)
@@ -236,6 +249,12 @@ func (p *Processor) startQueue(ctx context.Context, wg *sync.WaitGroup, queue *q
 		p.schedulerLoop(ctx, queue)
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		p.signalLoop(ctx, queue)
+	}()
+
 	for i := 0; i < queue.options.Concurrency; i++ {
 		wg.Add(1)
 		go func(workerID int) {
@@ -248,6 +267,10 @@ func (p *Processor) startQueue(ctx context.Context, wg *sync.WaitGroup, queue *q
 func (p *Processor) schedulerLoop(ctx context.Context, queue *queueRuntime) {
 	ticker := time.NewTicker(queue.options.SchedulerInterval)
 	defer ticker.Stop()
+
+	p.moveDueDelayed(ctx, queue.options.Name)
+	p.recoverExpiredActive(ctx, queue)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -270,11 +293,11 @@ func (p *Processor) workerLoop(ctx context.Context, queue *queueRuntime, workerI
 		job, ok, err := p.reserveJob(ctx, queue)
 		if err != nil {
 			p.warn("Failed to reserve job", "queue", queue.options.Name, "worker", workerID, "error", err)
-			sleepContext(ctx, 250*time.Millisecond)
+			sleepContext(ctx, time.Second)
 			continue
 		}
 		if !ok {
-			sleepContext(ctx, 250*time.Millisecond)
+			queue.waitForWake(ctx)
 			continue
 		}
 
@@ -403,7 +426,7 @@ func (p *Processor) moveDueDelayed(ctx context.Context, queueName string) {
 		if err != nil || removed == 0 {
 			continue
 		}
-		if err := p.client.RPush(ctx, p.waitingKey(queueName), job).Err(); err != nil {
+		if err := p.pushWaitingJob(ctx, queueName, job); err != nil {
 			p.warn("Failed to move delayed job to waiting", "queue", queueName, "error", err)
 		}
 	}
@@ -432,9 +455,58 @@ func (p *Processor) recoverExpiredActive(ctx context.Context, queue *queueRuntim
 		if err := p.removeActive(ctx, queue.options.Name, jobID); err != nil {
 			continue
 		}
-		if err := p.client.RPush(ctx, p.waitingKey(queue.options.Name), jobData).Err(); err != nil {
+		if err := p.pushWaitingJob(ctx, queue.options.Name, jobData); err != nil {
 			p.warn("Failed to requeue expired active job", "queue", queue.options.Name, "job_id", jobID, "error", err)
 		}
+	}
+}
+
+func (p *Processor) pushWaitingJob(ctx context.Context, queueName, jobData string) error {
+	pipe := p.client.Pipeline()
+	pipe.RPush(ctx, p.waitingKey(queueName), jobData)
+	pipe.RPush(ctx, p.notifyKey(queueName), "1")
+	pipe.LTrim(ctx, p.notifyKey(queueName), -notifyListMaxPendingItems, -1)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (p *Processor) signalLoop(ctx context.Context, queue *queueRuntime) {
+	timeout := queue.options.BlockTimeout
+	if timeout <= 0 {
+		timeout = defaultBlockTimeout
+	}
+
+	for {
+		_, err := p.client.BLPop(ctx, timeout, p.notifyKey(queue.options.Name)).Result()
+		if err == nil || err == redis.Nil {
+			queue.wakeOne()
+			continue
+		}
+		if err == context.Canceled || err == context.DeadlineExceeded {
+			return
+		}
+		p.warn("Failed to wait for queue signal", "queue", queue.options.Name, "error", err)
+		sleepContext(ctx, time.Second)
+	}
+}
+
+func (q *queueRuntime) wakeOne() {
+	if q == nil {
+		return
+	}
+	select {
+	case q.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (q *queueRuntime) waitForWake(ctx context.Context) {
+	if q == nil {
+		return
+	}
+	select {
+	case <-ctx.Done():
+	case <-q.wake:
 	}
 }
 
@@ -481,6 +553,10 @@ func (p *Processor) activeHashKey(queue string) string {
 
 func (p *Processor) activeZSetKey(queue string) string {
 	return p.prefix + ":" + queue + ":active_deadline"
+}
+
+func (p *Processor) notifyKey(queue string) string {
+	return p.prefix + ":" + queue + ":notify"
 }
 
 func (p *Processor) completedKey(queue string) string {

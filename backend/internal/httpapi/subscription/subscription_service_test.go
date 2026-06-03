@@ -475,6 +475,107 @@ func TestGenerateSingboxConfigKeepsURLTestOrderByHostOrder(t *testing.T) {
 	}
 }
 
+func TestGenerateSingboxConfigUsesSingboxProtocolCredentials(t *testing.T) {
+	template := []byte(`{"outbounds":[]}`)
+	security := "tls"
+	vlessUUID := "9f76f8d8-daf1-4db6-b045-0987cd5e09a2"
+	user := SubscriptionUser{
+		Username:          "alice",
+		VlessUUID:         vlessUUID,
+		TrojanPassword:    "trojan-secret",
+		Hysteria2Password: "hy-secret",
+	}
+
+	tests := []struct {
+		name     string
+		protocol string
+		network  string
+		want     []string
+		notWant  []string
+	}{
+		{
+			name:     "hysteria uses auth_str password",
+			protocol: "hysteria",
+			network:  "udp",
+			want: []string{
+				`"type": "hysteria"`,
+				`"auth_str": "hy-secret"`,
+			},
+			notWant: []string{`"password": "` + vlessUUID + `"`},
+		},
+		{
+			name:     "hysteria2 uses password not uuid",
+			protocol: "hysteria2",
+			network:  "udp",
+			want: []string{
+				`"type": "hysteria2"`,
+				`"password": "hy-secret"`,
+			},
+			notWant: []string{`"password": "` + vlessUUID + `"`},
+		},
+		{
+			name:     "vmess uses uuid",
+			protocol: "vmess",
+			network:  "tcp",
+			want: []string{
+				`"type": "vmess"`,
+				`"uuid": "` + vlessUUID + `"`,
+			},
+		},
+		{
+			name:     "tuic uses uuid and password",
+			protocol: "tuic",
+			network:  "udp",
+			want: []string{
+				`"type": "tuic"`,
+				`"uuid": "` + vlessUUID + `"`,
+				`"password": "trojan-secret"`,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rendered, err := generateSingboxConfig(template, []SubscriptionHost{
+				{
+					Remark:          tc.protocol,
+					Address:         "example.com",
+					Port:            443,
+					InboundType:     &tc.protocol,
+					InboundNetwork:  &tc.network,
+					InboundSecurity: &security,
+				},
+			}, user)
+			if err != nil {
+				t.Fatalf("generateSingboxConfig returned error: %v", err)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(rendered, want) {
+					t.Fatalf("expected rendered config to contain %q, got:\n%s", want, rendered)
+				}
+			}
+			for _, notWant := range tc.notWant {
+				if strings.Contains(rendered, notWant) {
+					t.Fatalf("expected rendered config not to contain %q, got:\n%s", notWant, rendered)
+				}
+			}
+		})
+	}
+}
+
+func TestHysteria2CredentialFallsBackToPasswordNotUUID(t *testing.T) {
+	protocol := "hysteria2"
+	host := SubscriptionHost{InboundType: &protocol}
+	user := SubscriptionUser{
+		VlessUUID:      "9f76f8d8-daf1-4db6-b045-0987cd5e09a2",
+		TrojanPassword: "trojan-secret",
+	}
+
+	if got := effectiveProtocolCredential(host, user); got != "trojan-secret" {
+		t.Fatalf("got %q, want trojan-secret", got)
+	}
+}
+
 func TestExtractHwidHeadersRemnawaveCompatibleHeaders(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("X-HWID", "device-123")

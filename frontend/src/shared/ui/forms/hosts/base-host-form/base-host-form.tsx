@@ -138,27 +138,33 @@ type ConfigProfileInbound =
 
 type HostCredentialProtocol =
     | 'vless'
+    | 'vmess'
     | 'trojan'
     | 'shadowsocks'
     | 'anytls'
     | 'naive'
     | 'shadowtls'
+    | 'hysteria'
     | 'hysteria2'
+    | 'tuic'
 
 const normalizeCredentialProtocol = (protocol?: string | null): HostCredentialProtocol | null => {
     const normalized = protocol?.trim().toLowerCase()
 
     switch (normalized) {
         case 'vless':
+        case 'vmess':
         case 'trojan':
         case 'anytls':
         case 'naive':
         case 'shadowtls':
+        case 'tuic':
             return normalized
         case 'shadowsocks':
         case 'ss':
             return 'shadowsocks'
         case 'hysteria':
+            return 'hysteria'
         case 'hy2':
         case 'hysteria2':
             return 'hysteria2'
@@ -428,10 +434,14 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const activeCredentialProtocolLabel =
         activeCredentialProtocol === 'shadowsocks'
             ? 'SHADOWSOCKS'
+            : activeCredentialProtocol === 'vmess'
+              ? 'VMESS'
             : activeCredentialProtocol === 'hysteria2'
               ? 'HYSTERIA2'
+              : activeCredentialProtocol === 'hysteria'
+                ? 'HYSTERIA'
               : (activeCredentialProtocol?.toUpperCase() ?? '')
-    const isUUIDCredential = activeCredentialProtocol === 'vless'
+    const isUUIDCredential = activeCredentialProtocol === 'vless' || activeCredentialProtocol === 'vmess'
     const hasProtocolCredentialValue = protocolCredentialValue.trim().length > 0
 
     const resolveSelectedInbound = () => {
