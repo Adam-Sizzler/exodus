@@ -146,7 +146,7 @@ export const BrandingSettingsCardWidget = (props: IProps) => {
                                         {t('branding-settings-card.widget.example-hex-colors')}:
                                     </Text>
                                     <Code block c="blue" fz="xs">
-                                        {'{#B8F2E6}Cer{#FFA69E}ber{#AEC6CF}us'}
+                                        {'{#B8F2E6}EX{#FFA69E}od{#AEC6CF}us'}
                                     </Code>
                                 </Box>
 
