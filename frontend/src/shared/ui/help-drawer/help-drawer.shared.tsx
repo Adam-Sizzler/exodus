@@ -82,7 +82,7 @@ export const HelpDrawerShared = memo(() => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbQuestionMark}
-                    iconVariant="gradient-yellow"
+                    iconVariant="soft" iconColor="yellow"
                     title={t('help-action-icon.shared.help-article')}
                 />
             }

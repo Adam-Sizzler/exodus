@@ -67,7 +67,7 @@ export const ConfigProfileByUuidPageComponent = (props: Props) => {
                             title={
                                 <BaseOverlayHeader
                                     IconComponent={TbCode}
-                                    iconVariant="gradient-violet"
+                                    iconVariant="soft" iconColor="violet"
                                     title={t('snippets.drawer.widget.snippets')}
                                 />
                             }

@@ -64,7 +64,7 @@ export function PlatformBlockComponent(props: IProps) {
                     <BaseOverlayHeader
                         IconComponent={IconDeviceDesktop}
                         iconSize={20}
-                        iconVariant="gradient-violet"
+                        iconVariant="soft" iconColor="violet"
                         subtitle={t(
                             'subpage-config-visual-editor.widget.configure-apps-for-each-platform'
                         )}

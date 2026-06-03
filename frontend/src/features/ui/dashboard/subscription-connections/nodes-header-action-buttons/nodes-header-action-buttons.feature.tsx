@@ -48,7 +48,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbRocket}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('nodes-header-action-buttons.feature.restart-all-nodes')}
                 />
             ),
@@ -71,7 +71,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             modals.closeAll()
                         }}
                         title={t('nodes-header-action-buttons.feature.force')}
-                        variant="gradient-red"
+                        variant="soft" color="red"
                     />
 
                     <ActionCardShared
@@ -89,7 +89,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             modals.closeAll()
                         }}
                         title={t('nodes-header-action-buttons.feature.graceful')}
-                        variant="gradient-teal"
+                        variant="soft" color="teal"
                     />
                 </Stack>
             )

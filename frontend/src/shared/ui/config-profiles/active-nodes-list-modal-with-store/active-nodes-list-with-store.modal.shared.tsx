@@ -32,7 +32,7 @@ export const ActiveNodesListModalWithStoreShared = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbServer}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('active-nodes-list-with-store.modal.shared.active-nodes')}
                 />
             }

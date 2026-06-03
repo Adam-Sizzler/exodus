@@ -36,7 +36,7 @@ export const SubscriptionConfigCard = <T extends SubscriptionConfigForm>(props: 
                 <SectionCard.Section>
                     <BaseOverlayHeader
                         IconComponent={SiSecurityscorecard}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title={t('base-node-form.subscription-configuration')}
                         titleOrder={5}
                     />

@@ -58,7 +58,7 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                     icon={<TbReplace size={22} />}
                     onClick={handleFullImport}
                     title={t('import-config-sections.modal.full-import')}
-                    variant="gradient-red"
+                    variant="soft" color="red"
                 />
 
                 {(hasPlatforms || hasSvgLibrary) && (
@@ -78,7 +78,7 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                         icon={<TbIcons size={22} />}
                         onClick={handleImportSvgLibrary}
                         title={t('import-config-sections.modal.import-svg-library')}
-                        variant="gradient-violet"
+                        variant="soft" color="violet"
                     />
                 )}
 
@@ -90,7 +90,7 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                         icon={<TbDevices size={22} />}
                         onClick={handleImportPlatforms}
                         title={t('import-config-sections.modal.import-platforms')}
-                        variant="gradient-cyan"
+                        variant="soft" color="cyan"
                     />
                 )}
 
@@ -101,7 +101,7 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                     icon={<TbLanguage size={22} />}
                     onClick={handleImportBaseTranslations}
                     title={t('import-config-sections.modal.import-base-translations')}
-                    variant="gradient-yellow"
+                    variant="soft" color="yellow"
                 />
             </Stack>
         </Stack>

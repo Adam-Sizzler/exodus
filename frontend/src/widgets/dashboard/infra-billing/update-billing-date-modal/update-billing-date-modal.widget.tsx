@@ -78,7 +78,7 @@ export function UpdateBillingDateModalWidget() {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbCalendar}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('update-billing-date-modal.widget.update-billing-date')}
                 />
             }

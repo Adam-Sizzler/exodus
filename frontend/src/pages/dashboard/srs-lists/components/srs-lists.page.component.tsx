@@ -920,7 +920,7 @@ export function SRSListsPageComponent(props: Props) {
                 styles={{ body: { minHeight: 648 } }}
                 title={
                     <Group gap="sm" wrap="nowrap">
-                        <ThemeIcon size="lg" variant="gradient-teal">
+                        <ThemeIcon size="lg" variant="soft" color="teal">
                             <SRSListsIcon size={20} />
                         </ThemeIcon>
                         <Title c="white" order={4}>
@@ -940,7 +940,7 @@ export function SRSListsPageComponent(props: Props) {
                     >
                         <Stack>
                             <Group gap="sm" wrap="nowrap">
-                                <ThemeIcon size="lg" variant="gradient-violet">
+                                <ThemeIcon size="lg" variant="soft" color="violet">
                                     <PiInfo size={18} />
                                 </ThemeIcon>
                                 <Title c="white" order={5}>
@@ -981,7 +981,7 @@ export function SRSListsPageComponent(props: Props) {
                     >
                         <Stack gap="sm">
                             <Group gap="sm" wrap="nowrap">
-                                <ThemeIcon size="lg" variant="gradient-orange">
+                                <ThemeIcon size="lg" variant="soft" color="orange">
                                     <svg
                                         fill="none"
                                         height="20"
@@ -1050,7 +1050,7 @@ export function SRSListsPageComponent(props: Props) {
                 size={660}
                 title={
                     <Group gap="sm" wrap="nowrap">
-                        <ThemeIcon size="lg" variant="gradient-blue">
+                        <ThemeIcon size="lg" variant="soft" color="blue">
                             <SRSListsIcon size={20} />
                         </ThemeIcon>
                         <Title c="white" order={4}>

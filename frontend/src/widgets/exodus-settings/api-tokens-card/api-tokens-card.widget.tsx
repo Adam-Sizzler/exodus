@@ -159,7 +159,7 @@ export const ApiTokensCardWidget = (props: IProps) => {
                 title={
                     <BaseOverlayHeader
                         IconComponent={TbCookie}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title={t('common.create')}
                     />
                 }

@@ -103,7 +103,7 @@ export const ExternalSquadsHeaderActionButtonsFeature = (props: IProps) => {
                 title={
                     <BaseOverlayHeader
                         IconComponent={TbWebhook}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title={t('header-action-buttons.feature.create-new-external-squad')}
                     />
                 }

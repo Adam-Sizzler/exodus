@@ -169,7 +169,7 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                 title={
                     <BaseOverlayHeader
                         IconComponent={SingboxLogo}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title={t(
                             'config-profiles-header-action-buttons.feature.create-config-profile'
                         )}

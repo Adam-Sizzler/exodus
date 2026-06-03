@@ -273,7 +273,7 @@ export const SnippetsDrawerWidget = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbCode}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('snippets.drawer.widget.snippets')}
                 />
             ),
@@ -523,7 +523,7 @@ export const SnippetsDrawerWidget = (props: IProps) => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbCode}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('snippets.drawer.widget.create-snippet')}
                 />
             }
@@ -682,7 +682,7 @@ export const SnippetsDrawerWidget = (props: IProps) => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbCode}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('snippets.drawer.widget.edit-snippet')}
                 />
             }
@@ -827,7 +827,7 @@ export const SnippetsDrawerWidget = (props: IProps) => {
                         <BaseOverlayHeader
                             IconComponent={TbCode}
                             iconSize={20}
-                            iconVariant="gradient-teal"
+                            iconVariant="soft" iconColor="teal"
                             title={t('snippets.drawer.widget.snippets')}
                             titleOrder={5}
                             withCopy

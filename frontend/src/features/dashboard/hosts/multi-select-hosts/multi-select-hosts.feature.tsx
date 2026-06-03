@@ -276,7 +276,7 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                 title={
                     <BaseOverlayHeader
                         IconComponent={PiListChecks}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title="Config Profiles"
                     />
                 }

@@ -135,7 +135,7 @@ export const HostsConfigProfilesDrawer = (props: IProps) => {
             title={
                 <BaseOverlayHeader
                     IconComponent={SingboxLogo}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('constants.config-profiles')}
                 />
             }

@@ -239,7 +239,7 @@ export const CreateHostModalWidget = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={PiListChecks}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('create-host-modal.widget.new-host')}
                 />
             }

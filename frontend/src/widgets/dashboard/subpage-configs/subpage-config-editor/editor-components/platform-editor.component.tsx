@@ -103,7 +103,7 @@ export function PlatformEditor(props: IProps) {
                         <Group gap="sm">
                             <BaseOverlayHeader
                                 IconComponent={PLATFORM_ICONS[platformKey]}
-                                iconVariant="gradient-violet"
+                                iconVariant="soft" iconColor="violet"
                                 subtitle={`${platform.apps.length} app(s) configured`}
                                 title={PLATFORM_LABELS[platformKey]}
                                 titleOrder={5}
@@ -183,7 +183,7 @@ export function PlatformEditor(props: IProps) {
                 title={
                     <BaseOverlayHeader
                         IconComponent={IconEdit}
-                        iconVariant="gradient-cyan"
+                        iconVariant="soft" iconColor="cyan"
                         subtitle={editingApp?.name || t('platform-editor.component.unnamed-app')}
                         title={t('platform-editor.component.edit-app')}
                         titleOrder={5}

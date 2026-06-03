@@ -101,7 +101,7 @@ export function CreateInfraBillingRecordDrawerWidget() {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbInvoice}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('create-infra-billing-record.modal.widget.bill-record')}
                 />
             }

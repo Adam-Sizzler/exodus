@@ -113,28 +113,28 @@ export const NodeMetricsWidget = () => {
             <SimpleGrid cols={{ sm: 1, md: 2, lg: 4 }} spacing="xs">
                 <MetricCardShared
                     IconComponent={TbServer}
-                    iconVariant="gradient-indigo"
+                    iconVariant="soft" iconColor="indigo"
                     isLoading={isLoading}
                     title="Total Nodes"
                     value={overallStats?.totalNodes || 0}
                 />
                 <MetricCardShared
                     IconComponent={PiPulseDuotone}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     isLoading={isLoading}
                     title="Active Nodes"
                     value={overallStats?.activeNodes || 0}
                 />
                 <MetricCardShared
                     IconComponent={PiUsersDuotone}
-                    iconVariant="gradient-blue"
+                    iconVariant="soft" iconColor="blue"
                     isLoading={isLoading}
                     title="Users Online"
                     value={overallStats?.totalUsersOnline || 0}
                 />
                 <MetricCardShared
                     IconComponent={PiGlobeSimple}
-                    iconVariant="gradient-violet"
+                    iconVariant="soft" iconColor="violet"
                     isLoading={isLoading}
                     title="Total Inbounds"
                     value={overallStats?.totalInbounds || 0}

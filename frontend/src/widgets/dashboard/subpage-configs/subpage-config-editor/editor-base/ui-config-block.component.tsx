@@ -25,7 +25,7 @@ export function UiConfigBlockComponent({ form }: IProps) {
                 <BaseOverlayHeader
                     IconComponent={IconPalette}
                     iconSize={20}
-                    iconVariant="gradient-yellow"
+                    iconVariant="soft" iconColor="yellow"
                     title={t('subpage-config-visual-editor.widget.ui-configuration')}
                     titleOrder={5}
                 />

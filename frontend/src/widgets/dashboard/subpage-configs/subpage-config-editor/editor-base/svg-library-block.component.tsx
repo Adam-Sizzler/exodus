@@ -32,7 +32,7 @@ export function SvgLibraryBlockComponent(props: IProps) {
                         <BaseOverlayHeader
                             IconComponent={IconPhoto}
                             iconSize={20}
-                            iconVariant="gradient-violet"
+                            iconVariant="soft" iconColor="violet"
                             title={t('svg-library-modal.component.svg-library')}
                             titleOrder={5}
                         />

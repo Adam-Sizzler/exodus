@@ -13,30 +13,30 @@ interface IProps extends Omit<BadgeProps, 'children' | 'color'> {
 
 export function UserStatusBadge({ status, ...props }: IProps) {
     let icon: React.ReactNode
-    let variant: BadgeProps['variant'] = 'gradient-gray'
+    let color: BadgeProps['color'] = 'shaded-gray'
     switch (status) {
         case USERS_STATUS.ACTIVE:
             icon = <PiPulseDuotone size={18} />
-            variant = 'gradient-teal'
+            color = 'teal'
             break
         case USERS_STATUS.DISABLED:
             icon = <PiProhibitDuotone size={18} />
-            variant = 'gradient-gray'
+            color = 'shaded-gray'
             break
         case USERS_STATUS.EXPIRED:
             icon = <PiClockUserDuotone size={18} />
-            variant = 'gradient-red'
+            color = 'red'
             break
         case USERS_STATUS.LIMITED:
             icon = <PiClockCountdownDuotone size={18} />
-            variant = 'gradient-orange'
+            color = 'orange'
             break
         default:
             break
     }
 
     return (
-        <Badge leftSection={icon} size="lg" variant={variant} {...props}>
+        <Badge color={color} leftSection={icon} size="lg" variant="soft" {...props}>
             {status}
         </Badge>
     )

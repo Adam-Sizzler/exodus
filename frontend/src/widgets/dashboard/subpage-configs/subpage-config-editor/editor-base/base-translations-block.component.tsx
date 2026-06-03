@@ -50,7 +50,7 @@ export function BaseTranslationsBlockComponent({ form }: IProps) {
                         <BaseOverlayHeader
                             IconComponent={IconLanguage}
                             iconSize={20}
-                            iconVariant="gradient-violet"
+                            iconVariant="soft" iconColor="violet"
                             title="Base Translations"
                             titleOrder={5}
                         />

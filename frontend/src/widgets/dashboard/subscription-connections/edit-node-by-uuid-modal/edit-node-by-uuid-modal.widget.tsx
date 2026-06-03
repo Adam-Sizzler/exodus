@@ -46,7 +46,7 @@ export const EditNodeByUuidModalWidget = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbCpu}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('edit-node-modal.widget.edit-node')}
                 />
             }

@@ -21,7 +21,7 @@ export function BrandingBlockComponent({ form }: IProps) {
                 <BaseOverlayHeader
                     IconComponent={IconPalette}
                     iconSize={20}
-                    iconVariant="gradient-cyan"
+                    iconVariant="soft" iconColor="cyan"
                     subtitle={t('subpage-config-visual-editor.widget.brand-appearance')}
                     title={t('subpage-config-visual-editor.widget.branding')}
                     titleOrder={5}

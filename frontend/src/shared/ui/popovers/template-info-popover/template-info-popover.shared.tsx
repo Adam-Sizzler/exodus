@@ -44,7 +44,7 @@ export const TemplateInfoPopoverShared = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbInfoSquare}
-                    iconVariant="gradient-lime"
+                    iconVariant="soft" iconColor="lime"
                     title={t('template-info-popover.shared.template-variables')}
                 />
             )

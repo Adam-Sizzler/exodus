@@ -297,7 +297,7 @@ export function ConfigEditorActionsFeature(props: Props) {
                                     title: (
                                         <BaseOverlayHeader
                                             IconComponent={TbTools}
-                                            iconVariant="gradient-teal"
+                                            iconVariant="soft" iconColor="teal"
                                             title={t('config-editor-actions.feature.tools')}
                                         />
                                     ),

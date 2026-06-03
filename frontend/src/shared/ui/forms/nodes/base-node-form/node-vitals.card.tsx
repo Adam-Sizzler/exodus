@@ -64,7 +64,7 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                 <SectionCard.Section>
                     <BaseOverlayHeader
                         IconComponent={HiOutlineServer}
-                        iconVariant="gradient-blue"
+                        iconVariant="soft" iconColor="blue"
                         title={t('base-node-form.node-vitals')}
                         titleOrder={5}
                     />

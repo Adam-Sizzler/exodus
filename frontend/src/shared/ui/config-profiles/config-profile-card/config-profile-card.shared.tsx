@@ -56,7 +56,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={SingboxLogo}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={profile.name}
                 />
             ),
@@ -157,7 +157,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                                     title: (
                                         <BaseOverlayHeader
                                             IconComponent={PiCpu}
-                                            iconVariant="gradient-teal"
+                                            iconVariant="soft" iconColor="teal"
                                             title={`Active Nodes - ${profile.name}`}
                                             titleOrder={5}
                                         />

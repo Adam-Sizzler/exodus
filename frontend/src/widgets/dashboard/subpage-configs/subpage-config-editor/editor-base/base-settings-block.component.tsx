@@ -33,7 +33,7 @@ export function BaseSettingsBlockComponent({ form }: IProps) {
                 <BaseOverlayHeader
                     IconComponent={TbHealthRecognition}
                     iconSize={20}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('base-settings-block.component.base-settings')}
                     titleOrder={5}
                 />
@@ -65,7 +65,7 @@ export function BaseSettingsBlockComponent({ form }: IProps) {
                     >
                         <Group justify="space-between" wrap="nowrap">
                             <Group gap="sm" wrap="nowrap">
-                                <ThemeIcon size="lg" variant="gradient-cyan">
+                                <ThemeIcon size="lg" variant="soft" color="cyan">
                                     <TbKey size={20} />
                                 </ThemeIcon>
                                 <Stack gap={2}>
@@ -109,7 +109,7 @@ export function BaseSettingsBlockComponent({ form }: IProps) {
                     >
                         <Group justify="space-between" wrap="nowrap">
                             <Group gap="sm" wrap="nowrap">
-                                <ThemeIcon size="lg" variant="gradient-cyan">
+                                <ThemeIcon size="lg" variant="soft" color="cyan">
                                     <TbLink size={20} />
                                 </ThemeIcon>
                                 <Stack gap={2}>

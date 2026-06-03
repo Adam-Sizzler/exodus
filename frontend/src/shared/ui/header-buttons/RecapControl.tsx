@@ -14,7 +14,7 @@ export function RecapControl() {
                 <BaseOverlayHeader
                     iconColor="indigo"
                     IconComponent={TbSparkles}
-                    iconVariant="gradient-indigo"
+                    iconVariant="soft"
                     title="Recap"
                 />
             ),

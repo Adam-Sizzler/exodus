@@ -110,7 +110,7 @@ export const ConfigProfileInboundsDrawerWidget = () => {
                                                         title: (
                                                             <BaseOverlayHeader
                                                                 IconComponent={TbTag}
-                                                                iconVariant="gradient-teal"
+                                                                iconVariant="soft" iconColor="teal"
                                                                 title={inbound.tag}
                                                                 titleOrder={5}
                                                             />
@@ -189,7 +189,7 @@ export const ConfigProfileInboundsDrawerWidget = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbCirclesRelation}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('config-profile-inbounds.drawer.widget.inbounds-with-active-squads')}
                 />
             }

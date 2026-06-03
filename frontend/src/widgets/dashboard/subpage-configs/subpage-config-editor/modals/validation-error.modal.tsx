@@ -10,7 +10,7 @@ export const showValidationErrorsModal = (errors: { message: string; path: strin
             <BaseOverlayHeader
                 IconComponent={TbAlertTriangle}
                 iconSize={20}
-                iconVariant="gradient-red"
+                iconVariant="soft" iconColor="red"
                 title="Validation Error"
                 titleOrder={5}
             />

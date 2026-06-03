@@ -218,7 +218,7 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbBug}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('response-rules-editor-actions.feature.response-rules-debugger')}
                 />
             ),

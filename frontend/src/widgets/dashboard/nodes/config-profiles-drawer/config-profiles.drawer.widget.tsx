@@ -167,7 +167,7 @@ export const ConfigProfilesDrawer = (props: IProps) => {
             title={
                 <BaseOverlayHeader
                     IconComponent={SingboxLogo}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('config-profiles.drawer.widget.config-profiles')}
                 />
             }

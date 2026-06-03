@@ -21,10 +21,10 @@ const getProcessIcon = (processName: string) => {
     return PiGearSixDuotone
 }
 
-const getIconVariant = (cpuUsage: number): ThemeIconProps['variant'] => {
-    if (cpuUsage < 30) return 'gradient-green'
-    if (cpuUsage < 70) return 'gradient-yellow'
-    return 'gradient-red'
+const getIconColor = (cpuUsage: number): ThemeIconProps['color'] => {
+    if (cpuUsage < 30) return 'green'
+    if (cpuUsage < 70) return 'yellow'
+    return 'red'
 }
 
 export const getPm2SummaryMetrics = (
@@ -55,25 +55,29 @@ export const getPm2SummaryMetrics = (
             value: pm2Stats.length,
             IconComponent: PiGearSixDuotone,
             title: t('pm2-metrics.total-processes'),
-            iconVariant: 'gradient-blue'
+            iconVariant: 'soft',
+            iconColor: 'blue'
         },
         {
             value: prettyBytesToAnyUtil(totalMemoryBytes, true),
             IconComponent: PiMemoryDuotone,
             title: t('pm2-metrics.total-memory'),
-            iconVariant: 'gradient-cyan'
+            iconVariant: 'soft',
+            iconColor: 'cyan'
         },
         {
             value: `${averageCpu.toFixed(1)}%`,
             IconComponent: PiCpuDuotone,
             title: t('pm2-metrics.average-cpu'),
-            iconVariant: 'gradient-green'
+            iconVariant: 'soft',
+            iconColor: 'green'
         },
         {
             value: `${heaviestProcess.name}`,
             IconComponent: PiRocketLaunchDuotone,
             title: t('pm2-metrics.heaviest-process'),
-            iconVariant: 'gradient-orange'
+            iconVariant: 'soft',
+            iconColor: 'orange'
         }
     ]
 }
@@ -91,7 +95,8 @@ export const getPm2ProcessMetrics = (
             value: prettyBytesToAnyUtil(process.memory, true),
             IconComponent: getProcessIcon(process.name),
             title: process.name,
-            iconVariant: getIconVariant(cpuUsage)
+            iconVariant: 'soft',
+            iconColor: getIconColor(cpuUsage)
         }
     })
 }

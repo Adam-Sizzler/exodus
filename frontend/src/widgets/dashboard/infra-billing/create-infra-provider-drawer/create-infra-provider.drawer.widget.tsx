@@ -64,7 +64,7 @@ export function CreateInfraProviderDrawerWidget() {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbServer}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('view-infra-provider.drawer.widget.infra-provider')}
                 />
             }

@@ -114,7 +114,7 @@ export const MultiSelectNodesFeature = (props: IProps) => {
                                             title: (
                                                 <BaseOverlayHeader
                                                     IconComponent={TbDots}
-                                                    iconVariant="gradient-cyan"
+                                                    iconVariant="soft" iconColor="cyan"
                                                     title={t('base-node-form.more-actions')}
                                                     titleOrder={5}
                                                 />

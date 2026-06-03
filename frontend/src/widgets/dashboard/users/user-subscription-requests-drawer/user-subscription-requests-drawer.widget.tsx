@@ -101,7 +101,7 @@ export const UserSubscriptionRequestsDrawerWidget = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbRewindBackward50}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t(
                         'get-user-subscription-request-history.feature.subscription-request-history'
                     )}

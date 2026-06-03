@@ -23,28 +23,32 @@ export function StatsWidget() {
             value: currentDay,
             subtitle: currentMonth,
             IconComponent: MdCalendarToday,
-            iconVariant: 'gradient-blue'
+            iconVariant: 'soft',
+            iconColor: 'blue'
         },
         {
             title: t('stats.widget.upcoming-in', { month: currentMonthOnly }),
             value: nodes?.stats.upcomingNodesCount ?? 0,
             subtitle: t('stats.widget.nodes-pending-payment'),
             IconComponent: FaServer,
-            iconVariant: 'gradient-orange'
+            iconVariant: 'soft',
+            iconColor: 'orange'
         },
         {
             title: t('stats.widget.payments-in', { month: currentMonthOnly }),
             value: formatCurrency(nodes?.stats.currentMonthPayments ?? 0),
             subtitle: t('stats.widget.total-payments-made'),
             IconComponent: MdPayment,
-            iconVariant: 'gradient-green'
+            iconVariant: 'soft',
+            iconColor: 'green'
         },
         {
             title: t('stats.widget.total-spent'),
             value: formatCurrency(nodes?.stats.totalSpent ?? 0),
             subtitle: t('stats.widget.lifetime-spending'),
             IconComponent: MdTrendingUp,
-            iconVariant: 'gradient-violet'
+            iconVariant: 'soft',
+            iconColor: 'violet'
         }
     ]
 

@@ -276,7 +276,7 @@ export function RenameModalShared({ renameFrom }: IProps) {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbPencil}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('common.rename')}
                 />
             }

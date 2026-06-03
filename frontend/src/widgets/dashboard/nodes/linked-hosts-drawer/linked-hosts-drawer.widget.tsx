@@ -40,7 +40,7 @@ export const LinkedHostsDrawer = memo(() => {
                 title={
                     <BaseOverlayHeader
                         IconComponent={PiListChecks}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title={t('linked-hosts-drawer.widget.assigned-hosts')}
                     />
                 }
@@ -64,7 +64,7 @@ export const LinkedHostsDrawer = memo(() => {
             title={
                 <BaseOverlayHeader
                     IconComponent={PiListChecks}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('linked-hosts-drawer.widget.assigned-hosts')}
                 />
             }

@@ -114,7 +114,7 @@ export function BlockEditorModal(props: IProps) {
             title={
                 <BaseOverlayHeader
                     IconComponent={IconChevronRight}
-                    iconVariant="gradient-violet"
+                    iconVariant="soft" iconColor="violet"
                     subtitle={blockTitle}
                     title={t('block-editor.modal.component.edit-block')}
                 />
@@ -127,7 +127,7 @@ export function BlockEditorModal(props: IProps) {
                             <BaseOverlayHeader
                                 IconComponent={IconPalette}
                                 iconSize={16}
-                                iconVariant="gradient-cyan"
+                                iconVariant="soft" iconColor="cyan"
                                 title={t('block-editor.modal.component.block-settings')}
                                 titleOrder={5}
                             />
@@ -179,7 +179,7 @@ export function BlockEditorModal(props: IProps) {
                             <BaseOverlayHeader
                                 IconComponent={IconPlus}
                                 iconSize={16}
-                                iconVariant="gradient-teal"
+                                iconVariant="soft" iconColor="teal"
                                 subtitle={`${block.buttons.length} buttons`}
                                 title={t('block-editor.modal.component.buttons')}
                                 titleOrder={5}

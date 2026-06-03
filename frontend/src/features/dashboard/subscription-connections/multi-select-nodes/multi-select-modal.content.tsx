@@ -43,7 +43,7 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.RESTART)}
                 title={t('restart-node-button.feature.restart')}
-                variant="gradient-teal"
+                variant="soft" color="teal"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
@@ -51,7 +51,7 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.DISABLE)}
                 title={t('common.disable')}
-                variant="gradient-orange"
+                variant="soft" color="orange"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
@@ -59,7 +59,7 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.ENABLE)}
                 title={t('common.enable')}
-                variant="gradient-cyan"
+                variant="soft" color="cyan"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
@@ -67,7 +67,7 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.RESET_TRAFFIC)}
                 title={t('reset-node-traffic.feature.reset-traffic')}
-                variant="gradient-violet"
+                variant="soft" color="violet"
             />
         </Stack>
     )

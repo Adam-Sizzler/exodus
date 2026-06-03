@@ -63,7 +63,7 @@ export function VersionControl() {
             title: (
                 <BaseOverlayHeader
                     IconComponent={Logo}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title="Build Info"
                 />
             ),

@@ -90,7 +90,7 @@ export function NodePluginsGridWidget(props: IProps) {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbPackage}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title="Active on nodes"
                 />
             ),

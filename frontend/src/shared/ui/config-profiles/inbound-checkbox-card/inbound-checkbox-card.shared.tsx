@@ -36,7 +36,7 @@ export const InboundCheckboxCardShared = (props: IProps) => {
                 title: (
                     <BaseOverlayHeader
                         IconComponent={TbCode}
-                        iconVariant="gradient-teal"
+                        iconVariant="soft" iconColor="teal"
                         title={t('flat-inbound-checkbox-card.shared.inbound-config-inbound-tag', {
                             inboundTag: inbound.tag
                         })}

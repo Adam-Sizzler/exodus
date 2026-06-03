@@ -53,7 +53,7 @@ export const BulkAllUserActionsDangerTabFeature = (props: IProps) => {
                                 title: (
                                     <BaseOverlayHeader
                                         IconComponent={PiTrash}
-                                        iconVariant="gradient-red"
+                                        iconVariant="soft" iconColor="red"
                                         title={t('common.confirm-action')}
                                     />
                                 ),

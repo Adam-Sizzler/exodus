@@ -75,7 +75,7 @@ export const UserUsageBarchartWidget = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbChartBar}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     subtitle={`Σ ${prettyBytesToAnyUtil(totalDayTraffic)}`}
                     title={formatTimeUtil(category, 'D MMMM YYYY')}
                 />

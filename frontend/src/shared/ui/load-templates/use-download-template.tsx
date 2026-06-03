@@ -61,7 +61,7 @@ export const useDownloadTemplate = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbDownload}
-                    iconVariant="gradient-cyan"
+                    iconVariant="soft" iconColor="cyan"
                     title={t('use-download-template.select-template-to-load')}
                 />
             ),

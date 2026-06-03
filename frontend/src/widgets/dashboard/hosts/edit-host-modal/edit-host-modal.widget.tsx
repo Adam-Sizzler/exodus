@@ -398,7 +398,7 @@ export const EditHostModalWidget = memo(() => {
             title={
                 <BaseOverlayHeader
                     IconComponent={PiListChecks}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     subtitle={host?.uuid}
                     title={t('edit-host-modal.widget.edit-host')}
                     withCopy={true}

@@ -114,7 +114,7 @@ export const CreateNodeModalWidget = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbCpu}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('create-node-modal.widget.create-subscription', {
                         defaultValue: 'Создать подписку'
                     })}

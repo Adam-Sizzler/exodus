@@ -230,7 +230,7 @@ export const AuthentificationSettingsCardWidget = (props: IProps) => {
                     title: (
                         <BaseOverlayHeader
                             IconComponent={TbAlertCircle}
-                            iconVariant="gradient-red"
+                            iconVariant="soft" iconColor="red"
                             title={t('auth-settings.error-modal.title')}
                         />
                     ),

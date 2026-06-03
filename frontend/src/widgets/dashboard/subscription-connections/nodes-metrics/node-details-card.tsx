@@ -68,7 +68,7 @@ export const NodeDetailsCard = memo(
                                 style={{
                                     cursor: 'pointer'
                                 }}
-                                variant="gradient-indigo"
+                                variant="soft" color="indigo"
                             >
                                 <TbServer2
                                     size="24px"

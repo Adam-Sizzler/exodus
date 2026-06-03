@@ -185,7 +185,7 @@ export const InternalSquadAccessibleNodesModalWidget = () => {
             title={
                 <BaseOverlayHeader
                     IconComponent={TbServer}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t(
                         'internal-squad-accessible-nodes.modal.widget.internal-squad-accessible-nodes'
                     )}

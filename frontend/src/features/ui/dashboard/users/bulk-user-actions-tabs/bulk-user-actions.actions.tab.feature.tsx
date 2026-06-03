@@ -115,7 +115,7 @@ export const BulkUserActionsActionsTabFeature = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     IconComponent={PiClockUser}
-                    iconVariant="gradient-teal"
+                    iconVariant="soft" iconColor="teal"
                     title={t('bulk-user-actions.actions.tab.feature.extend-expiration-date')}
                     titleOrder={5}
                 />
