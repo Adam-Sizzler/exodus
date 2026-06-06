@@ -8,23 +8,34 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"strconv"
 	"strings"
+	"syscall"
+	"text/template"
 	"time"
 
 	"exodus/internal/config"
-	"exodus/internal/constant"
 	"exodus/internal/db"
 	"exodus/internal/dbutil"
 	"exodus/internal/jobqueue"
 	"exodus/internal/security"
 
+	"github.com/manifoldco/promptui"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/term"
 )
+
+type cliFlags struct {
+	rescue bool
+}
 
 type rescueResources struct {
 	db    *sql.DB
 	redis *redis.Client
+	cfg   *config.BackendConfig
 }
 
 type rescueSecretPayload struct {
@@ -34,129 +45,308 @@ type rescueSecretPayload struct {
 	JWTPublicKey string `json:"jwtPublicKey"`
 }
 
+type cliAction struct {
+	Value string
+	Label string
+	Hint  string
+}
+
+func (a cliAction) String() string {
+	return a.Label
+}
+
+func parseCLIFlags() cliFlags {
+	var flags cliFlags
+
+	for _, arg := range os.Args[1:] {
+		switch strings.ToLower(strings.TrimSpace(arg)) {
+		case "cli", "rescue", "--rescue", "-rescue":
+			flags.rescue = true
+		}
+	}
+
+	return flags
+}
+
+func runPreConfigCLI(flags cliFlags) bool {
+	if !flags.rescue {
+		return false
+	}
+
+	if err := runRescueCLI(); err != nil {
+		fmt.Printf("❌ Rescue CLI failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	return true
+}
+
+func runConfiguredCLI(_ cliFlags, _ *config.BackendConfig) bool {
+	return false
+}
+
+func printRescueHint() {
+	fmt.Println("Hint: run `docker exec -it exodus cli` for rescue CLI.")
+}
+
 func runRescueCLI() error {
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Println("=== Exodus Rescue CLI v0.4 ===")
-	fmt.Println("Checking database connection...")
+	printCLIBox("Exodus Rescue CLI v0.4")
+
+	printStatus("◐", "🌱 Checking database connection...")
 	resources, err := openRescueResources()
 	if err != nil {
+		printStatus("✖", "❌ Failed to connect to database.")
 		return err
 	}
 	defer resources.close()
-	fmt.Println("Database connected!")
-	fmt.Println("Redis connected!")
+	printStatus("✔", "✅ Database connected!")
 
-	for {
-		fmt.Println()
-		fmt.Println("Select an action:")
-		fmt.Println("1. Reset superadmin")
-		fmt.Println("2. Enable password authentication")
-		fmt.Println("3. Reset certs")
-		fmt.Println("4. Get SECRET_KEY for an Exodus Node")
-		fmt.Println("5. Fix Collation")
-		fmt.Println("6. Clean up HWID Devices")
-		fmt.Println("7. Clean up SRH Table")
-		fmt.Println("8. Show version")
-		fmt.Println("0. Exit")
+	printStatus("◐", "🌱 Checking Redis connection...")
+	if err := checkRescueRedis(resources); err != nil {
+		printStatus("✖", "❌ Failed to connect to Redis.")
+		return err
+	}
+	printStatus("✔", "✅ Redis connected!")
 
-		choice, err := promptLine(reader, "Select action", "0", false)
-		if err != nil {
-			return err
-		}
+	action, err := promptAction()
+	if err != nil {
+		return err
+	}
 
-		switch strings.ToLower(strings.TrimSpace(choice)) {
-		case "1", "reset-superadmin":
-			return resetSuperadmin(resources, reader)
-		case "2", "enable-password-auth":
-			return enablePasswordAuth(resources, reader)
-		case "3", "reset-certs":
-			return resetCerts(resources, reader)
-		case "4", "get-secret-key-for-node":
-			return getSecretKeyForNode(resources)
-		case "5", "fix-postgres-collation":
-			return fixPostgresCollation(resources, reader)
-		case "6", "truncate-hwid-user-devices":
-			return truncateHwidUserDevices(resources, reader)
-		case "7", "truncate-srh-table":
-			return truncateSRHTable(resources, reader)
-		case "8", "version":
-			fmt.Println(constant.GetBuildInfo())
-		case "0", "q", "quit", "exit":
-			fmt.Println("Exiting...")
-			return nil
-		default:
-			fmt.Printf("Unknown action: %s\n", choice)
-		}
+	switch action {
+	case "reset-superadmin":
+		return resetSuperadmin(resources, reader)
+	case "enable-password-auth":
+		return enablePasswordAuth(resources, reader)
+	case "reset-certs":
+		return resetCerts(resources, reader)
+	case "get-secret-key-for-node":
+		return getSecretKeyForNode(resources)
+	case "fix-postgres-collation":
+		return fixPostgresCollation(resources, reader)
+	case "truncate-hwid-user-devices":
+		return truncateHwidUserDevices(resources, reader)
+	case "truncate-srh-table":
+		return truncateSRHTable(resources, reader)
+	case "exit":
+		printStatus("ℹ", "👋 Exiting...")
+		return nil
+	default:
+		return fmt.Errorf("unknown action: %s", action)
 	}
 }
 
 func openRescueResources() (*rescueResources, error) {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("load configuration: %w", err)
-	}
+	var cfg config.BackendConfig
+	var sqldb *sql.DB
 
-	sqldb, err := db.OpenAndInitDB(&cfg)
+	err := runSilently(func() error {
+		loadedCfg, err := config.LoadConfig()
+		if err != nil {
+			return fmt.Errorf("load configuration: %w", err)
+		}
+
+		cfg = loadedCfg
+
+		sqldb, err = db.OpenAndInitDB(&cfg)
+		if err != nil {
+			return fmt.Errorf("connect database: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("connect database: %w", err)
+		if sqldb != nil {
+			_ = sqldb.Close()
+		}
+
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	if err := sqldb.PingContext(ctx); err != nil {
 		_ = sqldb.Close()
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
-	fmt.Println("Checking Redis connection...")
-	redisClient, err := jobqueue.NewRedisClient(&cfg)
+	var redisClient *redis.Client
+
+	err = runSilently(func() error {
+		client, err := jobqueue.NewRedisClient(&cfg)
+		if err != nil {
+			return err
+		}
+
+		if client == nil {
+			return fmt.Errorf("redis is not configured")
+		}
+
+		redisClient = client
+
+		return nil
+	})
 	if err != nil {
 		_ = sqldb.Close()
 		return nil, err
-	}
-	if redisClient == nil {
-		_ = sqldb.Close()
-		return nil, fmt.Errorf("redis is not configured")
 	}
 
 	return &rescueResources{
 		db:    sqldb,
 		redis: redisClient,
+		cfg:   &cfg,
 	}, nil
+}
+
+func checkRescueRedis(resources *rescueResources) error {
+	if resources == nil || resources.redis == nil {
+		return fmt.Errorf("redis is not configured")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := resources.redis.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping failed: %w", err)
+	}
+
+	return nil
 }
 
 func (r *rescueResources) close() {
 	if r == nil {
 		return
 	}
+
 	if r.redis != nil {
 		_ = r.redis.Close()
 	}
+
 	if r.db != nil {
 		_ = r.db.Close()
 	}
 }
 
+func promptAction() (string, error) {
+	actions := []cliAction{
+		{
+			Value: "reset-superadmin",
+			Label: "Reset superadmin",
+			Hint:  "Fully reset superadmin",
+		},
+		{
+			Value: "enable-password-auth",
+			Label: "Enable password authentication",
+			Hint:  "Enable password authentication",
+		},
+		{
+			Value: "reset-certs",
+			Label: "Reset certs",
+			Hint:  "Fully reset certs",
+		},
+		{
+			Value: "get-secret-key-for-node",
+			Label: "Get SECRET_KEY for an Exodus Node",
+			Hint:  "Get SECRET_KEY in cases, where you can not get from Panel",
+		},
+		{
+			Value: "fix-postgres-collation",
+			Label: "Fix Collation",
+			Hint:  "Fix Collation issues for current database",
+		},
+		{
+			Value: "truncate-hwid-user-devices",
+			Label: "Clean up HWID Devices",
+			Hint:  "Remove all HWID Devices from the database",
+		},
+		{
+			Value: "truncate-srh-table",
+			Label: "Clean up SRH Table",
+			Hint:  "Remove all SRH data from the database",
+		},
+		{
+			Value: "exit",
+			Label: "Exit",
+		},
+	}
+
+	templates := &promptui.SelectTemplates{
+		FuncMap: template.FuncMap{
+			"cyan": func(value string) string {
+				return ansi("36", value)
+			},
+			"green": func(value string) string {
+				return ansi("32", value)
+			},
+			"gray": func(value string) string {
+				return ansi("90", value)
+			},
+			"faint": func(value string) string {
+				return ansi("2", value)
+			},
+		},
+		Label:    `{{ cyan "❯" }} {{ cyan . }}`,
+		Active:   `{{ green "●" }} {{ .Label }}{{ if .Hint }} {{ gray "(" }}{{ gray .Hint }}{{ gray ")" }}{{ end }}`,
+		Inactive: `{{ gray "○" }} {{ gray .Label }}`,
+		Selected: ``,
+		Help:     ``,
+	}
+
+	prompt := promptui.Select{
+		Label:        "Select an action",
+		Items:        actions,
+		Templates:    templates,
+		Size:         len(actions),
+		CursorPos:    len(actions) - 1,
+		HideHelp:     true,
+		HideSelected: true,
+	}
+
+	fmt.Println()
+
+	index, _, err := prompt.Run()
+	if err != nil {
+		if errors.Is(err, promptui.ErrInterrupt) || strings.Contains(err.Error(), "^C") {
+			clearPromptArea(len(actions) + 2)
+			printStatus("ℹ", "👋 Exiting...")
+			os.Exit(0)
+		}
+
+		return "", fmt.Errorf("select action: %w", err)
+	}
+
+	clearPromptArea(len(actions) + 2)
+	printSelectedAction(actions[index].Label)
+
+	return actions[index].Value, nil
+}
+
 func resetSuperadmin(resources *rescueResources, reader *bufio.Reader) error {
-	ok, err := promptConfirm(reader, "Are you sure you want to delete the superadmin?")
+	answer, err := promptConfirm(reader, "Are you sure you want to delete the superadmin?")
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if !answer {
 		return errors.New("aborted")
 	}
+
+	printStatus("◐", "🔄 Deleting superadmin...")
 
 	var (
 		adminUUID string
 		username  string
 	)
+
 	err = resources.db.QueryRow(dbutil.Rebind(`
 		SELECT uuid, username
 		FROM admin
 		ORDER BY created_at ASC
 		LIMIT 1
 	`)).Scan(&adminUUID, &username)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("superadmin not found")
 	}
@@ -168,16 +358,19 @@ func resetSuperadmin(resources *rescueResources, reader *bufio.Reader) error {
 		return fmt.Errorf("delete superadmin: %w", err)
 	}
 
-	fmt.Printf("Superadmin %s deleted successfully.\n", username)
+	printStatus("✔", fmt.Sprintf("✅ Superadmin %s deleted successfully.", username))
+
 	return nil
 }
 
 func enablePasswordAuth(resources *rescueResources, reader *bufio.Reader) error {
-	ok, err := promptConfirm(reader, "Are you sure you want to enable password authentication?")
+	printStatus("◐", "🔄 Enabling password authentication...")
+
+	answer, err := promptConfirm(reader, "Are you sure you want to enable password authentication?")
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if !answer {
 		return errors.New("aborted")
 	}
 
@@ -194,21 +387,34 @@ func enablePasswordAuth(resources *rescueResources, reader *bufio.Reader) error 
 		return fmt.Errorf("enable password authentication: %w", err)
 	}
 
-	fmt.Println("Password authentication enabled successfully.")
+	printStatus("✔", "✅ Password authentication enabled successfully.")
+
 	return nil
 }
 
 func resetCerts(resources *rescueResources, reader *bufio.Reader) error {
-	ok, err := promptConfirm(reader, "Are you sure you want to delete the certs? You will need to add new certs to all nodes again.")
+	answer, err := promptConfirm(
+		reader,
+		"Are you sure you want to delete the certs? You will need to add new certs to all nodes again.",
+	)
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if !answer {
 		return errors.New("aborted")
 	}
 
+	printStatus("◐", "🔄 Deleting certs...")
+
 	var keygenUUID string
-	err = resources.db.QueryRow(`SELECT uuid FROM keygen ORDER BY created_at ASC LIMIT 1`).Scan(&keygenUUID)
+
+	err = resources.db.QueryRow(`
+		SELECT uuid
+		FROM keygen
+		ORDER BY created_at ASC
+		LIMIT 1
+	`).Scan(&keygenUUID)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("certs not found")
 	}
@@ -220,31 +426,37 @@ func resetCerts(resources *rescueResources, reader *bufio.Reader) error {
 		return fmt.Errorf("delete certs: %w", err)
 	}
 
-	fmt.Println("Certs deleted successfully.")
-	fmt.Println(`Restart Exodus to apply changes by running "docker compose down && docker compose up -d".`)
+	printStatus("✔", "✅ Certs deleted successfully.")
+	fmt.Println(`⚠ Restart Exodus to apply changes by running "docker compose down && docker compose up -d".`)
+
 	return nil
 }
 
 func getSecretKeyForNode(resources *rescueResources) error {
+	printStatus("◐", "🔑 Getting SECRET_KEY for node...")
+
 	var (
 		pubKey string
 		caCert string
 		caKey  string
 	)
+
 	err := resources.db.QueryRow(`
 		SELECT pub_key, ca_cert, ca_key
 		FROM keygen
 		ORDER BY created_at ASC
 		LIMIT 1
 	`).Scan(&pubKey, &caCert, &caKey)
+
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("keygen not found; restart Exodus or reset certs first")
+		return fmt.Errorf("keygen not found; reset certs first or restart Exodus")
 	}
 	if err != nil {
 		return fmt.Errorf("fetch keygen data: %w", err)
 	}
+
 	if strings.TrimSpace(caCert) == "" || strings.TrimSpace(caKey) == "" {
-		return fmt.Errorf("certs not found; restart Exodus or reset certs first")
+		return fmt.Errorf("certs not found; reset certs first or restart Exodus")
 	}
 
 	nodeCert, err := security.GenerateNodeCert(caCert, caKey)
@@ -262,17 +474,20 @@ func getSecretKeyForNode(resources *rescueResources) error {
 		return fmt.Errorf("encode secret payload: %w", err)
 	}
 
-	fmt.Println("SECRET_KEY for node generated successfully.")
+	printStatus("✔", "✅ SECRET_KEY for node generated successfully.")
 	fmt.Printf("\nSECRET_KEY=\"%s\"\n", base64.StdEncoding.EncodeToString(raw))
+
 	return nil
 }
 
 func fixPostgresCollation(resources *rescueResources, reader *bufio.Reader) error {
-	ok, err := promptConfirm(reader, "Are you sure you want to fix Collation?")
+	printStatus("◐", "🔄 Fixing Collation...")
+
+	answer, err := promptConfirm(reader, "Are you sure you want to fix Collation?")
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if !answer {
 		return errors.New("aborted")
 	}
 
@@ -281,21 +496,26 @@ func fixPostgresCollation(resources *rescueResources, reader *bufio.Reader) erro
 		return fmt.Errorf("read current database name: %w", err)
 	}
 
+	printStatus("◐", fmt.Sprintf("🔄 Refreshing Collation for database: %s", dbName))
+
 	escapedName := strings.ReplaceAll(dbName, `"`, `""`)
 	if _, err := resources.db.Exec(fmt.Sprintf(`ALTER DATABASE "%s" REFRESH COLLATION VERSION`, escapedName)); err != nil {
 		return fmt.Errorf("refresh collation version: %w", err)
 	}
 
-	fmt.Println("Collation fixed successfully.")
+	printStatus("✔", "✅ Collation fixed successfully.")
+
 	return nil
 }
 
 func truncateHwidUserDevices(resources *rescueResources, reader *bufio.Reader) error {
-	ok, err := promptConfirm(reader, "Are you sure you want to clean up HWID Devices?")
+	printStatus("◐", "🔄 Cleaning up HWID Devices...")
+
+	answer, err := promptConfirm(reader, "Are you sure you want to clean up HWID Devices?")
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if !answer {
 		return errors.New("aborted")
 	}
 
@@ -303,16 +523,19 @@ func truncateHwidUserDevices(resources *rescueResources, reader *bufio.Reader) e
 		return fmt.Errorf("clean up HWID Devices: %w", err)
 	}
 
-	fmt.Println("HWID Devices cleaned up successfully.")
+	printStatus("✔", "✅ HWID Devices cleaned up successfully.")
+
 	return nil
 }
 
 func truncateSRHTable(resources *rescueResources, reader *bufio.Reader) error {
-	ok, err := promptConfirm(reader, "Are you sure you want to clean up SRH Table?")
+	printStatus("◐", "🔄 Cleaning up SRH Table...")
+
+	answer, err := promptConfirm(reader, "Are you sure you want to clean up SRH Table?")
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if !answer {
 		return errors.New("aborted")
 	}
 
@@ -320,13 +543,15 @@ func truncateSRHTable(resources *rescueResources, reader *bufio.Reader) error {
 		return fmt.Errorf("clean up SRH Table: %w", err)
 	}
 
-	fmt.Println("SRH Table cleaned up successfully.")
+	printStatus("✔", "✅ SRH Table cleaned up successfully.")
+
 	return nil
 }
 
 func promptConfirm(reader *bufio.Reader, label string) (bool, error) {
 	for {
-		fmt.Printf("%s [y/N]: ", label)
+		fmt.Printf("? %s [y/N]: ", label)
+
 		text, err := reader.ReadString('\n')
 		if err != nil {
 			return false, fmt.Errorf("read confirmation: %w", err)
@@ -336,9 +561,125 @@ func promptConfirm(reader *bufio.Reader, label string) (bool, error) {
 		case "y", "yes", "true", "1":
 			return true, nil
 		case "", "n", "no", "false", "0":
+			fmt.Println("❌ Aborted.")
 			return false, nil
 		default:
 			fmt.Println("Please answer yes or no.")
 		}
 	}
+}
+
+func printCLIBox(title string) {
+	width := len([]rune(title)) + 4
+	line := strings.Repeat("─", width)
+	empty := strings.Repeat(" ", width)
+
+	fmt.Println()
+	fmt.Printf(" ╭%s╮\n", line)
+	fmt.Printf(" │%s│\n", empty)
+	fmt.Printf(" │  %s  │\n", title)
+	fmt.Printf(" │%s│\n", empty)
+	fmt.Printf(" ╰%s╯\n", line)
+	fmt.Println()
+}
+
+func printSelectedAction(label string) {
+	fmt.Println()
+	fmt.Printf("%s Select an action\n", ansi("32", "✔"))
+	fmt.Println(label)
+}
+
+func printStatus(symbol string, message string) {
+	now := time.Now().Format("3:04:05 PM")
+	width := terminalWidth()
+
+	plainLength := len([]rune(symbol)) + 1 + len([]rune(message)) + 1 + len([]rune(now))
+
+	if plainLength >= width {
+		fmt.Printf("%s %s %s\n", symbol, message, now)
+		return
+	}
+
+	padding := strings.Repeat(" ", width-plainLength)
+	fmt.Printf("%s %s%s%s\n", symbol, message, padding, now)
+}
+
+func terminalWidth() int {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err == nil && width > 0 {
+		return width
+	}
+
+	columns := strings.TrimSpace(os.Getenv("COLUMNS"))
+	if columns != "" {
+		parsedWidth, err := strconv.Atoi(columns)
+		if err == nil && parsedWidth > 0 {
+			return parsedWidth
+		}
+	}
+
+	return 120
+}
+
+func clearPromptArea(lines int) {
+	if lines <= 0 {
+		return
+	}
+
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return
+	}
+
+	fmt.Printf("\x1b[%dA", lines)
+	fmt.Print("\x1b[J")
+}
+
+func ansi(code string, value string) string {
+	return "\x1b[" + code + "m" + value + "\x1b[0m"
+}
+
+func runSilently(fn func() error) error {
+	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		return runWithLogSilenced(fn)
+	}
+	defer devNull.Close()
+
+	stdoutFD := int(os.Stdout.Fd())
+	stderrFD := int(os.Stderr.Fd())
+
+	savedStdout, err := syscall.Dup(stdoutFD)
+	if err != nil {
+		return runWithLogSilenced(fn)
+	}
+	defer syscall.Close(savedStdout)
+
+	savedStderr, err := syscall.Dup(stderrFD)
+	if err != nil {
+		return runWithLogSilenced(fn)
+	}
+	defer syscall.Close(savedStderr)
+
+	oldLogWriter := log.Writer()
+	log.SetOutput(io.Discard)
+
+	_ = syscall.Dup2(int(devNull.Fd()), stdoutFD)
+	_ = syscall.Dup2(int(devNull.Fd()), stderrFD)
+
+	fnErr := fn()
+
+	_ = syscall.Dup2(savedStdout, stdoutFD)
+	_ = syscall.Dup2(savedStderr, stderrFD)
+
+	log.SetOutput(oldLogWriter)
+
+	return fnErr
+}
+
+func runWithLogSilenced(fn func() error) error {
+	oldLogWriter := log.Writer()
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(oldLogWriter)
+
+	return fn()
 }
