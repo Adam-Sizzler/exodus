@@ -64,7 +64,7 @@ WORKDIR /app
 COPY --from=builder /build/exodus-node /app/exodus-node
 COPY deploy/supervisord.conf /etc/supervisord.conf
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-#COPY deploy/singbox-default.json /app/singbox/config.default.json
+COPY deploy/singbox-default.json /app/singbox/config.default.json
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     mkdir -p /run /var/log/supervisor /app/singbox /app/logs /app/certs
