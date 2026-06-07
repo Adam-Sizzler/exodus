@@ -7,11 +7,14 @@ import {
     PiNetworkDuotone,
     PiTimerDuotone
 } from 'react-icons/pi'
-import { Badge, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
+import { ActionIcon, Badge, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'react-i18next'
-import { memo, useMemo } from 'react'
+import { TbCamera } from 'react-icons/tb'
+import { memo, useMemo, useRef, useState } from 'react'
 
 import { prettyBytesToAnyUtil, prettyRealtimeBytesUtil } from '@shared/utils/bytes'
+import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { formatDurationUtil } from '@shared/utils/time-utils'
 import { SectionCard } from '@shared/ui/section-card'
@@ -26,6 +29,25 @@ interface IProps {
 export const NodeSystemCardWidget = memo((props: IProps) => {
     const { node } = props
     const { t } = useTranslation()
+    const cardRef = useRef<HTMLDivElement | null>(null)
+
+    const [copying, setCopying] = useState(false)
+
+    const copy = async () => {
+        setCopying(true)
+        try {
+            if (!cardRef.current) throw new Error('cardRef')
+            await copyScreenshotToClipboard(cardRef.current)
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                message: `${error instanceof Error ? error.message : 'Unknown error'}`,
+                title: 'Error'
+            })
+        } finally {
+            setCopying(false)
+        }
+    }
 
     const memoryData = useMemo(() => {
         if (!node.system) return null
@@ -74,7 +96,19 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
 
     return (
         <div className={classes.wrapper}>
-            <SectionCard.Root gap="sm" style={{ overflow: 'hidden' }}>
+            <ActionIcon
+                className={classes.screenshotButton}
+                color="gray"
+                loading={copying}
+                onClick={copy}
+                radius="md"
+                size="sm"
+                variant="subtle"
+            >
+                <TbCamera size={24} />
+            </ActionIcon>
+
+            <SectionCard.Root gap="sm" ref={cardRef} style={{ overflow: 'hidden' }}>
                 <SectionCard.Section>
                     <Group justify="space-between" wrap="nowrap">
                         <BaseOverlayHeader

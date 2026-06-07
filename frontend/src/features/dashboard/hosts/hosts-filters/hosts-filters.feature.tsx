@@ -80,6 +80,10 @@ export const HostsFiltersFeature = (props: IProps) => {
             <DataTableShared.Title
                 actions={<HeaderActionButtonsFeature />}
                 icon={<PiListChecks size={24} />}
+                iconProps={{
+                    color: 'cyan',
+                    variant: 'soft'
+                }}
                 title={t('constants.hosts')}
             />
 

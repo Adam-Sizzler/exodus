@@ -136,9 +136,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                     No node plugins yet
                                 </Text>
                                 <Text c="dimmed" maw={460} size="sm" ta="center">
-                                    Create a plugin to enable per-node capabilities. This build
-                                    supports ingress filter, egress filter, shared lists and HAProxy
-                                    Auth.
+                                    Create a plugin to extend node capabilities with
                                 </Text>
                             </Stack>
 

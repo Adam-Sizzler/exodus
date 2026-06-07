@@ -653,6 +653,10 @@ export function SRSListsPageComponent(props: Props) {
                             </Group>
                         }
                         icon={<PiListChecks size={24} />}
+                        iconProps={{
+                            color: 'cyan',
+                            variant: 'soft'
+                        }}
                         title={tr('constants.srs-lists', 'SRS Lists')}
                     />
 
