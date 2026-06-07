@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"text/template"
 	"time"
 
 	"exodus/internal/config"
@@ -23,7 +22,6 @@ import (
 	"exodus/internal/jobqueue"
 	"exodus/internal/security"
 
-	"github.com/manifoldco/promptui"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/term"
 )
@@ -230,8 +228,87 @@ func (r *rescueResources) close() {
 	}
 }
 
+type actionKey int
+
+const (
+	actionKeyNone actionKey = iota
+	actionKeyUp
+	actionKeyDown
+	actionKeyEnter
+	actionKeyInterrupt
+)
+
 func promptAction() (string, error) {
-	actions := []cliAction{
+	actions := rescueActions()
+	if len(actions) == 0 {
+		return "", errors.New("no rescue actions configured")
+	}
+
+	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
+		return promptActionPlain(actions)
+	}
+
+	selected := len(actions) - 1
+
+	fmt.Println()
+
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return "", fmt.Errorf("enable raw terminal mode: %w", err)
+	}
+
+	terminalRestored := false
+	restoreTerminal := func() {
+		if terminalRestored {
+			return
+		}
+
+		_ = term.Restore(int(os.Stdin.Fd()), oldState)
+		terminalRestored = true
+	}
+	defer restoreTerminal()
+
+	renderActionPrompt(actions, selected)
+
+	for {
+		key, err := readActionKey(os.Stdin)
+		if err != nil {
+			restoreTerminal()
+			clearPromptArea(len(actions) + 2)
+			return "", fmt.Errorf("read action key: %w", err)
+		}
+
+		switch key {
+		case actionKeyUp:
+			selected--
+			if selected < 0 {
+				selected = len(actions) - 1
+			}
+			clearPromptArea(len(actions) + 1)
+			renderActionPrompt(actions, selected)
+		case actionKeyDown:
+			selected++
+			if selected >= len(actions) {
+				selected = 0
+			}
+			clearPromptArea(len(actions) + 1)
+			renderActionPrompt(actions, selected)
+		case actionKeyEnter:
+			restoreTerminal()
+			clearPromptArea(len(actions) + 2)
+			printSelectedAction(actions[selected].Label)
+			return actions[selected].Value, nil
+		case actionKeyInterrupt:
+			restoreTerminal()
+			clearPromptArea(len(actions) + 2)
+			printStatus("ℹ", "👋 Exiting...")
+			os.Exit(0)
+		}
+	}
+}
+
+func rescueActions() []cliAction {
+	return []cliAction{
 		{
 			Value: "reset-superadmin",
 			Label: "Reset superadmin",
@@ -272,56 +349,104 @@ func promptAction() (string, error) {
 			Label: "Exit",
 		},
 	}
+}
 
-	templates := &promptui.SelectTemplates{
-		FuncMap: template.FuncMap{
-			"cyan": func(value string) string {
-				return ansi("36", value)
-			},
-			"green": func(value string) string {
-				return ansi("32", value)
-			},
-			"gray": func(value string) string {
-				return ansi("90", value)
-			},
-			"faint": func(value string) string {
-				return ansi("2", value)
-			},
-		},
-		Label:    `{{ cyan "❯" }} {{ cyan . }}`,
-		Active:   `{{ green "●" }} {{ .Label }}{{ if .Hint }} {{ gray "(" }}{{ gray .Hint }}{{ gray ")" }}{{ end }}`,
-		Inactive: `{{ gray "○" }} {{ gray .Label }}`,
-		Selected: ``,
-		Help:     ``,
-	}
-
-	prompt := promptui.Select{
-		Label:        "Select an action",
-		Items:        actions,
-		Templates:    templates,
-		Size:         len(actions),
-		CursorPos:    len(actions) - 1,
-		HideHelp:     true,
-		HideSelected: true,
-	}
-
+func promptActionPlain(actions []cliAction) (string, error) {
 	fmt.Println()
-
-	index, _, err := prompt.Run()
-	if err != nil {
-		if errors.Is(err, promptui.ErrInterrupt) || strings.Contains(err.Error(), "^C") {
-			clearPromptArea(len(actions) + 2)
-			printStatus("ℹ", "👋 Exiting...")
-			os.Exit(0)
+	fmt.Println("Select an action:")
+	for index, action := range actions {
+		if action.Hint != "" {
+			fmt.Printf("%d) %s (%s)\n", index+1, action.Label, action.Hint)
+			continue
 		}
 
-		return "", fmt.Errorf("select action: %w", err)
+		fmt.Printf("%d) %s\n", index+1, action.Label)
 	}
 
-	clearPromptArea(len(actions) + 2)
-	printSelectedAction(actions[index].Label)
+	fmt.Printf("Enter number [%d]: ", len(actions))
 
-	return actions[index].Value, nil
+	reader := bufio.NewReader(os.Stdin)
+	text, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", fmt.Errorf("read action: %w", err)
+	}
+
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return actions[len(actions)-1].Value, nil
+	}
+
+	selected, err := strconv.Atoi(text)
+	if err != nil || selected < 1 || selected > len(actions) {
+		return "", fmt.Errorf("invalid action: %s", text)
+	}
+
+	selected--
+	printSelectedAction(actions[selected].Label)
+
+	return actions[selected].Value, nil
+}
+
+func renderActionPrompt(actions []cliAction, selected int) {
+	fmt.Printf("%s %s\r\n", ansi("36", "❯"), ansi("36", "Select an action"))
+
+	for index, action := range actions {
+		if index == selected {
+			fmt.Printf("%s\r\n", formatActiveAction(action))
+			continue
+		}
+
+		fmt.Printf("%s\r\n", formatInactiveAction(action))
+	}
+}
+
+func formatActiveAction(action cliAction) string {
+	line := fmt.Sprintf("%s %s", ansi("32", "●"), action.Label)
+	if action.Hint != "" {
+		line += fmt.Sprintf(" %s", ansi("90", fmt.Sprintf("(%s)", action.Hint)))
+	}
+
+	return line
+}
+
+func formatInactiveAction(action cliAction) string {
+	return fmt.Sprintf("%s %s", ansi("90", "○"), ansi("90", action.Label))
+}
+
+func readActionKey(reader io.Reader) (actionKey, error) {
+	var input [1]byte
+	if _, err := reader.Read(input[:]); err != nil {
+		return actionKeyNone, err
+	}
+
+	switch input[0] {
+	case 3:
+		return actionKeyInterrupt, nil
+	case '\r', '\n':
+		return actionKeyEnter, nil
+	case 'k', 'K':
+		return actionKeyUp, nil
+	case 'j', 'J':
+		return actionKeyDown, nil
+	case 27:
+		var sequence [2]byte
+		if _, err := io.ReadFull(reader, sequence[:]); err != nil {
+			return actionKeyNone, err
+		}
+
+		if sequence[0] != '[' {
+			return actionKeyNone, nil
+		}
+
+		switch sequence[1] {
+		case 'A':
+			return actionKeyUp, nil
+		case 'B':
+			return actionKeyDown, nil
+		}
+	}
+
+	return actionKeyNone, nil
 }
 
 func resetSuperadmin(resources *rescueResources, reader *bufio.Reader) error {
@@ -591,17 +716,18 @@ func printSelectedAction(label string) {
 
 func printStatus(symbol string, message string) {
 	now := time.Now().Format("3:04:05 PM")
+	coloredNow := ansi("90", now)
 	width := terminalWidth()
 
 	plainLength := len([]rune(symbol)) + 1 + len([]rune(message)) + 1 + len([]rune(now))
 
 	if plainLength >= width {
-		fmt.Printf("%s %s %s\n", symbol, message, now)
+		fmt.Printf("%s %s %s\n", symbol, message, coloredNow)
 		return
 	}
 
 	padding := strings.Repeat(" ", width-plainLength)
-	fmt.Printf("%s %s%s%s\n", symbol, message, padding, now)
+	fmt.Printf("%s %s%s%s\n", symbol, message, padding, coloredNow)
 }
 
 func terminalWidth() int {

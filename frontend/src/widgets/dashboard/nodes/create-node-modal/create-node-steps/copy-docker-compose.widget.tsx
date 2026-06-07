@@ -35,7 +35,7 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema }: IProps) =>
   exodus-node:
     container_name: exodus-node
     hostname: exodus-node
-    image: ghcr.io/teamdominant/exodus-node:latest
+    image: ghcr.io/Adam-Sizzler/exodus-node:latest
     restart: always
     network_mode: host
     cap_add:

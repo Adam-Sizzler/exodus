@@ -57,7 +57,7 @@ export const TemplateSelector = (props: TemplateSelectorProps) => {
             <Group grow justify="space-between">
                 <Button
                     component="a"
-                    href="https://github.com/teamdominant/exodus"
+                    href="https://github.com/Adam-Sizzler/exodus"
                     target="_blank"
                     variant="light"
                 >

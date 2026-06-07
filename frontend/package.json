@@ -5,13 +5,13 @@
   "version": "2.7.4",
   "license": "AGPL-3.0-only",
   "author": "EXODUS <github.com/exodus>",
-  "homepage": "https://github.com/teamdominant",
+  "homepage": "https://github.com/Adam-Sizzler",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/teamdominant/exodus.git"
+    "url": "git+https://github.com/Adam-Sizzler/exodus.git"
   },
   "bugs": {
-    "url": "https://github.com/teamdominant/exodus/issues"
+    "url": "https://github.com/Adam-Sizzler/exodus/issues"
   },
   "scripts": {
     "start:dev": "vite",
