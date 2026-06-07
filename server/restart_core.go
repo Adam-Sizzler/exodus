@@ -48,7 +48,6 @@ type coreLifecycleResult struct {
 	ProcessAfter  string
 	Started       bool
 	Ready         bool
-	ConfigValid   bool
 	Error         string
 }
 
@@ -57,25 +56,18 @@ func (r coreLifecycleResult) failed() bool {
 }
 
 func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service) coreLifecycleResult {
-	result := coreLifecycleResult{ConfigValid: true}
+	result := coreLifecycleResult{}
 	if cfg == nil || cfg.Logger == nil {
 		result.Error = "node config/logger is nil"
 		return result
 	}
 
 	cfg.Logger.Info("Starting managed core lifecycle", "process", coreProcessName, "config", config.FixedSingboxConfigPath)
-	cfg.Logger.Trace("Validating sing-box config before supervisor start", "config", config.FixedSingboxConfigPath)
-
-	checkCtx, checkCancel := context.WithTimeout(ctx, 15*time.Second)
-	checkOutput, checkErr := runSingboxCheck(checkCtx)
-	checkCancel()
-	if checkErr != nil {
-		result.ConfigValid = false
-		result.Error = fmt.Sprintf("sing-box config validation failed: %v", checkErr)
-		cfg.Logger.Error("Core lifecycle aborted: invalid sing-box config", "error", checkErr, "output", strings.TrimSpace(checkOutput))
-		return result
-	}
-	cfg.Logger.Debug("Sing-box config validation passed", "output", strings.TrimSpace(checkOutput))
+	// Remnawave-style lifecycle: the freshly received config is already the current
+	// managed core config. Do not pre-gate supervisor start with a local check here.
+	// If the config is invalid, supervisor/core start returns the business error and
+	// the node control-plane remains alive for the next corrective deploy.
+	cfg.Logger.Debug("Starting core through supervisor without pre-validation gate", "config", config.FixedSingboxConfigPath)
 
 	supervisor, err := newSupervisorClient(cfg)
 	if err != nil {

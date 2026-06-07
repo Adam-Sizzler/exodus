@@ -65,7 +65,6 @@ type DeploySummary struct {
 	CoreProcessBefore     string
 	CoreProcessAfter      string
 	CoreReady             bool
-	CoreConfigValid       bool
 }
 
 // DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and starts/restarts the managed core if requested.
@@ -161,7 +160,6 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	coreProcessBefore := ""
 	coreProcessAfter := ""
 	coreReady := false
-	coreConfigValid := true
 	if shouldRestart {
 		if s.shouldRunCoreLifecycle(ctx, task, configChanged) {
 			if forceRestart && !configChanged {
@@ -174,7 +172,6 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 			coreProcessBefore = lifecycle.ProcessBefore
 			coreProcessAfter = lifecycle.ProcessAfter
 			coreReady = lifecycle.Ready
-			coreConfigValid = lifecycle.ConfigValid
 			if lifecycle.failed() {
 				reloadError = lifecycle.Error
 				s.Cfg.Logger.Error(
@@ -182,7 +179,6 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 					"error", lifecycle.Error,
 					"process_before", lifecycle.ProcessBefore,
 					"process_after", lifecycle.ProcessAfter,
-					"config_valid", lifecycle.ConfigValid,
 				)
 			} else {
 				restarted = lifecycle.Started
@@ -210,7 +206,6 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 		CoreProcessBefore:     coreProcessBefore,
 		CoreProcessAfter:      coreProcessAfter,
 		CoreReady:             coreReady,
-		CoreConfigValid:       coreConfigValid,
 	}, nil
 }
 

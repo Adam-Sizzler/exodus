@@ -78,7 +78,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 		}
 
 		message := fmt.Sprintf(
-			"success: config_path=%s listen=%s inbounds=%d outbounds=%d users=%d restarted=%t force_restart=%t config_changed=%t haproxy_users_changed=%t srs_downloaded_on_deploy=%t core_ready=%t core_config_valid=%t core_process_before=%s core_process_after=%s",
+			"success: config_path=%s listen=%s inbounds=%d outbounds=%d users=%d restarted=%t force_restart=%t config_changed=%t haproxy_users_changed=%t srs_downloaded_on_deploy=%t core_ready=%t core_process_before=%s core_process_after=%s",
 			summary.ConfigPath,
 			summary.Listen,
 			summary.Inbounds,
@@ -90,7 +90,6 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 			summary.HaproxyUsersChanged,
 			summary.SRSDownloadedOnDeploy,
 			summary.CoreReady,
-			summary.CoreConfigValid,
 			summary.CoreProcessBefore,
 			summary.CoreProcessAfter,
 		)
