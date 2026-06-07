@@ -17,7 +17,6 @@ import (
 	"exodus-node/config"
 	"exodus-node/constant"
 	"exodus-node/sdk"
-
 )
 
 // Stat represents a single statistic entry.
@@ -86,14 +85,22 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil node config")
 	}
+
+	cfg.Logger.Info("Initializing core API service", "core_type", config.FixedCoreType, "address", config.FixedCoreAPIAddress, "port", config.FixedCoreAPIGRPCPort)
+	cfg.Logger.Trace("Core API SDK configuration prepared", "core_type", config.FixedCoreType, "target", fmt.Sprintf("%s:%d", config.FixedCoreAPIAddress, config.FixedCoreAPIGRPCPort))
+
 	coreAPI, err := sdk.New(sdk.Config{
 		CoreType: config.FixedCoreType,
 		Address:  config.FixedCoreAPIAddress,
 		Port:     config.FixedCoreAPIGRPCPort,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("initialize core SDK: %w", err)
+		// The node must not die just because sing-box is down or has a broken config.
+		// Keep the gRPC server alive; stats will report core_status=error until the
+		// core API becomes reachable again.
+		cfg.Logger.Error("Core API SDK initialization failed; continuing in degraded mode", "error", err, "core_type", config.FixedCoreType)
 	}
+
 	return &Service{
 		cfg:                  cfg,
 		api:                  coreAPI,
@@ -114,17 +121,16 @@ func (s *Service) Close() error {
 	return s.api.Close()
 }
 
-// GetApiResponse retrieves node statistics. Core/sing-box errors are reported as
-// regular stats instead of RPC failures so the node stays reachable and can keep
-// accepting recovery commands from the panel even when the core is down.
+// GetApiResponse retrieves statistics from the configured core Stats API.
+// Core errors are reported as stats instead of returned as fatal handler errors.
+// This keeps the node reachable even when sing-box is down because of a bad config.
 func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
+	result := &ApiResponse{Stat: make([]Stat, 0, 32)}
 	if s == nil {
-		return nil, fmt.Errorf("api service is nil")
+		return result, fmt.Errorf("api service is nil")
 	}
 
-	result := &ApiResponse{
-		Stat: make([]Stat, 0, 32),
-	}
+	s.cfg.Logger.Trace("Collecting API response", "core_type", config.FixedCoreType)
 
 	coreStatus := "ok"
 	coreError := ""
@@ -133,7 +139,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 	if s.api == nil || s.api.Stats == nil {
 		coreStatus = "error"
 		coreError = "core SDK is not initialized"
-		s.cfg.Logger.Error("Core SDK is not initialized", "core_type", config.FixedCoreType)
+		s.cfg.Logger.Error("Core stats unavailable", "error", coreError, "core_type", config.FixedCoreType)
 	} else {
 		stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{
 			Patterns: []string{
@@ -147,7 +153,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		if err != nil {
 			coreStatus = "error"
 			coreError = fmt.Sprintf("query core stats: %v", err)
-			s.cfg.Logger.Error("Failed to execute core stats query", "error", err, "core_type", config.FixedCoreType)
+			s.cfg.Logger.Error("Failed to execute core stats query; returning degraded stats", "error", err, "core_type", config.FixedCoreType)
 		} else {
 			for _, item := range stats {
 				s.cfg.Logger.Trace("Processing core stat", "name", item.Name, "value", item.Value, "core_type", config.FixedCoreType)
@@ -160,8 +166,8 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 
 		sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
 		if sysErr != nil {
-			if coreError == "" {
-				coreStatus = "error"
+			if coreStatus == "ok" {
+				coreStatus = "degraded"
 				coreError = fmt.Sprintf("read core sys stats: %v", sysErr)
 			}
 			s.cfg.Logger.Warn("Failed to read core sys stats", "error", sysErr, "core_type", config.FixedCoreType)
@@ -171,7 +177,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 	}
 
 	// Runtime metadata consumed by backend node monitor. These are always returned,
-	// even when the local core is unavailable.
+	// even when the core is down, so the panel can see the node and push a fix.
 	result.Stat = append(result.Stat,
 		Stat{Name: "core_status", Value: coreStatus},
 		Stat{Name: "core_error", Value: coreError},
@@ -190,7 +196,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			Stat{Name: "system_stats", Value: statsJSON},
 		)
 	}
-	s.cfg.Logger.Debug("Retrieved node stats", "count", len(result.Stat), "core_type", config.FixedCoreType, "core_status", coreStatus)
+	s.cfg.Logger.Debug("Retrieved API stats", "count", len(result.Stat), "core_type", config.FixedCoreType, "core_status", coreStatus)
 
 	return result, nil
 }

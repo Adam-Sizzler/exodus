@@ -12,15 +12,48 @@ import (
 )
 
 func reloadCoreProcess(cfg *config.NodeConfig) error {
-	cfg.Logger.Debug("Reloading sing-box via supervisorctl signal HUP")
-	return reloadViaSupervisorHUP(cfg)
+	cfg.Logger.Debug("Reloading sing-box via supervisorctl")
+
+	if out, err := runSupervisorctl(cfg, 20*time.Second, "signal", "HUP", "singbox"); err == nil {
+		cfg.Logger.Info("Core reloaded via supervisorctl signal HUP", "output", out)
+		return nil
+	} else {
+		cfg.Logger.Warn("Core HUP reload failed, trying restart", "error", err, "output", out)
+	}
+
+	if out, err := runSupervisorctl(cfg, 45*time.Second, "restart", "singbox"); err == nil {
+		cfg.Logger.Info("Core restarted via supervisorctl restart", "output", out)
+		return nil
+	} else {
+		cfg.Logger.Warn("Core restart failed, trying start", "error", err, "output", out)
+	}
+
+	if out, err := runSupervisorctl(cfg, 30*time.Second, "start", "singbox"); err == nil {
+		cfg.Logger.Info("Core started via supervisorctl start", "output", out)
+		return nil
+	} else {
+		cfg.Logger.Error("Core start failed", "error", err, "output", out)
+		return fmt.Errorf("reload singbox failed: %w: %s", err, out)
+	}
 }
 
-func reloadViaSupervisorHUP(cfg *config.NodeConfig) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+func runSupervisorctl(cfg *config.NodeConfig, timeout time.Duration, command ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	args := make([]string, 0, 10)
+	args := supervisorctlArgs(command...)
+	cfg.Logger.Trace("Executing supervisorctl", "args", strings.Join(args, " "))
+
+	out, err := exec.CommandContext(ctx, "supervisorctl", args...).CombinedOutput()
+	trimmed := strings.TrimSpace(string(out))
+	if err != nil {
+		return trimmed, fmt.Errorf("supervisorctl %s failed: %w", strings.Join(command, " "), err)
+	}
+	return trimmed, nil
+}
+
+func supervisorctlArgs(command ...string) []string {
+	args := make([]string, 0, len(command)+6)
 	if sock := strings.TrimSpace(os.Getenv("SUPERVISORD_SOCKET_PATH")); sock != "" {
 		args = append(args, "-s", "unix://"+sock)
 	}
@@ -30,13 +63,6 @@ func reloadViaSupervisorHUP(cfg *config.NodeConfig) error {
 	if pass := strings.TrimSpace(os.Getenv("SUPERVISORD_PASSWORD")); pass != "" {
 		args = append(args, "-p", pass)
 	}
-	args = append(args, "signal", "HUP", "singbox")
-
-	out, err := exec.CommandContext(ctx, "supervisorctl", args...).CombinedOutput()
-	if err != nil {
-		cfg.Logger.Error("supervisorctl signal HUP failed", "error", err, "output", strings.TrimSpace(string(out)))
-		return fmt.Errorf("reload singbox via supervisorctl signal HUP failed: %w: %s", err, strings.TrimSpace(string(out)))
-	}
-	cfg.Logger.Info("Core reloaded via supervisorctl signal HUP", "output", strings.TrimSpace(string(out)))
-	return nil
+	args = append(args, command...)
+	return args
 }

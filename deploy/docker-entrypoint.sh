@@ -105,6 +105,29 @@ ensure_singbox_version() {
     echo "[Entrypoint] Updated sing-box to: $(printf '%s\n' "$validate_output" | head -n 1)"
 }
 
+
+print_node_version() {
+    if [ ! -x /app/exodus-node ]; then
+        echo "[Entrypoint] exodus-node version: unknown (/app/exodus-node is not executable)"
+        return 0
+    fi
+
+    local build_info node_version node_revision
+    build_info="$(/app/exodus-node --version 2>/dev/null || true)"
+    node_version="$(printf '%s\n' "$build_info" | awk -F': ' '/^exodus version:/ {print $2; exit}')"
+    node_revision="$(printf '%s\n' "$build_info" | awk -F': ' '/^revision:/ {print $2; exit}')"
+
+    if [ -z "$node_version" ]; then
+        node_version="unknown"
+    fi
+    if [ -z "$node_revision" ]; then
+        node_revision="unknown"
+    fi
+
+    echo "[Entrypoint] exodus-node version: ${node_version}"
+    echo "[Entrypoint] exodus-node revision: ${node_revision}"
+}
+
 RNDSTR="$(generate_random 10)"
 
 SUPERVISORD_USER="${SUPERVISORD_USER:-$(generate_random 32)}"
@@ -124,6 +147,8 @@ if [ ! -s /app/singbox/config.json ]; then
 fi
 
 ensure_singbox_version
+
+print_node_version
 
 echo "[Entrypoint] supervisord version: $(supervisord --version | head -n 1)"
 supervisord -c /etc/supervisord.conf

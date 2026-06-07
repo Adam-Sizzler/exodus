@@ -6,6 +6,8 @@ import (
 
 	"exodus-node/proto"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const defaultStreamInterval = 20 * time.Second
@@ -75,16 +77,14 @@ func (s *NodeServer) sendStreamStats(
 	for {
 		stats, err := s.GetApiStats(stream.Context(), &proto.GetApiStatsRequest{})
 		if err != nil {
-			// Do not tear down the stream because of local core/stat failures. Closing
-			// the stream can make the panel mark the node as dead while the node is
-			// actually still able to receive recovery tasks.
-			s.Cfg.Logger.Error("Failed to collect stats for stream; sending degraded stats", "error", err)
-			stats = &proto.GetApiStatsResponse{
-				Stats: []*proto.Stat{
-					{Name: "core_status", Value: "error"},
-					{Name: "core_error", Value: err.Error()},
-				},
-			}
+			// Do not close the stream because of local stats/core errors. The stream is
+			// the recovery channel: the panel must still see the node and push a fixed
+			// config. Only real stream Send/Recv errors close this goroutine.
+			s.Cfg.Logger.Error("Failed to collect stats for stream; sending degraded response", "error", err)
+			stats = &proto.GetApiStatsResponse{Stats: []*proto.Stat{
+				{Name: "core_status", Value: "error"},
+				{Name: "core_error", Value: err.Error()},
+			}}
 		}
 
 		if err := stream.Send(&proto.NodeDataResponse{

@@ -7,6 +7,7 @@ import (
 	singboxapi "exodus-node/sdk/singboxapi"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -17,10 +18,10 @@ type singboxStatsService struct {
 }
 
 func newSingboxStatsService(cfg Config) (*singboxStatsService, error) {
-	// Do not block node startup on the local core API. sing-box can be down while
-	// the node is still useful for receiving a fixed config from the panel. The
-	// connection will be established lazily by gRPC, and per-request calls below
-	// will report temporary core errors without killing the node process.
+	// Do not block node startup on the core API. sing-box can be down because of a
+	// bad config, but the node must remain alive so the panel can upload a fixed
+	// config later. Request methods below will return normal gRPC errors until the
+	// connection recovers.
 	conn, err := grpc.DialContext(
 		context.Background(),
 		cfg.target(),
@@ -82,6 +83,13 @@ func (s *singboxStatsService) GetSysStats(ctx context.Context) (*SysStats, error
 		PauseTotalNs: resp.GetPauseTotalNs(),
 		Uptime:       resp.GetUptime(),
 	}, nil
+}
+
+func (s *singboxStatsService) State() connectivity.State {
+	if s == nil || s.conn == nil {
+		return connectivity.Shutdown
+	}
+	return s.conn.GetState()
 }
 
 func (s *singboxStatsService) Close() error {

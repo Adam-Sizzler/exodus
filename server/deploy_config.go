@@ -55,11 +55,11 @@ type DeploySummary struct {
 	Outbounds             int
 	Users                 int
 	Restarted             bool
-	ReloadError           string
 	ForceRestart          bool
 	ConfigChanged         bool
 	HaproxyUsersChanged   bool
 	SRSDownloadedOnDeploy bool
+	ReloadError           string
 }
 
 // DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and restarts core if requested.
@@ -158,7 +158,7 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 			}
 			if err := reloadCoreProcess(s.Cfg); err != nil {
 				reloadError = err.Error()
-				s.Cfg.Logger.Error("Core reload failed; config was saved and node stays online", "error", err)
+				s.Cfg.Logger.Error("Core reload failed after config deploy; keeping node alive", "error", err)
 			} else {
 				restarted = true
 			}
@@ -176,11 +176,11 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		Outbounds:             len(summary.Outbounds),
 		Users:                 len(summary.Users),
 		Restarted:             restarted,
-		ReloadError:           reloadError,
 		ForceRestart:          forceRestart,
 		ConfigChanged:         configChanged,
 		HaproxyUsersChanged:   haproxyUsersChanged,
 		SRSDownloadedOnDeploy: srsDownloadedOnDeploy,
+		ReloadError:           reloadError,
 	}, nil
 }
 
