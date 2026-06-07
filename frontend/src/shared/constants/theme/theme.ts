@@ -27,17 +27,29 @@ export const theme = createTheme({
     white: '#ffffff',
     black: '#24292f',
     colors: {
-        exodus: [
-            '#eef3f5',
-            '#d6e0e3',
-            '#b5c5cb',
-            '#91a7af',
-            '#6f8992',
-            '#526b74',
-            '#36474f',
-            '#2d3b42',
-            '#243037',
-            '#1b252a'
+        'exodus-logo-exo': [
+            '#fcfcf9',
+            '#f9f9f3',
+            '#f6f6ee',
+            '#f3f4e9',
+            '#f1f2e4',
+            '#eeefdf',
+            '#eceddb',
+            '#d0d1c1',
+            '#b3b4a6',
+            '#97988c'
+        ],
+        'exodus-logo-dus': [
+            '#e8ecee',
+            '#d7dde2',
+            '#c3ccd3',
+            '#b1bdc6',
+            '#a0b0ba',
+            '#90a2ae',
+            '#8195a3',
+            '#72838f',
+            '#62717c',
+            '#535f68'
         ],
 
         dark: [

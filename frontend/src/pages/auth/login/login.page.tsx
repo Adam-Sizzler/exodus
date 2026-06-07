@@ -105,8 +105,8 @@ export const LoginPage = () => {
         }
 
         return [
-            { text: 'Exo', color: 'exodus.6' },
-            { text: 'dus', color: 'white' }
+            { text: 'Exo', color: 'exodus-logo-exo.6' },
+            { text: 'dus', color: 'exodus-logo-dus.6' }
         ]
     }, [authStatus?.branding.title])
 
