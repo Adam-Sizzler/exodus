@@ -247,7 +247,7 @@ function SRSListCard(props: {
                                     color={stateColor}
                                     size="lg"
                                     style={{ cursor: 'default', flexShrink: 0 }}
-                                    variant="light"
+                                    variant="soft"
                                 >
                                     {stateIcon}
                                 </ActionIcon>
@@ -608,7 +608,7 @@ export function SRSListsPageComponent(props: Props) {
                                             loading={isChecking}
                                             onClick={() => checkLists({ variables: {} })}
                                             size="input-md"
-                                            variant="light"
+                                            variant="soft"
                                         >
                                             <TbRefresh size="24px" />
                                         </ActionIcon>
@@ -628,7 +628,7 @@ export function SRSListsPageComponent(props: Props) {
                                             loading={isSyncing}
                                             onClick={() => syncSRSLists({ variables: {} })}
                                             size="input-md"
-                                            variant="light"
+                                            variant="soft"
                                         >
                                             <SRSSyncIcon />
                                         </ActionIcon>
@@ -644,7 +644,7 @@ export function SRSListsPageComponent(props: Props) {
                                             color="teal"
                                             onClick={handlers.open}
                                             size="input-md"
-                                            variant="light"
+                                            variant="soft"
                                         >
                                             <TbPlus size="24px" />
                                         </ActionIcon>
@@ -664,7 +664,7 @@ export function SRSListsPageComponent(props: Props) {
                             <Accordion.Item value="filters">
                                 <Accordion.Control component="a">
                                     <Group align="center" gap="md" wrap="nowrap">
-                                        <ActionIcon color="gray" size="input-sm" variant="light">
+                                        <ActionIcon color="gray" size="input-sm" variant="soft">
                                             <HiFilter size={20} />
                                         </ActionIcon>
                                         <Title fw={500} fz="md" order={4}>

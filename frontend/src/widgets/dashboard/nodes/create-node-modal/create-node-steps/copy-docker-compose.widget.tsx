@@ -67,18 +67,18 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema }: IProps) =>
                 })}
             </Text>
 
-            <Badge color="teal" variant="light">
+            <Badge color="teal" variant="soft">
                 {apiSchema === 'tls' ? 'gRPC + TLS + token' : 'gRPC + mTLS'}
             </Badge>
-            <Badge color="gray" variant="light">
+            <Badge color="gray" variant="soft">
                 NODE_GRPC_PATH={grpcPath}
             </Badge>
             {apiSchema === 'tls' ? (
-                <Badge color="gray" variant="light">
+                <Badge color="gray" variant="soft">
                     NODE_GRPC_TOKEN={normalizedToken}
                 </Badge>
             ) : (
-                <Badge color="gray" variant="light">
+                <Badge color="gray" variant="soft">
                     SECRET_KEY=...
                 </Badge>
             )}
@@ -90,7 +90,7 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema }: IProps) =>
                         leftSection={copied ? <PiCheck size={18} /> : <SiDocker size={18} />}
                         onClick={copy}
                         size="md"
-                        variant="light"
+                        variant="soft"
                     >
                         {t('copy-docker-compose.widget.copy-docker-compose-yml')}
                     </Button>

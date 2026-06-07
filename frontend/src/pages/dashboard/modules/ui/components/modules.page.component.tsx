@@ -125,7 +125,7 @@ export default function ModulesPageComponent() {
         <Page title={text.pageTitle}>
             <PageHeaderShared
                 icon={
-                    <ThemeIcon color="dark" size="lg" variant="light">
+                    <ThemeIcon color="dark" size="lg" variant="soft">
                         <TbPackages size={20} />
                     </ThemeIcon>
                 }
@@ -137,7 +137,7 @@ export default function ModulesPageComponent() {
                     <SettingsCardShared.Header
                         description={text.cardDescription}
                         icon={
-                            <ThemeIcon color="dark" size="lg" variant="light">
+                            <ThemeIcon color="dark" size="lg" variant="soft">
                                 <TbPackages size={20} />
                             </ThemeIcon>
                         }

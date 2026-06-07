@@ -302,7 +302,7 @@ export const SubpageConfigEditorPageComponent = (props: Props) => {
                             color="gray"
                             onClick={() => navigate(ROUTES.DASHBOARD.SUBPAGE_CONFIGS.ROOT)}
                             size="input-md"
-                            variant="light"
+                            variant="soft"
                         >
                             <TbArrowBackUp size={24} />
                         </ActionIcon>

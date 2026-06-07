@@ -26,7 +26,7 @@ export function NodePluginEditorPageComponent(props: IProps) {
                             href="https://docs.rw/docs/learn/node-plugins"
                             size="input-md"
                             target="_blank"
-                            variant="light"
+                            variant="soft"
                         >
                             <TbBook size={24} />
                         </ActionIcon>
@@ -35,7 +35,7 @@ export function NodePluginEditorPageComponent(props: IProps) {
                             color="gray"
                             onClick={() => navigate(ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT)}
                             size="input-md"
-                            variant="light"
+                            variant="soft"
                         >
                             <TbArrowBackUp size={24} />
                         </ActionIcon>

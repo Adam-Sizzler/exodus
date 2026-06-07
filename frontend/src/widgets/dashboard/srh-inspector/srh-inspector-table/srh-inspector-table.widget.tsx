@@ -156,7 +156,7 @@ export function SrhInspectorTableWidget() {
                             userModalActions.changeModalState(true)
                         }}
                         size="input-sm"
-                        variant="light"
+                        variant="soft"
                     >
                         <PiUserCircle size="1.5rem" />
                     </ActionIcon>
@@ -166,7 +166,7 @@ export function SrhInspectorTableWidget() {
                             window.open(`https://ipinfo.io/${row.original.requestIp}`, '_blank')
                         }}
                         size="input-sm"
-                        variant="light"
+                        variant="soft"
                     >
                         <TbExternalLink size="1.5rem" />
                     </ActionIcon>

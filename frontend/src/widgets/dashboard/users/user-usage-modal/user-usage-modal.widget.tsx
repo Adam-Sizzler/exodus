@@ -204,7 +204,7 @@ export const UserUsageModalWidget = (props: IProps) => {
                         loading={isRefetching}
                         onClick={() => refetch()}
                         size="input-md"
-                        variant="light"
+                        variant="soft"
                     >
                         <TbRefresh size="24px" />
                     </ActionIcon>

@@ -387,7 +387,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                         <BaseOverlayHeader
                             iconColor="violet"
                             IconComponent={TbServer2}
-                            iconVariant="light"
+                            iconVariant="soft"
                             subtitle={`${selectedNodeUuids.size} selected`}
                             title={t('constants.nodes')}
                             titleOrder={5}

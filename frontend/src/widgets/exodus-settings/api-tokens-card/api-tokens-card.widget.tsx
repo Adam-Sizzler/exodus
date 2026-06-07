@@ -107,7 +107,7 @@ export const ApiTokensCardWidget = (props: IProps) => {
                                 loading={isRefetching}
                                 onClick={() => refetch()}
                                 size="input-md"
-                                variant="light"
+                                variant="soft"
                             >
                                 <TbRefresh size={24} />
                             </ActionIcon>

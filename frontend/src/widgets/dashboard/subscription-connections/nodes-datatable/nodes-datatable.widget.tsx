@@ -74,7 +74,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
                     <Text c="dimmed" size="sm">
                         {t('infra-billing-nodes.widget.no-nodes-found')}
                     </Text>
-                    <Button style={{ pointerEvents: 'all' }} variant="light">
+                    <Button style={{ pointerEvents: 'all' }} variant="soft">
                         {t('infra-billing-nodes.widget.add-a-node')}
                     </Button>
                 </Stack>

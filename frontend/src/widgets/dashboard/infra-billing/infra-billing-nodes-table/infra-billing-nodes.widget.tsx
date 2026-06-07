@@ -178,7 +178,7 @@ export function InfraBillingNodesTableWidget() {
                                         clearMultiSelectedRecords()
                                     }}
                                     size="input-md"
-                                    variant="light"
+                                    variant="soft"
                                 >
                                     <TbRefresh size="24px" />
                                 </ActionIcon>
@@ -196,7 +196,7 @@ export function InfraBillingNodesTableWidget() {
                                         )
                                     }}
                                     size="input-md"
-                                    variant="light"
+                                    variant="soft"
                                 >
                                     <TbPlus size="24px" />
                                 </ActionIcon>
