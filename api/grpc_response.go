@@ -18,8 +18,6 @@ import (
 	"exodus-node/constant"
 	"exodus-node/sdk"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // Stat represents a single statistic entry.
@@ -116,47 +114,67 @@ func (s *Service) Close() error {
 	return s.api.Close()
 }
 
-// GetApiResponse retrieves statistics from the configured core Stats API.
+// GetApiResponse retrieves node statistics. Core/sing-box errors are reported as
+// regular stats instead of RPC failures so the node stays reachable and can keep
+// accepting recovery commands from the panel even when the core is down.
 func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
-	if s == nil || s.api == nil || s.api.Stats == nil {
-		return nil, status.Error(codes.FailedPrecondition, "core SDK is not initialized")
-	}
-
-	stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{
-		Patterns: []string{
-			`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-			`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-			`^user>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-		},
-		Regexp: true,
-		Reset:  true,
-	})
-	if err != nil {
-		s.cfg.Logger.Error("Failed to execute core stats query", "error", err, "core_type", config.FixedCoreType)
-		return nil, fmt.Errorf("query core stats: %w", err)
+	if s == nil {
+		return nil, fmt.Errorf("api service is nil")
 	}
 
 	result := &ApiResponse{
-		Stat: make([]Stat, 0, len(stats)),
-	}
-	for _, item := range stats {
-		s.cfg.Logger.Trace("Processing core stat", "name", item.Name, "value", item.Value, "core_type", config.FixedCoreType)
-		result.Stat = append(result.Stat, Stat{
-			Name:  item.Name,
-			Value: strconv.FormatInt(item.Value, 10),
-		})
+		Stat: make([]Stat, 0, 32),
 	}
 
+	coreStatus := "ok"
+	coreError := ""
 	singboxUptimeSeconds := int64(0)
-	sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
-	if sysErr != nil {
-		s.cfg.Logger.Warn("Failed to read core sys stats", "error", sysErr, "core_type", config.FixedCoreType)
-	} else if sysStats != nil {
-		singboxUptimeSeconds = int64(sysStats.Uptime)
+
+	if s.api == nil || s.api.Stats == nil {
+		coreStatus = "error"
+		coreError = "core SDK is not initialized"
+		s.cfg.Logger.Error("Core SDK is not initialized", "core_type", config.FixedCoreType)
+	} else {
+		stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{
+			Patterns: []string{
+				`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+				`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+				`^user>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+			},
+			Regexp: true,
+			Reset:  true,
+		})
+		if err != nil {
+			coreStatus = "error"
+			coreError = fmt.Sprintf("query core stats: %v", err)
+			s.cfg.Logger.Error("Failed to execute core stats query", "error", err, "core_type", config.FixedCoreType)
+		} else {
+			for _, item := range stats {
+				s.cfg.Logger.Trace("Processing core stat", "name", item.Name, "value", item.Value, "core_type", config.FixedCoreType)
+				result.Stat = append(result.Stat, Stat{
+					Name:  item.Name,
+					Value: strconv.FormatInt(item.Value, 10),
+				})
+			}
+		}
+
+		sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
+		if sysErr != nil {
+			if coreError == "" {
+				coreStatus = "error"
+				coreError = fmt.Sprintf("read core sys stats: %v", sysErr)
+			}
+			s.cfg.Logger.Warn("Failed to read core sys stats", "error", sysErr, "core_type", config.FixedCoreType)
+		} else if sysStats != nil {
+			singboxUptimeSeconds = int64(sysStats.Uptime)
+		}
 	}
 
-	// Runtime metadata consumed by backend node monitor.
+	// Runtime metadata consumed by backend node monitor. These are always returned,
+	// even when the local core is unavailable.
 	result.Stat = append(result.Stat,
+		Stat{Name: "core_status", Value: coreStatus},
+		Stat{Name: "core_error", Value: coreError},
 		Stat{Name: "singbox_version", Value: s.singboxVersion},
 		Stat{Name: "node_version", Value: s.nodeVersion},
 		Stat{Name: "singbox_uptime", Value: strconv.FormatInt(singboxUptimeSeconds, 10)},
@@ -172,7 +190,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			Stat{Name: "system_stats", Value: statsJSON},
 		)
 	}
-	s.cfg.Logger.Debug("Retrieved core stats", "count", len(result.Stat), "core_type", config.FixedCoreType)
+	s.cfg.Logger.Debug("Retrieved node stats", "count", len(result.Stat), "core_type", config.FixedCoreType, "core_status", coreStatus)
 
 	return result, nil
 }

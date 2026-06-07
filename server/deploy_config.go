@@ -55,6 +55,7 @@ type DeploySummary struct {
 	Outbounds             int
 	Users                 int
 	Restarted             bool
+	ReloadError           string
 	ForceRestart          bool
 	ConfigChanged         bool
 	HaproxyUsersChanged   bool
@@ -147,6 +148,7 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 	forceRestart := task.forceRestartRequested()
 
 	restarted := false
+	reloadError := ""
 	if shouldRestart {
 		if shouldReloadCore(task, configChanged) {
 			if forceRestart && !configChanged {
@@ -155,9 +157,11 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 				s.Cfg.Logger.Info("Core reload requested by deploy payload")
 			}
 			if err := reloadCoreProcess(s.Cfg); err != nil {
-				return DeploySummary{}, err
+				reloadError = err.Error()
+				s.Cfg.Logger.Error("Core reload failed; config was saved and node stays online", "error", err)
+			} else {
+				restarted = true
 			}
-			restarted = true
 		} else {
 			s.Cfg.Logger.Info("Core reload skipped: config is unchanged")
 		}
@@ -172,6 +176,7 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		Outbounds:             len(summary.Outbounds),
 		Users:                 len(summary.Users),
 		Restarted:             restarted,
+		ReloadError:           reloadError,
 		ForceRestart:          forceRestart,
 		ConfigChanged:         configChanged,
 		HaproxyUsersChanged:   haproxyUsersChanged,

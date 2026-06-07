@@ -8,8 +8,6 @@ import (
 	"exodus-node/config"
 	"exodus-node/proto"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // NodeServer implements the NodeService gRPC service.
@@ -30,8 +28,10 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 
 	apiService, err := api.NewService(cfg)
 	if err != nil {
-		cfg.Logger.Error("Failed to initialize core API service", "error", err)
-		return nil, fmt.Errorf("initialize core API service: %w", err)
+		// The node must stay online even if the local core API is unavailable.
+		// A broken sing-box config should not make the management gRPC server exit,
+		// otherwise the panel cannot push a fixed config.
+		cfg.Logger.Error("Failed to initialize core API service; continuing in degraded mode", "error", err)
 	}
 
 	nodeServer := &NodeServer{
@@ -53,10 +53,27 @@ func (s *NodeServer) Close() error {
 // GetApiStats retrieves API statistics from the node.
 func (s *NodeServer) GetApiStats(ctx context.Context, req *proto.GetApiStatsRequest) (*proto.GetApiStatsResponse, error) {
 	s.Cfg.Logger.Debug("Received GetApiStats request")
+	if s.apiService == nil {
+		s.Cfg.Logger.Error("API service is not initialized; returning degraded stats")
+		return &proto.GetApiStatsResponse{
+			Stats: []*proto.Stat{
+				{Name: "core_status", Value: "error"},
+				{Name: "core_error", Value: "api service is not initialized"},
+			},
+		}, nil
+	}
+
 	apiData, err := s.apiService.GetApiResponse(ctx)
 	if err != nil {
-		s.Cfg.Logger.Error("Failed to get API response", "error", err)
-		return nil, status.Errorf(codes.Internal, "failed to get API response: %v", err)
+		// Keep the RPC successful for temporary/local core failures. The panel can
+		// display core_status/core_error and still send SubmitTask(deploy_config).
+		s.Cfg.Logger.Error("Failed to get API response; returning degraded stats", "error", err)
+		return &proto.GetApiStatsResponse{
+			Stats: []*proto.Stat{
+				{Name: "core_status", Value: "error"},
+				{Name: "core_error", Value: err.Error()},
+			},
+		}, nil
 	}
 
 	response := &proto.GetApiStatsResponse{}

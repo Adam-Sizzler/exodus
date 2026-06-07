@@ -77,21 +77,26 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 			}, nil
 		}
 
+		message := fmt.Sprintf(
+			"success: config_path=%s listen=%s inbounds=%d outbounds=%d users=%d restarted=%t force_restart=%t config_changed=%t haproxy_users_changed=%t srs_downloaded_on_deploy=%t",
+			summary.ConfigPath,
+			summary.Listen,
+			summary.Inbounds,
+			summary.Outbounds,
+			summary.Users,
+			summary.Restarted,
+			summary.ForceRestart,
+			summary.ConfigChanged,
+			summary.HaproxyUsersChanged,
+			summary.SRSDownloadedOnDeploy,
+		)
+		if summary.ReloadError != "" {
+			message += fmt.Sprintf(" reload_error=%q", summary.ReloadError)
+		}
+
 		return &rpcstatus.Status{
-			Code: int32(codes.OK),
-			Message: fmt.Sprintf(
-				"success: config_path=%s listen=%s inbounds=%d outbounds=%d users=%d restarted=%t force_restart=%t config_changed=%t haproxy_users_changed=%t srs_downloaded_on_deploy=%t",
-				summary.ConfigPath,
-				summary.Listen,
-				summary.Inbounds,
-				summary.Outbounds,
-				summary.Users,
-				summary.Restarted,
-				summary.ForceRestart,
-				summary.ConfigChanged,
-				summary.HaproxyUsersChanged,
-				summary.SRSDownloadedOnDeploy,
-			),
+			Code:    int32(codes.OK),
+			Message: message,
 		}, nil
 	case taskOperationSyncSRSLists:
 		var payload struct {

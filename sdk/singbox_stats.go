@@ -17,14 +17,14 @@ type singboxStatsService struct {
 }
 
 func newSingboxStatsService(cfg Config) (*singboxStatsService, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
-	defer cancel()
-
+	// Do not block node startup on the local core API. sing-box can be down while
+	// the node is still useful for receiving a fixed config from the panel. The
+	// connection will be established lazily by gRPC, and per-request calls below
+	// will report temporary core errors without killing the node process.
 	conn, err := grpc.DialContext(
-		ctx,
+		context.Background(),
 		cfg.target(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		return nil, err

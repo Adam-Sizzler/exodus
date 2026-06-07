@@ -6,8 +6,6 @@ import (
 
 	"exodus-node/proto"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const defaultStreamInterval = 20 * time.Second
@@ -74,25 +72,26 @@ func (s *NodeServer) sendStreamStats(
 	ticker := time.NewTicker(defaultStreamInterval)
 	defer ticker.Stop()
 
-	consecutiveStatsErrors := 0
 	for {
 		stats, err := s.GetApiStats(stream.Context(), &proto.GetApiStatsRequest{})
 		if err != nil {
-			consecutiveStatsErrors++
-			s.Cfg.Logger.Error("Failed to collect stats for stream", "error", err)
-			if consecutiveStatsErrors >= 3 {
-				diagnostic := s.diagnoseCoreFailure(stream.Context(), err)
-				sendErrCh <- status.Error(codes.Internal, diagnostic)
-				return
+			// Do not tear down the stream because of local core/stat failures. Closing
+			// the stream can make the panel mark the node as dead while the node is
+			// actually still able to receive recovery tasks.
+			s.Cfg.Logger.Error("Failed to collect stats for stream; sending degraded stats", "error", err)
+			stats = &proto.GetApiStatsResponse{
+				Stats: []*proto.Stat{
+					{Name: "core_status", Value: "error"},
+					{Name: "core_error", Value: err.Error()},
+				},
 			}
-		} else {
-			consecutiveStatsErrors = 0
-			if err := stream.Send(&proto.NodeDataResponse{
-				Response: &proto.NodeDataResponse_Stats{Stats: stats},
-			}); err != nil {
-				sendErrCh <- err
-				return
-			}
+		}
+
+		if err := stream.Send(&proto.NodeDataResponse{
+			Response: &proto.NodeDataResponse_Stats{Stats: stats},
+		}); err != nil {
+			sendErrCh <- err
+			return
 		}
 
 		select {
