@@ -22,7 +22,7 @@ const GetNodeLinkedHostsFeatureComponent = (props: IProps) => {
     if (renderAs === 'action') {
         return (
             <Tooltip label={label} withArrow>
-                <ActionIcon color="cyan" onClick={handleOpen} size="md" variant="light">
+                <ActionIcon color="cyan" onClick={handleOpen} size="md" variant="soft">
                     <TbServerCog size="16px" />
                 </ActionIcon>
             </Tooltip>

@@ -27,7 +27,7 @@ export const NodePluginExecutorDrawer = () => {
                 <BaseOverlayHeader
                     themeIconProps={{ color: 'cyan' }}
                     IconComponent={TbTerminal}
-                    iconVariant="light"
+                    iconVariant="soft"
                     title="Executor"
                 />
             }

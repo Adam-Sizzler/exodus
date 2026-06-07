@@ -43,21 +43,21 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
             IconComponent: TbUsers,
             title: t('nodes-quick-stats.widget.users-online'),
             value: nodes?.reduce((acc, curr) => acc + (curr.usersOnline ?? 0), 0) ?? 0,
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'cyan'
         },
         {
             IconComponent: PiPulse,
             title: t('nodes-quick-stats.widget.online-nodes'),
             value: nodes?.filter((node) => node.isConnected).length ?? 0,
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'teal'
         },
         {
             IconComponent: PiWarningCircle,
             title: t('nodes-quick-stats.widget.offline-nodes'),
             value: nodes?.filter((node) => !node.isConnected).length ?? 0,
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'red'
         },
         {
@@ -67,14 +67,14 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
                 nodes?.reduce((acc, curr) => acc + (curr.trafficUsedBytes ?? 0), 0) ?? 0,
                 true
             ),
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'cyan'
         },
         {
             IconComponent: PiArrowDownDuotone,
             title: t('nodes-realtime-metrics.widget.download-speed'),
             value: prettySiRealtimeBytesUtil(aggregated?.rxSpeed ?? 0, true, true) || '0 B/s',
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'teal',
             subtitle: t('node-system-card.widget.interface')
         },
@@ -82,7 +82,7 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
             IconComponent: PiArrowUpDuotone,
             title: t('nodes-realtime-metrics.widget.upload-speed'),
             value: prettySiRealtimeBytesUtil(aggregated?.txSpeed ?? 0, true, true) || '0 B/s',
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'indigo',
             subtitle: t('node-system-card.widget.interface')
         },
@@ -90,7 +90,7 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
             IconComponent: PiArrowDownDuotone,
             title: t('nodes-realtime-metrics.widget.download-total'),
             value: prettySiBytesUtil(aggregated?.rxTotal ?? 0, true) || '0 B',
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'teal',
             subtitle: t('node-system-card.widget.interface')
         },
@@ -98,7 +98,7 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
             IconComponent: TbServer2,
             title: t('nodes-realtime-metrics.widget.ram-usage'),
             value: prettyBytesToAnyUtil(aggregated?.memoryUsed ?? 0, true) || '0 B',
-            iconVariant: 'light',
+            iconVariant: 'soft',
             iconColor: 'indigo',
             subtitle: t('nodes-realtime-metrics.widget.for-all-nodes')
         }

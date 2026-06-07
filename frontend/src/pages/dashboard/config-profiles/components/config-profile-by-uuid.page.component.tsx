@@ -43,7 +43,7 @@ export const ConfigProfileByUuidPageComponent = (props: Props) => {
                                     navigate(ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES)
                                 }
                                 size="input-md"
-                                variant="light"
+                                variant="soft"
                             >
                                 <TbArrowBackUp size={24} />
                             </ActionIcon>

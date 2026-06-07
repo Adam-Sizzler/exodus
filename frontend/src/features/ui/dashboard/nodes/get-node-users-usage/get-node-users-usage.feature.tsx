@@ -22,7 +22,7 @@ const GetNodeUsersUsageFeatureComponent = (props: IProps) => {
     if (renderAs === 'action') {
         return (
             <Tooltip label={label} withArrow>
-                <ActionIcon color="grape" onClick={handleOpen} size="md" variant="light">
+                <ActionIcon color="grape" onClick={handleOpen} size="md" variant="soft">
                     <PiChartBarDuotone size="16px" />
                 </ActionIcon>
             </Tooltip>

@@ -81,13 +81,13 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                             themeIconProps={{ color: 'violet' }}
                             IconComponent={PiDesktopTowerDuotone}
                             iconSize={20}
-                            iconVariant="light"
+                            iconVariant="soft"
                             title={t('node-system-card.widget.system-info')}
                             titleOrder={5}
                         />
 
                         <Group gap="xs">
-                            <Badge color="violet" ff="monospace" size="sm" variant="light">
+                            <Badge color="violet" ff="monospace" size="sm" variant="soft">
                                 {info.platform} / {info.arch}
                             </Badge>
                             <Badge
@@ -138,7 +138,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                                     <Text c="dimmed" fw={600} lh={1} size="10px" tt="uppercase">
                                         {t('node-system-card.widget.interface')}
                                     </Text>
-                                    <Badge color="cyan" ff="monospace" size="xs" variant="light">
+                                    <Badge color="cyan" ff="monospace" size="xs" variant="soft">
                                         {interfaceData.name}
                                     </Badge>
                                 </Group>

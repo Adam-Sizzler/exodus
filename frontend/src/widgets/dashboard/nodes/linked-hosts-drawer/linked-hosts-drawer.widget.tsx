@@ -112,7 +112,7 @@ export const LinkedHostsDrawer = memo(() => {
                                             color="gray"
                                             size="md"
                                             style={{ flexShrink: 0 }}
-                                            variant="light"
+                                            variant="soft"
                                         >
                                             <PiProhibit size={16} />
                                         </ActionIcon>
@@ -123,7 +123,7 @@ export const LinkedHostsDrawer = memo(() => {
                                             color="violet"
                                             size="md"
                                             style={{ flexShrink: 0 }}
-                                            variant="light"
+                                            variant="soft"
                                         >
                                             <TbEyeOff size={16} />
                                         </ActionIcon>
@@ -134,7 +134,7 @@ export const LinkedHostsDrawer = memo(() => {
                                             color="teal"
                                             size="md"
                                             style={{ flexShrink: 0 }}
-                                            variant="light"
+                                            variant="soft"
                                         >
                                             <PiPulse size={16} />
                                         </ActionIcon>

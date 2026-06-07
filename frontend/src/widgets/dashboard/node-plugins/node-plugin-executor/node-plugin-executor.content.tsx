@@ -234,7 +234,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             <BaseOverlayHeader
                                 iconColor="orange"
                                 IconComponent={TbAlertTriangle}
-                                iconVariant="light"
+                                iconVariant="soft"
                                 subtitle={tr(
                                     'node-plugin-executor.content.executor-description',
                                     'Execute plugin maintenance commands on selected online nodes.'
@@ -257,7 +257,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             iconColor="red"
                             onClick={() => selectCommand('blockIps')}
                             title={tr('node-plugin-executor.content.block-ips', 'Block IPs')}
-                            variant="light"
+                            variant="soft"
                         />
                         <ActionCardShared
                             description={t(
@@ -270,7 +270,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             iconColor="teal"
                             onClick={() => selectCommand('unblockIps')}
                             title={tr('node-plugin-executor.content.unblock-ips', 'Unblock IPs')}
-                            variant="light"
+                            variant="soft"
                         />
                         <ActionCardShared
                             description={t(
@@ -286,7 +286,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                                 'node-plugin-executor.content.recreate-tables',
                                 'Recreate Tables'
                             )}
-                            variant="light"
+                            variant="soft"
                         />
                     </Stack>
                 </Stack>
@@ -305,7 +305,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             <BaseOverlayHeader
                                 iconColor={isBlock ? 'cyan' : 'teal'}
                                 IconComponent={isBlock ? TbLock : TbLockOpen}
-                                iconVariant="light"
+                                iconVariant="soft"
                                 subtitle={
                                     isBlock
                                         ? tr(

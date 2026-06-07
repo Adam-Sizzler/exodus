@@ -156,7 +156,7 @@ export function ConfigProfileCardWidget(props: IProps) {
                                     }}
                                     size="lg"
                                     style={{ cursor: 'pointer' }}
-                                    variant="light"
+                                    variant="soft"
                                 >
                                     {formatInt(inboundsCount, {
                                         thousandSeparator: ','
@@ -178,7 +178,7 @@ export function ConfigProfileCardWidget(props: IProps) {
                                     style={{
                                         cursor: 'pointer'
                                     }}
-                                    variant="light"
+                                    variant="soft"
                                 >
                                     {formatInt(nodesCount, {
                                         thousandSeparator: ','
