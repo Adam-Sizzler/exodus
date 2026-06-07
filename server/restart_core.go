@@ -1,68 +1,348 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"html"
+	"io"
+	"net"
+	"net/http"
 	"os"
-	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
+	"exodus-node/api"
 	"exodus-node/config"
 )
 
-func reloadCoreProcess(cfg *config.NodeConfig) error {
-	cfg.Logger.Debug("Reloading sing-box via supervisorctl")
+const (
+	coreProcessName         = "singbox"
+	coreHealthcheckAttempts = 10
+	coreHealthcheckInterval = 2 * time.Second
+	supervisorCallTimeout   = 25 * time.Second
+)
 
-	if out, err := runSupervisorctl(cfg, 20*time.Second, "signal", "HUP", "singbox"); err == nil {
-		cfg.Logger.Info("Core reloaded via supervisorctl signal HUP", "output", out)
-		return nil
-	} else {
-		cfg.Logger.Warn("Core HUP reload failed, trying restart", "error", err, "output", out)
-	}
+type supervisorProcessInfo struct {
+	Name        string
+	StateName   string
+	Description string
+}
 
-	if out, err := runSupervisorctl(cfg, 45*time.Second, "restart", "singbox"); err == nil {
-		cfg.Logger.Info("Core restarted via supervisorctl restart", "output", out)
-		return nil
-	} else {
-		cfg.Logger.Warn("Core restart failed, trying start", "error", err, "output", out)
-	}
-
-	if out, err := runSupervisorctl(cfg, 30*time.Second, "start", "singbox"); err == nil {
-		cfg.Logger.Info("Core started via supervisorctl start", "output", out)
-		return nil
-	} else {
-		cfg.Logger.Error("Core start failed", "error", err, "output", out)
-		return fmt.Errorf("reload singbox failed: %w: %s", err, out)
+type supervisorClient struct {
+	socketPath string
+	username   string
+	password   string
+	httpClient *http.Client
+	logger     interface {
+		Trace(string, ...any)
+		Debug(string, ...any)
+		Warn(string, ...any)
 	}
 }
 
-func runSupervisorctl(cfg *config.NodeConfig, timeout time.Duration, command ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+type coreLifecycleResult struct {
+	ProcessBefore string
+	ProcessAfter  string
+	Started       bool
+	Ready         bool
+	ConfigValid   bool
+	Error         string
+}
+
+func (r coreLifecycleResult) failed() bool {
+	return strings.TrimSpace(r.Error) != ""
+}
+
+func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service) coreLifecycleResult {
+	result := coreLifecycleResult{ConfigValid: true}
+	if cfg == nil || cfg.Logger == nil {
+		result.Error = "node config/logger is nil"
+		return result
+	}
+
+	cfg.Logger.Info("Starting managed core lifecycle", "process", coreProcessName, "config", config.FixedSingboxConfigPath)
+	cfg.Logger.Trace("Validating sing-box config before supervisor start", "config", config.FixedSingboxConfigPath)
+
+	checkCtx, checkCancel := context.WithTimeout(ctx, 15*time.Second)
+	checkOutput, checkErr := runSingboxCheck(checkCtx)
+	checkCancel()
+	if checkErr != nil {
+		result.ConfigValid = false
+		result.Error = fmt.Sprintf("sing-box config validation failed: %v", checkErr)
+		cfg.Logger.Error("Core lifecycle aborted: invalid sing-box config", "error", checkErr, "output", strings.TrimSpace(checkOutput))
+		return result
+	}
+	cfg.Logger.Debug("Sing-box config validation passed", "output", strings.TrimSpace(checkOutput))
+
+	supervisor, err := newSupervisorClient(cfg)
+	if err != nil {
+		result.Error = fmt.Sprintf("create supervisor client: %v", err)
+		cfg.Logger.Error("Core lifecycle failed before supervisor call", "error", err)
+		return result
+	}
+
+	before, err := supervisor.GetProcessInfo(ctx, coreProcessName)
+	if err != nil {
+		result.Error = fmt.Sprintf("get supervisor process info: %v", err)
+		cfg.Logger.Error("Core lifecycle failed before start", "error", err)
+		return result
+	}
+	result.ProcessBefore = before.StateName
+	cfg.Logger.Debug("Core supervisor state before start", "state", before.StateName, "description", before.Description)
+
+	if shouldStopBeforeStart(before.StateName) {
+		cfg.Logger.Info("Stopping existing core process before managed start", "state", before.StateName)
+		if err := supervisor.StopProcess(ctx, coreProcessName, true); err != nil {
+			if isSupervisorAlreadyStoppedError(err) {
+				cfg.Logger.Debug("Core process was already stopped", "error", err)
+			} else {
+				result.Error = fmt.Sprintf("stop %s: %v", coreProcessName, err)
+				cfg.Logger.Error("Core lifecycle failed while stopping process", "error", err)
+				return result
+			}
+		} else {
+			cfg.Logger.Info("Core process stopped")
+		}
+	} else {
+		cfg.Logger.Debug("Core stop skipped before start", "state", before.StateName)
+	}
+
+	cfg.Logger.Info("Starting core process through supervisor", "process", coreProcessName)
+	if err := supervisor.StartProcess(ctx, coreProcessName, true); err != nil {
+		if isSupervisorAlreadyStartedError(err) {
+			cfg.Logger.Debug("Core process was already started", "error", err)
+		} else {
+			result.Error = fmt.Sprintf("start %s: %v", coreProcessName, err)
+			cfg.Logger.Error("Core lifecycle failed while starting process", "error", err)
+			if after, infoErr := supervisor.GetProcessInfo(ctx, coreProcessName); infoErr == nil {
+				result.ProcessAfter = after.StateName
+			}
+			return result
+		}
+	}
+	result.Started = true
+	cfg.Logger.Info("Core process start command accepted")
+
+	after, err := supervisor.GetProcessInfo(ctx, coreProcessName)
+	if err != nil {
+		result.Error = fmt.Sprintf("get supervisor process info after start: %v", err)
+		cfg.Logger.Error("Core lifecycle failed after start", "error", err)
+		return result
+	}
+	result.ProcessAfter = after.StateName
+	cfg.Logger.Debug("Core supervisor state after start", "state", after.StateName, "description", after.Description)
+
+	if !isSupervisorRunningState(after.StateName) && !strings.EqualFold(after.StateName, "STARTING") {
+		result.Error = fmt.Sprintf("core supervisor state is %s: %s", after.StateName, after.Description)
+		cfg.Logger.Error("Core process is not running after supervisor start", "state", after.StateName, "description", after.Description)
+		return result
+	}
+
+	if err := waitForCoreAPIReady(ctx, cfg, apiService); err != nil {
+		result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
+		cfg.Logger.Error("Core lifecycle finished with unhealthy core API", "error", err, "state", after.StateName)
+		return result
+	}
+
+	result.Ready = true
+	cfg.Logger.Info("Core lifecycle completed successfully", "process", coreProcessName, "state", result.ProcessAfter)
+	return result
+}
+
+func newSupervisorClient(cfg *config.NodeConfig) (*supervisorClient, error) {
+	socketPath := strings.TrimSpace(os.Getenv("SUPERVISORD_SOCKET_PATH"))
+	if socketPath == "" {
+		return nil, fmt.Errorf("SUPERVISORD_SOCKET_PATH is empty")
+	}
+	client := &supervisorClient{
+		socketPath: socketPath,
+		username:   strings.TrimSpace(os.Getenv("SUPERVISORD_USER")),
+		password:   strings.TrimSpace(os.Getenv("SUPERVISORD_PASSWORD")),
+		logger:     cfg.Logger,
+	}
+	client.httpClient = &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", client.socketPath)
+			},
+		},
+		Timeout: supervisorCallTimeout,
+	}
+	return client, nil
+}
+
+func (c *supervisorClient) GetProcessInfo(ctx context.Context, name string) (supervisorProcessInfo, error) {
+	body, err := c.call(ctx, "supervisor.getProcessInfo", xmlRPCStringParam(name))
+	if err != nil {
+		return supervisorProcessInfo{}, err
+	}
+	return supervisorProcessInfo{
+		Name:        firstNonEmptyXMLMember(body, "name"),
+		StateName:   strings.ToUpper(firstNonEmptyXMLMember(body, "statename")),
+		Description: firstNonEmptyXMLMember(body, "description"),
+	}, nil
+}
+
+func (c *supervisorClient) StartProcess(ctx context.Context, name string, wait bool) error {
+	_, err := c.call(ctx, "supervisor.startProcess", xmlRPCStringParam(name), xmlRPCBoolParam(wait))
+	return err
+}
+
+func (c *supervisorClient) StopProcess(ctx context.Context, name string, wait bool) error {
+	_, err := c.call(ctx, "supervisor.stopProcess", xmlRPCStringParam(name), xmlRPCBoolParam(wait))
+	return err
+}
+
+func (c *supervisorClient) call(ctx context.Context, method string, params ...string) (string, error) {
+	if c.logger != nil {
+		c.logger.Trace("Calling supervisor XML-RPC", "method", method, "socket", c.socketPath)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, supervisorCallTimeout)
 	defer cancel()
 
-	args := supervisorctlArgs(command...)
-	cfg.Logger.Trace("Executing supervisorctl", "args", strings.Join(args, " "))
-
-	out, err := exec.CommandContext(ctx, "supervisorctl", args...).CombinedOutput()
-	trimmed := strings.TrimSpace(string(out))
-	if err != nil {
-		return trimmed, fmt.Errorf("supervisorctl %s failed: %w", strings.Join(command, " "), err)
+	var payload strings.Builder
+	payload.WriteString(`<?xml version="1.0"?>`)
+	payload.WriteString(`<methodCall><methodName>`)
+	payload.WriteString(html.EscapeString(method))
+	payload.WriteString(`</methodName><params>`)
+	for _, param := range params {
+		payload.WriteString(`<param><value>`)
+		payload.WriteString(param)
+		payload.WriteString(`</value></param>`)
 	}
-	return trimmed, nil
+	payload.WriteString(`</params></methodCall>`)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://supervisor/RPC2", bytes.NewBufferString(payload.String()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "text/xml")
+	if c.username != "" || c.password != "" {
+		token := base64.StdEncoding.EncodeToString([]byte(c.username + ":" + c.password))
+		req.Header.Set("Authorization", "Basic "+token)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	data, readErr := io.ReadAll(resp.Body)
+	body := string(data)
+	if readErr != nil {
+		return body, readErr
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return body, fmt.Errorf("supervisor XML-RPC HTTP %d: %s", resp.StatusCode, strings.TrimSpace(body))
+	}
+	if fault := parseXMLRPCFault(body); fault != "" {
+		return body, fmt.Errorf("supervisor XML-RPC fault: %s", fault)
+	}
+	return body, nil
 }
 
-func supervisorctlArgs(command ...string) []string {
-	args := make([]string, 0, len(command)+6)
-	if sock := strings.TrimSpace(os.Getenv("SUPERVISORD_SOCKET_PATH")); sock != "" {
-		args = append(args, "-s", "unix://"+sock)
+func xmlRPCStringParam(value string) string {
+	return `<string>` + html.EscapeString(value) + `</string>`
+}
+
+func xmlRPCBoolParam(value bool) string {
+	if value {
+		return `<boolean>1</boolean>`
 	}
-	if user := strings.TrimSpace(os.Getenv("SUPERVISORD_USER")); user != "" {
-		args = append(args, "-u", user)
+	return `<boolean>0</boolean>`
+}
+
+func parseXMLRPCFault(body string) string {
+	if !strings.Contains(body, "<fault>") {
+		return ""
 	}
-	if pass := strings.TrimSpace(os.Getenv("SUPERVISORD_PASSWORD")); pass != "" {
-		args = append(args, "-p", pass)
+	if fault := firstNonEmptyXMLMember(body, "faultString"); fault != "" {
+		return fault
 	}
-	args = append(args, command...)
-	return args
+	return strings.TrimSpace(body)
+}
+
+func firstNonEmptyXMLMember(body, key string) string {
+	patterns := []string{
+		`(?s)<member>\s*<name>` + regexp.QuoteMeta(key) + `</name>\s*<value>\s*<string>(.*?)</string>`,
+		`(?s)<member>\s*<name>` + regexp.QuoteMeta(key) + `</name>\s*<value>\s*<int>(.*?)</int>`,
+		`(?s)<member>\s*<name>` + regexp.QuoteMeta(key) + `</name>\s*<value>\s*<i4>(.*?)</i4>`,
+		`(?s)<member>\s*<name>` + regexp.QuoteMeta(key) + `</name>\s*<value>\s*<boolean>(.*?)</boolean>`,
+	}
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		match := re.FindStringSubmatch(body)
+		if len(match) == 2 {
+			return strings.TrimSpace(html.UnescapeString(match[1]))
+		}
+	}
+	return ""
+}
+
+func shouldStopBeforeStart(stateName string) bool {
+	switch strings.ToUpper(strings.TrimSpace(stateName)) {
+	case "RUNNING", "STARTING", "BACKOFF", "STOPPING":
+		return true
+	default:
+		return false
+	}
+}
+
+func isSupervisorRunningState(stateName string) bool {
+	return strings.EqualFold(strings.TrimSpace(stateName), "RUNNING")
+}
+
+func isSupervisorAlreadyStoppedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "not running") || strings.Contains(text, "already stopped")
+}
+
+func isSupervisorAlreadyStartedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "already started") || strings.Contains(text, "already running")
+}
+
+func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service) error {
+	if apiService == nil {
+		return fmt.Errorf("core API service is nil")
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= coreHealthcheckAttempts; attempt++ {
+		checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err := apiService.CheckCoreReady(checkCtx)
+		cancel()
+		if err == nil {
+			cfg.Logger.Info("Core API healthcheck passed", "attempt", attempt)
+			return nil
+		}
+		lastErr = err
+		cfg.Logger.Debug("Core API healthcheck attempt failed", "attempt", attempt, "attempts", coreHealthcheckAttempts, "error", err)
+
+		if attempt == coreHealthcheckAttempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(coreHealthcheckInterval):
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("unknown core API healthcheck error")
+	}
+	return lastErr
 }

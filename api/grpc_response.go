@@ -85,20 +85,21 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil node config")
 	}
+	if cfg.Logger == nil {
+		return nil, fmt.Errorf("nil node logger")
+	}
 
-	cfg.Logger.Info("Initializing core API service", "core_type", config.FixedCoreType, "address", config.FixedCoreAPIAddress, "port", config.FixedCoreAPIGRPCPort)
-	cfg.Logger.Trace("Core API SDK configuration prepared", "core_type", config.FixedCoreType, "target", fmt.Sprintf("%s:%d", config.FixedCoreAPIAddress, config.FixedCoreAPIGRPCPort))
-
+	cfg.Logger.Info("Initializing core API facade", "core_type", config.FixedCoreType, "address", config.FixedCoreAPIAddress, "port", config.FixedCoreAPIGRPCPort)
 	coreAPI, err := sdk.New(sdk.Config{
 		CoreType: config.FixedCoreType,
 		Address:  config.FixedCoreAPIAddress,
 		Port:     config.FixedCoreAPIGRPCPort,
 	})
 	if err != nil {
-		// The node must not die just because sing-box is down or has a broken config.
-		// Keep the gRPC server alive; stats will report core_status=error until the
-		// core API becomes reachable again.
-		cfg.Logger.Error("Core API SDK initialization failed; continuing in degraded mode", "error", err, "core_type", config.FixedCoreType)
+		// The node process is the control plane and must remain available even when
+		// the managed core is down. Invalid static SDK configuration is logged and
+		// surfaced through degraded stats instead of killing the node at startup.
+		cfg.Logger.Error("Core SDK initialization failed; continuing without fatal exit", "error", err, "core_type", config.FixedCoreType)
 	}
 
 	return &Service{
@@ -122,24 +123,23 @@ func (s *Service) Close() error {
 }
 
 // GetApiResponse retrieves statistics from the configured core Stats API.
-// Core errors are reported as stats instead of returned as fatal handler errors.
-// This keeps the node reachable even when sing-box is down because of a bad config.
+// Core errors are returned as runtime stats, not as handler errors. This mirrors
+// the Remnawave control-plane model: node app is allowed to stay reachable while
+// the managed core process is stopped, crashed, or waiting for a corrected config.
 func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 	result := &ApiResponse{Stat: make([]Stat, 0, 32)}
 	if s == nil {
 		return result, fmt.Errorf("api service is nil")
 	}
 
-	s.cfg.Logger.Trace("Collecting API response", "core_type", config.FixedCoreType)
-
-	coreStatus := "ok"
+	coreStatus := "running"
 	coreError := ""
 	singboxUptimeSeconds := int64(0)
 
 	if s.api == nil || s.api.Stats == nil {
 		coreStatus = "error"
 		coreError = "core SDK is not initialized"
-		s.cfg.Logger.Error("Core stats unavailable", "error", coreError, "core_type", config.FixedCoreType)
+		s.cfg.Logger.Warn("Core stats are unavailable", "error", coreError, "core_type", config.FixedCoreType)
 	} else {
 		stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{
 			Patterns: []string{
@@ -153,7 +153,9 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		if err != nil {
 			coreStatus = "error"
 			coreError = fmt.Sprintf("query core stats: %v", err)
-			s.cfg.Logger.Error("Failed to execute core stats query; returning degraded stats", "error", err, "core_type", config.FixedCoreType)
+			// This is usually "connection refused" when sing-box is not started yet.
+			// Log it as WARN because it is a managed-worker state, not a node crash.
+			s.cfg.Logger.Warn("Core stats query failed; returning degraded stats", "error", err, "core_type", config.FixedCoreType)
 		} else {
 			for _, item := range stats {
 				s.cfg.Logger.Trace("Processing core stat", "name", item.Name, "value", item.Value, "core_type", config.FixedCoreType)
@@ -164,20 +166,21 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			}
 		}
 
-		sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
-		if sysErr != nil {
-			if coreStatus == "ok" {
-				coreStatus = "degraded"
-				coreError = fmt.Sprintf("read core sys stats: %v", sysErr)
+		if coreStatus == "running" {
+			sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
+			if sysErr != nil {
+				coreStatus = "error"
+				coreError = fmt.Sprintf("query core sys stats: %v", sysErr)
+				s.cfg.Logger.Warn("Core sys stats query failed; returning degraded stats", "error", sysErr, "core_type", config.FixedCoreType)
+			} else if sysStats != nil {
+				singboxUptimeSeconds = int64(sysStats.Uptime)
 			}
-			s.cfg.Logger.Warn("Failed to read core sys stats", "error", sysErr, "core_type", config.FixedCoreType)
-		} else if sysStats != nil {
-			singboxUptimeSeconds = int64(sysStats.Uptime)
 		}
 	}
 
-	// Runtime metadata consumed by backend node monitor. These are always returned,
-	// even when the core is down, so the panel can see the node and push a fix.
+	// Runtime metadata consumed by backend node monitor. core_status/core_error are
+	// transient runtime values; the panel maps them to is_connected/last_status_message
+	// without adding dedicated Prisma columns.
 	result.Stat = append(result.Stat,
 		Stat{Name: "core_status", Value: coreStatus},
 		Stat{Name: "core_error", Value: coreError},
@@ -196,9 +199,20 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			Stat{Name: "system_stats", Value: statsJSON},
 		)
 	}
-	s.cfg.Logger.Debug("Retrieved API stats", "count", len(result.Stat), "core_type", config.FixedCoreType, "core_status", coreStatus)
 
+	s.cfg.Logger.Debug("Retrieved API stats", "count", len(result.Stat), "core_type", config.FixedCoreType, "core_status", coreStatus)
 	return result, nil
+}
+
+func (s *Service) CheckCoreReady(ctx context.Context) error {
+	if s == nil || s.api == nil || s.api.Stats == nil {
+		return fmt.Errorf("core SDK is not initialized")
+	}
+	_, err := s.api.Stats.GetSysStats(ctx)
+	if err != nil {
+		return fmt.Errorf("query core sys stats: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) collectSystemStatsJSON() (string, string, error) {

@@ -8,7 +8,6 @@ import (
 	"exodus-node/config"
 	"exodus-node/constant"
 	"exodus-node/grpcserver"
-	"exodus-node/logger"
 	"exodus-node/server"
 )
 
@@ -23,7 +22,7 @@ func main() {
 
 	cfg, err := config.LoadNodeConfig()
 	if err != nil {
-		fallbackLogger().Error("Failed to load node config", "error", err)
+		fmt.Fprintf(os.Stderr, "Failed to load node config: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -38,24 +37,10 @@ func main() {
 		}
 	}()
 
-	cfg.Logger.Info(
-		"Starting exodus-node",
-		"version", constant.Version,
-		"revision", constant.Revision,
-		"build_tags", constant.BuildTags,
-		"cgo", constant.CgoEnabled,
-	)
+	cfg.Logger.Info("Starting exodus-node", "version", constant.Version)
 
 	if err := grpcserver.StartGRPCServer(&cfg, nodeServer); err != nil {
 		cfg.Logger.Error("Failed to start gRPC server", "error", err)
 		os.Exit(1)
 	}
-}
-
-func fallbackLogger() *logger.Logger {
-	log, err := logger.NewLoggerWithValidation("trace", "inclusive", "UTC", os.Stderr)
-	if err != nil {
-		panic(err)
-	}
-	return log
 }

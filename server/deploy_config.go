@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"exodus-node/config"
 
@@ -60,10 +62,17 @@ type DeploySummary struct {
 	HaproxyUsersChanged   bool
 	SRSDownloadedOnDeploy bool
 	ReloadError           string
+	CoreProcessBefore     string
+	CoreProcessAfter      string
+	CoreReady             bool
+	CoreConfigValid       bool
 }
 
-// DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and restarts core if requested.
-func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, error) {
+// DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and starts/restarts the managed core if requested.
+func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayload) (DeploySummary, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	rawConfig := task.Config
 	if len(rawConfig) == 0 {
 		rawConfig = task.SingboxConfig
@@ -149,24 +158,41 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 
 	restarted := false
 	reloadError := ""
+	coreProcessBefore := ""
+	coreProcessAfter := ""
+	coreReady := false
+	coreConfigValid := true
 	if shouldRestart {
-		if shouldReloadCore(task, configChanged) {
+		if s.shouldRunCoreLifecycle(ctx, task, configChanged) {
 			if forceRestart && !configChanged {
-				s.Cfg.Logger.Warn("Core force reload requested by deploy payload")
+				s.Cfg.Logger.Warn("Core force restart requested by deploy payload")
 			} else {
-				s.Cfg.Logger.Info("Core reload requested by deploy payload")
+				s.Cfg.Logger.Info("Core managed lifecycle requested by deploy payload")
 			}
-			if err := reloadCoreProcess(s.Cfg); err != nil {
-				reloadError = err.Error()
-				s.Cfg.Logger.Error("Core reload failed after config deploy; keeping node alive", "error", err)
+
+			lifecycle := restartCoreProcessLifecycle(ctx, s.Cfg, s.apiService)
+			coreProcessBefore = lifecycle.ProcessBefore
+			coreProcessAfter = lifecycle.ProcessAfter
+			coreReady = lifecycle.Ready
+			coreConfigValid = lifecycle.ConfigValid
+			if lifecycle.failed() {
+				reloadError = lifecycle.Error
+				s.Cfg.Logger.Error(
+					"Core managed lifecycle failed after config deploy; keeping node control plane alive",
+					"error", lifecycle.Error,
+					"process_before", lifecycle.ProcessBefore,
+					"process_after", lifecycle.ProcessAfter,
+					"config_valid", lifecycle.ConfigValid,
+				)
 			} else {
-				restarted = true
+				restarted = lifecycle.Started
 			}
 		} else {
-			s.Cfg.Logger.Info("Core reload skipped: config is unchanged")
+			s.Cfg.Logger.Info("Core lifecycle skipped: config unchanged and core API healthy")
+			coreReady = true
 		}
 	} else {
-		s.Cfg.Logger.Info("Core reload skipped by deploy payload")
+		s.Cfg.Logger.Info("Core lifecycle skipped by deploy payload")
 	}
 
 	return DeploySummary{
@@ -181,6 +207,10 @@ func (s *NodeServer) DeployConfig(task DeployConfigTaskPayload) (DeploySummary, 
 		HaproxyUsersChanged:   haproxyUsersChanged,
 		SRSDownloadedOnDeploy: srsDownloadedOnDeploy,
 		ReloadError:           reloadError,
+		CoreProcessBefore:     coreProcessBefore,
+		CoreProcessAfter:      coreProcessAfter,
+		CoreReady:             coreReady,
+		CoreConfigValid:       coreConfigValid,
 	}, nil
 }
 
@@ -203,6 +233,25 @@ func shouldReloadCore(task DeployConfigTaskPayload, configChanged bool) bool {
 		return false
 	}
 	return configChanged || task.forceRestartRequested()
+}
+
+func (s *NodeServer) shouldRunCoreLifecycle(ctx context.Context, task DeployConfigTaskPayload, configChanged bool) bool {
+	if !task.restartRequested() {
+		return false
+	}
+	if configChanged || task.forceRestartRequested() {
+		return true
+	}
+	if s == nil || s.apiService == nil {
+		return true
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := s.apiService.CheckCoreReady(checkCtx); err != nil {
+		s.Cfg.Logger.Warn("Core lifecycle required because core API is not healthy even though config is unchanged", "error", err)
+		return true
+	}
+	return false
 }
 
 func sha256Hex(data []byte) string {

@@ -77,10 +77,10 @@ func (s *NodeServer) sendStreamStats(
 	for {
 		stats, err := s.GetApiStats(stream.Context(), &proto.GetApiStatsRequest{})
 		if err != nil {
-			// Do not close the stream because of local stats/core errors. The stream is
-			// the recovery channel: the panel must still see the node and push a fixed
-			// config. Only real stream Send/Recv errors close this goroutine.
-			s.Cfg.Logger.Error("Failed to collect stats for stream; sending degraded response", "error", err)
+			// Local stats/core collection errors must not close the stream. The stream is
+			// the recovery channel used by the panel to keep talking to the node and push
+			// a corrected config. Only real stream Send/Recv errors close it.
+			s.Cfg.Logger.Warn("Failed to collect stats for stream; sending degraded response", "error", err)
 			stats = &proto.GetApiStatsResponse{Stats: []*proto.Stat{
 				{Name: "core_status", Value: "error"},
 				{Name: "core_error", Value: err.Error()},

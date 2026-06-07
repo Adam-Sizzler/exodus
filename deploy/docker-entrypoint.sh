@@ -105,25 +105,13 @@ ensure_singbox_version() {
     echo "[Entrypoint] Updated sing-box to: $(printf '%s\n' "$validate_output" | head -n 1)"
 }
 
-
 print_node_version() {
-    if [ ! -x /app/exodus-node ]; then
-        echo "[Entrypoint] exodus-node version: unknown (/app/exodus-node is not executable)"
-        return 0
-    fi
-
-    local build_info node_version node_revision
-    build_info="$(/app/exodus-node --version 2>/dev/null || true)"
-    node_version="$(printf '%s\n' "$build_info" | awk -F': ' '/^exodus version:/ {print $2; exit}')"
-    node_revision="$(printf '%s\n' "$build_info" | awk -F': ' '/^revision:/ {print $2; exit}')"
-
-    if [ -z "$node_version" ]; then
-        node_version="unknown"
-    fi
-    if [ -z "$node_revision" ]; then
-        node_revision="unknown"
-    fi
-
+    local output node_version node_revision
+    output="$(${1:-/app/exodus-node} -version 2>/dev/null || true)"
+    node_version="$(printf '%s\n' "$output" | awk -F': ' '/^Version:/ {print $2; exit}')"
+    node_revision="$(printf '%s\n' "$output" | awk -F': ' '/^Revision:/ {print $2; exit}')"
+    [ -n "$node_version" ] || node_version="unknown"
+    [ -n "$node_revision" ] || node_revision="unknown"
     echo "[Entrypoint] exodus-node version: ${node_version}"
     echo "[Entrypoint] exodus-node revision: ${node_revision}"
 }
@@ -148,10 +136,10 @@ fi
 
 ensure_singbox_version
 
-print_node_version
+print_node_version "${1:-/app/exodus-node}"
 
 echo "[Entrypoint] supervisord version: $(supervisord --version | head -n 1)"
-supervisord -c /etc/supervisord.conf
+supervisord -c /etc/supervisord.conf &
 sleep 1
 
 echo "[Entrypoint] sing-box version: $(/usr/local/bin/sing-box version | head -n 1)"
