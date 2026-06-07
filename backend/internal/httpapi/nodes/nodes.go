@@ -1402,6 +1402,15 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.TotalRAM = record.TotalRAM
 		item.System = buildNodeSystem(record.SystemInfoRaw, record.SystemStatsRaw)
 		item.Versions = buildNodeVersions(record.SingboxVersion, record.NodeVersion)
+		if !record.IsConnected || record.IsConnecting || record.IsDisabled {
+			usersOnline := 0
+			item.SingboxUptime = "0"
+			item.UsersOnline = &usersOnline
+			item.CPUCount = nil
+			item.CPUModel = nil
+			item.TotalRAM = nil
+			item.System = nil
+		}
 		item.CreatedAt = record.CreatedAt
 		item.UpdatedAt = record.UpdatedAt
 		item.ConfigProfile.ActiveConfigProfileUUID = record.ActiveConfigProfileUUID

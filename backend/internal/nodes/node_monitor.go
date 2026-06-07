@@ -1102,6 +1102,31 @@ func firstNonEmpty(values ...string) any {
 	return nil
 }
 
+func clearDisconnectedNodeRuntimeFields(db dbmanager.DBExecutor, nodeName string) error {
+	_, err := db.Exec(`
+		UPDATE nodes
+		SET singbox_uptime = '0',
+		    users_online = 0,
+		    cpu_count = NULL,
+		    cpu_model = NULL,
+		    total_ram = NULL,
+		    system_info = NULL,
+		    system_stats = NULL,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE name = ?
+		  AND (singbox_uptime <> '0'
+		       OR users_online IS DISTINCT FROM 0
+		       OR cpu_count IS NOT NULL
+		       OR cpu_model IS NOT NULL
+		       OR total_ram IS NOT NULL
+		       OR system_info IS NOT NULL
+		       OR system_stats IS NOT NULL)`, nodeName)
+	if err != nil {
+		return fmt.Errorf("clear disconnected node runtime fields: %w", err)
+	}
+	return nil
+}
+
 // updateConnectionStatus updates node connection status in database (only on change).
 func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isConnecting bool, message string) {
 	var notificationEvent notifications.Event
@@ -1133,16 +1158,37 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 		}
 
 		if currentConnected == isConnected && currentConnecting == isConnecting && msgStr == message {
-			// No change, skip update
+			// No status change. Still clear live-only runtime fields for offline nodes
+			// so stale stats from a previous connection cannot leak to the API.
+			if !isConnected {
+				return clearDisconnectedNodeRuntimeFields(db, nodeName)
+			}
 			return nil
 		}
 
 		// Update status
-		_, err = db.Exec(`
-			UPDATE nodes 
-			SET is_connected = ?, is_connecting = ?, last_status_message = ?, last_status_change = CURRENT_TIMESTAMP
-			WHERE name = ?`,
-			isConnected, isConnecting, message, nodeName)
+		query := `
+			UPDATE nodes
+			SET is_connected = ?,
+			    is_connecting = ?,
+			    last_status_message = ?,
+			    last_status_change = CURRENT_TIMESTAMP`
+		args := []any{isConnected, isConnecting, message}
+		if !isConnected {
+			query += `,
+			    singbox_uptime = '0',
+			    users_online = 0,
+			    cpu_count = NULL,
+			    cpu_model = NULL,
+			    total_ram = NULL,
+			    system_info = NULL,
+			    system_stats = NULL`
+		}
+		query += `,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE name = ?`
+		args = append(args, nodeName)
+		_, err = db.Exec(query, args...)
 
 		if err != nil {
 			return fmt.Errorf("update node status: %w", err)
