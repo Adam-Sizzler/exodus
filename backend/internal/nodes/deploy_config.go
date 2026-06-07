@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,19 +227,94 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 
 		if err != nil {
 			nm.cfg.Logger.Warn("Deploy task failed", "node", target.name, "error", err)
+			nm.updateConnectionStatus(target.name, false, false, fmt.Sprintf("Deploy transport error: %v", err))
 			continue
 		}
 		if resp == nil || resp.Code != int32(codes.OK) {
 			if resp == nil {
 				nm.cfg.Logger.Warn("Deploy task returned nil status", "node", target.name)
+				nm.updateConnectionStatus(target.name, false, false, "Deploy task returned nil status")
 			} else {
 				nm.cfg.Logger.Warn("Deploy task rejected", "node", target.name, "code", resp.Code, "message", resp.Message)
+				nm.updateConnectionStatus(target.name, false, false, firstNonEmptyString(resp.Message, "Deploy task rejected"))
 			}
 			continue
 		}
 
+		if hasCoreReady, coreReady, coreMessage := parseDeployCoreState(resp.Message); hasCoreReady {
+			if coreReady {
+				nm.updateConnectionStatus(target.name, true, false, "Connected")
+			} else {
+				nm.updateConnectionStatus(target.name, false, false, coreMessage)
+			}
+		}
+
 		nm.cfg.Logger.Info("Node config deployed", "node", target.name, "restart", restart, "force_restart", forceRestart, "message", resp.Message)
 	}
+}
+
+func parseDeployCoreState(message string) (bool, bool, string) {
+	coreReadyRaw, ok := deployMessageValue(message, "core_ready")
+	if !ok {
+		return false, false, ""
+	}
+	coreReady, err := strconv.ParseBool(strings.TrimSpace(coreReadyRaw))
+	if err != nil {
+		return true, false, firstNonEmptyString(message, "Core start result is invalid")
+	}
+	if coreReady {
+		return true, true, "Connected"
+	}
+
+	reloadErr, _ := deployMessageValue(message, "reload_error")
+	reloadErr = strings.TrimSpace(reloadErr)
+	if reloadErr != "" {
+		return true, false, "Core error: " + reloadErr
+	}
+	return true, false, firstNonEmptyString(message, "Core failed to start")
+}
+
+func deployMessageValue(message, key string) (string, bool) {
+	needle := key + "="
+	idx := strings.Index(message, needle)
+	if idx < 0 {
+		return "", false
+	}
+	value := strings.TrimSpace(message[idx+len(needle):])
+	if value == "" {
+		return "", true
+	}
+	if strings.HasPrefix(value, "\"") {
+		end := 1
+		for end < len(value) {
+			if value[end] == '\\' {
+				end += 2
+				continue
+			}
+			if value[end] == '"' {
+				quoted := value[:end+1]
+				unquoted, err := strconv.Unquote(quoted)
+				if err == nil {
+					return unquoted, true
+				}
+				return strings.Trim(quoted, "\""), true
+			}
+			end++
+		}
+	}
+	if space := strings.IndexAny(value, " \t\r\n"); space >= 0 {
+		value = value[:space]
+	}
+	return strings.TrimSpace(value), true
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func (nm *NodeMonitor) loadNodePluginRuntimeConfig(ctx context.Context, nodeUUID string) (activeNodePluginRuntimeConfig, error) {

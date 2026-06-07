@@ -480,10 +480,14 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	state.lastError = ""
 	state.mutex.Unlock()
 
-	// Update DB status (single update on connect)
-	nm.updateConnectionStatus(state.nodeName, true, false, "Connected")
+	// The gRPC control-plane stream is connected, but the managed sing-box core may
+	// still be stopped (autostart=false) or failed. Keep the in-memory transport
+	// state ready for deploy tasks, while DB is_connected follows Remnawave-style
+	// core readiness and will be finalized by deploy result / stats.
+	nm.updateConnectionStatus(state.nodeName, false, true, "Connected to node app; starting core...")
 
-	nm.cfg.Logger.Info("Node connected", "node", state.nodeName)
+	nm.cfg.Logger.Info("Node control-plane connected", "node", state.nodeName)
+	nm.RequestDeploy(true, state.nodeUUID)
 
 	// Start stream receiver
 	nm.receiveStream(state)
@@ -611,6 +615,19 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	}
 
 	trafficDelta := extractTrafficStatsDelta(stats)
+
+	coreStatus := strings.ToLower(strings.TrimSpace(values["core_status"]))
+	coreError := strings.TrimSpace(values["core_error"])
+	switch coreStatus {
+	case "running", "ok", "healthy":
+		nm.updateConnectionStatus(nodeName, true, false, "Connected")
+	case "error", "failed", "unhealthy", "stopped":
+		message := "Core error"
+		if coreError != "" {
+			message = fmt.Sprintf("Core error: %s", coreError)
+		}
+		nm.updateConnectionStatus(nodeName, false, false, message)
+	}
 
 	singboxVersion := firstNonEmpty(values["singbox_version"])
 	nodeVersion := firstNonEmpty(values["node_version"])
