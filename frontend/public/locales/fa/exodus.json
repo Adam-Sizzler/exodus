@@ -27,7 +27,8 @@
         "tools": "ابزارها",
         "srh-inspector": "بازرسی SRH",
         "response-rules": "قوانین پاسخ",
-        "exodus-settings": "تنظیمات Exodus"
+        "exodus-settings": "تنظیمات Exodus",
+        "node-plugins": "Plugins"
     },
     "common": {
         "delete": "حذف",
@@ -2029,5 +2030,86 @@
     },
     "traffic-limits-card": {
         "traffic-and-limits": "محدودیت ترافیک"
+    },
+    "node-plugins-page": {
+        "connector": {
+            "loading-node-plugins": "Loading node plugins...",
+            "loading-node-plugin": "Loading node plugin..."
+        }
+    },
+    "node-plugin-card": {
+        "widget": {
+            "active-on-nodes": "Active on Nodes",
+            "plugin": "PLUGIN"
+        }
+    },
+    "node-plugin-editor-page": {
+        "component": {
+            "plugin-editor": "Plugin Editor"
+        }
+    },
+    "adtive-on-nodes": {
+        "modal": {
+            "shared": {
+                "this-plugin-is-not-active-on-any-nodes": "This plugin is not active on any nodes."
+            }
+        }
+    },
+    "node-plugins-header-action-buttons": {
+        "feature": {
+            "name-is-required": "Name is required",
+            "my-node-plugin": "My Node Plugin"
+        }
+    },
+    "node-plugins-editor-actions": {
+        "feature": {
+            "unsupported-by-sing-box-core": "{{key}} is not supported by sing-box core."
+        }
+    },
+    "node-plugin-editor": {
+        "widget": {
+            "editor-is-loading": "Editor is loading..."
+        }
+    },
+    "node-plugin-executor": {
+        "drawer": {
+            "executor": "Executor"
+        },
+        "content": {
+            "enter-at-least-one-ip-address": "Enter at least one IP address.",
+            "block-specific-ip-addresses-on-selected-nodes": "Block specific IP addresses on selected nodes",
+            "block-ips": "Block IPs",
+            "remove-ip-blocks-on-selected-nodes": "Remove IP blocks on selected nodes",
+            "unblock-ips": "Unblock IPs",
+            "executor-description": "IP blocks are temporary — they persist only until the node or its core restarts. Blocks may also be reset if the plugin configuration changes.",
+            "recreate-nftables-rules-on-selected-nodes": "Recreate nftables rules on selected nodes",
+            "recreate-tables": "Recreate Tables",
+            "block-ips-decription": "One entry per line. Timeout 0 = block until restart.",
+            "unblock-ips-decription": "One IP address per line.",
+            "ips-to-block": "IPs to block",
+            "ips-to-unblock": "IPs to unblock",
+            "format-one-per-line": "Format (one per line):",
+            "next": "Next",
+            "no-connected-nodes-available": "No connected nodes available.",
+            "deselect-all": "Deselect all",
+            "select-all": "Select all",
+            "execute": "Execute",
+            "invalid-ip-address": "Invalid IP address",
+            "line": "Line",
+            "selected-count": "{{count}} selected"
+        }
+    },
+    "node-plugins-grid": {
+        "widget": {
+            "delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin": "Delete this node plugin? Nodes using it will be detached from the plugin.",
+            "node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use": "Node Plugins are an advanced feature. Please review the documentation before use.",
+            "warning": "Warning",
+            "no-node-plugins-yet": "No node plugins yet",
+            "create-a-plugin-to-extend-node-capabilities-with": "Create a plugin to extend node capabilities with",
+            "create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth": "Create a plugin to enable per-node capabilities. This build supports ingress filter, egress filter, shared lists and HAProxy Auth.",
+            "ingress-filter": "Ingress Filter",
+            "egress-filter": "Egress Filter",
+            "haproxy-auth": "HAProxy Auth"
+        }
     }
 }

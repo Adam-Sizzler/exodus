@@ -1,5 +1,6 @@
 import { TbAlertTriangle, TbLogin, TbLogout, TbPackage, TbShieldLock } from 'react-icons/tb'
 import { Badge, Center, Group, Stack, Text, ThemeIcon } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 
 import {
@@ -24,6 +25,7 @@ interface IProps {
 }
 
 export function NodePluginsGridWidget(props: IProps) {
+    const { t } = useTranslation()
     const { nodes, plugins } = props
 
     const invalidate = async () => {
@@ -56,11 +58,13 @@ export function NodePluginsGridWidget(props: IProps) {
     const handleDeleteNodePlugin = (nodePluginUuid: string) => {
         modals.openConfirmModal({
             centered: true,
-            title: 'Confirm action',
-            children: 'Delete this node plugin? Nodes using it will be detached from the plugin.',
+            title: t('common.confirm-action'),
+            children: t(
+                'node-plugins-grid.widget.delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin'
+            ),
             labels: {
-                confirm: 'Delete',
-                cancel: 'Cancel'
+                confirm: t('common.delete'),
+                cancel: t('common.cancel')
             },
             confirmProps: { color: 'red' },
             onConfirm: () => {
@@ -90,9 +94,9 @@ export function NodePluginsGridWidget(props: IProps) {
             title: (
                 <BaseOverlayHeader
                     IconComponent={TbPackage}
-                    iconVariant="soft"
                     iconColor="teal"
-                    title="Active on nodes"
+                    iconVariant="soft"
+                    title={t('node-plugin-card.widget.active-on-nodes')}
                 />
             ),
             children: <ActivePluginsOnNodesModalShared nodes={activeOnNodes} />
@@ -118,8 +122,10 @@ export function NodePluginsGridWidget(props: IProps) {
                         themeIconProps={{ color: 'orange' }}
                         IconComponent={TbAlertTriangle}
                         iconVariant="soft"
-                        subtitle="Node Plugins are an advanced feature. Please review the documentation before use."
-                        title="Warning"
+                        subtitle={t(
+                            'node-plugins-grid.widget.node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use'
+                        )}
+                        title={t('node-plugins-grid.widget.warning')}
                         titleOrder={4}
                     />
                 </SectionCard.Section>
@@ -133,10 +139,12 @@ export function NodePluginsGridWidget(props: IProps) {
 
                             <Stack align="center" gap="xs">
                                 <Text fw={600} size="lg" ta="center">
-                                    No node plugins yet
+                                    {t('node-plugins-grid.widget.no-node-plugins-yet')}
                                 </Text>
                                 <Text c="dimmed" maw={460} size="sm" ta="center">
-                                    Create a plugin to extend node capabilities with
+                                    {t(
+                                        'node-plugins-grid.widget.create-a-plugin-to-extend-node-capabilities-with'
+                                    )}
                                 </Text>
                             </Stack>
 
@@ -148,7 +156,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    Ingress Filter
+                                    {t('node-plugins-grid.widget.ingress-filter')}
                                 </Badge>
                                 <Badge
                                     color="orange"
@@ -157,7 +165,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    Egress Filter
+                                    {t('node-plugins-grid.widget.egress-filter')}
                                 </Badge>
                                 <Badge
                                     color="teal"
@@ -166,7 +174,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    HAProxy Auth
+                                    {t('node-plugins-grid.widget.haproxy-auth')}
                                 </Badge>
                             </Group>
                         </Stack>

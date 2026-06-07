@@ -12,6 +12,7 @@ import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { PiCheckSquareOffset, PiFloppyDisk } from 'react-icons/pi'
 import { ActionIcon, Button, Group, Menu } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { useTranslation } from 'react-i18next'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola/browser'
 import { RefObject } from 'react'
@@ -47,6 +48,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
         pluginUuid
     } = props
 
+    const { t } = useTranslation()
     const isMobile = useMediaQuery('(max-width: 48em)')
     const clipboard = useClipboard({ timeout: 500 })
     const [opened, handlers] = useDisclosure(false)
@@ -100,8 +102,8 @@ export function NodePluginsEditorActionsFeature(props: Props) {
             consola.error(error)
             notifications.show({
                 color: 'red',
-                message: 'Failed to save invalid JSON.',
-                title: 'Error'
+                message: t('config-editor-actions.feature.failed-to-save-invalid-json'),
+                title: t('config-editor-actions.feature.error')
             })
             return
         }
@@ -110,8 +112,10 @@ export function NodePluginsEditorActionsFeature(props: Props) {
         if (unsupportedKey) {
             notifications.show({
                 color: 'red',
-                message: `${unsupportedKey} is not supported by sing-box core.`,
-                title: 'Error'
+                message: t('node-plugins-editor-actions.feature.unsupported-by-sing-box-core', {
+                    key: unsupportedKey
+                }),
+                title: t('config-editor-actions.feature.error')
             })
             return
         }
@@ -194,7 +198,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
                 loading={isUpdating}
                 onClick={handleSave}
             >
-                Save
+                {t('common.save')}
             </Button>
 
             <Group gap={0} wrap="nowrap">
@@ -224,31 +228,34 @@ export function NodePluginsEditorActionsFeature(props: Props) {
                             leftSection={<TbClipboardCopy size={14} />}
                             onClick={handleCopyConfig}
                         >
-                            Copy all content
+                            {t('config-editor-actions.feature.copy-all-content')}
                         </Menu.Item>
 
                         <Menu.Item
                             leftSection={<TbSelectAll size={14} />}
                             onClick={handleSelectAll}
                         >
-                            Select all
+                            {t('config-editor-actions.feature.select-all')}
                         </Menu.Item>
 
                         <Menu.Item leftSection={<TbCut size={14} />} onClick={handleCut}>
-                            Cut selection
+                            {t('config-editor-actions.feature.cut-selection')}
                         </Menu.Item>
 
                         <Menu.Item
                             leftSection={<TbClipboardText size={14} />}
                             onClick={handlePaste}
                         >
-                            Paste from clipboard
+                            {t('config-editor-actions.feature.paste-from-clipboard')}
                         </Menu.Item>
 
                         <Menu.Divider />
 
-                        <Menu.Item leftSection={<TbDownload size={14} />} onClick={openDownloadModal}>
-                            Load from GitHub
+                        <Menu.Item
+                            leftSection={<TbDownload size={14} />}
+                            onClick={openDownloadModal}
+                        >
+                            {t('config-editor-actions.feature.load-from-github')}
                         </Menu.Item>
                     </Menu.Dropdown>
                 </Menu>
@@ -264,7 +271,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
                     }}
                     variant="default"
                 >
-                    Format
+                    {t('config-editor-actions.feature.format')}
                 </Button>
             </Group>
         </Group>

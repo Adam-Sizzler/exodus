@@ -28,7 +28,8 @@
         "srh-inspector": "Инспектор SRH",
         "modules": "Модули",
         "response-rules": "Правила ответов",
-        "exodus-settings": "Настройки Exodus"
+        "exodus-settings": "Настройки Exodus",
+        "node-plugins": "Плагины"
     },
     "common": {
         "delete": "Удалить",
@@ -2053,5 +2054,86 @@
     },
     "traffic-limits-card": {
         "traffic-and-limits": "Трафик и лимиты"
+    },
+    "node-plugins-page": {
+        "connector": {
+            "loading-node-plugins": "Загрузка плагинов нод...",
+            "loading-node-plugin": "Загрузка плагина ноды..."
+        }
+    },
+    "node-plugin-card": {
+        "widget": {
+            "active-on-nodes": "Активен на нодах",
+            "plugin": "ПЛАГИН"
+        }
+    },
+    "node-plugin-editor-page": {
+        "component": {
+            "plugin-editor": "Редактор плагинов"
+        }
+    },
+    "adtive-on-nodes": {
+        "modal": {
+            "shared": {
+                "this-plugin-is-not-active-on-any-nodes": "Этот плагин не активен ни на одной ноде."
+            }
+        }
+    },
+    "node-plugins-header-action-buttons": {
+        "feature": {
+            "name-is-required": "Имя обязательно",
+            "my-node-plugin": "Мой плагин ноды"
+        }
+    },
+    "node-plugins-editor-actions": {
+        "feature": {
+            "unsupported-by-sing-box-core": "{{key}} не поддерживается ядром sing-box."
+        }
+    },
+    "node-plugin-editor": {
+        "widget": {
+            "editor-is-loading": "Редактор загружается..."
+        }
+    },
+    "node-plugin-executor": {
+        "drawer": {
+            "executor": "Исполнитель"
+        },
+        "content": {
+            "enter-at-least-one-ip-address": "Введите хотя бы один IP-адрес.",
+            "block-specific-ip-addresses-on-selected-nodes": "Блокировать определенные IP-адреса на выбранных нодах",
+            "block-ips": "Блокировать IP",
+            "remove-ip-blocks-on-selected-nodes": "Снять блокировку IP на выбранных нодах",
+            "unblock-ips": "Разблокировать IP",
+            "executor-description": "IP блоки временные — они сохраняются только до перезапуска узла или ядра. Блоки также могут быть сброшены при изменении конфигурации плагина.",
+            "recreate-nftables-rules-on-selected-nodes": "Восстановить правила nftables на выбранных нодах",
+            "recreate-tables": "Пересоздать таблицы",
+            "block-ips-decription": "Одна запись в строке. Тайм-аут 0 = блокировка до перезапуска.",
+            "unblock-ips-decription": "Один IP адрес в строке.",
+            "ips-to-block": "IP для блокировки",
+            "ips-to-unblock": "IP для разблокировки",
+            "format-one-per-line": "Формат (по одному в каждой строке):",
+            "next": "Далее",
+            "no-connected-nodes-available": "Нет доступных подключенных нод.",
+            "deselect-all": "Снять все",
+            "select-all": "Выделить все",
+            "execute": "Выполнить",
+            "invalid-ip-address": "Неверный IP-адрес",
+            "line": "Строка",
+            "selected-count": "Выбрано: {{count}}"
+        }
+    },
+    "node-plugins-grid": {
+        "widget": {
+            "delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin": "Удалить этот плагин ноды? Ноды, использующие его, будут отвязаны от плагина.",
+            "node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use": "Плагины нод являются расширенной функцией. Пожалуйста, ознакомьтесь с документацией перед использованием.",
+            "warning": "Предупреждение",
+            "no-node-plugins-yet": "Плагины для нод отсутствуют",
+            "create-a-plugin-to-extend-node-capabilities-with": "Создайте плагин для расширения возможностей узла с",
+            "create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth": "Создайте плагин для включения возможностей на уровне нод. Эта сборка поддерживает ingress-фильтр, egress-фильтр, shared lists и HAProxy Auth.",
+            "ingress-filter": "Ingress-фильтр",
+            "egress-filter": "Egress-фильтр",
+            "haproxy-auth": "HAProxy Auth"
+        }
     }
 }

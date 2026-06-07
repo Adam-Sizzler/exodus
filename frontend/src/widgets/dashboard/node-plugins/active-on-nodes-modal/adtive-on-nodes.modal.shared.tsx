@@ -1,4 +1,5 @@
 import { Center, Stack, Text, ThemeIcon } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
 import { TbServer } from 'react-icons/tb'
 import { PiCpu } from 'react-icons/pi'
 
@@ -12,6 +13,7 @@ interface IProps {
 
 export const ActivePluginsOnNodesModalShared = (props: IProps) => {
     const { nodes } = props
+    const { t } = useTranslation()
 
     if (nodes.length === 0) {
         return (
@@ -21,7 +23,7 @@ export const ActivePluginsOnNodesModalShared = (props: IProps) => {
                         <PiCpu size={24} />
                     </ThemeIcon>
                     <Text c="dimmed" size="sm" ta="center">
-                        This plugin is not active on any nodes.
+                        {t('adtive-on-nodes.modal.shared.this-plugin-is-not-active-on-any-nodes')}
                     </Text>
                 </Stack>
             </Center>

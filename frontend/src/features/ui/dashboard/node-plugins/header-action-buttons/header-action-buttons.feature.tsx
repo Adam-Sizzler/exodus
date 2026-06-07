@@ -11,6 +11,7 @@ import {
 import { TbBook, TbPackage, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { useDisclosure } from '@mantine/hooks'
+import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
 
 import { QueryKeys, useCreateNodePlugin, useGetNodePlugins } from '@shared/api/hooks'
@@ -21,6 +22,7 @@ import { ROUTES } from '@shared/constants'
 import { queryClient } from '@shared/api'
 
 export function NodePluginsHeaderActionButtonsFeature() {
+    const { t } = useTranslation()
     const [opened, { open, close }] = useDisclosure(false)
     const navigate = useNavigate()
     const openModalWithData = useModalsStoreOpenWithData()
@@ -30,7 +32,10 @@ export function NodePluginsHeaderActionButtonsFeature() {
     const nameField = useField<string>({
         initialValue: '',
         validateOnChange: true,
-        validate: (value) => (value.trim().length > 0 ? null : 'Name is required')
+        validate: (value) =>
+            value.trim().length > 0
+                ? null
+                : t('node-plugins-header-action-buttons.feature.name-is-required')
     })
 
     const { mutate: createNodePlugin, isPending } = useCreateNodePlugin({
@@ -72,7 +77,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
             <UniversalSpotlightActionIconShared />
 
             <ActionIconGroup>
-                <Tooltip label="Executor" withArrow>
+                <Tooltip label={t('node-plugin-executor.drawer.executor')} withArrow>
                     <ActionIcon
                         color="grape"
                         onClick={() =>
@@ -87,7 +92,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
             </ActionIconGroup>
 
             <ActionIconGroup>
-                <Tooltip label="Refresh" withArrow>
+                <Tooltip label={t('common.refresh')} withArrow>
                     <ActionIcon
                         loading={isFetching}
                         onClick={handleRefresh}
@@ -114,7 +119,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
                         IconComponent={TbPackage}
                         iconVariant="soft"
                         iconColor="teal"
-                        title="Create"
+                        title={t('common.create')}
                     />
                 }
             >
@@ -131,18 +136,20 @@ export function NodePluginsHeaderActionButtonsFeature() {
                     <Stack gap="md">
                         <TextInput
                             data-autofocus
-                            label="Name"
-                            placeholder="My Node Plugin"
+                            label={t('common.name')}
+                            placeholder={t(
+                                'node-plugins-header-action-buttons.feature.my-node-plugin'
+                            )}
                             required
                             {...nameField.getInputProps()}
                         />
 
                         <Group justify="flex-end">
                             <Button color="gray" onClick={close} variant="light">
-                                Cancel
+                                {t('common.cancel')}
                             </Button>
                             <Button color="teal" loading={isPending} type="submit">
-                                Create
+                                {t('common.create')}
                             </Button>
                         </Group>
                     </Stack>

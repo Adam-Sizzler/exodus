@@ -2,6 +2,7 @@ import { PiCheck, PiCopy, PiCpu, PiPencil, PiTrashDuotone } from 'react-icons/pi
 import { TbCopyCheck, TbEdit, TbPackage } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { CopyButton, Menu } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
@@ -26,6 +27,7 @@ export function NodePluginCardWidget(props: IProps) {
         nodePlugin
     } = props
 
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const openModalWithData = useModalsStoreOpenWithData()
 
@@ -49,7 +51,10 @@ export function NodePluginCardWidget(props: IProps) {
                         <TbPackage size={24} />
                     </EntityCardShared.Icon>
 
-                    <EntityCardShared.Content subtitle="PLUGIN" title={nodePlugin.name} />
+                    <EntityCardShared.Content
+                        subtitle={t('node-plugin-card.widget.plugin')}
+                        title={nodePlugin.name}
+                    />
                 </EntityCardShared.Header>
 
                 <EntityCardShared.Actions>
@@ -57,7 +62,7 @@ export function NodePluginCardWidget(props: IProps) {
                         leftSection={<TbEdit size={16} />}
                         onClick={navigateToNodePlugin}
                     >
-                        Edit
+                        {t('common.edit')}
                     </EntityCardShared.Button>
 
                     <EntityCardShared.Menu>
@@ -70,7 +75,7 @@ export function NodePluginCardWidget(props: IProps) {
                                     }
                                     onClick={copy}
                                 >
-                                    Copy UUID
+                                    {t('common.copy-uuid')}
                                 </Menu.Item>
                             )}
                         </CopyButton>
@@ -79,7 +84,7 @@ export function NodePluginCardWidget(props: IProps) {
                             leftSection={<PiCpu size={18} />}
                             onClick={() => handleShowActiveNodes(nodePlugin.uuid)}
                         >
-                            Active on nodes
+                            {t('node-plugin-card.widget.active-on-nodes')}
                         </Menu.Item>
 
                         <Menu.Item
@@ -91,14 +96,14 @@ export function NodePluginCardWidget(props: IProps) {
                                 })
                             }}
                         >
-                            Rename
+                            {t('common.rename')}
                         </Menu.Item>
 
                         <Menu.Item
                             leftSection={<TbCopyCheck size={18} />}
                             onClick={() => handleCloneNodePlugin(nodePlugin.uuid)}
                         >
-                            Clone
+                            {t('common.clone')}
                         </Menu.Item>
 
                         <Menu.Item
@@ -109,7 +114,7 @@ export function NodePluginCardWidget(props: IProps) {
                                 handleDeleteNodePlugin(nodePlugin.uuid)
                             }}
                         >
-                            Delete
+                            {t('common.delete')}
                         </Menu.Item>
                     </EntityCardShared.Menu>
                 </EntityCardShared.Actions>
