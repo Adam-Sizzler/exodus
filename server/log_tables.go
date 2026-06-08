@@ -21,7 +21,7 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 	}
 
 	return renderLogTable(
-		"Exodus Node v"+constant.Version,
+		"Exodus Node "+constant.Version,
 		[][]string{
 			{"Docs", "https://docs.exodus.dev\nCommunity → https://t.me/exodus"},
 			{"API Port", strconv.Itoa(port)},
