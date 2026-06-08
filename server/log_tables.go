@@ -23,10 +23,12 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 	return renderLogTable(
 		"Exodus Node "+constant.Version,
 		[][]string{
-			{"Docs", "https://docs.exodus.dev\nCommunity → https://t.me/exodus"},
+			{"Docs", "https://docs.exodus.dev"},
+			{"Community", "https://t.me/exodus"},
 			{"API Port", strconv.Itoa(port)},
 			{"Internal Ports", strconv.Itoa(config.FixedCoreAPIGRPCPort)},
-			{"Sing-box Core", "v" + detectManagedCoreVersion() + "\nSing-box Path: /usr/local/bin/sing-box"},
+			{"Sing-box Core", "v" + detectManagedCoreVersion()},
+			{"Sing-box Path", "/usr/local/bin/sing-box"},
 			{"System", fmt.Sprintf("%dC, %s, %s", runtime.NumCPU(), detectCPUModelForLogs(), formatIECBytesForLogs(detectTotalRAMForLogs()))},
 			{"Kernel", strings.TrimSpace(runCommandForLogs("uname", "-r"))},
 			{"Network Interfaces", strings.Join(detectNetworkInterfacesForLogs(), ", ")},
