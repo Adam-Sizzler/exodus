@@ -94,12 +94,16 @@ func (s *NodeServer) sendStreamStats(
 			return
 		}
 
-		select {
-		case <-stream.Context().Done():
-			return
-		case next := <-updateIntervalCh:
-			ticker.Reset(next)
-		case <-ticker.C:
+		for {
+			select {
+			case <-stream.Context().Done():
+				return
+			case next := <-updateIntervalCh:
+				ticker.Reset(next)
+				continue
+			case <-ticker.C:
+			}
+			break
 		}
 	}
 }

@@ -62,6 +62,9 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 		return result
 	}
 	log := cfg.LoggerFor("SingboxService")
+	if apiService != nil {
+		apiService.MarkCoreOffline()
+	}
 
 	log.Debug("Starting managed core lifecycle", "process", coreProcessName, "config", config.FixedSingboxConfigPath)
 	// lifecycle: the freshly received config is already the current
@@ -136,11 +139,17 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 
 	if err := waitForCoreAPIReady(ctx, cfg, apiService); err != nil {
 		result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
+		if apiService != nil {
+			apiService.MarkCoreOffline()
+		}
 		log.Error("Failed to start Sing-box: "+err.Error(), "state", after.StateName)
 		return result
 	}
 
 	result.Ready = true
+	if apiService != nil {
+		apiService.MarkCoreOnline()
+	}
 	log.Log("\n" + renderCoreStartedMessage(result.ProcessAfter))
 	return result
 }
@@ -323,7 +332,7 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 			return nil
 		}
 		lastErr = err
-		log.Debug("Core API healthcheck attempt failed", "attempt", attempt, "attempts", coreHealthcheckAttempts, "error", err)
+		log.Debug("Get Sing-box internal status attempt failed", "attempt", attempt, "retries_left", coreHealthcheckAttempts-attempt, "error", err)
 
 		if attempt == coreHealthcheckAttempts {
 			break

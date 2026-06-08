@@ -239,9 +239,15 @@ func (s *NodeServer) shouldRunCoreLifecycle(ctx context.Context, task DeployConf
 		return true
 	}
 	log := s.Cfg.LoggerFor("SingboxService")
+	if !s.apiService.IsCoreOnline() {
+		log.Debug("Core API is not marked online; starting managed core without pre-healthcheck")
+		return true
+	}
+
 	checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := s.apiService.CheckCoreReady(checkCtx); err != nil {
+		s.apiService.MarkCoreOffline()
 		log.Warn("Sing-box Core health check failed, restarting...", "error", err)
 		return true
 	}

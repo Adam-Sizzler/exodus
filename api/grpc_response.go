@@ -36,6 +36,9 @@ type Service struct {
 	logger *config.Logger
 	api    *sdk.API
 
+	coreStateMu sync.RWMutex
+	coreOnline  bool
+
 	singboxVersion string
 	nodeVersion    string
 	cpuCount       int
@@ -125,6 +128,50 @@ func (s *Service) Close() error {
 	return s.api.Close()
 }
 
+func (s *Service) IsCoreOnline() bool {
+	if s == nil {
+		return false
+	}
+	s.coreStateMu.RLock()
+	defer s.coreStateMu.RUnlock()
+	return s.coreOnline
+}
+
+func (s *Service) MarkCoreOnline() {
+	if s == nil {
+		return
+	}
+	s.coreStateMu.Lock()
+	s.coreOnline = true
+	s.coreStateMu.Unlock()
+}
+
+func (s *Service) MarkCoreOffline() {
+	if s == nil {
+		return
+	}
+	s.coreStateMu.Lock()
+	s.coreOnline = false
+	s.coreStateMu.Unlock()
+}
+
+func (s *Service) logCoreStatsFailure(message string, err error) {
+	if s == nil || s.logger == nil {
+		return
+	}
+	if s.IsCoreOnline() {
+		// Runtime core failures are worth surfacing, but stats collection does not
+		// own the lifecycle state. Keep coreOnline=true here so the next managed
+		// lifecycle request can perform the Remnawave-style health check and emit
+		// the single SingboxService restart warning before restarting the core.
+		s.logger.Warn(message, "error", err)
+		return
+	}
+	// Cold start / managed restart: the core API can legitimately be unavailable
+	// while supervisord is starting sing-box. Keep these retries debug-only.
+	s.logger.Debug(message, "error", err)
+}
+
 // GetApiResponse retrieves statistics from the configured core Stats API.
 // Core errors are returned as runtime stats, not as handler errors. This mirrors
 // the exodus control-plane model: node app is allowed to stay reachable while
@@ -156,9 +203,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		if err != nil {
 			coreStatus = "error"
 			coreError = fmt.Sprintf("query core stats: %v", err)
-			// This is usually "connection refused" when sing-box is not started yet.
-			// Log it as WARN because it is a managed-worker state, not a node crash.
-			s.logger.Warn("Core stats query failed; returning degraded stats", "error", err)
+			s.logCoreStatsFailure("Core stats query failed; returning degraded stats", err)
 		} else {
 			for _, item := range stats {
 				s.logger.Trace("Processing core stat", "name", item.Name, "value", item.Value)
@@ -174,9 +219,10 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			if sysErr != nil {
 				coreStatus = "error"
 				coreError = fmt.Sprintf("query core sys stats: %v", sysErr)
-				s.logger.Warn("Core sys stats query failed; returning degraded stats", "error", sysErr)
+				s.logCoreStatsFailure("Core sys stats query failed; returning degraded stats", sysErr)
 			} else if sysStats != nil {
 				singboxUptimeSeconds = int64(sysStats.Uptime)
+				s.MarkCoreOnline()
 			}
 		}
 	}
@@ -203,7 +249,6 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		)
 	}
 
-	s.logger.Debug("Retrieved API stats", "count", len(result.Stat), "core_status", coreStatus)
 	return result, nil
 }
 
