@@ -22,22 +22,22 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 	go receiveStreamRequests(stream, reqCh, recvErrCh)
 	go s.sendStreamStats(stream, sendErrCh, updateIntervalCh)
 
-	s.Cfg.Logger.Info("Stream started, auto-push enabled", "interval_seconds", int(defaultStreamInterval/time.Second))
+	s.Cfg.LoggerFor("StatsService").Log("Stream started, auto-push enabled", "interval_seconds", int(defaultStreamInterval/time.Second))
 
 	for {
 		select {
 		case <-stream.Context().Done():
-			s.Cfg.Logger.Info("Stream context canceled", "error", stream.Context().Err())
+			s.Cfg.LoggerFor("StatsService").Log("Stream context canceled", "error", stream.Context().Err())
 			return stream.Context().Err()
 		case err := <-sendErrCh:
-			s.Cfg.Logger.Error("Failed to send stream data", "error", err)
+			s.Cfg.LoggerFor("StatsService").Error("Failed to send stream data", "error", err)
 			return err
 		case err := <-recvErrCh:
 			if err == io.EOF {
-				s.Cfg.Logger.Info("Stream closed by client")
+				s.Cfg.LoggerFor("StatsService").Log("Stream closed by client")
 				return nil
 			}
-			s.Cfg.Logger.Error("Failed to receive stream request", "error", err)
+			s.Cfg.LoggerFor("StatsService").Error("Failed to receive stream request", "error", err)
 			return err
 		case req, ok := <-reqCh:
 			if !ok || req == nil {
@@ -80,7 +80,7 @@ func (s *NodeServer) sendStreamStats(
 			// Local stats/core collection errors must not close the stream. The stream is
 			// the recovery channel used by the panel to keep talking to the node and push
 			// a corrected config. Only real stream Send/Recv errors close it.
-			s.Cfg.Logger.Warn("Failed to collect stats for stream; sending degraded response", "error", err)
+			s.Cfg.LoggerFor("StatsService").Warn("Failed to collect stats for stream; sending degraded response", "error", err)
 			stats = &proto.GetApiStatsResponse{Stats: []*proto.Stat{
 				{Name: "core_status", Value: "error"},
 				{Name: "core_error", Value: err.Error()},
@@ -118,7 +118,7 @@ func (s *NodeServer) handleStreamRequest(req *proto.NodeDataRequest, updateInter
 			<-updateIntervalCh
 			updateIntervalCh <- next
 		}
-		s.Cfg.Logger.Info("Stream interval updated", "interval_seconds", interval)
+		s.Cfg.LoggerFor("StatsService").Log("Stream interval updated", "interval_seconds", interval)
 		return nil
 	case *proto.NodeDataRequest_ListUsers:
 		return status.Error(codes.Unimplemented, statsOnlyMessage)

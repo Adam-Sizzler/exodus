@@ -63,10 +63,11 @@ NODE_GRPC_TOKEN=<grpc-token-from-panel>
 NODE_GRPC_ADDRESS=0.0.0.0
 NODE_GRPC_PORT=2222
 NODE_GRPC_PATH=/node/
-LOG_LEVEL=warn
-LOG_MODE=inclusive
+NODE_ENV=production
 SINGBOX_VERSION=v1.13.5
 ```
+
+`NODE_ENV=development` всегда включает `debug`, во всех остальных режимах по умолчанию используется `info`. Старые переменные `LOG_LEVEL`, `EXODUS_LOG_LEVEL` и `LOG_MODE` больше не читаются из runtime-env. Формат строк: timestamp `YYYY-MM-DD HH:mm:ss.SSS`, уровень Nest-style (`LOG`, `WARN`, `ERROR`, `DEBUG`) и контекст сервиса в квадратных скобках.
 
 ## Сборка
 

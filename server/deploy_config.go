@@ -69,6 +69,8 @@ type DeploySummary struct {
 
 // DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and starts/restarts the managed core if requested.
 func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayload) (DeploySummary, error) {
+	log := s.Cfg.LoggerFor("SingboxService")
+	haproxyLog := s.Cfg.LoggerFor("HAProxyService")
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -79,7 +81,7 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	if len(rawConfig) == 0 {
 		return DeploySummary{}, fmt.Errorf("deploy payload does not contain sing-box config")
 	}
-	s.Cfg.Logger.Info("DeployConfig started", "config_bytes", len(rawConfig))
+	log.Debug("DeployConfig started", "config_bytes", len(rawConfig))
 
 	configPath := config.FixedSingboxConfigPath
 
@@ -107,7 +109,7 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	if err != nil {
 		return DeploySummary{}, fmt.Errorf("build sing-box config: %w", err)
 	}
-	s.Cfg.Logger.Debug("Built sing-box config with v2ray_api", "listen", listen, "inbounds", len(summary.Inbounds), "outbounds", len(summary.Outbounds), "users", len(summary.Users))
+	log.Debug("Built sing-box config with v2ray_api", "listen", listen, "inbounds", len(summary.Inbounds), "outbounds", len(summary.Outbounds), "users", len(summary.Users))
 
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return DeploySummary{}, fmt.Errorf("create config dir: %w", err)
@@ -125,9 +127,10 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 		if err := os.WriteFile(configPath, finalConfig, 0o644); err != nil {
 			return DeploySummary{}, fmt.Errorf("write config: %w", err)
 		}
-		s.Cfg.Logger.Info("Sing-box config written", "path", configPath, "bytes", len(finalConfig))
+		log.Warn("Detected changes in Sing-box Core base configuration")
+		log.Debug("Sing-box config written", "path", configPath, "bytes", len(finalConfig))
 	} else {
-		s.Cfg.Logger.Debug("Sing-box config unchanged, write skipped", "path", configPath)
+		log.Debug("Sing-box config unchanged, write skipped", "path", configPath)
 	}
 
 	haproxyUsersChanged, err := applyHaproxyModule(task.Modules)
@@ -142,14 +145,14 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 		reloadResult := reloadHaproxyUsers()
 		switch {
 		case reloadResult.Reloaded:
-			s.Cfg.Logger.Info("HAProxy users cache reloaded", "socket", haproxyRuntimeSocketPath, "result", reloadResult.Output)
+			haproxyLog.Log("HAProxy users cache reloaded", "socket", haproxyRuntimeSocketPath, "result", reloadResult.Output)
 		case reloadResult.Skipped:
-			s.Cfg.Logger.Debug("HAProxy users reload skipped", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+			haproxyLog.Debug("HAProxy users reload skipped", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
 		default:
-			s.Cfg.Logger.Warn("HAProxy users reload failed", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
+			haproxyLog.Warn("HAProxy users reload failed", "socket", haproxyRuntimeSocketPath, "warning", reloadResult.Warning)
 		}
 	} else {
-		s.Cfg.Logger.Debug("HAProxy users unchanged, runtime reload skipped")
+		haproxyLog.Debug("HAProxy users unchanged, runtime reload skipped")
 	}
 
 	shouldRestart := task.restartRequested()
@@ -163,9 +166,9 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	if shouldRestart {
 		if s.shouldRunCoreLifecycle(ctx, task, configChanged) {
 			if forceRestart && !configChanged {
-				s.Cfg.Logger.Warn("Core force restart requested by deploy payload")
+				log.Warn("Force restart requested")
 			} else {
-				s.Cfg.Logger.Info("Core managed lifecycle requested by deploy payload")
+				log.Debug("Core managed lifecycle requested by deploy payload")
 			}
 
 			lifecycle := restartCoreProcessLifecycle(ctx, s.Cfg, s.apiService)
@@ -174,21 +177,16 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 			coreReady = lifecycle.Ready
 			if lifecycle.failed() {
 				reloadError = lifecycle.Error
-				s.Cfg.Logger.Error(
-					"Core managed lifecycle failed after config deploy; keeping node control plane alive",
-					"error", lifecycle.Error,
-					"process_before", lifecycle.ProcessBefore,
-					"process_after", lifecycle.ProcessAfter,
-				)
+				log.Error("Failed to start Sing-box: "+lifecycle.Error, "process_before", lifecycle.ProcessBefore, "process_after", lifecycle.ProcessAfter)
 			} else {
 				restarted = lifecycle.Started
 			}
 		} else {
-			s.Cfg.Logger.Info("Core lifecycle skipped: config unchanged and core API healthy")
+			log.Log("Sing-box Core configuration is up-to-date - no restart required")
 			coreReady = true
 		}
 	} else {
-		s.Cfg.Logger.Info("Core lifecycle skipped by deploy payload")
+		log.Debug("Core lifecycle skipped by deploy payload")
 	}
 
 	return DeploySummary{
@@ -237,13 +235,14 @@ func (s *NodeServer) shouldRunCoreLifecycle(ctx context.Context, task DeployConf
 	if configChanged || task.forceRestartRequested() {
 		return true
 	}
-	if s == nil || s.apiService == nil {
+	if s == nil || s.Cfg == nil || s.apiService == nil {
 		return true
 	}
+	log := s.Cfg.LoggerFor("SingboxService")
 	checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := s.apiService.CheckCoreReady(checkCtx); err != nil {
-		s.Cfg.Logger.Warn("Core lifecycle required because core API is not healthy even though config is unchanged", "error", err)
+		log.Warn("Sing-box Core health check failed, restarting...", "error", err)
 		return true
 	}
 	return false

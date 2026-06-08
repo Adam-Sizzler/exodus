@@ -61,54 +61,55 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 		result.Error = "node config/logger is nil"
 		return result
 	}
+	log := cfg.LoggerFor("SingboxService")
 
-	cfg.Logger.Info("Starting managed core lifecycle", "process", coreProcessName, "config", config.FixedSingboxConfigPath)
-	// Remnawave-style lifecycle: the freshly received config is already the current
+	log.Debug("Starting managed core lifecycle", "process", coreProcessName, "config", config.FixedSingboxConfigPath)
+	// lifecycle: the freshly received config is already the current
 	// managed core config. Do not pre-gate supervisor start with a local check here.
 	// If the config is invalid, supervisor/core start returns the business error and
 	// the node control-plane remains alive for the next corrective deploy.
-	cfg.Logger.Debug("Starting core through supervisor without pre-validation gate", "config", config.FixedSingboxConfigPath)
+	log.Debug("Starting core through supervisor without pre-validation gate", "config", config.FixedSingboxConfigPath)
 
 	supervisor, err := newSupervisorClient(cfg)
 	if err != nil {
 		result.Error = fmt.Sprintf("create supervisor client: %v", err)
-		cfg.Logger.Error("Core lifecycle failed before supervisor call", "error", err)
+		log.Error("Failed to start Sing-box: " + err.Error())
 		return result
 	}
 
 	before, err := supervisor.GetProcessInfo(ctx, coreProcessName)
 	if err != nil {
 		result.Error = fmt.Sprintf("get supervisor process info: %v", err)
-		cfg.Logger.Error("Core lifecycle failed before start", "error", err)
+		log.Error("Failed to start Sing-box: " + err.Error())
 		return result
 	}
 	result.ProcessBefore = before.StateName
-	cfg.Logger.Debug("Core supervisor state before start", "state", before.StateName, "description", before.Description)
+	log.Debug("Core supervisor state before start", "state", before.StateName, "description", before.Description)
 
 	if shouldStopBeforeStart(before.StateName) {
-		cfg.Logger.Info("Stopping existing core process before managed start", "state", before.StateName)
+		log.Debug("Stopping existing core process before managed start", "state", before.StateName)
 		if err := supervisor.StopProcess(ctx, coreProcessName, true); err != nil {
 			if isSupervisorAlreadyStoppedError(err) {
-				cfg.Logger.Debug("Core process was already stopped", "error", err)
+				log.Debug("Core process was already stopped", "error", err)
 			} else {
 				result.Error = fmt.Sprintf("stop %s: %v", coreProcessName, err)
-				cfg.Logger.Error("Core lifecycle failed while stopping process", "error", err)
+				log.Error("Failed to stop Sing-box Process: " + err.Error())
 				return result
 			}
 		} else {
-			cfg.Logger.Info("Core process stopped")
+			log.Debug("Core process stopped")
 		}
 	} else {
-		cfg.Logger.Debug("Core stop skipped before start", "state", before.StateName)
+		log.Debug("Core stop skipped before start", "state", before.StateName)
 	}
 
-	cfg.Logger.Info("Starting core process through supervisor", "process", coreProcessName)
+	log.Debug("Starting core process through supervisor", "process", coreProcessName)
 	if err := supervisor.StartProcess(ctx, coreProcessName, true); err != nil {
 		if isSupervisorAlreadyStartedError(err) {
-			cfg.Logger.Debug("Core process was already started", "error", err)
+			log.Debug("Core process was already started", "error", err)
 		} else {
 			result.Error = fmt.Sprintf("start %s: %v", coreProcessName, err)
-			cfg.Logger.Error("Core lifecycle failed while starting process", "error", err)
+			log.Error("Failed to start Sing-box: " + err.Error())
 			if after, infoErr := supervisor.GetProcessInfo(ctx, coreProcessName); infoErr == nil {
 				result.ProcessAfter = after.StateName
 			}
@@ -116,31 +117,31 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 		}
 	}
 	result.Started = true
-	cfg.Logger.Info("Core process start command accepted")
+	log.Debug("Core process start command accepted")
 
 	after, err := supervisor.GetProcessInfo(ctx, coreProcessName)
 	if err != nil {
 		result.Error = fmt.Sprintf("get supervisor process info after start: %v", err)
-		cfg.Logger.Error("Core lifecycle failed after start", "error", err)
+		log.Error("Failed to start Sing-box: " + err.Error())
 		return result
 	}
 	result.ProcessAfter = after.StateName
-	cfg.Logger.Debug("Core supervisor state after start", "state", after.StateName, "description", after.Description)
+	log.Debug("Core supervisor state after start", "state", after.StateName, "description", after.Description)
 
 	if !isSupervisorRunningState(after.StateName) && !strings.EqualFold(after.StateName, "STARTING") {
 		result.Error = fmt.Sprintf("core supervisor state is %s: %s", after.StateName, after.Description)
-		cfg.Logger.Error("Core process is not running after supervisor start", "state", after.StateName, "description", after.Description)
+		log.Error("\n" + renderCoreFailedMessage(after.StateName, result.Error))
 		return result
 	}
 
 	if err := waitForCoreAPIReady(ctx, cfg, apiService); err != nil {
 		result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
-		cfg.Logger.Error("Core lifecycle finished with unhealthy core API", "error", err, "state", after.StateName)
+		log.Error("Failed to start Sing-box: "+err.Error(), "state", after.StateName)
 		return result
 	}
 
 	result.Ready = true
-	cfg.Logger.Info("Core lifecycle completed successfully", "process", coreProcessName, "state", result.ProcessAfter)
+	log.Log("\n" + renderCoreStartedMessage(result.ProcessAfter))
 	return result
 }
 
@@ -153,7 +154,7 @@ func newSupervisorClient(cfg *config.NodeConfig) (*supervisorClient, error) {
 		socketPath: socketPath,
 		username:   strings.TrimSpace(os.Getenv("SUPERVISORD_USER")),
 		password:   strings.TrimSpace(os.Getenv("SUPERVISORD_PASSWORD")),
-		logger:     cfg.Logger,
+		logger:     cfg.LoggerFor("SingboxService"),
 	}
 	client.httpClient = &http.Client{
 		Transport: &http.Transport{
@@ -307,6 +308,7 @@ func isSupervisorAlreadyStartedError(err error) bool {
 }
 
 func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service) error {
+	log := cfg.LoggerFor("SingboxService")
 	if apiService == nil {
 		return fmt.Errorf("core API service is nil")
 	}
@@ -317,11 +319,11 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 		err := apiService.CheckCoreReady(checkCtx)
 		cancel()
 		if err == nil {
-			cfg.Logger.Info("Core API healthcheck passed", "attempt", attempt)
+			log.Debug("Core API healthcheck passed", "attempt", attempt)
 			return nil
 		}
 		lastErr = err
-		cfg.Logger.Debug("Core API healthcheck attempt failed", "attempt", attempt, "attempts", coreHealthcheckAttempts, "error", err)
+		log.Debug("Core API healthcheck attempt failed", "attempt", attempt, "attempts", coreHealthcheckAttempts, "error", err)
 
 		if attempt == coreHealthcheckAttempts {
 			break

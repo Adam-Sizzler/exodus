@@ -16,7 +16,7 @@ func (s *NodeServer) startSRSAutoUpdater() {
 		return
 	}
 
-	s.Cfg.Logger.Info("SRS auto updater started", "interval", srsRefreshInterval.String())
+	s.Cfg.LoggerFor("SRSService").Info("SRS auto updater started", "interval", srsRefreshInterval.String())
 	go func() {
 		s.refreshSRSFromManifest()
 
@@ -35,24 +35,24 @@ func (s *NodeServer) refreshSRSFromManifest() {
 	lists, err := loadSRSManifest()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			s.Cfg.Logger.Debug("SRS manifest not found, skipping refresh", "path", manifestPath)
+			s.Cfg.LoggerFor("SRSService").Debug("SRS manifest not found, skipping refresh", "path", manifestPath)
 			return
 		}
-		s.Cfg.Logger.Warn("Failed to read SRS manifest for refresh", "path", manifestPath, "error", err)
+		s.Cfg.LoggerFor("SRSService").Warn("Failed to read SRS manifest for refresh", "path", manifestPath, "error", err)
 		return
 	}
 	if len(lists) == 0 {
-		s.Cfg.Logger.Debug("SRS manifest is empty, skipping refresh", "path", manifestPath)
+		s.Cfg.LoggerFor("SRSService").Debug("SRS manifest is empty, skipping refresh", "path", manifestPath)
 		return
 	}
 
 	summary, syncErr := s.SyncSRSLists(lists)
 	if syncErr != nil {
-		s.Cfg.Logger.Warn("SRS refresh failed", "error", syncErr)
+		s.Cfg.LoggerFor("SRSService").Warn("SRS refresh failed", "error", syncErr)
 		return
 	}
 
-	s.Cfg.Logger.Info(
+	s.Cfg.LoggerFor("SRSService").Info(
 		"SRS refresh completed",
 		"total", summary.Total,
 		"configured", summary.Configured,

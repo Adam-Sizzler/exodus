@@ -37,15 +37,16 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	if nodeServer == nil {
 		return fmt.Errorf("node server is nil")
 	}
+	log := cfg.LoggerFor("GrpcServer")
 
 	expectedToken := strings.TrimSpace(cfg.Exodus.GRPCToken)
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
 		grpcPathValidationUnaryInterceptor(),
-		grpcUnaryRequestLogger(cfg),
+		grpcUnaryRequestLogger(log),
 	}
 	streamInterceptors := []grpc.StreamServerInterceptor{
 		grpcPathValidationStreamInterceptor(),
-		grpcStreamRequestLogger(cfg),
+		grpcStreamRequestLogger(log),
 	}
 	if cfg.Exodus.RequireGRPCToken {
 		if expectedToken == "" {
@@ -53,9 +54,9 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		}
 		unaryInterceptors = append(unaryInterceptors, grpcTokenUnaryInterceptor(expectedToken))
 		streamInterceptors = append(streamInterceptors, grpcTokenStreamInterceptor(expectedToken))
-		cfg.Logger.Info("gRPC auth mode: TLS + token")
+		log.Info("gRPC auth mode: TLS + token")
 	} else {
-		cfg.Logger.Info("gRPC auth mode: mTLS")
+		log.Info("gRPC auth mode: mTLS")
 	}
 
 	var opts []grpc.ServerOption
@@ -66,18 +67,18 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 
 	var tlsConfig *tls.Config
 	if cfg.Exodus.MTLSConfig != nil {
-		cfg.Logger.Debug("Configuring mTLS for gRPC server")
+		log.Debug("Configuring mTLS for gRPC server")
 		cert, err := tls.X509KeyPair(
 			[]byte(cfg.Exodus.MTLSConfig.Cert),
 			[]byte(cfg.Exodus.MTLSConfig.Key),
 		)
 		if err != nil {
-			cfg.Logger.Error("Failed to load server certificate", "error", err)
+			log.Error("Failed to load server certificate", "error", err)
 			return err
 		}
 		caCertPool := x509.NewCertPool()
 		if !caCertPool.AppendCertsFromPEM([]byte(cfg.Exodus.MTLSConfig.CACert)) {
-			cfg.Logger.Error("Failed to parse CA certificate")
+			log.Error("Failed to parse CA certificate")
 			return fmt.Errorf("failed to parse CA certificate")
 		}
 		tlsConfig = &tls.Config{
@@ -86,12 +87,12 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 			ClientCAs:    caCertPool,
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 		}
-		cfg.Logger.Info("mTLS enabled for gRPC server")
+		log.Info("mTLS enabled for gRPC server")
 	} else {
 		if cfg.Exodus.GrpcAddress != "127.0.0.1" && cfg.Exodus.GrpcAddress != "localhost" {
-			cfg.Logger.Warn("Insecure gRPC on non-local address", "address", cfg.Exodus.GrpcAddress)
+			log.Warn("Insecure gRPC on non-local address", "address", cfg.Exodus.GrpcAddress)
 		}
-		cfg.Logger.Debug("Using h2c gRPC server (for reverse proxy TLS termination)")
+		log.Debug("Using h2c gRPC server (for reverse proxy TLS termination)")
 	}
 
 	grpcServer := grpc.NewServer(opts...)
@@ -100,12 +101,12 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	var pathPrefix string
 	if cfg.Exodus.GrpcPath != "" {
 		pathPrefix = "/" + strings.Trim(cfg.Exodus.GrpcPath, "/")
-		cfg.Logger.Info("gRPC path prefix configured", "prefix", pathPrefix)
+		log.Info("gRPC path prefix configured", "prefix", pathPrefix)
 	}
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.Logger.Debug("Node HTTP request", "method", r.Method, "path", r.URL.Path, "remote_addr", r.RemoteAddr)
-		cfg.Logger.Trace(
+		log.Debug("Node HTTP request", "method", r.Method, "path", r.URL.Path, "remote_addr", r.RemoteAddr)
+		log.Trace(
 			"Node HTTP request details",
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -131,11 +132,11 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	addr := fmt.Sprintf("%s:%d", cfg.Exodus.GrpcAddress, cfg.Exodus.GrpcPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		cfg.Logger.Error("Failed to start listener", "error", err)
+		log.Error("Failed to start listener", "error", err)
 		return err
 	}
 
-	cfg.Logger.Info("Starting gRPC server", "address", addr)
+	log.Info("Starting gRPC server", "address", addr)
 
 	httpServer := &http.Server{
 		ReadHeaderTimeout: 10 * time.Second,
@@ -153,7 +154,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	}
 
 	if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		cfg.Logger.Error("Failed to serve gRPC", "error", err)
+		log.Error("Failed to serve gRPC", "error", err)
 		return err
 	}
 
@@ -228,7 +229,7 @@ func validateIncomingGRPCToken(ctx context.Context, expectedToken string) error 
 	return nil
 }
 
-func grpcUnaryRequestLogger(cfg *config.NodeConfig) grpc.UnaryServerInterceptor {
+func grpcUnaryRequestLogger(log *config.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
 		remoteAddr := ""
@@ -236,24 +237,24 @@ func grpcUnaryRequestLogger(cfg *config.NodeConfig) grpc.UnaryServerInterceptor 
 			remoteAddr = p.Addr.String()
 		}
 
-		cfg.Logger.Debug("gRPC unary request", "method", info.FullMethod, "remote_addr", remoteAddr)
-		cfg.Logger.Trace("gRPC unary request details", "method", info.FullMethod, "payload_type", fmt.Sprintf("%T", req))
+		log.Debug("gRPC unary request", "method", info.FullMethod, "remote_addr", remoteAddr)
+		log.Trace("gRPC unary request details", "method", info.FullMethod, "payload_type", fmt.Sprintf("%T", req))
 
 		resp, err := handler(ctx, req)
 		durationMs := time.Since(start).Milliseconds()
 		code := status.Code(err).String()
 
 		if err != nil {
-			cfg.Logger.Warn("gRPC unary failed", "method", info.FullMethod, "code", code, "duration_ms", durationMs, "error", err)
+			log.Warn("gRPC unary failed", "method", info.FullMethod, "code", code, "duration_ms", durationMs, "error", err)
 			return resp, err
 		}
 
-		cfg.Logger.Debug("gRPC unary completed", "method", info.FullMethod, "code", code, "duration_ms", durationMs)
+		log.Debug("gRPC unary completed", "method", info.FullMethod, "code", code, "duration_ms", durationMs)
 		return resp, nil
 	}
 }
 
-func grpcStreamRequestLogger(cfg *config.NodeConfig) grpc.StreamServerInterceptor {
+func grpcStreamRequestLogger(log *config.Logger) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		start := time.Now()
 		remoteAddr := ""
@@ -261,24 +262,24 @@ func grpcStreamRequestLogger(cfg *config.NodeConfig) grpc.StreamServerIntercepto
 			remoteAddr = p.Addr.String()
 		}
 
-		cfg.Logger.Debug(
+		log.Debug(
 			"gRPC stream opened",
 			"method", info.FullMethod,
 			"client_stream", info.IsClientStream,
 			"server_stream", info.IsServerStream,
 			"remote_addr", remoteAddr,
 		)
-		cfg.Logger.Trace("gRPC stream details", "method", info.FullMethod)
+		log.Trace("gRPC stream details", "method", info.FullMethod)
 
 		err := handler(srv, ss)
 		durationMs := time.Since(start).Milliseconds()
 		code := status.Code(err).String()
 		if err != nil {
-			cfg.Logger.Warn("gRPC stream failed", "method", info.FullMethod, "code", code, "duration_ms", durationMs, "error", err)
+			log.Warn("gRPC stream failed", "method", info.FullMethod, "code", code, "duration_ms", durationMs, "error", err)
 			return err
 		}
 
-		cfg.Logger.Debug("gRPC stream closed", "method", info.FullMethod, "code", code, "duration_ms", durationMs)
+		log.Debug("gRPC stream closed", "method", info.FullMethod, "code", code, "duration_ms", durationMs)
 		return nil
 	}
 }

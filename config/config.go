@@ -6,20 +6,17 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"exodus-node/logger"
 )
 
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
 	Log    LogConfig
 	Exodus ExodusConfig
-	Logger *logger.Logger
+	Logger *Logger
 }
 
 type LogConfig struct {
 	LogLevel string
-	LogMode  string
 }
 
 type ExodusConfig struct {
@@ -40,8 +37,7 @@ const (
 	DefaultNodeGRPCAddress   = "0.0.0.0"
 	DefaultNodeGRPCPort      = 2222
 	DefaultNodeGRPCPath      = ""
-	DefaultNodeLogLevel      = "warn"
-	DefaultNodeLogMode       = "inclusive"
+	DefaultNodeLogLevel      = ""
 	DefaultNodeTLSServerName = "internal.exodus.local"
 )
 
@@ -54,7 +50,6 @@ type MTLSConfig struct {
 var defaultConfig = NodeConfig{
 	Log: LogConfig{
 		LogLevel: DefaultNodeLogLevel,
-		LogMode:  DefaultNodeLogMode,
 	},
 	Exodus: ExodusConfig{
 		GrpcAddress: DefaultNodeGRPCAddress,
@@ -67,12 +62,7 @@ var defaultConfig = NodeConfig{
 func LoadNodeConfig() (NodeConfig, error) {
 	cfg := defaultConfig
 
-	if value := firstEnv("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
-		cfg.Log.LogLevel = value
-	}
-	if value := firstEnv("LOG_MODE", "EXODUS_LOG_MODE"); value != "" {
-		cfg.Log.LogMode = value
-	}
+	cfg.Log.LogLevel = ResolveExodusLogLevel(cfg.Log.LogLevel)
 
 	if value := firstEnv("NODE_GRPC_ADDRESS", "LISTEN_GRPC_ADDRESS"); value != "" {
 		cfg.Exodus.GrpcAddress = value
@@ -117,11 +107,8 @@ func LoadNodeConfig() (NodeConfig, error) {
 		return cfg, fmt.Errorf("NODE_GRPC_TOKEN is required when SECRET_KEY is not provided")
 	}
 
-	cfg.Logger, err = logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, "UTC", os.Stderr)
-	if err != nil {
-		return cfg, fmt.Errorf("failed to initialize logger: %w", err)
-	}
-	cfg.Logger.Info(
+	cfg.Logger = NewExodusLogger(os.Stderr, cfg.Log.LogLevel)
+	cfg.Logger.WithContext("ConfigService").Debug(
 		"Node configuration validated",
 		"address", cfg.Exodus.GrpcAddress,
 		"port", cfg.Exodus.GrpcPort,
@@ -130,6 +117,13 @@ func LoadNodeConfig() (NodeConfig, error) {
 		"token_required", cfg.Exodus.RequireGRPCToken,
 	)
 	return cfg, nil
+}
+
+func (cfg *NodeConfig) LoggerFor(context string) *Logger {
+	if cfg == nil || cfg.Logger == nil {
+		return nil
+	}
+	return cfg.Logger.WithContext(context)
 }
 
 func firstEnv(keys ...string) string {

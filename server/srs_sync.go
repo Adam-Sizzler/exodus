@@ -228,7 +228,7 @@ func (s *NodeServer) SyncSRSLists(lists []SRSListItem) (SRSSyncSummary, error) {
 	}
 
 	normalized := normalizeSRSListsForSync(lists, func(err error) {
-		s.Cfg.Logger.Warn("Skip invalid SRS list", "error", err)
+		s.Cfg.LoggerFor("SRSService").Warn("Skip invalid SRS list", "error", err)
 	})
 	client := &http.Client{Timeout: 90 * time.Second}
 	for _, item := range normalized {
@@ -236,12 +236,12 @@ func (s *NodeServer) SyncSRSLists(lists []SRSListItem) (SRSSyncSummary, error) {
 		targetPath := filepath.Join(config.FixedSingboxDir, item.Path)
 		if err := downloadSRSFile(client, item.URL, targetPath); err != nil {
 			summary.Failed++
-			s.Cfg.Logger.Warn("Failed to download SRS file", "tag", item.Tag, "url", item.URL, "path", item.Path, "error", err, "duration_ms", time.Since(downloadStarted).Milliseconds())
+			s.Cfg.LoggerFor("SRSService").Warn("Failed to download SRS file", "tag", item.Tag, "url", item.URL, "path", item.Path, "error", err, "duration_ms", time.Since(downloadStarted).Milliseconds())
 			continue
 		}
 		summary.Downloaded++
 		summary.Configured++
-		s.Cfg.Logger.Debug("SRS file downloaded", "tag", item.Tag, "url", item.URL, "path", item.Path, "duration_ms", time.Since(downloadStarted).Milliseconds())
+		s.Cfg.LoggerFor("SRSService").Debug("SRS file downloaded", "tag", item.Tag, "url", item.URL, "path", item.Path, "duration_ms", time.Since(downloadStarted).Milliseconds())
 	}
 
 	manifestBytes, err := json.MarshalIndent(map[string]any{"srs_lists": normalized}, "", "  ")
@@ -261,7 +261,7 @@ func (s *NodeServer) SyncSRSListsIfChanged(lists []SRSListItem) (SRSSyncSummary,
 	}
 
 	normalized := normalizeSRSListsForSync(lists, func(err error) {
-		s.Cfg.Logger.Warn("Skip invalid SRS list", "error", err)
+		s.Cfg.LoggerFor("SRSService").Warn("Skip invalid SRS list", "error", err)
 	})
 	summary.Configured = len(normalized)
 

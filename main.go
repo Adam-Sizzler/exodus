@@ -28,19 +28,19 @@ func main() {
 
 	nodeServer, err := server.NewNodeServer(&cfg)
 	if err != nil {
-		cfg.Logger.Error("Failed to create node server", "error", err)
+		cfg.LoggerFor("Bootstrap").Error("Failed to create node server", "error", err)
 		os.Exit(1)
 	}
 	defer func() {
 		if err := nodeServer.Close(); err != nil {
-			cfg.Logger.Warn("Failed to close node server", "error", err)
+			cfg.LoggerFor("Bootstrap").Warn("Failed to close node server", "error", err)
 		}
 	}()
 
-	cfg.Logger.Info("Starting exodus-node", "version", constant.Version)
+	cfg.Logger.Log("\n" + server.GetStartMessage(&cfg) + "\n")
 
 	if err := grpcserver.StartGRPCServer(&cfg, nodeServer); err != nil {
-		cfg.Logger.Error("Failed to start gRPC server", "error", err)
+		cfg.LoggerFor("Bootstrap").Error("Failed to start gRPC server", "error", err)
 		os.Exit(1)
 	}
 }

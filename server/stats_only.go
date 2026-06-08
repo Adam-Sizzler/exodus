@@ -52,13 +52,13 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 			Message: "task is nil",
 		}, nil
 	}
-	s.Cfg.Logger.Info("SubmitTask received", "task_id", task.TaskId, "operation", task.Operation, "payload_bytes", len(task.Payload))
+	s.Cfg.LoggerFor("NodeService").Debug("SubmitTask received", "task_id", task.TaskId, "operation", task.Operation, "payload_bytes", len(task.Payload))
 
 	switch task.Operation {
 	case taskOperationDeployConfig:
 		var payload DeployConfigTaskPayload
 		if err := json.Unmarshal(task.Payload, &payload); err != nil {
-			s.Cfg.Logger.Warn("Invalid deploy_config payload", "task_id", task.TaskId, "error", err)
+			s.Cfg.LoggerFor("SingboxService").Warn("Invalid deploy_config payload", "task_id", task.TaskId, "error", err)
 			return &rpcstatus.Status{
 				Code:    int32(codes.InvalidArgument),
 				Message: fmt.Sprintf("invalid deploy_config payload: %v", err),
@@ -70,7 +70,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 
 		summary, err := s.DeployConfig(ctx, payload)
 		if err != nil {
-			s.Cfg.Logger.Error("Failed to deploy sing-box config", "error", err)
+			s.Cfg.LoggerFor("SingboxService").Error("Failed to start Sing-box: " + err.Error())
 			return &rpcstatus.Status{
 				Code:    int32(codes.FailedPrecondition),
 				Message: err.Error(),
@@ -106,7 +106,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 			SRSLists []SRSListItem `json:"srs_lists"`
 		}
 		if err := json.Unmarshal(task.Payload, &payload); err != nil {
-			s.Cfg.Logger.Warn("Invalid sync_srs_lists payload", "task_id", task.TaskId, "error", err)
+			s.Cfg.LoggerFor("SRSService").Warn("Invalid sync_srs_lists payload", "task_id", task.TaskId, "error", err)
 			return &rpcstatus.Status{
 				Code:    int32(codes.InvalidArgument),
 				Message: fmt.Sprintf("invalid sync_srs_lists payload: %v", err),
@@ -132,7 +132,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 	case taskOperationNodePluginExecutor:
 		accepted, err := ExecuteNodePluginCommand(task.Payload)
 		if err != nil {
-			s.Cfg.Logger.Warn("Node plugin executor command failed", "task_id", task.TaskId, "error", err)
+			s.Cfg.LoggerFor("PluginService").Warn("Node plugin executor command failed", "task_id", task.TaskId, "error", err)
 			return &rpcstatus.Status{
 				Code:    int32(codes.FailedPrecondition),
 				Message: err.Error(),
@@ -144,7 +144,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 		}, nil
 
 	default:
-		s.Cfg.Logger.Warn("Unsupported task operation", "task_id", task.TaskId, "operation", task.Operation)
+		s.Cfg.LoggerFor("NodeService").Warn("Unsupported task operation", "task_id", task.TaskId, "operation", task.Operation)
 		return &rpcstatus.Status{
 			Code:    int32(codes.Unimplemented),
 			Message: fmt.Sprintf("%s (operation=%s)", statsOnlyMessage, task.Operation),

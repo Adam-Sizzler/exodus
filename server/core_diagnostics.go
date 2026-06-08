@@ -22,7 +22,7 @@ func (s *NodeServer) diagnoseCoreFailure(ctx context.Context, baseErr error) str
 		if trimmed != "" {
 			message = fmt.Sprintf("%s; sing-box check: %s", message, trimmed)
 		}
-		s.Cfg.Logger.Error("Core health-check failed", "diagnostic", message)
+		s.Cfg.LoggerFor("SingboxService").Error("Core health-check failed", "diagnostic", message)
 		return message
 	}
 
@@ -30,7 +30,7 @@ func (s *NodeServer) diagnoseCoreFailure(ctx context.Context, baseErr error) str
 	if trimmedErr != "" {
 		message = fmt.Sprintf("%s; sing-box check failed: %s", message, trimmedErr)
 	}
-	s.Cfg.Logger.Error("Core health-check failed", "diagnostic", message)
+	s.Cfg.LoggerFor("SingboxService").Error("Core health-check failed", "diagnostic", message)
 	return message
 }
 

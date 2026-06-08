@@ -530,19 +530,19 @@ func hasCapNetAdmin() bool {
 }
 
 func logNftablesAvailability(logger interface {
-	Info(string, ...any)
+	Log(string, ...any)
 	Warn(string, ...any)
 }) {
 	if logger == nil {
 		return
 	}
 	if !hasCapNetAdmin() {
-		logger.Warn("CAP_NET_ADMIN is not available", "reason", "nftables plugins are disabled")
+		logger.Warn("CAP_NET_ADMIN is not available.")
 		logger.Warn("[PLUGIN] Ingress Filter: not available")
 		logger.Warn("[PLUGIN] Egress Filter: not available")
 		return
 	}
-	logger.Info("[OK] CAP_NET_ADMIN is available")
+	logger.Log("[OK] CAP_NET_ADMIN is available")
 }
 
 func isNftablesUnavailableError(err error) bool {

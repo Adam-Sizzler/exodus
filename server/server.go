@@ -30,7 +30,7 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 
 	apiService, err := api.NewService(cfg)
 	if err != nil {
-		cfg.Logger.Error("Failed to initialize core API service", "error", err)
+		cfg.LoggerFor("StatsService").Error("Failed to initialize core API service", "error", err)
 		return nil, fmt.Errorf("initialize core API service: %w", err)
 	}
 
@@ -38,7 +38,7 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 		Cfg:        cfg,
 		apiService: apiService,
 	}
-	logNftablesAvailability(cfg.Logger)
+	logNftablesAvailability(cfg.LoggerFor("NftService"))
 	nodeServer.startSRSAutoUpdater()
 
 	return nodeServer, nil
@@ -53,10 +53,10 @@ func (s *NodeServer) Close() error {
 
 // GetApiStats retrieves API statistics from the node.
 func (s *NodeServer) GetApiStats(ctx context.Context, req *proto.GetApiStatsRequest) (*proto.GetApiStatsResponse, error) {
-	s.Cfg.Logger.Debug("Received GetApiStats request")
+	s.Cfg.LoggerFor("StatsService").Debug("Received GetApiStats request")
 	apiData, err := s.apiService.GetApiResponse(ctx)
 	if err != nil {
-		s.Cfg.Logger.Error("Failed to get API response", "error", err)
+		s.Cfg.LoggerFor("StatsService").Error("Failed to get API response", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get API response: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func (s *NodeServer) GetApiStats(ctx context.Context, req *proto.GetApiStatsRequ
 		})
 	}
 
-	s.Cfg.Logger.Debug("Returning API stats", "stats_count", len(response.Stats))
+	s.Cfg.LoggerFor("StatsService").Debug("Returning API stats", "stats_count", len(response.Stats))
 	return response, nil
 }
 
