@@ -106,14 +106,11 @@ ensure_singbox_version() {
 }
 
 print_node_version() {
-    local output node_version node_revision
+    local output node_version
     output="$(${1:-/app/exodus-node} -version 2>/dev/null || true)"
-    node_version="$(printf '%s\n' "$output" | awk -F': ' '/^Version:/ {print $2; exit}')"
-    node_revision="$(printf '%s\n' "$output" | awk -F': ' '/^Revision:/ {print $2; exit}')"
+    node_version="$(printf '%s\n' "$output" | awk -F': ' 'tolower($1) ~ /^(exodus )?version$/ {print $2; exit}')"
     [ -n "$node_version" ] || node_version="unknown"
-    [ -n "$node_revision" ] || node_revision="unknown"
     echo "[Entrypoint] exodus-node version: ${node_version}"
-    echo "[Entrypoint] exodus-node revision: ${node_revision}"
 }
 
 RNDSTR="$(generate_random 10)"
@@ -138,7 +135,6 @@ ensure_singbox_version
 
 print_node_version "${1:-/app/exodus-node}"
 
-echo "[Entrypoint] supervisord version: $(supervisord --version | head -n 1)"
 supervisord -c /etc/supervisord.conf &
 sleep 1
 

@@ -1,21 +1,32 @@
 package server
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/netip"
-	"os/exec"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
+	"time"
+
+	"github.com/google/nftables"
+	"github.com/google/nftables/expr"
+	"golang.org/x/sys/unix"
 )
 
 const (
-	nftTableFamily       = "inet"
-	nftTableName         = "exodus"
-	nftTorrentBlockerSet = "torrent-blocker"
-	nftIngressIPSet      = "ingress-filter-ip"
-	nftEgressIPSet       = "egress-filter-ip"
-	nftEgressPortSet     = "egress-filter-port"
+	linuxCAPNetAdmin = 12
+
+	nftIPv4TableName = "exodus"
+	nftIPv6TableName = "exodus6"
+
+	nftIngressIPSet  = "ingress-filter-ip"
+	nftEgressIPSet   = "egress-filter-ip"
+	nftEgressPortSet = "egress-filter-port"
 )
 
 type NftIngressFilterPayload struct {
@@ -37,8 +48,63 @@ type nftExecutorCommand struct {
 	} `json:"ips"`
 }
 
+type nftIPElement struct {
+	Value     string
+	IsIPv6    bool
+	Key       []byte
+	KeyEnd    []byte
+	IsNetwork bool
+}
+
+type nftTableSpec struct {
+	Family        nftables.TableFamily
+	Name          string
+	IPType        nftables.SetDatatype
+	AddrLen       uint32
+	SrcAddrOffset uint32
+	DstAddrOffset uint32
+	IngressSet    string
+	EgressSet     string
+	EgressPortSet string
+}
+
+var nftTableSpecs = []nftTableSpec{
+	{
+		Family:        nftables.TableFamilyIPv4,
+		Name:          nftIPv4TableName,
+		IPType:        nftables.TypeIPAddr,
+		AddrLen:       4,
+		SrcAddrOffset: 12,
+		DstAddrOffset: 16,
+		IngressSet:    nftIngressIPSet,
+		EgressSet:     nftEgressIPSet,
+		EgressPortSet: nftEgressPortSet,
+	},
+	{
+		Family:        nftables.TableFamilyIPv6,
+		Name:          nftIPv6TableName,
+		IPType:        nftables.TypeIP6Addr,
+		AddrLen:       16,
+		SrcAddrOffset: 8,
+		DstAddrOffset: 24,
+		IngressSet:    nftIngressIPSet + "6",
+		EgressSet:     nftEgressIPSet + "6",
+		EgressPortSet: nftEgressPortSet + "6",
+	},
+}
+
 func applyNftablesModule(modules DeployModulesPayload) error {
-	if err := recreateNftablesTable(); err != nil {
+	if !modules.IngressFilter.Enabled && !modules.EgressFilter.Enabled {
+		return nil
+	}
+	if !hasCapNetAdmin() {
+		return nil
+	}
+
+	if err := recreateNftablesTables(); err != nil {
+		if isNftablesUnavailableError(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -68,199 +134,315 @@ func ExecuteNodePluginCommand(raw json.RawMessage) (bool, error) {
 
 	switch strings.TrimSpace(command.Command) {
 	case "recreateTables":
-		return true, recreateNftablesTable()
-	case "blockIps":
-		if err := ensureNftablesTable(); err != nil {
-			return false, err
-		}
-		for _, item := range command.IPs {
-			if err := addNftIPElement(nftTorrentBlockerSet, item.IP, item.Timeout); err != nil {
-				return false, err
-			}
-		}
-		return true, nil
-	case "unblockIps":
-		if err := ensureNftablesTable(); err != nil {
-			return false, err
-		}
-		ips := make([]string, 0, len(command.IPs))
-		for _, item := range command.IPs {
-			ips = append(ips, item.IP)
-		}
-		if err := removeNftIPs(nftTorrentBlockerSet, ips); err != nil {
-			return false, err
-		}
-		if err := removeNftIPs(nftIngressIPSet, ips); err != nil {
-			return false, err
-		}
-		return true, nil
+		return executeNftCommand(recreateNftablesTables)
+	case "blockIps", "unblockIps":
+		return false, nil
 	default:
 		return false, fmt.Errorf("unsupported node plugin executor command: %s", command.Command)
 	}
 }
 
-func recreateNftablesTable() error {
-	_ = runNft("delete", "table", nftTableFamily, nftTableName)
-
-	script := fmt.Sprintf(`
-table %s %s {
-	set %s {
-		type ipv4_addr
-		flags interval,timeout
+func executeNftCommand(fn func() error) (bool, error) {
+	if !hasCapNetAdmin() {
+		return false, nil
 	}
-
-	set %s {
-		type ipv4_addr
-		flags interval,timeout
+	if err := ensureNftablesTables(); err != nil {
+		if isNftablesUnavailableError(err) {
+			return false, nil
+		}
+		return false, err
 	}
-
-	set %s {
-		type ipv4_addr
-		flags interval,timeout
+	if err := fn(); err != nil {
+		if isNftablesUnavailableError(err) {
+			return false, nil
+		}
+		return false, err
 	}
-
-	set %s {
-		type inet_service
-	}
-
-	chain input {
-		type filter hook input priority filter; policy accept;
-		ip saddr @%s drop
-		ip saddr @%s drop
-	}
-
-	chain output {
-		type filter hook output priority filter; policy accept;
-		ip daddr @%s drop
-		tcp dport @%s drop
-		udp dport @%s drop
-	}
+	return true, nil
 }
-`,
-		nftTableFamily,
-		nftTableName,
-		nftTorrentBlockerSet,
-		nftIngressIPSet,
-		nftEgressIPSet,
-		nftEgressPortSet,
-		nftTorrentBlockerSet,
-		nftIngressIPSet,
-		nftEgressIPSet,
-		nftEgressPortSet,
-		nftEgressPortSet,
-	)
 
-	if err := runNftScript(script); err != nil {
-		return fmt.Errorf("create nftables table %s %s: %w", nftTableFamily, nftTableName, err)
+func recreateNftablesTables() error {
+	for _, spec := range nftTableSpecs {
+		conn, err := nftables.New()
+		if err != nil {
+			return fmt.Errorf("create nftables netlink connection: %w", err)
+		}
+		conn.DelTable(&nftables.Table{Family: spec.Family, Name: spec.Name})
+		if err := conn.Flush(); err != nil && !isENOENT(err) {
+			return fmt.Errorf("delete old nftables table %s: %w", spec.Name, err)
+		}
+	}
+
+	conn, err := nftables.New()
+	if err != nil {
+		return fmt.Errorf("create nftables netlink connection: %w", err)
+	}
+	for _, spec := range nftTableSpecs {
+		if err := addNftTableLayout(conn, spec); err != nil {
+			return err
+		}
+	}
+	if err := conn.Flush(); err != nil {
+		return fmt.Errorf("create nftables tables: %w", err)
 	}
 	return nil
 }
 
-func ensureNftablesTable() error {
-	if err := runNft("list", "table", nftTableFamily, nftTableName); err == nil {
-		return nil
-	}
-	return recreateNftablesTable()
-}
-
-func syncNftIPSet(setName string, rawIPs []string, timeoutSeconds int) error {
-	ips, err := normalizeNftIPs(rawIPs)
+func ensureNftablesTables() error {
+	conn, err := nftables.New()
 	if err != nil {
-		return err
+		return fmt.Errorf("create nftables netlink connection: %w", err)
 	}
-	for _, ip := range ips {
-		if err := addNftIPElement(setName, ip, timeoutSeconds); err != nil {
-			return err
+	for _, spec := range nftTableSpecs {
+		if _, err := conn.ListTableOfFamily(spec.Name, spec.Family); err != nil {
+			return recreateNftablesTables()
 		}
 	}
 	return nil
 }
 
-func syncNftPortSet(setName string, rawPorts []int) error {
+func addNftTableLayout(conn *nftables.Conn, spec nftTableSpec) error {
+	table := conn.AddTable(&nftables.Table{Family: spec.Family, Name: spec.Name})
+	policy := nftables.ChainPolicyAccept
+	chains := map[string]*nftables.Chain{
+		"input": conn.AddChain(&nftables.Chain{
+			Name:     "input",
+			Table:    table,
+			Type:     nftables.ChainTypeFilter,
+			Hooknum:  nftables.ChainHookInput,
+			Priority: nftables.ChainPriorityFilter,
+			Policy:   &policy,
+		}),
+		"forward": conn.AddChain(&nftables.Chain{
+			Name:     "forward",
+			Table:    table,
+			Type:     nftables.ChainTypeFilter,
+			Hooknum:  nftables.ChainHookForward,
+			Priority: nftables.ChainPriorityFilter,
+			Policy:   &policy,
+		}),
+		"output": conn.AddChain(&nftables.Chain{
+			Name:     "output",
+			Table:    table,
+			Type:     nftables.ChainTypeFilter,
+			Hooknum:  nftables.ChainHookOutput,
+			Priority: nftables.ChainPriorityFilter,
+			Policy:   &policy,
+		}),
+	}
+
+	for _, setName := range []string{spec.IngressSet, spec.EgressSet} {
+		if err := conn.AddSet(&nftables.Set{
+			Table:      table,
+			Name:       setName,
+			KeyType:    spec.IPType,
+			Interval:   true,
+			AutoMerge:  true,
+			HasTimeout: true,
+		}, nil); err != nil {
+			return fmt.Errorf("add nftables set %s/%s: %w", spec.Name, setName, err)
+		}
+	}
+	if err := conn.AddSet(&nftables.Set{
+		Table:    table,
+		Name:     spec.EgressPortSet,
+		KeyType:  nftables.TypeInetService,
+		Interval: true,
+	}, nil); err != nil {
+		return fmt.Errorf("add nftables set %s/%s: %w", spec.Name, spec.EgressPortSet, err)
+	}
+
+	addNftAddrDropRule(conn, table, chains["input"], spec, true, spec.IngressSet)
+	addNftAddrDropRule(conn, table, chains["forward"], spec, true, spec.IngressSet)
+	addNftAddrDropRule(conn, table, chains["forward"], spec, false, spec.EgressSet)
+	addNftPortDropRule(conn, table, chains["forward"], spec.EgressPortSet, unix.IPPROTO_TCP)
+	addNftPortDropRule(conn, table, chains["forward"], spec.EgressPortSet, unix.IPPROTO_UDP)
+	addNftAddrDropRule(conn, table, chains["output"], spec, false, spec.EgressSet)
+	addNftPortDropRule(conn, table, chains["output"], spec.EgressPortSet, unix.IPPROTO_TCP)
+	addNftPortDropRule(conn, table, chains["output"], spec.EgressPortSet, unix.IPPROTO_UDP)
+
+	return nil
+}
+
+func addNftAddrDropRule(conn *nftables.Conn, table *nftables.Table, chain *nftables.Chain, spec nftTableSpec, source bool, setName string) {
+	offset := spec.DstAddrOffset
+	if source {
+		offset = spec.SrcAddrOffset
+	}
+	conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Payload{
+				OperationType: expr.PayloadLoad,
+				DestRegister:  1,
+				Base:          expr.PayloadBaseNetworkHeader,
+				Offset:        offset,
+				Len:           spec.AddrLen,
+			},
+			&expr.Lookup{SourceRegister: 1, SetName: setName},
+			&expr.Verdict{Kind: expr.VerdictDrop},
+		},
+	})
+}
+
+func addNftPortDropRule(conn *nftables.Conn, table *nftables.Table, chain *nftables.Chain, setName string, proto byte) {
+	conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{proto}},
+			&expr.Payload{
+				OperationType: expr.PayloadLoad,
+				DestRegister:  1,
+				Base:          expr.PayloadBaseTransportHeader,
+				Offset:        2,
+				Len:           2,
+			},
+			&expr.Lookup{SourceRegister: 1, SetName: setName},
+			&expr.Verdict{Kind: expr.VerdictDrop},
+		},
+	})
+}
+
+func syncNftIPSet(baseSetName string, rawIPs []string, timeoutSeconds int) error {
+	ips, err := normalizeNftIPs(rawIPs)
+	if err != nil {
+		return err
+	}
+	return withNftConn(func(conn *nftables.Conn) error {
+		for _, spec := range nftTableSpecs {
+			setName := ipSetNameForSpec(baseSetName, spec)
+			set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
+			elements := make([]nftables.SetElement, 0, len(ips))
+			for _, ip := range ips {
+				if ip.IsIPv6 != (spec.Family == nftables.TableFamilyIPv6) {
+					continue
+				}
+				elements = append(elements, nftSetElementForIP(ip, timeoutSeconds))
+			}
+			if len(elements) == 0 {
+				continue
+			}
+			if err := conn.SetAddElements(set, elements); err != nil {
+				return fmt.Errorf("add IP elements to nft set %s/%s: %w", spec.Name, setName, err)
+			}
+		}
+		return nil
+	})
+}
+
+func syncNftPortSet(baseSetName string, rawPorts []int) error {
 	ports, err := normalizeNftPorts(rawPorts)
 	if err != nil {
 		return err
 	}
-	for _, port := range ports {
-		script := fmt.Sprintf("add element %s %s %s { %d }\n", nftTableFamily, nftTableName, setName, port)
-		if err := runNftScript(script); err != nil {
-			return fmt.Errorf("add port %d to nft set %s: %w", port, setName, err)
+	return withNftConn(func(conn *nftables.Conn) error {
+		for _, spec := range nftTableSpecs {
+			set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: ipSetNameForSpec(baseSetName, spec)}
+			elements := make([]nftables.SetElement, 0, len(ports))
+			for _, port := range ports {
+				elements = append(elements, nftables.SetElement{Key: uint16Key(uint16(port))})
+			}
+			if len(elements) == 0 {
+				continue
+			}
+			if err := conn.SetAddElements(set, elements); err != nil {
+				return fmt.Errorf("add ports to nft set %s/%s: %w", spec.Name, set.Name, err)
+			}
 		}
+		return nil
+	})
+}
+
+func withNftConn(fn func(*nftables.Conn) error) error {
+	if err := ensureNftablesTables(); err != nil {
+		return err
+	}
+	conn, err := nftables.New()
+	if err != nil {
+		return fmt.Errorf("create nftables netlink connection: %w", err)
+	}
+	if err := fn(conn); err != nil {
+		return err
+	}
+	if err := conn.Flush(); err != nil {
+		return fmt.Errorf("flush nftables transaction: %w", err)
 	}
 	return nil
 }
 
-func addNftIPElement(setName string, rawIP string, timeoutSeconds int) error {
-	ip, err := normalizeNftIP(rawIP)
-	if err != nil {
-		return err
+func nftSetElementForIP(ip nftIPElement, timeoutSeconds int) nftables.SetElement {
+	element := nftables.SetElement{Key: ip.Key}
+	if len(ip.KeyEnd) > 0 {
+		element.KeyEnd = ip.KeyEnd
 	}
-
-	_ = removeNftIP(setName, ip)
-
-	timeoutPart := ""
 	if timeoutSeconds > 0 {
-		timeoutPart = fmt.Sprintf(" timeout %ds", timeoutSeconds)
+		element.Timeout = time.Duration(timeoutSeconds) * time.Second
 	}
-	script := fmt.Sprintf("add element %s %s %s { %s%s }\n", nftTableFamily, nftTableName, setName, ip, timeoutPart)
-	if err := runNftScript(script); err != nil {
-		return fmt.Errorf("add IP %s to nft set %s: %w", ip, setName, err)
-	}
-	return nil
+	return element
 }
 
-func removeNftIPs(setName string, rawIPs []string) error {
-	ips, err := normalizeNftIPs(rawIPs)
-	if err != nil {
-		return err
+func ipSetNameForSpec(baseSetName string, spec nftTableSpec) string {
+	if spec.Family != nftables.TableFamilyIPv6 {
+		return baseSetName
 	}
-	for _, ip := range ips {
-		_ = removeNftIP(setName, ip)
+	switch baseSetName {
+	case nftIngressIPSet, nftEgressIPSet, nftEgressPortSet:
+		return baseSetName + "6"
+	default:
+		return baseSetName
 	}
-	return nil
 }
 
-func removeNftIP(setName string, ip string) error {
-	script := fmt.Sprintf("delete element %s %s %s { %s }\n", nftTableFamily, nftTableName, setName, ip)
-	return runNftScript(script)
-}
-
-func normalizeNftIPs(rawIPs []string) ([]string, error) {
+func normalizeNftIPs(rawIPs []string) ([]nftIPElement, error) {
 	seen := make(map[string]struct{}, len(rawIPs))
-	ips := make([]string, 0, len(rawIPs))
+	ips := make([]nftIPElement, 0, len(rawIPs))
 	for _, rawIP := range rawIPs {
 		ip, err := normalizeNftIP(rawIP)
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := seen[ip]; ok {
+		if _, ok := seen[ip.Value]; ok {
 			continue
 		}
-		seen[ip] = struct{}{}
+		seen[ip.Value] = struct{}{}
 		ips = append(ips, ip)
 	}
-	sort.Strings(ips)
+	sort.Slice(ips, func(i, j int) bool { return ips[i].Value < ips[j].Value })
 	return ips, nil
 }
 
-func normalizeNftIP(rawIP string) (string, error) {
+func normalizeNftIP(rawIP string) (nftIPElement, error) {
 	value := strings.TrimSpace(rawIP)
+	if value == "" {
+		return nftIPElement{}, fmt.Errorf("empty IP address")
+	}
 	if prefix, err := netip.ParsePrefix(value); err == nil {
 		prefix = prefix.Masked()
-		if !prefix.Addr().Is4() {
-			return "", fmt.Errorf("only IPv4 addresses and CIDR ranges are supported by nft set %s", nftTableName)
+		start, end := prefixRange(prefix)
+		ip := nftIPElement{
+			Value:     prefix.String(),
+			IsIPv6:    prefix.Addr().Is6(),
+			Key:       addrBytes(start),
+			IsNetwork: prefix.Bits() != addressBits(prefix.Addr()),
 		}
-		return prefix.String(), nil
+		if ip.IsNetwork {
+			ip.KeyEnd = addrBytes(end)
+		}
+		return ip, nil
 	}
 
 	addr, err := netip.ParseAddr(value)
 	if err != nil {
-		return "", fmt.Errorf("invalid IP address or CIDR range %q", rawIP)
+		return nftIPElement{}, fmt.Errorf("invalid IP address or CIDR range %q", rawIP)
 	}
-	if !addr.Is4() {
-		return "", fmt.Errorf("only IPv4 addresses and CIDR ranges are supported by nft set %s", nftTableName)
-	}
-	return addr.String(), nil
+	return nftIPElement{
+		Value:  addr.String(),
+		IsIPv6: addr.Is6(),
+		Key:    addrBytes(addr),
+	}, nil
 }
 
 func normalizeNftPorts(rawPorts []int) ([]int, error) {
@@ -280,20 +462,100 @@ func normalizeNftPorts(rawPorts []int) ([]int, error) {
 	return ports, nil
 }
 
-func runNft(args ...string) error {
-	output, err := exec.Command("nft", args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("nft %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(output)))
+func prefixRange(prefix netip.Prefix) (netip.Addr, netip.Addr) {
+	start := prefix.Masked().Addr()
+	bits := addressBits(start)
+	startBytes := addrBytes(start)
+	endBytes := append([]byte(nil), startBytes...)
+	for bit := prefix.Bits(); bit < bits; bit++ {
+		byteIndex := bit / 8
+		bitIndex := 7 - (bit % 8)
+		endBytes[byteIndex] |= 1 << bitIndex
 	}
-	return nil
+	end := netip.AddrFrom16([16]byte{})
+	if start.Is4() {
+		var raw [4]byte
+		copy(raw[:], endBytes)
+		end = netip.AddrFrom4(raw)
+	} else {
+		var raw [16]byte
+		copy(raw[:], endBytes)
+		end = netip.AddrFrom16(raw)
+	}
+	return start, end
 }
 
-func runNftScript(script string) error {
-	cmd := exec.Command("nft", "-f", "-")
-	cmd.Stdin = strings.NewReader(script)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("nft script failed: %w: %s", err, strings.TrimSpace(string(output)))
+func addressBits(addr netip.Addr) int {
+	if addr.Is4() {
+		return 32
 	}
-	return nil
+	return 128
+}
+
+func addrBytes(addr netip.Addr) []byte {
+	if addr.Is4() {
+		raw := addr.As4()
+		return append([]byte(nil), raw[:]...)
+	}
+	raw := addr.As16()
+	return append([]byte(nil), raw[:]...)
+}
+
+func uint16Key(value uint16) []byte {
+	out := make([]byte, 2)
+	binary.BigEndian.PutUint16(out, value)
+	return out
+}
+
+func hasCapNetAdmin() bool {
+	status, err := os.ReadFile("/proc/self/status")
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(status), "\n") {
+		if !strings.HasPrefix(line, "CapEff:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return false
+		}
+		capEff, err := strconv.ParseUint(fields[1], 16, 64)
+		if err != nil {
+			return false
+		}
+		return capEff&(1<<linuxCAPNetAdmin) != 0
+	}
+	return false
+}
+
+func logNftablesAvailability(logger interface {
+	Info(string, ...any)
+	Warn(string, ...any)
+}) {
+	if logger == nil {
+		return
+	}
+	if !hasCapNetAdmin() {
+		logger.Warn("CAP_NET_ADMIN is not available", "reason", "nftables plugins are disabled")
+		logger.Warn("[PLUGIN] Ingress Filter: not available")
+		logger.Warn("[PLUGIN] Egress Filter: not available")
+		return
+	}
+	logger.Info("[OK] CAP_NET_ADMIN is available")
+}
+
+func isNftablesUnavailableError(err error) bool {
+	return errors.Is(err, os.ErrPermission) ||
+		errors.Is(err, syscall.EPERM) ||
+		errors.Is(err, syscall.EACCES) ||
+		errors.Is(err, syscall.ENOENT) ||
+		errors.Is(err, unix.EOPNOTSUPP) ||
+		strings.Contains(strings.ToLower(err.Error()), "operation not permitted") ||
+		strings.Contains(strings.ToLower(err.Error()), "protocol not supported") ||
+		strings.Contains(strings.ToLower(err.Error()), "not supported")
+}
+
+func isENOENT(err error) bool {
+	return errors.Is(err, syscall.ENOENT) || strings.Contains(strings.ToLower(err.Error()), "no such file")
 }

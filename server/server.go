@@ -38,6 +38,7 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 		Cfg:        cfg,
 		apiService: apiService,
 	}
+	logNftablesAvailability(cfg.Logger)
 	nodeServer.startSRSAutoUpdater()
 
 	return nodeServer, nil
