@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -252,6 +254,29 @@ type bulkExtendExpirationDateRequest struct {
 	ExtendDays int      `json:"extendDays"`
 }
 
+type bulkUpdateUsersRequest struct {
+	UUIDs  []string              `json:"uuids"`
+	Fields bulkUpdateUsersFields `json:"fields"`
+}
+
+type bulkUpdateUsersSquadsRequest struct {
+	UUIDs                []string `json:"uuids"`
+	ActiveInternalSquads []string `json:"activeInternalSquads"`
+}
+
+type bulkUpdateUsersFields struct {
+	Status               *string        `json:"status,omitempty"`
+	TrafficLimitBytes    *int64         `json:"trafficLimitBytes,omitempty"`
+	TrafficLimitStrategy *string        `json:"trafficLimitStrategy,omitempty"`
+	ExpireAt             *string        `json:"expireAt,omitempty"`
+	Description          OptionalString `json:"description,omitempty"`
+	Tag                  OptionalString `json:"tag,omitempty"`
+	TelegramID           OptionalInt64  `json:"telegramId,omitempty"`
+	Email                OptionalString `json:"email,omitempty"`
+	HwidDeviceLimit      OptionalInt    `json:"hwidDeviceLimit,omitempty"`
+	ExternalSquadUUID    OptionalString `json:"externalSquadUuid,omitempty"`
+}
+
 type bulkAllExtendExpirationDateRequest struct {
 	ExtendDays int `json:"extendDays"`
 }
@@ -266,6 +291,24 @@ type bulkAllUpdateUsersRequest struct {
 	TelegramID           OptionalInt64  `json:"telegramId,omitempty"`
 	Email                OptionalString `json:"email,omitempty"`
 	HwidDeviceLimit      OptionalInt    `json:"hwidDeviceLimit,omitempty"`
+}
+
+type usersTableFilter struct {
+	ID    string `json:"id"`
+	Value any    `json:"value"`
+}
+
+type usersTableSorting struct {
+	ID   string `json:"id"`
+	Desc bool   `json:"desc"`
+}
+
+type usersTableQuery struct {
+	Start       int
+	Size        int
+	Filters     []usersTableFilter
+	FilterModes map[string]string
+	Sorting     []usersTableSorting
 }
 
 func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
@@ -369,6 +412,10 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			handleBulkDeleteUsers(w, r, manager, cfg)
 		case "reset-traffic":
 			handleBulkResetUsersTraffic(w, r, manager, cfg)
+		case "update":
+			handleBulkUpdateUsers(w, r, manager, cfg)
+		case "update-squads":
+			handleBulkUpdateUsersSquads(w, r, manager, cfg)
 		case "extend-expiration-date":
 			handleBulkExtendUsersExpirationDate(w, r, manager, cfg)
 		case "all/reset-traffic":
@@ -414,6 +461,12 @@ func trimUsersPath(path string, suffix string) string {
 }
 
 func handleGetUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	query, err := parseUsersTableQuery(r)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid table query", err, cfg)
+		return
+	}
+
 	records, err := getAllUserRecords(r.Context(), manager)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch users", err, cfg)
@@ -426,10 +479,15 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 		return
 	}
 
+	response = filterUsersTableResponse(response, query.Filters, query.FilterModes)
+	sortUsersTableResponse(response, query.Sorting)
+	total := len(response)
+	response = paginateUsersTableResponse(response, query.Start, query.Size)
+
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
 			"users": response,
-			"total": len(response),
+			"total": total,
 		},
 	})
 }
@@ -1245,6 +1303,164 @@ func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Reque
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
 
+func handleBulkUpdateUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req bulkUpdateUsersRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if err := validateUUIDList(req.UUIDs); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+	if err := validateBulkUpdateUsersFields(req.Fields); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
+	clauses, args := buildBulkUpdateUserClauses(req.Fields)
+	if len(clauses) == 0 {
+		shared.SendError(w, http.StatusBadRequest, "at least one field must be provided", nil, cfg)
+		return
+	}
+
+	cleanUUIDs := dedupeStrings(req.UUIDs)
+	var affectedRows int64
+	nodeUUIDs := make([]string, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := resolveNodeUUIDsForUserUUIDsTx(r.Context(), tx, cleanUUIDs)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		nodeUUIDs = targets
+
+		queryArgs := append(args, cleanUUIDs)
+		query := fmt.Sprintf("UPDATE users SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ANY(?)", strings.Join(clauses, ", "))
+		result, execErr := tx.ExecContext(r.Context(), query, queryArgs...)
+		if execErr != nil {
+			_ = tx.Rollback()
+			return mapUserWriteError(execErr)
+		}
+		rows, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			_ = tx.Rollback()
+			return rowsErr
+		}
+		affectedRows = rows
+
+		return tx.Commit()
+	})
+	if err != nil {
+		handleUserWriteError(w, err, cfg)
+		return
+	}
+
+	if affectedRows > 0 {
+		if len(nodeUUIDs) > 0 {
+			monitor.RequestNodeDeploy(true, nodeUUIDs...)
+		}
+		emitUsersByUUIDsNotification(r.Context(), manager, cfg, notifications.EventUserModified, cleanUUIDs)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
+func handleBulkUpdateUsersSquads(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req bulkUpdateUsersSquadsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if err := validateUUIDList(req.UUIDs); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+	if err := validateUUIDListAllowEmpty(req.ActiveInternalSquads); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid activeInternalSquads", err, cfg)
+		return
+	}
+
+	cleanUserUUIDs := dedupeStrings(req.UUIDs)
+	requestedSquads := dedupeStrings(req.ActiveInternalSquads)
+	var affectedRows int64
+	nodeUUIDs := make([]string, 0)
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		targets, nodeTargetsErr := resolveNodeUUIDsForUserUUIDsTx(r.Context(), tx, cleanUserUUIDs)
+		if nodeTargetsErr != nil {
+			_ = tx.Rollback()
+			return nodeTargetsErr
+		}
+		squadTargets, squadTargetsErr := resolveNodeUUIDsForInternalSquadsTx(r.Context(), tx, requestedSquads)
+		if squadTargetsErr != nil {
+			_ = tx.Rollback()
+			return squadTargetsErr
+		}
+		nodeUUIDs = dedupeStrings(append(targets, squadTargets...))
+
+		rows, err := tx.QueryContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ANY(?)`, cleanUserUUIDs)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		userIDs := make([]int64, 0, len(cleanUserUUIDs))
+		for rows.Next() {
+			var userID int64
+			if err := rows.Scan(&userID); err != nil {
+				_ = rows.Close()
+				_ = tx.Rollback()
+				return err
+			}
+			userIDs = append(userIDs, userID)
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			_ = tx.Rollback()
+			return err
+		}
+		_ = rows.Close()
+
+		for _, userID := range userIDs {
+			if err := replaceUserInternalSquadsTx(r.Context(), tx, userID, requestedSquads); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+		if len(userIDs) > 0 {
+			if _, err := tx.ExecContext(r.Context(), `UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE t_id = ANY(?)`, userIDs); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+		affectedRows = int64(len(userIDs))
+
+		return tx.Commit()
+	})
+	if err != nil {
+		handleUserWriteError(w, err, cfg)
+		return
+	}
+
+	if affectedRows > 0 {
+		if len(nodeUUIDs) > 0 {
+			monitor.RequestNodeDeploy(true, nodeUUIDs...)
+		}
+		emitUsersByUUIDsNotification(r.Context(), manager, cfg, notifications.EventUserModified, cleanUserUUIDs)
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
 func handleBulkAllUpdateUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req bulkAllUpdateUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1256,61 +1472,17 @@ func handleBulkAllUpdateUsers(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
-	clauses := make([]string, 0)
-	args := make([]any, 0)
-	add := func(column string, value any) {
-		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
-		args = append(args, value)
-	}
-
-	if req.Status != nil {
-		add("status", strings.ToUpper(strings.TrimSpace(*req.Status)))
-	}
-	if req.TrafficLimitBytes != nil {
-		add("traffic_limit_bytes", *req.TrafficLimitBytes)
-	}
-	if req.TrafficLimitStrategy != nil {
-		add("traffic_limit_strategy", strings.ToUpper(strings.TrimSpace(*req.TrafficLimitStrategy)))
-	}
-	if req.ExpireAt != nil {
-		parsed, _ := time.Parse(time.RFC3339, strings.TrimSpace(*req.ExpireAt))
-		add("expire_at", parsed.UTC())
-	}
-	if req.Description.Set {
-		if req.Description.Value == nil || strings.TrimSpace(*req.Description.Value) == "" {
-			clauses = append(clauses, "description = NULL")
-		} else {
-			add("description", strings.TrimSpace(*req.Description.Value))
-		}
-	}
-	if req.Tag.Set {
-		if req.Tag.Value == nil || strings.TrimSpace(*req.Tag.Value) == "" {
-			clauses = append(clauses, "tag = NULL")
-		} else {
-			add("tag", strings.ToUpper(strings.TrimSpace(*req.Tag.Value)))
-		}
-	}
-	if req.TelegramID.Set {
-		if req.TelegramID.Value == nil {
-			clauses = append(clauses, "telegram_id = NULL")
-		} else {
-			add("telegram_id", *req.TelegramID.Value)
-		}
-	}
-	if req.Email.Set {
-		if req.Email.Value == nil || strings.TrimSpace(*req.Email.Value) == "" {
-			clauses = append(clauses, "email = NULL")
-		} else {
-			add("email", strings.TrimSpace(*req.Email.Value))
-		}
-	}
-	if req.HwidDeviceLimit.Set {
-		if req.HwidDeviceLimit.Value == nil {
-			clauses = append(clauses, "hwid_device_limit = NULL")
-		} else {
-			add("hwid_device_limit", *req.HwidDeviceLimit.Value)
-		}
-	}
+	clauses, args := buildBulkUpdateUserClauses(bulkUpdateUsersFields{
+		Status:               req.Status,
+		TrafficLimitBytes:    req.TrafficLimitBytes,
+		TrafficLimitStrategy: req.TrafficLimitStrategy,
+		ExpireAt:             req.ExpireAt,
+		Description:          req.Description,
+		Tag:                  req.Tag,
+		TelegramID:           req.TelegramID,
+		Email:                req.Email,
+		HwidDeviceLimit:      req.HwidDeviceLimit,
+	})
 
 	var affectedRows int64
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
@@ -1983,6 +2155,134 @@ func validateUpdateUserRequest(req updateUserRequest) error {
 	return nil
 }
 
+func validateBulkUpdateUsersFields(fields bulkUpdateUsersFields) error {
+	hasUpdate := fields.Status != nil ||
+		fields.TrafficLimitBytes != nil ||
+		fields.TrafficLimitStrategy != nil ||
+		fields.ExpireAt != nil ||
+		fields.Description.Set ||
+		fields.Tag.Set ||
+		fields.TelegramID.Set ||
+		fields.Email.Set ||
+		fields.HwidDeviceLimit.Set ||
+		fields.ExternalSquadUUID.Set
+	if !hasUpdate {
+		return fmt.Errorf("at least one field must be provided")
+	}
+	if fields.Status != nil {
+		status := strings.ToUpper(strings.TrimSpace(*fields.Status))
+		if !isValidUserStatus(status) {
+			return fmt.Errorf("invalid status")
+		}
+		if status == "EXPIRED" || status == "LIMITED" {
+			return fmt.Errorf("invalid status")
+		}
+	}
+	if fields.TrafficLimitBytes != nil && *fields.TrafficLimitBytes < 0 {
+		return fmt.Errorf("trafficLimitBytes must be non-negative")
+	}
+	if fields.TrafficLimitStrategy != nil && !isValidTrafficStrategy(*fields.TrafficLimitStrategy) {
+		return fmt.Errorf("invalid trafficLimitStrategy")
+	}
+	if fields.ExpireAt != nil {
+		parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(*fields.ExpireAt))
+		if err != nil {
+			return fmt.Errorf("expireAt must be RFC3339")
+		}
+		if !parsed.After(time.Now().UTC()) {
+			return fmt.Errorf("expireAt must be in the future")
+		}
+	}
+	if fields.Tag.Set && fields.Tag.Value != nil && strings.TrimSpace(*fields.Tag.Value) != "" {
+		tag := strings.ToUpper(strings.TrimSpace(*fields.Tag.Value))
+		if len(tag) > 16 || !userTagRegex.MatchString(tag) {
+			return fmt.Errorf("tag can only contain uppercase letters, numbers, underscores and be up to 16 chars")
+		}
+	}
+	if fields.Email.Set && fields.Email.Value != nil && strings.TrimSpace(*fields.Email.Value) != "" && !strings.Contains(strings.TrimSpace(*fields.Email.Value), "@") {
+		return fmt.Errorf("invalid email")
+	}
+	if fields.HwidDeviceLimit.Set && fields.HwidDeviceLimit.Value != nil && *fields.HwidDeviceLimit.Value < 0 {
+		return fmt.Errorf("hwidDeviceLimit must be non-negative")
+	}
+	if fields.TelegramID.Set && fields.TelegramID.Value != nil && *fields.TelegramID.Value < 0 {
+		return fmt.Errorf("telegramId must be non-negative")
+	}
+	if fields.ExternalSquadUUID.Set && fields.ExternalSquadUUID.Value != nil && strings.TrimSpace(*fields.ExternalSquadUUID.Value) != "" {
+		if _, err := uuid.Parse(strings.TrimSpace(*fields.ExternalSquadUUID.Value)); err != nil {
+			return fmt.Errorf("invalid externalSquadUuid")
+		}
+	}
+	return nil
+}
+
+func buildBulkUpdateUserClauses(fields bulkUpdateUsersFields) ([]string, []any) {
+	clauses := make([]string, 0)
+	args := make([]any, 0)
+	add := func(column string, value any) {
+		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
+		args = append(args, value)
+	}
+
+	if fields.Status != nil {
+		add("status", strings.ToUpper(strings.TrimSpace(*fields.Status)))
+	}
+	if fields.TrafficLimitBytes != nil {
+		add("traffic_limit_bytes", *fields.TrafficLimitBytes)
+	}
+	if fields.TrafficLimitStrategy != nil {
+		add("traffic_limit_strategy", strings.ToUpper(strings.TrimSpace(*fields.TrafficLimitStrategy)))
+	}
+	if fields.ExpireAt != nil {
+		parsed, _ := time.Parse(time.RFC3339, strings.TrimSpace(*fields.ExpireAt))
+		add("expire_at", parsed.UTC())
+	}
+	if fields.Description.Set {
+		if fields.Description.Value == nil || strings.TrimSpace(*fields.Description.Value) == "" {
+			clauses = append(clauses, "description = NULL")
+		} else {
+			add("description", strings.TrimSpace(*fields.Description.Value))
+		}
+	}
+	if fields.Tag.Set {
+		if fields.Tag.Value == nil || strings.TrimSpace(*fields.Tag.Value) == "" {
+			clauses = append(clauses, "tag = NULL")
+		} else {
+			add("tag", strings.ToUpper(strings.TrimSpace(*fields.Tag.Value)))
+		}
+	}
+	if fields.TelegramID.Set {
+		if fields.TelegramID.Value == nil {
+			clauses = append(clauses, "telegram_id = NULL")
+		} else {
+			add("telegram_id", *fields.TelegramID.Value)
+		}
+	}
+	if fields.Email.Set {
+		if fields.Email.Value == nil || strings.TrimSpace(*fields.Email.Value) == "" {
+			clauses = append(clauses, "email = NULL")
+		} else {
+			add("email", strings.TrimSpace(*fields.Email.Value))
+		}
+	}
+	if fields.HwidDeviceLimit.Set {
+		if fields.HwidDeviceLimit.Value == nil {
+			clauses = append(clauses, "hwid_device_limit = NULL")
+		} else {
+			add("hwid_device_limit", *fields.HwidDeviceLimit.Value)
+		}
+	}
+	if fields.ExternalSquadUUID.Set {
+		if fields.ExternalSquadUUID.Value == nil || strings.TrimSpace(*fields.ExternalSquadUUID.Value) == "" {
+			clauses = append(clauses, "external_squad_uuid = NULL")
+		} else {
+			add("external_squad_uuid", strings.TrimSpace(*fields.ExternalSquadUUID.Value))
+		}
+	}
+
+	return clauses, args
+}
+
 func validateBulkAllUpdateUsersRequest(req bulkAllUpdateUsersRequest) error {
 	hasUpdate := req.Status != nil ||
 		req.TrafficLimitBytes != nil ||
@@ -2030,6 +2330,441 @@ func validateBulkAllUpdateUsersRequest(req bulkAllUpdateUsersRequest) error {
 		return fmt.Errorf("telegramId must be non-negative")
 	}
 	return nil
+}
+
+func parseUsersTableQuery(r *http.Request) (usersTableQuery, error) {
+	values := r.URL.Query()
+	query := usersTableQuery{
+		Start:       0,
+		Size:        25,
+		Filters:     []usersTableFilter{},
+		FilterModes: map[string]string{},
+		Sorting:     []usersTableSorting{},
+	}
+
+	if raw := strings.TrimSpace(values.Get("start")); raw != "" {
+		start, err := strconv.Atoi(raw)
+		if err != nil {
+			return query, err
+		}
+		if start > 0 {
+			query.Start = start
+		}
+	}
+	if raw := strings.TrimSpace(values.Get("size")); raw != "" {
+		size, err := strconv.Atoi(raw)
+		if err != nil {
+			return query, err
+		}
+		if size > 0 {
+			query.Size = size
+		}
+		if query.Size > 1000 {
+			query.Size = 1000
+		}
+	}
+	if raw := strings.TrimSpace(values.Get("filters")); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &query.Filters); err != nil {
+			return query, err
+		}
+	}
+	if raw := strings.TrimSpace(values.Get("filterModes")); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &query.FilterModes); err != nil {
+			return query, err
+		}
+	}
+	if raw := strings.TrimSpace(values.Get("sorting")); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &query.Sorting); err != nil {
+			return query, err
+		}
+	}
+
+	return query, nil
+}
+
+func filterUsersTableResponse(users []userAPI, filters []usersTableFilter, modes map[string]string) []userAPI {
+	if len(filters) == 0 {
+		return users
+	}
+
+	filtered := make([]userAPI, 0, len(users))
+	for _, user := range users {
+		matches := true
+		for _, filter := range filters {
+			if !matchesUsersTableFilter(user, filter, modes[filter.ID]) {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			filtered = append(filtered, user)
+		}
+	}
+
+	return filtered
+}
+
+func matchesUsersTableFilter(user userAPI, filter usersTableFilter, mode string) bool {
+	if filter.Value == nil {
+		return true
+	}
+	values := normalizeUsersTableFilterValues(filter.Value)
+	if len(values) == 0 {
+		return true
+	}
+
+	if filter.ID == "activeInternalSquads" {
+		for _, value := range values {
+			for _, squad := range user.ActiveInternalSquads {
+				if strings.EqualFold(squad.UUID, value) || strings.EqualFold(squad.Name, value) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	field := usersTableFieldValue(user, filter.ID)
+	if field == nil {
+		return false
+	}
+
+	if isNumericUsersTableFilterMode(mode) {
+		return matchesUsersTableNumericFilter(field, values, mode)
+	}
+
+	fieldText := strings.ToLower(strings.TrimSpace(fmt.Sprint(field)))
+	if fieldText == "" {
+		return false
+	}
+	if mode == "" {
+		mode = "contains"
+	}
+
+	for _, value := range values {
+		needle := strings.ToLower(strings.TrimSpace(value))
+		if needle == "" {
+			continue
+		}
+		switch mode {
+		case "equals", "equalsString":
+			if fieldText == needle {
+				return true
+			}
+		case "startsWith":
+			if strings.HasPrefix(fieldText, needle) {
+				return true
+			}
+		case "endsWith":
+			if strings.HasSuffix(fieldText, needle) {
+				return true
+			}
+		default:
+			if strings.Contains(fieldText, needle) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func normalizeUsersTableFilterValues(value any) []string {
+	switch typed := value.(type) {
+	case []any:
+		values := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if item == nil {
+				continue
+			}
+			values = append(values, strings.TrimSpace(fmt.Sprint(item)))
+		}
+		return values
+	case []string:
+		return typed
+	case string:
+		if strings.TrimSpace(typed) == "" {
+			return nil
+		}
+		return []string{typed}
+	case float64:
+		return []string{strconv.FormatFloat(typed, 'f', -1, 64)}
+	case int:
+		return []string{strconv.Itoa(typed)}
+	case int64:
+		return []string{strconv.FormatInt(typed, 10)}
+	default:
+		text := strings.TrimSpace(fmt.Sprint(typed))
+		if text == "" || text == "<nil>" {
+			return nil
+		}
+		return []string{text}
+	}
+}
+
+func usersTableFieldValue(user userAPI, columnID string) any {
+	switch columnID {
+	case "uuid":
+		return user.UUID
+	case "id":
+		return user.ID
+	case "shortUuid":
+		return user.ShortUUID
+	case "username":
+		return user.Username
+	case "status":
+		return user.Status
+	case "trafficLimitBytes":
+		return user.TrafficLimitBytes
+	case "trafficLimitStrategy":
+		return user.TrafficLimitStrategy
+	case "expireAt":
+		return user.ExpireAt
+	case "telegramId":
+		if user.TelegramID == nil {
+			return nil
+		}
+		return *user.TelegramID
+	case "email":
+		if user.Email == nil {
+			return nil
+		}
+		return *user.Email
+	case "description":
+		if user.Description == nil {
+			return nil
+		}
+		return *user.Description
+	case "tag":
+		if user.Tag == nil {
+			return nil
+		}
+		return *user.Tag
+	case "hwidDeviceLimit":
+		if user.HwidDeviceLimit == nil {
+			return nil
+		}
+		return *user.HwidDeviceLimit
+	case "externalSquadUuid":
+		if user.ExternalSquadUUID == nil {
+			return nil
+		}
+		return *user.ExternalSquadUUID
+	case "trojanPassword":
+		return user.TrojanPassword
+	case "vlessUuid":
+		return user.VlessUUID
+	case "ssPassword":
+		return user.SSPassword
+	case "naivePassword":
+		return user.NaivePassword
+	case "shadowtlsPassword":
+		return user.ShadowtlsPassword
+	case "hysteria2Password":
+		return user.Hysteria2Password
+	case "anytlsPassword":
+		return user.AnytlsPassword
+	case "createdAt":
+		return user.CreatedAt
+	case "updatedAt":
+		return user.UpdatedAt
+	case "subRevokedAt":
+		return user.SubRevokedAt
+	case "lastTrafficResetAt":
+		return user.LastTrafficResetAt
+	case "nodeName", "userTraffic.lastConnectedNodeUuid":
+		if user.UserTraffic.LastConnectedNodeUUID == nil {
+			return nil
+		}
+		return *user.UserTraffic.LastConnectedNodeUUID
+	case "usedTrafficBytes", "userTraffic.usedTrafficBytes":
+		return user.UserTraffic.UsedTrafficBytes
+	case "userTraffic.lifetimeUsedTrafficBytes":
+		return user.UserTraffic.LifetimeUsedTrafficBytes
+	case "userTraffic.onlineAt":
+		return user.UserTraffic.OnlineAt
+	case "userTraffic.firstConnectedAt":
+		return user.UserTraffic.FirstConnectedAt
+	default:
+		return nil
+	}
+}
+
+func isNumericUsersTableFilterMode(mode string) bool {
+	switch mode {
+	case "equals", "greaterThan", "greaterThanOrEqualTo", "lessThan", "lessThanOrEqualTo", "between", "betweenInclusive":
+		return true
+	default:
+		return false
+	}
+}
+
+func matchesUsersTableNumericFilter(field any, values []string, mode string) bool {
+	fieldValue, ok := usersTableFloatValue(field)
+	if !ok {
+		return false
+	}
+	parse := func(index int) (float64, bool) {
+		if index >= len(values) || strings.TrimSpace(values[index]) == "" {
+			return 0, false
+		}
+		value, err := strconv.ParseFloat(strings.TrimSpace(values[index]), 64)
+		return value, err == nil
+	}
+
+	switch mode {
+	case "greaterThan":
+		value, ok := parse(0)
+		return ok && fieldValue > value
+	case "greaterThanOrEqualTo":
+		value, ok := parse(0)
+		return ok && fieldValue >= value
+	case "lessThan":
+		value, ok := parse(0)
+		return ok && fieldValue < value
+	case "lessThanOrEqualTo":
+		value, ok := parse(0)
+		return ok && fieldValue <= value
+	case "between", "betweenInclusive":
+		min, minOK := parse(0)
+		max, maxOK := parse(1)
+		if minOK && maxOK {
+			return fieldValue >= min && fieldValue <= max
+		}
+		if minOK {
+			return fieldValue >= min
+		}
+		if maxOK {
+			return fieldValue <= max
+		}
+		return true
+	default:
+		value, ok := parse(0)
+		return ok && fieldValue == value
+	}
+}
+
+func usersTableFloatValue(value any) (float64, bool) {
+	switch typed := value.(type) {
+	case int:
+		return float64(typed), true
+	case int64:
+		return float64(typed), true
+	case float64:
+		return typed, true
+	case *int:
+		if typed == nil {
+			return 0, false
+		}
+		return float64(*typed), true
+	case *int64:
+		if typed == nil {
+			return 0, false
+		}
+		return float64(*typed), true
+	default:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(value)), 64)
+		return parsed, err == nil
+	}
+}
+
+func sortUsersTableResponse(users []userAPI, sorting []usersTableSorting) {
+	if len(sorting) == 0 {
+		return
+	}
+
+	sort.SliceStable(users, func(i, j int) bool {
+		for _, sortRule := range sorting {
+			comparison := compareUsersTableValues(usersTableFieldValue(users[i], sortRule.ID), usersTableFieldValue(users[j], sortRule.ID))
+			if comparison == 0 {
+				continue
+			}
+			if sortRule.Desc {
+				return comparison > 0
+			}
+			return comparison < 0
+		}
+		return false
+	})
+}
+
+func compareUsersTableValues(left any, right any) int {
+	leftTime, leftIsTime := usersTableTimeValue(left)
+	rightTime, rightIsTime := usersTableTimeValue(right)
+	if leftIsTime || rightIsTime {
+		if !leftIsTime && rightIsTime {
+			return -1
+		}
+		if leftIsTime && !rightIsTime {
+			return 1
+		}
+		if leftTime.Before(rightTime) {
+			return -1
+		}
+		if leftTime.After(rightTime) {
+			return 1
+		}
+		return 0
+	}
+
+	leftFloat, leftIsFloat := usersTableFloatValue(left)
+	rightFloat, rightIsFloat := usersTableFloatValue(right)
+	if leftIsFloat || rightIsFloat {
+		if !leftIsFloat && rightIsFloat {
+			return -1
+		}
+		if leftIsFloat && !rightIsFloat {
+			return 1
+		}
+		if leftFloat < rightFloat {
+			return -1
+		}
+		if leftFloat > rightFloat {
+			return 1
+		}
+		return 0
+	}
+
+	leftText := strings.ToLower(strings.TrimSpace(fmt.Sprint(left)))
+	rightText := strings.ToLower(strings.TrimSpace(fmt.Sprint(right)))
+	if leftText < rightText {
+		return -1
+	}
+	if leftText > rightText {
+		return 1
+	}
+	return 0
+}
+
+func usersTableTimeValue(value any) (time.Time, bool) {
+	switch typed := value.(type) {
+	case time.Time:
+		return typed, true
+	case *time.Time:
+		if typed == nil {
+			return time.Time{}, false
+		}
+		return *typed, true
+	default:
+		return time.Time{}, false
+	}
+}
+
+func paginateUsersTableResponse(users []userAPI, start int, size int) []userAPI {
+	if start < 0 {
+		start = 0
+	}
+	if size <= 0 {
+		size = 25
+	}
+	if start >= len(users) {
+		return []userAPI{}
+	}
+	end := start + size
+	if end > len(users) {
+		end = len(users)
+	}
+	return users[start:end]
 }
 
 func getAllUserRecords(ctx context.Context, manager *dbmanager.DatabaseManager) ([]userRecord, error) {

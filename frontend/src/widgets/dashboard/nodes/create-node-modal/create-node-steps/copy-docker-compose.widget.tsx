@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { SiDocker } from 'react-icons/si'
 import { PiCheck } from 'react-icons/pi'
 
-import { useGetPubKey } from '@shared/api/hooks'
+import { NodeKeygenResponse } from '@shared/api/hooks'
 
 interface IProps {
     apiPath?: string
     apiSchema?: 'mtls' | 'tls'
     port?: number
+    pubKey: NodeKeygenResponse | undefined
 }
 
 const normalizePath = (value?: string) => {
@@ -19,11 +20,10 @@ const normalizePath = (value?: string) => {
     return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`
 }
 
-export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema }: IProps) => {
-    const { data: pubKey, isLoading: isPubKeyLoading } = useGetPubKey()
+export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IProps) => {
     const { t } = useTranslation()
 
-    if (isPubKeyLoading || !pubKey) {
+    if (!pubKey) {
         return <Skeleton height={40} />
     }
 

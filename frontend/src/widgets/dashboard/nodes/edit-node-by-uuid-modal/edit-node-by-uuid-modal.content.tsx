@@ -22,12 +22,16 @@ import { NodeDetailsCardWidget } from '../node-details-card/node-details-card.wi
 import { NodeSystemCardWidget } from '../node-system-card/node-system-card.widget'
 
 interface IProps {
+    generatedCredentials?: {
+        grpcToken?: string
+        pubKey: string
+    }
     nodeUuid: string
     onClose: () => void
 }
 
 export const EditNodeByUuidModalContent = (props: IProps) => {
-    const { nodeUuid, onClose } = props
+    const { generatedCredentials, nodeUuid, onClose } = props
 
     const [advancedOpened, setAdvancedOpened] = useState(false)
 
@@ -37,7 +41,11 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
         validate: zodResolver(updateNodeFormSchema)
     })
 
-    const { data: pubKey } = useGetPubKey()
+    const { data: pubKey } = useGetPubKey({
+        rQueryParams: {
+            enabled: !generatedCredentials
+        }
+    })
     const { data: nodePlugins } = useGetNodePlugins()
 
     const { data: fetchedNode } = useGetNode({
@@ -147,12 +155,14 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 fetchedNode.isConnected ? <NodeSystemCardWidget node={fetchedNode} /> : null
             }
             pubKey={
-                pubKey
+                (generatedCredentials ?? pubKey)
                     ? {
-                          ...pubKey,
-                          grpcToken: fetchedNode.grpcAuthToken || pubKey.grpcToken
+                          ...(generatedCredentials ?? pubKey)!,
+                          grpcToken:
+                              fetchedNode.grpcAuthToken ||
+                              (generatedCredentials ?? pubKey)?.grpcToken
                       }
-                    : pubKey
+                    : undefined
             }
             setAdvancedOpened={setAdvancedOpened}
         />

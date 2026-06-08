@@ -8,9 +8,10 @@ import { LottieCheckmarkShared } from '@shared/ui/lotties/checkmark'
 import { useNodesStoreActions } from '@entities/dashboard/nodes'
 import { LottieStopShared } from '@shared/ui/lotties/stop'
 import { LottieLinkShared } from '@shared/ui/lotties'
-import { useGetNode } from '@shared/api/hooks'
+import { NodeKeygenResponse, useGetNode } from '@shared/api/hooks'
 
 interface IProps {
+    generatedCredentials?: NodeKeygenResponse
     nodeUuid?: string
     onClose: () => void
 }
@@ -29,7 +30,7 @@ const isErrorStatusMessage = (message: null | string) => {
     return normalized !== 'connected'
 }
 
-export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
+export const CreateNodeStep3Status = ({ generatedCredentials, nodeUuid, onClose }: IProps) => {
     const { t } = useTranslation()
     const [status, setStatus] = useState<STATUS>(STATUS.CONNECTING)
     const [errorMessage, setErrorMessage] = useState<null | string>(null)
@@ -95,7 +96,10 @@ export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
         onClose()
 
         setTimeout(() => {
-            openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, { nodeUuid: node.uuid })
+            openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, {
+                generatedCredentials,
+                nodeUuid: node.uuid
+            })
         }, 300)
     }
 

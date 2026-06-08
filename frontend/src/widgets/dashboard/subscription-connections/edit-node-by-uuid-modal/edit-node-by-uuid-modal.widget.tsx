@@ -61,7 +61,11 @@ export const EditNodeByUuidModalWidget = () => {
                     <LoaderModalShared h="78vh" />
                 </motion.div>
             ) : (
-                <EditNodeByUuidModalContent nodeUuid={nodeUuid.nodeUuid} onClose={handleClose} />
+                <EditNodeByUuidModalContent
+                    generatedCredentials={nodeUuid.generatedCredentials}
+                    nodeUuid={nodeUuid.nodeUuid}
+                    onClose={handleClose}
+                />
             )}
         </Modal>
     )

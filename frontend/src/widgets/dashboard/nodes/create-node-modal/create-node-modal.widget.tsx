@@ -10,6 +10,7 @@ import { useNodesStoreActions, useNodesStoreCreateModalIsOpen } from '@entities/
 import {
     configProfilesQueryKeys,
     CreateNodeRequest,
+    NodeKeygenResponse,
     createNodeRequestSchema,
     useCreateNode,
     useGetPubKey
@@ -28,7 +29,13 @@ export const CreateNodeModalWidget = () => {
     const isModalOpen = useNodesStoreCreateModalIsOpen()
     const actions = useNodesStoreActions()
 
-    const { data: pubKey, refetch: refetchPubKey } = useGetPubKey()
+    const [creationCredentials, setCreationCredentials] = useState<NodeKeygenResponse>()
+
+    const { refetch: refetchPubKey } = useGetPubKey({
+        rQueryParams: {
+            enabled: false
+        }
+    })
 
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
@@ -51,6 +58,7 @@ export const CreateNodeModalWidget = () => {
             form.resetTouched()
             setActiveStep(0)
             setCreatedNodeUuid(undefined)
+            setCreationCredentials(undefined)
         }, 300)
     }
 
@@ -70,6 +78,10 @@ export const CreateNodeModalWidget = () => {
     const handleCreateNode = () => {
         const values = form.getValues()
         const schema = values.apiSchema === 'tls' ? 'tls' : 'mtls'
+        if (!creationCredentials) {
+            return
+        }
+
         createNode({
             variables: {
                 ...values,
@@ -77,7 +89,7 @@ export const CreateNodeModalWidget = () => {
                 address: values.address.trim(),
                 apiSchema: schema,
                 apiPath: values.apiPath?.trim() || '/',
-                grpcAuthToken: schema === 'tls' ? pubKey?.grpcToken?.trim() : undefined,
+                grpcAuthToken: schema === 'tls' ? creationCredentials.grpcToken?.trim() : undefined,
                 trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes)
             }
         })
@@ -87,8 +99,21 @@ export const CreateNodeModalWidget = () => {
     const prevStep = () => setActiveStep((current) => (current > 0 ? current - 1 : current))
 
     useEffect(() => {
-        if (isModalOpen) {
-            void refetchPubKey()
+        if (!isModalOpen) {
+            return
+        }
+
+        let isCurrent = true
+        setCreationCredentials(undefined)
+
+        void refetchPubKey().then((result) => {
+            if (isCurrent && result.data) {
+                setCreationCredentials(result.data)
+            }
+        })
+
+        return () => {
+            isCurrent = false
         }
     }, [isModalOpen, refetchPubKey])
 
@@ -169,7 +194,7 @@ export const CreateNodeModalWidget = () => {
                             <CreateNodeStep1Connection
                                 form={form}
                                 onNext={nextStep}
-                                pubKey={pubKey}
+                                pubKey={creationCredentials}
                             />
                         </div>
                     )}
@@ -190,6 +215,7 @@ export const CreateNodeModalWidget = () => {
                                 onCreateNode={handleCreateNode}
                                 onPrev={prevStep}
                                 port={selectedPort}
+                                pubKey={creationCredentials}
                             />
                         </div>
                     )}
@@ -205,6 +231,7 @@ export const CreateNodeModalWidget = () => {
                     {(styles) => (
                         <div style={styles}>
                             <CreateNodeStep3Status
+                                generatedCredentials={creationCredentials}
                                 nodeUuid={createdNodeUuid}
                                 onClose={handleClose}
                             />

@@ -17,6 +17,10 @@ import { queryClient } from '@shared/api'
 import { NodeDetailsCardWidget } from '../node-details-card/node-details-card.widget'
 
 interface IProps {
+    generatedCredentials?: {
+        grpcToken?: string
+        pubKey: string
+    }
     nodeUuid: string
     onClose: () => void
 }
@@ -35,7 +39,7 @@ type EditSubscriptionConnectionForm = {
 }
 
 export const EditNodeByUuidModalContent = (props: IProps) => {
-    const { nodeUuid, onClose } = props
+    const { generatedCredentials, nodeUuid, onClose } = props
 
     const form = useForm<EditSubscriptionConnectionForm>({
         name: 'edit-subscription-connection-form',
@@ -43,7 +47,11 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
         validate: zodResolver(updateSubscriptionConnectionFormSchema)
     })
 
-    const { data: pubKey } = useGetSubscriptionConnectionsPubKey()
+    const { data: pubKey } = useGetSubscriptionConnectionsPubKey({
+        rQueryParams: {
+            enabled: !generatedCredentials
+        }
+    })
 
     const { data: fetchedNode } = useGetSubscriptionConnection({
         route: {
@@ -138,12 +146,14 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             node={fetchedNode}
             nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode} />}
             pubKey={
-                pubKey
+                (generatedCredentials ?? pubKey)
                     ? {
-                          ...pubKey,
-                          grpcToken: fetchedNode.grpcAuthToken || pubKey.grpcToken
+                          ...(generatedCredentials ?? pubKey)!,
+                          grpcToken:
+                              fetchedNode.grpcAuthToken ||
+                              (generatedCredentials ?? pubKey)?.grpcToken
                       }
-                    : pubKey
+                    : undefined
             }
         />
     )

@@ -3,7 +3,10 @@ import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'react-i18next'
 import { PiArrowLeft, PiArrowRight } from 'react-icons/pi'
 
-import { CreateSubscriptionConnectionRequest } from '@shared/api/hooks'
+import {
+    CreateSubscriptionConnectionRequest,
+    SubscriptionConnectionKeygenResponse
+} from '@shared/api/hooks'
 import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
 interface IProps {
@@ -13,9 +16,17 @@ interface IProps {
     onPrev: () => void
     onCreate: () => void
     port?: number
+    pubKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
-export const CreateNodeStep2ApiToken = ({ form, isCreating, onPrev, onCreate, port }: IProps) => {
+export const CreateNodeStep2ApiToken = ({
+    form,
+    isCreating,
+    onPrev,
+    onCreate,
+    port,
+    pubKey
+}: IProps) => {
     const { t } = useTranslation()
     const apiSchema = form.getValues().apiSchema === 'tls' ? 'tls' : 'mtls'
 
@@ -32,6 +43,7 @@ export const CreateNodeStep2ApiToken = ({ form, isCreating, onPrev, onCreate, po
                 apiPath={form.getValues().apiPath}
                 apiSchema={apiSchema}
                 port={port}
+                pubKey={pubKey}
             />
 
             <Group justify="space-between" mt="auto">
@@ -46,6 +58,7 @@ export const CreateNodeStep2ApiToken = ({ form, isCreating, onPrev, onCreate, po
 
                 <Button
                     color="teal"
+                    disabled={!pubKey}
                     loading={isCreating}
                     onClick={onCreate}
                     rightSection={<PiArrowRight size={18} />}

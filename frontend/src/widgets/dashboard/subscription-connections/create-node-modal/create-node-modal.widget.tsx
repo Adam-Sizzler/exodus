@@ -9,6 +9,7 @@ import { TbCpu } from 'react-icons/tb'
 import { useSubscriptionConnectionsStoreActions, useSubscriptionConnectionsStoreCreateModalIsOpen } from '@entities/dashboard/subscription-connections'
 import {
     CreateSubscriptionConnectionRequest,
+    SubscriptionConnectionKeygenResponse,
     createSubscriptionConnectionSchema,
     useCreateSubscriptionConnection,
     useGetSubscriptionConnectionsPubKey
@@ -25,7 +26,14 @@ export const CreateNodeModalWidget = () => {
     const isModalOpen = useSubscriptionConnectionsStoreCreateModalIsOpen()
     const actions = useSubscriptionConnectionsStoreActions()
 
-    const { data: pubKey, refetch: refetchPubKey } = useGetSubscriptionConnectionsPubKey()
+    const [creationCredentials, setCreationCredentials] =
+        useState<SubscriptionConnectionKeygenResponse>()
+
+    const { refetch: refetchPubKey } = useGetSubscriptionConnectionsPubKey({
+        rQueryParams: {
+            enabled: false
+        }
+    })
 
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
@@ -48,6 +56,7 @@ export const CreateNodeModalWidget = () => {
             form.resetTouched()
             setActiveStep(0)
             setCreatedNodeUuid(undefined)
+            setCreationCredentials(undefined)
         }, 300)
     }
 
@@ -64,6 +73,10 @@ export const CreateNodeModalWidget = () => {
         const values = form.getValues()
         const schema = values.apiSchema === 'tls' ? 'tls' : 'mtls'
 
+        if (!creationCredentials) {
+            return
+        }
+
         createNode({
             variables: {
                 ...values,
@@ -72,15 +85,28 @@ export const CreateNodeModalWidget = () => {
                 publicDomain: (values.publicDomain ?? '').trim() || null,
                 apiSchema: schema,
                 apiPath: values.apiPath.trim() || '/',
-                grpcAuthToken: schema === 'tls' ? pubKey?.grpcToken?.trim() : undefined,
+                grpcAuthToken: schema === 'tls' ? creationCredentials.grpcToken?.trim() : undefined,
                 subpageConfigUuid: (values.subpageConfigUuid ?? '').trim() || null
             }
         })
     }
 
     useEffect(() => {
-        if (isModalOpen) {
-            void refetchPubKey()
+        if (!isModalOpen) {
+            return
+        }
+
+        let isCurrent = true
+        setCreationCredentials(undefined)
+
+        void refetchPubKey().then((result) => {
+            if (isCurrent && result.data) {
+                setCreationCredentials(result.data)
+            }
+        })
+
+        return () => {
+            isCurrent = false
         }
     }, [isModalOpen, refetchPubKey])
 
@@ -165,7 +191,7 @@ export const CreateNodeModalWidget = () => {
                             <CreateNodeStep1Connection
                                 form={form}
                                 onNext={() => setActiveStep(1)}
-                                pubKey={pubKey}
+                                pubKey={creationCredentials}
                             />
                         </div>
                     )}
@@ -186,6 +212,7 @@ export const CreateNodeModalWidget = () => {
                                 onCreate={handleCreateNode}
                                 onPrev={() => setActiveStep(0)}
                                 port={selectedPort}
+                                pubKey={creationCredentials}
                             />
                         </div>
                     )}
@@ -201,6 +228,7 @@ export const CreateNodeModalWidget = () => {
                     {(styles) => (
                         <div style={styles}>
                             <CreateNodeStep3Status
+                                generatedCredentials={creationCredentials}
                                 nodeUuid={createdNodeUuid}
                                 onClose={handleClose}
                             />

@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { SiDocker } from 'react-icons/si'
 import { PiCheck } from 'react-icons/pi'
 
-import { useGetSubscriptionConnectionsPubKey } from '@shared/api/hooks'
+import { SubscriptionConnectionKeygenResponse } from '@shared/api/hooks'
 
 interface IProps {
     port?: number
     apiPath?: string
     apiSchema?: 'mtls' | 'tls'
+    pubKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
 const normalizePath = (value?: string) => {
@@ -19,11 +20,10 @@ const normalizePath = (value?: string) => {
     return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`
 }
 
-export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema }: IProps) => {
-    const { data: pubKey, isLoading: isPubKeyLoading } = useGetSubscriptionConnectionsPubKey()
+export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IProps) => {
     const { t } = useTranslation()
 
-    if (isPubKeyLoading || !pubKey) {
+    if (!pubKey) {
         return <Skeleton height={78} />
     }
 

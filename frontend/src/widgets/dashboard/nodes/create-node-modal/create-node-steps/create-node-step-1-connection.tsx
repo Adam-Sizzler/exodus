@@ -207,6 +207,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                 <Group justify="flex-end" mt="auto">
                     <Button
                         color="teal"
+                        disabled={!pubKey}
                         rightSection={<PiArrowRight size={18} />}
                         size="md"
                         type="submit"

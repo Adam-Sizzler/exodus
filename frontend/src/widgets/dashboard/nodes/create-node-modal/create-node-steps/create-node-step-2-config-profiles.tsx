@@ -5,7 +5,7 @@ import { PiArrowLeft } from 'react-icons/pi'
 import { TbCheck } from 'react-icons/tb'
 
 import { ShowConfigProfilesWithInboundsFeature } from '@features/ui/dashboard/nodes/show-config-profiles-with-inbounds'
-import { CreateNodeRequest, useGetConfigProfiles } from '@shared/api/hooks'
+import { CreateNodeRequest, NodeKeygenResponse, useGetConfigProfiles } from '@shared/api/hooks'
 
 import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
@@ -16,6 +16,7 @@ interface IProps {
     onCreateNode: () => void
     onPrev: () => void
     port: number
+    pubKey: NodeKeygenResponse | undefined
 }
 
 export const CreateNodeStep2ConfigProfiles = ({
@@ -23,7 +24,8 @@ export const CreateNodeStep2ConfigProfiles = ({
     isCreating,
     onCreateNode,
     onPrev,
-    port
+    port,
+    pubKey
 }: IProps) => {
     const { t } = useTranslation()
 
@@ -94,6 +96,7 @@ export const CreateNodeStep2ConfigProfiles = ({
                     apiPath={form.getValues().apiPath}
                     apiSchema={form.getValues().apiSchema}
                     port={port}
+                    pubKey={pubKey}
                 />
 
                 <Group justify="space-between">
@@ -108,6 +111,7 @@ export const CreateNodeStep2ConfigProfiles = ({
                     <Button
                         color="teal"
                         leftSection={<TbCheck size={18} />}
+                        disabled={!pubKey}
                         loading={isCreating}
                         onClick={handleCreateNode}
                         size="md"

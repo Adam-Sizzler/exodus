@@ -36,6 +36,9 @@ const getSubscriptionConnectionsPubKeyResponseSchema = z.object({
     })
 })
 
+export type SubscriptionConnectionKeygenResponse = z.infer<
+    typeof getSubscriptionConnectionsPubKeyResponseSchema
+>['response']
 export type SubscriptionConnectionResponse = z.infer<typeof subscriptionConnectionNodeSchema>
 
 export const subscriptionConnectionsQueryKeys = createQueryKeys('subscriptionConnections', {

@@ -41,6 +41,10 @@ export interface ModalInternalStates {
     CREATE_INFRA_PROVIDER_DRAWER: undefined
     EDIT_HOST_MODAL: UpdateHostCommand.Response['response']
     EDIT_NODE_BY_UUID_MODAL: {
+        generatedCredentials?: {
+            grpcToken?: string
+            pubKey: string
+        }
         nodeUuid: string
     }
     NODE_PLUGIN_EXECUTOR_DRAWER: undefined
