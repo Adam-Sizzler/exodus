@@ -152,7 +152,7 @@ func (l *Logger) WithContext(context string) *Logger {
 }
 
 func (l *Logger) Log(message string, fields ...Field) {
-	l.write(LevelInfo, "LOG", message, nil, fields...)
+	l.write(LevelInfo, message, nil, fields...)
 }
 
 func (l *Logger) Info(message string, fields ...Field) {
@@ -160,23 +160,23 @@ func (l *Logger) Info(message string, fields ...Field) {
 }
 
 func (l *Logger) HTTP(message string, fields ...Field) {
-	l.write(LevelHTTP, "HTTP", message, nil, fields...)
+	l.write(LevelHTTP, message, nil, fields...)
 }
 
 func (l *Logger) Warn(message string, fields ...Field) {
-	l.write(LevelWarn, "WARN", message, nil, fields...)
+	l.write(LevelWarn, message, nil, fields...)
 }
 
 func (l *Logger) Error(message string, err error, fields ...Field) {
-	l.write(LevelError, "ERROR", message, err, fields...)
+	l.write(LevelError, message, err, fields...)
 }
 
 func (l *Logger) Debug(message string, fields ...Field) {
-	l.write(LevelDebug, "DEBUG", message, nil, fields...)
+	l.write(LevelDebug, message, nil, fields...)
 }
 
 func (l *Logger) Verbose(message string, fields ...Field) {
-	l.write(LevelVerbose, "VERBOSE", message, nil, fields...)
+	l.write(LevelVerbose, message, nil, fields...)
 }
 
 func (l *Logger) Logf(format string, args ...any) {
@@ -191,8 +191,8 @@ func (l *Logger) Errorf(format string, args ...any) {
 	l.Error(fmt.Sprintf(format, args...), nil)
 }
 
-func (l *Logger) Exception(message string) {
-	l.write(LevelError, "ERROR", message, nil, Field{Key: "stack", Value: []string{""}}, Field{Key: "error", Value: map[string]any{}})
+func (l *Logger) ConfigError(message string) {
+	l.write(LevelError, message, nil, Field{Key: "stack", Value: []string{""}}, Field{Key: "error", Value: map[string]any{}})
 }
 
 func (l *Logger) Debugf(format string, args ...any) {
@@ -213,7 +213,7 @@ func (l *Logger) Enabled(level Level) bool {
 	return level <= l.level
 }
 
-func (l *Logger) write(level Level, label, message string, err error, fields ...Field) {
+func (l *Logger) write(level Level, message string, err error, fields ...Field) {
 	if !l.Enabled(level) {
 		return
 	}
@@ -221,7 +221,7 @@ func (l *Logger) write(level Level, label, message string, err error, fields ...
 		return
 	}
 
-	event := l.core.WithLevel(toZeroLevel(level)).Str("nest_level", label)
+	event := l.core.WithLevel(toZeroLevel(level))
 	if l.context != "" {
 		event = event.Str("context", l.context)
 	}
@@ -282,21 +282,13 @@ func (w *remnawaveConsoleWriter) Write(p []byte) (int, error) {
 		}
 	}
 
-	label := strings.TrimSpace(asString(payload["nest_level"]))
-	if label == "" {
-		label = strings.ToUpper(asString(payload["level"]))
-	}
-	if label == "" {
-		label = "LOG"
-	}
-
+	label := consoleLevelLabel(asString(payload["level"]))
 	level := levelFromString(label, asString(payload["level"]))
 	context := strings.TrimSpace(asString(payload["context"]))
 	message := asString(payload["message"])
 
 	delete(payload, "time")
 	delete(payload, "level")
-	delete(payload, "nest_level")
 	delete(payload, "context")
 	delete(payload, "message")
 
@@ -340,6 +332,23 @@ func asString(value any) string {
 		return str
 	}
 	return fmt.Sprint(value)
+}
+
+func consoleLevelLabel(zeroLevel string) string {
+	switch strings.ToLower(strings.TrimSpace(zeroLevel)) {
+	case "error", "fatal", "panic":
+		return "ERROR"
+	case "warn":
+		return "WARN"
+	case "debug":
+		return "DEBUG"
+	case "trace":
+		return "TRACE"
+	case "info":
+		return "INFO"
+	default:
+		return "INFO"
+	}
 }
 
 func levelFromString(label, zeroLevel string) Level {

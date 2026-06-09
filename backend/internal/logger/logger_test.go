@@ -21,10 +21,10 @@ func TestResolveLevelDefaultsToInfo(t *testing.T) {
 func TestLoggerFormatIncludesContextAndTimestamp(t *testing.T) {
 	var buf bytes.Buffer
 	logger := New(Options{Writer: &buf, Level: "debug"}).WithContext("RootService")
-	logger.Log("hello")
+	logger.Info("hello")
 
 	line := buf.String()
-	if !strings.Contains(line, " LOG [RootService] hello") {
+	if !strings.Contains(line, " INFO [RootService] hello") {
 		t.Fatalf("unexpected line: %q", line)
 	}
 	if !strings.Contains(line, "+0ms") {
@@ -32,10 +32,10 @@ func TestLoggerFormatIncludesContextAndTimestamp(t *testing.T) {
 	}
 }
 
-func TestLoggerFiltersNestBootstrapContexts(t *testing.T) {
+func TestLoggerFiltersBootstrapNoiseContexts(t *testing.T) {
 	var buf bytes.Buffer
 	logger := New(Options{Writer: &buf, Level: "debug"}).WithContext("RouterExplorer")
-	logger.Log("hidden")
+	logger.Info("hidden")
 	if buf.Len() != 0 {
 		t.Fatalf("expected filtered log, got: %q", buf.String())
 	}

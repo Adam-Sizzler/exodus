@@ -508,7 +508,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	}
 
 	if !subpageEnvelope.Response.WebpageAllowed {
-		logger.WithContext("RootService").Log("Webpage access is not allowed by Exodus's SRR.")
+		logger.WithContext("RootService").Info("Webpage access is not allowed by Exodus's SRR.")
 		closeConnection(w)
 		return
 	}

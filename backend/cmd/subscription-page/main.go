@@ -30,26 +30,25 @@ func main() {
 		InstanceID: os.Getenv("INSTANCE_ID"),
 		Colors:     true,
 	})
-	nestLogger := logger.WithContext("NestFactory")
-	exceptionLogger := logger.WithContext("ExceptionHandler")
 	bootstrapLogger := logger.WithContext("Bootstrap")
+	configLogger := logger.WithContext("Config")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	nestLogger.Log("Starting Nest application...")
+	bootstrapLogger.Info("Starting application...")
 
 	cfg, err := config.Load()
 	if err != nil {
-		exceptionLogger.Exception("\n" + config.FormatEnvironmentErrors(err))
-		waitForShutdownSignal(ctx, exceptionLogger)
+		configLogger.ConfigError("\n" + config.FormatEnvironmentErrors(err))
+		waitForShutdownSignal(ctx, configLogger)
 		return
 	}
 
 	if cfg.SubPath == "" {
-		bootstrapLogger.Log("[CONFIG] CUSTOM_SUB_PREFIX: not set")
+		bootstrapLogger.Info("[CONFIG] CUSTOM_SUB_PREFIX: not set")
 	} else {
-		bootstrapLogger.Log("[CONFIG] CUSTOM_SUB_PREFIX: " + cfg.SubPath)
+		bootstrapLogger.Info("[CONFIG] CUSTOM_SUB_PREFIX: " + cfg.SubPath)
 	}
 
 	resolvedVersion := resolveNodeVersion(cfg.AppVersion)
@@ -57,7 +56,7 @@ func main() {
 
 	application, appErr := server.New(cfg, nodeService)
 	if appErr != nil {
-		exceptionLogger.Error("Application bootstrap failed", appErr)
+		bootstrapLogger.Error("Application bootstrap failed", appErr)
 		os.Exit(1)
 	}
 
@@ -80,7 +79,7 @@ func main() {
 
 	listener, err := net.Listen("tcp", httpServer.Addr)
 	if err != nil {
-		exceptionLogger.Error("Listen HTTP failed", err)
+		bootstrapLogger.Error("Listen HTTP failed", err)
 		os.Exit(1)
 	}
 	go func() {
@@ -89,14 +88,14 @@ func main() {
 		}
 	}()
 
-	bootstrapLogger.Log("[CONFIG] HTTP listening on " + httpServer.Addr)
-	bootstrapLogger.Log("\n" + server.GetStartMessage(resolvedVersion) + "\n")
+	bootstrapLogger.Info("[CONFIG] HTTP listening on " + httpServer.Addr)
+	bootstrapLogger.Info("\n" + server.GetStartMessage(resolvedVersion) + "\n")
 
 	select {
 	case <-ctx.Done():
-		bootstrapLogger.Log("Application shutdown signal received")
+		bootstrapLogger.Info("Application shutdown signal received")
 	case err = <-errCh:
-		exceptionLogger.Error("Server failed", err)
+		bootstrapLogger.Error("Server failed", err)
 		os.Exit(1)
 	}
 
@@ -109,7 +108,7 @@ func main() {
 
 func waitForShutdownSignal(ctx context.Context, log *logger.Logger) {
 	<-ctx.Done()
-	log.Log("Application shutdown signal received")
+	log.Info("Application shutdown signal received")
 }
 
 func resolveNodeVersion(configVersion string) string {

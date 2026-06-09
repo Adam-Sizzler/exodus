@@ -73,7 +73,7 @@ func NewNodeServer(version string) *NodeServer {
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
 	log := logger.WithContext("GrpcServer")
 	remoteAddr := streamPeerAddress(stream.Context())
-	log.Log("Panel stream connected", logger.String("remoteAddr", remoteAddr))
+	log.Info("Panel stream connected", logger.String("remoteAddr", remoteAddr))
 
 	s.attachStream(stream)
 	defer func() {
@@ -140,7 +140,7 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			}
 			intervalSeconds = nextInterval
 			ticker.Reset(time.Duration(intervalSeconds) * time.Second)
-			log.Log("Panel stream interval updated", logger.Int("intervalSeconds", intervalSeconds))
+			log.Info("Panel stream interval updated", logger.Int("intervalSeconds", intervalSeconds))
 		case <-requestUsers:
 			log.Debug("Panel requested users list")
 			if err := sendUsers(); err != nil {
@@ -353,7 +353,7 @@ func (s *NodeServer) applySubpageConfigUpdate(update *proto.SubpageConfigUpdate)
 	count := len(s.subpageConfigs)
 	s.subpageConfigsMu.Unlock()
 
-	log.Log("[OK] " + uuid)
+	log.Info("[OK] " + uuid)
 	log.Debug("Subpage config cache updated", logger.String("uuid", uuid), logger.Int("bytes", len(clone)), logger.Int("total", count))
 }
 

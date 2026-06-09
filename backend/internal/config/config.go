@@ -49,7 +49,7 @@ type EnvError struct {
 }
 
 // EnvErrors groups all .env validation failures so the logger can print a
-// single Remnawave-like ExceptionHandler block instead of one fatal Go error.
+// single grouped configuration error block instead of one fatal Go error.
 type EnvErrors []EnvError
 
 func (e EnvErrors) Error() string {
