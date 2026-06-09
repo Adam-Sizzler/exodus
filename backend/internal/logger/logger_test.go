@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-func TestResolveLevelDevelopmentEnablesDebug(t *testing.T) {
-	if got := ResolveLevel("development", "", ""); got != LevelDebug {
+func TestResolveLevelDebugEnvEnablesDebug(t *testing.T) {
+	if got := ResolveLevel("production", "true", ""); got != LevelDebug {
 		t.Fatalf("ResolveLevel() = %v, want debug", got)
 	}
 }
 
-func TestResolveLevelDefaultsToHTTP(t *testing.T) {
-	if got := ResolveLevel("", "", ""); got != LevelHTTP {
-		t.Fatalf("ResolveLevel() = %v, want http", got)
+func TestResolveLevelDefaultsToInfo(t *testing.T) {
+	if got := ResolveLevel("", "", ""); got != LevelInfo {
+		t.Fatalf("ResolveLevel() = %v, want info", got)
 	}
 }
 

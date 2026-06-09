@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type Level int
@@ -28,13 +31,11 @@ type Field struct {
 }
 
 type Logger struct {
-	mu         *sync.Mutex
-	writer     io.Writer
+	core       zerolog.Logger
 	level      Level
 	context    string
 	instanceID string
-	colors     bool
-	lastTime   *time.Time
+	writer     *remnawaveConsoleWriter
 }
 
 type Options struct {
@@ -44,6 +45,7 @@ type Options struct {
 	DebugLogs  string
 	InstanceID string
 	Colors     bool
+	JSON       bool
 }
 
 var defaultLogger = New(Options{})
@@ -73,26 +75,46 @@ func New(opts Options) *Logger {
 	if os.Getenv("NO_COLOR") != "" || strings.EqualFold(os.Getenv("LOG_COLORS"), "false") {
 		colors = false
 	}
+
 	instanceID := strings.TrimSpace(opts.InstanceID)
 	if instanceID == "" {
 		instanceID = "0"
 	}
 
+	zerolog.TimeFieldFormat = "2006-01-02 15:04:05.000"
+	zerolog.TimestampFieldName = "time"
+	zerolog.LevelFieldName = "level"
+	zerolog.MessageFieldName = "message"
+	zerolog.ErrorFieldName = "error"
+
+	var output io.Writer = writer
+	consoleWriter := (*remnawaveConsoleWriter)(nil)
+	if !opts.JSON && !strings.EqualFold(os.Getenv("LOG_FORMAT"), "json") {
+		consoleWriter = &remnawaveConsoleWriter{
+			out:        writer,
+			instanceID: instanceID,
+			colors:     colors,
+			lastTime:   new(time.Time),
+		}
+		output = consoleWriter
+	}
+
+	core := zerolog.New(output).
+		Level(toZeroLevel(level)).
+		With().
+		Timestamp().
+		Logger()
+
 	return &Logger{
-		mu:         &sync.Mutex{},
-		writer:     writer,
+		core:       core,
 		level:      level,
 		instanceID: instanceID,
-		colors:     colors,
-		lastTime:   new(time.Time),
+		writer:     consoleWriter,
 	}
 }
 
 func ResolveLevel(nodeEnv, debugLogs, configured string) Level {
-	if strings.EqualFold(strings.TrimSpace(nodeEnv), "development") {
-		return LevelDebug
-	}
-	if strings.EqualFold(strings.TrimSpace(debugLogs), "true") {
+	if strings.EqualFold(strings.TrimSpace(nodeEnv), "development") || parseBool(debugLogs) {
 		return LevelDebug
 	}
 
@@ -103,14 +125,23 @@ func ResolveLevel(nodeEnv, debugLogs, configured string) Level {
 		return LevelWarn
 	case "http":
 		return LevelHTTP
-	case "verbose":
+	case "verbose", "trace":
 		return LevelVerbose
 	case "debug":
 		return LevelDebug
 	case "info", "log", "":
-		return LevelHTTP
+		return LevelInfo
 	default:
-		return LevelHTTP
+		return LevelInfo
+	}
+}
+
+func parseBool(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "t", "true", "yes", "y", "on", "enabled":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -190,56 +221,162 @@ func (l *Logger) write(level Level, label, message string, err error, fields ...
 		return
 	}
 
-	now := time.Now()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	ms := "+0ms"
-	if !l.lastTime.IsZero() {
-		delta := now.Sub(*l.lastTime)
-		if delta < 0 {
-			delta = 0
-		}
-		ms = fmt.Sprintf("+%dms", delta.Milliseconds())
-	}
-	*l.lastTime = now
-
-	prefix := fmt.Sprintf("[#%s] %s %5s", l.instanceID, now.Format("2006-01-02 15:04:05.000"), label)
-	if l.colors {
-		prefix = colorizeLevel(prefix, level)
-	}
-
-	context := ""
+	event := l.core.WithLevel(toZeroLevel(level)).Str("nest_level", label)
 	if l.context != "" {
-		context = " [" + l.context + "]"
+		event = event.Str("context", l.context)
 	}
-
 	if err != nil {
-		fields = append(fields, Field{Key: "error", Value: err.Error()})
+		event = event.Err(err)
 	}
-	if len(fields) > 0 {
-		message = strings.TrimRight(message, " ") + " - " + renderFields(fields)
-	}
-
-	fmt.Fprintf(l.writer, "%s%s %s %s\n", prefix, context, message, ms)
-}
-
-func renderFields(fields []Field) string {
-	payload := make(map[string]any, len(fields))
 	for _, field := range fields {
 		key := strings.TrimSpace(field.Key)
 		if key == "" {
 			continue
 		}
-		payload[key] = field.Value
+		event = event.Interface(key, field.Value)
 	}
+	event.Msg(message)
+}
+
+func toZeroLevel(level Level) zerolog.Level {
+	switch level {
+	case LevelError:
+		return zerolog.ErrorLevel
+	case LevelWarn:
+		return zerolog.WarnLevel
+	case LevelVerbose:
+		return zerolog.TraceLevel
+	case LevelDebug:
+		return zerolog.DebugLevel
+	default:
+		return zerolog.InfoLevel
+	}
+}
+
+const maxDisplayedDelta = time.Minute
+
+type remnawaveConsoleWriter struct {
+	mu         sync.Mutex
+	out        io.Writer
+	instanceID string
+	colors     bool
+	lastTime   *time.Time
+}
+
+func (w *remnawaveConsoleWriter) Write(p []byte) (int, error) {
+	line := bytes.TrimSpace(p)
+	if len(line) == 0 {
+		return len(p), nil
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(line, &payload); err != nil {
+		_, writeErr := w.out.Write(append(line, '\n'))
+		return len(p), writeErr
+	}
+
+	now := time.Now()
+	if rawTime, ok := payload["time"].(string); ok {
+		if parsed, err := time.ParseInLocation("2006-01-02 15:04:05.000", rawTime, time.Local); err == nil {
+			now = parsed
+		}
+	}
+
+	label := strings.TrimSpace(asString(payload["nest_level"]))
+	if label == "" {
+		label = strings.ToUpper(asString(payload["level"]))
+	}
+	if label == "" {
+		label = "LOG"
+	}
+
+	level := levelFromString(label, asString(payload["level"]))
+	context := strings.TrimSpace(asString(payload["context"]))
+	message := asString(payload["message"])
+
+	delete(payload, "time")
+	delete(payload, "level")
+	delete(payload, "nest_level")
+	delete(payload, "context")
+	delete(payload, "message")
+
+	fields := renderPayload(payload)
+	if fields != "" {
+		message = strings.TrimRight(message, " ") + " - " + fields
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	ms := "+0ms"
+	if !w.lastTime.IsZero() {
+		delta := now.Sub(*w.lastTime)
+		if delta < 0 || delta > maxDisplayedDelta {
+			delta = 0
+		}
+		ms = fmt.Sprintf("+%dms", delta.Milliseconds())
+	}
+	*w.lastTime = now
+
+	prefix := fmt.Sprintf("[#%s] %s %5s", w.instanceID, now.Format("2006-01-02 15:04:05.000"), label)
+	if w.colors {
+		prefix = colorizeLevel(prefix, level)
+	}
+
+	contextPart := ""
+	if context != "" {
+		contextPart = " [" + context + "]"
+	}
+
+	_, err := fmt.Fprintf(w.out, "%s%s %s %s\n", prefix, contextPart, message, ms)
+	return len(p), err
+}
+
+func asString(value any) string {
+	if value == nil {
+		return ""
+	}
+	if str, ok := value.(string); ok {
+		return str
+	}
+	return fmt.Sprint(value)
+}
+
+func levelFromString(label, zeroLevel string) Level {
+	switch strings.ToUpper(strings.TrimSpace(label)) {
+	case "ERROR", "FATAL", "PANIC":
+		return LevelError
+	case "WARN", "WARNING":
+		return LevelWarn
+	case "DEBUG":
+		return LevelDebug
+	case "VERBOSE", "TRACE":
+		return LevelVerbose
+	}
+	switch strings.ToLower(strings.TrimSpace(zeroLevel)) {
+	case "error", "fatal", "panic":
+		return LevelError
+	case "warn":
+		return LevelWarn
+	case "debug":
+		return LevelDebug
+	case "trace":
+		return LevelVerbose
+	default:
+		return LevelInfo
+	}
+}
+
+func renderPayload(payload map[string]any) string {
 	if len(payload) == 0 {
-		return "{}"
+		return ""
 	}
 
 	keys := make([]string, 0, len(payload))
 	for key := range payload {
-		keys = append(keys, key)
+		if strings.TrimSpace(key) != "" {
+			keys = append(keys, key)
+		}
 	}
 	sort.Strings(keys)
 	if _, ok := payload["stack"]; ok {
@@ -267,6 +404,12 @@ func renderValue(value any) string {
 		items := make([]string, 0, len(typed))
 		for _, item := range typed {
 			items = append(items, fmt.Sprintf("%q", item))
+		}
+		return "[ " + strings.Join(items, ", ") + " ]"
+	case []any:
+		items := make([]string, 0, len(typed))
+		for _, item := range typed {
+			items = append(items, renderValue(item))
 		}
 		return "[ " + strings.Join(items, ", ") + " ]"
 	case map[string]any:

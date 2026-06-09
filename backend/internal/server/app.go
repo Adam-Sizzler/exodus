@@ -156,8 +156,17 @@ func shouldLogHTTPRequest(r *http.Request) bool {
 	if r == nil || r.URL == nil {
 		return false
 	}
-	path := r.URL.Path
-	return !strings.HasPrefix(path, "/assets")
+
+	path := cleanPath(r.URL.Path)
+	segments := splitSegments(path)
+	for _, segment := range segments {
+		switch segment {
+		case "assets", "locales":
+			return false
+		}
+	}
+
+	return true
 }
 
 func formatHTTPAccessLog(r *http.Request, statusCode, bytesWritten int, elapsed time.Duration) string {
@@ -219,7 +228,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		recorder := &accessLogResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		start := time.Now()
 		defer func() {
-			logger.WithContext("HTTP").HTTP(formatHTTPAccessLog(r, recorder.statusCode, recorder.bytesWritten, time.Since(start)))
+			logger.WithContext("HTTP").Debug(formatHTTPAccessLog(r, recorder.statusCode, recorder.bytesWritten, time.Since(start)))
 		}()
 		w = recorder
 	}
