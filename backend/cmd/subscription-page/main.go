@@ -89,7 +89,7 @@ func main() {
 	}()
 
 	bootstrapLogger.Info("[CONFIG] HTTP listening on " + httpServer.Addr)
-	bootstrapLogger.Info("\n" + server.GetStartMessage(resolvedVersion) + "\n")
+	bootstrapLogger.Info(server.GetStartMessage(resolvedVersion, cfg))
 
 	select {
 	case <-ctx.Done():

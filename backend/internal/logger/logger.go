@@ -255,6 +255,15 @@ func toZeroLevel(level Level) zerolog.Level {
 
 const maxDisplayedDelta = time.Minute
 
+const (
+	ansiReset   = "[0m"
+	ansiRed     = "[31m"
+	ansiGreen   = "[32m"
+	ansiYellow  = "[33m"
+	ansiMagenta = "[35m"
+	ansiCyan    = "[36m"
+)
+
 type exodusConsoleWriter struct {
 	mu         sync.Mutex
 	out        io.Writer
@@ -294,34 +303,62 @@ func (w *exodusConsoleWriter) Write(p []byte) (int, error) {
 
 	fields := renderPayload(payload)
 	if fields != "" {
-		message = strings.TrimRight(message, " ") + " - " + fields
+		message = strings.TrimRight(message, " ") + " " + fields
 	}
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	ms := "+0ms"
-	if !w.lastTime.IsZero() {
-		delta := now.Sub(*w.lastTime)
-		if delta < 0 || delta > maxDisplayedDelta {
-			delta = 0
+	if isBoxMessage(message) {
+		if w.colors {
+			message = colorizeMultiline(message, ansiGreen)
 		}
-		ms = fmt.Sprintf("+%dms", delta.Milliseconds())
-	}
-	*w.lastTime = now
-
-	prefix := fmt.Sprintf("[#%s] %s %5s", w.instanceID, now.Format("2006-01-02 15:04:05.000"), label)
-	if w.colors {
-		prefix = colorizeLevel(prefix, level)
+		return w.writeRaw(message)
 	}
 
+	timePart := now.Format("2006-01-02 15:04:05.000")
+	levelPart := label
 	contextPart := ""
 	if context != "" {
 		contextPart = " [" + context + "]"
 	}
+	if w.colors {
+		levelPart = colorizeLevel(label, level)
+		if contextPart != "" {
+			contextPart = colorize(contextPart, ansiYellow)
+		}
+	}
 
-	_, err := fmt.Fprintf(w.out, "%s%s %s %s\n", prefix, contextPart, message, ms)
+	_, err := fmt.Fprintf(w.out, "%s %s%s %s\n", timePart, levelPart, contextPart, message)
 	return len(p), err
+}
+
+func (w *exodusConsoleWriter) writeRaw(message string) (int, error) {
+	message = strings.Trim(message, "\n")
+	if message == "" {
+		return 0, nil
+	}
+	return fmt.Fprintln(w.out, message)
+}
+
+func colorizeMultiline(value, color string) string {
+	if value == "" {
+		return value
+	}
+
+	lines := strings.Split(value, "\n")
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		lines[i] = colorize(line, color)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func isBoxMessage(message string) bool {
+	message = strings.TrimSpace(message)
+	return strings.HasPrefix(message, "╭") || strings.HasPrefix(message, "╔")
 }
 
 func asString(value any) string {
@@ -435,17 +472,20 @@ func renderValue(value any) string {
 }
 
 func colorizeLevel(text string, level Level) string {
-	const reset = "\033[0m"
 	switch level {
 	case LevelError:
-		return "\033[31m" + text + reset
+		return colorize(text, ansiRed)
 	case LevelWarn:
-		return "\033[33m" + text + reset
+		return colorize(text, ansiYellow)
 	case LevelDebug, LevelVerbose:
-		return "\033[35m" + text + reset
+		return colorize(text, ansiMagenta)
 	default:
-		return "\033[32m" + text + reset
+		return colorize(text, ansiGreen)
 	}
+}
+
+func colorize(text, color string) string {
+	return color + text + ansiReset
 }
 
 func String(key string, value string) Field { return Field{Key: key, Value: value} }
