@@ -35,7 +35,7 @@ type Logger struct {
 	level      Level
 	context    string
 	instanceID string
-	writer     *remnawaveConsoleWriter
+	writer     *exodusConsoleWriter
 }
 
 type Options struct {
@@ -88,9 +88,9 @@ func New(opts Options) *Logger {
 	zerolog.ErrorFieldName = "error"
 
 	var output io.Writer = writer
-	consoleWriter := (*remnawaveConsoleWriter)(nil)
+	consoleWriter := (*exodusConsoleWriter)(nil)
 	if !opts.JSON && !strings.EqualFold(os.Getenv("LOG_FORMAT"), "json") {
-		consoleWriter = &remnawaveConsoleWriter{
+		consoleWriter = &exodusConsoleWriter{
 			out:        writer,
 			instanceID: instanceID,
 			colors:     colors,
@@ -255,7 +255,7 @@ func toZeroLevel(level Level) zerolog.Level {
 
 const maxDisplayedDelta = time.Minute
 
-type remnawaveConsoleWriter struct {
+type exodusConsoleWriter struct {
 	mu         sync.Mutex
 	out        io.Writer
 	instanceID string
@@ -263,7 +263,7 @@ type remnawaveConsoleWriter struct {
 	lastTime   *time.Time
 }
 
-func (w *remnawaveConsoleWriter) Write(p []byte) (int, error) {
+func (w *exodusConsoleWriter) Write(p []byte) (int, error) {
 	line := bytes.TrimSpace(p)
 	if len(line) == 0 {
 		return len(p), nil
