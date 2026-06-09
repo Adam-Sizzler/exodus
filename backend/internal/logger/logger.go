@@ -20,7 +20,6 @@ const (
 	LevelError Level = iota
 	LevelWarn
 	LevelInfo
-	LevelHTTP
 	LevelVerbose
 	LevelDebug
 )
@@ -31,11 +30,10 @@ type Field struct {
 }
 
 type Logger struct {
-	core       zerolog.Logger
-	level      Level
-	context    string
-	instanceID string
-	writer     *exodusConsoleWriter
+	core    zerolog.Logger
+	level   Level
+	context string
+	writer  *exodusConsoleWriter
 }
 
 type Options struct {
@@ -76,11 +74,6 @@ func New(opts Options) *Logger {
 		colors = false
 	}
 
-	instanceID := strings.TrimSpace(opts.InstanceID)
-	if instanceID == "" {
-		instanceID = "0"
-	}
-
 	zerolog.TimeFieldFormat = "2006-01-02 15:04:05.000"
 	zerolog.TimestampFieldName = "time"
 	zerolog.LevelFieldName = "level"
@@ -91,10 +84,8 @@ func New(opts Options) *Logger {
 	consoleWriter := (*exodusConsoleWriter)(nil)
 	if !opts.JSON && !strings.EqualFold(os.Getenv("LOG_FORMAT"), "json") {
 		consoleWriter = &exodusConsoleWriter{
-			out:        writer,
-			instanceID: instanceID,
-			colors:     colors,
-			lastTime:   new(time.Time),
+			out:    writer,
+			colors: colors,
 		}
 		output = consoleWriter
 	}
@@ -106,10 +97,9 @@ func New(opts Options) *Logger {
 		Logger()
 
 	return &Logger{
-		core:       core,
-		level:      level,
-		instanceID: instanceID,
-		writer:     consoleWriter,
+		core:   core,
+		level:  level,
+		writer: consoleWriter,
 	}
 }
 
@@ -123,8 +113,6 @@ func ResolveLevel(nodeEnv, debugLogs, configured string) Level {
 		return LevelError
 	case "warn", "warning":
 		return LevelWarn
-	case "http":
-		return LevelHTTP
 	case "verbose", "trace":
 		return LevelVerbose
 	case "debug":
@@ -160,7 +148,7 @@ func (l *Logger) Info(message string, fields ...Field) {
 }
 
 func (l *Logger) HTTP(message string, fields ...Field) {
-	l.write(LevelHTTP, message, nil, fields...)
+	l.Debug(message, fields...)
 }
 
 func (l *Logger) Warn(message string, fields ...Field) {
@@ -253,23 +241,18 @@ func toZeroLevel(level Level) zerolog.Level {
 	}
 }
 
-const maxDisplayedDelta = time.Minute
-
 const (
-	ansiReset   = "[0m"
-	ansiRed     = "[31m"
-	ansiGreen   = "[32m"
-	ansiYellow  = "[33m"
-	ansiMagenta = "[35m"
-	ansiCyan    = "[36m"
+	ansiReset  = "[0m"
+	ansiRed    = "[31m"
+	ansiGreen  = "[32m"
+	ansiYellow = "[33m"
+	ansiCyan   = "[36m"
 )
 
 type exodusConsoleWriter struct {
-	mu         sync.Mutex
-	out        io.Writer
-	instanceID string
-	colors     bool
-	lastTime   *time.Time
+	mu     sync.Mutex
+	out    io.Writer
+	colors bool
 }
 
 func (w *exodusConsoleWriter) Write(p []byte) (int, error) {
@@ -478,7 +461,7 @@ func colorizeLevel(text string, level Level) string {
 	case LevelWarn:
 		return colorize(text, ansiYellow)
 	case LevelDebug, LevelVerbose:
-		return colorize(text, ansiMagenta)
+		return colorize(text, ansiCyan)
 	default:
 		return colorize(text, ansiGreen)
 	}

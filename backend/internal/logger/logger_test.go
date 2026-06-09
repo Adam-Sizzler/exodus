@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func TestResolveLevelNodeEnvDevelopmentEnablesDebug(t *testing.T) {
+	if got := ResolveLevel("development", "", ""); got != LevelDebug {
+		t.Fatalf("ResolveLevel() = %v, want debug", got)
+	}
+}
+
 func TestResolveLevelDebugEnvEnablesDebug(t *testing.T) {
 	if got := ResolveLevel("production", "true", ""); got != LevelDebug {
 		t.Fatalf("ResolveLevel() = %v, want debug", got)
@@ -27,8 +33,8 @@ func TestLoggerFormatIncludesContextAndTimestamp(t *testing.T) {
 	if !strings.Contains(line, " INFO [RootService] hello") {
 		t.Fatalf("unexpected line: %q", line)
 	}
-	if !strings.Contains(line, "+0ms") {
-		t.Fatalf("expected ms suffix, got: %q", line)
+	if strings.Contains(line, "+0ms") {
+		t.Fatalf("unexpected ms suffix: %q", line)
 	}
 }
 
