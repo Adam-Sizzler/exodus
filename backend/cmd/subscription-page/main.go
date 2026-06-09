@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"regexp"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/config"
 	"github.com/exodus/subscription-page/backend/internal/grpcapi"
 	"github.com/exodus/subscription-page/backend/internal/grpcserver"
+	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/server"
 )
 
@@ -22,25 +24,33 @@ var buildVersion = "unknown"
 var semverPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
 
 func main() {
-	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+	logger.Configure(logger.Options{
+		NodeEnv:   os.Getenv("NODE_ENV"),
+		DebugLogs: os.Getenv("ENABLE_DEBUG_LOGS"),
+		Colors:    true,
+	})
+	bootstrapLogger := logger.WithContext("Bootstrap")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("[FATAL] %v", err)
+		bootstrapLogger.Fatal("[FATAL] configuration failed", err)
 	}
 
-	log.Printf("[CONFIG] SUB_PATH: %s", config.DisplayPrefix(cfg.SubPath))
-	log.Printf("[CONFIG] grpc target %s:%d", cfg.GRPCAddress, cfg.GRPCPort)
-	log.Printf("[CONFIG] http listening on :%s", cfg.AppPort)
+	if cfg.SubPath == "" {
+		bootstrapLogger.Log("[CONFIG] CUSTOM_SUB_PREFIX: not set")
+	} else {
+		bootstrapLogger.Log("[CONFIG] CUSTOM_SUB_PREFIX: " + cfg.SubPath)
+	}
 
-	nodeService := grpcapi.NewNodeServer(resolveNodeVersion(cfg.AppVersion))
+	resolvedVersion := resolveNodeVersion(cfg.AppVersion)
+	nodeService := grpcapi.NewNodeServer(resolvedVersion)
 
 	application, appErr := server.New(cfg, nodeService)
 	if appErr != nil {
-		log.Fatalf("[FATAL] %v", appErr)
+		bootstrapLogger.Fatal("[FATAL] application bootstrap failed", appErr)
 	}
 
 	httpServer := &http.Server{
@@ -60,23 +70,29 @@ func main() {
 		}
 	}()
 
+	listener, err := net.Listen("tcp", httpServer.Addr)
+	if err != nil {
+		bootstrapLogger.Fatal("[FATAL] listen http", err)
+	}
 	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()
 
+	bootstrapLogger.Log("\n" + server.GetStartMessage(resolvedVersion) + "\n")
+
 	select {
 	case <-ctx.Done():
-		log.Printf("[INFO] shutdown signal received")
+		bootstrapLogger.Log("shutdown signal received")
 	case err = <-errCh:
-		log.Fatalf("[FATAL] server failed: %v", err)
+		bootstrapLogger.Fatal("[FATAL] server failed", err)
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Printf("[WARN] http shutdown failed: %v", err)
+		bootstrapLogger.Warn("http shutdown failed", logger.String("error", err.Error()))
 	}
 }
 

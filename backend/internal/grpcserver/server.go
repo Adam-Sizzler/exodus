@@ -7,13 +7,13 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/exodus/subscription-page/backend/internal/config"
+	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/proto"
 
 	"golang.org/x/net/http2"
@@ -27,6 +27,7 @@ import (
 const grpcTokenHeader = "x-exodus-grpc-token"
 
 func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeServiceServer) error {
+	log := logger.WithContext("GrpcServer")
 	if nodeService == nil {
 		return fmt.Errorf("node service is required")
 	}
@@ -45,9 +46,9 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 		}
 		unaryInterceptors = append(unaryInterceptors, grpcTokenUnaryInterceptor(expectedToken))
 		streamInterceptors = append(streamInterceptors, grpcTokenStreamInterceptor(expectedToken))
-		log.Printf("[CONFIG] gRPC auth mode: TLS + token")
+		log.Log("[CONFIG] gRPC auth mode: TLS + token")
 	} else {
-		log.Printf("[CONFIG] gRPC auth mode: mTLS")
+		log.Log("[CONFIG] gRPC auth mode: mTLS")
 	}
 	opts = append(opts,
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
@@ -60,7 +61,7 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 	if pathPrefix == "/" {
 		pathPrefix = ""
 	} else {
-		log.Printf("[CONFIG] gRPC path prefix: %s", pathPrefix)
+		log.Log("[CONFIG] gRPC path prefix: " + pathPrefix)
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -96,20 +97,20 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 			return fmt.Errorf("configure http2: %w", err)
 		}
 		listener = tls.NewListener(listener, tlsCfg)
-		log.Printf("[CONFIG] gRPC mTLS enabled")
+		log.Log("[CONFIG] gRPC mTLS enabled")
 	} else {
 		httpServer.Handler = h2c.NewHandler(handler, &http2.Server{})
-		log.Printf("[CONFIG] gRPC h2c mode enabled (for reverse proxy TLS termination)")
+		log.Log("[CONFIG] gRPC h2c mode enabled (for reverse proxy TLS termination)")
 	}
 
-	log.Printf("[CONFIG] gRPC listening on %s", addr)
+	log.Log("[CONFIG] gRPC listening on " + addr)
 
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("[WARN] gRPC shutdown failed: %v", err)
+			log.Warn("gRPC shutdown failed", logger.String("error", err.Error()))
 		}
 	}()
 

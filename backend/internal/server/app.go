@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/exodus/subscription-page/backend/internal/assets"
 	"github.com/exodus/subscription-page/backend/internal/config"
+	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/proto"
 	"github.com/exodus/subscription-page/backend/internal/security"
 )
@@ -135,7 +135,7 @@ func New(cfg config.Config, bridge PanelBridge) (*App, error) {
 		return nil, err
 	}
 
-	log.Printf("[CONFIG] assets path: %s", assetsPath)
+	logger.WithContext("Bootstrap").Debugf("[CONFIG] assets path: %s", assetsPath)
 
 	return &App{
 		cfg:                      cfg,
@@ -168,8 +168,8 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !a.cfg.IsDevelopment() {
 		if strings.TrimSpace(r.Header.Get("X-Forwarded-For")) == "" ||
 			r.Header.Get("X-Forwarded-Proto") != "https" {
-			log.Printf(
-				"[ERROR] Reverse proxy and HTTPS are required. X-Forwarded-For=%q X-Forwarded-Proto=%q",
+			logger.WithContext("ProxyCheckMiddleware").Errorf(
+				"Reverse proxy and HTTPS are required. X-Forwarded-For=%q X-Forwarded-Proto=%q",
 				r.Header.Get("X-Forwarded-For"),
 				r.Header.Get("X-Forwarded-Proto"),
 			)
@@ -192,7 +192,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(routePath, "/assets") || strings.HasPrefix(routePath, "/locales") {
 		if _, err := a.verifySessionCookie(r); err != nil {
-			log.Printf("[DEBUG] static asset session verification failed: %v", err)
+			logger.WithContext("CheckAssetsCookieMiddleware").Debugf("static asset session verification failed: %v", err)
 			closeConnection(w)
 			return
 		}
@@ -212,7 +212,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if len(segments) == 2 {
 		clientType = segments[1]
 		if _, ok := allowedClientTypes[clientType]; !ok {
-			log.Printf("[ERROR] invalid client type: %s", clientType)
+			logger.WithContext("RootController").Errorf("Invalid client type: %s", clientType)
 			closeConnection(w)
 			return
 		}
@@ -226,7 +226,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	clientIP := getRealIP(r)
 	resolvedShortUUID, err := a.resolveShortUUID(r.Context(), clientIP, shortUUID)
 	if err != nil {
-		log.Printf("[DEBUG] short uuid resolution failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Debugf("short uuid resolution failed for %s: %v", shortUUID, err)
 		closeConnection(w)
 		return
 	}
@@ -242,7 +242,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 	claims, err := a.verifySessionCookie(r)
 	if err != nil {
-		log.Printf("[DEBUG] app config session verification failed: %v", err)
+		logger.WithContext("CheckAssetsCookieMiddleware").Debugf("app config session verification failed: %v", err)
 		closeConnection(w)
 		return
 	}
@@ -256,7 +256,7 @@ func (a *App) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 
 	subpageConfigRaw, err := a.getSubpageConfigByUUID(r.Context(), subpageConfigUUID)
 	if err != nil {
-		log.Printf("[ERROR] %v", err)
+		logger.WithContext("RootService").Errorf("%v", err)
 		closeConnection(w)
 		return
 	}
@@ -323,9 +323,9 @@ func (a *App) proxySubscription(
 		Headers:    toProtoHeaders(r.Header),
 	})
 	if err != nil {
-		log.Printf("[ERROR] get subscription failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Errorf("get subscription failed for %s: %v", shortUUID, err)
 		if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, clientType); ok {
-			log.Printf("[WARN] serving cached subscription content for %s (client_type=%q, age=%s)", shortUUID, clientType, time.Since(cached.UpdatedAt).Round(time.Second))
+			logger.WithContext("RootService").Warnf("serving cached subscription content for %s (client_type=%q, age=%s)", shortUUID, clientType, time.Since(cached.UpdatedAt).Round(time.Second))
 			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
 			return
 		}
@@ -335,7 +335,7 @@ func (a *App) proxySubscription(
 
 	if bridgeResp.GetStatusCode() < 200 || bridgeResp.GetStatusCode() >= 300 || len(bridgeResp.GetPayload()) == 0 {
 		if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, clientType); ok {
-			log.Printf("[WARN] serving cached subscription content for %s due panel status=%d (client_type=%q, age=%s)", shortUUID, bridgeResp.GetStatusCode(), clientType, time.Since(cached.UpdatedAt).Round(time.Second))
+			logger.WithContext("RootService").Warnf("serving cached subscription content for %s due panel status=%d (client_type=%q, age=%s)", shortUUID, bridgeResp.GetStatusCode(), clientType, time.Since(cached.UpdatedAt).Round(time.Second))
 			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
 			return
 		}
@@ -359,17 +359,17 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		ClientIp:  clientIP,
 	})
 	if err != nil {
-		log.Printf("[ERROR] get subscription info failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Errorf("get subscription info failed for %s: %v", shortUUID, err)
 		if cached, ok := a.getCachedSubscriptionInfo(shortUUID); ok {
-			log.Printf("[WARN] serving cached subscription info for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+			logger.WithContext("RootService").Warnf("serving cached subscription info for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 			subscriptionDataRaw = cached.Payload
 		} else {
 			if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, ""); ok {
-				log.Printf("[WARN] serving cached subscription content for %s due missing subscription info cache (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+				logger.WithContext("RootService").Warnf("serving cached subscription content for %s due missing subscription info cache (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 				writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
 				return
 			}
-			log.Printf("[WARN] no cached subscription info or subscription content for %s; closing connection", shortUUID)
+			logger.WithContext("RootService").Warnf("no cached subscription info or subscription content for %s; closing connection", shortUUID)
 			closeConnection(w)
 			return
 		}
@@ -383,17 +383,17 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Headers:   toProtoHeaders(r.Header),
 	})
 	if err != nil {
-		log.Printf("[ERROR] get subpage config failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Errorf("get subpage config failed for %s: %v", shortUUID, err)
 		if cached, ok := a.getCachedSubpageByShort(shortUUID); ok {
-			log.Printf("[WARN] serving cached subpage config envelope for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+			logger.WithContext("RootService").Warnf("serving cached subpage config envelope for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 			subpageEnvelopeRaw = cached.Payload
 		} else {
 			if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, ""); ok {
-				log.Printf("[WARN] serving cached subscription content for %s due missing subpage config cache (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+				logger.WithContext("RootService").Warnf("serving cached subscription content for %s due missing subpage config cache (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 				writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
 				return
 			}
-			log.Printf("[WARN] no cached subpage config or subscription content for %s; closing connection", shortUUID)
+			logger.WithContext("RootService").Warnf("no cached subpage config or subscription content for %s; closing connection", shortUUID)
 			closeConnection(w)
 			return
 		}
@@ -403,34 +403,34 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 
 	var subscriptionData map[string]any
 	if err := json.Unmarshal(subscriptionDataRaw, &subscriptionData); err != nil {
-		log.Printf("[ERROR] failed to parse subscription info: %v", err)
+		logger.WithContext("RootService").Errorf("failed to parse subscription info: %v", err)
 		closeConnection(w)
 		return
 	}
 
 	var subpageEnvelope subpageConfigByShortEnvelope
 	if err := json.Unmarshal(subpageEnvelopeRaw, &subpageEnvelope); err != nil {
-		log.Printf("[ERROR] failed to parse subpage envelope: %v", err)
+		logger.WithContext("RootService").Errorf("failed to parse subpage envelope: %v", err)
 		closeConnection(w)
 		return
 	}
 
 	subpageConfigUUID := strings.TrimSpace(subpageEnvelope.Response.SubpageConfigUUID)
 	if subpageConfigUUID == "" {
-		log.Printf("[ERROR] empty subpage config uuid for %s", shortUUID)
+		logger.WithContext("RootService").Errorf("empty subpage config uuid for %s", shortUUID)
 		closeConnection(w)
 		return
 	}
 
 	if !subpageEnvelope.Response.WebpageAllowed {
-		log.Printf("Webpage access is not allowed by Exodus's SRR.")
+		logger.WithContext("RootService").Log("Webpage access is not allowed by Exodus's SRR.")
 		closeConnection(w)
 		return
 	}
 
 	subpageConfigRaw, err := a.getSubpageConfigByUUID(r.Context(), subpageConfigUUID)
 	if err != nil {
-		log.Printf("[ERROR] failed to load subpage config %s: %v", subpageConfigUUID, err)
+		logger.WithContext("RootService").Errorf("failed to load subpage config %s: %v", subpageConfigUUID, err)
 		closeConnection(w)
 		return
 	}
@@ -446,7 +446,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		"exp":               time.Now().Add(33 * time.Minute).Unix(),
 	}, a.cfg.SessionSecret)
 	if err != nil {
-		log.Printf("[ERROR] failed to build session jwt: %v", err)
+		logger.WithContext("RootService").Errorf("failed to build session jwt: %v", err)
 		closeConnection(w)
 		return
 	}
@@ -462,14 +462,14 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 
 	panelData, err := json.Marshal(subscriptionData)
 	if err != nil {
-		log.Printf("[ERROR] failed to marshal subscription info: %v", err)
+		logger.WithContext("RootService").Errorf("failed to marshal subscription info: %v", err)
 		closeConnection(w)
 		return
 	}
 
 	indexHTML, err := os.ReadFile(filepath.Join(a.assetsPath, "index.html"))
 	if err != nil {
-		log.Printf("[ERROR] failed to read frontend index.html: %v", err)
+		logger.WithContext("RootService").Errorf("failed to read frontend index.html: %v", err)
 		closeConnection(w)
 		return
 	}
@@ -517,7 +517,7 @@ func (a *App) getSubpageConfigByUUID(ctx context.Context, subpageConfigUUID stri
 	})
 	if err != nil {
 		if cached, ok := a.getCachedSubpageConfigByUUID(subpageConfigUUID); ok {
-			log.Printf("[WARN] serving cached subpage config by uuid=%s (age=%s)", subpageConfigUUID, time.Since(cached.UpdatedAt).Round(time.Second))
+			logger.WithContext("RootService").Warnf("serving cached subpage config by uuid=%s (age=%s)", subpageConfigUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 			return cached.Payload, nil
 		}
 		return nil, err
