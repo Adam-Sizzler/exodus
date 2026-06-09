@@ -25,9 +25,10 @@ var semverPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]
 
 func main() {
 	logger.Configure(logger.Options{
-		NodeEnv:   os.Getenv("NODE_ENV"),
-		DebugLogs: os.Getenv("ENABLE_DEBUG_LOGS"),
-		Colors:    true,
+		NodeEnv:    os.Getenv("NODE_ENV"),
+		DebugLogs:  os.Getenv("ENABLE_DEBUG_LOGS"),
+		InstanceID: os.Getenv("INSTANCE_ID"),
+		Colors:     true,
 	})
 	bootstrapLogger := logger.WithContext("Bootstrap")
 
@@ -36,7 +37,7 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		bootstrapLogger.Fatal("[FATAL] configuration failed", err)
+		bootstrapLogger.Fatal("\n" + config.FormatEnvironmentErrors(err))
 	}
 
 	if cfg.SubPath == "" {
@@ -80,6 +81,7 @@ func main() {
 		}
 	}()
 
+	bootstrapLogger.Log("[CONFIG] HTTP listening on " + httpServer.Addr)
 	bootstrapLogger.Log("\n" + server.GetStartMessage(resolvedVersion) + "\n")
 
 	select {

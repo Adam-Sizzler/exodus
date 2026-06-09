@@ -12,10 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/proto"
 
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/peer"
 )
 
 type NodeServer struct {
@@ -69,8 +71,15 @@ func NewNodeServer(version string) *NodeServer {
 }
 
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
+	log := logger.WithContext("GrpcServer")
+	remoteAddr := streamPeerAddress(stream.Context())
+	log.Log("Panel stream connected", logger.String("remote_addr", remoteAddr))
+
 	s.attachStream(stream)
-	defer s.detachStream(stream)
+	defer func() {
+		s.detachStream(stream)
+		log.Warn("Panel stream disconnected", logger.String("remote_addr", remoteAddr))
+	}()
 
 	intervalSeconds := 20
 	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
@@ -119,8 +128,10 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			return nil
 		case recvErr := <-recvErrCh:
 			if recvErr == io.EOF {
+				log.Warn("Panel stream closed", logger.String("remote_addr", remoteAddr))
 				return nil
 			}
+			log.Warn("Panel stream receive failed", logger.String("remote_addr", remoteAddr), logger.String("error", recvErr.Error()))
 			return recvErr
 		case nextInterval := <-intervalUpdates:
 			nextInterval = clampInterval(nextInterval)
@@ -129,7 +140,9 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			}
 			intervalSeconds = nextInterval
 			ticker.Reset(time.Duration(intervalSeconds) * time.Second)
+			log.Log("Panel stream interval updated", logger.Int("interval_seconds", intervalSeconds))
 		case <-requestUsers:
+			log.Debug("Panel requested users list")
 			if err := sendUsers(); err != nil {
 				return err
 			}
@@ -142,6 +155,7 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 }
 
 func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBridgeRequest) (*proto.SubscriptionBridgeResponse, error) {
+	log := logger.WithContext("PanelBridge")
 	if req == nil {
 		return nil, fmt.Errorf("subscription bridge request is nil")
 	}
@@ -152,6 +166,8 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 	if strings.TrimSpace(req.RequestId) == "" {
 		req.RequestId = s.nextRequestID()
 	}
+	operation := strings.TrimSpace(req.Operation)
+	log.Debug("Sending request to panel", logger.String("operation", operation), logger.String("request_id", req.RequestId))
 
 	waitCtx, cancel := context.WithTimeout(ctx, panelStreamWaitTimeout)
 	defer cancel()
@@ -159,6 +175,7 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 	for {
 		stream, err := s.waitForStream(waitCtx)
 		if err != nil {
+			log.Error("Panel stream is not connected", err, logger.String("operation", operation), logger.String("request_id", req.RequestId))
 			return nil, err
 		}
 
@@ -200,6 +217,7 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 			if resp == nil {
 				return nil, fmt.Errorf("empty bridge response")
 			}
+			log.Debug("Received response from panel", logger.String("operation", operation), logger.String("request_id", req.RequestId), logger.Int("status_code", int(resp.GetStatusCode())))
 			return resp, nil
 		}
 	}
@@ -313,6 +331,7 @@ func (s *NodeServer) handleBridgeResponse(resp *proto.SubscriptionBridgeResponse
 }
 
 func (s *NodeServer) applySubpageConfigUpdate(update *proto.SubpageConfigUpdate) {
+	log := logger.WithContext("SubpageConfigService")
 	if update == nil {
 		return
 	}
@@ -321,6 +340,7 @@ func (s *NodeServer) applySubpageConfigUpdate(update *proto.SubpageConfigUpdate)
 		s.subpageConfigsMu.Lock()
 		s.subpageConfigs = make(map[string][]byte)
 		s.subpageConfigsMu.Unlock()
+		log.Warn("Subpage config cache cleared by panel")
 		return
 	}
 
@@ -330,7 +350,11 @@ func (s *NodeServer) applySubpageConfigUpdate(update *proto.SubpageConfigUpdate)
 
 	s.subpageConfigsMu.Lock()
 	s.subpageConfigs[uuid] = clone
+	count := len(s.subpageConfigs)
 	s.subpageConfigsMu.Unlock()
+
+	log.Log("[OK] " + uuid)
+	log.Debug("Subpage config cache updated", logger.String("uuid", uuid), logger.Int("bytes", len(clone)), logger.Int("total", count))
 }
 
 func (s *NodeServer) buildStats() []*proto.Stat {
@@ -454,6 +478,14 @@ func clampInterval(seconds int) int {
 		return 300
 	}
 	return seconds
+}
+
+func streamPeerAddress(ctx context.Context) string {
+	peerInfo, ok := peer.FromContext(ctx)
+	if !ok || peerInfo.Addr == nil {
+		return "unknown"
+	}
+	return peerInfo.Addr.String()
 }
 
 func detectCPUModel() string {

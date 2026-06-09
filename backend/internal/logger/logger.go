@@ -28,12 +28,13 @@ type Field struct {
 }
 
 type Logger struct {
-	mu       *sync.Mutex
-	writer   io.Writer
-	level    Level
-	context  string
-	colors   bool
-	lastTime *time.Time
+	mu         *sync.Mutex
+	writer     io.Writer
+	level      Level
+	context    string
+	instanceID string
+	colors     bool
+	lastTime   *time.Time
 }
 
 type Options struct {
@@ -72,13 +73,18 @@ func New(opts Options) *Logger {
 	if os.Getenv("NO_COLOR") != "" || strings.EqualFold(os.Getenv("LOG_COLORS"), "false") {
 		colors = false
 	}
+	instanceID := strings.TrimSpace(opts.InstanceID)
+	if instanceID == "" {
+		instanceID = "0"
+	}
 
 	return &Logger{
-		mu:       &sync.Mutex{},
-		writer:   writer,
-		level:    level,
-		colors:   colors,
-		lastTime: new(time.Time),
+		mu:         &sync.Mutex{},
+		writer:     writer,
+		level:      level,
+		instanceID: instanceID,
+		colors:     colors,
+		lastTime:   new(time.Time),
 	}
 }
 
@@ -194,7 +200,7 @@ func (l *Logger) write(level Level, label, message string, err error, fields ...
 	}
 	*l.lastTime = now
 
-	prefix := fmt.Sprintf("%s %5s", now.Format("2006-01-02 15:04:05.000"), label)
+	prefix := fmt.Sprintf("[#%s] %s %5s", l.instanceID, now.Format("2006-01-02 15:04:05.000"), label)
 	if l.colors {
 		prefix = colorizeLevel(prefix, level)
 	}

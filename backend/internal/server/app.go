@@ -1,11 +1,13 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -125,6 +127,70 @@ type cachedJSONPayload struct {
 	UpdatedAt time.Time
 }
 
+type accessLogResponseWriter struct {
+	http.ResponseWriter
+	statusCode   int
+	bytesWritten int
+}
+
+func (w *accessLogResponseWriter) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *accessLogResponseWriter) Write(payload []byte) (int, error) {
+	written, err := w.ResponseWriter.Write(payload)
+	w.bytesWritten += written
+	return written, err
+}
+
+func (w *accessLogResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
+}
+
+func shouldLogHTTPRequest(r *http.Request) bool {
+	if r == nil || r.URL == nil {
+		return false
+	}
+	path := r.URL.Path
+	return !strings.HasPrefix(path, "/assets")
+}
+
+func formatHTTPAccessLog(r *http.Request, statusCode, bytesWritten int, elapsed time.Duration) string {
+	remoteAddr := getRealIP(r)
+	if remoteAddr == "" {
+		remoteAddr = "-"
+	}
+	referrer := r.Referer()
+	if referrer == "" {
+		referrer = "-"
+	}
+	userAgent := r.UserAgent()
+	if userAgent == "" {
+		userAgent = "-"
+	}
+	contentLength := "-"
+	if bytesWritten > 0 {
+		contentLength = fmt.Sprintf("%d", bytesWritten)
+	}
+	return fmt.Sprintf(`%s - "%s %s HTTP/%d.%d" %d %s "%s" "%s" %s`,
+		remoteAddr,
+		r.Method,
+		r.URL.RequestURI(),
+		r.ProtoMajor,
+		r.ProtoMinor,
+		statusCode,
+		contentLength,
+		referrer,
+		userAgent,
+		elapsed.Round(time.Millisecond),
+	)
+}
+
 func New(cfg config.Config, bridge PanelBridge) (*App, error) {
 	if bridge == nil {
 		return nil, fmt.Errorf("panel bridge is required")
@@ -149,6 +215,15 @@ func New(cfg config.Config, bridge PanelBridge) (*App, error) {
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if shouldLogHTTPRequest(r) {
+		recorder := &accessLogResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		start := time.Now()
+		defer func() {
+			logger.WithContext("HTTP").HTTP(formatHTTPAccessLog(r, recorder.statusCode, recorder.bytesWritten, time.Since(start)))
+		}()
+		w = recorder
+	}
+
 	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET")

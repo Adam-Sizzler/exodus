@@ -41,6 +41,18 @@ type MTLSConfig struct {
 	CACert string
 }
 
+// FormatEnvironmentErrors renders configuration failures like Exodus subscription-page.
+func FormatEnvironmentErrors(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	return fmt.Sprintf(`🔧 Environment Configuration Errors:
+❌ %s
+
+Please fix your .env file and restart the application.`, err.Error())
+}
+
 func Load() (Config, error) {
 	pathPrefix := normalizePathPrefix(os.Getenv("SUB_PATH"))
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
