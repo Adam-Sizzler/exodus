@@ -16,8 +16,10 @@ import (
 
 func GetStartMessage(cfg *config.NodeConfig) string {
 	port := config.DefaultNodeGRPCPort
+	pathPrefix := displayNodeGRPCPath("")
 	if cfg != nil {
 		port = cfg.Exodus.GrpcPort
+		pathPrefix = displayNodeGRPCPath(cfg.Exodus.GrpcPath)
 	}
 
 	return renderGroupedLogTable(
@@ -30,6 +32,7 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 			{
 				"API Port → " + strconv.Itoa(port),
 				"Internal Ports → " + strconv.Itoa(config.FixedCoreAPIGRPCPort),
+				"Path Prefix → " + pathPrefix,
 			},
 			{
 				"Sing-box Core → v" + detectManagedCoreVersion(),
@@ -40,6 +43,14 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 			wrapPrefixedLogLine("Interfaces → ", strings.Join(detectNetworkInterfacesForLogs(), ", "), logTableWidth-4),
 		},
 	)
+}
+
+func displayNodeGRPCPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" || path == "/" {
+		return "/"
+	}
+	return "/" + strings.Trim(path, "/")
 }
 
 func renderCoreStartedMessage(processState string) string {
