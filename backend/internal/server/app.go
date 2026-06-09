@@ -243,11 +243,12 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !a.cfg.IsDevelopment() {
 		if strings.TrimSpace(r.Header.Get("X-Forwarded-For")) == "" ||
 			r.Header.Get("X-Forwarded-Proto") != "https" {
-			logger.WithContext("ProxyCheckMiddleware").Errorf(
-				"Reverse proxy and HTTPS are required. X-Forwarded-For=%q X-Forwarded-Proto=%q",
+			logger.WithContext("ProxyCheckMiddleware").Debugf(
+				"X-Forwarded-For: %s, X-Forwarded-Proto: %s",
 				r.Header.Get("X-Forwarded-For"),
 				r.Header.Get("X-Forwarded-Proto"),
 			)
+			logger.WithContext("ProxyCheckMiddleware").Errorf("Reverse proxy and HTTPS are required.")
 			closeConnection(w)
 			return
 		}
@@ -267,7 +268,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(routePath, "/assets") || strings.HasPrefix(routePath, "/locales") {
 		if _, err := a.verifySessionCookie(r); err != nil {
-			logger.WithContext("CheckAssetsCookieMiddleware").Debugf("static asset session verification failed: %v", err)
+			logger.WithContext("CheckAssetsCookieMiddleware").Debugf("%v", err)
 			closeConnection(w)
 			return
 		}
@@ -317,7 +318,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 	claims, err := a.verifySessionCookie(r)
 	if err != nil {
-		logger.WithContext("CheckAssetsCookieMiddleware").Debugf("app config session verification failed: %v", err)
+		logger.WithContext("CheckAssetsCookieMiddleware").Debugf("%v", err)
 		closeConnection(w)
 		return
 	}
@@ -398,7 +399,7 @@ func (a *App) proxySubscription(
 		Headers:    toProtoHeaders(r.Header),
 	})
 	if err != nil {
-		logger.WithContext("RootService").Errorf("get subscription failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Errorf("Error in GetSubscription Request: %v", err)
 		if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, clientType); ok {
 			logger.WithContext("RootService").Warnf("serving cached subscription content for %s (client_type=%q, age=%s)", shortUUID, clientType, time.Since(cached.UpdatedAt).Round(time.Second))
 			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
@@ -434,7 +435,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		ClientIp:  clientIP,
 	})
 	if err != nil {
-		logger.WithContext("RootService").Errorf("get subscription info failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Errorf("Error in GetSubscriptionInfo Request: %v", err)
 		if cached, ok := a.getCachedSubscriptionInfo(shortUUID); ok {
 			logger.WithContext("RootService").Warnf("serving cached subscription info for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 			subscriptionDataRaw = cached.Payload
@@ -458,7 +459,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Headers:   toProtoHeaders(r.Header),
 	})
 	if err != nil {
-		logger.WithContext("RootService").Errorf("get subpage config failed for %s: %v", shortUUID, err)
+		logger.WithContext("RootService").Errorf("Error in GetSubpageConfig Request: %v", err)
 		if cached, ok := a.getCachedSubpageByShort(shortUUID); ok {
 			logger.WithContext("RootService").Warnf("serving cached subpage config envelope for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
 			subpageEnvelopeRaw = cached.Payload
@@ -478,21 +479,21 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 
 	var subscriptionData map[string]any
 	if err := json.Unmarshal(subscriptionDataRaw, &subscriptionData); err != nil {
-		logger.WithContext("RootService").Errorf("failed to parse subscription info: %v", err)
+		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to parse subscription info: %v", err)
 		closeConnection(w)
 		return
 	}
 
 	var subpageEnvelope subpageConfigByShortEnvelope
 	if err := json.Unmarshal(subpageEnvelopeRaw, &subpageEnvelope); err != nil {
-		logger.WithContext("RootService").Errorf("failed to parse subpage envelope: %v", err)
+		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to parse subpage envelope: %v", err)
 		closeConnection(w)
 		return
 	}
 
 	subpageConfigUUID := strings.TrimSpace(subpageEnvelope.Response.SubpageConfigUUID)
 	if subpageConfigUUID == "" {
-		logger.WithContext("RootService").Errorf("empty subpage config uuid for %s", shortUUID)
+		logger.WithContext("RootService").Errorf("[FATAL] SubPage config for %s not found", shortUUID)
 		closeConnection(w)
 		return
 	}
@@ -505,7 +506,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 
 	subpageConfigRaw, err := a.getSubpageConfigByUUID(r.Context(), subpageConfigUUID)
 	if err != nil {
-		logger.WithContext("RootService").Errorf("failed to load subpage config %s: %v", subpageConfigUUID, err)
+		logger.WithContext("SubpageConfigService").Errorf("[FATAL] SubPage config %s not found", subpageConfigUUID)
 		closeConnection(w)
 		return
 	}
@@ -521,7 +522,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		"exp":               time.Now().Add(33 * time.Minute).Unix(),
 	}, a.cfg.SessionSecret)
 	if err != nil {
-		logger.WithContext("RootService").Errorf("failed to build session jwt: %v", err)
+		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to build session jwt: %v", err)
 		closeConnection(w)
 		return
 	}
@@ -537,14 +538,14 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 
 	panelData, err := json.Marshal(subscriptionData)
 	if err != nil {
-		logger.WithContext("RootService").Errorf("failed to marshal subscription info: %v", err)
+		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to marshal subscription info: %v", err)
 		closeConnection(w)
 		return
 	}
 
 	indexHTML, err := os.ReadFile(filepath.Join(a.assetsPath, "index.html"))
 	if err != nil {
-		logger.WithContext("RootService").Errorf("failed to read frontend index.html: %v", err)
+		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to read frontend index.html: %v", err)
 		closeConnection(w)
 		return
 	}

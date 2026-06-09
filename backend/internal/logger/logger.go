@@ -160,6 +160,10 @@ func (l *Logger) Errorf(format string, args ...any) {
 	l.Error(fmt.Sprintf(format, args...), nil)
 }
 
+func (l *Logger) Exception(message string) {
+	l.write(LevelError, "ERROR", message, nil, Field{Key: "stack", Value: []string{""}}, Field{Key: "error", Value: map[string]any{}})
+}
+
 func (l *Logger) Debugf(format string, args ...any) {
 	l.Debug(fmt.Sprintf(format, args...))
 }
@@ -214,12 +218,7 @@ func (l *Logger) write(level Level, label, message string, err error, fields ...
 		fields = append(fields, Field{Key: "error", Value: err.Error()})
 	}
 	if len(fields) > 0 {
-		message = strings.TrimRight(message, " ") + " " + renderFields(fields)
-	}
-
-	if strings.Contains(message, "\n") {
-		fmt.Fprintf(l.writer, "%s%s %s\n", prefix, context, message)
-		return
+		message = strings.TrimRight(message, " ") + " - " + renderFields(fields)
 	}
 
 	fmt.Fprintf(l.writer, "%s%s %s %s\n", prefix, context, message, ms)
@@ -235,7 +234,7 @@ func renderFields(fields []Field) string {
 		payload[key] = field.Value
 	}
 	if len(payload) == 0 {
-		return ""
+		return "{}"
 	}
 
 	keys := make([]string, 0, len(payload))
@@ -243,16 +242,44 @@ func renderFields(fields []Field) string {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
+	if _, ok := payload["stack"]; ok {
+		reordered := []string{"stack"}
+		for _, key := range keys {
+			if key != "stack" {
+				reordered = append(reordered, key)
+			}
+		}
+		keys = reordered
+	}
 
 	ordered := make([]string, 0, len(keys))
 	for _, key := range keys {
-		value, err := json.Marshal(payload[key])
-		if err != nil {
-			value = []byte(fmt.Sprintf("%q", fmt.Sprint(payload[key])))
-		}
-		ordered = append(ordered, fmt.Sprintf("%q:%s", key, value))
+		ordered = append(ordered, fmt.Sprintf("%s: %s", key, renderValue(payload[key])))
 	}
-	return "{" + strings.Join(ordered, ",") + "}"
+	return "{ " + strings.Join(ordered, ", ") + " }"
+}
+
+func renderValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return fmt.Sprintf("%q", typed)
+	case []string:
+		items := make([]string, 0, len(typed))
+		for _, item := range typed {
+			items = append(items, fmt.Sprintf("%q", item))
+		}
+		return "[ " + strings.Join(items, ", ") + " ]"
+	case map[string]any:
+		if len(typed) == 0 {
+			return "{}"
+		}
+	}
+
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprintf("%q", fmt.Sprint(value))
+	}
+	return string(encoded)
 }
 
 func colorizeLevel(text string, level Level) string {

@@ -73,12 +73,12 @@ func NewNodeServer(version string) *NodeServer {
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
 	log := logger.WithContext("GrpcServer")
 	remoteAddr := streamPeerAddress(stream.Context())
-	log.Log("Panel stream connected", logger.String("remote_addr", remoteAddr))
+	log.Log("Panel stream connected", logger.String("remoteAddr", remoteAddr))
 
 	s.attachStream(stream)
 	defer func() {
 		s.detachStream(stream)
-		log.Warn("Panel stream disconnected", logger.String("remote_addr", remoteAddr))
+		log.Warn("Panel stream disconnected", logger.String("remoteAddr", remoteAddr))
 	}()
 
 	intervalSeconds := 20
@@ -128,10 +128,10 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			return nil
 		case recvErr := <-recvErrCh:
 			if recvErr == io.EOF {
-				log.Warn("Panel stream closed", logger.String("remote_addr", remoteAddr))
+				log.Warn("Panel stream closed", logger.String("remoteAddr", remoteAddr))
 				return nil
 			}
-			log.Warn("Panel stream receive failed", logger.String("remote_addr", remoteAddr), logger.String("error", recvErr.Error()))
+			log.Warn("Panel stream receive failed", logger.String("remoteAddr", remoteAddr), logger.String("error", recvErr.Error()))
 			return recvErr
 		case nextInterval := <-intervalUpdates:
 			nextInterval = clampInterval(nextInterval)
@@ -140,7 +140,7 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			}
 			intervalSeconds = nextInterval
 			ticker.Reset(time.Duration(intervalSeconds) * time.Second)
-			log.Log("Panel stream interval updated", logger.Int("interval_seconds", intervalSeconds))
+			log.Log("Panel stream interval updated", logger.Int("intervalSeconds", intervalSeconds))
 		case <-requestUsers:
 			log.Debug("Panel requested users list")
 			if err := sendUsers(); err != nil {
@@ -167,7 +167,7 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 		req.RequestId = s.nextRequestID()
 	}
 	operation := strings.TrimSpace(req.Operation)
-	log.Debug("Sending request to panel", logger.String("operation", operation), logger.String("request_id", req.RequestId))
+	log.Debug("Sending request to panel", logger.String("operation", operation), logger.String("requestId", req.RequestId))
 
 	waitCtx, cancel := context.WithTimeout(ctx, panelStreamWaitTimeout)
 	defer cancel()
@@ -175,7 +175,7 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 	for {
 		stream, err := s.waitForStream(waitCtx)
 		if err != nil {
-			log.Error("Panel stream is not connected", err, logger.String("operation", operation), logger.String("request_id", req.RequestId))
+			log.Error("Panel stream is not connected", err, logger.String("operation", operation), logger.String("requestId", req.RequestId))
 			return nil, err
 		}
 
@@ -217,7 +217,7 @@ func (s *NodeServer) QueryPanel(ctx context.Context, req *proto.SubscriptionBrid
 			if resp == nil {
 				return nil, fmt.Errorf("empty bridge response")
 			}
-			log.Debug("Received response from panel", logger.String("operation", operation), logger.String("request_id", req.RequestId), logger.Int("status_code", int(resp.GetStatusCode())))
+			log.Debug("Received response from panel", logger.String("operation", operation), logger.String("requestId", req.RequestId), logger.Int("statusCode", int(resp.GetStatusCode())))
 			return resp, nil
 		}
 	}
@@ -340,7 +340,7 @@ func (s *NodeServer) applySubpageConfigUpdate(update *proto.SubpageConfigUpdate)
 		s.subpageConfigsMu.Lock()
 		s.subpageConfigs = make(map[string][]byte)
 		s.subpageConfigsMu.Unlock()
-		log.Warn("Subpage config cache cleared by panel")
+		log.Warn("Subscription page config list cannot be fetched")
 		return
 	}
 

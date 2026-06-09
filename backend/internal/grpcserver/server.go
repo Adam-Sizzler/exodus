@@ -42,7 +42,7 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 	opts := make([]grpc.ServerOption, 0, 2)
 	if cfg.RequireGRPCToken {
 		if expectedToken == "" {
-			return fmt.Errorf("SUB_GRPC_TOKEN is required")
+			return config.NewEnvError("SUB_GRPC_TOKEN", "Required when SUB_SECRET_KEY is not provided. Dashboard → Subscription → Nodes → Current node → gRPC Token (SUB_GRPC_TOKEN) or Secret Key (SUB_SECRET_KEY).")
 		}
 		unaryInterceptors = append(unaryInterceptors, grpcTokenUnaryInterceptor(expectedToken, log))
 		streamInterceptors = append(streamInterceptors, grpcTokenStreamInterceptor(expectedToken, log))

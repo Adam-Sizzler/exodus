@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -27,12 +26,12 @@ func ParseNodePayloadFromSecret() (NodePayload, error) {
 	secret = strings.Trim(secret, "\"'")
 	raw, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY is not valid base64 payload: %w", err)
+		return NodePayload{}, NewEnvError("SUB_SECRET_KEY", "Invalid Secret Key payload. Dashboard → Subscription → Nodes → Current node → Secret Key (SUB_SECRET_KEY).")
 	}
 
 	var payload NodePayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY contains invalid JSON payload: %w", err)
+		return NodePayload{}, NewEnvError("SUB_SECRET_KEY", "Contains invalid JSON payload. Copy Secret Key from Dashboard → Subscription → Nodes → Current node.")
 	}
 
 	payload.CaCertPem = normalizePEM(payload.CaCertPem)
@@ -41,11 +40,11 @@ func ParseNodePayloadFromSecret() (NodePayload, error) {
 	payload.NodeKeyPem = normalizePEM(payload.NodeKeyPem)
 
 	if payload.CaCertPem == "" || payload.NodeCertPem == "" || payload.NodeKeyPem == "" {
-		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY payload is missing mTLS fields")
+		return NodePayload{}, NewEnvError("SUB_SECRET_KEY", "Payload is missing mTLS fields. Copy Secret Key from Dashboard → Subscription → Nodes → Current node.")
 	}
 
 	if _, err := tls.X509KeyPair([]byte(payload.NodeCertPem), []byte(payload.NodeKeyPem)); err != nil {
-		return NodePayload{}, fmt.Errorf("SUB_SECRET_KEY payload has invalid node certificate/key pair: %w", err)
+		return NodePayload{}, NewEnvError("SUB_SECRET_KEY", "Payload has invalid node certificate/key pair. Regenerate Secret Key in Dashboard → Subscription → Nodes → Current node.")
 	}
 
 	return payload, nil

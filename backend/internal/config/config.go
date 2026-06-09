@@ -41,10 +41,59 @@ type MTLSConfig struct {
 	CACert string
 }
 
-// FormatEnvironmentErrors renders configuration failures like Exodus subscription-page.
+// EnvError is a schema-like validation item rendered in the same style as
+// Remnawave subscription-page Zod validation errors.
+type EnvError struct {
+	Key     string
+	Message string
+}
+
+// EnvErrors groups all .env validation failures so the logger can print a
+// single Remnawave-like ExceptionHandler block instead of one fatal Go error.
+type EnvErrors []EnvError
+
+func (e EnvErrors) Error() string {
+	if len(e) == 0 {
+		return ".env configuration validation error"
+	}
+	parts := make([]string, 0, len(e))
+	for _, item := range e {
+		if strings.TrimSpace(item.Key) == "" {
+			parts = append(parts, strings.TrimSpace(item.Message))
+			continue
+		}
+		parts = append(parts, strings.TrimSpace(item.Key)+": "+strings.TrimSpace(item.Message))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func NewEnvError(key, message string) EnvErrors {
+	return EnvErrors{{Key: strings.TrimSpace(key), Message: strings.TrimSpace(message)}}
+}
+
+// FormatEnvironmentErrors renders configuration failures like Remnawave
+// subscription-page: a readable block with exact env names and setup hints.
 func FormatEnvironmentErrors(err error) string {
 	if err == nil {
 		return ""
+	}
+
+	var envErrs EnvErrors
+	if errors.As(err, &envErrs) {
+		lines := make([]string, 0, len(envErrs))
+		for _, item := range envErrs {
+			key := strings.TrimSpace(item.Key)
+			msg := strings.TrimSpace(item.Message)
+			if key == "" {
+				lines = append(lines, "❌ "+msg)
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("❌ %s: %s", key, msg))
+		}
+		return fmt.Sprintf(`🔧 Environment Configuration Errors:
+%s
+
+Please fix your .env file and restart the application.`, strings.Join(lines, "\n"))
 	}
 
 	return fmt.Sprintf(`🔧 Environment Configuration Errors:
@@ -90,14 +139,14 @@ func Load() (Config, error) {
 	cfg.RequireGRPCToken = cfg.MTLSConfig == nil
 	if cfg.GRPCToken != "" {
 		if len(cfg.GRPCToken) < 16 {
-			return cfg, fmt.Errorf("SUB_GRPC_TOKEN must be at least 16 characters")
+			return cfg, NewEnvError("SUB_GRPC_TOKEN", "Must be at least 16 characters. Dashboard → Subscription → Nodes → Current node → gRPC Token (SUB_GRPC_TOKEN) or Secret Key (SUB_SECRET_KEY).")
 		}
 		if len(cfg.GRPCToken) > 512 {
-			return cfg, fmt.Errorf("SUB_GRPC_TOKEN must be less than 512 characters")
+			return cfg, NewEnvError("SUB_GRPC_TOKEN", "Must be less than 512 characters.")
 		}
 	}
 	if cfg.RequireGRPCToken && cfg.GRPCToken == "" {
-		return cfg, fmt.Errorf("SUB_GRPC_TOKEN is required when SUB_SECRET_KEY is not provided")
+		return cfg, NewEnvError("SUB_GRPC_TOKEN", "Required when SUB_SECRET_KEY is not provided. Dashboard → Subscription → Nodes → Current node → gRPC Token (SUB_GRPC_TOKEN) or Secret Key (SUB_SECRET_KEY).")
 	}
 
 	seed := strings.TrimSpace(os.Getenv("SUB_SECRET_KEY"))
@@ -156,7 +205,7 @@ func parsePort(raw string, fallback int) (int, error) {
 	}
 	port, err := strconv.Atoi(trimmed)
 	if err != nil || port < 1 || port > 65535 {
-		return 0, fmt.Errorf("invalid SUB_GRPC_PORT value: %q", raw)
+		return 0, NewEnvError("SUB_GRPC_PORT", fmt.Sprintf("Invalid port value %q. Use a number from 1 to 65535.", raw))
 	}
 	return port, nil
 }

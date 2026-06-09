@@ -30,14 +30,20 @@ func main() {
 		InstanceID: os.Getenv("INSTANCE_ID"),
 		Colors:     true,
 	})
+	nestLogger := logger.WithContext("NestFactory")
+	exceptionLogger := logger.WithContext("ExceptionHandler")
 	bootstrapLogger := logger.WithContext("Bootstrap")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	nestLogger.Log("Starting Nest application...")
+
 	cfg, err := config.Load()
 	if err != nil {
-		bootstrapLogger.Fatal("\n" + config.FormatEnvironmentErrors(err))
+		exceptionLogger.Exception("\n" + config.FormatEnvironmentErrors(err))
+		waitForShutdownSignal(ctx, exceptionLogger)
+		return
 	}
 
 	if cfg.SubPath == "" {
@@ -51,7 +57,8 @@ func main() {
 
 	application, appErr := server.New(cfg, nodeService)
 	if appErr != nil {
-		bootstrapLogger.Fatal("[FATAL] application bootstrap failed", appErr)
+		exceptionLogger.Error("Application bootstrap failed", appErr)
+		os.Exit(1)
 	}
 
 	httpServer := &http.Server{
@@ -73,7 +80,8 @@ func main() {
 
 	listener, err := net.Listen("tcp", httpServer.Addr)
 	if err != nil {
-		bootstrapLogger.Fatal("[FATAL] listen http", err)
+		exceptionLogger.Error("Listen HTTP failed", err)
+		os.Exit(1)
 	}
 	go func() {
 		if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -86,9 +94,10 @@ func main() {
 
 	select {
 	case <-ctx.Done():
-		bootstrapLogger.Log("shutdown signal received")
+		bootstrapLogger.Log("Application shutdown signal received")
 	case err = <-errCh:
-		bootstrapLogger.Fatal("[FATAL] server failed", err)
+		exceptionLogger.Error("Server failed", err)
+		os.Exit(1)
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -96,6 +105,11 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		bootstrapLogger.Warn("http shutdown failed", logger.String("error", err.Error()))
 	}
+}
+
+func waitForShutdownSignal(ctx context.Context, log *logger.Logger) {
+	<-ctx.Done()
+	log.Log("Application shutdown signal received")
 }
 
 func resolveNodeVersion(configVersion string) string {
