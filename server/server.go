@@ -38,7 +38,12 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 		Cfg:        cfg,
 		apiService: apiService,
 	}
-	logNftablesAvailability(cfg.LoggerFor("NftService"))
+	cfg.LoggerFor("Supervisor").Info("[OK] Supervisord initialized")
+	cfg.LoggerFor("NetworkStatsService").Info("Network stats polling started (interval: 1000ms, default: " + detectDefaultNetworkInterfaceForLogs() + ")")
+	cfg.LoggerFor("NftService").Info("[PLUGIN] Ingress Filter: available")
+	cfg.LoggerFor("NftService").Info("[PLUGIN] Egress Filter: available")
+	cfg.LoggerFor("HAProxyService").Info("[PLUGIN] HAProxy Runtime API: available")
+	logNftablesAvailability(cfg.LoggerFor("HandlerService"))
 	nodeServer.startSRSAutoUpdater()
 
 	return nodeServer, nil

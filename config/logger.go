@@ -1,13 +1,15 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"sync"
-	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type LogLevel uint8
@@ -21,15 +23,9 @@ const (
 	LogLevelNone
 )
 
-type loggerCore struct {
-	mu     sync.Mutex
-	writer io.Writer
-	level  LogLevel
-	color  bool
-}
-
 type Logger struct {
-	core    *loggerCore
+	core    zerolog.Logger
+	level   LogLevel
 	context string
 }
 
@@ -43,22 +39,37 @@ func NewExodusLogger(writer io.Writer, level string) *Logger {
 	if writer == nil {
 		writer = os.Stderr
 	}
-	return &Logger{core: &loggerCore{
-		writer: writer,
-		level:  parseExodusLogLevel(level),
-		color:  shouldColorizeLogs(),
-	}}
+	resolved := parseExodusLogLevel(level)
+
+	zerolog.TimeFieldFormat = "2006-01-02 15:04:05.000"
+	zerolog.TimestampFieldName = "time"
+	zerolog.LevelFieldName = "level"
+	zerolog.MessageFieldName = "message"
+	zerolog.ErrorFieldName = "error"
+
+	output := writer
+	if !strings.EqualFold(strings.TrimSpace(os.Getenv("LOG_FORMAT")), "json") {
+		output = &exodusConsoleWriter{out: writer, color: shouldColorizeLogs()}
+	}
+
+	core := zerolog.New(output).
+		Level(toZerologLevel(resolved)).
+		With().
+		Timestamp().
+		Logger()
+
+	return &Logger{core: core, level: resolved}
 }
 
 func ResolveExodusLogLevel(configured string) string {
-	if IsDevelopment() {
+	if IsDevelopment() || parseBoolEnv(os.Getenv("ENABLE_DEBUG_LOGS")) {
 		return "debug"
 	}
 
 	configured = strings.ToLower(strings.TrimSpace(configured))
 	if configured != "" {
 		switch configured {
-		case "info", "log", "warn", "warning", "error", "none", "silent":
+		case "trace", "verbose", "debug", "info", "log", "warn", "warning", "error", "none", "silent":
 			return configured
 		}
 	}
@@ -75,6 +86,10 @@ func IsDevelopment() bool {
 }
 
 func parseExodusLogLevel(level string) LogLevel {
+	if IsDevelopment() || parseBoolEnv(os.Getenv("ENABLE_DEBUG_LOGS")) {
+		return LogLevelDebug
+	}
+
 	switch strings.ToLower(strings.TrimSpace(level)) {
 	case "trace", "verbose":
 		return LogLevelTrace
@@ -89,10 +104,16 @@ func parseExodusLogLevel(level string) LogLevel {
 	case "none", "silent":
 		return LogLevelNone
 	default:
-		if IsDevelopment() {
-			return LogLevelDebug
-		}
 		return LogLevelInfo
+	}
+}
+
+func parseBoolEnv(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "t", "true", "yes", "y", "on", "enabled":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -110,29 +131,21 @@ func (l *Logger) WithContext(context string) *Logger {
 	if l == nil {
 		return nil
 	}
-	context = strings.TrimSpace(context)
-	return &Logger{core: l.core, context: context}
+	clone := *l
+	clone.context = strings.TrimSpace(context)
+	return &clone
 }
 
 func (l *Logger) Enabled(level LogLevel) bool {
-	if l == nil || l.core == nil || l.core.level == LogLevelNone {
-		return false
-	}
-	return level <= l.core.level
+	return l != nil && l.level != LogLevelNone && level <= l.level
 }
 
-func (l *Logger) Log(message string, args ...any)  { l.write(LogLevelInfo, "LOG", message, args...) }
-func (l *Logger) Info(message string, args ...any) { l.write(LogLevelInfo, "LOG", message, args...) }
-func (l *Logger) Warn(message string, args ...any) { l.write(LogLevelWarn, "WARN", message, args...) }
-func (l *Logger) Error(message string, args ...any) {
-	l.write(LogLevelError, "ERROR", message, args...)
-}
-func (l *Logger) Debug(message string, args ...any) {
-	l.write(LogLevelDebug, "DEBUG", message, args...)
-}
-func (l *Logger) Trace(message string, args ...any) {
-	l.write(LogLevelTrace, "VERBOSE", message, args...)
-}
+func (l *Logger) Log(message string, args ...any)   { l.write(LogLevelInfo, message, args...) }
+func (l *Logger) Info(message string, args ...any)  { l.write(LogLevelInfo, message, args...) }
+func (l *Logger) Warn(message string, args ...any)  { l.write(LogLevelWarn, message, args...) }
+func (l *Logger) Error(message string, args ...any) { l.write(LogLevelError, message, args...) }
+func (l *Logger) Debug(message string, args ...any) { l.write(LogLevelDebug, message, args...) }
+func (l *Logger) Trace(message string, args ...any) { l.write(LogLevelTrace, message, args...) }
 
 func (l *Logger) Fatal(message string, args ...any) {
 	l.Error(message, args...)
@@ -144,7 +157,7 @@ func (l *Logger) Panic(message string, args ...any) {
 	panic(message)
 }
 
-func (l *Logger) write(level LogLevel, label, message string, args ...any) {
+func (l *Logger) write(level LogLevel, message string, args ...any) {
 	if !l.Enabled(level) {
 		return
 	}
@@ -152,51 +165,121 @@ func (l *Logger) write(level LogLevel, label, message string, args ...any) {
 		return
 	}
 
-	timestamp := time.Now().Format("2006-01-02 15:04:05.000")
-	labelField := fmt.Sprintf("%5s", label)
-	if l.core.color {
-		labelField = colorizeLabel(labelField, label)
-	}
-
-	contextPart := ""
+	event := l.core.WithLevel(toZerologLevel(level))
 	if l.context != "" {
-		contextPart = " [" + l.context + "]"
-		if l.core.color {
-			contextPart = colorize(contextPart, ansiYellow)
-		}
+		event = event.Str("context", l.context)
 	}
-
-	line := fmt.Sprintf("%s %s%s %s%s", timestamp, labelField, contextPart, message, formatLogArgs(args...))
-
-	l.core.mu.Lock()
-	_, _ = fmt.Fprintln(l.core.writer, line)
-	l.core.mu.Unlock()
-}
-
-func formatLogArgs(args ...any) string {
-	if len(args) == 0 {
-		return ""
-	}
-
-	fields := make([]string, 0, (len(args)+1)/2)
 	for i := 0; i < len(args); i += 2 {
 		if i+1 >= len(args) {
-			fields = append(fields, fmt.Sprintf("%q: %s", "extra", jsonLogValue(args[i])))
+			event = event.Interface("extra", args[i])
 			break
 		}
-
 		key, ok := args[i].(string)
 		if !ok || strings.TrimSpace(key) == "" {
-			fields = append(fields, fmt.Sprintf("%q: %s", "extra", jsonLogValue(args[i])))
+			event = event.Interface("extra", args[i])
 			i--
 			continue
 		}
-		fields = append(fields, fmt.Sprintf("%q: %s", key, jsonLogValue(args[i+1])))
+		event = event.Interface(strings.TrimSpace(key), args[i+1])
 	}
+	event.Msg(message)
+}
+
+func toZerologLevel(level LogLevel) zerolog.Level {
+	switch level {
+	case LogLevelError:
+		return zerolog.ErrorLevel
+	case LogLevelWarn:
+		return zerolog.WarnLevel
+	case LogLevelDebug:
+		return zerolog.DebugLevel
+	case LogLevelTrace:
+		return zerolog.TraceLevel
+	case LogLevelNone:
+		return zerolog.Disabled
+	default:
+		return zerolog.InfoLevel
+	}
+}
+
+type exodusConsoleWriter struct {
+	mu    sync.Mutex
+	out   io.Writer
+	color bool
+}
+
+func (w *exodusConsoleWriter) Write(p []byte) (int, error) {
+	var event struct {
+		Level   string         `json:"level"`
+		Time    string         `json:"time"`
+		Context string         `json:"context"`
+		Message string         `json:"message"`
+		Fields  map[string]any `json:"-"`
+	}
+	fields := map[string]any{}
+	decoder := json.NewDecoder(bytes.NewReader(p))
+	decoder.UseNumber()
+	if err := decoder.Decode(&fields); err != nil {
+		return w.writeRaw(strings.TrimRight(string(p), "\n"))
+	}
+
+	event.Level, _ = fields["level"].(string)
+	event.Time, _ = fields["time"].(string)
+	event.Context, _ = fields["context"].(string)
+	event.Message, _ = fields["message"].(string)
+	delete(fields, "level")
+	delete(fields, "time")
+	delete(fields, "context")
+	delete(fields, "message")
+
+	msg := strings.Trim(event.Message, "\n")
+	if isBoxMessage(msg) {
+		if w.color {
+			msg = colorizeMultiline(msg, ansiGreen)
+		}
+		return w.writeRaw(msg)
+	}
+
+	line := event.Time
+	level := strings.ToUpper(event.Level)
+	if level == "" {
+		level = "INFO"
+	}
+	if w.color {
+		level = colorizeLevel(level)
+	}
+	line += " " + level
+	if event.Context != "" {
+		ctx := "[" + event.Context + "]"
+		if w.color {
+			ctx = colorize(ctx, ansiYellow)
+		}
+		line += " " + ctx
+	}
+	line += " " + event.Message + formatJSONFields(fields)
+	return w.writeRaw(line)
+}
+
+func (w *exodusConsoleWriter) writeRaw(line string) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	_, err := fmt.Fprintln(w.out, line)
+	return len(line), err
+}
+
+func isBoxMessage(message string) bool {
+	return strings.HasPrefix(message, "╭") || strings.HasPrefix(message, "╔")
+}
+
+func formatJSONFields(fields map[string]any) string {
 	if len(fields) == 0 {
 		return ""
 	}
-	return " {" + strings.Join(fields, ", ") + "}"
+	parts := make([]string, 0, len(fields))
+	for key, value := range fields {
+		parts = append(parts, fmt.Sprintf("%q: %s", key, jsonLogValue(value)))
+	}
+	return " {" + strings.Join(parts, ", ") + "}"
 }
 
 func jsonLogValue(value any) string {
@@ -233,23 +316,35 @@ const (
 	ansiGreen   = "\033[32m"
 	ansiMagenta = "\033[35m"
 	ansiCyan    = "\033[36m"
+	ansiGray    = "\033[90m"
 )
 
-func colorizeLabel(value, label string) string {
-	switch label {
+func colorizeLevel(level string) string {
+	switch level {
 	case "ERROR":
-		return colorize(value, ansiRed)
+		return colorize(level, ansiRed)
 	case "WARN":
-		return colorize(value, ansiYellow)
+		return colorize(level, ansiYellow)
 	case "DEBUG":
-		return colorize(value, ansiMagenta)
-	case "VERBOSE":
-		return colorize(value, ansiCyan)
+		return colorize(level, ansiMagenta)
+	case "TRACE":
+		return colorize(level, ansiCyan)
 	default:
-		return colorize(value, ansiGreen)
+		return colorize(level, ansiGreen)
 	}
 }
 
 func colorize(value, color string) string {
 	return color + value + ansiReset
+}
+
+func colorizeMultiline(value, color string) string {
+	lines := strings.Split(value, "\n")
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		lines[i] = colorize(line, color)
+	}
+	return strings.Join(lines, "\n")
 }

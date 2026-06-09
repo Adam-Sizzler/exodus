@@ -37,7 +37,7 @@ func main() {
 		}
 	}()
 
-	cfg.Logger.Log("\n" + server.GetStartMessage(&cfg) + "\n")
+	cfg.Logger.Log(server.GetStartMessage(&cfg))
 
 	if err := grpcserver.StartGRPCServer(&cfg, nodeServer); err != nil {
 		cfg.LoggerFor("Bootstrap").Error("Failed to start gRPC server", "error", err)

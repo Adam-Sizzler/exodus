@@ -105,6 +105,8 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 		// the managed core is down. Invalid static SDK configuration is logged and
 		// surfaced through degraded stats instead of killing the node at startup.
 		log.Error("Core SDK initialization failed; continuing without fatal exit", "error", err)
+	} else {
+		cfg.LoggerFor("SingboxAPI").Info("[OK] Sing-box API initialized")
 	}
 
 	return &Service{

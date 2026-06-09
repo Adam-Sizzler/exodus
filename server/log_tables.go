@@ -20,51 +20,53 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 		port = cfg.Exodus.GrpcPort
 	}
 
-	return renderLogTable(
+	return renderGroupedLogTable(
 		"Exodus Node "+constant.Version,
 		[][]string{
-			{"Docs", "https://docs.exodus.dev"},
-			{"Community", "https://t.me/exodus"},
-			{"API Port", strconv.Itoa(port)},
-			{"Internal Ports", strconv.Itoa(config.FixedCoreAPIGRPCPort)},
-			{"Sing-box Core", "v" + detectManagedCoreVersion()},
-			{"Sing-box Path", "/usr/local/bin/sing-box"},
-			{"System", fmt.Sprintf("%dC, %s, %s", runtime.NumCPU(), detectCPUModelForLogs(), formatIECBytesForLogs(detectTotalRAMForLogs()))},
-			{"Kernel", strings.TrimSpace(runCommandForLogs("uname", "-r"))},
-			{"Network Interfaces", strings.Join(detectNetworkInterfacesForLogs(), ", ")},
+			{
+				"Docs → https://docs.exodus.dev",
+				"Community → https://t.me/exodus",
+			},
+			{
+				"API Port → " + strconv.Itoa(port),
+				"Internal Ports → " + strconv.Itoa(config.FixedCoreAPIGRPCPort),
+			},
+			{
+				"Sing-box Core → v" + detectManagedCoreVersion(),
+				"Sing-box Path → /usr/local/bin/sing-box",
+			},
+			{fmt.Sprintf("%dC, %s, %s", runtime.NumCPU(), detectCPUModelForLogs(), formatIECBytesForLogs(detectTotalRAMForLogs()))},
+			{"Kernel → " + strings.TrimSpace(runCommandForLogs("uname", "-r"))},
+			wrapPrefixedLogLine("Interfaces → ", strings.Join(detectNetworkInterfacesForLogs(), ", "), logTableWidth-4),
 		},
 	)
 }
 
 func renderCoreStartedMessage(processState string) string {
-	return renderLogTable(
+	return renderPlainLogTable(
 		"Sing-box started successfully",
-		[][]string{
-			{"Version", detectManagedCoreVersion()},
-			{"Process State", processState},
-			{"Started At", time.Now().Format(time.RFC3339)},
-			{"Config", config.FixedSingboxConfigPath},
+		[]string{
+			"Version → " + detectManagedCoreVersion(),
+			"Process State → " + processState,
+			"Started At → " + time.Now().Format(time.RFC3339),
+			"Config → " + config.FixedSingboxConfigPath,
 		},
 	)
 }
 
 func renderCoreFailedMessage(processState, err string) string {
-	return renderLogTable(
+	return renderPlainLogTable(
 		"Sing-box failed to start",
-		[][]string{
-			{"Version", detectManagedCoreVersion()},
-			{"Process State", processState},
-			{"Error", err},
-		},
+		append([]string{
+			"Version → " + detectManagedCoreVersion(),
+			"Process State → " + processState,
+		}, wrapPrefixedLogLine("Error → ", err, logTableWidth-4)...),
 	)
 }
 
-const (
-	logTableWidth           = 80
-	logTableLeftColumnWidth = 20
-)
+const logTableWidth = 80
 
-func renderLogTable(title string, rows [][]string) string {
+func renderGroupedLogTable(title string, groups [][]string) string {
 	width := logTableWidth
 	borderTop := "╭" + strings.Repeat("─", width-2) + "╮"
 	borderMid := "├" + strings.Repeat("─", width-2) + "┤"
@@ -76,19 +78,41 @@ func renderLogTable(title string, rows [][]string) string {
 	b.WriteString(renderCenteredLine(title, width))
 	b.WriteByte('\n')
 	b.WriteString(borderMid)
-	for _, row := range rows {
-		if len(row) < 2 {
-			continue
-		}
-		left := row[0]
-		lines := strings.Split(row[1], "\n")
-		for i, line := range lines {
-			label := ""
-			if i == 0 {
-				label = left
-			}
+
+	for groupIndex, group := range groups {
+		if groupIndex > 0 {
 			b.WriteByte('\n')
-			b.WriteString(renderTwoColumnLine(label, line, width))
+			b.WriteString(renderDashedLine(width))
+		}
+		for _, line := range group {
+			for _, wrapped := range wrapLogLine(line, width-4) {
+				b.WriteByte('\n')
+				b.WriteString(renderCenteredLine(wrapped, width))
+			}
+		}
+	}
+
+	b.WriteByte('\n')
+	b.WriteString(borderBottom)
+	return b.String()
+}
+
+func renderPlainLogTable(title string, lines []string) string {
+	width := logTableWidth
+	borderTop := "╭" + strings.Repeat("─", width-2) + "╮"
+	borderMid := "├" + strings.Repeat("─", width-2) + "┤"
+	borderBottom := "╰" + strings.Repeat("─", width-2) + "╯"
+
+	var b strings.Builder
+	b.WriteString(borderTop)
+	b.WriteByte('\n')
+	b.WriteString(renderCenteredLine(title, width))
+	b.WriteByte('\n')
+	b.WriteString(borderMid)
+	for _, line := range lines {
+		for _, wrapped := range wrapLogLine(line, width-4) {
+			b.WriteByte('\n')
+			b.WriteString(renderCenteredLine(wrapped, width))
 		}
 	}
 	b.WriteByte('\n')
@@ -96,29 +120,87 @@ func renderLogTable(title string, rows [][]string) string {
 	return b.String()
 }
 
+func renderDashedLine(width int) string {
+	return "│" + strings.Repeat("-", width-2) + "│"
+}
+
 func renderCenteredLine(value string, width int) string {
 	inner := width - 2
-	value = truncateLogCell(value, inner)
+	value = strings.TrimSpace(value)
+	if logCellWidth(value) > inner {
+		value = truncateLogCell(value, inner)
+	}
 	used := logCellWidth(value)
 	left := (inner - used) / 2
 	right := inner - used - left
 	return "│" + strings.Repeat(" ", left) + value + strings.Repeat(" ", right) + "│"
 }
 
-func renderTwoColumnLine(left, right string, width int) string {
-	inner := width - 2
-	leftWidth := logTableLeftColumnWidth
-	rightWidth := inner - leftWidth - 5
-	return "│ " + renderLogCell(left, leftWidth) + " │ " + renderLogCell(right, rightWidth) + " │"
+func wrapPrefixedLogLine(prefix, value string, max int) []string {
+	prefix = strings.TrimSpace(prefix) + " "
+	continuation := strings.Repeat(" ", logCellWidth(prefix))
+	wrapped := wrapLogLine(prefix+strings.TrimSpace(value), max)
+	for i := 1; i < len(wrapped); i++ {
+		wrapped[i] = continuation + strings.TrimSpace(wrapped[i])
+	}
+	return wrapped
 }
 
-func renderLogCell(value string, width int) string {
-	value = truncateLogCell(value, width)
-	padding := width - logCellWidth(value)
-	if padding < 0 {
-		padding = 0
+func wrapLogLine(value string, max int) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return []string{""}
 	}
-	return value + strings.Repeat(" ", padding)
+	if logCellWidth(value) <= max {
+		return []string{value}
+	}
+
+	parts := strings.Split(value, ", ")
+	if len(parts) == 1 {
+		return wrapByWords(value, max)
+	}
+
+	lines := make([]string, 0, len(parts))
+	current := ""
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		candidate := part
+		if current != "" {
+			candidate = current + ", " + part
+		}
+		if current != "" && logCellWidth(candidate) > max {
+			lines = append(lines, current)
+			current = part
+			continue
+		}
+		current = candidate
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
+}
+
+func wrapByWords(value string, max int) []string {
+	words := strings.Fields(value)
+	lines := make([]string, 0, len(words))
+	current := ""
+	for _, word := range words {
+		candidate := word
+		if current != "" {
+			candidate = current + " " + word
+		}
+		if current != "" && logCellWidth(candidate) > max {
+			lines = append(lines, current)
+			current = word
+			continue
+		}
+		current = candidate
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
 }
 
 func truncateLogCell(value string, max int) string {
@@ -226,4 +308,18 @@ func detectNetworkInterfacesForLogs() []string {
 		return []string{"unknown"}
 	}
 	return result
+}
+
+func detectDefaultNetworkInterfaceForLogs() string {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "unknown"
+	}
+	for _, iface := range interfaces {
+		if iface.Name == "lo" || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		return iface.Name
+	}
+	return "unknown"
 }

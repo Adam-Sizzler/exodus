@@ -14,9 +14,18 @@ func TestResolveExodusLogLevelDevelopment(t *testing.T) {
 	}
 }
 
+func TestResolveExodusLogLevelDebugFlag(t *testing.T) {
+	t.Setenv("NODE_ENV", "production")
+	t.Setenv("ENABLE_DEBUG_LOGS", "true")
+	if got := ResolveExodusLogLevel(""); got != "debug" {
+		t.Fatalf("ResolveExodusLogLevel() = %q, want debug", got)
+	}
+}
+
 func TestResolveExodusLogLevelDefaultsToInfo(t *testing.T) {
 	t.Setenv("NODE_ENV", "")
 	t.Setenv("ENV", "")
+	t.Setenv("ENABLE_DEBUG_LOGS", "")
 	if got := ResolveExodusLogLevel(""); got != "info" {
 		t.Fatalf("ResolveExodusLogLevel() = %q, want info", got)
 	}
@@ -29,21 +38,23 @@ func TestResolveExodusLogLevelDevelopmentWinsOverConfiguredLevel(t *testing.T) {
 	}
 }
 
-func TestResolveExodusLogLevelIgnoresDebugOutsideDevelopment(t *testing.T) {
+func TestResolveExodusLogLevelAllowsConfiguredDebug(t *testing.T) {
 	t.Setenv("NODE_ENV", "production")
-	if got := ResolveExodusLogLevel("debug"); got != "info" {
-		t.Fatalf("ResolveExodusLogLevel(debug) = %q, want info", got)
+	t.Setenv("ENABLE_DEBUG_LOGS", "")
+	if got := ResolveExodusLogLevel("debug"); got != "debug" {
+		t.Fatalf("ResolveExodusLogLevel(debug) = %q, want debug", got)
 	}
 }
 
 func TestExodusLoggerFormatIncludesContext(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
+	t.Setenv("LOG_FORMAT", "console")
 	var buf bytes.Buffer
 	logger := NewExodusLogger(&buf, "debug").WithContext("SingboxService")
 	logger.Log("Sing-box Core configuration is up-to-date - no restart required")
 
 	line := strings.TrimSpace(buf.String())
-	pattern := regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\s+LOG \[SingboxService\] Sing-box Core configuration is up-to-date - no restart required$`)
+	pattern := regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} INFO \[SingboxService\] Sing-box Core configuration is up-to-date - no restart required$`)
 	if !pattern.MatchString(line) {
 		t.Fatalf("unexpected log line: %q", line)
 	}

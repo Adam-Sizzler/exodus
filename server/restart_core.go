@@ -133,7 +133,7 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 
 	if !isSupervisorRunningState(after.StateName) && !strings.EqualFold(after.StateName, "STARTING") {
 		result.Error = fmt.Sprintf("core supervisor state is %s: %s", after.StateName, after.Description)
-		log.Error("\n" + renderCoreFailedMessage(after.StateName, result.Error))
+		log.Error(renderCoreFailedMessage(after.StateName, result.Error))
 		return result
 	}
 
@@ -150,7 +150,7 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	if apiService != nil {
 		apiService.MarkCoreOnline()
 	}
-	log.Log("\n" + renderCoreStartedMessage(result.ProcessAfter))
+	log.Log(renderCoreStartedMessage(result.ProcessAfter))
 	return result
 }
 
