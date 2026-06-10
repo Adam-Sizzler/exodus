@@ -2120,6 +2120,7 @@
         "scheduler-p99": "Scheduler P99",
         "heap-used": "Heap Used",
         "goroutines": "Goroutines",
+        "threads": "Threads",
         "memory": "Memory",
         "heap": "Heap",
         "rss": "RSS",

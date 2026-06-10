@@ -152,6 +152,7 @@ type nodeReviewRecord struct {
 	Port              int
 	TrafficUsedBytes  int64
 	TrafficLimitBytes int64
+	TrafficResetDay   int
 	NotifyPercent     int
 }
 
@@ -159,7 +160,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 	nodes := make([]nodeReviewRecord, 0)
 	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
-			SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(notify_percent, 0)
+			SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(traffic_reset_day, 1), COALESCE(notify_percent, 0)
 			FROM nodes
 			WHERE is_traffic_tracking_active = true
 			  AND COALESCE(notify_percent, 0) > 0
@@ -173,7 +174,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 
 		for rows.Next() {
 			var node nodeReviewRecord
-			if scanErr := rows.Scan(&node.UUID, &node.Name, &node.Address, &node.Port, &node.TrafficUsedBytes, &node.TrafficLimitBytes, &node.NotifyPercent); scanErr != nil {
+			if scanErr := rows.Scan(&node.UUID, &node.Name, &node.Address, &node.Port, &node.TrafficUsedBytes, &node.TrafficLimitBytes, &node.TrafficResetDay, &node.NotifyPercent); scanErr != nil {
 				return scanErr
 			}
 			nodes = append(nodes, node)
@@ -211,6 +212,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 					"port":              node.Port,
 					"trafficUsedBytes":  node.TrafficUsedBytes,
 					"trafficLimitBytes": node.TrafficLimitBytes,
+					"trafficResetDay":   node.TrafficResetDay,
 					"notifyPercent":     node.NotifyPercent,
 				},
 			})

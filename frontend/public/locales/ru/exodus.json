@@ -2144,6 +2144,7 @@
         "scheduler-p99": "P99 планировщика",
         "heap-used": "Heap Used",
         "goroutines": "Горутины",
+        "threads": "Потоки",
         "memory": "Память",
         "heap": "Heap",
         "rss": "RSS",

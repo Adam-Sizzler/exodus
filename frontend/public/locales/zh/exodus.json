@@ -2120,6 +2120,7 @@
         "scheduler-p99": "调度器 P99",
         "heap-used": "堆使用量",
         "goroutines": "Goroutines",
+        "threads": "线程",
         "memory": "内存",
         "heap": "堆",
         "rss": "RSS",

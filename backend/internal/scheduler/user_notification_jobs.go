@@ -127,6 +127,7 @@ func (s *Scheduler) findUsersForThresholdNotification(ctx context.Context) error
 				Scope: notifications.ScopeErrors,
 				Event: notifications.EventBandwidthMaxNotification,
 				Data: map[string]any{
+					"description":      fmt.Sprintf("Telegram notifications were skipped because one bandwidth threshold batch contains %d users. Webhook delivery is still allowed.", len(users)),
 					"batchSize":        len(users),
 					"totalProcessed":   total,
 					"thresholds":       thresholds,

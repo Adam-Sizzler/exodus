@@ -65,14 +65,16 @@ type SchedulerConfig struct {
 }
 
 type NotificationsConfig struct {
-	TelegramEnabled       bool
-	TelegramBotToken      string
-	TelegramUsersChatID   string
-	TelegramUsersThreadID string
-	TelegramNodesChatID   string
-	TelegramNodesThreadID string
-	TelegramCRMChatID     string
-	TelegramCRMThreadID   string
+	TelegramEnabled         bool
+	TelegramBotToken        string
+	TelegramUsersChatID     string
+	TelegramUsersThreadID   string
+	TelegramNodesChatID     string
+	TelegramNodesThreadID   string
+	TelegramCRMChatID       string
+	TelegramCRMThreadID     string
+	TelegramServiceChatID   string
+	TelegramServiceThreadID string
 
 	WebhookEnabled bool
 	WebhookURLs    []string
@@ -413,12 +415,22 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	cfg.Notifications.TelegramEnabled = parseBoolEnv(envFirst("IS_TELEGRAM_NOTIFICATIONS_ENABLED"))
 	cfg.Notifications.TelegramBotToken = envFirst("TELEGRAM_BOT_TOKEN")
-	cfg.Notifications.TelegramUsersChatID = envFirst("TELEGRAM_NOTIFY_USERS_CHAT_ID")
-	cfg.Notifications.TelegramUsersThreadID = envFirst("TELEGRAM_NOTIFY_USERS_THREAD_ID")
-	cfg.Notifications.TelegramNodesChatID = envFirst("TELEGRAM_NOTIFY_NODES_CHAT_ID")
-	cfg.Notifications.TelegramNodesThreadID = envFirst("TELEGRAM_NOTIFY_NODES_THREAD_ID")
-	cfg.Notifications.TelegramCRMChatID = envFirst("TELEGRAM_NOTIFY_CRM_CHAT_ID")
-	cfg.Notifications.TelegramCRMThreadID = envFirst("TELEGRAM_NOTIFY_CRM_THREAD_ID")
+	cfg.Notifications.TelegramUsersChatID, cfg.Notifications.TelegramUsersThreadID = parseTelegramTarget(
+		envFirst("TELEGRAM_NOTIFY_USERS", "TELEGRAM_NOTIFY_USERS_CHAT_ID"),
+		envFirst("TELEGRAM_NOTIFY_USERS_THREAD_ID"),
+	)
+	cfg.Notifications.TelegramNodesChatID, cfg.Notifications.TelegramNodesThreadID = parseTelegramTarget(
+		envFirst("TELEGRAM_NOTIFY_NODES", "TELEGRAM_NOTIFY_NODES_CHAT_ID"),
+		envFirst("TELEGRAM_NOTIFY_NODES_THREAD_ID"),
+	)
+	cfg.Notifications.TelegramCRMChatID, cfg.Notifications.TelegramCRMThreadID = parseTelegramTarget(
+		envFirst("TELEGRAM_NOTIFY_CRM", "TELEGRAM_NOTIFY_CRM_CHAT_ID"),
+		envFirst("TELEGRAM_NOTIFY_CRM_THREAD_ID"),
+	)
+	cfg.Notifications.TelegramServiceChatID, cfg.Notifications.TelegramServiceThreadID = parseTelegramTarget(
+		envFirst("TELEGRAM_NOTIFY_SERVICE", "TELEGRAM_NOTIFY_SERVICE_CHAT_ID", "TELEGRAM_NOTIFY_NODES_CHAT_ID"),
+		envFirst("TELEGRAM_NOTIFY_SERVICE_THREAD_ID", "TELEGRAM_NOTIFY_NODES_THREAD_ID"),
+	)
 	cfg.Notifications.WebhookEnabled = parseBoolEnv(envFirst("WEBHOOK_ENABLED"))
 	cfg.Notifications.WebhookURLs = splitCSV(envFirst("WEBHOOK_URL"))
 	cfg.Notifications.WebhookSecret = envFirst("WEBHOOK_SECRET_HEADER")
@@ -449,6 +461,22 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Scheduler.NotConnectedUsersNotificationsAfterHours = parsed
 		}
 	}
+}
+
+func parseTelegramTarget(rawTarget, rawThreadID string) (string, string) {
+	target := strings.TrimSpace(rawTarget)
+	threadID := strings.TrimSpace(rawThreadID)
+	if target == "" {
+		return "", threadID
+	}
+	if strings.Contains(target, ":") {
+		parts := strings.SplitN(target, ":", 2)
+		target = strings.TrimSpace(parts[0])
+		if threadID == "" {
+			threadID = strings.TrimSpace(parts[1])
+		}
+	}
+	return target, threadID
 }
 
 func loadNotificationsYAMLConfig(cfg *BackendConfig) {

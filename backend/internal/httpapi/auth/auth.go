@@ -80,26 +80,61 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 	return principal, ok && principal != nil
 }
 
-func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, username, adminUUID, reason string, r *http.Request) {
+func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, username, adminUUID, password, reason string, r *http.Request) {
+	loginAttempt := map[string]any{
+		"username":    username,
+		"password":    password,
+		"ip":          notificationClientIP(r),
+		"userAgent":   "",
+		"description": reason,
+	}
 	data := map[string]any{
-		"username": username,
+		"username":     username,
+		"password":     password,
+		"ip":           loginAttempt["ip"],
+		"description":  reason,
+		"loginAttempt": loginAttempt,
 	}
 	if adminUUID != "" {
 		data["adminUuid"] = adminUUID
-	}
-	if reason != "" {
-		data["reason"] = reason
+		loginAttempt["adminUuid"] = adminUUID
 	}
 	if r != nil {
 		data["remoteAddr"] = r.RemoteAddr
 		data["userAgent"] = r.UserAgent()
 		data["path"] = r.URL.Path
+		loginAttempt["remoteAddr"] = r.RemoteAddr
+		loginAttempt["userAgent"] = r.UserAgent()
+		loginAttempt["path"] = r.URL.Path
 	}
 	notifications.Emit(ctx, cfg, notifications.Event{
 		Scope: notifications.ScopeService,
 		Event: event,
 		Data:  data,
 	})
+}
+
+func notificationClientIP(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	for _, header := range []string{"CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For"} {
+		value := strings.TrimSpace(r.Header.Get(header))
+		if value == "" {
+			continue
+		}
+		if comma := strings.Index(value, ","); comma >= 0 {
+			value = strings.TrimSpace(value[:comma])
+		}
+		if value != "" {
+			return value
+		}
+	}
+	remoteAddr := strings.TrimSpace(r.RemoteAddr)
+	if colon := strings.LastIndex(remoteAddr, ":"); colon > 0 && !strings.Contains(remoteAddr[colon+1:], "]") {
+		return strings.Trim(remoteAddr[:colon], "[]")
+	}
+	return strings.Trim(remoteAddr, "[]")
 }
 
 func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, next http.Handler) http.Handler {
@@ -433,7 +468,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 
 		if !hasAdmin {
 			cfg.Logger.Warn("Auth login blocked: no admin configured", "username", username, "remote_addr", r.RemoteAddr)
-			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", "no_admin_configured", r)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "no_admin_configured", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
 			return
 		}
@@ -448,7 +483,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		)
 		if !passwordEnabled {
 			cfg.Logger.Warn("Auth login blocked: password auth disabled", "username", username, "remote_addr", r.RemoteAddr)
-			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", "password_auth_disabled", r)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "password_auth_disabled", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
 			return
 		}
@@ -482,7 +517,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		}
 		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
 			cfg.Logger.Warn("Auth login failed: invalid credentials", "username", username, "remote_addr", r.RemoteAddr)
-			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, "invalid_credentials", r)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "invalid username or password")
 			return
 		}
@@ -494,7 +529,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 		cfg.Logger.Info("Auth login success", "username", username, "remote_addr", r.RemoteAddr)
-		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", r)
+		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
 
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
@@ -709,7 +744,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
-			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, "invalid_credentials", r)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusUnauthorized, "invalid username or password")
 			return
 		}
@@ -721,7 +756,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 
-		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", r)
+		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		brandingSettings, passwordSettings, _, _, err := getBootstrapData(manager)

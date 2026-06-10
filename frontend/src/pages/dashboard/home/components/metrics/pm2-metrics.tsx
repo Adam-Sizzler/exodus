@@ -1,4 +1,10 @@
-import { PiClockDuotone, PiCpuDuotone, PiGearSixDuotone, PiMemoryDuotone } from 'react-icons/pi'
+import {
+    PiClockDuotone,
+    PiCpuDuotone,
+    PiGearSixDuotone,
+    PiMemoryDuotone,
+    PiTimerDuotone
+} from 'react-icons/pi'
 import { TFunction } from 'i18next'
 
 import { IMetricCardProps } from '@shared/ui/metrics/metric-card'
@@ -149,7 +155,7 @@ export const getRuntimeSummaryMetrics = (
         },
         {
             value: formatMilliseconds(schedulerP99Ms),
-            IconComponent: PiClockDuotone,
+            IconComponent: PiTimerDuotone,
             title: t('runtime-metrics.scheduler-p99'),
             iconVariant: 'soft',
             iconColor: 'orange'

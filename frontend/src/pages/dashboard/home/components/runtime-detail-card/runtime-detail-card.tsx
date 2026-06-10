@@ -184,6 +184,10 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
                                         label={t('runtime-metrics.goroutines')}
                                         value={scheduler?.goroutines ?? 0}
                                     />
+                                    <RuntimeValue
+                                        label={t('runtime-metrics.threads')}
+                                        value={metric.process?.threads ?? 0}
+                                    />
                                 </Group>
 
                                 <Stack gap={6} visibleFrom="sm">
@@ -197,10 +201,16 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
                                             value={formatMilliseconds(scheduler?.schedulerP99Ms)}
                                         />
                                     </Group>
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.goroutines')}
-                                        value={scheduler?.goroutines ?? 0}
-                                    />
+                                    <Group grow>
+                                        <RuntimeValue
+                                            label={t('runtime-metrics.goroutines')}
+                                            value={scheduler?.goroutines ?? 0}
+                                        />
+                                        <RuntimeValue
+                                            label={t('runtime-metrics.threads')}
+                                            value={metric.process?.threads ?? 0}
+                                        />
+                                    </Group>
                                 </Stack>
                             </Stack>
                         </div>
