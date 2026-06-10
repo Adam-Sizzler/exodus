@@ -2,7 +2,6 @@ package exodus
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -15,6 +14,7 @@ import (
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/jobqueue"
+	"exodus/internal/logger"
 	users "exodus/internal/nodes"
 	"exodus/internal/notifications"
 	"exodus/internal/redisqueue"
@@ -32,22 +32,24 @@ func Run() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
+		fallback, _ := logger.NewLoggerFromEnv("info", "console", "UTC", os.Stderr)
+		fallback.RoleService(logger.RoleAPI, logger.ServiceConfig).Error("Environment validation failed", "error", err)
+		os.Exit(1)
 	}
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceBootstrap).Info("Starting application")
 
 	if runConfiguredCLI(flags, &cfg) {
 		return
 	}
-
-	printRescueHint()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	dbConn, err := db.InitDatabase(&cfg)
 	if err != nil {
-		cfg.Logger.Fatal("Failed to initialize database", "error", err)
+		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceDatabase).Fatal("Failed to initialize database", "error", err)
 	}
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceDatabase).Info("Connected to PostgreSQL")
 
 	manager, err := dbmanager.NewDatabaseManager(
 		dbConn,
@@ -68,12 +70,30 @@ func Run() {
 	subscriptionnodes.RegisterGlobalSubNodeMonitor(subNodeMonitor)
 
 	redisWorker, err := redisqueue.NewWorker(&cfg, manager)
+	redisStatus := "Disabled"
 	if err != nil {
-		cfg.Logger.Warn("Redis worker disabled", "error", err)
-	}
-	if redisWorker != nil {
+		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceRedis).Warn("Redis worker disabled", "error", err)
+	} else if redisWorker != nil {
+		redisStatus = "Connected"
+		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceRedis).Info("Connected to Redis")
 		nodeMonitor.SetNodeUserUsageRecorder(redisWorker)
+	} else {
+		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceRedis).Warn("Redis disabled: REDIS_HOST or REDIS_SOCKET is not configured")
 	}
+
+	cfg.Logger.PrintStartupBanner(logger.BannerOptions{
+		Title:          "Exodus Backend",
+		Version:        constant.Version,
+		DocsURL:        "https://docs.exodus.dev",
+		CommunityURL:   "https://t.me/exodus",
+		HTTPPort:       cfg.Panel.AppPort,
+		PathPrefix:     cfg.Panel.BasePath,
+		DatabaseStatus: "Connected",
+		RedisStatus:    redisStatus,
+		RescueCLI:      "docker exec -it exodus cli",
+	})
+
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHealthCheck).Info("Health checks initialized")
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -91,13 +111,13 @@ func Run() {
 	userwatchdog.Start(ctx, &wg, manager, &cfg)
 	scheduler.Start(ctx, &wg, manager, &cfg)
 	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, manager, &cfg); err != nil {
-		cfg.Logger.Warn("Subscription job queue disabled", "error", err)
+		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("Subscription job queue disabled", "error", err)
 	}
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
 	}
 
-	log.Printf("[START] exodus application %s", constant.Version)
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceBootstrap).Info("Exodus application started", "version", constant.Version)
 	notifications.Emit(context.Background(), &cfg, notifications.Event{
 		Scope: notifications.ScopeService,
 		Event: notifications.EventServicePanelStarted,
@@ -107,7 +127,7 @@ func Run() {
 	})
 
 	<-sigChan
-	cfg.Logger.Info("Received termination signal, saving data")
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceBootstrap).Info("Received termination signal, saving data")
 	cancel()
 
 	// Stop node monitor
@@ -143,5 +163,5 @@ func Run() {
 		}
 	}
 
-	log.Printf("[STOP] Program terminated")
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceBootstrap).Info("Program terminated")
 }

@@ -83,10 +83,6 @@ func runConfiguredCLI(_ cliFlags, _ *config.BackendConfig) bool {
 	return false
 }
 
-func printRescueHint() {
-	fmt.Println("Hint: run `docker exec -it exodus cli` for rescue CLI.")
-}
-
 func runRescueCLI() error {
 	reader := bufio.NewReader(os.Stdin)
 

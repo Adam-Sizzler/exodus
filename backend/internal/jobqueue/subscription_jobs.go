@@ -10,6 +10,7 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/logger"
 )
 
 const (
@@ -96,6 +97,10 @@ func StartSubscriptionQueues(ctx context.Context, wg *sync.WaitGroup, manager *d
 	subscriptionDispatcherMu.Lock()
 	subscriptionJobs = &subscriptionDispatcher{processor: processor}
 	subscriptionDispatcherMu.Unlock()
+
+	if cfg != nil && cfg.Logger != nil {
+		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Info("1 queues connected", "queue", subscriptionQueueName, "concurrency", cfg.Redis.SubscriptionQueueConcurrency)
+	}
 
 	processor.Start(ctx, wg)
 	wg.Add(1)

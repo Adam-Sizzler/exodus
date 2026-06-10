@@ -7,6 +7,7 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/logger"
 )
 
 type Scheduler struct {
@@ -30,6 +31,9 @@ func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseM
 		nodeTrafficNotified: make(map[string]bool),
 	}
 
+	cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceScheduler).Info("Scheduler initialized")
+	s.logJobStates()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -37,8 +41,35 @@ func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseM
 	}()
 }
 
+func (s *Scheduler) logJobStates() {
+	if s == nil || s.cfg == nil || s.cfg.Logger == nil {
+		return
+	}
+	jobs := []struct {
+		name    string
+		enabled bool
+	}{
+		{name: "cleanOldUsageRecords", enabled: s.cfg.Scheduler.ServiceCleanUsageHistory},
+		{name: "expireUserNotifications", enabled: s.cfg.Scheduler.NotificationsEnabled},
+		{name: "findUsersForThresholdNotification", enabled: s.cfg.Scheduler.NotificationsEnabled && s.cfg.Scheduler.BandwidthUsageNotificationsEnabled},
+		{name: "findNotConnectedUsersNotification", enabled: s.cfg.Scheduler.NotificationsEnabled && s.cfg.Scheduler.NotConnectedUsersNotificationsEnabled},
+		{name: "resetNodeTraffic", enabled: true},
+		{name: "reviewNodes", enabled: true},
+		{name: "vacuumTables", enabled: true},
+		{name: "infraBillingNodesNotifications", enabled: true},
+	}
+	log := s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceJobs)
+	for _, job := range jobs {
+		if job.enabled {
+			log.Info("Job enabled", "job", job.name)
+		} else {
+			log.Info("Job disabled", "job", job.name)
+		}
+	}
+}
+
 func (s *Scheduler) run(ctx context.Context) {
-	s.cfg.Logger.Info("Scheduler started")
+	s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceScheduler).Info("Scheduler started")
 	s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
 
 	ticker := time.NewTicker(time.Minute)
@@ -47,7 +78,7 @@ func (s *Scheduler) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			s.cfg.Logger.Info("Scheduler stopped")
+			s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceScheduler).Info("Scheduler stopped")
 			return
 		case now := <-ticker.C:
 			s.tick(ctx, now)
@@ -102,10 +133,10 @@ func (s *Scheduler) runJob(ctx context.Context, name string, fn func(context.Con
 	}
 	start := time.Now()
 	if err := fn(ctx); err != nil {
-		s.cfg.Logger.Warn("Scheduler job failed", "job", name, "error", err, "duration", time.Since(start).String())
+		s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceJobs).Warn("Scheduler job failed", "job", name, "error", err, "duration", time.Since(start).String())
 		return
 	}
-	s.cfg.Logger.Debug("Scheduler job completed", "job", name, "duration", time.Since(start).String())
+	s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceJobs).Debug("Scheduler job completed", "job", name, "duration", time.Since(start).String())
 }
 
 func startOfDay(t time.Time) time.Time {

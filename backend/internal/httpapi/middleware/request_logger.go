@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"exodus/internal/config"
+	"exodus/internal/logger"
 )
 
 type loggingResponseWriter struct {
@@ -44,27 +47,28 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 
 		duration := time.Since(start)
 		durationMs := duration.Milliseconds()
-		durationUs := duration.Microseconds()
+		if durationMs == 0 && duration > 0 {
+			durationMs = 1
+		}
 
-		// Keep request timing visible even when debug is disabled.
-		cfg.Logger.Info("HTTP request",
-			"component", component,
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", statusCode,
-			"duration_ms", durationMs,
-			"duration_us", durationUs,
-		)
-		cfg.Logger.Debug("HTTP request debug",
+		if shouldSkipAccessLog(cfg, r.URL.Path) {
+			return
+		}
+
+		role := logger.RoleAPI
+		if strings.EqualFold(component, "metrics") {
+			role = logger.RoleScheduler
+		}
+		serviceLogger := cfg.Logger.RoleService(role, logger.ServiceHTTP)
+		serviceLogger.Debug(fmt.Sprintf("%s %s %d %dms", r.Method, r.URL.Path, statusCode, durationMs),
 			"component", component,
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", statusCode,
 			"bytes", lrw.bytes,
 			"duration_ms", durationMs,
-			"duration_us", durationUs,
 		)
-		cfg.Logger.Trace("HTTP request details",
+		serviceLogger.Trace("HTTP request details",
 			"component", component,
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -72,11 +76,37 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 			"status", statusCode,
 			"bytes", lrw.bytes,
 			"duration_ms", durationMs,
-			"duration_us", durationUs,
+			"duration_us", duration.Microseconds(),
 			"remote_addr", r.RemoteAddr,
 			"user_agent", r.UserAgent(),
 			"x_forwarded_for", r.Header.Get("X-Forwarded-For"),
 			"x_forwarded_proto", r.Header.Get("X-Forwarded-Proto"),
 		)
 	})
+}
+
+func shouldSkipAccessLog(cfg *config.BackendConfig, path string) bool {
+	if cfg == nil {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(cfg.Log.NodeEnv), "development") {
+		return false
+	}
+	path = strings.ToLower(strings.TrimSpace(path))
+	if path == "" {
+		return false
+	}
+	if path == "/favicon.ico" || path == "/site.webmanifest" || path == "/robots.txt" {
+		return true
+	}
+	if strings.HasPrefix(path, "/assets/") || strings.HasPrefix(path, "/locales/") {
+		return true
+	}
+	staticExts := []string{".css", ".js", ".map", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp", ".woff", ".woff2", ".ttf", ".eot"}
+	for _, ext := range staticExts {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+	return false
 }

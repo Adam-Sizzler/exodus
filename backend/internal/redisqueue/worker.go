@@ -13,6 +13,7 @@ import (
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/jobqueue"
+	"exodus/internal/logger"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -83,6 +84,9 @@ func NewWorker(cfg *config.BackendConfig, manager *dbmanager.DatabaseManager) (*
 		return nil, err
 	}
 	worker.processor = processor
+	if cfg.Logger != nil {
+		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceQueues).Info("1 queues connected", "queue", pushToDBQueueName, "concurrency", cfg.Redis.PushToDBQueueConcurrency)
+	}
 	return worker, nil
 }
 
@@ -90,9 +94,9 @@ func (w *Worker) Start(ctx context.Context, wg *sync.WaitGroup) {
 	if w == nil {
 		return
 	}
-	w.cfg.Logger.Info("Redis worker started")
+	w.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceRedis).Info("Redis worker started")
 	if w.cfg.Redis.DisableUserUsageRecords {
-		w.cfg.Logger.Warn("SERVICE_DISABLE_USER_USAGE_RECORDS is enabled, node user usage history will not be recorded")
+		w.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Warn("Job disabled", "job", "record_user_usage", "reason", "SERVICE_DISABLE_USER_USAGE_RECORDS is enabled")
 	}
 	w.processor.Start(ctx, wg)
 }

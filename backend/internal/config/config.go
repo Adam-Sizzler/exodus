@@ -82,8 +82,11 @@ type NotificationEventChannelConfig struct {
 }
 
 type LogConfig struct {
-	LogLevel string
-	LogMode  string
+	LogLevel        string
+	LogMode         string
+	LogFormat       string
+	EnableDebugLogs bool
+	NodeEnv         string
 }
 
 type EXODUSConfig struct {
@@ -115,8 +118,10 @@ type RedisConfig struct {
 
 var defaultConfig = BackendConfig{
 	Log: LogConfig{
-		LogLevel: "warn",
-		LogMode:  "inclusive",
+		LogLevel:  "info",
+		LogMode:   "inclusive",
+		LogFormat: "console",
+		NodeEnv:   "production",
 	},
 	EXODUS: EXODUSConfig{
 		Address: "0.0.0.0",
@@ -195,14 +200,13 @@ func LoadConfig() (BackendConfig, error) {
 		cfg.Metrics.Port = defaultConfig.Metrics.Port
 	}
 
-	realLogger, err := logger.NewLoggerWithValidation(cfg.Log.LogLevel, cfg.Log.LogMode, "UTC", os.Stderr)
+	realLogger, err := logger.NewLoggerFromEnv(cfg.Log.LogLevel, cfg.Log.LogFormat, "UTC", os.Stderr)
 	if err != nil {
 		return cfg, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 	cfg.Logger = realLogger
 
-	cfg.Logger.Info("exodus listen", "address", cfg.EXODUS.Address, "port", cfg.Panel.AppPort)
-	cfg.Logger.Debug("Configuration loaded from environment")
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceConfig).Debug("Configuration loaded from environment", "node_env", cfg.Log.NodeEnv, "log_format", cfg.Log.LogFormat, "log_level", cfg.Log.LogLevel)
 
 	return cfg, nil
 }
@@ -225,6 +229,18 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	if value := envFirst("LOG_MODE", "EXODUS_LOG_MODE"); value != "" {
 		cfg.Log.LogMode = value
+	}
+	if value := envFirst("LOG_FORMAT", "EXODUS_LOG_FORMAT"); value != "" {
+		cfg.Log.LogFormat = value
+	}
+	if value := envFirst("NODE_ENV"); value != "" {
+		cfg.Log.NodeEnv = value
+	}
+	if value := envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"); value != "" {
+		cfg.Log.EnableDebugLogs = parseBoolEnv(value)
+	}
+	if cfg.Log.EnableDebugLogs || strings.EqualFold(strings.TrimSpace(cfg.Log.NodeEnv), "development") {
+		cfg.Log.LogLevel = "debug"
 	}
 
 	if value := envFirst("APP_ADDRESS"); value != "" {

@@ -15,6 +15,7 @@ import (
 	"exodus/internal/httpapi"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/system"
+	"exodus/internal/logger"
 )
 
 // startWebServer serves both panel UI and API on a single APP_PORT.
@@ -100,20 +101,20 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 		Handler: middleware.WithCORS(cfg, middleware.WithRequestLogging(cfg, "web", mux)),
 	}
 
-	cfg.Logger.Debug("Starting web/API server", "address", server.Addr)
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Info("HTTP server listening", "address", server.Addr)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			cfg.Logger.Fatal("Failed to start web server", "error", err)
+			cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Fatal("Failed to start web server", "error", err)
 		}
 	}()
 
 	<-ctx.Done()
 
-	cfg.Logger.Debug("Shutting down web/API server")
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Debug("Shutting down HTTP server")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		cfg.Logger.Error("Error shutting down web server", "error", err)
+		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Error("Error shutting down HTTP server", "error", err)
 	}
 }

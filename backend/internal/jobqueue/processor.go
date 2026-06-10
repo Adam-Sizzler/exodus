@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"exodus/internal/config"
+	"exodus/internal/logger"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -240,7 +241,7 @@ func (p *Processor) queue(name string) *queueRuntime {
 
 func (p *Processor) startQueue(ctx context.Context, wg *sync.WaitGroup, queue *queueRuntime) {
 	if p.cfg != nil && p.cfg.Logger != nil {
-		p.cfg.Logger.Info("Job queue started", "queue", queue.options.Name, "concurrency", queue.options.Concurrency)
+		p.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceQueues).Info("Job enabled", "queue", queue.options.Name, "concurrency", queue.options.Concurrency)
 	}
 
 	wg.Add(1)
@@ -573,7 +574,7 @@ func (p *Processor) dedupeKey(queue, id string) string {
 
 func (p *Processor) warn(msg string, args ...any) {
 	if p != nil && p.cfg != nil && p.cfg.Logger != nil {
-		p.cfg.Logger.Warn(msg, args...)
+		p.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Warn(msg, args...)
 	}
 }
 

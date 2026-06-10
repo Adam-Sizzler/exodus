@@ -12,6 +12,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/system"
+	"exodus/internal/logger"
 )
 
 func startMetricsServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
@@ -51,19 +52,19 @@ func startMetricsServer(ctx context.Context, manager *dbmanager.DatabaseManager,
 		Handler: middleware.WithRequestLogging(cfg, "metrics", mux),
 	}
 
-	cfg.Logger.Debug("Starting metrics server", "address", server.Addr)
+	cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceMetrics).Info("Metrics reporter started", "address", server.Addr)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			cfg.Logger.Error("Failed to start metrics server", "error", err)
+			cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceMetrics).Error("Failed to start metrics server", "error", err)
 		}
 	}()
 
 	<-ctx.Done()
 
-	cfg.Logger.Debug("Shutting down metrics server")
+	cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceMetrics).Debug("Shutting down metrics server")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		cfg.Logger.Error("Error shutting down metrics server", "error", err)
+		cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceMetrics).Error("Error shutting down metrics server", "error", err)
 	}
 }
