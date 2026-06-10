@@ -506,7 +506,8 @@
             "bandwidth": "Трафик",
             "short-stats": "Краткая статистика",
             "exodus-usage": "Exodus Usage",
-            "process-details": "Детали по процессам"
+            "process-details": "Детали по процессам",
+            "runtime": "Runtime"
         }
     },
     "login-form": {
@@ -2135,5 +2136,21 @@
             "egress-filter": "Egress-фильтр",
             "haproxy-auth": "HAProxy Auth"
         }
+    },
+    "runtime-metrics": {
+        "uptime": "Аптайм",
+        "total-memory": "Всего памяти",
+        "average-cpu": "Средний CPU",
+        "scheduler-p99": "P99 планировщика",
+        "heap-used": "Heap Used",
+        "goroutines": "Горутины",
+        "memory": "Память",
+        "heap": "Heap",
+        "rss": "RSS",
+        "go-sys": "Go Sys",
+        "stack": "Stack",
+        "scheduler": "Scheduler",
+        "delay": "Delay",
+        "p99": "P99"
     }
 }

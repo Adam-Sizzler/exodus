@@ -486,7 +486,8 @@
             "bandwidth": "带宽",
             "short-stats": "简要统计",
             "exodus-usage": "Exodus 使用情况",
-            "process-details": "进程详情"
+            "process-details": "进程详情",
+            "runtime": "Runtime"
         }
     },
     "login-form": {
@@ -2111,5 +2112,21 @@
             "egress-filter": "Egress Filter",
             "haproxy-auth": "HAProxy Auth"
         }
+    },
+    "runtime-metrics": {
+        "uptime": "运行时间",
+        "total-memory": "总内存",
+        "average-cpu": "平均 CPU",
+        "scheduler-p99": "调度器 P99",
+        "heap-used": "堆使用量",
+        "goroutines": "Goroutines",
+        "memory": "内存",
+        "heap": "堆",
+        "rss": "RSS",
+        "go-sys": "Go Sys",
+        "stack": "栈",
+        "scheduler": "调度器",
+        "delay": "Delay",
+        "p99": "P99"
     }
 }

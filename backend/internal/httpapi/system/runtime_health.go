@@ -91,10 +91,11 @@ type goGCInfo struct {
 }
 
 type goSchedulerInfo struct {
-	Goroutines         int     `json:"goroutines"`
-	CgoCalls           int64   `json:"cgoCalls"`
-	SchedulerP99Ms     float64 `json:"schedulerP99Ms"`
-	SchedulerP99Source string  `json:"schedulerP99Source"`
+	Goroutines             int     `json:"goroutines"`
+	CgoCalls               int64   `json:"cgoCalls"`
+	SchedulerDelayMs       float64 `json:"schedulerDelayMs"`
+	SchedulerP99Ms         float64 `json:"schedulerP99Ms"`
+	SchedulerLatencySource string  `json:"schedulerLatencySource"`
 }
 
 type goProcessInfo struct {
@@ -103,12 +104,14 @@ type goProcessInfo struct {
 }
 
 type goRuntimeSummary struct {
-	TotalProcesses        int     `json:"totalProcesses"`
-	TotalRSSBytes         uint64  `json:"totalRssBytes"`
-	HeapAllocBytes        uint64  `json:"heapAllocBytes"`
-	AverageCPUPercent     float64 `json:"averageCpuPercent"`
-	AverageGoroutines     int     `json:"averageGoroutines"`
-	AverageSchedulerP99Ms float64 `json:"averageSchedulerP99Ms"`
+	TotalProcesses          int     `json:"totalProcesses"`
+	UptimeSeconds           int64   `json:"uptimeSeconds"`
+	TotalRSSBytes           uint64  `json:"totalRssBytes"`
+	HeapAllocBytes          uint64  `json:"heapAllocBytes"`
+	AverageCPUPercent       float64 `json:"averageCpuPercent"`
+	AverageGoroutines       int     `json:"averageGoroutines"`
+	AverageSchedulerDelayMs float64 `json:"averageSchedulerDelayMs"`
+	AverageSchedulerP99Ms   float64 `json:"averageSchedulerP99Ms"`
 }
 
 type processCPUState struct {
@@ -135,7 +138,7 @@ func buildGoHealthResponse() goHealthResponse {
 	processCPUSeconds, hasProcessCPU := readProcessCPUSeconds()
 	cpuPercent, cpuMode := sampleProcessCPUPercent(now, processCPUSeconds, hasProcessCPU)
 	gcPauseP99Ms, gcPauseSource := readGCPauseP99Ms(&mem)
-	schedulerP99Ms, schedulerSource := readRuntimeHistogramP99Ms("/sched/latencies:seconds")
+	schedulerDelayMs, schedulerP99Ms, schedulerSource := readRuntimeHistogramStatsMs("/sched/latencies:seconds")
 	threads := readProcessThreads()
 
 	metric := goRuntimeMetric{
@@ -183,10 +186,11 @@ func buildGoHealthResponse() goHealthResponse {
 			GOGC:           readGOGCSetting(),
 		},
 		Scheduler: goSchedulerInfo{
-			Goroutines:         runtime.NumGoroutine(),
-			CgoCalls:           runtime.NumCgoCall(),
-			SchedulerP99Ms:     roundFloat(schedulerP99Ms, 3),
-			SchedulerP99Source: schedulerSource,
+			Goroutines:             runtime.NumGoroutine(),
+			CgoCalls:               runtime.NumCgoCall(),
+			SchedulerDelayMs:       roundFloat(schedulerDelayMs, 3),
+			SchedulerP99Ms:         roundFloat(schedulerP99Ms, 3),
+			SchedulerLatencySource: schedulerSource,
 		},
 		Process: goProcessInfo{
 			OpenFileDescriptors: countOpenFileDescriptors(),
@@ -197,24 +201,20 @@ func buildGoHealthResponse() goHealthResponse {
 	}
 
 	return goHealthResponse{
-		PM2Stats: []pm2ProcessStat{
-			{
-				Name:   metric.Name,
-				Memory: strconv.FormatUint(metric.Memory.RSSBytes, 10),
-				CPU:    strconv.FormatFloat(metric.CPU.ProcessPercent, 'f', 2, 64),
-			},
-		},
+		PM2Stats:       []pm2ProcessStat{},
 		RuntimeMetrics: []goRuntimeMetric{metric},
 		RuntimeSummary: goRuntimeSummary{
-			TotalProcesses:        1,
-			TotalRSSBytes:         metric.Memory.RSSBytes,
-			HeapAllocBytes:        metric.Memory.HeapAllocBytes,
-			AverageCPUPercent:     metric.CPU.ProcessPercent,
-			AverageGoroutines:     metric.Scheduler.Goroutines,
-			AverageSchedulerP99Ms: metric.Scheduler.SchedulerP99Ms,
+			TotalProcesses:          1,
+			UptimeSeconds:           metric.UptimeSeconds,
+			TotalRSSBytes:           metric.Memory.RSSBytes,
+			HeapAllocBytes:          metric.Memory.HeapAllocBytes,
+			AverageCPUPercent:       metric.CPU.ProcessPercent,
+			AverageGoroutines:       metric.Scheduler.Goroutines,
+			AverageSchedulerDelayMs: metric.Scheduler.SchedulerDelayMs,
+			AverageSchedulerP99Ms:   metric.Scheduler.SchedulerP99Ms,
 		},
 		RuntimeNotes: []string{
-			"pm2Stats is kept for frontend compatibility; values describe the current Go process, not PM2.",
+			"pm2Stats is kept empty for frontend compatibility; runtimeMetrics/runtimeSummary contain the Go runtime data.",
 			"Go has no Node.js event loop delay; schedulerP99Ms is read from runtime/metrics /sched/latencies when available.",
 			"RSS and CPU are read from /proc on Linux; fallback values are used when /proc is unavailable.",
 		},
@@ -354,6 +354,74 @@ func readGCPauseP99Ms(mem *runtime.MemStats) (float64, string) {
 		idx = len(pauses) - 1
 	}
 	return float64(pauses[idx]) / float64(time.Millisecond), "runtime.MemStats.PauseNs"
+}
+
+func readRuntimeHistogramStatsMs(metricName string) (float64, float64, string) {
+	meanMs, p99Ms, source := readRuntimeHistogramMeanAndP99Ms(metricName)
+	return meanMs, p99Ms, source
+}
+
+func readRuntimeHistogramMeanAndP99Ms(metricName string) (float64, float64, string) {
+	samples := []metrics.Sample{{Name: metricName}}
+	metrics.Read(samples)
+	if samples[0].Value.Kind() != metrics.KindFloat64Histogram {
+		return 0, 0, "unavailable"
+	}
+
+	histogram := samples[0].Value.Float64Histogram()
+	if histogram == nil || len(histogram.Counts) == 0 || len(histogram.Buckets) < len(histogram.Counts)+1 {
+		return 0, 0, "unavailable"
+	}
+
+	var total uint64
+	var weightedSumSeconds float64
+	for index, count := range histogram.Counts {
+		total += count
+		if count == 0 {
+			continue
+		}
+
+		lowerBoundSeconds := histogram.Buckets[index]
+		upperBoundSeconds := histogram.Buckets[index+1]
+		if math.IsInf(lowerBoundSeconds, 0) || math.IsNaN(lowerBoundSeconds) {
+			lowerBoundSeconds = 0
+		}
+		if math.IsInf(upperBoundSeconds, 0) || math.IsNaN(upperBoundSeconds) {
+			upperBoundSeconds = lowerBoundSeconds
+		}
+		weightedSumSeconds += ((lowerBoundSeconds + upperBoundSeconds) / 2) * float64(count)
+	}
+	if total == 0 {
+		return 0, 0, metricName
+	}
+
+	target := uint64(math.Ceil(float64(total) * 0.99))
+	if target == 0 {
+		target = 1
+	}
+
+	var cumulative uint64
+	p99Seconds := 0.0
+	for index, count := range histogram.Counts {
+		cumulative += count
+		if cumulative < target {
+			continue
+		}
+
+		upperBoundSeconds := histogram.Buckets[index+1]
+		if math.IsInf(upperBoundSeconds, 0) || math.IsNaN(upperBoundSeconds) {
+			lowerBoundSeconds := histogram.Buckets[index]
+			if math.IsInf(lowerBoundSeconds, 0) || math.IsNaN(lowerBoundSeconds) {
+				upperBoundSeconds = 0
+			} else {
+				upperBoundSeconds = lowerBoundSeconds
+			}
+		}
+		p99Seconds = upperBoundSeconds
+		break
+	}
+
+	return weightedSumSeconds / float64(total) * float64(time.Second/time.Millisecond), p99Seconds * float64(time.Second/time.Millisecond), metricName
 }
 
 func readRuntimeHistogramP99Ms(metricName string) (float64, string) {

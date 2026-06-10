@@ -1,18 +1,23 @@
-import { Box, SimpleGrid, Stack, Title } from '@mantine/core'
+import { ActionIcon, Box, Group, SimpleGrid, Stack, Title } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
+import { TbCamera } from 'react-icons/tb'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { MetricCardShared, MetricCardWithTrendShared } from '@shared/ui/metrics/metric-card'
 import { LoadingScreen } from '@shared/ui'
 import { Page } from '@shared/ui/page'
+import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
 
 import {
     getBandwidthMetrics,
     getOnlineMetrics,
-    getPm2ProcessMetrics,
-    getPm2SummaryMetrics,
+    getRuntimeProcessMetrics,
+    getRuntimeSummaryMetrics,
     getSimpleMetrics,
     getUsersMetrics
 } from './metrics'
+import { RuntimeDetailCard } from './runtime-detail-card'
 import classes from './home.module.css'
 import { IProps } from './interfaces'
 
@@ -30,7 +35,29 @@ const AnimatedCard = ({ children, index }: IAnimatedCardProps) => (
 export const HomePage = (props: IProps) => {
     const { t } = useTranslation()
 
+    const runtimeRef = useRef<HTMLDivElement>(null)
+    const [copying, setCopying] = useState(false)
+
     const { systemInfo, bandwidthStats, exodusHealth } = props
+
+    const copyRuntimeScreenshot = async () => {
+        if (!runtimeRef.current || copying) return
+        setCopying(true)
+        try {
+            await new Promise<void>((resolve) => {
+                setTimeout(resolve, 100)
+            })
+            await copyScreenshotToClipboard(runtimeRef.current)
+        } catch (error) {
+            notifications.show({
+                color: 'red',
+                message: `${error instanceof Error ? error.message : 'Unknown error'}`,
+                title: 'Error'
+            })
+        } finally {
+            setCopying(false)
+        }
+    }
 
     if (!systemInfo || !bandwidthStats || !exodusHealth) {
         return <LoadingScreen />
@@ -40,20 +67,27 @@ export const HomePage = (props: IProps) => {
     const simpleMetrics = getSimpleMetrics(systemInfo, t)
     const usersMetrics = getUsersMetrics(systemInfo.users, t)
     const onlineMetrics = getOnlineMetrics(systemInfo.onlineStats, t)
-    const pm2SummaryMetrics = getPm2SummaryMetrics(exodusHealth.pm2Stats, t)
-    const pm2ProcessMetrics = getPm2ProcessMetrics(exodusHealth.pm2Stats)
-
+    const runtimeHealth = exodusHealth as typeof exodusHealth & {
+        runtimeMetrics?: Parameters<typeof getRuntimeProcessMetrics>[0]
+        runtimeSummary?: Parameters<typeof getRuntimeSummaryMetrics>[0]
+    }
+    const runtimeSummaryMetrics = getRuntimeSummaryMetrics(
+        runtimeHealth.runtimeSummary,
+        runtimeHealth.runtimeMetrics,
+        t
+    )
+    const runtimeProcessMetrics = getRuntimeProcessMetrics(runtimeHealth.runtimeMetrics, t)
     return (
         <Page title={t('constants.home')}>
             <Stack gap="sm">
-                {pm2SummaryMetrics.length > 0 && (
+                {runtimeSummaryMetrics.length > 0 && (
                     <div className={classes.section}>
                         <Title className={classes.title} m="xs" ml={0} order={4}>
                             {t('home.page.exodus-usage')}
                         </Title>
 
                         <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="xs">
-                            {pm2SummaryMetrics.map((metric, index) => (
+                            {runtimeSummaryMetrics.map((metric, index) => (
                                 <AnimatedCard index={index} key={metric.title}>
                                     <MetricCardShared {...metric} />
                                 </AnimatedCard>
@@ -62,13 +96,13 @@ export const HomePage = (props: IProps) => {
                     </div>
                 )}
 
-                {pm2ProcessMetrics.length > 0 && (
+                {runtimeProcessMetrics.length > 0 && (
                     <div className={classes.section}>
                         <Title className={classes.title} m="xs" ml={0} order={4}>
                             {t('home.page.process-details')}
                         </Title>
                         <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="xs">
-                            {pm2ProcessMetrics.map((metric, index) => (
+                            {runtimeProcessMetrics.map((metric, index) => (
                                 <AnimatedCard index={index} key={metric.title}>
                                     <MetricCardShared {...metric} />
                                 </AnimatedCard>
@@ -149,6 +183,33 @@ export const HomePage = (props: IProps) => {
                         ))}
                     </SimpleGrid>
                 </div>
+
+                {runtimeHealth.runtimeMetrics && runtimeHealth.runtimeMetrics.length > 0 && (
+                    <div className={classes.section}>
+                        <Group align="center" gap="xs" m="xs" ml={0}>
+                            <Title className={classes.title} order={4}>
+                                {t('home.page.runtime')}
+                            </Title>
+                            <ActionIcon
+                                color="gray"
+                                loading={copying}
+                                onClick={() => copyRuntimeScreenshot()}
+                                radius="md"
+                                size="sm"
+                                variant="transparent"
+                            >
+                                <TbCamera size={24} />
+                            </ActionIcon>
+                        </Group>
+                        <SimpleGrid cols={{ base: 1, sm: 1, xl: 2 }} ref={runtimeRef} spacing="xs">
+                            {runtimeHealth.runtimeMetrics.map((metric, index) => (
+                                <AnimatedCard index={index} key={metric.pid ?? index}>
+                                    <RuntimeDetailCard metric={metric} t={t} />
+                                </AnimatedCard>
+                            ))}
+                        </SimpleGrid>
+                    </div>
+                )}
             </Stack>
         </Page>
     )

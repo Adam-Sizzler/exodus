@@ -486,7 +486,8 @@
             "bandwidth": "پهنای باند",
             "short-stats": "آمار مختصر",
             "exodus-usage": "مصرف منابع Exodus",
-            "process-details": "مشخصات Process"
+            "process-details": "مشخصات Process",
+            "runtime": "Runtime"
         }
     },
     "login-form": {
@@ -2111,5 +2112,21 @@
             "egress-filter": "Egress Filter",
             "haproxy-auth": "HAProxy Auth"
         }
+    },
+    "runtime-metrics": {
+        "uptime": "Uptime",
+        "total-memory": "Total Memory",
+        "average-cpu": "Average CPU",
+        "scheduler-p99": "Scheduler P99",
+        "heap-used": "Heap Used",
+        "goroutines": "Goroutines",
+        "memory": "Memory",
+        "heap": "Heap",
+        "rss": "RSS",
+        "go-sys": "Go Sys",
+        "stack": "Stack",
+        "scheduler": "Scheduler",
+        "delay": "Delay",
+        "p99": "P99"
     }
 }
