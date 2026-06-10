@@ -353,13 +353,26 @@ func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		// Go backend has no PM2 runtime. Keep contract-compatible empty array.
+		health := buildGoHealthResponse()
 		payload := map[string]any{
-			"response": map[string]any{
-				"pm2Stats": []any{},
-			},
+			"response": health,
 		}
-		cfg.Logger.Trace("System health requested", "remote_addr", r.RemoteAddr)
+
+		if len(health.RuntimeMetrics) > 0 {
+			metric := health.RuntimeMetrics[0]
+			cfg.Logger.Debug(
+				"System Go runtime health requested",
+				"remote_addr", r.RemoteAddr,
+				"pid", metric.PID,
+				"rss_bytes", metric.Memory.RSSBytes,
+				"heap_alloc_bytes", metric.Memory.HeapAllocBytes,
+				"goroutines", metric.Scheduler.Goroutines,
+				"cpu_percent", metric.CPU.ProcessPercent,
+			)
+		} else {
+			cfg.Logger.Debug("System Go runtime health requested", "remote_addr", r.RemoteAddr)
+		}
+
 		shared.WriteJSON(w, http.StatusOK, payload)
 	}
 }
