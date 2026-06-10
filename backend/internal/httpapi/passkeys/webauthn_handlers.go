@@ -53,10 +53,9 @@ type resolvedPasskeySettings struct {
 }
 
 type webAuthnAdmin struct {
-	uuid              string
-	username          string
-	sessionTTLMinutes int
-	credentials       []gowebauthn.Credential
+	uuid        string
+	username    string
+	credentials []gowebauthn.Credential
 }
 
 func (a *webAuthnAdmin) WebAuthnID() []byte {
@@ -366,7 +365,7 @@ func VerifyAuthenticationHandler(manager *dbmanager.DatabaseManager, cfg *config
 			return
 		}
 
-		sessionToken, expiresAt, err := createAdminSession(r.Context(), manager, admin)
+		sessionToken, expiresAt, err := createAdminSession(r.Context(), manager, cfg, admin)
 		if err != nil {
 			sendPasskeyError(w, http.StatusInternalServerError, "failed to create session", err, cfg)
 			return
@@ -500,7 +499,7 @@ func loadFirstWebAuthnAdmin(ctx context.Context, manager *dbmanager.DatabaseMana
 }
 
 func loadWebAuthnAdmin(ctx context.Context, manager *dbmanager.DatabaseManager, adminUUID string) (*webAuthnAdmin, error) {
-	admin := &webAuthnAdmin{sessionTTLMinutes: 60}
+	admin := &webAuthnAdmin{}
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var row *sql.Row
 		if strings.TrimSpace(adminUUID) == "" {
@@ -519,7 +518,7 @@ func loadWebAuthnAdmin(ctx context.Context, manager *dbmanager.DatabaseManager, 
 			`, adminUUID)
 		}
 
-		if err := row.Scan(&admin.uuid, &admin.username, &admin.sessionTTLMinutes); err != nil {
+		if err := row.Scan(&admin.uuid, &admin.username); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return errAdminNotFound
 			}
@@ -627,32 +626,10 @@ func updateCredentialUsage(ctx context.Context, manager *dbmanager.DatabaseManag
 	return nil
 }
 
-func createAdminSession(ctx context.Context, manager *dbmanager.DatabaseManager, admin *webAuthnAdmin) (string, int64, error) {
-	sessionToken, err := security.GenerateRandomToken(48)
-	if err != nil {
-		return "", 0, err
-	}
-
-	ttlMinutes := admin.sessionTTLMinutes
-	if ttlMinutes <= 0 {
-		ttlMinutes = 60
-	}
-	expiresAt := time.Now().UTC().Add(time.Duration(ttlMinutes) * time.Minute).Unix()
-
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		if _, execErr := db.ExecContext(ctx, "DELETE FROM admin_sessions WHERE admin_uuid = ?", admin.uuid); execErr != nil {
-			return execErr
-		}
-		_, execErr := db.ExecContext(ctx, `
-			INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
-			VALUES (?, ?, ?)
-		`, sessionToken, admin.uuid, expiresAt)
-		return execErr
-	})
-	if err != nil {
-		return "", 0, err
-	}
-	return sessionToken, expiresAt, nil
+func createAdminSession(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, admin *webAuthnAdmin) (string, int64, error) {
+	_ = ctx
+	_ = manager
+	return security.SignAuthJWT(cfg.JWT.AuthSecret, admin.username, admin.uuid, "ADMIN")
 }
 
 func sendPasskeySetupError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {

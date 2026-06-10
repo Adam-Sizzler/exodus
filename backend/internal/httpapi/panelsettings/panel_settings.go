@@ -159,7 +159,8 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 				return
 			}
 
-			tokenValue, err := security.GenerateRandomToken(64)
+			tokenUUID := uuid.NewString()
+			tokenValue, _, err := security.SignAPITokenJWT(cfg.JWT.APITokensSecret, tokenUUID)
 			if err != nil {
 				cfg.Logger.Error("Failed to generate api token", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to generate api token")
@@ -167,7 +168,7 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			}
 
 			record := APITokenRecord{
-				UUID:      uuid.NewString(),
+				UUID:      tokenUUID,
 				Token:     tokenValue,
 				TokenName: tokenName,
 			}

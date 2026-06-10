@@ -178,81 +178,136 @@ func resolveToken(token string, manager *dbmanager.DatabaseManager, cfg *config.
 		return nil, errors.New("empty token")
 	}
 
-	nowUnix := time.Now().UTC().Unix()
+	if principal, err := resolveAdminJWT(token, manager, cfg); err == nil {
+		return principal, nil
+	}
 
-	var sessionPrincipal *AuthPrincipal
-	sessionErr := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	if principal, err := resolveAPIJWT(token, manager, cfg); err == nil {
+		return principal, nil
+	}
+
+	return nil, errors.New("invalid auth token")
+}
+
+func resolveAdminJWT(token string, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (*AuthPrincipal, error) {
+	payload, err := security.ParseJWT(cfg.JWT.AuthSecret, token)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(payload.Role, "ADMIN") {
+		return nil, errors.New("jwt role is not admin")
+	}
+	if payload.Username == nil || strings.TrimSpace(*payload.Username) == "" {
+		return nil, errors.New("jwt username is empty")
+	}
+
+	username := strings.TrimSpace(*payload.Username)
+	var principal *AuthPrincipal
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
-			SELECT s.admin_uuid, a.username, a.role, s.expires_at
-			FROM admin_sessions s
-			JOIN admin a ON a.uuid = s.admin_uuid
-			WHERE s.session_token = ?
+			SELECT uuid, username, role
+			FROM admin
+			WHERE username = ? AND UPPER(role) = 'ADMIN'
 			LIMIT 1
-		`, token)
+		`, username)
 
-		var adminUUID, username, role string
-		var expiresAt int64
-		if err := row.Scan(&adminUUID, &username, &role, &expiresAt); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
+		var adminUUID, dbUsername, role string
+		if scanErr := row.Scan(&adminUUID, &dbUsername, &role); scanErr != nil {
+			return scanErr
+		}
+		if adminUUID != payload.UUID {
+			return errors.New("jwt uuid does not match admin")
 		}
 
-		if expiresAt <= nowUnix {
-			_, _ = db.Exec("DELETE FROM admin_sessions WHERE session_token = ?", token)
-			return nil
+		expiresAt := int64(0)
+		if payload.ExpiresAt != nil {
+			expiresAt = payload.ExpiresAt.Time.Unix()
 		}
-
-		sessionPrincipal = &AuthPrincipal{
+		principal = &AuthPrincipal{
 			AdminUUID: adminUUID,
-			Username:  username,
+			Username:  dbUsername,
 			Role:      strings.ToUpper(role),
-			TokenType: "session",
+			TokenType: "jwt_auth",
 			ExpiresAt: expiresAt,
 		}
 		return nil
 	})
-	if sessionErr != nil {
-		return nil, sessionErr
+	if err != nil {
+		return nil, err
 	}
-	if sessionPrincipal != nil {
-		return sessionPrincipal, nil
+	if principal == nil {
+		return nil, errors.New("admin not found")
+	}
+	return principal, nil
+}
+
+func resolveAPIJWT(token string, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (*AuthPrincipal, error) {
+	payload, err := security.ParseJWT(cfg.JWT.APITokensSecret, token)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(payload.Role, "API") {
+		return nil, errors.New("jwt role is not api")
 	}
 
-	var apiPrincipal *AuthPrincipal
-	apiErr := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	var principal *AuthPrincipal
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
 			SELECT uuid, token_name
 			FROM api_tokens
-			WHERE token = ?
+			WHERE uuid = ?
 			LIMIT 1
-		`, token)
+		`, payload.UUID)
 
 		var tokenUUID, tokenName string
-		if err := row.Scan(&tokenUUID, &tokenName); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
+		if scanErr := row.Scan(&tokenUUID, &tokenName); scanErr != nil {
+			return scanErr
 		}
 
-		apiPrincipal = &AuthPrincipal{
+		expiresAt := int64(0)
+		if payload.ExpiresAt != nil {
+			expiresAt = payload.ExpiresAt.Time.Unix()
+		}
+		principal = &AuthPrincipal{
 			AdminUUID: tokenUUID,
 			Username:  tokenName,
 			Role:      "API",
-			TokenType: "db_api_token",
+			TokenType: "jwt_api_token",
+			ExpiresAt: expiresAt,
 		}
 		return nil
 	})
-	if apiErr != nil {
-		return nil, apiErr
+	if err != nil {
+		return nil, err
 	}
-	if apiPrincipal != nil {
-		return apiPrincipal, nil
+	if principal == nil {
+		return nil, errors.New("api token not found")
 	}
+	return principal, nil
+}
 
-	return nil, errors.New("invalid auth token")
+func createAdminAccessToken(cfg *config.BackendConfig, username, adminUUID, role string) (string, int64, error) {
+	if strings.TrimSpace(role) == "" {
+		role = "ADMIN"
+	}
+	return security.SignAuthJWT(cfg.JWT.AuthSecret, username, adminUUID, role)
+}
+
+func setAuthCookie(w http.ResponseWriter, r *http.Request, cfg *config.BackendConfig, token string, expiresAt int64) {
+	secureCookie := middleware.IsSecureRequest(r, cfg)
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    token,
+		Path:     "/",
+		Expires:  time.Unix(expiresAt, 0).UTC(),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secureCookie,
+	})
+}
+
+func AuthTTLMinutes() int {
+	return int(security.AuthTokenLifetime / time.Minute)
 }
 
 func AuthBootstrapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
@@ -401,29 +456,22 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		var (
 			adminUUID          string
 			storedPasswordHash string
-			sessionTTLMinutes  int
+			role               string
 		)
 
 		err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			row := db.QueryRow(`
-				SELECT uuid, password_hash, session_ttl_minutes
+				SELECT uuid, password_hash, role
 				FROM admin
 				WHERE username = ?
 				LIMIT 1
 			`, username)
 
-			var ttl sql.NullInt64
-			if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &ttl); scanErr != nil {
+			if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil {
 				if errors.Is(scanErr, sql.ErrNoRows) {
 					return nil
 				}
 				return scanErr
-			}
-
-			if ttl.Valid && ttl.Int64 > 0 {
-				sessionTTLMinutes = int(ttl.Int64)
-			} else {
-				sessionTTLMinutes = 60
 			}
 			return nil
 		})
@@ -439,45 +487,20 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 
-		sessionToken, err := security.GenerateRandomToken(48)
+		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, role)
 		if err != nil {
-			cfg.Logger.Error("Failed to generate session token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create session")
-			return
-		}
-
-		expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
-		if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			if _, execErr := db.Exec("DELETE FROM admin_sessions WHERE admin_uuid = ?", adminUUID); execErr != nil {
-				return execErr
-			}
-			_, execErr := db.Exec(`
-				INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
-				VALUES (?, ?, ?)
-			`, sessionToken, adminUUID, expiresAt)
-			return execErr
-		}); err != nil {
-			cfg.Logger.Error("Failed to persist admin session", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to persist session")
+			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
 			return
 		}
 		cfg.Logger.Info("Auth login success", "username", username, "remote_addr", r.RemoteAddr)
 		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", r)
 
-		secureCookie := middleware.IsSecureRequest(r, cfg)
-		http.SetCookie(w, &http.Cookie{
-			Name:     sessionCookieName,
-			Value:    sessionToken,
-			Path:     "/",
-			Expires:  time.Unix(expiresAt, 0).UTC(),
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-			Secure:   secureCookie,
-		})
+		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{
-				"accessToken": sessionToken,
+				"accessToken": accessToken,
 			},
 		})
 	}
@@ -512,14 +535,6 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 		}
 
 		adminUUID := uuid.NewString()
-		sessionToken, err := security.GenerateRandomToken(48)
-		if err != nil {
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin session")
-			return
-		}
-		sessionTTLMinutes := 60
-		expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
-
 		err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			var adminCount int
 			if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
@@ -529,16 +544,10 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 				return errAdminAlreadyConfigured
 			}
 
-			if _, execErr := db.Exec(`
-				INSERT INTO admin (uuid, username, password_hash, role, session_ttl_minutes)
-				VALUES (?, ?, ?, 'ADMIN', ?)
-			`, adminUUID, username, passwordHash, sessionTTLMinutes); execErr != nil {
-				return execErr
-			}
 			_, execErr := db.Exec(`
-				INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
-				VALUES (?, ?, ?)
-			`, sessionToken, adminUUID, expiresAt)
+				INSERT INTO admin (uuid, username, password_hash, role)
+				VALUES (?, ?, ?, 'ADMIN')
+			`, adminUUID, username, passwordHash)
 			return execErr
 		})
 		if errors.Is(err, errAdminAlreadyConfigured) {
@@ -551,22 +560,19 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
 			return
 		}
-		cfg.Logger.Info("Auth register success", "username", username, "remote_addr", r.RemoteAddr)
 
-		secureCookie := middleware.IsSecureRequest(r, cfg)
-		http.SetCookie(w, &http.Cookie{
-			Name:     sessionCookieName,
-			Value:    sessionToken,
-			Path:     "/",
-			Expires:  time.Unix(expiresAt, 0).UTC(),
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-			Secure:   secureCookie,
-		})
+		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, "ADMIN")
+		if err != nil {
+			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
+			return
+		}
+		cfg.Logger.Info("Auth register success", "username", username, "remote_addr", r.RemoteAddr)
+		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		shared.WriteJSON(w, http.StatusCreated, map[string]any{
 			"response": map[string]any{
-				"accessToken": sessionToken,
+				"accessToken": accessToken,
 			},
 		})
 	}
@@ -592,11 +598,6 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 
-		sessionTTLMinutes := req.SessionTTLMinutes
-		if sessionTTLMinutes <= 0 {
-			sessionTTLMinutes = 60
-		}
-
 		passwordHash, err := security.HashPassword(password)
 		if err != nil {
 			cfg.Logger.Error("Failed to hash setup password", "error", err)
@@ -605,14 +606,6 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		}
 
 		adminUUID := uuid.NewString()
-		sessionToken, err := security.GenerateRandomToken(48)
-		if err != nil {
-			cfg.Logger.Error("Failed to generate setup session token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin session")
-			return
-		}
-		expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
-
 		err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			var adminCount int
 			if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
@@ -622,17 +615,10 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 				return errAdminAlreadyConfigured
 			}
 
-			if _, execErr := db.Exec(`
-				INSERT INTO admin (uuid, username, password_hash, role, session_ttl_minutes)
-				VALUES (?, ?, ?, 'ADMIN', ?)
-			`, adminUUID, username, passwordHash, sessionTTLMinutes); execErr != nil {
-				return execErr
-			}
-
 			_, execErr := db.Exec(`
-				INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
-				VALUES (?, ?, ?)
-			`, sessionToken, adminUUID, expiresAt)
+				INSERT INTO admin (uuid, username, password_hash, role)
+				VALUES (?, ?, ?, 'ADMIN')
+			`, adminUUID, username, passwordHash)
 			return execErr
 		})
 		if errors.Is(err, errAdminAlreadyConfigured) {
@@ -645,16 +631,13 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 
-		secureCookie := middleware.IsSecureRequest(r, cfg)
-		http.SetCookie(w, &http.Cookie{
-			Name:     sessionCookieName,
-			Value:    sessionToken,
-			Path:     "/",
-			Expires:  time.Unix(expiresAt, 0).UTC(),
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-			Secure:   secureCookie,
-		})
+		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, "ADMIN")
+		if err != nil {
+			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
+			return
+		}
+		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		brandingSettings, passwordSettings, _, _, bootstrapErr := getBootstrapData(manager)
 		if bootstrapErr != nil {
@@ -668,7 +651,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 				UUID:              adminUUID,
 				Username:          username,
 				Role:              "ADMIN",
-				SessionTTLMinutes: sessionTTLMinutes,
+				SessionTTLMinutes: AuthTTLMinutes(),
 			},
 			ExpiresAt:        expiresAt,
 			BrandingSettings: brandingSettings,
@@ -702,29 +685,21 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			adminUUID          string
 			storedPasswordHash string
 			role               string
-			sessionTTLMinutes  int
 		)
 
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			row := db.QueryRow(`
-				SELECT uuid, password_hash, role, session_ttl_minutes
+				SELECT uuid, password_hash, role
 				FROM admin
 				WHERE username = ?
 				LIMIT 1
 			`, username)
 
-			var ttl sql.NullInt64
-			if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role, &ttl); scanErr != nil {
+			if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil {
 				if errors.Is(scanErr, sql.ErrNoRows) {
 					return nil
 				}
 				return scanErr
-			}
-
-			if ttl.Valid && ttl.Int64 > 0 {
-				sessionTTLMinutes = int(ttl.Int64)
-			} else {
-				sessionTTLMinutes = 60
 			}
 			return nil
 		})
@@ -739,42 +714,15 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 
-		sessionToken, err := security.GenerateRandomToken(48)
+		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, role)
 		if err != nil {
-			cfg.Logger.Error("Failed to generate session token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create session")
-			return
-		}
-
-		expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
-		if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			// Single active session per admin account simplifies emergency password reset flows.
-			if _, execErr := db.Exec("DELETE FROM admin_sessions WHERE admin_uuid = ?", adminUUID); execErr != nil {
-				return execErr
-			}
-			_, execErr := db.Exec(`
-				INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
-				VALUES (?, ?, ?)
-			`, sessionToken, adminUUID, expiresAt)
-			return execErr
-		}); err != nil {
-			cfg.Logger.Error("Failed to persist admin session", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to persist session")
+			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
 			return
 		}
 
 		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", r)
-
-		secureCookie := middleware.IsSecureRequest(r, cfg)
-		http.SetCookie(w, &http.Cookie{
-			Name:     sessionCookieName,
-			Value:    sessionToken,
-			Path:     "/",
-			Expires:  time.Unix(expiresAt, 0).UTC(),
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-			Secure:   secureCookie,
-		})
+		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		brandingSettings, passwordSettings, _, _, err := getBootstrapData(manager)
 		if err != nil {
@@ -788,7 +736,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 				UUID:              adminUUID,
 				Username:          username,
 				Role:              strings.ToUpper(role),
-				SessionTTLMinutes: sessionTTLMinutes,
+				SessionTTLMinutes: AuthTTLMinutes(),
 			},
 			ExpiresAt:        expiresAt,
 			BrandingSettings: brandingSettings,
@@ -806,7 +754,7 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 		}
 
 		principal, ok := CurrentAuthPrincipal(r.Context())
-		if !ok || principal == nil || principal.TokenType != "session" {
+		if !ok || principal == nil || principal.TokenType != "jwt_auth" {
 			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
@@ -817,22 +765,17 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 		)
 		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 			row := db.QueryRow(`
-				SELECT uuid, username, role, session_ttl_minutes
+				SELECT uuid, username, role
 				FROM admin
 				WHERE uuid = ?
 				LIMIT 1
 			`, principal.AdminUUID)
 
-			var ttl sql.NullInt64
-			if scanErr := row.Scan(&adminInfo.UUID, &adminInfo.Username, &adminInfo.Role, &ttl); scanErr != nil {
+			if scanErr := row.Scan(&adminInfo.UUID, &adminInfo.Username, &adminInfo.Role); scanErr != nil {
 				return scanErr
 			}
 			adminInfo.Role = strings.ToUpper(adminInfo.Role)
-			if ttl.Valid && ttl.Int64 > 0 {
-				adminInfo.SessionTTLMinutes = int(ttl.Int64)
-			} else {
-				adminInfo.SessionTTLMinutes = 60
-			}
+			adminInfo.SessionTTLMinutes = AuthTTLMinutes()
 			return nil
 		})
 		if err != nil {
@@ -867,22 +810,6 @@ func AuthLogoutHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
-		}
-
-		token := readBearerToken(r.Header.Get("Authorization"))
-		if token == "" {
-			if cookie, err := r.Cookie(sessionCookieName); err == nil {
-				token = strings.TrimSpace(cookie.Value)
-			}
-		}
-
-		if token != "" {
-			if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-				_, execErr := db.Exec("DELETE FROM admin_sessions WHERE session_token = ?", token)
-				return execErr
-			}); err != nil {
-				cfg.Logger.Warn("Failed to delete session during logout", "error", err)
-			}
 		}
 
 		secureCookie := middleware.IsSecureRequest(r, cfg)

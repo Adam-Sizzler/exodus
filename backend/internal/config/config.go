@@ -25,6 +25,7 @@ type BackendConfig struct {
 	Scheduler     SchedulerConfig
 	Database      DatabaseConfig
 	Redis         RedisConfig
+	JWT           JWTConfig
 	CORS          CORSConfig
 }
 
@@ -39,6 +40,11 @@ type PanelConfig struct {
 
 type CORSConfig struct {
 	AllowedOrigins []string
+}
+
+type JWTConfig struct {
+	AuthSecret      string
+	APITokensSecret string
 }
 
 type MetricsConfig struct {
@@ -398,6 +404,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("FRONT_END_DOMAIN"); value != "" {
 		cfg.CORS.AllowedOrigins = splitCSV(value)
 	}
+
+	cfg.JWT.AuthSecret = strings.TrimSpace(envFirst("JWT_AUTH_SECRET"))
+	cfg.JWT.APITokensSecret = strings.TrimSpace(envFirst("JWT_API_TOKENS_SECRET"))
 
 	if value := envFirst("SERVICE_CLEAN_USAGE_HISTORY"); value != "" {
 		cfg.Scheduler.ServiceCleanUsageHistory = parseBoolEnv(value)

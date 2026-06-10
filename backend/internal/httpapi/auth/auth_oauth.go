@@ -267,56 +267,35 @@ func isLoginAllowed(manager *dbmanager.DatabaseManager) bool {
 }
 
 func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, string, error) {
-	var adminUUID string
-	sessionTTLMinutes := 60
+	var adminUUID, username, role string
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(r.Context(), `
-			SELECT uuid, session_ttl_minutes
+			SELECT uuid, username, role
 			FROM admin
 			WHERE UPPER(role) = 'ADMIN'
 			ORDER BY created_at ASC
 			LIMIT 1
 		`)
-		var ttl sql.NullInt64
-		if err := row.Scan(&adminUUID, &ttl); err != nil {
-			return err
-		}
-		if ttl.Valid && ttl.Int64 > 0 {
-			sessionTTLMinutes = int(ttl.Int64)
-		}
-		return nil
+		return row.Scan(&adminUUID, &username, &role)
 	})
 	if err != nil {
 		return "", "", err
 	}
-	sessionToken, err := security.GenerateRandomToken(48)
-	if err != nil {
-		return "", "", err
-	}
-	expiresAt := time.Now().UTC().Add(time.Duration(sessionTTLMinutes) * time.Minute).Unix()
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		if _, err := db.ExecContext(r.Context(), `DELETE FROM admin_sessions WHERE admin_uuid = ?`, adminUUID); err != nil {
-			return err
-		}
-		_, err := db.ExecContext(r.Context(), `
-			INSERT INTO admin_sessions (session_token, admin_uuid, expires_at)
-			VALUES (?, ?, ?)
-		`, sessionToken, adminUUID, expiresAt)
-		return err
-	})
+
+	accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, role)
 	if err != nil {
 		return "", "", err
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
-		Value:    sessionToken,
+		Value:    accessToken,
 		Path:     "/",
 		Expires:  time.Unix(expiresAt, 0).UTC(),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Secure:   middleware.IsSecureRequest(r, cfg),
 	})
-	return sessionToken, adminUUID, nil
+	return accessToken, adminUUID, nil
 }
 
 func emitExternalLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, method, provider, identifier, adminUUID, reason string, r *http.Request) {
