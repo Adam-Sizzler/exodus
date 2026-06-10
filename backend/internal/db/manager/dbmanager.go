@@ -208,13 +208,13 @@ func (m *DatabaseManager) processRequests(workerID int) {
 func (m *DatabaseManager) processRequest(req func(DBExecutor) error, workerID int, priority string) {
 	m.workerPool <- struct{}{}
 	defer func() { <-m.workerPool }()
-	m.cfg.Logger.Trace("Processing request", "workerID", workerID, "priority", priority)
+	m.cfg.Logger.Trace("Processing database request", "service", "Database", "workerID", workerID, "priority", priority)
 	start := time.Now()
 	if err := req(m.db); err != nil {
-		m.cfg.Logger.Error("Failed to execute request", "workerID", workerID, "priority", priority, "error", err)
+		m.cfg.Logger.Debug("Database request failed", "service", "Database", "workerID", workerID, "priority", priority, "error", err)
 	}
-	m.cfg.Logger.Trace("Processed request", "workerID", workerID, "priority", priority, "duration", time.Since(start))
-	m.cfg.Logger.Trace("Processed request counts", "highPriority", atomic.LoadUint64(&m.highPriorityCount), "lowPriority", atomic.LoadUint64(&m.lowPriorityCount))
+	m.cfg.Logger.Trace("Processed database request", "service", "Database", "workerID", workerID, "priority", priority, "duration", time.Since(start))
+	m.cfg.Logger.Trace("Processed database request counts", "service", "Database", "highPriority", atomic.LoadUint64(&m.highPriorityCount), "lowPriority", atomic.LoadUint64(&m.lowPriorityCount))
 }
 
 // executeOnce executes a database request once with timeout handling.
@@ -223,7 +223,7 @@ func (m *DatabaseManager) executeOnce(fn func(DBExecutor) error, priority bool, 
 	m.closedMu.Lock()
 	if m.isClosed {
 		m.closedMu.Unlock()
-		m.cfg.Logger.Error("DatabaseManager is closed")
+		m.cfg.Logger.Error("DatabaseManager is closed", "service", "Database")
 		return fmt.Errorf("DatabaseManager is closed")
 	}
 	m.closedMu.Unlock()
@@ -235,7 +235,8 @@ func (m *DatabaseManager) executeOnce(fn func(DBExecutor) error, priority bool, 
 	}
 
 	// Log channel status before sending request
-	m.cfg.Logger.Trace("Channel status before sending request",
+	m.cfg.Logger.Trace("Database request channel status before sending request",
+		"service", "Database",
 		"priority", priorityStr,
 		"tasks", len(requestChan),
 		"capacity", cap(requestChan))
@@ -251,25 +252,25 @@ func (m *DatabaseManager) executeOnce(fn func(DBExecutor) error, priority bool, 
 		errChan <- err
 		return err
 	}:
-		m.cfg.Logger.Trace("Request sent to channel", "priority", priorityStr)
+		m.cfg.Logger.Trace("Database request sent to channel", "service", "Database", "priority", priorityStr)
 	case <-m.ctx.Done():
-		m.cfg.Logger.Warn("Context canceled while sending request", "priority", priorityStr)
+		m.cfg.Logger.Warn("Context canceled while sending database request", "service", "Database", "priority", priorityStr)
 		return m.ctx.Err()
 	case <-time.After(sendTimeout):
-		m.cfg.Logger.Error("Request send timeout", "priority", priorityStr, "timeout", sendTimeout)
+		m.cfg.Logger.Error("Database request send timeout", "service", "Database", "priority", priorityStr, "timeout", sendTimeout)
 		return fmt.Errorf("request send timeout (%s, %v)", priorityStr, sendTimeout)
 	}
 
 	// Wait for request execution
 	select {
 	case err := <-errChan:
-		m.cfg.Logger.Trace("Received response from request", "priority", priorityStr, "error", err)
+		m.cfg.Logger.Trace("Received response from database request", "service", "Database", "priority", priorityStr, "error", err)
 		return err
 	case <-m.ctx.Done():
-		m.cfg.Logger.Warn("Context canceled while waiting for response", "priority", priorityStr)
+		m.cfg.Logger.Warn("Context canceled while waiting for database response", "service", "Database", "priority", priorityStr)
 		return m.ctx.Err()
 	case <-time.After(waitTimeout):
-		m.cfg.Logger.Error("Response wait timeout", "priority", priorityStr, "timeout", waitTimeout)
+		m.cfg.Logger.Error("Database response wait timeout", "service", "Database", "priority", priorityStr, "timeout", waitTimeout)
 		return fmt.Errorf("response wait timeout (%s, %v)", priorityStr, waitTimeout)
 	}
 }
@@ -290,19 +291,19 @@ func (m *DatabaseManager) ExecuteWithTimeout(fn func(DBExecutor) error, priority
 	const maxRetries = 3
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if err := m.executeOnce(fn, priority, sendTimeout, waitTimeout); err == nil {
-			m.cfg.Logger.Trace("Request executed successfully", "attempt", attempt, "priority", priority)
+			m.cfg.Logger.Trace("Database request executed successfully", "service", "Database", "attempt", attempt, "priority", priority)
 			return nil
 		} else if isRetryableError(err) {
-			m.cfg.Logger.Warn("Retryable error, attempting retry", "attempt", attempt, "maxRetries", maxRetries, "error", err)
+			m.cfg.Logger.Warn("Retryable database error, attempting retry", "service", "Database", "attempt", attempt, "maxRetries", maxRetries, "error", err)
 			time.Sleep(time.Duration(attempt*100) * time.Millisecond)
 			continue
 		} else {
-			m.cfg.Logger.Error("Failed to execute request", "attempt", attempt, "error", err)
+			m.cfg.Logger.Error("Failed to execute database request", "service", "Database", "attempt", attempt, "error", err)
 			return err
 		}
 	}
 	err := fmt.Errorf("failed to execute request after %d retries", maxRetries)
-	m.cfg.Logger.Error("Failed to execute request after all retries", "maxRetries", maxRetries)
+	m.cfg.Logger.Error("Failed to execute database request after all retries", "service", "Database", "maxRetries", maxRetries)
 	return err
 }
 

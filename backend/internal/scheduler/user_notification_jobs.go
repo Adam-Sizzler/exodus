@@ -165,7 +165,7 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 	values := make([]string, 0, len(thresholds))
 	args := make([]any, 0, len(thresholds))
 	for _, threshold := range thresholds {
-		values = append(values, "(?)")
+		values = append(values, "(?::int)")
 		args = append(args, threshold)
 	}
 
@@ -175,13 +175,13 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 			SELECT
 				u.t_id,
 				MIN(u.created_at) AS created_at_for_order,
-				MAX(t.pct) AS new_threshold
+				MAX(t.pct)::int AS new_threshold
 			FROM users u
 			INNER JOIN user_traffic ut ON ut.t_id = u.t_id
 			INNER JOIN thresholds t
 				ON u.status = 'ACTIVE'
 				AND u.traffic_limit_bytes > 0
-				AND ut.used_traffic_bytes >= (u.traffic_limit_bytes * t.pct / 100)
+				AND ut.used_traffic_bytes >= ((u.traffic_limit_bytes * t.pct::bigint) / 100)
 				AND u.last_triggered_threshold < t.pct
 			GROUP BY u.t_id
 			ORDER BY created_at_for_order

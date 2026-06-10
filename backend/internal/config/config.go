@@ -219,6 +219,40 @@ func LoadConfig() (BackendConfig, error) {
 	return cfg, nil
 }
 
+func resolveConfiguredLogLevel(value string) string {
+	level := strings.ToLower(strings.TrimSpace(value))
+	switch level {
+	case "trace", "verbose":
+		return "trace"
+	case "debug":
+		return "debug"
+	case "warn", "warning":
+		return "warn"
+	case "error":
+		return "error"
+	case "none", "silent":
+		return "none"
+	case "", "info", "log":
+		return "info"
+	default:
+		return "info"
+	}
+}
+
+func isDevelopmentEnv(value string) bool {
+	env := strings.ToLower(strings.TrimSpace(value))
+	return env == "development" || env == "dev"
+}
+
+func isDebugOrTraceLogLevel(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "debug", "trace", "verbose":
+		return true
+	default:
+		return false
+	}
+}
+
 func loadDotEnv() error {
 	err := godotenv.Load(".env")
 	if err == nil || os.IsNotExist(err) {
@@ -233,7 +267,7 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 
 	if value := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
-		cfg.Log.LogLevel = value
+		cfg.Log.LogLevel = resolveConfiguredLogLevel(value)
 	}
 	if value := envFirst("LOG_MODE", "EXODUS_LOG_MODE"); value != "" {
 		cfg.Log.LogMode = value
@@ -247,8 +281,13 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"); value != "" {
 		cfg.Log.EnableDebugLogs = parseBoolEnv(value)
 	}
-	if cfg.Log.EnableDebugLogs || strings.EqualFold(strings.TrimSpace(cfg.Log.NodeEnv), "development") {
+	if cfg.Log.EnableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv) {
 		cfg.Log.LogLevel = "debug"
+	} else if isDebugOrTraceLogLevel(cfg.Log.LogLevel) {
+		// Match the node service behavior: production does not enable verbose
+		// logging from stale LOG_LEVEL=debug/trace values. Use
+		// ENABLE_DEBUG_LOGS=true or NODE_ENV=development when debug logs are needed.
+		cfg.Log.LogLevel = "info"
 	}
 
 	if value := envFirst("APP_ADDRESS"); value != "" {
