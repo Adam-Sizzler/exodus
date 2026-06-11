@@ -510,7 +510,7 @@ func formatServiceMessage(event Event) string {
 			html.EscapeString(stringValue(loginAttempt, "password")),
 			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "ip"), stringValue(loginAttempt, "remoteAddr"))),
 			html.EscapeString(stringValue(loginAttempt, "userAgent")),
-			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "description"), stringValue(loginAttempt, "reason"))),
+			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "description"), stringValue(loginAttempt, "reason"), "–")),
 		)
 	case EventLoginAttemptSuccess:
 		loginAttempt := loginAttemptData(event.Data)
@@ -520,7 +520,7 @@ func formatServiceMessage(event Event) string {
 			html.EscapeString(stringValue(loginAttempt, "username")),
 			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "ip"), stringValue(loginAttempt, "remoteAddr"))),
 			html.EscapeString(stringValue(loginAttempt, "userAgent")),
-			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "description"), stringValue(loginAttempt, "reason"))),
+			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "description"), stringValue(loginAttempt, "reason"), "–")),
 		)
 	case EventServiceSubpageChanged:
 		subpageConfig := nestedMap(event.Data, "subpageConfig")

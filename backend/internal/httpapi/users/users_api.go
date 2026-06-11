@@ -643,7 +643,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	if strings.EqualFold(normalizeUserStatus(req.Status), "ACTIVE") && len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
-	emitUserNotification(r.Context(), cfg, notifications.EventUserCreated, record, nil)
+	emitUserNotification(r.Context(), manager, cfg, notifications.EventUserCreated, record, nil)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
 }
 
@@ -834,9 +834,9 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	if (internalSquadsChanged || statusDeployRequired) && len(deployNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, deployNodeUUIDs...)
 	}
-	emitUserNotification(r.Context(), cfg, notifications.EventUserModified, updatedRecord, nil)
+	emitUserNotification(r.Context(), manager, cfg, notifications.EventUserModified, updatedRecord, nil)
 	if statusChanged := userStatusChangedNotification(record.Status, updatedRecord.Status); statusChanged != "" {
-		emitUserNotification(r.Context(), cfg, statusChanged, updatedRecord, nil)
+		emitUserNotification(r.Context(), manager, cfg, statusChanged, updatedRecord, nil)
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
 }
@@ -1055,7 +1055,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
 	if recordErr == nil {
-		emitUserNotification(r.Context(), cfg, notifications.EventUserDeleted, record, nil)
+		emitUserNotification(r.Context(), manager, cfg, notifications.EventUserDeleted, record, nil)
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
@@ -1209,7 +1209,7 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, manager *dbma
 	if len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
-	emitUsersNotificationFromRecords(r.Context(), cfg, notifications.EventUserDeleted, req.UUIDs, notificationRecords)
+	emitUsersNotificationFromRecords(r.Context(), manager, cfg, notifications.EventUserDeleted, req.UUIDs, notificationRecords)
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
@@ -1520,7 +1520,7 @@ func handleEnableUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
 	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
-		emitUserNotification(r.Context(), cfg, notifications.EventUserEnabled, record, nil)
+		emitUserNotification(r.Context(), manager, cfg, notifications.EventUserEnabled, record, nil)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
@@ -1535,7 +1535,7 @@ func handleDisableUser(w http.ResponseWriter, r *http.Request, manager *dbmanage
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
 	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
-		emitUserNotification(r.Context(), cfg, notifications.EventUserDisabled, record, nil)
+		emitUserNotification(r.Context(), manager, cfg, notifications.EventUserDisabled, record, nil)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
@@ -1601,9 +1601,9 @@ func handleResetUserTraffic(w http.ResponseWriter, r *http.Request, manager *dbm
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
 	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
-		emitUserNotification(r.Context(), cfg, notifications.EventUserTrafficReset, record, nil)
+		emitUserNotification(r.Context(), manager, cfg, notifications.EventUserTrafficReset, record, nil)
 		if strings.EqualFold(record.Status, "ACTIVE") {
-			emitUserNotification(r.Context(), cfg, notifications.EventUserEnabled, record, map[string]any{"reason": "traffic_reset"})
+			emitUserNotification(r.Context(), manager, cfg, notifications.EventUserEnabled, record, map[string]any{"reason": "traffic_reset"})
 		}
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
@@ -1639,7 +1639,7 @@ func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, manage
 		return
 	}
 	if record, loadErr := getUserRecordByUUID(r.Context(), manager, userUUID); loadErr == nil {
-		emitUserNotification(r.Context(), cfg, notifications.EventUserRevoked, record, nil)
+		emitUserNotification(r.Context(), manager, cfg, notifications.EventUserRevoked, record, nil)
 	}
 	sendUpdatedUserResponse(w, r, manager, cfg, userUUID)
 }
@@ -3034,13 +3034,50 @@ func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	return response, nil
 }
 
-func emitUserNotification(ctx context.Context, cfg *config.BackendConfig, event string, record userRecord, meta map[string]any) {
+func emitUserNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, record userRecord, meta map[string]any) {
+	data := userRecordNotificationData(record)
+	if userNotificationNeedsInternalSquads(event) {
+		enrichUserNotificationInternalSquads(ctx, manager, record.UUID, data)
+	}
+
 	notifications.Emit(ctx, cfg, notifications.Event{
 		Scope: notifications.ScopeUser,
 		Event: event,
-		Data:  userRecordNotificationData(record),
+		Data:  data,
 		Meta:  meta,
 	})
+}
+
+func userNotificationNeedsInternalSquads(event string) bool {
+	switch event {
+	case notifications.EventUserCreated, notifications.EventUserModified, notifications.EventUserRevoked:
+		return true
+	default:
+		return false
+	}
+}
+
+func enrichUserNotificationInternalSquads(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, data map[string]any) {
+	if manager == nil || strings.TrimSpace(userUUID) == "" || data == nil {
+		return
+	}
+
+	squadsByUser, err := getUsersActiveInternalSquads(ctx, manager, []string{userUUID})
+	if err != nil {
+		return
+	}
+
+	squads := squadsByUser[userUUID]
+	names := make([]string, 0, len(squads))
+	for _, squad := range squads {
+		name := strings.TrimSpace(squad.Name)
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+
+	data["activeInternalSquads"] = names
+	data["internalSquads"] = names
 }
 
 func emitUsersByUUIDsNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, userUUIDs []string) {
@@ -3050,13 +3087,13 @@ func emitUsersByUUIDsNotification(ctx context.Context, manager *dbmanager.Databa
 	}
 	records, err := getUserRecordsByUUIDs(ctx, manager, clean)
 	if err != nil {
-		emitUsersNotificationFromRecords(ctx, cfg, event, clean, nil)
+		emitUsersNotificationFromRecords(ctx, manager, cfg, event, clean, nil)
 		return
 	}
-	emitUsersNotificationFromRecords(ctx, cfg, event, clean, records)
+	emitUsersNotificationFromRecords(ctx, manager, cfg, event, clean, records)
 }
 
-func emitUsersNotificationFromRecords(ctx context.Context, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
+func emitUsersNotificationFromRecords(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
 	clean := dedupeStrings(userUUIDs)
 	if len(clean) == 0 {
 		return
@@ -3068,7 +3105,7 @@ func emitUsersNotificationFromRecords(ctx context.Context, cfg *config.BackendCo
 			meta["skipTelegramNotification"] = true
 		}
 		if record, ok := records[userUUID]; ok {
-			emitUserNotification(ctx, cfg, event, record, meta)
+			emitUserNotification(ctx, manager, cfg, event, record, meta)
 			continue
 		}
 		notifications.Emit(ctx, cfg, notifications.Event{
