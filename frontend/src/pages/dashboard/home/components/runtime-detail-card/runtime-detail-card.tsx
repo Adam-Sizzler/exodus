@@ -129,8 +129,10 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
                                 </Text>
 
                                 <div>
-                                    <Group justify="space-between" mb={4}>
-                                        <Text className={classes.statLabel}>{t('runtime-metrics.heap')}</Text>
+                                    <Group gap="xs" justify="space-between" mb={4} wrap="nowrap">
+                                        <Text className={classes.statLabel}>
+                                            {t('runtime-metrics.heap')}
+                                        </Text>
                                         <Text className={classes.heapValues}>
                                             {getHeapUsedValue(metric)}{' '}
                                             <span className={classes.heapPercent}>

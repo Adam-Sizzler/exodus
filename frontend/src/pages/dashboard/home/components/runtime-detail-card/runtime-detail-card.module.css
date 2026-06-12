@@ -75,14 +75,23 @@
 }
 
 .heapValues {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35em;
     font-size: var(--mantine-font-size-xs);
     font-family: var(--mantine-font-family-monospace);
     color: var(--mantine-color-white-5);
     font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    word-break: keep-all;
 }
 
 .heapPercent {
     color: var(--mantine-color-dimmed);
     font-size: var(--mantine-font-size-xs);
     font-family: var(--mantine-font-family-monospace);
+    white-space: nowrap;
+    word-break: keep-all;
+    flex-shrink: 0;
 }
