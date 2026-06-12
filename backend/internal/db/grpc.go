@@ -131,6 +131,6 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 		return nil, err
 	}
 
-	cfg.Logger.Info("Loaded nodes from database", "count", len(nodes))
+	cfg.Logger.Debug("Loaded nodes from database", "count", len(nodes))
 	return nodes, nil
 }
