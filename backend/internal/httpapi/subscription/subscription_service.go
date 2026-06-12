@@ -366,60 +366,11 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 	return user, nil
 }
 
-func getUserSquadUUIDs(ctx context.Context, manager *dbmanager.DatabaseManager, userTID int64) ([]string, error) {
-	var squads []string
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-            SELECT internal_squad_uuid
-            FROM internal_squad_members
-            WHERE user_id = ?
-        `, userTID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var uuid string
-			if err := rows.Scan(&uuid); err != nil {
-				return err
-			}
-			squads = append(squads, uuid)
-		}
-		return rows.Err()
-	})
-	if err != nil {
-		return nil, err
-	}
-	return squads, nil
-}
-
 func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser) ([]SubscriptionHost, error) {
-	squads, err := getUserSquadUUIDs(ctx, manager, user.TID)
-	if err != nil {
-		return nil, err
-	}
-
 	var hosts []SubscriptionHost
 
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var rows *sql.Rows
-		if len(squads) == 0 {
-			rows, err = db.QueryContext(ctx, `
-                SELECT h.uuid, h.view_position, h.remark, h.address, h.port,
-                       h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
-                       h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
-                       h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
-                       h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
-                       h.config_profile_uuid, h.config_profile_inbound_uuid,
-                       cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
-                FROM hosts h
-                LEFT JOIN config_profile_inbounds cpi ON h.config_profile_inbound_uuid = cpi.uuid
-                ORDER BY h.view_position ASC, h.remark ASC
-            `)
-		} else {
-			rows, err = db.QueryContext(ctx, `
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
                 SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
                        h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
@@ -437,7 +388,6 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
                 WHERE ism.user_id = ? AND ihe.host_uuid IS NULL
                 ORDER BY h.view_position ASC, h.remark ASC
             `, user.TID)
-		}
 		if err != nil {
 			return err
 		}

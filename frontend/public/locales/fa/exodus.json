@@ -2128,6 +2128,12 @@
         "stack": "Stack",
         "scheduler": "Scheduler",
         "delay": "Delay",
-        "p99": "P99"
+        "p99": "P99",
+        "duration": {
+            "days": "d",
+            "hours": "h",
+            "minutes": "min",
+            "seconds": "sec"
+        }
     }
 }

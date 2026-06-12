@@ -21,9 +21,6 @@ var migrationsFS embed.FS
 const migrationsAdvisoryLockKey int64 = 2203092601
 
 var retiredMigrations = map[string]struct{}{
-	// v26.5.18 briefly shipped a migration that dropped snippets. Keep the name
-	// accepted so databases that already recorded it can move forward to the
-	// repair migration without manual schema_migrations edits.
 	"20260518013000_drop_config_profile_snippets": {},
 }
 

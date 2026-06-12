@@ -2128,6 +2128,12 @@
         "stack": "栈",
         "scheduler": "调度器",
         "delay": "Delay",
-        "p99": "P99"
+        "p99": "P99",
+        "duration": {
+            "days": "天",
+            "hours": "小时",
+            "minutes": "分钟",
+            "seconds": "秒"
+        }
     }
 }

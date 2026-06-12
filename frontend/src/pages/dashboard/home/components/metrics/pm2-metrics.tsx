@@ -11,6 +11,7 @@ import { IMetricCardProps } from '@shared/ui/metrics/metric-card'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 
 export type RuntimeSummary = {
+    startedAt?: string
     uptimeSeconds?: number
     totalRssBytes?: number
     heapAllocBytes?: number
@@ -25,6 +26,7 @@ export type RuntimeMetric = {
     instanceType?: string
     instanceId?: number
     pid?: number
+    startedAt?: string
     uptimeSeconds?: number
     runtime?: {
         language?: string
@@ -60,7 +62,9 @@ export type RuntimeMetric = {
     }
 }
 
-export const getFirstRuntimeMetric = (runtimeMetrics?: RuntimeMetric[]): RuntimeMetric | undefined => {
+export const getFirstRuntimeMetric = (
+    runtimeMetrics?: RuntimeMetric[]
+): RuntimeMetric | undefined => {
     if (!runtimeMetrics || runtimeMetrics.length === 0) {
         return undefined
     }
@@ -70,31 +74,49 @@ export const getFirstRuntimeMetric = (runtimeMetrics?: RuntimeMetric[]): Runtime
 
 export const formatMilliseconds = (value?: number): string => `${Number(value ?? 0).toFixed(3)} ms`
 const formatPercent = (value?: number): string => `${Number(value ?? 0).toFixed(1)}%`
-export const formatBytes = (value?: number): string => prettyBytesToAnyUtil(Number(value ?? 0), true)
+export const formatBytes = (value?: number): string =>
+    prettyBytesToAnyUtil(Number(value ?? 0), true)
 
-const formatCompactDuration = (uptimeInSeconds?: number): string => {
+const getUptimeSeconds = (startedAt?: string, fallbackSeconds?: number): number => {
+    if (startedAt) {
+        const startedAtMs = Date.parse(startedAt)
+
+        if (Number.isFinite(startedAtMs)) {
+            return Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
+        }
+    }
+
+    return Math.max(0, Math.floor(Number(fallbackSeconds ?? 0)))
+}
+
+const formatCompactDuration = (uptimeInSeconds: number | undefined, t: TFunction): string => {
     const totalSeconds = Math.max(0, Math.floor(Number(uptimeInSeconds ?? 0)))
-    const days = Math.floor(totalSeconds / 86_400)
-    const hours = Math.floor((totalSeconds % 86_400) / 3_600)
-    const minutes = Math.floor((totalSeconds % 3_600) / 60)
-    const seconds = totalSeconds % 60
+    const minute = 60
+    const hour = 3_600
+    const day = 86_400
 
-    const parts: string[] = []
+    const days = Math.floor(totalSeconds / day)
+    const hours = Math.floor((totalSeconds % day) / hour)
+    const minutes = Math.floor((totalSeconds % hour) / minute)
+    const seconds = totalSeconds % minute
+
+    if (days >= 30) {
+        return `${days} ${t('runtime-metrics.duration.days')}`
+    }
 
     if (days > 0) {
-        parts.push(`${days}d`)
-    }
-    if (hours > 0) {
-        parts.push(`${hours}h`)
-    }
-    if (minutes > 0) {
-        parts.push(`${minutes}m`)
-    }
-    if (seconds > 0 || parts.length === 0) {
-        parts.push(`${seconds}s`)
+        return `${days} ${t('runtime-metrics.duration.days')} ${hours} ${t('runtime-metrics.duration.hours')}`
     }
 
-    return parts.join(' ')
+    if (hours > 0) {
+        return `${hours} ${t('runtime-metrics.duration.hours')} ${minutes} ${t('runtime-metrics.duration.minutes')}`
+    }
+
+    if (minutes > 0) {
+        return `${minutes} ${t('runtime-metrics.duration.minutes')} ${seconds} ${t('runtime-metrics.duration.seconds')}`
+    }
+
+    return `${seconds} ${t('runtime-metrics.duration.seconds')}`
 }
 
 export const getHeapUsedValue = (metric?: RuntimeMetric): string => {
@@ -126,14 +148,18 @@ export const getRuntimeSummaryMetrics = (
         return []
     }
 
-    const uptimeSeconds = runtimeSummary?.uptimeSeconds ?? metric?.uptimeSeconds ?? 0
+    const uptimeSeconds = getUptimeSeconds(
+        runtimeSummary?.startedAt ?? metric?.startedAt,
+        runtimeSummary?.uptimeSeconds ?? metric?.uptimeSeconds
+    )
     const totalRssBytes = runtimeSummary?.totalRssBytes ?? metric?.memory?.rssBytes ?? 0
     const averageCpuPercent = runtimeSummary?.averageCpuPercent ?? metric?.cpu?.processPercent ?? 0
-    const schedulerP99Ms = runtimeSummary?.averageSchedulerP99Ms ?? metric?.scheduler?.schedulerP99Ms ?? 0
+    const schedulerP99Ms =
+        runtimeSummary?.averageSchedulerP99Ms ?? metric?.scheduler?.schedulerP99Ms ?? 0
 
     return [
         {
-            value: formatCompactDuration(uptimeSeconds),
+            value: formatCompactDuration(uptimeSeconds, t),
             IconComponent: PiClockDuotone,
             title: t('runtime-metrics.uptime'),
             iconVariant: 'soft',

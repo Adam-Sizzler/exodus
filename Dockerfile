@@ -7,8 +7,7 @@ ARG SINGBOX_SCHEMA_URL=https://adam-sizzler.github.io/s-validator/singbox.schema
 ARG SINGBOX_SCHEMA_CN_URL=https://adam-sizzler.github.io/s-validator/singbox.schema.json
 COPY frontend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps --no-audit --prefer-offline
-COPY frontend/ ./
-RUN mkdir -p /ui/public/assets
+RUN mkdir -p /tmp/exodus-assets
 RUN set -eu; \
     fetch_with_retry() { \
       url="$1"; out="$2"; name="$3"; \
@@ -27,17 +26,19 @@ RUN set -eu; \
         echo "WARN: skip $name after retries: $url"; \
       fi; \
     }; \
-    fetch_with_retry "$SINGBOX_WASM_URL" /ui/public/assets/main.wasm main.wasm; \
-    fetch_with_retry "$SINGBOX_SCHEMA_URL" /ui/public/assets/singbox.schema.json singbox.schema.json; \
-    fetch_with_retry "$SINGBOX_SCHEMA_CN_URL" /ui/public/assets/singbox.schema.cn.json singbox.schema.cn.json
-RUN if [ -f /ui/public/assets/main.wasm ]; then \
-      magic="$(od -An -t x1 -N 4 /ui/public/assets/main.wasm | tr -d ' \n')"; \
+    fetch_with_retry "$SINGBOX_WASM_URL" /tmp/exodus-assets/main.wasm main.wasm; \
+    fetch_with_retry "$SINGBOX_SCHEMA_URL" /tmp/exodus-assets/singbox.schema.json singbox.schema.json; \
+    fetch_with_retry "$SINGBOX_SCHEMA_CN_URL" /tmp/exodus-assets/singbox.schema.cn.json singbox.schema.cn.json
+RUN if [ -f /tmp/exodus-assets/main.wasm ]; then \
+      magic="$(od -An -t x1 -N 4 /tmp/exodus-assets/main.wasm | tr -d ' \n')"; \
       [ "$magic" = "0061736d" ] || { echo "Invalid WASM magic for main.wasm: $magic"; exit 1; }; \
-      echo "WASM artifact attached: /ui/public/assets/main.wasm"; \
+      echo "WASM artifact attached: /tmp/exodus-assets/main.wasm"; \
     else \
-      echo "WARN: /ui/public/assets/main.wasm is missing. Sing-box validator will be disabled in UI."; \
+      echo "WARN: /tmp/exodus-assets/main.wasm is missing. Sing-box validator will be disabled in UI."; \
     fi
-RUN --mount=type=cache,target=/root/.npm npm run cb
+COPY frontend/ ./
+RUN mkdir -p /ui/public/assets && cp -f /tmp/exodus-assets/* /ui/public/assets/ 2>/dev/null || true
+RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache npm run cb
 
 FROM golang:1.25-alpine AS builder
 

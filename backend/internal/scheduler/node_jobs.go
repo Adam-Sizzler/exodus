@@ -163,6 +163,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 			SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(traffic_reset_day, 1), COALESCE(notify_percent, 0)
 			FROM nodes
 			WHERE is_traffic_tracking_active = true
+			  AND is_disabled = false
 			  AND COALESCE(notify_percent, 0) > 0
 			  AND COALESCE(traffic_limit_bytes, 0) > 0
 			ORDER BY view_position ASC, name ASC
@@ -202,6 +203,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 				"percent", currentPercent,
 				"threshold", node.NotifyPercent,
 			)
+
 			notifications.Emit(ctx, s.cfg, notifications.Event{
 				Scope: notifications.ScopeNode,
 				Event: notifications.EventNodeTrafficNotify,

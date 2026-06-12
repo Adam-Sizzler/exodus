@@ -38,7 +38,6 @@ type goRuntimeMetric struct {
 	InstanceID      int             `json:"instanceId"`
 	PID             int             `json:"pid"`
 	StartedAt       string          `json:"startedAt"`
-	UptimeSeconds   int64           `json:"uptimeSeconds"`
 	Runtime         goRuntimeInfo   `json:"runtime"`
 	CPU             goCPUInfo       `json:"cpu"`
 	Memory          goMemoryInfo    `json:"memory"`
@@ -105,7 +104,7 @@ type goProcessInfo struct {
 
 type goRuntimeSummary struct {
 	TotalProcesses          int     `json:"totalProcesses"`
-	UptimeSeconds           int64   `json:"uptimeSeconds"`
+	StartedAt               string  `json:"startedAt"`
 	TotalRSSBytes           uint64  `json:"totalRssBytes"`
 	HeapAllocBytes          uint64  `json:"heapAllocBytes"`
 	AverageCPUPercent       float64 `json:"averageCpuPercent"`
@@ -122,10 +121,7 @@ type processCPUState struct {
 
 func buildGoHealthResponse() goHealthResponse {
 	now := time.Now()
-	uptimeSeconds := int64(now.Sub(goProcessStartedAt).Seconds())
-	if uptimeSeconds < 0 {
-		uptimeSeconds = 0
-	}
+	startedAt := goProcessStartedAt.UTC().Format(time.RFC3339)
 
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
@@ -142,12 +138,11 @@ func buildGoHealthResponse() goHealthResponse {
 	threads := readProcessThreads()
 
 	metric := goRuntimeMetric{
-		Name:          "Exodus REST API-0",
-		InstanceType:  "api",
-		InstanceID:    0,
-		PID:           os.Getpid(),
-		StartedAt:     goProcessStartedAt.UTC().Format(time.RFC3339),
-		UptimeSeconds: uptimeSeconds,
+		Name:         "Exodus REST API-0",
+		InstanceType: "api",
+		InstanceID:   0,
+		PID:          os.Getpid(),
+		StartedAt:    startedAt,
 		Runtime: goRuntimeInfo{
 			Language: "go",
 			Version:  runtime.Version(),
@@ -205,7 +200,7 @@ func buildGoHealthResponse() goHealthResponse {
 		RuntimeMetrics: []goRuntimeMetric{metric},
 		RuntimeSummary: goRuntimeSummary{
 			TotalProcesses:          1,
-			UptimeSeconds:           metric.UptimeSeconds,
+			StartedAt:               startedAt,
 			TotalRSSBytes:           metric.Memory.RSSBytes,
 			HeapAllocBytes:          metric.Memory.HeapAllocBytes,
 			AverageCPUPercent:       metric.CPU.ProcessPercent,

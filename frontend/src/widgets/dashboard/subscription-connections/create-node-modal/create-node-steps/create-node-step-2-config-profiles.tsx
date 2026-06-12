@@ -6,7 +6,7 @@ import { PiArrowLeft } from 'react-icons/pi'
 import { TbCheck } from 'react-icons/tb'
 
 import { ShowConfigProfilesWithInboundsFeature } from '@features/ui/dashboard/subscription-connections/show-config-profiles-with-inbounds'
-import { useGetConfigProfiles } from '@shared/api/hooks'
+import { SubscriptionConnectionKeygenResponse, useGetConfigProfiles } from '@shared/api/hooks'
 
 import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
@@ -17,6 +17,7 @@ interface IProps {
     onCreateNode: () => void
     onPrev: () => void
     port: number
+    pubKey?: SubscriptionConnectionKeygenResponse
 }
 
 export const CreateNodeStep2ConfigProfiles = ({
@@ -24,7 +25,8 @@ export const CreateNodeStep2ConfigProfiles = ({
     isCreating,
     onCreateNode,
     onPrev,
-    port
+    port,
+    pubKey
 }: IProps) => {
     const { t } = useTranslation()
 
@@ -91,7 +93,7 @@ export const CreateNodeStep2ConfigProfiles = ({
             </Stack>
 
             <Stack gap="xs" mt="auto">
-                <CopyDockerComposeWidget port={port} />
+                <CopyDockerComposeWidget port={port} pubKey={pubKey} />
 
                 <Group justify="space-between">
                     <Button

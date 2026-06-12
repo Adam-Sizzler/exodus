@@ -160,7 +160,8 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                           ...(generatedCredentials ?? pubKey)!,
                           grpcToken:
                               fetchedNode.grpcAuthToken ||
-                              (generatedCredentials ?? pubKey)?.grpcToken
+                              (generatedCredentials ?? pubKey)?.grpcToken ||
+                              ''
                       }
                     : undefined
             }
