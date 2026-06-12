@@ -163,6 +163,7 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 			SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(traffic_reset_day, 1), COALESCE(notify_percent, 0)
 			FROM nodes
 			WHERE is_traffic_tracking_active = true
+			  AND is_disabled = false
 			  AND COALESCE(notify_percent, 0) > 0
 			  AND COALESCE(traffic_limit_bytes, 0) > 0
 			ORDER BY view_position ASC, name ASC
@@ -196,12 +197,14 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 			s.nodeTrafficNotified[node.UUID] = true
 			s.mu.Unlock()
 			s.cfg.Logger.Warn(
-				"Node traffic threshold reached",
+				"Node traffic threshold reached. Disabling node...",
 				"node_uuid", node.UUID,
 				"node", node.Name,
 				"percent", currentPercent,
 				"threshold", node.NotifyPercent,
 			)
+
+			// 1. Отправляем уведомление о достижении лимита трафика
 			notifications.Emit(ctx, s.cfg, notifications.Event{
 				Scope: notifications.ScopeNode,
 				Event: notifications.EventNodeTrafficNotify,
@@ -216,6 +219,27 @@ func (s *Scheduler) reviewNodes(ctx context.Context) error {
 					"notifyPercent":     node.NotifyPercent,
 				},
 			})
+
+			_ = s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
+				_, execErr := db.ExecContext(ctx, `
+					UPDATE nodes 
+					SET is_disabled = true, updated_at = CURRENT_TIMESTAMP 
+					WHERE uuid = ?
+				`, node.UUID)
+				return execErr
+			})
+
+			notifications.Emit(ctx, s.cfg, notifications.Event{
+				Scope: notifications.ScopeNode,
+				Event: notifications.EventNodeDisabled,
+				Data: map[string]any{
+					"uuid":    node.UUID,
+					"name":    node.Name,
+					"address": node.Address,
+					"port":    node.Port,
+				},
+			})
+
 			continue
 		}
 		if currentPercent < node.NotifyPercent && alreadyNotified {
