@@ -73,7 +73,7 @@ export const getFirstRuntimeMetric = (
 }
 
 export const formatMilliseconds = (value?: number): string => `${Number(value ?? 0).toFixed(3)} ms`
-const formatPercent = (value?: number): string => `${Number(value ?? 0).toFixed(1)}%`
+const formatPercent = (value?: number): string => `${Number(value ?? 0).toFixed(1)} %`
 export const formatBytes = (value?: number): string =>
     prettyBytesToAnyUtil(Number(value ?? 0), true)
 
