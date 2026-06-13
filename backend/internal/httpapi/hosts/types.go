@@ -1,0 +1,220 @@
+package hosts
+
+import (
+	"encoding/json"
+	"errors"
+	"regexp"
+
+	"exodus/internal/httpapi/shared"
+)
+
+var (
+	hostTagRegex                = regexp.MustCompile(`^[A-Z0-9_:]+$`)
+	maxProtocolCredentialLength = 256
+	allowedSecurityLayers       = map[string]struct{}{"DEFAULT": {}, "TLS": {}, "NONE": {}}
+	allowedAlpn                 = map[string]struct{}{
+		"h3":             {},
+		"h2":             {},
+		"http/1.1":       {},
+		"h2,http/1.1":    {},
+		"h3,h2,http/1.1": {},
+		"h3,h2":          {},
+	}
+	allowedFingerprints = map[string]struct{}{
+		"chrome":     {},
+		"firefox":    {},
+		"safari":     {},
+		"ios":        {},
+		"android":    {},
+		"edge":       {},
+		"qq":         {},
+		"random":     {},
+		"randomized": {},
+	}
+	allowedTemplateTypes = map[string]struct{}{
+		"XRAY_JSON":   {},
+		"XRAY_BASE64": {},
+		"MIHOMO":      {},
+		"STASH":       {},
+		"CLASH":       {},
+		"SINGBOX":     {},
+	}
+)
+
+var (
+	errConfigProfileNotFound        = errors.New("config profile not found")
+	errConfigProfileInboundNotFound = errors.New("config profile inbound not found")
+	errTemplateNotFound             = errors.New("subscription template not found")
+	errTemplateTypeNotAllowed       = errors.New("template type not allowed")
+)
+
+type hostRecord struct {
+	UUID                       string
+	ViewPosition               int
+	Remark                     string
+	Address                    string
+	Port                       int
+	Path                       *string
+	SNI                        *string
+	Host                       *string
+	ALPN                       *string
+	Fingerprint                *string
+	SecurityLayer              string
+	XHTTPExtraParams           json.RawMessage
+	MuxParams                  json.RawMessage
+	SingboxMuxParams           json.RawMessage
+	ClashMuxParams             json.RawMessage
+	SockoptParams              json.RawMessage
+	IsDisabled                 bool
+	ServerDescription          *string
+	OverrideProtocolCredential bool
+	ProtocolCredential         *string
+	AllowInsecure              bool
+	ShuffleHost                bool
+	SelectorNodesFirst         bool
+	MihomoX25519               bool
+	XrayJSONTemplateUUID       *string
+	KeepSNIBlank               bool
+	Tag                        *string
+	IsHidden                   bool
+	OverrideSNIFromAddress     bool
+	ConfigProfileUUID          *string
+	ConfigProfileInboundUUID   *string
+	ExcludeTypes               []string
+}
+
+type HostInbound struct {
+	ConfigProfileUUID        *string `json:"configProfileUuid"`
+	ConfigProfileInboundUUID *string `json:"configProfileInboundUuid"`
+}
+
+type OptionalString = shared.OptionalString
+
+type OptionalJSON = shared.OptionalJSON
+
+type HostAPI struct {
+	UUID                       string      `json:"uuid"`
+	ViewPosition               int         `json:"viewPosition"`
+	Remark                     string      `json:"remark"`
+	Address                    string      `json:"address"`
+	Port                       int         `json:"port"`
+	Path                       *string     `json:"path"`
+	SNI                        *string     `json:"sni"`
+	Host                       *string     `json:"host"`
+	ALPN                       *string     `json:"alpn"`
+	Fingerprint                *string     `json:"fingerprint"`
+	IsDisabled                 bool        `json:"isDisabled"`
+	SecurityLayer              string      `json:"securityLayer"`
+	XHTTPExtraParams           interface{} `json:"xHttpExtraParams"`
+	MuxParams                  interface{} `json:"muxParams"`
+	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
+	ClashMuxParams             interface{} `json:"clashMuxParams"`
+	SockoptParams              interface{} `json:"sockoptParams"`
+	Inbound                    HostInbound `json:"inbound"`
+	ServerDescription          *string     `json:"serverDescription"`
+	Tag                        *string     `json:"tag"`
+	IsHidden                   bool        `json:"isHidden"`
+	OverrideSNIFromAddress     bool        `json:"overrideSniFromAddress"`
+	KeepSNIBlank               bool        `json:"keepSniBlank"`
+	OverrideProtocolCredential bool        `json:"overrideProtocolCredential"`
+	ProtocolCredential         *string     `json:"protocolCredential"`
+	AllowInsecure              bool        `json:"allowInsecure"`
+	ShuffleHost                bool        `json:"shuffleHost"`
+	SelectorNodesFirst         bool        `json:"selectorNodesFirst"`
+	MihomoX25519               bool        `json:"mihomoX25519"`
+	Nodes                      []string    `json:"nodes"`
+	XrayJSONTemplateUUID       *string     `json:"xrayJsonTemplateUuid"`
+	ExcludedInternalSquads     []string    `json:"excludedInternalSquads"`
+	ExcludeFromSubscription    []string    `json:"excludeFromSubscriptionTypes"`
+}
+
+type HostCreateRequestAPI struct {
+	Inbound                    HostInbound      `json:"inbound"`
+	Remark                     string           `json:"remark"`
+	Address                    string           `json:"address"`
+	Port                       int              `json:"port"`
+	Path                       *string          `json:"path,omitempty"`
+	SNI                        *string          `json:"sni,omitempty"`
+	Host                       *string          `json:"host,omitempty"`
+	ALPN                       *string          `json:"alpn,omitempty"`
+	Fingerprint                *string          `json:"fingerprint,omitempty"`
+	IsDisabled                 *bool            `json:"isDisabled,omitempty"`
+	SecurityLayer              *string          `json:"securityLayer,omitempty"`
+	XHTTPExtraParams           *json.RawMessage `json:"xHttpExtraParams,omitempty"`
+	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
+	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
+	ClashMuxParams             *json.RawMessage `json:"clashMuxParams,omitempty"`
+	SockoptParams              *json.RawMessage `json:"sockoptParams,omitempty"`
+	ServerDescription          *string          `json:"serverDescription,omitempty"`
+	Tag                        *string          `json:"tag,omitempty"`
+	IsHidden                   *bool            `json:"isHidden,omitempty"`
+	OverrideSNIFromAddress     *bool            `json:"overrideSniFromAddress,omitempty"`
+	KeepSNIBlank               *bool            `json:"keepSniBlank,omitempty"`
+	AllowInsecure              *bool            `json:"allowInsecure,omitempty"`
+	OverrideProtocolCredential *bool            `json:"overrideProtocolCredential,omitempty"`
+	ProtocolCredential         *string          `json:"protocolCredential,omitempty"`
+	ShuffleHost                *bool            `json:"shuffleHost,omitempty"`
+	SelectorNodesFirst         *bool            `json:"selectorNodesFirst,omitempty"`
+	MihomoX25519               *bool            `json:"mihomoX25519,omitempty"`
+	Nodes                      []string         `json:"nodes,omitempty"`
+	XrayJSONTemplateUUID       *string          `json:"xrayJsonTemplateUuid,omitempty"`
+	ExcludedInternalSquads     []string         `json:"excludedInternalSquads,omitempty"`
+	ExcludeFromSubscription    []string         `json:"excludeFromSubscriptionTypes,omitempty"`
+}
+
+type HostUpdateRequestAPI struct {
+	UUID                       string         `json:"uuid"`
+	Inbound                    *HostInbound   `json:"inbound,omitempty"`
+	Remark                     OptionalString `json:"remark,omitempty"`
+	Address                    OptionalString `json:"address,omitempty"`
+	Port                       *int           `json:"port,omitempty"`
+	Path                       OptionalString `json:"path,omitempty"`
+	SNI                        OptionalString `json:"sni,omitempty"`
+	Host                       OptionalString `json:"host,omitempty"`
+	ALPN                       OptionalString `json:"alpn,omitempty"`
+	Fingerprint                OptionalString `json:"fingerprint,omitempty"`
+	IsDisabled                 *bool          `json:"isDisabled,omitempty"`
+	SecurityLayer              *string        `json:"securityLayer,omitempty"`
+	XHTTPExtraParams           OptionalJSON   `json:"xHttpExtraParams,omitempty"`
+	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
+	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
+	ClashMuxParams             OptionalJSON   `json:"clashMuxParams,omitempty"`
+	SockoptParams              OptionalJSON   `json:"sockoptParams,omitempty"`
+	ServerDescription          OptionalString `json:"serverDescription,omitempty"`
+	Tag                        OptionalString `json:"tag,omitempty"`
+	IsHidden                   *bool          `json:"isHidden,omitempty"`
+	OverrideSNIFromAddress     *bool          `json:"overrideSniFromAddress,omitempty"`
+	KeepSNIBlank               *bool          `json:"keepSniBlank,omitempty"`
+	AllowInsecure              *bool          `json:"allowInsecure,omitempty"`
+	OverrideProtocolCredential *bool          `json:"overrideProtocolCredential,omitempty"`
+	ProtocolCredential         OptionalString `json:"protocolCredential,omitempty"`
+	ShuffleHost                *bool          `json:"shuffleHost,omitempty"`
+	SelectorNodesFirst         *bool          `json:"selectorNodesFirst,omitempty"`
+	MihomoX25519               *bool          `json:"mihomoX25519,omitempty"`
+	Nodes                      []string       `json:"nodes,omitempty"`
+	XrayJSONTemplateUUID       OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
+	ExcludedInternalSquads     []string       `json:"excludedInternalSquads,omitempty"`
+	ExcludeFromSubscription    []string       `json:"excludeFromSubscriptionTypes,omitempty"`
+}
+
+type reorderHostsRequest struct {
+	Hosts []struct {
+		UUID         string `json:"uuid"`
+		ViewPosition int    `json:"viewPosition"`
+	} `json:"hosts"`
+}
+
+type bulkUUIDsRequest struct {
+	UUIDs []string `json:"uuids"`
+}
+
+type setInboundRequest struct {
+	UUIDs                    []string `json:"uuids"`
+	ConfigProfileUUID        string   `json:"configProfileUuid"`
+	ConfigProfileInboundUUID string   `json:"configProfileInboundUuid"`
+}
+
+type setPortRequest struct {
+	UUIDs []string `json:"uuids"`
+	Port  int      `json:"port"`
+}

@@ -13,6 +13,10 @@ func int64Ptr(value int64) *int64 {
 	return &value
 }
 
+func intPtr(value int) *int {
+	return &value
+}
+
 func TestPlannedUserStatusForUpdateReactivatesLimitedWhenLimitRaised(t *testing.T) {
 	record := userRecord{
 		Status:            "LIMITED",
@@ -80,6 +84,80 @@ func TestPlannedUserStatusForUpdateExplicitStatusWins(t *testing.T) {
 	status, ok := plannedUserStatusForUpdate(record, req, now)
 	if !ok || status != "DISABLED" {
 		t.Fatalf("expected explicit status to win, got ok=%v status=%q", ok, status)
+	}
+}
+
+func TestValidateExtendDays(t *testing.T) {
+	cases := []struct {
+		name    string
+		days    int
+		wantErr bool
+	}{
+		{name: "zero invalid", days: 0, wantErr: true},
+		{name: "negative invalid", days: -1, wantErr: true},
+		{name: "one valid", days: 1, wantErr: false},
+		{name: "max valid", days: 9999, wantErr: false},
+		{name: "over max invalid", days: 10000, wantErr: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateExtendDays(tc.days)
+			if tc.wantErr && err == nil {
+				t.Fatal("expected error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateBulkUpdateUsersFieldsRequiresAtLeastOneField(t *testing.T) {
+	if err := validateBulkUpdateUsersFields(bulkUpdateUsersFields{}); err == nil {
+		t.Fatal("expected error for empty fields")
+	}
+}
+
+func TestValidateBulkUpdateUsersFieldsAcceptsNullableFields(t *testing.T) {
+	fields := bulkUpdateUsersFields{
+		Description: OptionalString{Set: true, Value: nil},
+		TelegramID:  OptionalInt64{Set: true, Value: nil},
+	}
+
+	if err := validateBulkUpdateUsersFields(fields); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestBuildBulkUpdateUserClauses(t *testing.T) {
+	fields := bulkUpdateUsersFields{
+		Status:          stringPtr("active"),
+		Description:     OptionalString{Set: true, Value: nil},
+		Tag:             OptionalString{Set: true, Value: stringPtr("vip")},
+		HwidDeviceLimit: OptionalInt{Set: true, Value: intPtr(3)},
+	}
+
+	clauses, args := buildBulkUpdateUserClauses(fields)
+	wantClauses := []string{
+		"status = ?",
+		"description = NULL",
+		"tag = ?",
+		"hwid_device_limit = ?",
+	}
+	if len(clauses) != len(wantClauses) {
+		t.Fatalf("clauses len = %d, want %d: %#v", len(clauses), len(wantClauses), clauses)
+	}
+	for i := range wantClauses {
+		if clauses[i] != wantClauses[i] {
+			t.Fatalf("clause[%d] = %q, want %q", i, clauses[i], wantClauses[i])
+		}
+	}
+	if len(args) != 3 {
+		t.Fatalf("args len = %d, want 3: %#v", len(args), args)
+	}
+	if args[0] != "ACTIVE" || args[1] != "VIP" || args[2] != 3 {
+		t.Fatalf("unexpected args: %#v", args)
 	}
 }
 
