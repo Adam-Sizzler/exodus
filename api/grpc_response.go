@@ -36,8 +36,10 @@ type Service struct {
 	logger *config.Logger
 	api    *sdk.API
 
-	coreStateMu sync.RWMutex
-	coreOnline  bool
+	coreStateMu   sync.RWMutex
+	coreOnline    bool
+	lifecycleErr  string // root-cause error from last managed start attempt (SPAWN_ERROR etc.)
+	lastLoggedErr string // dedup: avoid repeating the same WARN every 15s stats tick
 
 	singboxVersion string
 	nodeVersion    string
@@ -145,6 +147,8 @@ func (s *Service) MarkCoreOnline() {
 	}
 	s.coreStateMu.Lock()
 	s.coreOnline = true
+	s.lifecycleErr = ""  // core recovered — forget the old start error
+	s.lastLoggedErr = "" // reset log dedup
 	s.coreStateMu.Unlock()
 }
 
@@ -157,21 +161,46 @@ func (s *Service) MarkCoreOffline() {
 	s.coreStateMu.Unlock()
 }
 
+// SetCoreError stores the root-cause error from a managed start/restart attempt
+// (e.g. "start singbox: supervisor XML-RPC fault: SPAWN_ERROR: singbox").
+// GetApiResponse prefers this over the transient "connection refused" errors
+// produced on every stats tick while the core is down, so the panel always
+// sees the original failure reason in core_error / last_status_message.
+// Cleared automatically by MarkCoreOnline when the core recovers.
+func (s *Service) SetCoreError(msg string) {
+	if s == nil {
+		return
+	}
+	s.coreStateMu.Lock()
+	s.lifecycleErr = strings.TrimSpace(msg)
+	s.coreStateMu.Unlock()
+}
+
+// logCoreStatsFailure logs a stats collection error. The first occurrence is
+// always logged at WARN; subsequent identical errors are demoted to DEBUG to
+// avoid flooding the log with "connection refused" every 15s stats tick while
+// the core is stopped. The dedup counter resets when the core recovers
+// (MarkCoreOnline clears lastLoggedErr).
 func (s *Service) logCoreStatsFailure(message string, err error) {
 	if s == nil || s.logger == nil {
 		return
 	}
-	if s.IsCoreOnline() {
-		// Runtime core failures are worth surfacing, but stats collection does not
-		// own the lifecycle state. Keep coreOnline=true here so the next managed
-		// lifecycle request can perform the Remnawave-style health check and emit
-		// the single SingboxService restart warning before restarting the core.
-		s.logger.Warn(message, "error", err)
-		return
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
 	}
-	// Cold start / managed restart: the core API can legitimately be unavailable
-	// while supervisord is starting sing-box. Keep these retries debug-only.
-	s.logger.Debug(message, "error", err)
+	s.coreStateMu.Lock()
+	firstOccurrence := s.lastLoggedErr != errStr
+	if firstOccurrence {
+		s.lastLoggedErr = errStr
+	}
+	s.coreStateMu.Unlock()
+
+	if firstOccurrence {
+		s.logger.Warn(message, "error", err)
+	} else {
+		s.logger.Debug(message, "error", err)
+	}
 }
 
 // GetApiResponse retrieves statistics from the configured core Stats API.
@@ -204,7 +233,18 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		})
 		if err != nil {
 			coreStatus = "error"
-			coreError = fmt.Sprintf("query core stats: %v", err)
+			// Prefer the stored lifecycle error (e.g. "SPAWN_ERROR: singbox")
+			// over the transient "connection refused" produced on every stats
+			// tick while the core is down. The stored error is the root cause;
+			// "connection refused" is just the symptom of it.
+			s.coreStateMu.RLock()
+			stored := s.lifecycleErr
+			s.coreStateMu.RUnlock()
+			if stored != "" {
+				coreError = stored
+			} else {
+				coreError = fmt.Sprintf("query core stats: %v", err)
+			}
 			s.logCoreStatsFailure("Core stats query failed; returning degraded stats", err)
 		} else {
 			for _, item := range stats {
@@ -220,7 +260,14 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
 			if sysErr != nil {
 				coreStatus = "error"
-				coreError = fmt.Sprintf("query core sys stats: %v", sysErr)
+				s.coreStateMu.RLock()
+				stored := s.lifecycleErr
+				s.coreStateMu.RUnlock()
+				if stored != "" {
+					coreError = stored
+				} else {
+					coreError = fmt.Sprintf("query core sys stats: %v", sysErr)
+				}
 				s.logCoreStatsFailure("Core sys stats query failed; returning degraded stats", sysErr)
 			} else if sysStats != nil {
 				singboxUptimeSeconds = int64(sysStats.Uptime)

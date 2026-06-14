@@ -116,6 +116,11 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 			if after, infoErr := supervisor.GetProcessInfo(ctx, coreProcessName); infoErr == nil {
 				result.ProcessAfter = after.StateName
 			}
+			// Store the root cause so GetApiResponse can surface it on every
+			// subsequent stats tick instead of the generic "connection refused".
+			if apiService != nil {
+				apiService.SetCoreError(result.Error)
+			}
 			return result
 		}
 	}
@@ -134,6 +139,9 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	if !isSupervisorRunningState(after.StateName) && !strings.EqualFold(after.StateName, "STARTING") {
 		result.Error = fmt.Sprintf("core supervisor state is %s: %s", after.StateName, after.Description)
 		log.Error(renderCoreFailedMessage(after.StateName, result.Error))
+		if apiService != nil {
+			apiService.SetCoreError(result.Error)
+		}
 		return result
 	}
 
@@ -141,6 +149,7 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 		result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
 		if apiService != nil {
 			apiService.MarkCoreOffline()
+			apiService.SetCoreError(result.Error)
 		}
 		log.Error("Failed to start Sing-box: "+err.Error(), "state", after.StateName)
 		return result
