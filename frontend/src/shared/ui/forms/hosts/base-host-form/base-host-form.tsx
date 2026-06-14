@@ -108,9 +108,9 @@ const SUBSCRIPTION_TYPES = {
 } as const
 
 const MUX_CORE_OPTIONS = [
-    { value: 'XRAY', label: 'Xray/XHTTP' },
     { value: 'SINGBOX', label: 'Singbox' },
-    { value: 'CLASH', label: 'Clash/Mihomo' }
+    { value: 'CLASH', label: 'Clash/Mihomo' },
+    { value: 'XRAY', label: 'Xray' }
 ] as const
 
 type MuxCore = (typeof MUX_CORE_OPTIONS)[number]['value']
@@ -429,7 +429,7 @@ export const BaseHostForm = <T extends CreateHostCommand.Request | UpdateHostCom
     const activeMuxPlaceholder = MUX_PLACEHOLDER_BY_CORE[activeMuxCore]
     const isClashMuxCore = activeMuxCore === 'CLASH'
     const activeMuxCoreLabel =
-        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Xray/XHTTP'
+        MUX_CORE_OPTIONS.find((item) => item.value === activeMuxCore)?.label ?? 'Xray'
     const activeCredentialProtocol = normalizeCredentialProtocol(activeCredentialInbound?.type)
     const activeCredentialProtocolLabel =
         activeCredentialProtocol === 'shadowsocks'

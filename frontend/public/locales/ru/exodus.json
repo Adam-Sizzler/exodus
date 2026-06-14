@@ -1,7 +1,7 @@
 {
     "constants": {
         "dashboard": "Панель управления",
-        "config": "Config",
+        "config": "Конфигурация",
         "home": "Главная",
         "hosts": "Хосты",
         "nodes": "Ноды",
@@ -17,7 +17,7 @@
         "happ-routing-builder": "Happ-роутинг",
         "templates": "Шаблоны",
         "subscription": "Подписка",
-        "subscription-page": "Subscription Page",
+        "subscription-page": "Страница подписки",
         "config-profiles": "Профили",
         "internal-squads": "Внутренние сквады",
         "external-squads": "Внешние сквады",
@@ -29,7 +29,7 @@
         "modules": "Модули",
         "response-rules": "Правила ответов",
         "exodus-settings": "Настройки Exodus",
-        "node-plugins": "Плагины"
+        "node-plugins": "Плагины нод"
     },
     "common": {
         "delete": "Удалить",
@@ -387,12 +387,12 @@
         "address-description-line-2": "В большинстве случаев, должно быть направлено на одну из подключенных нод.",
         "port-description-line-1": "Порт подключения.",
         "port-description-line-2": "В большинстве случаев, должно совпадать с портом выбранного инбаунда.",
-        "sni-description-line-1": "SNI is a server name indication.",
-        "sni-description-line-2": "If not specified, value from config's inbound will be used.",
+        "sni-description-line-1": "SNI это указание имени сервера.",
+        "sni-description-line-2": "Если не указано, будет использовано значение из инбаунда конфигурации",
         "host-visibility": "Видимость хоста",
         "server-description-description": "Только для приложения Happ.",
-        "select-one-inbound-to-apply-to-the-host": "Select one inbound to apply to the host",
-        "server-description-header": "Server Description",
+        "select-one-inbound-to-apply-to-the-host": "Выберите инбаунд для применения к хосту",
+        "server-description-header": "Описание сервера",
         "server-description-line-1": "Эта функция доступна только для Happ со значением ProviderID. См.",
         "server-description-line-2": "документацию Happ",
         "server-description-line-3": "для дополнительной информации.",
@@ -410,7 +410,7 @@
         "basic": "Основные",
         "advanced": "Расширенные",
         "connection-overrides": "Переопределения соединений",
-        "xray-json-and-raw": "Config & Raw",
+        "xray-json-and-raw": "Конфигурация и Raw",
         "mux-core": "MUX Core",
         "hide-host": "Скрыть хост",
         "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "Скрыть хост от пользователей, Exodus отправит этот хост только для RAW-формата подписки",
@@ -431,8 +431,8 @@
         "override-protocol-credential-unsupported": "Протокол выбранного inbound не поддерживается",
         "uuid-for-all-users": "UUID для всех пользователей",
         "password-for-all-users": "Пароль для всех пользователей",
-        "uuid-override": "UUID override",
-        "password-override": "Password override",
+        "uuid-override": "Переопределение UUID",
+        "password-override": "Переопределение Password",
         "generate-protocol-credential": "Сгенерировать credential",
         "replaces-user-credential": "Заменяет credential пользователя при генерации конфигов.",
         "misc-settings": "Прочие настройки",
@@ -473,8 +473,8 @@
         "api-path": "Путь API",
         "api-path-description": "Префикс gRPC пути. Корневой путь: /",
         "api-path-placeholder": "/",
-        "secret-key-sub-secret-key": "Secret Key (SUB_SECRET_KEY)",
-        "grpc-token-sub-grpc-token": "gRPC Token (SUB_GRPC_TOKEN)",
+        "secret-key-sub-secret-key": "Секретный ключ (SUB_SECRET_KEY)",
+        "grpc-token-sub-grpc-token": "gRPC-токен (SUB_GRPC_TOKEN)",
         "exodus-api-token-https-only": "Exodus API токен (только HTTPS)",
         "select-token": "Выберите токен",
         "e-g-example-com": "например, example.com",
@@ -505,7 +505,7 @@
             "system": "Система",
             "bandwidth": "Трафик",
             "short-stats": "Краткая статистика",
-            "exodus-usage": "Exodus Usage",
+            "exodus-usage": "Использование Exodus",
             "process-details": "Детали по процессам",
             "runtime": "Runtime"
         }
@@ -1032,7 +1032,7 @@
         "total-processes": "Все процессы",
         "total-memory": "Всего памяти",
         "average-cpu": "Средний CPU",
-        "heaviest-process": "Heaviest Process"
+        "heaviest-process": "Самый нагруженный процесс"
     },
     "internal-squads-header": {
         "widget": {
@@ -1414,7 +1414,7 @@
             "persian": "Персидский",
             "russian": "Русский",
             "chinese": "Китайский",
-            "french": "French",
+            "french": "Французский",
             "additional-languages": "Дополнительные языки",
             "english-is-always-enabled": "Английский всегда включен",
             "english": "Английский"
@@ -1840,8 +1840,8 @@
     "subpage-config-visual-editor": {
         "widget": {
             "configuration-saved-successfully": "Конфигурация успешно сохранена",
-            "edit-your-subscription-page-configuration": "Редактирование конфигурации Subscription Page",
-            "subpage-editor": "Subpage Editor",
+            "edit-your-subscription-page-configuration": "Редактирование конфигурации страницы подписки",
+            "subpage-editor": "Редактор страницы подписки",
             "load-from-github": "Скачать с Github",
             "brand-appearance": "Внешний вид",
             "branding": "Брендинг",
@@ -1852,11 +1852,11 @@
             "additional-languages": "Дополнительные языки",
             "localization": "Локализация",
             "ui-configuration": "Конфигурация интерфейса",
-            "collapsed": "Collapsed",
-            "expanded": "Expanded",
-            "subscription-info-block-design": "Внешний вид блока: Subscription Info",
-            "installation-guides-header": "Installation Guides Header",
-            "connection-keys-header": "Connection Keys Header",
+            "collapsed": "Свёрнуто",
+            "expanded": "Развёрнуто",
+            "subscription-info-block-design": "Внешний вид блока: Информация о подписке",
+            "installation-guides-header": "Заголовок инструкций по установке",
+            "connection-keys-header": "Заголовок ключей подключения",
             "configure-apps-for-each-platform": "Настроить приложения для разных платформ",
             "platforms": "Платформы",
             "add-platform": "Добавление платформы",
@@ -1870,7 +1870,7 @@
             "accordion": "Аккордеон",
             "minimal": "Минимальная",
             "timeline": "Хронология",
-            "installation-guides-design": "Внешний вид блока: Installation Guides"
+            "installation-guides-design": "Внешний вид блока: Руководства по установке"
         },
         "subpage-config-saved-line-1": "Чтобы применить изменения, пожалуйста, перезапустите Docker-контейнер Susbcription-Page.",
         "subpage-config-saved-line-2": "Например, вы можете использовать следующую команду в терминале:"
@@ -1878,7 +1878,7 @@
     "app-editor-drawer-content": {
         "component": {
             "app-settings": "Настройки приложения",
-            "featured": "Featured",
+            "featured": "Избранное",
             "app-name": "Имя приложения",
             "blocks": "Блоки",
             "add-block": "Добавить блок"
@@ -2132,31 +2132,31 @@
             "no-node-plugins-yet": "Плагины для нод отсутствуют",
             "create-a-plugin-to-extend-node-capabilities-with": "Создайте плагин для расширения возможностей узла с",
             "create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth": "Создайте плагин для включения возможностей на уровне нод. Эта сборка поддерживает ingress-фильтр, egress-фильтр, shared lists и HAProxy Auth.",
-            "ingress-filter": "Ingress-фильтр",
-            "egress-filter": "Egress-фильтр",
-            "haproxy-auth": "HAProxy Auth"
+            "ingress-filter": "Входящий фильтр",
+            "egress-filter": "Исходящий фильтр",
+            "haproxy-auth": "Аутентификация HAProxy"
         }
     },
     "runtime-metrics": {
-        "uptime": "Аптайм",
+        "uptime": "Время работы",
         "total-memory": "Всего памяти",
         "average-cpu": "Средний CPU",
         "scheduler-p99": "P99 планировщика",
-        "heap-used": "Heap Used",
+        "heap-used": "Использование heap",
         "goroutines": "Горутины",
         "threads": "Потоки",
         "memory": "Память",
         "heap": "Heap",
         "rss": "RSS",
-        "go-sys": "Go Sys",
-        "stack": "Stack",
-        "scheduler": "Scheduler",
-        "delay": "Delay",
+        "go-sys": "Память Go runtime",
+        "stack": "Стек",
+        "scheduler": "Планировщик",
+        "delay": "Задержка",
         "p99": "P99",
         "duration": {
-            "days": "дн.",
-            "hours": "ч.",
-            "minutes": "мин.",
+            "days": "дн",
+            "hours": "ч",
+            "minutes": "мин",
             "seconds": "сек"
         }
     }
