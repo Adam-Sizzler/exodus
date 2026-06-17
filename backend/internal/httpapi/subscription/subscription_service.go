@@ -23,6 +23,7 @@ import (
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
 	"exodus/internal/jobqueue"
+	"exodus/internal/logger"
 
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
@@ -48,7 +49,37 @@ var defaultResponseType = responseTypeXrayBase64
 
 const defaultSubpageConfigUUID = "00000000-0000-0000-0000-000000000000"
 
-// SubscriptionSettingsParsed contains subscription settings with parsed JSON fields.
+type ExternalSquadOverrides struct {
+	SubscriptionSettings *subscriptionsettings.SubscriptionSettings `json:"subscription_settings"`
+	HostOverrides        map[string]HostOverride                    `json:"host_overrides"`
+	ResponseHeaders      map[string]string                          `json:"response_headers"`
+	HwidSettings         *HwidSettings                              `json:"hwid_settings"`
+	CustomRemarks        *CustomRemarks                             `json:"custom_remarks"`
+	Templates            map[string]string
+}
+
+type HwidSettingsInput struct {
+	Enabled             *bool `json:"enabled"`
+	FallbackDeviceLimit *int  `json:"fallbackDeviceLimit"`
+	MaxDevicesAnnounce  *int  `json:"maxDevicesAnnounce"`
+}
+
+type UpdateExternalSquadInput struct {
+	UUID              string           `json:"uuid"`
+	Name              *string          `json:"name"`
+	SubpageConfigUUID *string          `json:"subpageConfigUuid"`
+	CustomRemarks     *json.RawMessage `json:"customRemarks"`
+	HwidSettings      json.RawMessage  `json:"hwidSettings"`
+}
+type HostOverride struct {
+	Address *string `json:"address"`
+	Port    *int    `json:"port"`
+	Remark  *string `json:"remark"`
+	SNI     *string `json:"sni"`
+	Host    *string `json:"host"`
+	Path    *string `json:"path"`
+}
+
 type SubscriptionSettingsParsed struct {
 	Raw subscriptionsettings.SubscriptionSettings
 
@@ -214,7 +245,6 @@ type HwidHeaders struct {
 	Synthetic   bool
 }
 
-// loadSubscriptionSettings loads and parses subscription settings.
 func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (SubscriptionSettingsParsed, error) {
 	var parsed SubscriptionSettingsParsed
 
@@ -246,7 +276,6 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
 		return parsed, err
 	}
 
-	// Parse JSON fields
 	if strings.TrimSpace(parsed.Raw.CustomResponseHeaders) != "" {
 		_ = json.Unmarshal([]byte(parsed.Raw.CustomResponseHeaders), &parsed.CustomResponseHeaders)
 	}
@@ -273,6 +302,217 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
 	}
 
 	return parsed, nil
+}
+
+func loadExternalSquadOverrides(ctx context.Context, manager *dbmanager.DatabaseManager, squadUUID string, cfg *config.BackendConfig) (*ExternalSquadOverrides, error) {
+	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
+	overrides := &ExternalSquadOverrides{
+		Templates: make(map[string]string),
+	}
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
+
+		query := `SELECT subscription_settings, host_overrides, response_headers, hwid_settings, custom_remarks
+				  FROM external_squads WHERE uuid = ? LIMIT 1`
+		row := db.QueryRowContext(ctx, query, squadUUID)
+
+		if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersJSON, &hwidSettingsJSON, &customRemarksJSON); err != nil {
+			return err
+		}
+
+		if subscriptionSettingsJSON.Valid && subscriptionSettingsJSON.String != "" {
+			var ss subscriptionsettings.SubscriptionSettings
+			if err := json.Unmarshal([]byte(subscriptionSettingsJSON.String), &ss); err == nil {
+				overrides.SubscriptionSettings = &ss
+				log.Debug("Loaded subscription_settings override")
+			}
+		}
+		if hostOverridesJSON.Valid && hostOverridesJSON.String != "" {
+			var ho map[string]HostOverride
+			if err := json.Unmarshal([]byte(hostOverridesJSON.String), &ho); err == nil {
+				overrides.HostOverrides = ho
+				log.Debug("Loaded host_overrides override", "count", len(ho))
+			}
+		}
+		if responseHeadersJSON.Valid && responseHeadersJSON.String != "" {
+			var rh map[string]string
+			if err := json.Unmarshal([]byte(responseHeadersJSON.String), &rh); err == nil {
+				overrides.ResponseHeaders = rh
+				log.Debug("Loaded response_headers override")
+			}
+		}
+		if hwidSettingsJSON.Valid && hwidSettingsJSON.String != "" {
+			var hs HwidSettings
+			if err := json.Unmarshal([]byte(hwidSettingsJSON.String), &hs); err == nil {
+				overrides.HwidSettings = &hs
+				log.Debug("Loaded hwid_settings override")
+			}
+		}
+		if customRemarksJSON.Valid && customRemarksJSON.String != "" {
+			var cr CustomRemarks
+			if err := json.Unmarshal([]byte(customRemarksJSON.String), &cr); err == nil {
+				overrides.CustomRemarks = &cr
+				log.Debug("Loaded custom_remarks override")
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(ctx, `
+			SELECT t.name, est.template_type
+			FROM external_squads_templates est
+			JOIN subscription_templates t ON t.uuid = est.template_uuid
+			WHERE est.external_squad_uuid = ?
+		`, squadUUID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var templateName, templateType string
+			if err := rows.Scan(&templateName, &templateType); err != nil {
+				return err
+			}
+			overrides.Templates[strings.ToUpper(templateType)] = templateName
+			log.Debug("Loaded template override", "type", templateType, "name", templateName)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		log.Warn("Failed to load external squad templates", "error", err)
+	}
+
+	return overrides, nil
+}
+
+func applyExternalSquadOverrides(base SubscriptionSettingsParsed, overrides *ExternalSquadOverrides) SubscriptionSettingsParsed {
+	if overrides == nil {
+		return base
+	}
+
+	if overrides.SubscriptionSettings != nil {
+		base.Raw = mergeSubscriptionSettings(base.Raw, *overrides.SubscriptionSettings)
+
+		if strings.TrimSpace(base.Raw.ResponseRules) != "" {
+			var rules subscriptionresponserules.Config
+			if err := json.Unmarshal([]byte(base.Raw.ResponseRules), &rules); err == nil {
+				base.ResponseRules = &rules
+			}
+		}
+
+		if strings.TrimSpace(base.Raw.CustomResponseHeaders) != "" {
+			merged := map[string]string{}
+			if err := json.Unmarshal([]byte(base.Raw.CustomResponseHeaders), &merged); err == nil {
+				base.CustomResponseHeaders = merged
+			}
+		}
+	}
+
+	if overrides.HwidSettings != nil {
+		base.HwidSettings = *overrides.HwidSettings
+	}
+
+	if overrides.CustomRemarks != nil {
+		base.CustomRemarks = *overrides.CustomRemarks
+	}
+
+	if len(overrides.ResponseHeaders) > 0 {
+		base.CustomResponseHeaders = overrides.ResponseHeaders
+	}
+
+	return base
+}
+
+func mergeSubscriptionSettings(base, override subscriptionsettings.SubscriptionSettings) subscriptionsettings.SubscriptionSettings {
+	result := base
+	if override.ProfileTitle != "" {
+		result.ProfileTitle = override.ProfileTitle
+	}
+	if override.SupportLink != "" {
+		result.SupportLink = override.SupportLink
+	}
+	if override.ProfileUpdateInterval != 0 {
+		result.ProfileUpdateInterval = override.ProfileUpdateInterval
+	}
+	if override.Address != "" {
+		result.Address = override.Address
+	}
+	if override.Port != 0 {
+		result.Port = override.Port
+	}
+	if override.APISchema != "" {
+		result.APISchema = override.APISchema
+	}
+	if override.APIPath != "" {
+		result.APIPath = override.APIPath
+	}
+	if override.HappAnnounce != "" {
+		result.HappAnnounce = override.HappAnnounce
+	}
+	if override.HappRouting != "" {
+		result.HappRouting = override.HappRouting
+	}
+	if override.IsProfileWebpageURLEnabled != result.IsProfileWebpageURLEnabled {
+		result.IsProfileWebpageURLEnabled = override.IsProfileWebpageURLEnabled
+	}
+	if override.ServeJSONAtBaseSubscription != result.ServeJSONAtBaseSubscription {
+		result.ServeJSONAtBaseSubscription = override.ServeJSONAtBaseSubscription
+	}
+	if override.IsShowCustomRemarks != result.IsShowCustomRemarks {
+		result.IsShowCustomRemarks = override.IsShowCustomRemarks
+	}
+	if override.RandomizeHosts != result.RandomizeHosts {
+		result.RandomizeHosts = override.RandomizeHosts
+	}
+	if override.CustomResponseHeaders != "" {
+		result.CustomResponseHeaders = override.CustomResponseHeaders
+	}
+	if override.ResponseRules != "" {
+		result.ResponseRules = override.ResponseRules
+	}
+	if override.HWIDSettings != "" {
+		result.HWIDSettings = override.HWIDSettings
+	}
+	if override.CustomRemarks != "" {
+		result.CustomRemarks = override.CustomRemarks
+	}
+	return result
+}
+
+func applyHostOverrides(hosts []SubscriptionHost, overrides map[string]HostOverride) []SubscriptionHost {
+	if len(overrides) == 0 {
+		return hosts
+	}
+	for i := range hosts {
+		h := &hosts[i]
+		if override, ok := overrides[h.UUID]; ok {
+			if override.Address != nil {
+				h.Address = *override.Address
+			}
+			if override.Port != nil {
+				h.Port = *override.Port
+			}
+			if override.Remark != nil {
+				h.Remark = *override.Remark
+			}
+			if override.SNI != nil {
+				h.SNI = override.SNI
+			}
+			if override.Host != nil {
+				h.Host = override.Host
+			}
+			if override.Path != nil {
+				h.Path = override.Path
+			}
+		}
+	}
+	return hosts
 }
 
 func getSubscriptionUserByShortUUID(ctx context.Context, manager *dbmanager.DatabaseManager, shortUUID string) (SubscriptionUser, error) {
@@ -811,7 +1051,6 @@ func inferPlatformFromUserAgent(userAgent string) string {
 }
 
 func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
-	// returns (isAllowed, maxDeviceReached, hwidNotSupported)
 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
 		if hwid != nil {
 			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
@@ -1395,7 +1634,6 @@ func parseJSONMapString(raw *string) map[string]interface{} {
 		return nil
 	}
 
-	// Stored value can be a JSON string with YAML payload (for Clash/Mihomo editor).
 	var yamlPayload string
 	if err := json.Unmarshal([]byte(trimmed), &yamlPayload); err != nil {
 		return nil
@@ -1623,7 +1861,6 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
 	leadingSelectorNodeTags := make([]string, 0, len(hosts))
 	trailingSelectorNodeTags := make([]string, 0, len(hosts))
 	for _, host := range hosts {
-		// In exodus hidden hosts are not returned for singbox generation.
 		if host.IsHidden {
 			continue
 		}
@@ -1884,7 +2121,6 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 			utlsCfg.Set("fingerprint", defaults.fingerprint)
 			tlsCfg.Set("utls", utlsCfg)
 		} else if defaults.security == "reality" {
-			// exodus default for reality when fp is empty
 			utlsCfg := orderedmap.New()
 			utlsCfg.Set("enabled", true)
 			utlsCfg.Set("fingerprint", "chrome")
@@ -2841,19 +3077,20 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 		network = *host.InboundNetwork
 	}
 
-	if protocol == "vless" {
+	switch protocol {
+	case "vless":
 		credential := effectiveProtocolCredential(host, user)
 		if credential == "" {
 			return nil
 		}
 		proxy["uuid"] = credential
-	} else if protocol == "trojan" {
+	case "trojan":
 		credential := effectiveProtocolCredential(host, user)
 		if credential == "" {
 			return nil
 		}
 		proxy["password"] = credential
-	} else if protocol == "shadowsocks" {
+	case "shadowsocks":
 		credential := effectiveProtocolCredential(host, user)
 		if credential == "" {
 			return nil
@@ -3167,6 +3404,7 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 }
 
 func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string, requestHeaders map[string]string) (string, bool, error) {
+	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 	user, err := getSubscriptionUserByShortUUID(ctx, manager, shortUUID)
 	if err != nil {
 		return "", false, err
@@ -3175,9 +3413,27 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
 	subpageConfigUUID := ""
 
 	if user.ExternalSquadUUID != nil {
-		_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return db.QueryRowContext(ctx, `SELECT subpage_config_uuid FROM external_squads WHERE uuid = ?`, *user.ExternalSquadUUID).Scan(&subpageConfigUUID)
+		var squadCustomRemarks sql.NullString
+		var squadIsHwidLimited bool
+		var squadHwidMaxDevices int
+
+		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+			return db.QueryRowContext(ctx, `
+			SELECT custom_remarks, is_hwid_limited, hwid_max_devices 
+			FROM external_squads 
+			WHERE uuid = ?`,
+				*user.ExternalSquadUUID).Scan(&squadCustomRemarks, squadIsHwidLimited, squadHwidMaxDevices)
 		})
+
+		if err == nil {
+			log.Debug("Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices)
+
+			_ = squadCustomRemarks
+
+			log.Debug(fmt.Sprintf(" Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices))
+		} else {
+			log.Error(fmt.Sprintf("Failed to load external squad overrides: %v", err))
+		}
 	}
 
 	if subpageConfigUUID == "" {
@@ -3200,4 +3456,105 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
 	}
 
 	return subpageConfigUUID, webpageAllowed, nil
+}
+
+func UpdateExternalSquad(ctx context.Context, manager *dbmanager.DatabaseManager, squadUUID string, input UpdateExternalSquadInput) error {
+	var currentName string
+	var currentSubpageConfigUUID sql.NullString
+	var currentCustomRemarks sql.NullString
+	var currentHwidSettingsRaw []byte
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRowContext(ctx,
+			`SELECT name, subpage_config_uuid, custom_remarks, hwid_settings FROM external_squads WHERE uuid = ?`,
+			squadUUID).Scan(&currentName, &currentSubpageConfigUUID, &currentCustomRemarks, &currentHwidSettingsRaw)
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("external squad not found")
+		}
+		return fmt.Errorf("failed to fetch current external squad: %w", err)
+	}
+
+	var columns []string
+	var args []interface{}
+
+	if input.Name != nil {
+		columns = append(columns, "name = ?")
+		args = append(args, *input.Name)
+	}
+
+	if input.SubpageConfigUUID != nil {
+		columns = append(columns, "subpage_config_uuid = ?")
+		if *input.SubpageConfigUUID == "" {
+			args = append(args, nil)
+		} else {
+			args = append(args, *input.SubpageConfigUUID)
+		}
+	}
+
+	if input.CustomRemarks != nil {
+		columns = append(columns, "custom_remarks = ?")
+		if len(*input.CustomRemarks) == 0 || string(*input.CustomRemarks) == "null" {
+			args = append(args, nil)
+		} else {
+			args = append(args, string(*input.CustomRemarks))
+		}
+	}
+
+	if len(input.HwidSettings) > 0 {
+		raw := strings.TrimSpace(string(input.HwidSettings))
+		if raw == "null" {
+			columns = append(columns, "hwid_settings = ?")
+			args = append(args, nil)
+		} else {
+			var hwidInput HwidSettingsInput
+			if err := json.Unmarshal(input.HwidSettings, &hwidInput); err != nil {
+				return fmt.Errorf("invalid hwidSettings: %w", err)
+			}
+
+			var hwid struct {
+				Enabled             bool `json:"enabled"`
+				MaxDevicesAnnounce  *int `json:"maxDevicesAnnounce"`
+				FallbackDeviceLimit int  `json:"fallbackDeviceLimit"`
+			}
+			hwid.FallbackDeviceLimit = 999
+			if len(currentHwidSettingsRaw) > 0 && !bytes.Equal(currentHwidSettingsRaw, []byte("null")) {
+				if err := json.Unmarshal(currentHwidSettingsRaw, &hwid); err != nil {
+					return fmt.Errorf("failed to unmarshal current hwid settings from database: %w", err)
+				}
+			}
+
+			if hwidInput.Enabled != nil {
+				hwid.Enabled = *hwidInput.Enabled
+			}
+			if hwidInput.FallbackDeviceLimit != nil {
+				hwid.FallbackDeviceLimit = *hwidInput.FallbackDeviceLimit
+			}
+			if hwidInput.MaxDevicesAnnounce != nil {
+				hwid.MaxDevicesAnnounce = hwidInput.MaxDevicesAnnounce
+			}
+
+			updatedHwidRaw, err := json.Marshal(hwid)
+			if err != nil {
+				return fmt.Errorf("failed to marshal merged hwid settings: %w", err)
+			}
+
+			columns = append(columns, "hwid_settings = ?")
+			args = append(args, string(updatedHwidRaw))
+		}
+	}
+
+	if len(columns) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+
+	args = append(args, squadUUID)
+	query := fmt.Sprintf("UPDATE external_squads SET %s WHERE uuid = ?", strings.Join(columns, ", "))
+
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		_, err := db.ExecContext(ctx, query, args...)
+		return err
+	})
+	return err
 }

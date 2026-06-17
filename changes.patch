@@ -1,0 +1,1188 @@
+diff --git a/backend/internal/httpapi/externalsquads/external_squads.go b/backend/internal/httpapi/externalsquads/external_squads.go
+index 7a026562b..95065ca49 100644
+--- a/backend/internal/httpapi/externalsquads/external_squads.go
++++ b/backend/internal/httpapi/externalsquads/external_squads.go
+@@ -6,6 +6,7 @@ import (
+ 	"encoding/json"
+ 	"errors"
+ 	"fmt"
++	"io"
+ 	"net/http"
+ 	"strings"
+ 	"time"
+@@ -73,15 +74,16 @@ type CreateExternalSquadRequest struct {
+ }
+ 
+ type UpdateExternalSquadRequest struct {
+-	UUID                 string            `json:"uuid"`
+-	Name                 *string           `json:"name,omitempty"`
+-	ViewPosition         *int              `json:"viewPosition,omitempty"`
+-	SubscriptionSettings map[string]any    `json:"subscriptionSettings,omitempty"`
+-	HostOverrides        map[string]any    `json:"hostOverrides,omitempty"`
+-	ResponseHeaders      map[string]string `json:"responseHeaders,omitempty"`
+-	HWIDSettings         map[string]any    `json:"hwidSettings,omitempty"`
+-	CustomRemarks        map[string]any    `json:"customRemarks,omitempty"`
+-	SubpageConfigUUID    *string           `json:"subpageConfigUuid,omitempty"`
++	UUID                 string                   `json:"uuid"`
++	Name                 *string                  `json:"name,omitempty"`
++	ViewPosition         *int                     `json:"viewPosition,omitempty"`
++	Templates            *[]ExternalSquadTemplate `json:"templates,omitempty"`
++	SubscriptionSettings json.RawMessage          `json:"subscriptionSettings,omitempty"`
++	HostOverrides        json.RawMessage          `json:"hostOverrides,omitempty"`
++	ResponseHeaders      json.RawMessage          `json:"responseHeaders,omitempty"`
++	HWIDSettings         json.RawMessage          `json:"hwidSettings,omitempty"`
++	CustomRemarks        json.RawMessage          `json:"customRemarks,omitempty"`
++	SubpageConfigUUID    *string                  `json:"subpageConfigUuid,omitempty"`
+ }
+ 
+ type ReorderExternalSquadsRequest struct {
+@@ -90,13 +92,16 @@ type ReorderExternalSquadsRequest struct {
+ 		ViewPosition int    `json:"viewPosition"`
+ 	} `json:"items"`
+ 
+-	// Backward compatibility with legacy payload.
+ 	Squads []struct {
+ 		UUID         string `json:"uuid"`
+ 		ViewPosition int    `json:"viewPosition"`
+ 	} `json:"squads"`
+ }
+ 
++type BulkUsersRequest struct {
++	UserUUIDs []string `json:"userUuids"`
++}
++
+ func (r *CreateExternalSquadRequest) Validate() error {
+ 	if strings.TrimSpace(r.Name) == "" {
+ 		return fmt.Errorf("name is required")
+@@ -123,6 +128,18 @@ func (r *UpdateExternalSquadRequest) Validate() error {
+ 	return nil
+ }
+ 
++func (r *BulkUsersRequest) Validate() error {
++	if len(r.UserUUIDs) == 0 {
++		return fmt.Errorf("userUuids cannot be empty")
++	}
++	for _, u := range r.UserUUIDs {
++		if _, err := uuid.Parse(u); err != nil {
++			return fmt.Errorf("invalid user UUID format: %s", u)
++		}
++	}
++	return nil
++}
++
+ func ExternalSquadsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+ 	return func(w http.ResponseWriter, r *http.Request) {
+ 		switch r.Method {
+@@ -141,6 +158,7 @@ func ExternalSquadsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
+ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+ 	return func(w http.ResponseWriter, r *http.Request) {
+ 		path := strings.TrimSpace(trimExternalSquadsPath(r.URL.Path))
++
+ 		if path == "" {
+ 			switch r.Method {
+ 			case http.MethodGet:
+@@ -157,10 +175,16 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
+ 
+ 		parts := strings.Split(path, "/")
+ 		squadUUID := strings.TrimSpace(parts[0])
++
+ 		if _, err := uuid.Parse(squadUUID); err != nil {
++			if r.Method == http.MethodPatch {
++				handleUpdateExternalSquad(w, r, manager, cfg)
++				return
++			}
+ 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+ 			return
+ 		}
++
+ 		if len(parts) > 1 {
+ 			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "add-users" {
+ 				if r.Method != http.MethodPost {
+@@ -171,7 +195,7 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
+ 				return
+ 			}
+ 			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "remove-users" {
+-				if r.Method != http.MethodDelete {
++				if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+ 					shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+ 					return
+ 				}
+@@ -185,6 +209,8 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
+ 		switch r.Method {
+ 		case http.MethodGet:
+ 			handleGetExternalSquadByUUID(w, r, manager, cfg, squadUUID)
++		case http.MethodPatch:
++			handleUpdateExternalSquad(w, r, manager, cfg)
+ 		case http.MethodDelete:
+ 			handleDeleteExternalSquad(w, r, manager, cfg, squadUUID)
+ 		default:
+@@ -246,12 +272,6 @@ func ExternalSquadsReorderHandler(manager *dbmanager.DatabaseManager, cfg *confi
+ 				}
+ 			}
+ 
+-			if _, err := tx.ExecContext(r.Context(),
+-				`SELECT setval('external_squads_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM external_squads) + 1)`); err != nil {
+-				_ = tx.Rollback()
+-				return err
+-			}
+-
+ 			return tx.Commit()
+ 		})
+ 
+@@ -278,6 +298,22 @@ func handleGetExternalSquads(w http.ResponseWriter, r *http.Request, manager *db
+ 			cfg.Logger.Error("Failed to convert external squad", "uuid", rec.UUID, "error", err)
+ 			continue
+ 		}
++
++		_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++			_ = db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users WHERE external_squad_uuid = ?`, api.UUID).Scan(&api.Info.MembersCount)
++			rows, err := db.QueryContext(r.Context(), `SELECT template_uuid, template_type FROM external_squads_templates WHERE external_squad_uuid = ?`, api.UUID)
++			if err == nil {
++				defer rows.Close()
++				for rows.Next() {
++					var t ExternalSquadTemplate
++					if err := rows.Scan(&t.TemplateUUID, &t.TemplateType); err == nil {
++						api.Templates = append(api.Templates, t)
++					}
++				}
++			}
++			return nil
++		})
++
+ 		result = append(result, api)
+ 	}
+ 
+@@ -306,6 +342,21 @@ func handleGetExternalSquadByUUID(w http.ResponseWriter, r *http.Request, manage
+ 		return
+ 	}
+ 
++	_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++		_ = db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users WHERE external_squad_uuid = ?`, api.UUID).Scan(&api.Info.MembersCount)
++		rows, err := db.QueryContext(r.Context(), `SELECT template_uuid, template_type FROM external_squads_templates WHERE external_squad_uuid = ?`, api.UUID)
++		if err == nil {
++			defer rows.Close()
++			for rows.Next() {
++				var t ExternalSquadTemplate
++				if err := rows.Scan(&t.TemplateUUID, &t.TemplateType); err == nil {
++					api.Templates = append(api.Templates, t)
++				}
++			}
++		}
++		return nil
++	})
++
+ 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": api})
+ }
+ 
+@@ -392,24 +443,21 @@ func handleCreateExternalSquad(w http.ResponseWriter, r *http.Request, manager *
+ 		return
+ 	}
+ 
+-	created, err := getExternalSquadByUUID(r.Context(), manager, squadUUID)
+-	if err != nil {
+-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created external squad", err, cfg)
+-		return
+-	}
++	handleGetExternalSquadByUUID(w, r, manager, cfg, squadUUID)
++}
+ 
+-	api, err := convertExternalSquadToAPI(created)
++func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
++	bodyBytes, err := io.ReadAll(r.Body)
+ 	if err != nil {
+-		shared.SendError(w, http.StatusInternalServerError, "failed to convert external squad", err, cfg)
++		shared.SendError(w, http.StatusBadRequest, "failed to read body", err, cfg)
+ 		return
+ 	}
+ 
+-	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": api})
+-}
++	cfg.Logger.Info("UpdateExternalSquad: received raw body", "body", string(bodyBytes))
+ 
+-func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+ 	var req UpdateExternalSquadRequest
+-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
++	if err := json.Unmarshal(bodyBytes, &req); err != nil {
++		cfg.Logger.Error("UpdateExternalSquad: failed to unmarshal JSON", "error", err)
+ 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+ 		return
+ 	}
+@@ -424,7 +472,20 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *
+ 		return
+ 	}
+ 
+-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++	cfg.Logger.Info("UpdateExternalSquad: parsed request struct",
++		"uuid", req.UUID,
++		"has_name", req.Name != nil,
++		"has_view_position", req.ViewPosition != nil,
++		"has_subscription_settings", req.SubscriptionSettings != nil,
++		"has_host_overrides", req.HostOverrides != nil,
++		"has_response_headers", req.ResponseHeaders != nil,
++		"has_hwid_settings", req.HWIDSettings != nil,
++		"has_custom_remarks", req.CustomRemarks != nil,
++		"has_subpage_config", req.SubpageConfigUUID != nil,
++		"has_templates", req.Templates != nil,
++	)
++
++	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+ 		tx, err := db.BeginTx(r.Context(), nil)
+ 		if err != nil {
+ 			return err
+@@ -444,132 +505,117 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *
+ 		if req.ViewPosition != nil {
+ 			add("view_position", *req.ViewPosition)
+ 		}
++
+ 		if req.SubscriptionSettings != nil {
+-			val, err := marshalJSON(req.SubscriptionSettings)
+-			if err != nil {
+-				_ = tx.Rollback()
+-				return err
++			if string(req.SubscriptionSettings) == "null" {
++				add("subscription_settings", nil)
++			} else {
++				add("subscription_settings", string(req.SubscriptionSettings))
+ 			}
+-			add("subscription_settings", val)
+ 		}
+ 		if req.HostOverrides != nil {
+-			val, err := marshalJSON(req.HostOverrides)
+-			if err != nil {
+-				_ = tx.Rollback()
+-				return err
++			if string(req.HostOverrides) == "null" {
++				add("host_overrides", nil)
++			} else {
++				add("host_overrides", string(req.HostOverrides))
+ 			}
+-			add("host_overrides", val)
+ 		}
+ 		if req.ResponseHeaders != nil {
+-			val, err := marshalJSON(req.ResponseHeaders)
+-			if err != nil {
+-				_ = tx.Rollback()
+-				return err
++			if string(req.ResponseHeaders) == "null" {
++				add("response_headers", nil)
++			} else {
++				add("response_headers", string(req.ResponseHeaders))
+ 			}
+-			add("response_headers", val)
+ 		}
+ 		if req.HWIDSettings != nil {
+-			val, err := marshalJSON(req.HWIDSettings)
+-			if err != nil {
+-				_ = tx.Rollback()
+-				return err
++			if string(req.HWIDSettings) == "null" {
++				add("hwid_settings", nil)
++			} else {
++				add("hwid_settings", string(req.HWIDSettings))
+ 			}
+-			add("hwid_settings", val)
+ 		}
+ 		if req.CustomRemarks != nil {
+-			val, err := marshalJSON(req.CustomRemarks)
+-			if err != nil {
+-				_ = tx.Rollback()
+-				return err
++			if string(req.CustomRemarks) == "null" {
++				add("custom_remarks", nil)
++			} else {
++				add("custom_remarks", string(req.CustomRemarks))
+ 			}
+-			add("custom_remarks", val)
+ 		}
+ 		if req.SubpageConfigUUID != nil {
+ 			add("subpage_config_uuid", normalizeStringPtr(req.SubpageConfigUUID))
+ 		}
+ 
+-		if len(clauses) == 0 {
+-			_ = tx.Rollback()
+-			return fmt.Errorf("no fields to update")
++		if len(clauses) > 0 {
++			clauses = append(clauses, "updated_at = CURRENT_TIMESTAMP")
++			args = append(args, req.UUID)
++
++			query := fmt.Sprintf(`
++				UPDATE external_squads
++				SET %s
++				WHERE uuid = ?
++			`, strings.Join(clauses, ", "))
++
++			if _, err := tx.ExecContext(r.Context(), query, args...); err != nil {
++				cfg.Logger.Error("UpdateExternalSquad: SQL execution failed", "query", query, "error", err)
++				_ = tx.Rollback()
++				if isUniqueViolation(err, "external_squads_name_key") {
++					return errExternalSquadExists
++				}
++				return err
++			}
++		} else if req.Templates != nil {
++			_, err := tx.ExecContext(r.Context(), `
++				UPDATE external_squads 
++				SET updated_at = CURRENT_TIMESTAMP 
++				WHERE uuid = ?
++			`, req.UUID)
++			if err != nil {
++				_ = tx.Rollback()
++				return err
++			}
+ 		}
+ 
+-		clauses = append(clauses, "updated_at = CURRENT_TIMESTAMP")
+-		args = append(args, req.UUID)
++		if req.Templates != nil {
++			_, err = tx.ExecContext(r.Context(), `DELETE FROM external_squads_templates WHERE external_squad_uuid = ?`, req.UUID)
++			if err != nil {
++				_ = tx.Rollback()
++				return err
++			}
+ 
+-		query := fmt.Sprintf(`
+-			UPDATE external_squads
+-			SET %s
+-			WHERE uuid = ?
+-			RETURNING uuid, view_position, name,
+-				subscription_settings, host_overrides, response_headers,
+-				hwid_settings, custom_remarks, subpage_config_uuid,
+-				created_at, updated_at
+-		`, strings.Join(clauses, ", "))
+-
+-		row := tx.QueryRowContext(r.Context(), query, args...)
+-		var rec ExternalSquadRecord
+-		var subSettings, hostOverrides, respHeaders, hwidSettings, customRemarks sql.NullString
+-		var subpageConfigUUID sql.NullString
+-
+-		scanErr := row.Scan(
+-			&rec.UUID,
+-			&rec.ViewPosition,
+-			&rec.Name,
+-			&subSettings,
+-			&hostOverrides,
+-			&respHeaders,
+-			&hwidSettings,
+-			&customRemarks,
+-			&subpageConfigUUID,
+-			&rec.CreatedAt,
+-			&rec.UpdatedAt,
+-		)
+-		if scanErr != nil {
+-			_ = tx.Rollback()
+-			if errors.Is(scanErr, sql.ErrNoRows) {
+-				return errExternalSquadNotFound
++			for _, t := range *req.Templates {
++				_, err = tx.ExecContext(r.Context(), `
++					INSERT INTO external_squads_templates (external_squad_uuid, template_uuid, template_type)
++					VALUES (?, ?, ?)
++				`, req.UUID, t.TemplateUUID, t.TemplateType)
++				if err != nil {
++					_ = tx.Rollback()
++					return err
++				}
+ 			}
+-			return scanErr
+ 		}
+ 
+-		rec.SubscriptionSettings = parseJSONRaw(subSettings)
+-		rec.HostOverrides = parseJSONRaw(hostOverrides)
+-		rec.ResponseHeaders = parseJSONRaw(respHeaders)
+-		rec.HWIDSettings = parseJSONRaw(hwidSettings)
+-		rec.CustomRemarks = parseJSONRaw(customRemarks)
+-		if subpageConfigUUID.Valid {
+-			rec.SubpageConfigUUID = &subpageConfigUUID.String
++		if len(clauses) == 0 && req.Templates == nil {
++			_ = tx.Rollback()
++			return fmt.Errorf("no fields to update")
+ 		}
+ 
+ 		return tx.Commit()
+ 	})
+ 
+ 	if err != nil {
+-		if errors.Is(err, errExternalSquadNotFound) {
+-			shared.SendError(w, http.StatusNotFound, "external squad not found", nil, cfg)
+-			return
+-		}
+ 		if errors.Is(err, errExternalSquadExists) {
+ 			shared.SendError(w, http.StatusConflict, "external squad name already exists", nil, cfg)
+ 			return
+ 		}
++		if err.Error() == "no fields to update" {
++			shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
++			return
++		}
+ 		shared.SendError(w, http.StatusInternalServerError, "failed to update external squad", err, cfg)
+ 		return
+ 	}
+ 
+-	updated, getErr := getExternalSquadByUUID(r.Context(), manager, req.UUID)
+-	if getErr != nil {
+-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated external squad", getErr, cfg)
+-		return
+-	}
+-
+-	api, err := convertExternalSquadToAPI(updated)
+-	if err != nil {
+-		shared.SendError(w, http.StatusInternalServerError, "failed to convert external squad", err, cfg)
+-		return
+-	}
+-
+-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": api})
++	handleGetExternalSquadByUUID(w, r, manager, cfg, req.UUID)
+ }
+ 
+ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+@@ -601,6 +647,16 @@ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, manager *
+ }
+ 
+ func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
++	var req BulkUsersRequest
++	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
++		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
++		return
++	}
++	if err := req.Validate(); err != nil {
++		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
++		return
++	}
++
+ 	var affected int64
+ 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+ 		var exists int
+@@ -610,11 +666,23 @@ func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, m
+ 			}
+ 			return err
+ 		}
+-		result, err := db.ExecContext(r.Context(), `
++
++		placeholders := make([]string, len(req.UserUUIDs))
++		args := make([]any, 0, len(req.UserUUIDs)+1)
++		args = append(args, squadUUID)
++
++		for i, u := range req.UserUUIDs {
++			placeholders[i] = "?"
++			args = append(args, u)
++		}
++
++		query := fmt.Sprintf(`
+ 			UPDATE users
+-			SET external_squad_uuid = ?::uuid, updated_at = CURRENT_TIMESTAMP
+-			WHERE external_squad_uuid IS DISTINCT FROM ?::uuid
+-		`, squadUUID, squadUUID)
++			SET external_squad_uuid = ?, updated_at = CURRENT_TIMESTAMP
++			WHERE uuid IN (%s)
++		`, strings.Join(placeholders, ", "))
++
++		result, err := db.ExecContext(r.Context(), query, args...)
+ 		if err != nil {
+ 			return err
+ 		}
+@@ -635,6 +703,16 @@ func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, m
+ }
+ 
+ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
++	var req BulkUsersRequest
++	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
++		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
++		return
++	}
++	if err := req.Validate(); err != nil {
++		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
++		return
++	}
++
+ 	var affected int64
+ 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+ 		var exists int
+@@ -644,11 +722,23 @@ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Reque
+ 			}
+ 			return err
+ 		}
+-		result, err := db.ExecContext(r.Context(), `
++
++		placeholders := make([]string, len(req.UserUUIDs))
++		args := make([]any, 0, len(req.UserUUIDs)+1)
++
++		for i, u := range req.UserUUIDs {
++			placeholders[i] = "?"
++			args = append(args, u)
++		}
++		args = append(args, squadUUID)
++
++		query := fmt.Sprintf(`
+ 			UPDATE users
+ 			SET external_squad_uuid = NULL, updated_at = CURRENT_TIMESTAMP
+-			WHERE external_squad_uuid = ?
+-		`, squadUUID)
++			WHERE uuid IN (%s) AND external_squad_uuid = ?
++		`, strings.Join(placeholders, ", "))
++
++		result, err := db.ExecContext(r.Context(), query, args...)
+ 		if err != nil {
+ 			return err
+ 		}
+@@ -665,7 +755,12 @@ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Reque
+ 	}
+ 
+ 	cfg.Logger.Info("Users removed from external squad", "squad_uuid", squadUUID, "affected_rows", affected)
+-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
++
++	shared.WriteJSON(w, http.StatusOK, map[string]any{
++		"response": map[string]any{
++			"eventSent": true,
++		},
++	})
+ }
+ 
+ func getExternalSquads(ctx context.Context, manager *dbmanager.DatabaseManager) ([]ExternalSquadRecord, error) {
+@@ -862,8 +957,6 @@ func normalizeStringPtr(v *string) interface{} {
+ }
+ 
+ func isUniqueViolation(err error, constraint string) bool {
+-	// Check for unique constraint violation
+-	// This is a simplified check, may need to be enhanced based on DB driver
+ 	return strings.Contains(err.Error(), "duplicate key") ||
+ 		strings.Contains(err.Error(), "Unique constraint") ||
+ 		strings.Contains(err.Error(), constraint)
+diff --git a/backend/internal/httpapi/subscription/subscription_public.go b/backend/internal/httpapi/subscription/subscription_public.go
+index 001f01b02..adbc7eda0 100644
+--- a/backend/internal/httpapi/subscription/subscription_public.go
++++ b/backend/internal/httpapi/subscription/subscription_public.go
+@@ -4,6 +4,7 @@ import (
+ 	"encoding/base64"
+ 	"encoding/json"
+ 	"fmt"
++	"maps"
+ 	"net/http"
+ 	"strings"
+ 
+@@ -14,7 +15,6 @@ import (
+ 	"exodus/internal/logger"
+ )
+ 
+-// SubscriptionPublicHandler handles public subscription endpoints under /api/sub.
+ func SubscriptionPublicHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+ 	return func(w http.ResponseWriter, r *http.Request) {
+ 		if r.Method != http.MethodGet {
+@@ -110,11 +110,11 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, man
+ 
+ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID, clientType string) {
+ 	ctx := r.Context()
+-
+ 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
++
+ 	var headerDump strings.Builder
+ 	for name, values := range r.Header {
+-		headerDump.WriteString(fmt.Sprintf("  %s: %s\n", name, strings.Join(values, ", ")))
++		fmt.Fprintf(&headerDump, "  %s: %s\n", name, strings.Join(values, ", "))
+ 	}
+ 	log.Debug("Public subscription request", "short_uuid", shortUUID, "headers", headerDump.String())
+ 
+@@ -136,6 +136,21 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
+ 	}
+ 	log.Debug("Subscription user found", "uuid", user.UUID, "status", user.Status, "hwid_limit", user.HwidDeviceLimit)
+ 
++	var externalOverrides *ExternalSquadOverrides
++	if user.ExternalSquadUUID != nil && *user.ExternalSquadUUID != "" {
++		log.Debug("Loading external squad overrides", "squad_uuid", *user.ExternalSquadUUID)
++		overrides, err := loadExternalSquadOverrides(ctx, manager, *user.ExternalSquadUUID, cfg)
++		if err != nil {
++			log.Warn("Failed to load external squad overrides, continuing without them", "error", err)
++		} else {
++			externalOverrides = overrides
++			settings = applyExternalSquadOverrides(settings, externalOverrides)
++			log.Debug("Applied external squad overrides",
++				"has_host_overrides", len(externalOverrides.HostOverrides) > 0,
++				"has_templates", len(externalOverrides.Templates) > 0)
++		}
++	}
++
+ 	headersForMatch := r.Header.Clone()
+ 	headersForMatch.Set("x-exodus-injected-short-uuid", shortUUID)
+ 	if clientType != "" {
+@@ -184,7 +199,6 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
+ 		}
+ 	}
+ 
+-	// Проверяем специальные типы ответа, которые завершают обработку
+ 	switch responseType {
+ 	case responseTypeBlock:
+ 		log.Debug("Response type BLOCK, returning forbidden")
+@@ -241,6 +255,11 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
+ 	}
+ 	log.Debug("Subscription hosts fetched", "hosts", len(hosts))
+ 
++	if externalOverrides != nil && len(externalOverrides.HostOverrides) > 0 {
++		hosts = applyHostOverrides(hosts, externalOverrides.HostOverrides)
++		log.Debug("Applied host overrides to subscription hosts")
++	}
++
+ 	shuffleHostsIfNeeded(hosts, settings)
+ 
+ 	log.Debug("Extracting HWID headers")
+@@ -256,9 +275,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
+ 
+ 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
+ 	headers := buildSubscriptionHeaders(user, settings, isHapp)
+-	for key, value := range extraHeaders {
+-		headers[key] = value
+-	}
++	maps.Copy(headers, extraHeaders)
+ 
+ 	if settings.HwidSettings.Enabled {
+ 		log.Debug("Checking HWID device limit")
+@@ -303,12 +320,52 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
+ 	}
+ 
+ 	templateType := responseTypeToTemplateType(responseType)
+-	templateData, _ := getSubscriptionTemplate(ctx, manager, templateType)
++	var templateData []byte
++	var templateLoaded bool
++
++	normalizeKey := func(k string) string {
++		k = strings.ReplaceAll(k, "_", "")
++		k = strings.ReplaceAll(k, "-", "")
++		return strings.ToUpper(k)
++	}
++
++	if externalOverrides != nil {
++		targetKey := normalizeKey(templateType)
++		var templateName string
++		for k, v := range externalOverrides.Templates {
++			if normalizeKey(k) == targetKey {
++				templateName = v
++				break
++			}
++		}
++
++		if templateName != "" {
++			log.Debug("Using external squad template", "template_type", templateType, "template_name", templateName)
++			var err error
++			_, templateData, err = getSubscriptionTemplateByName(ctx, manager, templateName)
++			if err == nil && len(templateData) > 0 {
++				templateLoaded = true
++			} else {
++				log.Warn("Failed to load external squad template, falling back to global", "template_name", templateName, "error", err)
++			}
++		}
++	}
++
++	if !templateLoaded {
++		templateData, _ = getSubscriptionTemplate(ctx, manager, templateType)
++	}
++
+ 	if overrideTemplateName != "" {
++		log.Debug("Applying template override from response rules", "template_name", overrideTemplateName)
+ 		if overrideType, overrideData, err := getSubscriptionTemplateByName(ctx, manager, overrideTemplateName); err == nil {
+-			if strings.EqualFold(overrideType, templateType) && len(overrideData) > 0 {
++			if strings.EqualFold(normalizeKey(overrideType), normalizeKey(templateType)) && len(overrideData) > 0 {
+ 				templateData = overrideData
++				log.Debug("Template from response rule override applied successfully")
++			} else {
++				log.Warn("Override template type mismatch or empty", "expected", templateType, "actual", overrideType)
+ 			}
++		} else {
++			log.Warn("Failed to load override template by name", "name", overrideTemplateName, "error", err)
+ 		}
+ 	}
+ 
+diff --git a/backend/internal/httpapi/subscription/subscription_service.go b/backend/internal/httpapi/subscription/subscription_service.go
+index 4fc78f1d9..9404f8183 100644
+--- a/backend/internal/httpapi/subscription/subscription_service.go
++++ b/backend/internal/httpapi/subscription/subscription_service.go
+@@ -23,6 +23,7 @@ import (
+ 	"exodus/internal/httpapi/subscriptionresponserules"
+ 	"exodus/internal/httpapi/subscriptionsettings"
+ 	"exodus/internal/jobqueue"
++	"exodus/internal/logger"
+ 
+ 	"github.com/google/uuid"
+ 	"github.com/iancoleman/orderedmap"
+@@ -48,7 +49,37 @@ var defaultResponseType = responseTypeXrayBase64
+ 
+ const defaultSubpageConfigUUID = "00000000-0000-0000-0000-000000000000"
+ 
+-// SubscriptionSettingsParsed contains subscription settings with parsed JSON fields.
++type ExternalSquadOverrides struct {
++	SubscriptionSettings *subscriptionsettings.SubscriptionSettings `json:"subscription_settings"`
++	HostOverrides        map[string]HostOverride                    `json:"host_overrides"`
++	ResponseHeaders      map[string]string                          `json:"response_headers"`
++	HwidSettings         *HwidSettings                              `json:"hwid_settings"`
++	CustomRemarks        *CustomRemarks                             `json:"custom_remarks"`
++	Templates            map[string]string
++}
++
++type HwidSettingsInput struct {
++	Enabled             *bool `json:"enabled"`
++	FallbackDeviceLimit *int  `json:"fallbackDeviceLimit"`
++	MaxDevicesAnnounce  *int  `json:"maxDevicesAnnounce"`
++}
++
++type UpdateExternalSquadInput struct {
++	UUID              string           `json:"uuid"`
++	Name              *string          `json:"name"`
++	SubpageConfigUUID *string          `json:"subpageConfigUuid"`
++	CustomRemarks     *json.RawMessage `json:"customRemarks"`
++	HwidSettings      json.RawMessage  `json:"hwidSettings"`
++}
++type HostOverride struct {
++	Address *string `json:"address"`
++	Port    *int    `json:"port"`
++	Remark  *string `json:"remark"`
++	SNI     *string `json:"sni"`
++	Host    *string `json:"host"`
++	Path    *string `json:"path"`
++}
++
+ type SubscriptionSettingsParsed struct {
+ 	Raw subscriptionsettings.SubscriptionSettings
+ 
+@@ -214,7 +245,6 @@ type HwidHeaders struct {
+ 	Synthetic   bool
+ }
+ 
+-// loadSubscriptionSettings loads and parses subscription settings.
+ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (SubscriptionSettingsParsed, error) {
+ 	var parsed SubscriptionSettingsParsed
+ 
+@@ -246,7 +276,6 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
+ 		return parsed, err
+ 	}
+ 
+-	// Parse JSON fields
+ 	if strings.TrimSpace(parsed.Raw.CustomResponseHeaders) != "" {
+ 		_ = json.Unmarshal([]byte(parsed.Raw.CustomResponseHeaders), &parsed.CustomResponseHeaders)
+ 	}
+@@ -275,6 +304,217 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
+ 	return parsed, nil
+ }
+ 
++func loadExternalSquadOverrides(ctx context.Context, manager *dbmanager.DatabaseManager, squadUUID string, cfg *config.BackendConfig) (*ExternalSquadOverrides, error) {
++	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
++	overrides := &ExternalSquadOverrides{
++		Templates: make(map[string]string),
++	}
++
++	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++		var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
++
++		query := `SELECT subscription_settings, host_overrides, response_headers, hwid_settings, custom_remarks
++				  FROM external_squads WHERE uuid = ? LIMIT 1`
++		row := db.QueryRowContext(ctx, query, squadUUID)
++
++		if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersJSON, &hwidSettingsJSON, &customRemarksJSON); err != nil {
++			return err
++		}
++
++		if subscriptionSettingsJSON.Valid && subscriptionSettingsJSON.String != "" {
++			var ss subscriptionsettings.SubscriptionSettings
++			if err := json.Unmarshal([]byte(subscriptionSettingsJSON.String), &ss); err == nil {
++				overrides.SubscriptionSettings = &ss
++				log.Debug("Loaded subscription_settings override")
++			}
++		}
++		if hostOverridesJSON.Valid && hostOverridesJSON.String != "" {
++			var ho map[string]HostOverride
++			if err := json.Unmarshal([]byte(hostOverridesJSON.String), &ho); err == nil {
++				overrides.HostOverrides = ho
++				log.Debug("Loaded host_overrides override", "count", len(ho))
++			}
++		}
++		if responseHeadersJSON.Valid && responseHeadersJSON.String != "" {
++			var rh map[string]string
++			if err := json.Unmarshal([]byte(responseHeadersJSON.String), &rh); err == nil {
++				overrides.ResponseHeaders = rh
++				log.Debug("Loaded response_headers override")
++			}
++		}
++		if hwidSettingsJSON.Valid && hwidSettingsJSON.String != "" {
++			var hs HwidSettings
++			if err := json.Unmarshal([]byte(hwidSettingsJSON.String), &hs); err == nil {
++				overrides.HwidSettings = &hs
++				log.Debug("Loaded hwid_settings override")
++			}
++		}
++		if customRemarksJSON.Valid && customRemarksJSON.String != "" {
++			var cr CustomRemarks
++			if err := json.Unmarshal([]byte(customRemarksJSON.String), &cr); err == nil {
++				overrides.CustomRemarks = &cr
++				log.Debug("Loaded custom_remarks override")
++			}
++		}
++		return nil
++	})
++	if err != nil {
++		return nil, err
++	}
++
++	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++		rows, err := db.QueryContext(ctx, `
++			SELECT t.name, est.template_type
++			FROM external_squads_templates est
++			JOIN subscription_templates t ON t.uuid = est.template_uuid
++			WHERE est.external_squad_uuid = ?
++		`, squadUUID)
++		if err != nil {
++			return err
++		}
++		defer rows.Close()
++
++		for rows.Next() {
++			var templateName, templateType string
++			if err := rows.Scan(&templateName, &templateType); err != nil {
++				return err
++			}
++			overrides.Templates[strings.ToUpper(templateType)] = templateName
++			log.Debug("Loaded template override", "type", templateType, "name", templateName)
++		}
++		return rows.Err()
++	})
++	if err != nil {
++		log.Warn("Failed to load external squad templates", "error", err)
++	}
++
++	return overrides, nil
++}
++
++func applyExternalSquadOverrides(base SubscriptionSettingsParsed, overrides *ExternalSquadOverrides) SubscriptionSettingsParsed {
++	if overrides == nil {
++		return base
++	}
++
++	if overrides.SubscriptionSettings != nil {
++		base.Raw = mergeSubscriptionSettings(base.Raw, *overrides.SubscriptionSettings)
++
++		if strings.TrimSpace(base.Raw.ResponseRules) != "" {
++			var rules subscriptionresponserules.Config
++			if err := json.Unmarshal([]byte(base.Raw.ResponseRules), &rules); err == nil {
++				base.ResponseRules = &rules
++			}
++		}
++
++		if strings.TrimSpace(base.Raw.CustomResponseHeaders) != "" {
++			merged := map[string]string{}
++			if err := json.Unmarshal([]byte(base.Raw.CustomResponseHeaders), &merged); err == nil {
++				base.CustomResponseHeaders = merged
++			}
++		}
++	}
++
++	if overrides.HwidSettings != nil {
++		base.HwidSettings = *overrides.HwidSettings
++	}
++
++	if overrides.CustomRemarks != nil {
++		base.CustomRemarks = *overrides.CustomRemarks
++	}
++
++	if len(overrides.ResponseHeaders) > 0 {
++		base.CustomResponseHeaders = overrides.ResponseHeaders
++	}
++
++	return base
++}
++
++func mergeSubscriptionSettings(base, override subscriptionsettings.SubscriptionSettings) subscriptionsettings.SubscriptionSettings {
++	result := base
++	if override.ProfileTitle != "" {
++		result.ProfileTitle = override.ProfileTitle
++	}
++	if override.SupportLink != "" {
++		result.SupportLink = override.SupportLink
++	}
++	if override.ProfileUpdateInterval != 0 {
++		result.ProfileUpdateInterval = override.ProfileUpdateInterval
++	}
++	if override.Address != "" {
++		result.Address = override.Address
++	}
++	if override.Port != 0 {
++		result.Port = override.Port
++	}
++	if override.APISchema != "" {
++		result.APISchema = override.APISchema
++	}
++	if override.APIPath != "" {
++		result.APIPath = override.APIPath
++	}
++	if override.HappAnnounce != "" {
++		result.HappAnnounce = override.HappAnnounce
++	}
++	if override.HappRouting != "" {
++		result.HappRouting = override.HappRouting
++	}
++	if override.IsProfileWebpageURLEnabled != result.IsProfileWebpageURLEnabled {
++		result.IsProfileWebpageURLEnabled = override.IsProfileWebpageURLEnabled
++	}
++	if override.ServeJSONAtBaseSubscription != result.ServeJSONAtBaseSubscription {
++		result.ServeJSONAtBaseSubscription = override.ServeJSONAtBaseSubscription
++	}
++	if override.IsShowCustomRemarks != result.IsShowCustomRemarks {
++		result.IsShowCustomRemarks = override.IsShowCustomRemarks
++	}
++	if override.RandomizeHosts != result.RandomizeHosts {
++		result.RandomizeHosts = override.RandomizeHosts
++	}
++	if override.CustomResponseHeaders != "" {
++		result.CustomResponseHeaders = override.CustomResponseHeaders
++	}
++	if override.ResponseRules != "" {
++		result.ResponseRules = override.ResponseRules
++	}
++	if override.HWIDSettings != "" {
++		result.HWIDSettings = override.HWIDSettings
++	}
++	if override.CustomRemarks != "" {
++		result.CustomRemarks = override.CustomRemarks
++	}
++	return result
++}
++
++func applyHostOverrides(hosts []SubscriptionHost, overrides map[string]HostOverride) []SubscriptionHost {
++	if len(overrides) == 0 {
++		return hosts
++	}
++	for i := range hosts {
++		h := &hosts[i]
++		if override, ok := overrides[h.UUID]; ok {
++			if override.Address != nil {
++				h.Address = *override.Address
++			}
++			if override.Port != nil {
++				h.Port = *override.Port
++			}
++			if override.Remark != nil {
++				h.Remark = *override.Remark
++			}
++			if override.SNI != nil {
++				h.SNI = override.SNI
++			}
++			if override.Host != nil {
++				h.Host = override.Host
++			}
++			if override.Path != nil {
++				h.Path = override.Path
++			}
++		}
++	}
++	return hosts
++}
++
+ func getSubscriptionUserByShortUUID(ctx context.Context, manager *dbmanager.DatabaseManager, shortUUID string) (SubscriptionUser, error) {
+ 	return getSubscriptionUserByField(ctx, manager, "short_uuid", shortUUID)
+ }
+@@ -811,7 +1051,6 @@ func inferPlatformFromUserAgent(userAgent string) string {
+ }
+ 
+ func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
+-	// returns (isAllowed, maxDeviceReached, hwidNotSupported)
+ 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
+ 		if hwid != nil {
+ 			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
+@@ -1395,7 +1634,6 @@ func parseJSONMapString(raw *string) map[string]interface{} {
+ 		return nil
+ 	}
+ 
+-	// Stored value can be a JSON string with YAML payload (for Clash/Mihomo editor).
+ 	var yamlPayload string
+ 	if err := json.Unmarshal([]byte(trimmed), &yamlPayload); err != nil {
+ 		return nil
+@@ -1623,7 +1861,6 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
+ 	leadingSelectorNodeTags := make([]string, 0, len(hosts))
+ 	trailingSelectorNodeTags := make([]string, 0, len(hosts))
+ 	for _, host := range hosts {
+-		// In exodus hidden hosts are not returned for singbox generation.
+ 		if host.IsHidden {
+ 			continue
+ 		}
+@@ -1884,7 +2121,6 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
+ 			utlsCfg.Set("fingerprint", defaults.fingerprint)
+ 			tlsCfg.Set("utls", utlsCfg)
+ 		} else if defaults.security == "reality" {
+-			// exodus default for reality when fp is empty
+ 			utlsCfg := orderedmap.New()
+ 			utlsCfg.Set("enabled", true)
+ 			utlsCfg.Set("fingerprint", "chrome")
+@@ -2841,19 +3077,20 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
+ 		network = *host.InboundNetwork
+ 	}
+ 
+-	if protocol == "vless" {
++	switch protocol {
++	case "vless":
+ 		credential := effectiveProtocolCredential(host, user)
+ 		if credential == "" {
+ 			return nil
+ 		}
+ 		proxy["uuid"] = credential
+-	} else if protocol == "trojan" {
++	case "trojan":
+ 		credential := effectiveProtocolCredential(host, user)
+ 		if credential == "" {
+ 			return nil
+ 		}
+ 		proxy["password"] = credential
+-	} else if protocol == "shadowsocks" {
++	case "shadowsocks":
+ 		credential := effectiveProtocolCredential(host, user)
+ 		if credential == "" {
+ 			return nil
+@@ -3167,6 +3404,7 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
+ }
+ 
+ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string, requestHeaders map[string]string) (string, bool, error) {
++	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
+ 	user, err := getSubscriptionUserByShortUUID(ctx, manager, shortUUID)
+ 	if err != nil {
+ 		return "", false, err
+@@ -3175,9 +3413,27 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
+ 	subpageConfigUUID := ""
+ 
+ 	if user.ExternalSquadUUID != nil {
+-		_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+-			return db.QueryRowContext(ctx, `SELECT subpage_config_uuid FROM external_squads WHERE uuid = ?`, *user.ExternalSquadUUID).Scan(&subpageConfigUUID)
++		var squadCustomRemarks sql.NullString
++		var squadIsHwidLimited bool
++		var squadHwidMaxDevices int
++
++		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++			return db.QueryRowContext(ctx, `
++			SELECT custom_remarks, is_hwid_limited, hwid_max_devices 
++			FROM external_squads 
++			WHERE uuid = ?`,
++				*user.ExternalSquadUUID).Scan(&squadCustomRemarks, squadIsHwidLimited, squadHwidMaxDevices)
+ 		})
++
++		if err == nil {
++			log.Debug("Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices)
++
++			_ = squadCustomRemarks
++
++			log.Debug(fmt.Sprintf(" Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices))
++		} else {
++			log.Error(fmt.Sprintf("Failed to load external squad overrides: %v", err))
++		}
+ 	}
+ 
+ 	if subpageConfigUUID == "" {
+@@ -3201,3 +3457,105 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
+ 
+ 	return subpageConfigUUID, webpageAllowed, nil
+ }
++
++func UpdateExternalSquad(ctx context.Context, manager *dbmanager.DatabaseManager, squadUUID string, input UpdateExternalSquadInput) error {
++	var currentName string
++	var currentSubpageConfigUUID sql.NullString
++	var currentCustomRemarks sql.NullString
++	var currentHwidSettingsRaw []byte
++
++	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++		return db.QueryRowContext(ctx,
++			`SELECT name, subpage_config_uuid, custom_remarks, hwid_settings FROM external_squads WHERE uuid = ?`,
++			squadUUID).Scan(&currentName, &currentSubpageConfigUUID, &currentCustomRemarks, &currentHwidSettingsRaw)
++	})
++	if err != nil {
++		if err == sql.ErrNoRows {
++			return fmt.Errorf("external squad not found")
++		}
++		return fmt.Errorf("failed to fetch current external squad: %w", err)
++	}
++
++	var columns []string
++	var args []interface{}
++
++	if input.Name != nil {
++		columns = append(columns, "name = ?")
++		args = append(args, *input.Name)
++	}
++
++	if input.SubpageConfigUUID != nil {
++		columns = append(columns, "subpage_config_uuid = ?")
++		if *input.SubpageConfigUUID == "" {
++			args = append(args, nil)
++		} else {
++			args = append(args, *input.SubpageConfigUUID)
++		}
++	}
++
++	if input.CustomRemarks != nil {
++		columns = append(columns, "custom_remarks = ?")
++		if len(*input.CustomRemarks) == 0 || string(*input.CustomRemarks) == "null" {
++			args = append(args, nil)
++		} else {
++			args = append(args, string(*input.CustomRemarks))
++		}
++	}
++
++	// Обработка HwidSettings
++	if len(input.HwidSettings) > 0 {
++		raw := strings.TrimSpace(string(input.HwidSettings))
++		if raw == "null" {
++			// Устанавливаем NULL в БД
++			columns = append(columns, "hwid_settings = ?")
++			args = append(args, nil)
++		} else {
++			// Парсим переданный объект
++			var hwidInput HwidSettingsInput
++			if err := json.Unmarshal(input.HwidSettings, &hwidInput); err != nil {
++				return fmt.Errorf("invalid hwidSettings: %w", err)
++			}
++
++			var hwid struct {
++				Enabled             bool `json:"enabled"`
++				MaxDevicesAnnounce  *int `json:"maxDevicesAnnounce"`
++				FallbackDeviceLimit int  `json:"fallbackDeviceLimit"`
++			}
++			hwid.FallbackDeviceLimit = 999 // дефолт
++			if len(currentHwidSettingsRaw) > 0 && string(currentHwidSettingsRaw) != "null" {
++				_ = json.Unmarshal(currentHwidSettingsRaw, &hwid)
++			}
++
++			if hwidInput.Enabled != nil {
++				hwid.Enabled = *hwidInput.Enabled
++			}
++			if hwidInput.FallbackDeviceLimit != nil {
++				hwid.FallbackDeviceLimit = *hwidInput.FallbackDeviceLimit
++			}
++			if hwidInput.MaxDevicesAnnounce != nil {
++				hwid.MaxDevicesAnnounce = hwidInput.MaxDevicesAnnounce
++			}
++
++			updatedHwidRaw, err := json.Marshal(hwid)
++			if err != nil {
++				return fmt.Errorf("failed to marshal merged hwid settings: %w", err)
++			}
++
++			columns = append(columns, "hwid_settings = ?")
++			args = append(args, string(updatedHwidRaw))
++		}
++	}
++
++	if len(columns) == 0 {
++		return fmt.Errorf("no fields to update")
++	}
++
++	args = append(args, squadUUID)
++	query := fmt.Sprintf("UPDATE external_squads SET %s WHERE uuid = ?", strings.Join(columns, ", "))
++
++	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
++		_, err := db.ExecContext(ctx, query, args...)
++		return err
++	})
++	return err
++}
+diff --git a/frontend/src/app/layouts/dashboard/main-layout/menu-sections/menu-sections.ts b/frontend/src/app/layouts/dashboard/main-layout/menu-sections/menu-sections.ts
+index fe1acf51c..4f655c55a 100644
+--- a/frontend/src/app/layouts/dashboard/main-layout/menu-sections/menu-sections.ts
++++ b/frontend/src/app/layouts/dashboard/main-layout/menu-sections/menu-sections.ts
+@@ -224,7 +224,7 @@ export const useMenuSections = (): MenuItem[] => {
+                     name: 'Subscription Page',
+                     href: ROUTES.DASHBOARD.SUBPAGE_CONFIGS.ROOT,
+                     icon: PiArrowsInCardinalFill,
+-                    id: 'subscription-page'
++                    id: t('constants.subscription-page')
+                 }
+             ]
+         },

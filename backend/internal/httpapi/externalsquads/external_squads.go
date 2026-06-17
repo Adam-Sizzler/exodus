@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -73,15 +74,16 @@ type CreateExternalSquadRequest struct {
 }
 
 type UpdateExternalSquadRequest struct {
-	UUID                 string            `json:"uuid"`
-	Name                 *string           `json:"name,omitempty"`
-	ViewPosition         *int              `json:"viewPosition,omitempty"`
-	SubscriptionSettings map[string]any    `json:"subscriptionSettings,omitempty"`
-	HostOverrides        map[string]any    `json:"hostOverrides,omitempty"`
-	ResponseHeaders      map[string]string `json:"responseHeaders,omitempty"`
-	HWIDSettings         map[string]any    `json:"hwidSettings,omitempty"`
-	CustomRemarks        map[string]any    `json:"customRemarks,omitempty"`
-	SubpageConfigUUID    *string           `json:"subpageConfigUuid,omitempty"`
+	UUID                 string                   `json:"uuid"`
+	Name                 *string                  `json:"name,omitempty"`
+	ViewPosition         *int                     `json:"viewPosition,omitempty"`
+	Templates            *[]ExternalSquadTemplate `json:"templates,omitempty"`
+	SubscriptionSettings json.RawMessage          `json:"subscriptionSettings,omitempty"`
+	HostOverrides        json.RawMessage          `json:"hostOverrides,omitempty"`
+	ResponseHeaders      json.RawMessage          `json:"responseHeaders,omitempty"`
+	HWIDSettings         json.RawMessage          `json:"hwidSettings,omitempty"`
+	CustomRemarks        json.RawMessage          `json:"customRemarks,omitempty"`
+	SubpageConfigUUID    *string                  `json:"subpageConfigUuid,omitempty"`
 }
 
 type ReorderExternalSquadsRequest struct {
@@ -90,11 +92,14 @@ type ReorderExternalSquadsRequest struct {
 		ViewPosition int    `json:"viewPosition"`
 	} `json:"items"`
 
-	// Backward compatibility with legacy payload.
 	Squads []struct {
 		UUID         string `json:"uuid"`
 		ViewPosition int    `json:"viewPosition"`
 	} `json:"squads"`
+}
+
+type BulkUsersRequest struct {
+	UserUUIDs []string `json:"userUuids"`
 }
 
 func (r *CreateExternalSquadRequest) Validate() error {
@@ -123,6 +128,18 @@ func (r *UpdateExternalSquadRequest) Validate() error {
 	return nil
 }
 
+func (r *BulkUsersRequest) Validate() error {
+	if len(r.UserUUIDs) == 0 {
+		return fmt.Errorf("userUuids cannot be empty")
+	}
+	for _, u := range r.UserUUIDs {
+		if _, err := uuid.Parse(u); err != nil {
+			return fmt.Errorf("invalid user UUID format: %s", u)
+		}
+	}
+	return nil
+}
+
 func ExternalSquadsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -141,6 +158,7 @@ func ExternalSquadsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimSpace(trimExternalSquadsPath(r.URL.Path))
+
 		if path == "" {
 			switch r.Method {
 			case http.MethodGet:
@@ -157,10 +175,16 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 
 		parts := strings.Split(path, "/")
 		squadUUID := strings.TrimSpace(parts[0])
+
 		if _, err := uuid.Parse(squadUUID); err != nil {
+			if r.Method == http.MethodPatch {
+				handleUpdateExternalSquad(w, r, manager, cfg)
+				return
+			}
 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
 		}
+
 		if len(parts) > 1 {
 			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "add-users" {
 				if r.Method != http.MethodPost {
@@ -171,7 +195,7 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 				return
 			}
 			if len(parts) == 3 && parts[1] == "bulk-actions" && parts[2] == "remove-users" {
-				if r.Method != http.MethodDelete {
+				if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 					shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 					return
 				}
@@ -185,6 +209,8 @@ func ExternalSquadByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 		switch r.Method {
 		case http.MethodGet:
 			handleGetExternalSquadByUUID(w, r, manager, cfg, squadUUID)
+		case http.MethodPatch:
+			handleUpdateExternalSquad(w, r, manager, cfg)
 		case http.MethodDelete:
 			handleDeleteExternalSquad(w, r, manager, cfg, squadUUID)
 		default:
@@ -246,12 +272,6 @@ func ExternalSquadsReorderHandler(manager *dbmanager.DatabaseManager, cfg *confi
 				}
 			}
 
-			if _, err := tx.ExecContext(r.Context(),
-				`SELECT setval('external_squads_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM external_squads) + 1)`); err != nil {
-				_ = tx.Rollback()
-				return err
-			}
-
 			return tx.Commit()
 		})
 
@@ -278,6 +298,22 @@ func handleGetExternalSquads(w http.ResponseWriter, r *http.Request, manager *db
 			cfg.Logger.Error("Failed to convert external squad", "uuid", rec.UUID, "error", err)
 			continue
 		}
+
+		_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+			_ = db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users WHERE external_squad_uuid = ?`, api.UUID).Scan(&api.Info.MembersCount)
+			rows, err := db.QueryContext(r.Context(), `SELECT template_uuid, template_type FROM external_squads_templates WHERE external_squad_uuid = ?`, api.UUID)
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var t ExternalSquadTemplate
+					if err := rows.Scan(&t.TemplateUUID, &t.TemplateType); err == nil {
+						api.Templates = append(api.Templates, t)
+					}
+				}
+			}
+			return nil
+		})
+
 		result = append(result, api)
 	}
 
@@ -305,6 +341,21 @@ func handleGetExternalSquadByUUID(w http.ResponseWriter, r *http.Request, manage
 		shared.SendError(w, http.StatusInternalServerError, "failed to convert external squad", err, cfg)
 		return
 	}
+
+	_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		_ = db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users WHERE external_squad_uuid = ?`, api.UUID).Scan(&api.Info.MembersCount)
+		rows, err := db.QueryContext(r.Context(), `SELECT template_uuid, template_type FROM external_squads_templates WHERE external_squad_uuid = ?`, api.UUID)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var t ExternalSquadTemplate
+				if err := rows.Scan(&t.TemplateUUID, &t.TemplateType); err == nil {
+					api.Templates = append(api.Templates, t)
+				}
+			}
+		}
+		return nil
+	})
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": api})
 }
@@ -392,24 +443,21 @@ func handleCreateExternalSquad(w http.ResponseWriter, r *http.Request, manager *
 		return
 	}
 
-	created, err := getExternalSquadByUUID(r.Context(), manager, squadUUID)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created external squad", err, cfg)
-		return
-	}
-
-	api, err := convertExternalSquadToAPI(created)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to convert external squad", err, cfg)
-		return
-	}
-
-	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": api})
+	handleGetExternalSquadByUUID(w, r, manager, cfg, squadUUID)
 }
 
 func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "failed to read body", err, cfg)
+		return
+	}
+
+	cfg.Logger.Info("UpdateExternalSquad: received raw body", "body", string(bodyBytes))
+
 	var req UpdateExternalSquadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		cfg.Logger.Error("UpdateExternalSquad: failed to unmarshal JSON", "error", err)
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
 	}
@@ -424,7 +472,20 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *
 		return
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	cfg.Logger.Info("UpdateExternalSquad: parsed request struct",
+		"uuid", req.UUID,
+		"has_name", req.Name != nil,
+		"has_view_position", req.ViewPosition != nil,
+		"has_subscription_settings", req.SubscriptionSettings != nil,
+		"has_host_overrides", req.HostOverrides != nil,
+		"has_response_headers", req.ResponseHeaders != nil,
+		"has_hwid_settings", req.HWIDSettings != nil,
+		"has_custom_remarks", req.CustomRemarks != nil,
+		"has_subpage_config", req.SubpageConfigUUID != nil,
+		"has_templates", req.Templates != nil,
+	)
+
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
@@ -444,132 +505,117 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, manager *
 		if req.ViewPosition != nil {
 			add("view_position", *req.ViewPosition)
 		}
+
 		if req.SubscriptionSettings != nil {
-			val, err := marshalJSON(req.SubscriptionSettings)
-			if err != nil {
-				_ = tx.Rollback()
-				return err
+			if string(req.SubscriptionSettings) == "null" {
+				add("subscription_settings", nil)
+			} else {
+				add("subscription_settings", string(req.SubscriptionSettings))
 			}
-			add("subscription_settings", val)
 		}
 		if req.HostOverrides != nil {
-			val, err := marshalJSON(req.HostOverrides)
-			if err != nil {
-				_ = tx.Rollback()
-				return err
+			if string(req.HostOverrides) == "null" {
+				add("host_overrides", nil)
+			} else {
+				add("host_overrides", string(req.HostOverrides))
 			}
-			add("host_overrides", val)
 		}
 		if req.ResponseHeaders != nil {
-			val, err := marshalJSON(req.ResponseHeaders)
-			if err != nil {
-				_ = tx.Rollback()
-				return err
+			if string(req.ResponseHeaders) == "null" {
+				add("response_headers", nil)
+			} else {
+				add("response_headers", string(req.ResponseHeaders))
 			}
-			add("response_headers", val)
 		}
 		if req.HWIDSettings != nil {
-			val, err := marshalJSON(req.HWIDSettings)
-			if err != nil {
-				_ = tx.Rollback()
-				return err
+			if string(req.HWIDSettings) == "null" {
+				add("hwid_settings", nil)
+			} else {
+				add("hwid_settings", string(req.HWIDSettings))
 			}
-			add("hwid_settings", val)
 		}
 		if req.CustomRemarks != nil {
-			val, err := marshalJSON(req.CustomRemarks)
-			if err != nil {
-				_ = tx.Rollback()
-				return err
+			if string(req.CustomRemarks) == "null" {
+				add("custom_remarks", nil)
+			} else {
+				add("custom_remarks", string(req.CustomRemarks))
 			}
-			add("custom_remarks", val)
 		}
 		if req.SubpageConfigUUID != nil {
 			add("subpage_config_uuid", normalizeStringPtr(req.SubpageConfigUUID))
 		}
 
-		if len(clauses) == 0 {
+		if len(clauses) > 0 {
+			clauses = append(clauses, "updated_at = CURRENT_TIMESTAMP")
+			args = append(args, req.UUID)
+
+			query := fmt.Sprintf(`
+				UPDATE external_squads
+				SET %s
+				WHERE uuid = ?
+			`, strings.Join(clauses, ", "))
+
+			if _, err := tx.ExecContext(r.Context(), query, args...); err != nil {
+				cfg.Logger.Error("UpdateExternalSquad: SQL execution failed", "query", query, "error", err)
+				_ = tx.Rollback()
+				if isUniqueViolation(err, "external_squads_name_key") {
+					return errExternalSquadExists
+				}
+				return err
+			}
+		} else if req.Templates != nil {
+			_, err := tx.ExecContext(r.Context(), `
+				UPDATE external_squads 
+				SET updated_at = CURRENT_TIMESTAMP 
+				WHERE uuid = ?
+			`, req.UUID)
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+
+		if req.Templates != nil {
+			_, err = tx.ExecContext(r.Context(), `DELETE FROM external_squads_templates WHERE external_squad_uuid = ?`, req.UUID)
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+
+			for _, t := range *req.Templates {
+				_, err = tx.ExecContext(r.Context(), `
+					INSERT INTO external_squads_templates (external_squad_uuid, template_uuid, template_type)
+					VALUES (?, ?, ?)
+				`, req.UUID, t.TemplateUUID, t.TemplateType)
+				if err != nil {
+					_ = tx.Rollback()
+					return err
+				}
+			}
+		}
+
+		if len(clauses) == 0 && req.Templates == nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("no fields to update")
-		}
-
-		clauses = append(clauses, "updated_at = CURRENT_TIMESTAMP")
-		args = append(args, req.UUID)
-
-		query := fmt.Sprintf(`
-			UPDATE external_squads
-			SET %s
-			WHERE uuid = ?
-			RETURNING uuid, view_position, name,
-				subscription_settings, host_overrides, response_headers,
-				hwid_settings, custom_remarks, subpage_config_uuid,
-				created_at, updated_at
-		`, strings.Join(clauses, ", "))
-
-		row := tx.QueryRowContext(r.Context(), query, args...)
-		var rec ExternalSquadRecord
-		var subSettings, hostOverrides, respHeaders, hwidSettings, customRemarks sql.NullString
-		var subpageConfigUUID sql.NullString
-
-		scanErr := row.Scan(
-			&rec.UUID,
-			&rec.ViewPosition,
-			&rec.Name,
-			&subSettings,
-			&hostOverrides,
-			&respHeaders,
-			&hwidSettings,
-			&customRemarks,
-			&subpageConfigUUID,
-			&rec.CreatedAt,
-			&rec.UpdatedAt,
-		)
-		if scanErr != nil {
-			_ = tx.Rollback()
-			if errors.Is(scanErr, sql.ErrNoRows) {
-				return errExternalSquadNotFound
-			}
-			return scanErr
-		}
-
-		rec.SubscriptionSettings = parseJSONRaw(subSettings)
-		rec.HostOverrides = parseJSONRaw(hostOverrides)
-		rec.ResponseHeaders = parseJSONRaw(respHeaders)
-		rec.HWIDSettings = parseJSONRaw(hwidSettings)
-		rec.CustomRemarks = parseJSONRaw(customRemarks)
-		if subpageConfigUUID.Valid {
-			rec.SubpageConfigUUID = &subpageConfigUUID.String
 		}
 
 		return tx.Commit()
 	})
 
 	if err != nil {
-		if errors.Is(err, errExternalSquadNotFound) {
-			shared.SendError(w, http.StatusNotFound, "external squad not found", nil, cfg)
-			return
-		}
 		if errors.Is(err, errExternalSquadExists) {
 			shared.SendError(w, http.StatusConflict, "external squad name already exists", nil, cfg)
+			return
+		}
+		if err.Error() == "no fields to update" {
+			shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 			return
 		}
 		shared.SendError(w, http.StatusInternalServerError, "failed to update external squad", err, cfg)
 		return
 	}
 
-	updated, getErr := getExternalSquadByUUID(r.Context(), manager, req.UUID)
-	if getErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated external squad", getErr, cfg)
-		return
-	}
-
-	api, err := convertExternalSquadToAPI(updated)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to convert external squad", err, cfg)
-		return
-	}
-
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": api})
+	handleGetExternalSquadByUUID(w, r, manager, cfg, req.UUID)
 }
 
 func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
@@ -601,8 +647,21 @@ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, manager *
 }
 
 func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	var req BulkUsersRequest
+	bodyBytes, err := io.ReadAll(r.Body)
+
+	hasSpecificUsers := false
+	if err == nil && len(bodyBytes) > 0 {
+		// Пытаемся распарсить только если тело не пустое
+		if jsonErr := json.Unmarshal(bodyBytes, &req); jsonErr == nil && len(req.UserUUIDs) > 0 {
+			if validateErr := req.Validate(); validateErr == nil {
+				hasSpecificUsers = true
+			}
+		}
+	}
+
 	var affected int64
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var exists int
 		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM external_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -610,15 +669,41 @@ func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, m
 			}
 			return err
 		}
-		result, err := db.ExecContext(r.Context(), `
-			UPDATE users
-			SET external_squad_uuid = ?::uuid, updated_at = CURRENT_TIMESTAMP
-			WHERE external_squad_uuid IS DISTINCT FROM ?::uuid
-		`, squadUUID, squadUUID)
-		if err != nil {
-			return err
+
+		if hasSpecificUsers {
+			// Логика из NEW: обновляем только переданных юзеров
+			placeholders := make([]string, len(req.UserUUIDs))
+			args := make([]any, 0, len(req.UserUUIDs)+1)
+			args = append(args, squadUUID)
+
+			for i, u := range req.UserUUIDs {
+				placeholders[i] = "?"
+				args = append(args, u)
+			}
+
+			query := fmt.Sprintf(`
+				UPDATE users
+				SET external_squad_uuid = ?, updated_at = CURRENT_TIMESTAMP
+				WHERE uuid IN (%s)
+			`, strings.Join(placeholders, ", "))
+
+			result, err := db.ExecContext(r.Context(), query, args...)
+			if err != nil {
+				return err
+			}
+			affected, _ = result.RowsAffected()
+		} else {
+			// Логика из OLD: привязываем всех, у кого отличается
+			result, err := db.ExecContext(r.Context(), `
+				UPDATE users
+				SET external_squad_uuid = ?::uuid, updated_at = CURRENT_TIMESTAMP
+				WHERE external_squad_uuid IS DISTINCT FROM ?::uuid
+			`, squadUUID, squadUUID)
+			if err != nil {
+				return err
+			}
+			affected, _ = result.RowsAffected()
 		}
-		affected, _ = result.RowsAffected()
 		return nil
 	})
 	if err != nil {
@@ -635,8 +720,20 @@ func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, m
 }
 
 func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, squadUUID string) {
+	var req BulkUsersRequest
+	bodyBytes, err := io.ReadAll(r.Body)
+
+	hasSpecificUsers := false
+	if err == nil && len(bodyBytes) > 0 {
+		if jsonErr := json.Unmarshal(bodyBytes, &req); jsonErr == nil && len(req.UserUUIDs) > 0 {
+			if validateErr := req.Validate(); validateErr == nil {
+				hasSpecificUsers = true
+			}
+		}
+	}
+
 	var affected int64
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var exists int
 		if err := db.QueryRowContext(r.Context(), `SELECT 1 FROM external_squads WHERE uuid = ?`, squadUUID).Scan(&exists); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -644,15 +741,41 @@ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Reque
 			}
 			return err
 		}
-		result, err := db.ExecContext(r.Context(), `
-			UPDATE users
-			SET external_squad_uuid = NULL, updated_at = CURRENT_TIMESTAMP
-			WHERE external_squad_uuid = ?
-		`, squadUUID)
-		if err != nil {
-			return err
+
+		if hasSpecificUsers {
+			// Логика из NEW: отвязываем только указанных юзеров
+			placeholders := make([]string, len(req.UserUUIDs))
+			args := make([]any, 0, len(req.UserUUIDs)+1)
+
+			for i, u := range req.UserUUIDs {
+				placeholders[i] = "?"
+				args = append(args, u)
+			}
+			args = append(args, squadUUID)
+
+			query := fmt.Sprintf(`
+				UPDATE users
+				SET external_squad_uuid = NULL, updated_at = CURRENT_TIMESTAMP
+				WHERE uuid IN (%s) AND external_squad_uuid = ?
+			`, strings.Join(placeholders, ", "))
+
+			result, err := db.ExecContext(r.Context(), query, args...)
+			if err != nil {
+				return err
+			}
+			affected, _ = result.RowsAffected()
+		} else {
+			// Логика из OLD: отвязываем всех юзеров именно от этого сквада
+			result, err := db.ExecContext(r.Context(), `
+				UPDATE users
+				SET external_squad_uuid = NULL, updated_at = CURRENT_TIMESTAMP
+				WHERE external_squad_uuid = ?
+			`, squadUUID)
+			if err != nil {
+				return err
+			}
+			affected, _ = result.RowsAffected()
 		}
-		affected, _ = result.RowsAffected()
 		return nil
 	})
 	if err != nil {
@@ -665,7 +788,12 @@ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Reque
 	}
 
 	cfg.Logger.Info("Users removed from external squad", "squad_uuid", squadUUID, "affected_rows", affected)
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"eventSent": true,
+		},
+	})
 }
 
 func getExternalSquads(ctx context.Context, manager *dbmanager.DatabaseManager) ([]ExternalSquadRecord, error) {
@@ -862,8 +990,6 @@ func normalizeStringPtr(v *string) interface{} {
 }
 
 func isUniqueViolation(err error, constraint string) bool {
-	// Check for unique constraint violation
-	// This is a simplified check, may need to be enhanced based on DB driver
 	return strings.Contains(err.Error(), "duplicate key") ||
 		strings.Contains(err.Error(), "Unique constraint") ||
 		strings.Contains(err.Error(), constraint)

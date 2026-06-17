@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 	"exodus/internal/logger"
 )
 
-// SubscriptionPublicHandler handles public subscription endpoints under /api/sub.
 func SubscriptionPublicHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -110,11 +110,11 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, man
 
 func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID, clientType string) {
 	ctx := r.Context()
-
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
+
 	var headerDump strings.Builder
 	for name, values := range r.Header {
-		headerDump.WriteString(fmt.Sprintf("  %s: %s\n", name, strings.Join(values, ", ")))
+		fmt.Fprintf(&headerDump, "  %s: %s\n", name, strings.Join(values, ", "))
 	}
 	log.Debug("Public subscription request", "short_uuid", shortUUID, "headers", headerDump.String())
 
@@ -135,6 +135,21 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 	log.Debug("Subscription user found", "uuid", user.UUID, "status", user.Status, "hwid_limit", user.HwidDeviceLimit)
+
+	var externalOverrides *ExternalSquadOverrides
+	if user.ExternalSquadUUID != nil && *user.ExternalSquadUUID != "" {
+		log.Debug("Loading external squad overrides", "squad_uuid", *user.ExternalSquadUUID)
+		overrides, err := loadExternalSquadOverrides(ctx, manager, *user.ExternalSquadUUID, cfg)
+		if err != nil {
+			log.Warn("Failed to load external squad overrides, continuing without them", "error", err)
+		} else {
+			externalOverrides = overrides
+			settings = applyExternalSquadOverrides(settings, externalOverrides)
+			log.Debug("Applied external squad overrides",
+				"has_host_overrides", len(externalOverrides.HostOverrides) > 0,
+				"has_templates", len(externalOverrides.Templates) > 0)
+		}
+	}
 
 	headersForMatch := r.Header.Clone()
 	headersForMatch.Set("x-exodus-injected-short-uuid", shortUUID)
@@ -184,7 +199,6 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		}
 	}
 
-	// Проверяем специальные типы ответа, которые завершают обработку
 	switch responseType {
 	case responseTypeBlock:
 		log.Debug("Response type BLOCK, returning forbidden")
@@ -241,6 +255,11 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 	log.Debug("Subscription hosts fetched", "hosts", len(hosts))
 
+	if externalOverrides != nil && len(externalOverrides.HostOverrides) > 0 {
+		hosts = applyHostOverrides(hosts, externalOverrides.HostOverrides)
+		log.Debug("Applied host overrides to subscription hosts")
+	}
+
 	shuffleHostsIfNeeded(hosts, settings)
 
 	log.Debug("Extracting HWID headers")
@@ -256,9 +275,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
 	headers := buildSubscriptionHeaders(user, settings, isHapp)
-	for key, value := range extraHeaders {
-		headers[key] = value
-	}
+	maps.Copy(headers, extraHeaders)
 
 	if settings.HwidSettings.Enabled {
 		log.Debug("Checking HWID device limit")
@@ -303,12 +320,52 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	templateType := responseTypeToTemplateType(responseType)
-	templateData, _ := getSubscriptionTemplate(ctx, manager, templateType)
-	if overrideTemplateName != "" {
-		if overrideType, overrideData, err := getSubscriptionTemplateByName(ctx, manager, overrideTemplateName); err == nil {
-			if strings.EqualFold(overrideType, templateType) && len(overrideData) > 0 {
-				templateData = overrideData
+	var templateData []byte
+	var templateLoaded bool
+
+	normalizeKey := func(k string) string {
+		k = strings.ReplaceAll(k, "_", "")
+		k = strings.ReplaceAll(k, "-", "")
+		return strings.ToUpper(k)
+	}
+
+	if externalOverrides != nil {
+		targetKey := normalizeKey(templateType)
+		var templateName string
+		for k, v := range externalOverrides.Templates {
+			if normalizeKey(k) == targetKey {
+				templateName = v
+				break
 			}
+		}
+
+		if templateName != "" {
+			log.Debug("Using external squad template", "template_type", templateType, "template_name", templateName)
+			var err error
+			_, templateData, err = getSubscriptionTemplateByName(ctx, manager, templateName)
+			if err == nil && len(templateData) > 0 {
+				templateLoaded = true
+			} else {
+				log.Warn("Failed to load external squad template, falling back to global", "template_name", templateName, "error", err)
+			}
+		}
+	}
+
+	if !templateLoaded {
+		templateData, _ = getSubscriptionTemplate(ctx, manager, templateType)
+	}
+
+	if overrideTemplateName != "" {
+		log.Debug("Applying template override from response rules", "template_name", overrideTemplateName)
+		if overrideType, overrideData, err := getSubscriptionTemplateByName(ctx, manager, overrideTemplateName); err == nil {
+			if strings.EqualFold(normalizeKey(overrideType), normalizeKey(templateType)) && len(overrideData) > 0 {
+				templateData = overrideData
+				log.Debug("Template from response rule override applied successfully")
+			} else {
+				log.Warn("Override template type mismatch or empty", "expected", templateType, "actual", overrideType)
+			}
+		} else {
+			log.Warn("Failed to load override template by name", "name", overrideTemplateName, "error", err)
 		}
 	}
 
@@ -360,9 +417,6 @@ func writeSubscriptionResponse(w http.ResponseWriter, headers map[string]string,
 }
 
 func base64EncodeSafe(value string) string {
-	if value == "" {
-		return ""
-	}
 	return base64.StdEncoding.EncodeToString([]byte(value))
 }
 

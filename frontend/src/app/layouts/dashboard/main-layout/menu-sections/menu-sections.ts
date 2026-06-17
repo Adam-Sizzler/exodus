@@ -224,7 +224,7 @@ export const useMenuSections = (): MenuItem[] => {
                     name: 'Subscription Page',
                     href: ROUTES.DASHBOARD.SUBPAGE_CONFIGS.ROOT,
                     icon: PiArrowsInCardinalFill,
-                    id: 'subscription-page'
+                    id: t('constants.subscription-page')
                 }
             ]
         },
