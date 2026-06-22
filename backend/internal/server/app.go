@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/exodus/subscription-page/backend/internal/assets"
@@ -22,10 +21,7 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/security"
 )
 
-const (
-	sessionCookieName = "session"
-	inMemoryCacheTTL  = 7 * 24 * time.Hour
-)
+const sessionCookieName = "session"
 
 const (
 	bridgeOperationSubscriptionInfo    = "subscription_info"
@@ -81,18 +77,6 @@ type App struct {
 	cfg        config.Config
 	bridge     PanelBridge
 	assetsPath string
-
-	subscriptionCacheMu sync.RWMutex
-	subscriptionCache   map[string]cachedSubscriptionContent
-
-	subscriptionInfoCacheMu sync.RWMutex
-	subscriptionInfoCache   map[string]cachedJSONPayload
-
-	subpageByShortCacheMu sync.RWMutex
-	subpageByShortCache   map[string]cachedJSONPayload
-
-	subpageConfigByUUIDCacheMu sync.RWMutex
-	subpageConfigByUUIDCache   map[string]cachedJSONPayload
 }
 
 type subpageConfigByShortEnvelope struct {
@@ -114,17 +98,6 @@ type baseSettings struct {
 	MetaTitle          string
 	MetaDescription    string
 	ShowConnectionKeys bool
-}
-
-type cachedSubscriptionContent struct {
-	Payload   []byte
-	Headers   http.Header
-	UpdatedAt time.Time
-}
-
-type cachedJSONPayload struct {
-	Payload   []byte
-	UpdatedAt time.Time
 }
 
 type accessLogResponseWriter struct {
@@ -213,13 +186,9 @@ func New(cfg config.Config, bridge PanelBridge) (*App, error) {
 	logger.WithContext("Bootstrap").Debugf("[CONFIG] assets path: %s", assetsPath)
 
 	return &App{
-		cfg:                      cfg,
-		bridge:                   bridge,
-		assetsPath:               assetsPath,
-		subscriptionCache:        make(map[string]cachedSubscriptionContent),
-		subscriptionInfoCache:    make(map[string]cachedJSONPayload),
-		subpageByShortCache:      make(map[string]cachedJSONPayload),
-		subpageConfigByUUIDCache: make(map[string]cachedJSONPayload),
+		cfg:        cfg,
+		bridge:     bridge,
+		assetsPath: assetsPath,
 	}, nil
 }
 
@@ -399,7 +368,6 @@ func (a *App) proxySubscription(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	cacheKey := subscriptionCacheKey(shortUUID, clientType)
 	bridgeResp, err := a.bridge.QueryPanel(r.Context(), &proto.SubscriptionBridgeRequest{
 		Operation:  bridgeOperationSubscriptionContent,
 		ShortUuid:  shortUUID,
@@ -409,32 +377,17 @@ func (a *App) proxySubscription(
 	})
 	if err != nil {
 		logger.WithContext("RootService").Errorf("Error in GetSubscription Request: %v", err)
-		if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, clientType); ok {
-			logger.WithContext("RootService").Warnf("serving cached subscription content for %s (client_type=%q, age=%s)", shortUUID, clientType, time.Since(cached.UpdatedAt).Round(time.Second))
-			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
-			return
-		}
 		closeConnection(w)
 		return
 	}
 
 	if bridgeResp.GetStatusCode() < 200 || bridgeResp.GetStatusCode() >= 300 || len(bridgeResp.GetPayload()) == 0 {
-		if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, clientType); ok {
-			logger.WithContext("RootService").Warnf("serving cached subscription content for %s due panel status=%d (client_type=%q, age=%s)", shortUUID, bridgeResp.GetStatusCode(), clientType, time.Since(cached.UpdatedAt).Round(time.Second))
-			writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
-			return
-		}
 		closeConnection(w)
 		return
 	}
 
 	headers := protoHeadersToHTTPHeader(bridgeResp.GetHeaders())
-	payload := cloneBytes(bridgeResp.GetPayload())
-	a.setCachedSubscriptionContent(cacheKey, payload, headers)
-	if strings.TrimSpace(clientType) != "" {
-		a.setCachedSubscriptionContent(subscriptionCacheKey(shortUUID, ""), payload, headers)
-	}
-	writeSubscriptionResponse(w, r, headers, payload)
+	writeSubscriptionResponse(w, r, headers, bridgeResp.GetPayload())
 }
 
 func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r *http.Request) {
@@ -445,21 +398,8 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	})
 	if err != nil {
 		logger.WithContext("RootService").Errorf("Error in GetSubscriptionInfo Request: %v", err)
-		if cached, ok := a.getCachedSubscriptionInfo(shortUUID); ok {
-			logger.WithContext("RootService").Warnf("serving cached subscription info for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
-			subscriptionDataRaw = cached.Payload
-		} else {
-			if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, ""); ok {
-				logger.WithContext("RootService").Warnf("serving cached subscription content for %s due missing subscription info cache (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
-				writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
-				return
-			}
-			logger.WithContext("RootService").Warnf("no cached subscription info or subscription content for %s; closing connection", shortUUID)
-			closeConnection(w)
-			return
-		}
-	} else {
-		a.setCachedSubscriptionInfo(shortUUID, subscriptionDataRaw)
+		closeConnection(w)
+		return
 	}
 
 	subpageEnvelopeRaw, err := a.requestJSON(r.Context(), &proto.SubscriptionBridgeRequest{
@@ -469,21 +409,8 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	})
 	if err != nil {
 		logger.WithContext("RootService").Errorf("Error in GetSubpageConfig Request: %v", err)
-		if cached, ok := a.getCachedSubpageByShort(shortUUID); ok {
-			logger.WithContext("RootService").Warnf("serving cached subpage config envelope for %s (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
-			subpageEnvelopeRaw = cached.Payload
-		} else {
-			if cached, ok := a.getBestCachedSubscriptionContent(shortUUID, ""); ok {
-				logger.WithContext("RootService").Warnf("serving cached subscription content for %s due missing subpage config cache (age=%s)", shortUUID, time.Since(cached.UpdatedAt).Round(time.Second))
-				writeSubscriptionResponse(w, r, cached.Headers, cached.Payload)
-				return
-			}
-			logger.WithContext("RootService").Warnf("no cached subpage config or subscription content for %s; closing connection", shortUUID)
-			closeConnection(w)
-			return
-		}
-	} else {
-		a.setCachedSubpageByShort(shortUUID, subpageEnvelopeRaw)
+		closeConnection(w)
+		return
 	}
 
 	var subscriptionData map[string]any
@@ -589,11 +516,7 @@ func (a *App) requestJSON(ctx context.Context, req *proto.SubscriptionBridgeRequ
 
 func (a *App) getSubpageConfigByUUID(ctx context.Context, subpageConfigUUID string) ([]byte, error) {
 	if cached, ok := a.bridge.GetCachedSubpageConfig(subpageConfigUUID); ok && len(cached) > 0 {
-		a.setCachedSubpageConfigByUUID(subpageConfigUUID, cached)
 		return cached, nil
-	}
-	if cached, ok := a.getCachedSubpageConfigByUUID(subpageConfigUUID); ok {
-		return cached.Payload, nil
 	}
 
 	resp, err := a.requestJSON(ctx, &proto.SubscriptionBridgeRequest{
@@ -601,13 +524,8 @@ func (a *App) getSubpageConfigByUUID(ctx context.Context, subpageConfigUUID stri
 		SubpageConfigUuid: subpageConfigUUID,
 	})
 	if err != nil {
-		if cached, ok := a.getCachedSubpageConfigByUUID(subpageConfigUUID); ok {
-			logger.WithContext("RootService").Warnf("serving cached subpage config by uuid=%s (age=%s)", subpageConfigUUID, time.Since(cached.UpdatedAt).Round(time.Second))
-			return cached.Payload, nil
-		}
 		return nil, err
 	}
-	a.setCachedSubpageConfigByUUID(subpageConfigUUID, resp)
 
 	return resp, nil
 }
@@ -736,215 +654,6 @@ func parseBaseSettings(rawConfig []byte) baseSettings {
 	}
 }
 
-func subscriptionCacheKey(shortUUID, clientType string) string {
-	normalizedType := strings.ToLower(strings.TrimSpace(clientType))
-	if normalizedType == "" {
-		normalizedType = "_"
-	}
-	return strings.TrimSpace(shortUUID) + "|" + normalizedType
-}
-
-func (a *App) setCachedSubscriptionContent(key string, payload []byte, headers http.Header) {
-	if key == "" || len(payload) == 0 {
-		return
-	}
-
-	a.subscriptionCacheMu.Lock()
-	a.subscriptionCache[key] = cachedSubscriptionContent{
-		Payload:   cloneBytes(payload),
-		Headers:   cloneHeader(headers),
-		UpdatedAt: time.Now().UTC(),
-	}
-	a.subscriptionCacheMu.Unlock()
-}
-
-func (a *App) getCachedSubscriptionContent(key string) (cachedSubscriptionContent, bool) {
-	if key == "" {
-		return cachedSubscriptionContent{}, false
-	}
-
-	a.subscriptionCacheMu.RLock()
-	cached, ok := a.subscriptionCache[key]
-	a.subscriptionCacheMu.RUnlock()
-	if !ok || len(cached.Payload) == 0 {
-		return cachedSubscriptionContent{}, false
-	}
-	if !isCacheFresh(cached.UpdatedAt) {
-		return cachedSubscriptionContent{}, false
-	}
-
-	return cachedSubscriptionContent{
-		Payload:   cloneBytes(cached.Payload),
-		Headers:   cloneHeader(cached.Headers),
-		UpdatedAt: cached.UpdatedAt,
-	}, true
-}
-
-func (a *App) getBestCachedSubscriptionContent(shortUUID, clientType string) (cachedSubscriptionContent, bool) {
-	exactKey := subscriptionCacheKey(shortUUID, clientType)
-	if cached, ok := a.getCachedSubscriptionContent(exactKey); ok {
-		return cached, true
-	}
-
-	genericKey := subscriptionCacheKey(shortUUID, "")
-	if genericKey != exactKey {
-		if cached, ok := a.getCachedSubscriptionContent(genericKey); ok {
-			return cached, true
-		}
-	}
-
-	return a.getAnyCachedSubscriptionContentByShortUUID(shortUUID)
-}
-
-func (a *App) getAnyCachedSubscriptionContentByShortUUID(shortUUID string) (cachedSubscriptionContent, bool) {
-	shortUUID = strings.TrimSpace(shortUUID)
-	if shortUUID == "" {
-		return cachedSubscriptionContent{}, false
-	}
-
-	prefix := shortUUID + "|"
-	var (
-		best   cachedSubscriptionContent
-		hasOne bool
-	)
-
-	a.subscriptionCacheMu.RLock()
-	for key, value := range a.subscriptionCache {
-		if !strings.HasPrefix(key, prefix) {
-			continue
-		}
-		if len(value.Payload) == 0 || !isCacheFresh(value.UpdatedAt) {
-			continue
-		}
-		if !hasOne || value.UpdatedAt.After(best.UpdatedAt) {
-			best = value
-			hasOne = true
-		}
-	}
-	a.subscriptionCacheMu.RUnlock()
-
-	if !hasOne {
-		return cachedSubscriptionContent{}, false
-	}
-
-	return cachedSubscriptionContent{
-		Payload:   cloneBytes(best.Payload),
-		Headers:   cloneHeader(best.Headers),
-		UpdatedAt: best.UpdatedAt,
-	}, true
-}
-
-func (a *App) setCachedSubscriptionInfo(shortUUID string, payload []byte) {
-	if strings.TrimSpace(shortUUID) == "" || len(payload) == 0 {
-		return
-	}
-
-	a.subscriptionInfoCacheMu.Lock()
-	a.subscriptionInfoCache[shortUUID] = cachedJSONPayload{
-		Payload:   cloneBytes(payload),
-		UpdatedAt: time.Now().UTC(),
-	}
-	a.subscriptionInfoCacheMu.Unlock()
-}
-
-func (a *App) getCachedSubscriptionInfo(shortUUID string) (cachedJSONPayload, bool) {
-	if strings.TrimSpace(shortUUID) == "" {
-		return cachedJSONPayload{}, false
-	}
-
-	a.subscriptionInfoCacheMu.RLock()
-	cached, ok := a.subscriptionInfoCache[shortUUID]
-	a.subscriptionInfoCacheMu.RUnlock()
-	if !ok || len(cached.Payload) == 0 {
-		return cachedJSONPayload{}, false
-	}
-	if !isCacheFresh(cached.UpdatedAt) {
-		return cachedJSONPayload{}, false
-	}
-
-	return cachedJSONPayload{
-		Payload:   cloneBytes(cached.Payload),
-		UpdatedAt: cached.UpdatedAt,
-	}, true
-}
-
-func (a *App) setCachedSubpageByShort(shortUUID string, payload []byte) {
-	if strings.TrimSpace(shortUUID) == "" || len(payload) == 0 {
-		return
-	}
-
-	a.subpageByShortCacheMu.Lock()
-	a.subpageByShortCache[shortUUID] = cachedJSONPayload{
-		Payload:   cloneBytes(payload),
-		UpdatedAt: time.Now().UTC(),
-	}
-	a.subpageByShortCacheMu.Unlock()
-}
-
-func (a *App) getCachedSubpageByShort(shortUUID string) (cachedJSONPayload, bool) {
-	if strings.TrimSpace(shortUUID) == "" {
-		return cachedJSONPayload{}, false
-	}
-
-	a.subpageByShortCacheMu.RLock()
-	cached, ok := a.subpageByShortCache[shortUUID]
-	a.subpageByShortCacheMu.RUnlock()
-	if !ok || len(cached.Payload) == 0 {
-		return cachedJSONPayload{}, false
-	}
-	if !isCacheFresh(cached.UpdatedAt) {
-		return cachedJSONPayload{}, false
-	}
-
-	return cachedJSONPayload{
-		Payload:   cloneBytes(cached.Payload),
-		UpdatedAt: cached.UpdatedAt,
-	}, true
-}
-
-func (a *App) setCachedSubpageConfigByUUID(uuid string, payload []byte) {
-	uuid = strings.TrimSpace(uuid)
-	if uuid == "" || len(payload) == 0 {
-		return
-	}
-
-	a.subpageConfigByUUIDCacheMu.Lock()
-	a.subpageConfigByUUIDCache[uuid] = cachedJSONPayload{
-		Payload:   cloneBytes(payload),
-		UpdatedAt: time.Now().UTC(),
-	}
-	a.subpageConfigByUUIDCacheMu.Unlock()
-}
-
-func (a *App) getCachedSubpageConfigByUUID(uuid string) (cachedJSONPayload, bool) {
-	uuid = strings.TrimSpace(uuid)
-	if uuid == "" {
-		return cachedJSONPayload{}, false
-	}
-
-	a.subpageConfigByUUIDCacheMu.RLock()
-	cached, ok := a.subpageConfigByUUIDCache[uuid]
-	a.subpageConfigByUUIDCacheMu.RUnlock()
-	if !ok || len(cached.Payload) == 0 {
-		return cachedJSONPayload{}, false
-	}
-	if !isCacheFresh(cached.UpdatedAt) {
-		return cachedJSONPayload{}, false
-	}
-
-	return cachedJSONPayload{
-		Payload:   cloneBytes(cached.Payload),
-		UpdatedAt: cached.UpdatedAt,
-	}, true
-}
-
-func isCacheFresh(updatedAt time.Time) bool {
-	if updatedAt.IsZero() {
-		return false
-	}
-	return time.Since(updatedAt) <= inMemoryCacheTTL
-}
-
 func writeSubscriptionResponse(w http.ResponseWriter, r *http.Request, headers http.Header, payload []byte) {
 	for key, values := range headers {
 		for _, value := range values {
@@ -973,24 +682,4 @@ func protoHeadersToHTTPHeader(headers []*proto.Header) http.Header {
 	return result
 }
 
-func cloneBytes(in []byte) []byte {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]byte, len(in))
-	copy(out, in)
-	return out
-}
 
-func cloneHeader(in http.Header) http.Header {
-	if len(in) == 0 {
-		return make(http.Header)
-	}
-	out := make(http.Header, len(in))
-	for key, values := range in {
-		copied := make([]string, len(values))
-		copy(copied, values)
-		out[key] = copied
-	}
-	return out
-}
