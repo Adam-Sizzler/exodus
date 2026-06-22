@@ -247,21 +247,20 @@ func notificationClientIP(r *http.Request) string {
 
 func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Normalize the path before any auth decision so traversal sequences
-		// (../, %2E%2E%2F, duplicate slashes, etc.) can't smuggle a protected
-		// path through the public-path prefix check below.
-		cleanedPath := path.Clean(r.URL.Path)
-		if cleanedPath != "/" && strings.HasSuffix(r.URL.Path, "/") {
-			cleanedPath += "/"
-		}
+		// Normalize r.URL.Path in-place so every downstream handler
+		// (auth checks, ServeMux routing, logging) all see the same
+		// clean path. Mirrors the cleanPath call at the top of
+		// exodus-sub's ServeHTTP — single normalization point, no
+		// local copy that could diverge from what the mux sees.
+		r.URL.Path = cleanPath(r.URL.Path)
 
 		// Protect API routes only.
-		if !strings.HasPrefix(cleanedPath, "/api/") {
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if isPublicAPIPath(cleanedPath) {
+		if isPublicAPIPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -297,6 +296,27 @@ func isPublicAPIPath(p string) bool {
 		}
 		return false
 	}
+}
+
+// cleanPath normalises a raw URL path before any routing or auth decision.
+// It mirrors the cleanPath helper in exodus-sub's server/helpers.go so both
+// services apply identical path sanitisation logic:
+//   - empty path → "/"
+//   - path.Clean collapses .., ., and duplicate slashes
+//   - result always starts with "/"
+//
+// Using path.Clean (net/http URL semantics) rather than filepath.Clean
+// (OS filesystem semantics) is correct here: on Linux both produce the same
+// output for URL paths, but path.Clean is the right abstraction for HTTP.
+func cleanPath(rawPath string) string {
+	if rawPath == "" {
+		return "/"
+	}
+	cleaned := path.Clean("/" + rawPath)
+	if cleaned == "." {
+		return "/"
+	}
+	return cleaned
 }
 
 func authenticateRequest(r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (*AuthPrincipal, error) {
