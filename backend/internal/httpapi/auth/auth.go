@@ -5,9 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"exodus/internal/config"
@@ -21,6 +24,90 @@ import (
 )
 
 const sessionCookieName = "exodus_session"
+
+// --- Login brute-force rate limiting -------------------------------------
+//
+// /api/auth/login is a public endpoint (see isPublicAPIPath), so it must
+// defend itself against unlimited password-guessing. We rate-limit by the
+// raw TCP peer address (r.RemoteAddr) rather than X-Forwarded-For/X-Real-IP,
+// since those headers are attacker-controlled unless a trusted-proxy check
+// is applied first (see middleware.GetClientIP, which does not do this) and
+// would otherwise let an attacker bypass the limiter by spoofing a new
+// "client IP" on every request.
+
+const (
+	loginRateLimitWindow      = 5 * time.Minute
+	loginRateLimitMaxAttempts = 10
+)
+
+type loginRateLimiter struct {
+	mu       sync.Mutex
+	attempts map[string][]time.Time
+}
+
+var globalLoginRateLimiter = &loginRateLimiter{attempts: make(map[string][]time.Time)}
+
+// allow reports whether a new login attempt from key is currently permitted
+// and, if so, records it against the sliding window.
+func (l *loginRateLimiter) allow(key string) bool {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	cutoff := now.Add(-loginRateLimitWindow)
+	existing := l.attempts[key]
+	kept := existing[:0]
+	for _, t := range existing {
+		if t.After(cutoff) {
+			kept = append(kept, t)
+		}
+	}
+
+	if len(kept) >= loginRateLimitMaxAttempts {
+		l.attempts[key] = kept
+		return false
+	}
+
+	l.attempts[key] = append(kept, now)
+	return true
+}
+
+// reset clears the window for key, called after a successful login so a
+// legitimate user who mistyped a few times isn't penalized afterwards.
+func (l *loginRateLimiter) reset(key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.attempts, key)
+}
+
+func loginRateLimitKey(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil || host == "" {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// dummyPasswordHash has the same on-disk format and PBKDF2 cost as a real
+// stored password hash. It is compared against whenever the supplied
+// username does not exist, so VerifyPassword always does the same amount of
+// work and a nonexistent-user response can't be distinguished from a
+// wrong-password response by response time (prevents username enumeration
+// via the login endpoint).
+var dummyPasswordHash = mustDummyPasswordHash()
+
+func mustDummyPasswordHash() string {
+	hash, err := security.HashPassword("exodus-timing-safety-placeholder-do-not-use")
+	if err != nil {
+		// Should be unreachable (HashPassword only fails on crypto/rand
+		// errors or an empty password, neither applies here), but fall back
+		// to a static legacy-format value so VerifyPassword still takes the
+		// expensive PBKDF2 code path instead of short-circuiting.
+		return "0000000000000000000000000000000000000000000000000000000000000000:" +
+			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+	}
+	return hash
+}
 
 type authContextKey string
 
@@ -78,6 +165,27 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 	}
 	principal, ok := value.(*AuthPrincipal)
 	return principal, ok && principal != nil
+}
+
+// RequireAdminRole wraps a handler so that only an interactive ADMIN session
+// (browser login) may proceed; API tokens (Role == "API") are rejected with
+// 403. This mirrors upstream Remnawave's @Roles(ROLE.ADMIN) restriction on
+// its API-tokens controller: a leaked or scripted API token must not be able
+// to mint, list, or delete other API tokens (which would otherwise grant it
+// the ability to create a fresh, never-expiring credential for itself).
+//
+// WithPanelAuth must run before this handler so that CurrentAuthPrincipal is
+// populated; routes wrapped with RequireAdminRole still pass through the
+// normal authentication check first.
+func RequireAdminRole(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := CurrentAuthPrincipal(r.Context())
+		if !ok || principal == nil || !strings.EqualFold(principal.Role, "ADMIN") {
+			shared.WriteJSONError(w, http.StatusForbidden, "this action requires an admin session; API tokens cannot manage API tokens")
+			return
+		}
+		next(w, r)
+	}
 }
 
 func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, username, adminUUID, password, reason string, r *http.Request) {
@@ -139,13 +247,21 @@ func notificationClientIP(r *http.Request) string {
 
 func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Normalize the path before any auth decision so traversal sequences
+		// (../, %2E%2E%2F, duplicate slashes, etc.) can't smuggle a protected
+		// path through the public-path prefix check below.
+		cleanedPath := path.Clean(r.URL.Path)
+		if cleanedPath != "/" && strings.HasSuffix(r.URL.Path, "/") {
+			cleanedPath += "/"
+		}
+
 		// Protect API routes only.
-		if !strings.HasPrefix(r.URL.Path, "/api/") {
+		if !strings.HasPrefix(cleanedPath, "/api/") {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if isPublicAPIPath(r.URL.Path) {
+		if isPublicAPIPath(cleanedPath) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -167,8 +283,8 @@ func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 	})
 }
 
-func isPublicAPIPath(path string) bool {
-	switch path {
+func isPublicAPIPath(p string) bool {
+	switch p {
 	case "/api/health",
 		"/api/auth/status", "/api/auth/login", "/api/auth/register",
 		"/api/auth/oauth2/authorize", "/api/auth/oauth2/callback", "/api/auth/oauth2/tg/callback",
@@ -176,7 +292,7 @@ func isPublicAPIPath(path string) bool {
 		"/api/system/metadata":
 		return true
 	default:
-		if strings.HasPrefix(path, "/api/sub/") || path == "/api/sub" {
+		if strings.HasPrefix(p, "/api/sub/") || p == "/api/sub" {
 			return true
 		}
 		return false
@@ -444,6 +560,13 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 
+		rateLimitKey := loginRateLimitKey(r)
+		if !globalLoginRateLimiter.allow(rateLimitKey) {
+			cfg.Logger.Warn("Auth login rate limited", "remote_addr", r.RemoteAddr)
+			shared.WriteJSONError(w, http.StatusTooManyRequests, "too many login attempts, please try again later")
+			return
+		}
+
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			cfg.Logger.Warn("Auth login decode failed", "error", err, "remote_addr", r.RemoteAddr)
@@ -515,7 +638,14 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
-		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
+		hashToVerify := storedPasswordHash
+		if adminUUID == "" {
+			// Unknown username: verify against a dummy hash of identical cost
+			// so this branch takes the same time as a real wrong-password
+			// rejection below, instead of returning early.
+			hashToVerify = dummyPasswordHash
+		}
+		if adminUUID == "" || !security.VerifyPassword(password, hashToVerify) {
 			cfg.Logger.Warn("Auth login failed: invalid credentials", "username", username, "remote_addr", r.RemoteAddr)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "invalid username or password")
@@ -528,6 +658,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
 			return
 		}
+		globalLoginRateLimiter.reset(rateLimitKey)
 		cfg.Logger.Info("Auth login success", "username", username, "remote_addr", r.RemoteAddr)
 		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
 

@@ -54,12 +54,12 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/auth/passkey/authentication/options", passkeys.AuthenticationOptionsHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/verify", passkeys.VerifyAuthenticationHandler(manager, cfg))
 
-	mux.HandleFunc("/api/exodus-settings", panelsettings.ExodusSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/exodus-settings/", panelsettings.ExodusSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/tokens", panelsettings.PanelAPITokensHandler(manager, cfg))
-	mux.HandleFunc("/api/tokens/", panelsettings.PanelAPITokenByUUIDHandler(manager, cfg))
-	mux.HandleFunc("/api/modules-settings", modulessettings.ModulesSettingsHandler(manager, cfg))
-	mux.HandleFunc("/api/modules-settings/", modulessettings.ModulesSettingsHandler(manager, cfg))
+	mux.HandleFunc("/api/exodus-settings", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(manager, cfg)))
+	mux.HandleFunc("/api/exodus-settings/", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(manager, cfg)))
+	mux.HandleFunc("/api/tokens", auth.RequireAdminRole(panelsettings.PanelAPITokensHandler(manager, cfg)))
+	mux.HandleFunc("/api/tokens/", auth.RequireAdminRole(panelsettings.PanelAPITokenByUUIDHandler(manager, cfg)))
+	mux.HandleFunc("/api/modules-settings", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
+	mux.HandleFunc("/api/modules-settings/", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
 
 	mux.HandleFunc("/api/nodes", nodes.NodesHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes/", nodes.NodeByUUIDHandler(manager, cfg))
