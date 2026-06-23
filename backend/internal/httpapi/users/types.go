@@ -30,6 +30,15 @@ type internalSquadResponse struct {
 	Name string `json:"name"`
 }
 
+// subscriptionNodeForUI carries the minimal sub_node fields the frontend
+// needs to build per-node subscription page URLs via buildSubscriptionLinksFromNodes.
+type subscriptionNodeForUI struct {
+	Name         string  `json:"name"`
+	Address      string  `json:"address"`
+	PublicDomain *string `json:"publicDomain"`
+	APIPath      string  `json:"apiPath"`
+}
+
 type userTrafficResponse struct {
 	UsedTrafficBytes         int64      `json:"usedTrafficBytes"`
 	LifetimeUsedTrafficBytes int64      `json:"lifetimeUsedTrafficBytes"`
@@ -66,6 +75,7 @@ type userAPI struct {
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 	SubscriptionURL        string                  `json:"subscriptionUrl"`
+	SubscriptionNodes      []subscriptionNodeForUI `json:"subscriptionNodes"`
 	ActiveInternalSquads   []internalSquadResponse `json:"activeInternalSquads"`
 	UserTraffic            userTrafficResponse     `json:"userTraffic"`
 }
