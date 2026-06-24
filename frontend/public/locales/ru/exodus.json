@@ -2148,7 +2148,7 @@
         "memory": "Память",
         "heap": "Heap",
         "rss": "RSS",
-        "go-sys": "Память Go runtime",
+        "go-sys": "Go Sys",
         "stack": "Стек",
         "scheduler": "Планировщик",
         "delay": "Задержка",

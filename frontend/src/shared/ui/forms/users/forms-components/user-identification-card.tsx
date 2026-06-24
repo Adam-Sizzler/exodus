@@ -404,7 +404,7 @@ export const UserIdentificationCard = memo((props: IProps) => {
                                         <Text c="dimmed" size="sm">
                                             {t('view-user-modal.widget.subscription-url-description-line-1')}{' '}
                                             <Code bg="gray.1" c="dark.4" fw={700}>
-                                                SUB_PUBLIC_DOMAIN
+                                                SUB_PUBLIC_DOMAIN/API_PATH
                                             </Code>
                                             <br />
                                             {t('view-user-modal.widget.subscription-url-description-line-2')}
