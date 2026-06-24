@@ -6,7 +6,7 @@ import {
     PiTagDuotone,
     PiUserDuotone
 } from 'react-icons/pi'
-import { Box, Center, Drawer, Group, Stack } from '@mantine/core'
+import { Box, Center, Drawer, Group, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
@@ -18,6 +18,8 @@ import {
 } from '@entities/dashboard/user-modal-store/user-modal-store'
 import { SectionCardSection } from '@shared/ui/section-card/section-card.section'
 import { useEncryptSubscriptionLink, useGetUserByUuid } from '@shared/api/hooks'
+import { useGetSubscriptionConnections } from '@shared/api/hooks/subscription-connections/subscription-connections.query.hooks'
+import { buildSubscriptionLinksFromNodes } from '@shared/utils/misc/subscription-links'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCardRoot } from '@shared/ui/section-card/section-card.root'
@@ -51,6 +53,14 @@ export const DetailedUserInfoDrawerWidget = () => {
     })
 
     const { mutateAsync: encryptSubscriptionLink } = useEncryptSubscriptionLink()
+
+    const { data: subNodes } = useGetSubscriptionConnections()
+
+    const subscriptionPageLinks = buildSubscriptionLinksFromNodes(
+        (subNodes ?? []).filter((n) => !n.isDisabled),
+        user?.shortUuid ?? '',
+        user?.subscriptionUrl
+    )
 
     useEffect(() => {
         if (!user || !selectedUser) return
@@ -218,10 +228,20 @@ export const DetailedUserInfoDrawerWidget = () => {
                         </SectionCardSection>
                         <SectionCardSection>
                             <Stack gap="xs">
-                                <CopyableFieldShared
-                                    label={t('detailed-user-info-drawer.widget.subscription-url')}
-                                    value={user.subscriptionUrl}
-                                />
+                                {subscriptionPageLinks.length > 0 && (
+                                    <Group gap={4} justify="flex-start" mb="xs">
+                                        <Text fw={500} fz="sm">
+                                            {t('detailed-user-info-drawer.widget.subscription-url')}
+                                        </Text>
+                                    </Group>
+                                )}
+
+                                {subscriptionPageLinks.map((link) => (
+                                    <CopyableFieldShared
+                                        key={link.url}
+                                        value={link.url}
+                                    />
+                                ))}
                                 <CopyableFieldShared
                                     label="Happ Crypto Link"
                                     value={encryptedSubscriptionLink}
