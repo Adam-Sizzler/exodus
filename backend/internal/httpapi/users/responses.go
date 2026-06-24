@@ -17,14 +17,6 @@ func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		return nil, err
 	}
 
-	subNodes, err := getAllSubscriptionNodes(ctx, manager)
-	if err != nil {
-		return nil, err
-	}
-	if subNodes == nil {
-		subNodes = []subscriptionNodeForUI{}
-	}
-
 	response := make([]userAPI, 0, len(records))
 	for _, record := range records {
 		activeSquads := activeSquadsMap[record.UUID]
@@ -59,7 +51,6 @@ func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 			CreatedAt:              record.CreatedAt,
 			UpdatedAt:              record.UpdatedAt,
 			SubscriptionURL:        subscriptionBase + record.ShortUUID,
-			SubscriptionNodes:      subNodes,
 			ActiveInternalSquads:   activeSquads,
 			UserTraffic: userTrafficResponse{
 				UsedTrafficBytes:         record.UsedTrafficBytes,

@@ -174,6 +174,11 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 // to mint, list, or delete other API tokens (which would otherwise grant it
 // the ability to create a fresh, never-expiring credential for itself).
 //
+// In addition to the role check, it requires the X-Exodus-Client-Type: browser
+// header that the frontend axios instance sends on every request. This means
+// a stolen ADMIN JWT used directly via curl/script without the header is
+// rejected, matching Remnawave's X-Remnawave-Client-Type: browser guard.
+//
 // WithPanelAuth must run before this handler so that CurrentAuthPrincipal is
 // populated; routes wrapped with RequireAdminRole still pass through the
 // normal authentication check first.
@@ -182,6 +187,10 @@ func RequireAdminRole(next http.HandlerFunc) http.HandlerFunc {
 		principal, ok := CurrentAuthPrincipal(r.Context())
 		if !ok || principal == nil || !strings.EqualFold(principal.Role, "ADMIN") {
 			shared.WriteJSONError(w, http.StatusForbidden, "this action requires an admin session; API tokens cannot manage API tokens")
+			return
+		}
+		if !strings.EqualFold(r.Header.Get("X-Exodus-Client-Type"), "browser") {
+			shared.WriteJSONError(w, http.StatusForbidden, "this action requires a browser session")
 			return
 		}
 		next(w, r)

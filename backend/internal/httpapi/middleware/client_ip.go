@@ -8,7 +8,10 @@ import (
 	"exodus/internal/config"
 )
 
-// getClientIP retrieves the client IP address from an HTTP request.
+// GetClientIP retrieves the client IP address from an HTTP request.
+// It checks X-Forwarded-For and X-Real-IP headers before falling back to
+// RemoteAddr. Note: these headers are attacker-controlled unless the request
+// is verified to come from a trusted proxy first.
 func GetClientIP(r *http.Request, cfg *config.BackendConfig) string {
 	cfg.Logger.Debug("Retrieving client IP address", "remote_addr", r.RemoteAddr)
 
@@ -30,17 +33,8 @@ func GetClientIP(r *http.Request, cfg *config.BackendConfig) string {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		cfg.Logger.Error("Failed to parse RemoteAddr", "remote_addr", r.RemoteAddr, "error", err)
-		return r.RemoteAddr // Return as-is on error
+		return r.RemoteAddr
 	}
 	cfg.Logger.Trace("Using RemoteAddr", "ip", ip)
 	return ip
-}
-
-// TokenAuthMiddleware verifies the token in the Authorization header.
-func TokenAuthMiddleware(cfg *config.BackendConfig, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		clientIP := GetClientIP(r, cfg)
-		cfg.Logger.Trace("TokenAuthMiddleware passthrough", "client_ip", clientIP)
-		next.ServeHTTP(w, r)
-	}
 }

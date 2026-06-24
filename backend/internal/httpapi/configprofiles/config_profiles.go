@@ -12,7 +12,6 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
-	"exodus/internal/dbutil"
 	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
 
@@ -862,5 +861,3 @@ func dedupeStrings(values []string) []string {
 	}
 	return result
 }
-
-func _unused(_ context.Context, _ dbutil.StringArray) {}
