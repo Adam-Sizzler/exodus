@@ -30,9 +30,9 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 		// Add Server header
 		serverHeader := fmt.Sprintf("MuxCloud/%s (WebServer)", constant.Version)
 		w.Header().Set("Server", serverHeader)
-		w.Header().Set("X-Powered-By", "MuxCloud")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
 
 		// Use CORS settings from config
 		allowedOrigins := cfg.CORS.AllowedOrigins

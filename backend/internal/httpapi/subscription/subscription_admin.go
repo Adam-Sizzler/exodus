@@ -217,9 +217,18 @@ func handleRawSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, ma
 
 	isHwidLimited := false
 	if settings.HwidSettings.Enabled {
-		allowed, _, _ := checkHwidDeviceLimit(ctx, manager, user, hwidHeaders, settings.HwidSettings)
+		allowed, maxReached, notSupported := checkHwidDeviceLimit(ctx, manager, user, hwidHeaders, settings.HwidSettings)
 		if !allowed {
 			headers["x-hwid-limit"] = "true"
+			if notSupported {
+				headers["x-hwid-not-supported"] = "true"
+			}
+			if maxReached {
+				headers["x-hwid-max-devices-reached"] = "true"
+			}
+			if !notSupported && !maxReached {
+				headers["x-hwid-active"] = "true"
+			}
 			isHwidLimited = true
 		}
 	} else {

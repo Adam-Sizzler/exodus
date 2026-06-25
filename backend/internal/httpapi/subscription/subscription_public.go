@@ -283,6 +283,16 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		log.Debug("HWID device limit checked", "allowed", allowed, "max_reached", maxReached, "not_supported", notSupported)
 		if !allowed {
 			headers["x-hwid-limit"] = "true"
+			if notSupported {
+				headers["x-hwid-not-supported"] = "true"
+			}
+			if maxReached {
+				headers["x-hwid-max-devices-reached"] = "true"
+			}
+			if !notSupported && !maxReached {
+				// device is known but limit is active (e.g. per-user override)
+				headers["x-hwid-active"] = "true"
+			}
 			if settings.HwidSettings.MaxDevicesAnnounce != nil {
 				headers["announce"] = "base64:" + base64EncodeSafe(*settings.HwidSettings.MaxDevicesAnnounce)
 			}
