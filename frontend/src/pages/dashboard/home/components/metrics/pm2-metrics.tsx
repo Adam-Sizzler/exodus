@@ -123,7 +123,7 @@ export const getHeapUsedValue = (metric?: RuntimeMetric): string => {
     const heapAllocBytes = metric?.memory?.heapAllocBytes ?? 0
     const heapSysBytes = metric?.memory?.heapSysBytes ?? 0
 
-    return `${formatBytes(heapAllocBytes)} / ${formatBytes(heapSysBytes)}`
+    return `${formatBytes(heapAllocBytes).split(' ')[0]} / ${formatBytes(heapSysBytes)}`
 }
 
 export const getHeapUsedPercent = (metric?: RuntimeMetric): number => {
