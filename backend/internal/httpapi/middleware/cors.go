@@ -1,13 +1,11 @@
 package middleware
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	"exodus/internal/constant"
 )
 
 var (
@@ -28,8 +26,6 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 		}
 
 		// Add Server header
-		serverHeader := fmt.Sprintf("MuxCloud/%s (WebServer)", constant.Version)
-		w.Header().Set("Server", serverHeader)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
@@ -38,7 +34,6 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 		allowedOrigins := cfg.CORS.AllowedOrigins
 
 		// If no allowed origins configured, do not emit CORS headers.
-
 		origin := r.Header.Get("Origin")
 		allowOrigin := ""
 
@@ -131,10 +126,10 @@ func firstHeaderValue(value string) string {
 }
 
 func parseForwardedProto(forwarded string) string {
-	parts := strings.Split(forwarded, ",")
-	for _, part := range parts {
-		segments := strings.Split(part, ";")
-		for _, segment := range segments {
+	parts := strings.SplitSeq(forwarded, ",")
+	for part := range parts {
+		segments := strings.SplitSeq(part, ";")
+		for segment := range segments {
 			segment = strings.TrimSpace(segment)
 			if strings.HasPrefix(strings.ToLower(segment), "proto=") {
 				return strings.Trim(strings.TrimPrefix(segment, "proto="), "\"")
