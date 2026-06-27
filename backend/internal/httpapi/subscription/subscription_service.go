@@ -2711,20 +2711,61 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 		}
 
 		groupProxies := ensureYAMLMappingSequenceValue(group, "proxies")
+
+		// Read and strip the exodus: custom key before output — Mihomo does not know it.
+		exodusNode := yamlMappingNode(group, "exodus")
+		deleteYAMLMappingKey(group, "exodus")
+
+		if exodusNode != nil {
+			// exodus: key is present — its value controls proxy injection exclusively.
+			// Mirrors exodus MihomoGeneratorService.resolveGroupRemarks().
+
+			if v, ok := yamlMappingBool(exodusNode, "include-proxies"); ok && !v {
+				// include-proxies: false → inject nothing, keep existing entries as-is.
+				continue
+			}
+
+			if v, ok := yamlMappingBool(exodusNode, "select-random-proxy"); ok && v {
+				// select-random-proxy: true → pick one random proxy from all hosts.
+				if len(proxyNames) > 0 {
+					picked := proxyNames[rand.Intn(len(proxyNames))]
+					existing := yamlSequenceStrings(groupProxies)
+					setYAMLSequenceStrings(groupProxies, appendUniqueStrings(existing, picked))
+				}
+				continue
+			}
+
+			if v, ok := yamlMappingBool(exodusNode, "shuffle-proxies-order"); ok && v {
+				// shuffle-proxies-order: true → shuffle all proxies before injecting.
+				shuffled := make([]string, len(proxyNames))
+				copy(shuffled, proxyNames)
+				rand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
+				existing := yamlSequenceStrings(groupProxies)
+				setYAMLSequenceStrings(groupProxies, appendUniqueStrings(existing, shuffled...))
+				continue
+			}
+
+			// include-proxies: true (explicit) or any unrecognised key → inject all.
+			existing := yamlSequenceStrings(groupProxies)
+			setYAMLSequenceStrings(groupProxies, appendUniqueStrings(existing, proxyNames...))
+			continue
+		}
+
+		// No exodus: key — use Exodus type-based logic which preserves
+		// the SelectorNodesFirst per-host positioning feature.
 		groupType := strings.ToLower(strings.TrimSpace(yamlMappingString(group, "type")))
 		switch groupType {
 		case "select":
 			existingEntries := yamlSequenceStrings(groupProxies)
-			middleEntries := make([]string, 0, len(existingEntries))
-			hostNames := make(map[string]struct{}, len(proxyNames))
+			hostNameSet := make(map[string]struct{}, len(proxyNames))
 			for _, name := range proxyNames {
-				hostNames[name] = struct{}{}
+				hostNameSet[name] = struct{}{}
 			}
+			middleEntries := make([]string, 0, len(existingEntries))
 			for _, entry := range existingEntries {
-				if _, isHostName := hostNames[entry]; isHostName {
-					continue
+				if _, isHost := hostNameSet[entry]; !isHost {
+					middleEntries = append(middleEntries, entry)
 				}
-				middleEntries = append(middleEntries, entry)
 			}
 			finalEntries := make([]string, 0, len(leadingSelectorProxyNames)+len(middleEntries)+len(trailingSelectorProxyNames))
 			finalEntries = append(finalEntries, leadingSelectorProxyNames...)
@@ -2732,10 +2773,59 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 			finalEntries = append(finalEntries, trailingSelectorProxyNames...)
 			setYAMLSequenceStrings(groupProxies, finalEntries)
 		case "url-test", "urltest":
+			// Replace: url-test groups are auto-selection pools, existing entries are stale placeholders.
 			setYAMLSequenceStrings(groupProxies, proxyNames)
 		default:
+			// fallback, load-balance, etc. — append unique preserving template entries.
 			finalEntries := appendUniqueStrings(yamlSequenceStrings(groupProxies), proxyNames...)
 			setYAMLSequenceStrings(groupProxies, finalEntries)
+		}
+	}
+
+	// proxy-providers: inject payload for providers with exodus: { include-proxies: true }.
+	// Mirrors exodus MihomoGeneratorService.applyProxyProviders().
+	providersNode := yamlMappingNode(config, "proxy-providers")
+	if providersNode != nil {
+		for i := 0; i+1 < len(providersNode.Content); i += 2 {
+			providerNode := providersNode.Content[i+1]
+			if providerNode == nil || providerNode.Kind != yaml.MappingNode {
+				continue
+			}
+
+			exodusNode := yamlMappingNode(providerNode, "exodus")
+			if exodusNode == nil {
+				continue
+			}
+			deleteYAMLMappingKey(providerNode, "exodus")
+
+			v, ok := yamlMappingBool(exodusNode, "include-proxies")
+			if !ok || !v {
+				continue
+			}
+
+			// include-proxies: true → build inline payload with all proxy nodes.
+			payloadNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+			for _, host := range hosts {
+				proxy := buildMihomoProxy(host, user)
+				if proxy == nil {
+					continue
+				}
+				payloadNode.Content = append(payloadNode.Content, buildOrderedYAMLValueNode("proxy", proxy))
+			}
+
+			// Set or replace the payload: key in the provider.
+			replaced := false
+			for j := 0; j+1 < len(providerNode.Content); j += 2 {
+				if providerNode.Content[j] != nil && providerNode.Content[j].Value == "payload" {
+					providerNode.Content[j+1] = payloadNode
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				providerNode.Content = append(providerNode.Content,
+					newYAMLScalarNode("payload"), payloadNode)
+			}
 		}
 	}
 
@@ -2808,6 +2898,58 @@ func yamlMappingString(mapping *yaml.Node, key string) string {
 	}
 
 	return ""
+}
+
+// yamlMappingBool reads a boolean scalar from a mapping node.
+// Returns (value, true) if the key exists and is a valid bool, otherwise (false, false).
+func yamlMappingBool(mapping *yaml.Node, key string) (bool, bool) {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return false, false
+	}
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i] == nil || mapping.Content[i].Value != key {
+			continue
+		}
+		v := mapping.Content[i+1]
+		if v == nil || v.Kind != yaml.ScalarNode {
+			return false, false
+		}
+		val := strings.ToLower(strings.TrimSpace(v.Value))
+		return val == "true", true
+	}
+	return false, false
+}
+
+// yamlMappingNode returns the child mapping node for the given key, or nil.
+func yamlMappingNode(mapping *yaml.Node, key string) *yaml.Node {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i] == nil || mapping.Content[i].Value != key {
+			continue
+		}
+		v := mapping.Content[i+1]
+		if v != nil && v.Kind == yaml.MappingNode {
+			return v
+		}
+		return nil
+	}
+	return nil
+}
+
+// deleteYAMLMappingKey removes a key-value pair from a mapping node in-place.
+func deleteYAMLMappingKey(mapping *yaml.Node, key string) {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return
+	}
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i] == nil || mapping.Content[i].Value != key {
+			continue
+		}
+		mapping.Content = append(mapping.Content[:i], mapping.Content[i+2:]...)
+		return
+	}
 }
 
 func yamlSequenceStrings(sequence *yaml.Node) []string {

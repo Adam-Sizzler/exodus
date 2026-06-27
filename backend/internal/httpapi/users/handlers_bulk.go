@@ -333,6 +333,10 @@ func handleBulkAllUpdateUsers(w http.ResponseWriter, r *http.Request, manager *d
 		Email:                req.Email,
 		HwidDeviceLimit:      req.HwidDeviceLimit,
 	})
+	if len(clauses) == 0 {
+		shared.SendError(w, http.StatusBadRequest, "at least one field must be provided", nil, cfg)
+		return
+	}
 
 	var affectedRows int64
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {

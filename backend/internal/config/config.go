@@ -20,6 +20,7 @@ type BackendConfig struct {
 	Log           LogConfig
 	EXODUS        EXODUSConfig
 	Panel         PanelConfig
+	Docs          DocsConfig
 	Metrics       MetricsConfig
 	Notifications NotificationsConfig
 	Scheduler     SchedulerConfig
@@ -36,6 +37,12 @@ type PanelConfig struct {
 	TrustedProxies    []string
 	AppPort           int
 	trustedProxyNets  []*net.IPNet
+}
+
+type DocsConfig struct {
+	IsEnabled   bool
+	ScalarPath  string
+	SwaggerPath string
 }
 
 type CORSConfig struct {
@@ -161,6 +168,11 @@ var defaultConfig = BackendConfig{
 		TrustedProxies:    []string{},
 		AppPort:           3000,
 		trustedProxyNets:  nil,
+	},
+	Docs: DocsConfig{
+		IsEnabled:   false,
+		ScalarPath:  "/scalar",
+		SwaggerPath: "/docs",
 	},
 	Metrics: MetricsConfig{
 		Address:         "0.0.0.0",
@@ -303,6 +315,16 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	if value := envFirst("APP_PATH"); value != "" {
 		cfg.Panel.BasePath = value
+	}
+
+	if value := envFirst("IS_DOCS_ENABLED"); value != "" {
+		cfg.Docs.IsEnabled = strings.EqualFold(strings.TrimSpace(value), "true")
+	}
+	if value := envFirst("SCALAR_PATH"); value != "" {
+		cfg.Docs.ScalarPath = strings.TrimSpace(value)
+	}
+	if value := envFirst("SWAGGER_PATH"); value != "" {
+		cfg.Docs.SwaggerPath = strings.TrimSpace(value)
 	}
 
 	if value := envFirst("METRICS_ADDRESS"); value != "" {

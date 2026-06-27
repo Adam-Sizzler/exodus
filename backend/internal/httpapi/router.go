@@ -58,6 +58,12 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/exodus-settings/", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(manager, cfg)))
 	mux.HandleFunc("/api/tokens", auth.RequireAdminRole(panelsettings.PanelAPITokensHandler(manager, cfg)))
 	mux.HandleFunc("/api/tokens/", auth.RequireAdminRole(panelsettings.PanelAPITokenByUUIDHandler(manager, cfg)))
+
+	// API docs (Scalar UI + raw OpenAPI JSON). Only active when IS_DOCS_ENABLED=true.
+	// Paths are read from SCALAR_PATH / SWAGGER_PATH env vars (defaults: /scalar, /docs).
+	// Both routes are protected by WithPanelAuth — valid session or API token required.
+	mux.HandleFunc(cfg.Docs.ScalarPath, panelsettings.DocsScalarHandler(cfg))
+	mux.HandleFunc(cfg.Docs.ScalarPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
 	mux.HandleFunc("/api/modules-settings", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
 	mux.HandleFunc("/api/modules-settings/", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
 

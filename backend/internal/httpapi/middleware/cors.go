@@ -14,8 +14,6 @@ var (
 )
 
 // WithCORS adds CORS headers and Server header to all responses.
-// If allowedOrigins contains "*", all origins are allowed.
-// Otherwise, only origins in the list are allowed.
 func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if cfg != nil && !cfg.Panel.AllowInsecureHTTP && !IsSecureRequest(r, cfg) && !isHealthPath(r.URL.Path) {
@@ -25,10 +23,45 @@ func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 			return
 		}
 
-		// Add Server header
+		// Prevent MIME-type sniffing.
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
+
+		// Disable legacy XSS auditor (removed from all browsers; 0 = don't enable broken fallback).
+		w.Header().Set("X-XSS-Protection", "0")
+
+		// Allow framing only by same origin (DENY breaks OAuth popup flows).
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+
+		// COOP & CORP (Сross-origin isolation headers)
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-site")
+
+		// Send origin only on same-origin, only the origin (no path) cross-origin.
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// HSTS — also in nginx for preload, here as belt-and-suspenders for direct Go deployments.
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+		// Block search engine indexing of the admin panel.
 		w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
+
+		// Content Security Policy.
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self' *;"+
+				"script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' *;"+
+				"img-src 'self' data: *;"+
+				"connect-src 'self' *;"+
+				"worker-src 'self' blob: *;"+
+				"frame-src 'self' oauth.telegram.org *;"+
+				"frame-ancestors 'self' *;"+
+				"base-uri 'self';"+
+				"font-src 'self' https: data:;"+
+				"form-action 'self';"+
+				"object-src 'none';"+
+				"script-src-attr 'none';"+
+				"style-src 'self' https: 'unsafe-inline';"+
+				"upgrade-insecure-requests",
+		)
 
 		// Use CORS settings from config
 		allowedOrigins := cfg.CORS.AllowedOrigins

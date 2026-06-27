@@ -313,8 +313,14 @@ func validateBulkAllUpdateUsersRequest(req bulkAllUpdateUsersRequest) error {
 	if !hasUpdate {
 		return fmt.Errorf("at least one field must be provided")
 	}
-	if req.Status != nil && !isValidUserStatus(*req.Status) {
-		return fmt.Errorf("invalid status")
+	if req.Status != nil {
+		status := strings.ToUpper(strings.TrimSpace(*req.Status))
+		if !isValidUserStatus(status) {
+			return fmt.Errorf("invalid status")
+		}
+		if status == "EXPIRED" || status == "LIMITED" {
+			return fmt.Errorf("status EXPIRED and LIMITED are set by the system and cannot be assigned manually")
+		}
 	}
 	if req.TrafficLimitBytes != nil && *req.TrafficLimitBytes < 0 {
 		return fmt.Errorf("trafficLimitBytes must be non-negative")

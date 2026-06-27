@@ -134,11 +134,7 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			shared.WriteJSON(w, http.StatusOK, map[string]any{
 				"response": map[string]any{
 					"apiKeys": toAPITokensResponse(tokens),
-					"docs": map[string]any{
-						"isDocsEnabled": false,
-						"scalarPath":    nil,
-						"swaggerPath":   nil,
-					},
+					"docs":    buildDocsResponse(cfg),
 				},
 			})
 		case http.MethodPost:
