@@ -66,6 +66,21 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 			return
 		}
 
+		// Route docs paths (Scalar UI, Swagger JSON) through the API handler.
+		// These paths don't carry the /api/ prefix but are served by Go handlers,
+		// not the React SPA. Both paths are read from env (SCALAR_PATH, SWAGGER_PATH).
+		docsScalarRel := strings.TrimPrefix(cfg.Docs.ScalarPath, "/")
+		docsSwaggerRel := strings.TrimPrefix(cfg.Docs.SwaggerPath, "/")
+		isDocsPath := (docsScalarRel != "" && (relativePath == docsScalarRel || strings.HasPrefix(relativePath, docsScalarRel+"/"))) ||
+			(docsSwaggerRel != "" && relativePath == docsSwaggerRel)
+		if isDocsPath {
+			apiReq := r.Clone(r.Context())
+			apiReq.URL.Path = "/" + relativePath
+			apiReq.URL.RawPath = ""
+			apiHandler.ServeHTTP(w, apiReq)
+			return
+		}
+
 		if relativePath == "app-config.js" {
 			serveAppConfigJS(w, panelBasePathNoTrailing)
 			return

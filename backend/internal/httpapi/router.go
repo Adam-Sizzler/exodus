@@ -64,6 +64,7 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	// Both routes are protected by WithPanelAuth — valid session or API token required.
 	mux.HandleFunc(cfg.Docs.ScalarPath, panelsettings.DocsScalarHandler(cfg))
 	mux.HandleFunc(cfg.Docs.ScalarPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
+	mux.HandleFunc(cfg.Docs.SwaggerPath, panelsettings.DocsOpenAPIHandler(cfg))
 	mux.HandleFunc("/api/modules-settings", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
 	mux.HandleFunc("/api/modules-settings/", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
 
