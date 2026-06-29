@@ -110,6 +110,8 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		switch path {
 		case "delete":
 			handleBulkDeleteUsers(w, r, manager, cfg)
+		case "delete-by-status":
+			handleBulkDeleteUsersByStatus(w, r, manager, cfg)
 		case "reset-traffic":
 			handleBulkResetUsersTraffic(w, r, manager, cfg)
 		case "update":

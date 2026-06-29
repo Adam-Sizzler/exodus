@@ -87,6 +87,81 @@ func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, manager
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
 }
 
+func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+
+	status := strings.ToUpper(strings.TrimSpace(req.Status))
+	if !isValidUserStatus(status) {
+		shared.SendError(w, http.StatusBadRequest, "invalid status", nil, cfg)
+		return
+	}
+
+	var affectedRows int64
+	var internalSquadNodeUUIDs []string
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(r.Context(), nil)
+		if err != nil {
+			return err
+		}
+
+		// Collect node UUIDs before deletion for deploy notification.
+		rows, queryErr := tx.QueryContext(r.Context(),
+			`SELECT DISTINCT n.uuid
+			   FROM users u
+			   JOIN internal_squad_members ism ON ism.user_id = u.t_id
+			   JOIN nodes n ON n.t_id = ism.node_id
+			  WHERE u.status = ?`, status)
+		if queryErr != nil {
+			_ = tx.Rollback()
+			return queryErr
+		}
+		nodeUUIDs := make([]string, 0)
+		for rows.Next() {
+			var nodeUUID string
+			if scanErr := rows.Scan(&nodeUUID); scanErr != nil {
+				_ = rows.Close()
+				_ = tx.Rollback()
+				return scanErr
+			}
+			nodeUUIDs = append(nodeUUIDs, nodeUUID)
+		}
+		_ = rows.Close()
+		if rowsErr := rows.Err(); rowsErr != nil {
+			_ = tx.Rollback()
+			return rowsErr
+		}
+		internalSquadNodeUUIDs = nodeUUIDs
+
+		result, execErr := tx.ExecContext(r.Context(),
+			`DELETE FROM users WHERE status = ?`, status)
+		if execErr != nil {
+			_ = tx.Rollback()
+			return execErr
+		}
+		n, _ := result.RowsAffected()
+		affectedRows = n
+
+		return tx.Commit()
+	})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete users by status", err, cfg)
+		return
+	}
+
+	if len(internalSquadNodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
+	}
+	emitBulkSummaryNotification(r.Context(), cfg, notifications.EventUserDeleted, affectedRows)
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+}
+
 func handleBulkAllResetUsersTraffic(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	affectedRows, nodeUUIDs, err := resetAllUsersTraffic(r.Context(), manager)
 	if err != nil {
@@ -98,7 +173,7 @@ func handleBulkAllResetUsersTraffic(w http.ResponseWriter, r *http.Request, mana
 	}
 	emitBulkSummaryNotification(r.Context(), cfg, notifications.EventUserTrafficReset, affectedRows)
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": affectedRows > 0}})
 }
 
 func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
@@ -150,7 +225,7 @@ func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Reque
 	}
 	emitBulkSummaryNotification(r.Context(), cfg, notifications.EventUserModified, affectedRows)
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": affectedRows > 0}})
 }
 
 func handleBulkUpdateUsers(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
