@@ -19,7 +19,6 @@ import (
 	"exodus/internal/notifications"
 	"exodus/internal/redisqueue"
 	"exodus/internal/scheduler"
-	"exodus/internal/srslists"
 	"exodus/internal/subscriptionnodes"
 	"exodus/internal/userwatchdog"
 )
@@ -107,7 +106,6 @@ func Run() {
 	go nodeMonitor.Start(ctx, &wg)
 	go subNodeMonitor.Start(ctx, &wg)
 	notifications.StartDispatcher(ctx, &wg, manager, &cfg)
-	srslists.StartPeriodicChecker(ctx, &wg, manager, &cfg, 5*time.Minute)
 	userwatchdog.Start(ctx, &wg, manager, &cfg)
 	scheduler.Start(ctx, &wg, manager, &cfg)
 	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, manager, &cfg); err != nil {

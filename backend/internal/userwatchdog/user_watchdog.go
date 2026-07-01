@@ -15,7 +15,6 @@ import (
 const (
 	expiredUsersInterval  = 30 * time.Second
 	exceededUsersInterval = 45 * time.Second
-	resetUsersInterval    = time.Minute
 )
 
 type StatusUpdateResult struct {
@@ -32,17 +31,14 @@ func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseM
 	go func() {
 		defer wg.Done()
 
-		cfg.Logger.Info("User status watchdog started", "expired_interval", expiredUsersInterval.String(), "exceeded_interval", exceededUsersInterval.String(), "reset_interval", resetUsersInterval.String())
+		cfg.Logger.Info("User status watchdog started", "expired_interval", expiredUsersInterval.String(), "exceeded_interval", exceededUsersInterval.String())
 		runExpiredUsersReview(ctx, manager, cfg)
 		runExceededUsersReview(ctx, manager, cfg)
-		runScheduledTrafficReset(ctx, manager, cfg, time.Now())
 
 		expiredTicker := time.NewTicker(expiredUsersInterval)
 		defer expiredTicker.Stop()
 		exceededTicker := time.NewTicker(exceededUsersInterval)
 		defer exceededTicker.Stop()
-		resetTicker := time.NewTicker(resetUsersInterval)
-		defer resetTicker.Stop()
 
 		for {
 			select {
@@ -53,8 +49,6 @@ func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseM
 				runExpiredUsersReview(ctx, manager, cfg)
 			case <-exceededTicker.C:
 				runExceededUsersReview(ctx, manager, cfg)
-			case now := <-resetTicker.C:
-				runScheduledTrafficReset(ctx, manager, cfg, now)
 			}
 		}
 	}()
@@ -87,26 +81,15 @@ func handleStatusUpdateResult(cfg *config.BackendConfig, statusName string, resu
 }
 
 func runScheduledTrafficReset(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, now time.Time) {
-	for _, strategy := range scheduledResetStrategies(now) {
-		result, err := ResetTrafficByStrategyAt(ctx, manager, strategy, now)
-		if err != nil {
-			cfg.Logger.Warn("Scheduled user traffic reset failed", "strategy", strategy, "error", err)
-			continue
-		}
-		if result.Users == 0 {
-			cfg.Logger.Debug("Scheduled user traffic reset found no users", "strategy", strategy)
-			continue
-		}
-		cfg.Logger.Info("Scheduled user traffic reset completed", "strategy", strategy, "users", result.Users, "node_targets", len(result.NodeUUIDs))
-		if len(result.NodeUUIDs) > 0 {
-			monitor.RequestNodeDeploy(true, result.NodeUUIDs...)
-		}
-	}
-}
-
-func scheduledResetStrategies(now time.Time) []string {
+	// Traffic resets are now scheduled precisely in the scheduler package:
+	//   DAY   → 00:05 every day
+	//   WEEK  → 00:15 every Monday
+	//   MONTH → 00:20 on 1st of each month
+	// This function is kept as a no-op to avoid breaking call sites during startup.
+	_ = ctx
+	_ = manager
+	_ = cfg
 	_ = now
-	return []string{"DAY", "WEEK", "MONTH"}
 }
 
 func UpdateExpiredUsers(ctx context.Context, manager *dbmanager.DatabaseManager) (StatusUpdateResult, error) {
