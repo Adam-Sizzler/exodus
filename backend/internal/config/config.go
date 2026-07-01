@@ -74,6 +74,7 @@ type SchedulerConfig struct {
 type NotificationsConfig struct {
 	TelegramEnabled         bool
 	TelegramBotToken        string
+	TelegramBotProxy        string
 	TelegramUsersChatID     string
 	TelegramUsersThreadID   string
 	TelegramNodesChatID     string
@@ -476,6 +477,7 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	cfg.Notifications.TelegramEnabled = parseBoolEnv(envFirst("IS_TELEGRAM_NOTIFICATIONS_ENABLED"))
 	cfg.Notifications.TelegramBotToken = envFirst("TELEGRAM_BOT_TOKEN")
+	cfg.Notifications.TelegramBotProxy = strings.TrimSpace(envFirst("TELEGRAM_BOT_PROXY"))
 	cfg.Notifications.TelegramUsersChatID, cfg.Notifications.TelegramUsersThreadID = parseTelegramTarget(envFirst("TELEGRAM_NOTIFY_USERS"))
 	cfg.Notifications.TelegramNodesChatID, cfg.Notifications.TelegramNodesThreadID = parseTelegramTarget(envFirst("TELEGRAM_NOTIFY_NODES"))
 	cfg.Notifications.TelegramCRMChatID, cfg.Notifications.TelegramCRMThreadID = parseTelegramTarget(envFirst("TELEGRAM_NOTIFY_CRM"))

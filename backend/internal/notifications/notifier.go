@@ -11,10 +11,14 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/net/proxy"
 
 	"exodus/internal/config"
 )
@@ -76,17 +80,63 @@ type Event struct {
 }
 
 type Notifier struct {
-	cfg    *config.BackendConfig
-	client *http.Client
+	cfg            *config.BackendConfig
+	client         *http.Client
+	telegramClient *http.Client
 }
 
 func New(cfg *config.BackendConfig) *Notifier {
+	var telegramProxy string
+	if cfg != nil {
+		telegramProxy = cfg.Notifications.TelegramBotProxy
+	}
 	return &Notifier{
 		cfg: cfg,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		telegramClient: newTelegramHTTPClient(telegramProxy),
 	}
+}
+
+// newTelegramHTTPClient builds an HTTP client for Telegram Bot API requests,
+// optionally routed through a proxy. Supports http(s) and socks5/socks5h
+// proxy URLs, mirroring remnawave's TELEGRAM_BOT_PROXY behavior (ProxyAgent).
+// Format: protocol://user:password@host:port, e.g. socks5://proxy:1080
+func newTelegramHTTPClient(proxyURL string) *http.Client {
+	proxyURL = strings.TrimSpace(proxyURL)
+	if proxyURL == "" {
+		return &http.Client{Timeout: 10 * time.Second}
+	}
+
+	parsed, err := url.Parse(proxyURL)
+	if err != nil || parsed.Host == "" {
+		return &http.Client{Timeout: 10 * time.Second}
+	}
+
+	transport := &http.Transport{}
+
+	switch strings.ToLower(parsed.Scheme) {
+	case "socks5", "socks5h":
+		var auth *proxy.Auth
+		if parsed.User != nil {
+			password, _ := parsed.User.Password()
+			auth = &proxy.Auth{User: parsed.User.Username(), Password: password}
+		}
+		dialer, dialErr := proxy.SOCKS5("tcp", parsed.Host, auth, proxy.Direct)
+		if dialErr != nil {
+			return &http.Client{Timeout: 10 * time.Second}
+		}
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(network, addr)
+		}
+	case "http", "https":
+		transport.Proxy = http.ProxyURL(parsed)
+	default:
+		return &http.Client{Timeout: 10 * time.Second}
+	}
+
+	return &http.Client{Timeout: 10 * time.Second, Transport: transport}
 }
 
 func Emit(ctx context.Context, cfg *config.BackendConfig, event Event) {
@@ -235,7 +285,7 @@ func (n *Notifier) sendTelegram(ctx context.Context, event Event) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := n.client.Do(req)
+	resp, err := n.telegramClient.Do(req)
 	if err != nil {
 		return err
 	}

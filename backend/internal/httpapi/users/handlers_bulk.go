@@ -112,10 +112,11 @@ func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, manag
 
 		// Collect node UUIDs before deletion for deploy notification.
 		rows, queryErr := tx.QueryContext(r.Context(),
-			`SELECT DISTINCT n.uuid
+			`SELECT DISTINCT cpitn.node_uuid
 			   FROM users u
 			   JOIN internal_squad_members ism ON ism.user_id = u.t_id
-			   JOIN nodes n ON n.t_id = ism.node_id
+			   JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+			   JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 			  WHERE u.status = ?`, status)
 		if queryErr != nil {
 			_ = tx.Rollback()
