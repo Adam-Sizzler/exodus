@@ -9,9 +9,9 @@ import {
     PiUsersDuotone
 } from 'react-icons/pi'
 import { Avatar, Badge, Box, Flex, Grid, Progress, Stack, Text, Tooltip } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { notifications } from '@mantine/notifications'
 import { CSSProperties, memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactCountryFlag from 'react-country-flag'
 import { useSortable } from '@dnd-kit/sortable'
 import { TbAlertCircle } from 'react-icons/tb'
@@ -19,8 +19,8 @@ import { useClipboard } from '@mantine/hooks'
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 
+import { prettyBytesToAnyUtil, prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
 import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
-import { prettyBytesToAnyUtil, prettyRealtimeBytesUtil } from '@shared/utils/bytes'
 import { faviconResolver } from '@shared/utils/misc'
 import { SingboxLogo } from '@shared/ui/logos'
 import { Logo } from '@shared/ui'
@@ -95,8 +95,7 @@ export const NodeCardWidget = memo((props: IProps) => {
     const percentage = calcPercentage()
     const fallbackProgress = node.isTrafficTrackingActive && node.trafficLimitBytes === 0
 
-    const nodeSingboxUptime = node.singboxUptime
-    const isOnline = node.isConnected && nodeSingboxUptime !== '0' && !node.isDisabled
+    const isOnline = node.isConnected && node.singboxUptime !== 0 && !node.isDisabled
     const isConfigMissing =
         node.configProfile.activeConfigProfileUuid === null ||
         node.configProfile.activeInbounds.length === 0
@@ -104,7 +103,7 @@ export const NodeCardWidget = memo((props: IProps) => {
     const progressColor = getProgressColor(percentage, fallbackProgress)
 
     const { ramPercentage, ramColor, rxSpeed, txSpeed, loadAvg, cpus } = useMemo(() => {
-        if (!node.system) {
+        if (!node.system)
             return {
                 ramPercentage: null,
                 ramColor: 'teal',
@@ -113,43 +112,41 @@ export const NodeCardWidget = memo((props: IProps) => {
                 loadAvg: null,
                 cpus: 1
             }
-        }
-
         const { memoryTotal, cpus } = node.system.info
         const { memoryUsed, loadAvg } = node.system.stats
-        const ramPercentage = memoryTotal > 0 ? Math.round((memoryUsed / memoryTotal) * 100) : 0
+
+        const ramPercentage = Math.round((memoryUsed / memoryTotal) * 100)
 
         let ramColor = 'teal'
         if (ramPercentage > 90) ramColor = 'red'
-        else if (ramPercentage > 70) ramColor = 'yellow'
+        if (ramPercentage > 70) ramColor = 'yellow'
 
-        if (!node.system.stats.interface) {
+        if (!node.system.stats.interface)
             return {
                 ramPercentage,
                 ramColor,
                 rxSpeed: null,
                 txSpeed: null,
-                loadAvg,
-                cpus
+                loadAvg: null,
+                cpus: 1
             }
-        }
-
         return {
             ramPercentage,
             ramColor,
-            rxSpeed: prettyRealtimeBytesUtil(node.system.stats.interface.rxBytesPerSec, true, true),
-            txSpeed: prettyRealtimeBytesUtil(node.system.stats.interface.txBytesPerSec, true, true),
+            rxSpeed: prettySiRealtimeBytesUtil(
+                node.system.stats.interface.rxBytesPerSec,
+                true,
+                true
+            ),
+            txSpeed: prettySiRealtimeBytesUtil(
+                node.system.stats.interface.txBytesPerSec,
+                true,
+                true
+            ),
             loadAvg,
             cpus
         }
     }, [node.system])
-
-    const getLoadColor = (load: number, cpuCount: number) => {
-        const ratio = load / cpuCount
-        if (ratio > 1) return 'red'
-        if (ratio > 0.7) return 'yellow'
-        return 'dimmed'
-    }
 
     const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -159,6 +156,13 @@ export const NodeCardWidget = memo((props: IProps) => {
             title: t('node-card.widget.copied'),
             color: 'teal'
         })
+    }
+
+    const getLoadColor = (load: number, cpus: number) => {
+        const ratio = load / cpus
+        if (ratio > 1) return 'red'
+        if (ratio > 0.7) return 'yellow'
+        return 'dimmed'
     }
 
     return (
@@ -336,7 +340,7 @@ export const NodeCardWidget = memo((props: IProps) => {
                                             size="sm"
                                             truncate
                                         >
-                                            {getSingboxUptimeUtil(nodeSingboxUptime)}
+                                            {getSingboxUptimeUtil(node.singboxUptime)}
                                         </Text>
                                     </Flex>
                                 )}
@@ -373,6 +377,9 @@ export const NodeCardWidget = memo((props: IProps) => {
                                         </Text>
                                         <Text size="xs">
                                             {`15 min: ${loadAvg[2].toFixed(2)} (${Math.round((loadAvg[2] / cpus) * 100)}%)`}
+                                        </Text>
+                                        <Text c="dimmed" mt={4} size="xs">
+                                            {'0–70% normal · 70–100% high · >100% overloaded'}
                                         </Text>
                                     </Stack>
                                 ) : (
@@ -577,7 +584,7 @@ export const NodeCardWidget = memo((props: IProps) => {
                                 fw={isOnline ? 600 : 500}
                                 size="xs"
                             >
-                                {isOnline ? getSingboxUptimeUtil(nodeSingboxUptime) : 'offline'}
+                                {isOnline ? getSingboxUptimeUtil(node.singboxUptime) : 'offline'}
                             </Text>
                         </Flex>
                     </Flex>

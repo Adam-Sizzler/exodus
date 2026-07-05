@@ -26,6 +26,7 @@ __exportStar(require("./internal-squads"), exports);
 __exportStar(require("./ip-control"), exports);
 __exportStar(require("./keygen"), exports);
 __exportStar(require("./nodes"), exports);
+__exportStar(require("./node-plugins"), exports);
 __exportStar(require("./passkeys"), exports);
 __exportStar(require("./exodus-settings"), exports);
 __exportStar(require("./snippets"), exports);

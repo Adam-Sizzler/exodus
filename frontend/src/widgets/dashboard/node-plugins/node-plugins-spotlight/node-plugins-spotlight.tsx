@@ -1,16 +1,17 @@
+import { GetNodePluginsCommand } from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { TbPackage } from 'react-icons/tb'
 
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
-import { NodePluginResponse } from '@shared/api/hooks'
 import { ROUTES } from '@shared/constants'
 
 interface IProps {
-    plugins: NodePluginResponse[]
+    plugins: GetNodePluginsCommand.Response['response']['nodePlugins']
 }
 
 export const NodePluginsSpotlightWidget = (props: IProps) => {
     const { plugins } = props
+
     const navigate = useNavigate()
 
     const handleViewNodePlugin = (nodePluginUuid: string) => {
@@ -27,6 +28,7 @@ export const NodePluginsSpotlightWidget = (props: IProps) => {
                 label: plugin.name,
                 id: plugin.uuid,
                 leftSection: <TbPackage size={24} />,
+
                 onClick: () => handleViewNodePlugin(plugin.uuid)
             }))}
         />

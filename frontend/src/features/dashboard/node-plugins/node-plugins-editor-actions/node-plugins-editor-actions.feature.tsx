@@ -9,6 +9,7 @@ import {
     TbSelectAll
 } from 'react-icons/tb'
 import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
+import { UpdateNodePluginCommand } from '@exodus/backend-contract'
 import { PiCheckSquareOffset, PiFloppyDisk } from 'react-icons/pi'
 import { ActionIcon, Button, Group, Menu } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
@@ -34,12 +35,11 @@ interface Props {
     setResult: (value: string) => void
 }
 
-const unsupportedPluginKeys = ['torrentBlocker', 'connectionDrop']
-
 export function NodePluginsEditorActionsFeature(props: Props) {
     const {
         editorRef,
         monacoRef,
+        isNodePluginValid,
         setResult,
         setIsNodePluginValid,
         hasUnsavedChanges,
@@ -47,17 +47,17 @@ export function NodePluginsEditorActionsFeature(props: Props) {
         setOriginalValue,
         pluginUuid
     } = props
-
     const { t } = useTranslation()
+
     const isMobile = useMediaQuery('(max-width: 48em)')
     const clipboard = useClipboard({ timeout: 500 })
     const [opened, handlers] = useDisclosure(false)
 
-    const { mutate: updateNodePlugin, isPending: isUpdating } = useUpdateNodePlugin({
+    const { mutate: updateNodePluginRes, isPending: isUpdating } = useUpdateNodePlugin({
         mutationFns: {
-            onSuccess: async (updatedNodePlugin) => {
+            onSuccess: async (updatedNodePlugin: UpdateNodePluginCommand.Response['response']) => {
                 await queryClient.refetchQueries({
-                    queryKey: QueryKeys.nodes.getNodePlugin({ uuid: pluginUuid }).queryKey
+                    queryKey: QueryKeys.nodePlugins.getNodePlugin({ uuid: pluginUuid }).queryKey
                 })
 
                 setIsNodePluginValid(true)
@@ -70,7 +70,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
                 }
 
                 await queryClient.setQueryData(
-                    QueryKeys.nodes.getNodePlugin({ uuid: pluginUuid }).queryKey,
+                    QueryKeys.nodePlugins.getNodePlugin({ uuid: pluginUuid }).queryKey,
                     updatedNodePlugin
                 )
 
@@ -95,9 +95,8 @@ export function NodePluginsEditorActionsFeature(props: Props) {
 
         const currentValue = editorRef.current.getValue()
 
-        let parsed: Record<string, unknown>
         try {
-            parsed = JSON.parse(currentValue) as Record<string, unknown>
+            JSON.parse(currentValue)
         } catch (error) {
             consola.error(error)
             notifications.show({
@@ -108,31 +107,21 @@ export function NodePluginsEditorActionsFeature(props: Props) {
             return
         }
 
-        const unsupportedKey = unsupportedPluginKeys.find((key) => key in parsed)
-        if (unsupportedKey) {
-            notifications.show({
-                color: 'red',
-                message: t('node-plugins-editor-actions.feature.unsupported-by-sing-box-core', {
-                    key: unsupportedKey
-                }),
-                title: t('config-editor-actions.feature.error')
+        if (currentValue) {
+            updateNodePluginRes({
+                variables: {
+                    uuid: pluginUuid,
+                    pluginConfig: JSON.parse(currentValue)
+                }
             })
-            return
         }
-
-        updateNodePlugin({
-            route: {
-                uuid: pluginUuid
-            },
-            variables: {
-                pluginConfig: parsed
-            }
-        })
     }
 
     const handleCopyConfig = () => {
         if (!editorRef.current) return
-        clipboard.copy(editorRef.current.getValue())
+
+        const currentValue = editorRef.current.getValue()
+        clipboard.copy(currentValue)
     }
 
     const handleSelectAll = () => {
@@ -186,6 +175,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
 
     const formatDocument = () => {
         if (!editorRef.current) return
+
         editorRef.current.getAction('editor.action.formatDocument')?.run()
     }
 
@@ -193,7 +183,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
         <Group grow={isMobile} preventGrowOverflow={false} wrap="wrap">
             <Button
                 color={!hasUnsavedChanges ? 'gray' : 'teal'}
-                disabled={!hasUnsavedChanges}
+                disabled={!isNodePluginValid && !hasUnsavedChanges}
                 leftSection={<PiFloppyDisk size={16} />}
                 loading={isUpdating}
                 onClick={handleSave}
@@ -266,6 +256,7 @@ export function NodePluginsEditorActionsFeature(props: Props) {
                     style={{
                         borderTopLeftRadius: 0,
                         borderBottomLeftRadius: 0,
+
                         borderLeft: 0,
                         width: '100%'
                     }}

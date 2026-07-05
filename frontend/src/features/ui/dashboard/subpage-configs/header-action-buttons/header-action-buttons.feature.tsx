@@ -94,9 +94,9 @@ export const SubpageConfigsHeaderActionButtonsFeature = () => {
                 size="md"
                 title={
                     <BaseOverlayHeader
+                        iconColor="teal"
                         IconComponent={TbFile}
                         iconVariant="soft"
-                        iconColor="teal"
                         title={t('common.create')}
                     />
                 }

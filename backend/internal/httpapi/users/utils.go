@@ -68,7 +68,7 @@ func isValidUserStatus(value string) bool {
 
 func isValidTrafficStrategy(value string) bool {
 	switch strings.ToUpper(strings.TrimSpace(value)) {
-	case "NO_RESET", "DAY", "WEEK", "MONTH":
+	case "NO_RESET", "DAY", "WEEK", "MONTH", "MONTH_ROLLING":
 		return true
 	default:
 		return false

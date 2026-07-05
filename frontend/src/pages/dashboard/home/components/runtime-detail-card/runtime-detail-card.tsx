@@ -3,12 +3,12 @@ import { Badge, Card, Grid, Group, Progress, Stack, Text, ThemeIcon } from '@man
 import { TFunction } from 'i18next'
 
 import {
+    ExodusMetric,
     formatBytes,
     formatMilliseconds,
     getHeapUsedPercent,
-    getHeapUsedValue,
-    RuntimeMetric
-} from '../metrics/pm2-metrics'
+    getHeapUsedValue
+} from '../metrics/exodus-metrics'
 
 import classes from './runtime-detail-card.module.css'
 
@@ -68,7 +68,7 @@ const DEFAULT_PROCESS = {
 }
 
 interface RuntimeDetailCardProps {
-    metric: RuntimeMetric
+    metric: ExodusMetric
     t: TFunction
 }
 
@@ -84,7 +84,7 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
     const config = PROCESS_CONFIG[instanceType] ?? DEFAULT_PROCESS
     const heapPercent = getHeapUsedPercent(metric)
     const scheduler = metric.scheduler as
-        | (RuntimeMetric['scheduler'] & { schedulerDelayMs?: number })
+        | (ExodusMetric['scheduler'] & { schedulerDelayMs?: number })
         | undefined
 
     return (

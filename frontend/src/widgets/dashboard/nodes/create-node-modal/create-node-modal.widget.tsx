@@ -144,8 +144,9 @@ export const CreateNodeModalWidget = () => {
             size="md"
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbCpu}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title={t('create-node-modal.widget.create-node')}
                 />
             }

@@ -175,6 +175,20 @@ type updateUserRequest struct {
 	ExternalSquadUUID    OptionalString `json:"externalSquadUuid,omitempty"`
 }
 
+type resolveUserRequest struct {
+	UUID      *string `json:"uuid,omitempty"`
+	ID        *int64  `json:"id,omitempty"`
+	ShortUUID *string `json:"shortUuid,omitempty"`
+	Username  *string `json:"username,omitempty"`
+}
+
+type resolveUserResponse struct {
+	UUID      string `json:"uuid"`
+	ID        int64  `json:"id"`
+	ShortUUID string `json:"shortUuid"`
+	Username  string `json:"username"`
+}
+
 type bulkDeleteUsersRequest struct {
 	UUIDs []string `json:"uuids"`
 }

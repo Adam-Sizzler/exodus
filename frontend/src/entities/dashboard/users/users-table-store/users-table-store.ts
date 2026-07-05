@@ -110,8 +110,8 @@ export const useUsersTableStore = create<IActions & IState>()(
         }),
 
         {
-            name: 'x-rmnw-users-table',
-            version: 6,
+            name: 'x-exs-users-table',
+            version: 8,
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
                 columnVisibility: state.columnVisibility,

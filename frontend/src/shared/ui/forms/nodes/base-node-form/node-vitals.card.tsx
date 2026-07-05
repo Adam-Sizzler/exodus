@@ -1,4 +1,10 @@
 import {
+    CreateNodeCommand,
+    GetNodePluginsCommand,
+    GetPubKeyCommand,
+    UpdateNodeCommand
+} from '@exodus/backend-contract'
+import {
     TbCertificate,
     TbMapPin,
     TbPackage,
@@ -7,16 +13,16 @@ import {
     TbUserCheck,
     TbWorld
 } from 'react-icons/tb'
-import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
+import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { UseFormReturnType } from '@mantine/form'
 import { HiOutlineServer } from 'react-icons/hi'
 
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { NodeKeygenResponse, NodePluginResponse } from '@shared/api/hooks'
 import { SectionCard } from '@shared/ui/section-card'
+import { NodeKeygenResponse } from '@shared/api/hooks'
 
 import { COUNTRIES } from './constants'
 
@@ -34,7 +40,7 @@ interface IProps<T extends NodeVitalsForm> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
-    nodePlugins: NodePluginResponse[]
+    nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     pubKey: NodeKeygenResponse | undefined
 }
 
@@ -63,8 +69,9 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
             <SectionCard.Root>
                 <SectionCard.Section>
                     <BaseOverlayHeader
+                        iconColor="blue"
                         IconComponent={HiOutlineServer}
-                        iconVariant="soft" iconColor="blue"
+                        iconVariant="soft"
                         title={t('base-node-form.node-vitals')}
                         titleOrder={5}
                     />
@@ -178,7 +185,7 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
 
                         <Select
                             key={form.key('activePluginUuid')}
-                            label={t('node-vitals.card.plugin', { defaultValue: 'Plugin' })}
+                            label={t('node-vitals.card.plugin')}
                             {...form.getInputProps('activePluginUuid')}
                             allowDeselect
                             clearable
@@ -187,19 +194,11 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                                 value: nodePlugin.uuid
                             }))}
                             description={t(
-                                'node-vitals.card.review-documentation-for-more-information',
-                                {
-                                    defaultValue:
-                                        'Review documentation for more information about node plugins.'
-                                }
+                                'node-vitals.card.review-documentation-for-more-information'
                             )}
                             leftSection={<TbPackage size={16} />}
-                            nothingFoundMessage={t('node-vitals.card.nothing-found', {
-                                defaultValue: 'Nothing found'
-                            })}
-                            placeholder={t('node-vitals.card.select-plugin', {
-                                defaultValue: 'Select plugin'
-                            })}
+                            nothingFoundMessage={t('node-vitals.card.nothing-found')}
+                            placeholder={t('node-vitals.card.select-plugin')}
                             searchable
                             styles={{
                                 label: { fontWeight: 500 }

@@ -48,7 +48,7 @@ export declare namespace DeleteInfraBillingNodeByUuidCommand {
                     lastStatusMessage: z.ZodNullable<z.ZodString>;
                     singboxVersion: z.ZodNullable<z.ZodString>;
                     nodeVersion: z.ZodNullable<z.ZodString>;
-                    singboxUptime: z.ZodString;
+                    singboxUptime: z.ZodNumber;
                     isTrafficTrackingActive: z.ZodBoolean;
                     trafficResetDay: z.ZodNullable<z.ZodNumber>;
                     trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -203,7 +203,7 @@ export declare namespace DeleteInfraBillingNodeByUuidCommand {
                 lastStatusMessage: z.ZodNullable<z.ZodString>;
                 singboxVersion: z.ZodNullable<z.ZodString>;
                 nodeVersion: z.ZodNullable<z.ZodString>;
-                singboxUptime: z.ZodString;
+                singboxUptime: z.ZodNumber;
                 isTrafficTrackingActive: z.ZodBoolean;
                 trafficResetDay: z.ZodNullable<z.ZodNumber>;
                 trafficLimitBytes: z.ZodNullable<z.ZodNumber>;

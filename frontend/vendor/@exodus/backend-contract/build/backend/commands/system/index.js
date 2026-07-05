@@ -19,6 +19,8 @@ __exportStar(require("./get-metadata.command"), exports);
 __exportStar(require("./get-nodes-metrics.command"), exports);
 __exportStar(require("./get-nodes-statistics"), exports);
 __exportStar(require("./get-exodus-health.command"), exports);
+__exportStar(require("./get-recap.command"), exports);
+__exportStar(require("./get-exodus-health.command"), exports);
 __exportStar(require("./get-stats.command"), exports);
 __exportStar(require("./testers"), exports);
 __exportStar(require("./tools"), exports);

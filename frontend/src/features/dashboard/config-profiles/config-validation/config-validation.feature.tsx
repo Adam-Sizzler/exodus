@@ -1,10 +1,9 @@
 import type { editor } from 'monaco-editor'
 
 import { GetSnippetsCommand } from '@exodus/backend-contract'
-import { Monaco } from '@monaco-editor/react'
 import consola from 'consola/browser'
-import { RefObject } from 'react'
 import dayjs from 'dayjs'
+import { RefObject } from 'react'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const replaceSnippetsInArray = (array: any[], snippetsMap: Map<string, unknown>): void => {
@@ -32,7 +31,7 @@ const replaceSnippetsInArray = (array: any[], snippetsMap: Map<string, unknown>)
 export const ConfigValidationFeature = {
     validate: (
         editorRef: RefObject<editor.IStandaloneCodeEditor | null>,
-        monacoRef: RefObject<Monaco | null>,
+
         setResult: (message: string) => void,
         setIsConfigValid: (isValid: boolean) => void,
         snippetsMap: Map<
@@ -42,7 +41,6 @@ export const ConfigValidationFeature = {
     ) => {
         try {
             if (!editorRef.current) return
-            if (!monacoRef.current) return
 
             const currentValue = editorRef.current.getValue()
 
@@ -64,34 +62,23 @@ export const ConfigValidationFeature = {
                 replaceSnippetsInArray(clonedCurrentValue.routing.rules, snippetsMap)
             }
 
-            if (clonedCurrentValue.route?.rules) {
-                replaceSnippetsInArray(clonedCurrentValue.route.rules, snippetsMap)
-            }
-
             if (clonedCurrentValue.routing?.balancers) {
                 replaceSnippetsInArray(clonedCurrentValue.routing.balancers, snippetsMap)
-            }
-
-            if (clonedCurrentValue.route?.balancers) {
-                replaceSnippetsInArray(clonedCurrentValue.route.balancers, snippetsMap)
-            }
-
-            if (typeof window.SingboxParseConfig !== 'function') {
-                setResult(
-                    `${dayjs().format('HH:mm:ss')} | WASM validator is unavailable (SingboxParseConfig is not initialized).`
-                )
-                setIsConfigValid(false)
-                return
             }
 
             const validationResult = window.SingboxParseConfig(JSON.stringify(clonedCurrentValue))
 
             setResult(
-                `${dayjs().format('HH:mm:ss')} | ${validationResult || 'Sing-box config is valid.'}`
+                `${dayjs().format('HH:mm:ss')} | ${validationResult || 'Xray config is valid.'}`
             )
             setIsConfigValid(!validationResult)
         } catch (err: unknown) {
-            setResult(`${dayjs().format('HH:mm:ss')} | Validation error: ${(err as Error).message}`)
+            const message = (err as Error).message
+            if (message?.includes('Go program has already exited')) {
+                setResult(`${dayjs().format('HH:mm:ss')} | WASM module crashed, restarting...`)
+            } else {
+                setResult(`${dayjs().format('HH:mm:ss')} | Validation error: ${message}`)
+            }
             setIsConfigValid(false)
         }
     }

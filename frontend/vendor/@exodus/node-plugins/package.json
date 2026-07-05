@@ -1,0 +1,17 @@
+{
+  "name": "@exodus/node-plugins",
+  "version": "0.4.4",
+  "public": true,
+  "license": "AGPL-3.0-only",
+  "description": "A library for Exodus Node Plugins.",
+  "main": "build/backend/index.js",
+  "browser": "build/frontend/index.mjs",
+  "module": "build/frontend/index.mjs",
+  "types": "build/backend/index.d.ts",
+  "files": [
+    "build/**/*"
+  ],
+  "dependencies": {
+    "zod": "3.25.76"
+  }
+}

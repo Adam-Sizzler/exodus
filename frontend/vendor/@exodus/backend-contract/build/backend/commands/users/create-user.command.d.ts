@@ -21,7 +21,8 @@ export declare namespace CreateUserCommand {
             readonly DAY: "DAY";
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
-        }>>>, "MONTH" | "NO_RESET" | "DAY" | "WEEK", "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined>>;
+            readonly MONTH_ROLLING: "MONTH_ROLLING";
+        }>>>, "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK", "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined>>;
         expireAt: z.ZodEffects<z.ZodString, Date, string>;
         createdAt: z.ZodOptional<z.ZodEffects<z.ZodString, Date, string>>;
         lastTrafficResetAt: z.ZodOptional<z.ZodEffects<z.ZodString, Date, string>>;
@@ -43,7 +44,7 @@ export declare namespace CreateUserCommand {
         shortUuid?: string | undefined;
         trafficLimitBytes?: number | undefined;
         description?: string | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | undefined;
@@ -63,7 +64,7 @@ export declare namespace CreateUserCommand {
         shortUuid?: string | undefined;
         trafficLimitBytes?: number | undefined;
         description?: string | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | undefined;
@@ -93,6 +94,7 @@ export declare namespace CreateUserCommand {
                 readonly DAY: "DAY";
                 readonly WEEK: "WEEK";
                 readonly MONTH: "MONTH";
+                readonly MONTH_ROLLING: "MONTH_ROLLING";
             }>>;
             expireAt: z.ZodEffects<z.ZodString, Date, string>;
             telegramId: z.ZodNullable<z.ZodNumber>;
@@ -151,7 +153,7 @@ export declare namespace CreateUserCommand {
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -208,7 +210,7 @@ export declare namespace CreateUserCommand {
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         }>;
     }, "strip", z.ZodTypeAny, {
@@ -223,7 +225,7 @@ export declare namespace CreateUserCommand {
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -282,7 +284,7 @@ export declare namespace CreateUserCommand {
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
     }>;

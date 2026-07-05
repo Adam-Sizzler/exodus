@@ -94,7 +94,7 @@ type nodeAPI struct {
 	LastStatusMessage       *string               `json:"lastStatusMessage"`
 	SingboxVersion          *string               `json:"singboxVersion"`
 	NodeVersion             *string               `json:"nodeVersion"`
-	SingboxUptime           string                `json:"singboxUptime"`
+	SingboxUptime           int64                 `json:"singboxUptime"`
 	IsTrafficTrackingActive bool                  `json:"isTrafficTrackingActive"`
 	TrafficResetDay         *int                  `json:"trafficResetDay"`
 	TrafficLimitBytes       *int64                `json:"trafficLimitBytes"`
@@ -136,10 +136,6 @@ type nodeRecord struct {
 	IsDisabled              bool
 	LastStatusChange        *time.Time
 	LastStatusMessage       *string
-	SingboxVersion          *string
-	NodeVersion             *string
-	SingboxUptime           string
-	UsersOnline             *int
 	ConsumptionMultiplier   int64
 	IsTrafficTrackingActive bool
 	TrafficResetDay         *int
@@ -150,11 +146,6 @@ type nodeRecord struct {
 	ViewPosition            int
 	CountryCode             string
 	Tags                    []string
-	CPUCount                *int
-	CPUModel                *string
-	TotalRAM                *string
-	SystemInfoRaw           []byte
-	SystemStatsRaw          []byte
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 }
@@ -217,6 +208,19 @@ type restartAllNodesRequest struct {
 type bulkNodesActionsRequest struct {
 	UUIDs  []string `json:"uuids"`
 	Action string   `json:"action"`
+}
+
+type bulkUpdateNodeFieldsRequest struct {
+	CountryCode           *string        `json:"countryCode,omitempty"`
+	ConsumptionMultiplier *float64       `json:"consumptionMultiplier,omitempty"`
+	ProviderUUID          OptionalString `json:"providerUuid,omitempty"`
+	Tags                  *[]string      `json:"tags,omitempty"`
+	ActivePluginUUID      OptionalString `json:"activePluginUuid,omitempty"`
+}
+
+type bulkUpdateNodesRequest struct {
+	UUIDs  []string                    `json:"uuids"`
+	Fields bulkUpdateNodeFieldsRequest `json:"fields"`
 }
 
 type bulkProfileModificationRequest struct {

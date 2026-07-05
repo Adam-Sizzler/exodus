@@ -1,19 +1,19 @@
 import { ActionIcon, Box, Group, SimpleGrid, Stack, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { useTranslation } from 'react-i18next'
 import { TbCamera } from 'react-icons/tb'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 
 import { MetricCardShared, MetricCardWithTrendShared } from '@shared/ui/metrics/metric-card'
+import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
 import { LoadingScreen } from '@shared/ui'
 import { Page } from '@shared/ui/page'
-import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
 
 import {
     getBandwidthMetrics,
+    getExodusProcessMetrics,
+    getExodusSummaryMetrics,
     getOnlineMetrics,
-    getRuntimeProcessMetrics,
-    getRuntimeSummaryMetrics,
     getSimpleMetrics,
     getUsersMetrics
 } from './metrics'
@@ -67,16 +67,16 @@ export const HomePage = (props: IProps) => {
     const simpleMetrics = getSimpleMetrics(systemInfo, t)
     const usersMetrics = getUsersMetrics(systemInfo.users, t)
     const onlineMetrics = getOnlineMetrics(systemInfo.onlineStats, t)
-    const runtimeHealth = exodusHealth as typeof exodusHealth & {
-        runtimeMetrics?: Parameters<typeof getRuntimeProcessMetrics>[0]
-        runtimeSummary?: Parameters<typeof getRuntimeSummaryMetrics>[0]
+    const exodusRuntimeHealth = exodusHealth as typeof exodusHealth & {
+        exodusMetrics?: Parameters<typeof getExodusProcessMetrics>[0]
+        exodusSummary?: Parameters<typeof getExodusSummaryMetrics>[0]
     }
-    const runtimeSummaryMetrics = getRuntimeSummaryMetrics(
-        runtimeHealth.runtimeSummary,
-        runtimeHealth.runtimeMetrics,
+    const runtimeSummaryMetrics = getExodusSummaryMetrics(
+        exodusRuntimeHealth.exodusSummary,
+        exodusRuntimeHealth.exodusMetrics,
         t
     )
-    const runtimeProcessMetrics = getRuntimeProcessMetrics(runtimeHealth.runtimeMetrics, t)
+    const runtimeProcessMetrics = getExodusProcessMetrics(exodusRuntimeHealth.exodusMetrics, t)
     return (
         <Page title={t('constants.home')}>
             <Stack gap="sm">
@@ -184,12 +184,13 @@ export const HomePage = (props: IProps) => {
                     </SimpleGrid>
                 </div>
 
-                {runtimeHealth.runtimeMetrics && runtimeHealth.runtimeMetrics.length > 0 && (
+                {exodusRuntimeHealth.exodusMetrics && exodusRuntimeHealth.exodusMetrics.length > 0 && (
                     <div className={classes.section}>
                         <Group align="center" gap="xs" m="xs" ml={0}>
                             <Title className={classes.title} order={4}>
-                                {t('home.page.runtime')}
+                                Runtime
                             </Title>
+
                             <ActionIcon
                                 color="gray"
                                 loading={copying}
@@ -202,7 +203,7 @@ export const HomePage = (props: IProps) => {
                             </ActionIcon>
                         </Group>
                         <SimpleGrid cols={{ base: 1, sm: 1, xl: 2 }} ref={runtimeRef} spacing="xs">
-                            {runtimeHealth.runtimeMetrics.map((metric, index) => (
+                            {exodusRuntimeHealth.exodusMetrics.map((metric, index) => (
                                 <AnimatedCard index={index} key={metric.pid ?? index}>
                                     <RuntimeDetailCard metric={metric} t={t} />
                                 </AnimatedCard>

@@ -4,16 +4,16 @@ import { ReactNode } from 'react'
 interface SettingsCardHeaderProps {
     description: ReactNode | string
     icon: ReactNode
-    iconColor?: ThemeIconProps['color']
-    iconVariant?: ThemeIconProps['variant']
+    iconColor: ThemeIconProps['color']
+    iconVariant: ThemeIconProps['variant']
     title: string
 }
 
 export function SettingsCardHeader({
     description,
     icon,
-    iconColor = 'cyan',
-    iconVariant = 'soft',
+    iconColor,
+    iconVariant,
     title
 }: SettingsCardHeaderProps) {
     return (

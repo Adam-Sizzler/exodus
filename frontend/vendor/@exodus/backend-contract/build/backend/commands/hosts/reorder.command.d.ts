@@ -24,6 +24,9 @@ export declare namespace ReorderHostCommand {
             xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
+            overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
+            protocolCredential: z.ZodNullable<z.ZodString>;
+            finalMask: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
                 configProfileUuid: z.ZodNullable<z.ZodString>;
                 configProfileInboundUuid: z.ZodNullable<z.ZodString>;

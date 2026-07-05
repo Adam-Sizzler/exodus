@@ -24,12 +24,13 @@ export declare const SubscriptionInfoSchema: z.ZodObject<{
             readonly DAY: "DAY";
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
+            readonly MONTH_ROLLING: "MONTH_ROLLING";
         }>;
     }, "strip", z.ZodTypeAny, {
         username: string;
         shortUuid: string;
         trafficLimitBytes: string;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         trafficUsedBytes: string;
         daysLeft: number;
         trafficUsed: string;
@@ -43,7 +44,7 @@ export declare const SubscriptionInfoSchema: z.ZodObject<{
         username: string;
         shortUuid: string;
         trafficLimitBytes: string;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         trafficUsedBytes: string;
         daysLeft: number;
         trafficUsed: string;
@@ -62,7 +63,7 @@ export declare const SubscriptionInfoSchema: z.ZodObject<{
         username: string;
         shortUuid: string;
         trafficLimitBytes: string;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         trafficUsedBytes: string;
         daysLeft: number;
         trafficUsed: string;
@@ -82,7 +83,7 @@ export declare const SubscriptionInfoSchema: z.ZodObject<{
         username: string;
         shortUuid: string;
         trafficLimitBytes: string;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         trafficUsedBytes: string;
         daysLeft: number;
         trafficUsed: string;

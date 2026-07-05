@@ -44,6 +44,15 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		}
 
 		parts := strings.Split(path, "/")
+		if len(parts) == 1 && parts[0] == "resolve" {
+			if r.Method != http.MethodPost {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleResolveUser(w, r, manager, cfg)
+			return
+		}
+
 		userUUID := parts[0]
 		if _, err := uuid.Parse(userUUID); err != nil {
 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)

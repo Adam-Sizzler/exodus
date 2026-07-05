@@ -105,9 +105,9 @@ export const TemplatesHeaderActionButtonsFeature = (props: IProps) => {
                 size="md"
                 title={
                     <BaseOverlayHeader
+                        iconColor="teal"
                         IconComponent={TbFolder}
                         iconVariant="soft"
-                        iconColor="teal"
                         title={t('header-action-buttons.feature.create-new-template')}
                     />
                 }

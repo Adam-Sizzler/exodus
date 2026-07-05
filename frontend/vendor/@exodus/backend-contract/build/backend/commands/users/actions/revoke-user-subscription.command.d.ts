@@ -43,6 +43,7 @@ export declare namespace RevokeUserSubscriptionCommand {
                 readonly DAY: "DAY";
                 readonly WEEK: "WEEK";
                 readonly MONTH: "MONTH";
+                readonly MONTH_ROLLING: "MONTH_ROLLING";
             }>>;
             expireAt: z.ZodEffects<z.ZodString, Date, string>;
             telegramId: z.ZodNullable<z.ZodNumber>;
@@ -101,7 +102,7 @@ export declare namespace RevokeUserSubscriptionCommand {
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -158,7 +159,7 @@ export declare namespace RevokeUserSubscriptionCommand {
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         }>;
     }, "strip", z.ZodTypeAny, {
@@ -173,7 +174,7 @@ export declare namespace RevokeUserSubscriptionCommand {
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -232,7 +233,7 @@ export declare namespace RevokeUserSubscriptionCommand {
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
     }>;

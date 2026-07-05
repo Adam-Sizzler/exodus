@@ -14,7 +14,6 @@ dotenv.config({ path: `${__dirname}/.env`, override: true })
 
 export default defineConfig({
     assetsInclude: ['**/*.lottie'],
-    base: './',
     plugins: [
         react(),
         tsconfigPaths(),
@@ -72,8 +71,6 @@ export default defineConfig({
                     utils: [
                         'nanoid',
                         'ufo',
-                        'base64-js',
-                        'buffer',
                         'consola',
                         'semver',
                         'is-svg',
@@ -121,7 +118,10 @@ export default defineConfig({
         port: 3333,
         cors: true,
         strictPort: true,
-        allowedHosts: true
+        allowedHosts: true,
+        hmr: {
+            overlay: false
+        }
     },
     resolve: {
         alias: {

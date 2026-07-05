@@ -56,9 +56,9 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                         'import-config-sections.modal.replace-entire-config-with-imported-one'
                     )}
                     icon={<TbReplace size={22} />}
+                    iconColor="red"
                     onClick={handleFullImport}
                     title={t('import-config-sections.modal.full-import')}
-                    iconColor="red"
                     variant="soft"
                 />
 
@@ -77,9 +77,9 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                             1: currentSvgCount
                         })}
                         icon={<TbIcons size={22} />}
+                        iconColor="violet"
                         onClick={handleImportSvgLibrary}
                         title={t('import-config-sections.modal.import-svg-library')}
-                        iconColor="violet"
                         variant="soft"
                     />
                 )}
@@ -90,9 +90,9 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                             'import-config-sections.modal.import-platforms-descriptions'
                         )}
                         icon={<TbDevices size={22} />}
+                        iconColor="cyan"
                         onClick={handleImportPlatforms}
                         title={t('import-config-sections.modal.import-platforms')}
-                        iconColor="cyan"
                         variant="soft"
                     />
                 )}
@@ -102,9 +102,9 @@ export const ImportConfigSectionsModalContent = (props: IProps) => {
                         'import-config-sections.modal.replace-base-translation-and-locales'
                     )}
                     icon={<TbLanguage size={22} />}
+                    iconColor="yellow"
                     onClick={handleImportBaseTranslations}
                     title={t('import-config-sections.modal.import-base-translations')}
-                    iconColor="yellow"
                     variant="soft"
                 />
             </Stack>

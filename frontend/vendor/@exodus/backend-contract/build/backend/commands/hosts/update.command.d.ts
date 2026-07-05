@@ -25,6 +25,9 @@ export declare namespace UpdateHostCommand {
         singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
         clashMuxParams: z.ZodNullable<z.ZodUnknown>;
         sockoptParams: z.ZodNullable<z.ZodUnknown>;
+        overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
+        protocolCredential: z.ZodNullable<z.ZodString>;
+        finalMask: z.ZodNullable<z.ZodUnknown>;
         inbound: z.ZodObject<{
             configProfileUuid: z.ZodNullable<z.ZodString>;
             configProfileInboundUuid: z.ZodNullable<z.ZodString>;
@@ -103,6 +106,9 @@ export declare namespace UpdateHostCommand {
         singboxMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         clashMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         sockoptParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        overrideProtocolCredential: z.ZodOptional<z.ZodBoolean>;
+        protocolCredential: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        finalMask: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         isHidden: z.ZodOptional<z.ZodBoolean>;
@@ -143,6 +149,9 @@ export declare namespace UpdateHostCommand {
         singboxMuxParams?: unknown;
         clashMuxParams?: unknown;
         sockoptParams?: unknown;
+        overrideProtocolCredential?: boolean | undefined;
+        protocolCredential?: string | null | undefined;
+        finalMask?: unknown;
         inbound?: {
             configProfileUuid: string;
             configProfileInboundUuid: string;
@@ -178,6 +187,9 @@ export declare namespace UpdateHostCommand {
         singboxMuxParams?: unknown;
         clashMuxParams?: unknown;
         sockoptParams?: unknown;
+        overrideProtocolCredential?: boolean | undefined;
+        protocolCredential?: string | null | undefined;
+        finalMask?: unknown;
         inbound?: {
             configProfileUuid: string;
             configProfileInboundUuid: string;
@@ -217,6 +229,9 @@ export declare namespace UpdateHostCommand {
             xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
+            overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
+            protocolCredential: z.ZodNullable<z.ZodString>;
+            finalMask: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
                 configProfileUuid: z.ZodNullable<z.ZodString>;
                 configProfileInboundUuid: z.ZodNullable<z.ZodString>;
@@ -279,6 +294,9 @@ export declare namespace UpdateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential: boolean;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
         }, {
             nodes: string[];
@@ -308,6 +326,9 @@ export declare namespace UpdateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential: boolean;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             isHidden?: boolean | undefined;
             overrideSniFromAddress?: boolean | undefined;
             keepSniBlank?: boolean | undefined;
@@ -347,6 +368,9 @@ export declare namespace UpdateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential?: boolean | undefined;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
         };
     }, {
@@ -378,6 +402,9 @@ export declare namespace UpdateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential: boolean;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             isHidden?: boolean | undefined;
             overrideSniFromAddress?: boolean | undefined;
             keepSniBlank?: boolean | undefined;

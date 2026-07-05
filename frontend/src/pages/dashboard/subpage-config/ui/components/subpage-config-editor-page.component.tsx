@@ -205,9 +205,10 @@ export const SubpageConfigEditorPageComponent = (props: Props) => {
             modals.open({
                 title: (
                     <BaseOverlayHeader
+                        iconColor="cyan"
                         IconComponent={TbFileImport}
                         iconSize={20}
-                        iconVariant="soft" iconColor="cyan"
+                        iconVariant="soft"
                         title={t('subpage-config-editor-page.component.import-config')}
                         titleOrder={5}
                     />
@@ -341,7 +342,7 @@ export const SubpageConfigEditorPageComponent = (props: Props) => {
                 }
                 className={styles.headerCard}
                 customThemeIcon={
-                    <ThemeIcon size="lg" variant="soft" color="cyan">
+                    <ThemeIcon color="cyan" size="lg" variant="soft">
                         <TbPalette size={24} />
                     </ThemeIcon>
                 }

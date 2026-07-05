@@ -1,12 +1,12 @@
 import { withBasePath } from '@shared/constants/base-path'
 
 export const app = {
-    name: 'Exodus Dashboard',
-    githubRepo: 'https://github.com/Adam-Sizzler/exodus',
-    githubStars: 'https://github.com/Adam-Sizzler/exodus/stargazers',
-    githubIssues: 'https://github.com/Adam-Sizzler/exodus/issues',
+    name: 'Exodus',
+    githubRepo: 'https://github.com/Adam-Sizzler/backend',
+    githubStars: 'https://github.com/Adam-Sizzler/backend/stargazers',
+    githubIssues: 'https://github.com/Adam-Sizzler/backend/issues',
     githubOrg: 'https://github.com/Adam-Sizzler',
-    githubDonation: 'https://github.com/Adam-Sizzler/exodus',
+    githubDonation: 'https://github.com/Adam-Sizzler/backend#donation',
     configEditor: {
         wasmUrl: withBasePath('/assets/main.wasm'),
         wasmJsUrl: withBasePath('/assets/wasm_exec.js'),

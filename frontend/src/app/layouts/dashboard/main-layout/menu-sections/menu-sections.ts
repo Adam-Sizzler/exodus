@@ -2,10 +2,12 @@ import {
     TbChartArcs,
     TbCirclesRelation,
     TbDeviceAnalytics,
+    TbFlame,
     TbFolder,
     TbHexagon,
     TbListDetails,
     TbPackage,
+    TbRadar2,
     TbReportAnalytics,
     TbRoute,
     TbWebhook
@@ -19,8 +21,8 @@ import {
     PiStarDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { HiChartPie, HiCurrencyDollar, HiServer } from 'react-icons/hi'
 import { SUBSCRIPTION_TEMPLATE_TYPE } from '@exodus/backend-contract'
+import { HiChartPie, HiCurrencyDollar, HiServer } from 'react-icons/hi'
 import { useTranslation } from 'react-i18next'
 import { useHotkeys } from '@mantine/hooks'
 import { useState } from 'react'
@@ -103,7 +105,6 @@ export const useMenuSections = (): MenuItem[] => {
                             icon: HiServer,
                             id: 'management'
                         },
-
                         {
                             name: `${t('constants.node-plugins', { defaultValue: 'Plugins' })} β`,
                             href: ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT,

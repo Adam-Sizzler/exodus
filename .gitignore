@@ -1,10 +1,14 @@
 certs/
+scripts/
+frontend/dist/
 
 *.log
 *.tmp
 *.md
 *.key
 *.pem
+*.vscode
 
 !README.md
 !frontend/public/help-articles/**/*.md
+node_modules

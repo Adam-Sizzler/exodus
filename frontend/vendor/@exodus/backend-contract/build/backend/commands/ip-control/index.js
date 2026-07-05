@@ -17,3 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./drop-connections.command"), exports);
 __exportStar(require("./fetch-ips-result.command"), exports);
 __exportStar(require("./fetch-ips.command"), exports);
+__exportStar(require("./fetch-users-ips-result.command"), exports);
+__exportStar(require("./fetch-users-ips.command"), exports);

@@ -9,16 +9,13 @@ import {
 import { SubpageConfigEditorPageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-editor-page.connector'
 import { ConfigProfileByUuidPageConnector } from '@pages/dashboard/config-profiles/connectors/config-profile-by-uuid.page.connector'
 import { SubpageConfigBasePageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-base-page.connector'
-import {
-    NodePluginEditorPageConnector,
-    NodePluginsBasePageConnector
-} from '@pages/dashboard/node-plugins/ui/connectors'
+import { NodePluginEditorPageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugin-editor-page.connector'
+import { NodePluginsBasePageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugins-base-page.connector'
 import { InternalSquadsPageConnector } from '@pages/dashboard/internal-squads/connectors/internal-squads.page.connector'
 import { InfraBillingPageConnector } from '@pages/dashboard/crm/infra-billing/connectors/infra-billing.page.connector'
 import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
 import { TemplateEditorPageConnector } from '@pages/dashboard/templates/ui/connectors/template-editor-page.connector'
 import { TemplateBasePageConnector } from '@pages/dashboard/templates/ui/connectors/template-base-page.connector'
-import { SubscriptionConnectionsPageConnector } from '@pages/dashboard/subscription-connections/ui/connectors'
 import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
 import { SubscriptionSettingsConnector } from '@pages/dashboard/subscription-settings/connectors'
 import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
@@ -33,6 +30,7 @@ import { SRSListsPageConnector } from '@pages/dashboard/srs-lists/connectors'
 import { HostsPageConnector } from '@pages/dashboard/hosts/ui/connectors'
 import { UsersPageConnector } from '@pages/dashboard/users/ui/connectors'
 import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
+import { SubscriptionConnectionsPageConnector } from '@pages/dashboard/subscription-connections/ui/connectors'
 import { HomePageConnector } from '@pages/dashboard/home/connectors'
 import { NotFoundPageComponent } from '@pages/errors/4xx-error'
 import { ErrorBoundaryHoc } from '@shared/hocs/error-boundary'
@@ -79,6 +77,7 @@ const router = createBrowserRouter(
                             element={<NodesPageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.NODES}
                         />
+
                         <Route
                             element={<NodePluginsBasePageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT}
@@ -137,6 +136,15 @@ const router = createBrowserRouter(
                             element={<ExodusSettingsConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.EXODUS_SETTINGS}
                         />
+
+                        <Route path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT}>
+                            <Route element={<NodePluginsBasePageConnector />} index />
+
+                            <Route
+                                element={<NodePluginEditorPageConnector />}
+                                path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.NODE_PLUGIN_BY_UUID}
+                            />
+                        </Route>
                     </Route>
 
                     <Route path={ROUTES.DASHBOARD.TOOLS.ROOT}>

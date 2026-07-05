@@ -8,6 +8,7 @@ exports.SYSTEM_ROUTES = {
         BANDWIDTH_STATS: 'stats/bandwidth',
         NODES_STATS: 'stats/nodes',
         NODES_METRICS: 'nodes/metrics',
+        RECAP: 'stats/recap',
     },
     TOOLS: {
         GENERATE_X25519: 'tools/x25519/generate',

@@ -1,4 +1,5 @@
 import { DataTable, type DataTableSortStatus, useDataTableColumns } from 'mantine-datatable'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { memo, useLayoutEffect, useMemo, useState } from 'react'
 import { Box, Button, Group, Stack, Text } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
@@ -7,13 +8,8 @@ import { TbRestore } from 'react-icons/tb'
 import { PiEmpty } from 'react-icons/pi'
 import get from 'lodash/get'
 
+import { useGetConfigProfiles, useGetNodePlugins, useGetNodes, NodeResponse } from '@shared/api/hooks'
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import {
-    NodeResponse,
-    useGetConfigProfiles,
-    useGetNodePlugins,
-    useGetNodes
-} from '@shared/api/hooks'
 import { preventBackScrollTables } from '@shared/utils/misc'
 import { sToMs } from '@shared/utils/time-utils'
 import { LoadingScreen } from '@shared/ui'
@@ -24,19 +20,21 @@ import {
     type NodeStatusFilter
 } from './use-nodes-table-widget'
 
+type NodeType = NodeResponse
+
+function getNodeSortValue(node: NodeType, accessor: string): unknown {
+    return get(node, accessor)
+}
+
 interface IProps {
     nodes: NodeResponse[] | undefined
-    selectedRecords: NodeResponse[]
-    setSelectedRecords: (records: NodeResponse[]) => void
+    selectedRecords: NodeType[]
+    setSelectedRecords: (records: NodeType[]) => void
 }
 
 const PAGE_SIZE = 50
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 150, 200]
 const NODES_CACHE_KEY = 'nodes-datatable-nodes-v2'
-
-function getNodeSortValue(node: NodeResponse, accessor: string): unknown {
-    return get(node, accessor)
-}
 
 export const NodesDataTableWidget = memo((props: IProps) => {
     const { nodes, selectedRecords, setSelectedRecords } = props
@@ -44,7 +42,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
     const [pageSize, setPageSize] = useState(PAGE_SIZE)
     const [page, setPage] = useState(1)
-    const [sortStatus, setSortStatus] = useState<DataTableSortStatus<NodeResponse>>({
+    const [sortStatus, setSortStatus] = useState<DataTableSortStatus<NodeType>>({
         columnAccessor: 'viewPosition',
         direction: 'asc'
     })
@@ -59,7 +57,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
     const [selectedStatuses, setSelectedStatuses] = useState<NodeStatusFilter[]>([])
 
     const { data: configProfiles } = useGetConfigProfiles({})
-    const { data: nodePlugins } = useGetNodePlugins({})
+    const { data: nodePlugins } = useGetNodePlugins()
 
     const openModalWithData = useModalsStoreOpenWithData()
 
@@ -74,7 +72,6 @@ export const NodesDataTableWidget = memo((props: IProps) => {
         document.body.addEventListener('wheel', preventBackScrollTables, {
             passive: false
         })
-
         return () => {
             document.body.removeEventListener('wheel', preventBackScrollTables)
         }
@@ -86,17 +83,14 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
     const { availableTags, availableProviders, availableInbounds } = useMemo(() => {
         if (!nodes) return { availableInbounds: [], availableProviders: [], availableTags: [] }
-
         const tagsSet = new Set<string>()
         const providersSet = new Set<string>()
         const inboundsSet = new Set<string>()
-
         for (const node of nodes) {
             node.tags?.forEach((tag) => tagsSet.add(tag))
             if (node.provider?.name) providersSet.add(node.provider.name)
             node.configProfile?.activeInbounds?.forEach((inbound) => inboundsSet.add(inbound.tag))
         }
-
         return {
             availableInbounds: [...inboundsSet].sort(),
             availableProviders: [...providersSet].sort(),
@@ -106,18 +100,18 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
     const availableConfigProfiles = useMemo(
         () =>
-            (configProfiles?.configProfiles ?? []).map((profile) => ({
-                label: profile.name,
-                value: profile.uuid
+            (configProfiles?.configProfiles ?? []).map((p) => ({
+                label: p.name,
+                value: p.uuid
             })),
         [configProfiles]
     )
 
     const availablePlugins = useMemo(
         () =>
-            (nodePlugins?.nodePlugins ?? []).map((plugin) => ({
-                label: plugin.name,
-                value: plugin.uuid
+            (nodePlugins?.nodePlugins ?? []).map((p) => ({
+                label: p.name,
+                value: p.uuid
             })),
         [nodePlugins]
     )
@@ -180,7 +174,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
             if (
                 selectedConfigProfiles.length > 0 &&
-                (!node.configProfile?.activeConfigProfileUuid ||
+                (!node.configProfile.activeConfigProfileUuid ||
                     !selectedConfigProfiles.includes(node.configProfile.activeConfigProfileUuid))
             ) {
                 return false
@@ -216,7 +210,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
         })
 
         const isDesc = sortStatus.direction === 'desc'
-        return [...filtered].sort((a, b) => {
+        const sorted = [...filtered].sort((a, b) => {
             const aVal = getNodeSortValue(a, sortStatus.columnAccessor)
             const bVal = getNodeSortValue(b, sortStatus.columnAccessor)
 
@@ -237,6 +231,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
             return isDesc ? -result : result
         })
+        return sorted
     }, [
         nodes,
         debouncedNameQuery,
@@ -277,7 +272,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
                         <Text c="dimmed" size="sm">
                             {t('infra-billing-nodes.widget.no-nodes-found')}
                         </Text>
-                        <Button style={{ pointerEvents: 'all' }} variant="soft">
+                        <Button style={{ pointerEvents: 'all' }} variant="light">
                             {t('infra-billing-nodes.widget.add-a-node')}
                         </Button>
                     </Stack>
@@ -296,9 +291,6 @@ export const NodesDataTableWidget = memo((props: IProps) => {
                 recordsPerPage={pageSize}
                 recordsPerPageOptions={PAGE_SIZE_OPTIONS}
                 selectedRecords={selectedRecords}
-                selectionColumnStyle={{
-                    backgroundColor: 'var(--mantine-color-dark-7)'
-                }}
                 sortStatus={sortStatus}
                 storeColumnsKey={NODES_CACHE_KEY}
                 striped
@@ -315,7 +307,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
                         size="sm"
                         variant="default"
                     >
-                        Column width
+                        {t('nodes-datatable.widget.column-width')}
                     </Button>
                     <Button
                         leftSection={<TbRestore size={16} />}
@@ -323,7 +315,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
                         size="sm"
                         variant="default"
                     >
-                        Column order
+                        {t('nodes-datatable.widget.column-order')}
                     </Button>
                     <Button
                         leftSection={<TbRestore size={16} />}
@@ -331,7 +323,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
                         size="sm"
                         variant="default"
                     >
-                        Column toggle
+                        {t('nodes-datatable.widget.column-toggle')}
                     </Button>
                 </Group>
             </Group>

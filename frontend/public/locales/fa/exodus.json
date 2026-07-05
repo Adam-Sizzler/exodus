@@ -389,13 +389,8 @@
         "sni-description-line-1": "SNI نشان‌دهنده نام سرور است.",
         "sni-description-line-2": "اگر مشخص نشود، مقدار از کانفیگ اینباند استخراج خواهد شد.",
         "host-visibility": "قابلیت دیده شدن هاست",
-        "server-description-description": "مخصوص Happ.",
         "select-one-inbound-to-apply-to-the-host": "یک اینباند برای اعمال روی هاست انتخاب کنید",
         "server-description-header": "توضیحات سرور",
-        "server-description-line-1": "این ویژگی فقط با ProviderID نرم‌افزار Happ کار می‌کند. لطفا مراجعه کنید به",
-        "server-description-line-2": "مستندات Happ",
-        "server-description-line-3": "برای کسب اطلاعات بیشتر",
-        "server-description-line-4": "این مقدار توسط Exodus به صورت Base64 رمزنگاری می‌شود. لطفا مقدار رمزنگاری شده وارد نکنید.",
         "server-description-placeholder": "حداکثر 30 کاراکتر",
         "this-will-only-be-used-for-xray-json-output": "این مقادیر فقط در خروجی Xray JSON استفاده خواهد شد.",
         "this-will-only-be-used-for-selected-core-output": "این مقادیر فقط در خروجی {{core}} استفاده خواهد شد.",
@@ -403,6 +398,7 @@
         "please-ensure-you-provide-a-valid-yaml-mux-object": "لطفا از صحت YAML وارد شده برای Mux اطمینان حاصل کنید",
         "for-more-information-refer-to": "برای اطلاعات بیشتر مراجعه کنید به",
         "xtls-documentation": "مستندات XTLS",
+        "final-mask-description": "The finalMask override allows you to fine-tune the finalMask in cases where the server-side and client-side finalMask configurations need to differ.<br/><br/>FinalMask will only be applied to Xray-JSON and Base64 client output formats.<br/><br/>Make sure to review the <anchor>Xray documentation</anchor>.",
         "paste-default-mux-params": "جای‌گذاری پارامترهای پیش‌فرض Mux",
         "please-ensure-you-provide-a-valid-json-sockopt-object": "لطفا از صحت JSON وارد شده برای Sockopt اطمینان حاصل کنید",
         "paste-default-sockopt-params": "جای‌گذاری پارامترهای پیش‌فرض Sockopt",
@@ -452,7 +448,10 @@
         "keep-sni-blank-description": "در برخی موارد باید SNI خالی بماند. از این گزینه برای خالی گذاشتن SNI استفاده کنید. توجه داشته باشید که این گزینه بالاترین اولویت را دارد، بنابراین حتی اگر SNI از قبل تنظیم شده باشد، اعمال خواهد شد.",
         "select-one-or-more-subscription-types-description": "Select one or more subscription types to exclude host from that subscription type.",
         "exclude-from-subscription-type": "Exclude from Subscription Type",
-        "hidden-host-description": "By default, Exodus will not include hidden hosts in the subscription. Hidden host can be used with Mihomo and Singbox-Json Advanced, Raw."
+        "hidden-host-description": "By default, Exodus will not include hidden hosts in the subscription. Hidden host can be used with Mihomo and Xray-Json Advanced, Raw.",
+        "server-description-1": "In supported clients, the protocol name (e.g. vless) will be replaced with the description specified here.",
+        "server-description-2": "Not all client applications support this feature. For more details, refer to the documentation of the apps listed below.",
+        "supported-clients": "Supported clients"
     },
     "base-node-form": {
         "country": "کشور",
@@ -533,14 +532,16 @@
             "reset-monthly": "بازنشانی ماهانه",
             "reset-weekly": "بازنشانی هفتگی",
             "reset-daily": "بازنشانی روزانه",
-            "never-reset": "هیچ‌گاه بازنشانی نشود"
+            "never-reset": "هیچ‌گاه بازنشانی نشود",
+            "reset-monthly-by-creation-date": "Reset monthly (by creation date)"
         }
     },
     "data-usage": {
         "column": {
             "monthly": "ماهانه",
             "weekly": "هفتگی",
-            "daily": "روزانه"
+            "daily": "روزانه",
+            "monthly-rolling": "Monthly (rolling)"
         }
     },
     "get-time-ago": {
@@ -820,10 +821,11 @@
         "widget": {
             "title": "نشست‌های فعال",
             "requirements": "پیش‌نیازها",
-            "warning-activity": "آدرس‌های آیپی درصورتی که در <highlight>20 ثانیه</highlight> اخیر فعال بوده باشند نمایش داده می‌شوند",
+            "warning-activity": "An IP address will be shown when <highlight>Xray-Core</highlight> considers the <highlight>connection still open</highlight>. This may result in some displayed IP addresses that are no longer actually connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
             "warning-version": "نود Exodus نسخه <highlight>{{version}}</highlight> یا بالاتر",
-            "warning-docker": "مقادیر زیر را به <highlight>docker-compose.yml</highlight> نود (در /opt/exodus-node) اضافه کنید",
+            "warning-docker": "مقادیر زیر را به <highlight>docker-compose.yml</highlight> نود (در /opt/remnanode) اضافه کنید",
             "warning-patience": "دریافت اطلاعات ممکن است زمانبر باشد، این پنجره را نبندید!",
+            "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> operations to gRPC API of <highlight>Xray-Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
             "get-data": "دریافت اطلاعات",
             "fetching": "درحال دریافت نشست‌های فعال ...",
             "progress": "{{completed}} تا از {{total}} نود تکمیل شده",
@@ -879,7 +881,7 @@
             "show-custom-remarks": "نمایش توضیحات سفارشی",
             "show-custom-remark-description-line-1": "فقط برای کاربران منقضی‌شده، محدودشده و غیرفعال.",
             "show-custom-remark-description-line-2": "اگر این گزینه غیرفعال باشد - کاربران منقضی‌شده، محدودشده و غیرفعال به جای توضیحات سفارشی زیر، لیست واقعی هاست‌ها را دریافت خواهند کرد.",
-            "additional-response-headers": "هدرهای برگشتی اضافی",
+            "additional-response-headers": "Response headers",
             "headers-that-will-be-sent-with-subscription-content": "هدرهای اضافی که می‌خواهید همراه با محتوای اشتراک ارسال شوند را مشخص کنید.",
             "randomize-hosts": "هاست رندوم",
             "randomize-hosts-description": "استفاده از مقادیر رندوم برای هاست در اشتراک‌ها",
@@ -901,19 +903,11 @@
             "average-bps": "میانگین BPS",
             "active-nodes": "نودهای فعال",
             "current-hour": "ساعت کنونی",
-            "download-speed": "سرعت دانلود",
-            "upload-speed": "سرعت آپلود",
-            "download-total": "مجموع دانلود",
-            "ram-usage": "مصرف RAM",
-            "for-all-nodes": "برای همه نودها"
-        }
-    },
-    "node-vitals": {
-        "card": {
-            "plugin": "Plugin",
-            "select-plugin": "Select plugin",
-            "nothing-found": "Nothing found",
-            "review-documentation-for-more-information": "Review documentation for more information about node plugins."
+            "download-speed": "Download Speed",
+            "upload-speed": "Upload Speed",
+            "download-total": "Download Total",
+            "ram-usage": "RAM Usage",
+            "for-all-nodes": "For all nodes"
         }
     },
     "node-users-usage-drawer": {
@@ -1273,8 +1267,6 @@
                 "choose-an-inbound-to-apply-to-the-host": "یک اینباند برای اعمال به هاست انتخاب کنید.",
                 "apply-changes": "اعمال تغییرات",
                 "search-profiles-or-inbounds": "جستجوی پروفایل یا اینباند...",
-                "hosts-do-not-support-multiple-inbounds": "نمی‌توان به یک هاست چندین اینباند اعمال کرد",
-                "not-supported": "پشتیبانی نمی‌شود",
                 "no-profiles-or-inbounds-found": "هیچ پروفایل یا اینباند یافت نشد",
                 "no-config-profiles-available": "هیچ پروفایل تنظیمات در دسترس نیست"
             }
@@ -1394,6 +1386,20 @@
             "additional-languages": "زبان‌های بیشتر",
             "english-is-always-enabled": "انگلیسی همیشه فعال می‌باشد",
             "english": "انگلیسی"
+        }
+    },
+    "node-system-card": {
+        "widget": {
+            "system-info": "System Info",
+            "memory": "Memory",
+            "used": "Used",
+            "free": "Free",
+            "total": "Total",
+            "system": "System",
+            "system-uptime": "System Uptime",
+            "network": "Network",
+            "kernel": "Kernel",
+            "interface": "Interface"
         }
     },
     "node-stats": {
@@ -1639,11 +1645,6 @@
             "title": "گذرواژه"
         },
         "telegram": {
-            "botToken": {
-                "label": "توکن ربات",
-                "description": "تنظیمات ربات تلگرام",
-                "placeholder": "توکن ربات را وارد کنید"
-            },
             "adminIds": {
                 "label": "آیدی‌های ادمین مورد قبول",
                 "description": "لیست آیدی‌های مورد قبول برای ادمین",
@@ -2032,21 +2033,22 @@
     "traffic-limits-card": {
         "traffic-and-limits": "محدودیت ترافیک"
     },
-    "node-plugins-page": {
-        "connector": {
-            "loading-node-plugins": "Loading node plugins...",
-            "loading-node-plugin": "Loading node plugin..."
+    "node-plugin-editor-page": {
+        "component": {
+            "plugin-editor": "Plugin Editor"
+        }
+    },
+    "node-vitals": {
+        "card": {
+            "plugin": "Plugin",
+            "review-documentation-for-more-information": "Review documentation for more information.",
+            "nothing-found": "Nothing found...",
+            "select-plugin": "Select plugin"
         }
     },
     "node-plugin-card": {
         "widget": {
-            "active-on-nodes": "Active on Nodes",
-            "plugin": "PLUGIN"
-        }
-    },
-    "node-plugin-editor-page": {
-        "component": {
-            "plugin-editor": "Plugin Editor"
+            "active-on-nodes": "Active on Nodes"
         }
     },
     "adtive-on-nodes": {
@@ -2056,26 +2058,15 @@
             }
         }
     },
-    "node-plugins-header-action-buttons": {
-        "feature": {
-            "name-is-required": "Name is required",
-            "my-node-plugin": "My Node Plugin"
-        }
-    },
-    "node-plugins-editor-actions": {
-        "feature": {
-            "unsupported-by-sing-box-core": "{{key}} is not supported by sing-box core."
-        }
-    },
-    "node-plugin-editor": {
+    "node-plugins-grid": {
         "widget": {
-            "editor-is-loading": "Editor is loading..."
+            "node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use": "Node Plugins are an advanced feature. Please review the documentation before use.",
+            "warning": "Warning",
+            "no-node-plugins-yet": "No node plugins yet",
+            "create-a-plugin-to-extend-node-capabilities-with": "Create a plugin to extend node capabilities with"
         }
     },
     "node-plugin-executor": {
-        "drawer": {
-            "executor": "Executor"
-        },
         "content": {
             "enter-at-least-one-ip-address": "Enter at least one IP address.",
             "block-specific-ip-addresses-on-selected-nodes": "Block specific IP addresses on selected nodes",
@@ -2094,46 +2085,107 @@
             "no-connected-nodes-available": "No connected nodes available.",
             "deselect-all": "Deselect all",
             "select-all": "Select all",
-            "execute": "Execute",
-            "invalid-ip-address": "Invalid IP address",
-            "line": "Line",
-            "selected-count": "{{count}} selected"
+            "execute": "Execute"
         }
     },
-    "node-plugins-grid": {
+    "torrent-blocker-stats": {
         "widget": {
-            "delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin": "Delete this node plugin? Nodes using it will be detached from the plugin.",
-            "node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use": "Node Plugins are an advanced feature. Please review the documentation before use.",
-            "warning": "Warning",
-            "no-node-plugins-yet": "No node plugins yet",
-            "create-a-plugin-to-extend-node-capabilities-with": "Create a plugin to extend node capabilities with",
-            "create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth": "Create a plugin to enable per-node capabilities. This build supports ingress filter, egress filter, shared lists and HAProxy Auth.",
-            "ingress-filter": "Ingress Filter",
-            "egress-filter": "Egress Filter",
-            "haproxy-auth": "HAProxy Auth"
+            "total-reports": "Total Reports",
+            "distinct-nodes": "Distinct Nodes",
+            "distinct-users": "Distinct Users",
+            "last-24-hours": "Last 24 Hours",
+            "by-report-count": "By report count",
+            "top-users": "Top Users"
         }
     },
-    "runtime-metrics": {
-        "uptime": "Uptime",
-        "total-memory": "Total Memory",
-        "average-cpu": "Average CPU",
-        "scheduler-p99": "Scheduler P99",
-        "heap-used": "Heap Used",
-        "goroutines": "Goroutines",
-        "threads": "Threads",
-        "memory": "Memory",
-        "heap": "Heap",
-        "rss": "RSS",
-        "go-sys": "Go Sys",
-        "stack": "Stack",
-        "scheduler": "Scheduler",
-        "delay": "Delay",
-        "p99": "P99",
-        "duration": {
-            "days": "d",
-            "hours": "h",
-            "minutes": "min",
-            "seconds": "sec"
+    "torrent-blocker-reports-table": {
+        "widget": {
+            "truncate-reports": "Truncate reports",
+            "truncate-reports-description": "All Torrent Blocker reports will be permanently deleted."
+        }
+    },
+    "node-active-session": {
+        "item": {
+            "widget": {
+                "view-user": "View User"
+            }
+        }
+    },
+    "node-active-sessions": {
+        "drawer": {
+            "widget": {
+                "active-users-on-this-node": "Active users on this node"
+            }
+        }
+    },
+    "nodes-datatable": {
+        "widget": {
+            "column-width": "Column Width",
+            "column-order": "Column Order",
+            "column-toggle": "Column Toggle"
+        }
+    },
+    "user-torrent-blocker-report-item": {
+        "processed-at": "Processed At",
+        "unblocked-at": "Unblocked At"
+    },
+    "get-user-torrent-blocker-reports": {
+        "feature": {
+            "blocker-reports": "Blocker Reports"
+        }
+    },
+    "user-torrent-blocker-reports": {
+        "drawer": {
+            "widget": {
+                "total-reports": "Total reports"
+            }
+        }
+    },
+    "user-subscription-requests-drawer": {
+        "widget": {
+            "total-records": "Total records"
+        }
+    },
+    "sessions-explorer-idle": {
+        "description-1": "This operation may take a while depending on the number of nodes and users. Sessions are fetched sequentially to avoid overloading the backend.",
+        "start-exploring": "Start exploring"
+    },
+    "sessions-explorer-progress": {
+        "exploring-nodes": "Exploring nodes...",
+        "nodes-processed": "{{completed}} of {{total}} nodes processed",
+        "nodes-failed": "{{count}} failed"
+    },
+    "sessions-explorer": {
+        "widget": {
+            "all-nodes-failed-to-return-session-data": "All nodes failed to return session data.",
+            "total-ips": "Total IPs",
+            "unique-ips": "Unique IPs",
+            "nodes-explored": "Nodes Explored",
+            "total-users": "Total Users",
+            "no-active-sessions-found-on-any-node": "No active sessions found on any node.",
+            "restart-scan": "Restart scan",
+            "clear-results": "Clear results",
+            "search-by-ip": "Search by IP address...",
+            "no-results-for-ip": "No users found with IP matching \"{{ip}}\""
+        }
+    },
+    "mobile-stats": {
+        "widget": {
+            "billing-nodes": "Billing nodes",
+            "upcoming": "Upcoming",
+            "per-month": "Per month",
+            "total-spent": "Total spent"
+        }
+    },
+    "mobile-providers-list": {
+        "widget": {
+            "invoices": "Invoices"
+        }
+    },
+    "mobile-infra-billing": {
+        "widget": {
+            "history": "History",
+            "providers": "Providers"
         }
     }
 }

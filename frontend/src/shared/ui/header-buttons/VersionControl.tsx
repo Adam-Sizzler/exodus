@@ -62,8 +62,9 @@ export function VersionControl() {
         modals.open({
             title: (
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={Logo}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title="Build Info"
                 />
             ),

@@ -95,7 +95,7 @@ export function HwidInspectorMetrics() {
     }, [stats, getHighchartsConfig])
 
     const appChartOptions = useMemo(() => {
-        if (!stats?.byApp || stats.byApp.length === 0) return {}
+        if (!stats || !stats.byApp || stats.byApp.length === 0) return {}
 
         const data = stats.byApp.map((item) => ({
             name: item.app || 'Unknown',

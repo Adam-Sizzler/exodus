@@ -11,6 +11,7 @@ import (
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/nodehotcache"
 	monitor "exodus/internal/nodes"
 	"exodus/internal/notifications"
 
@@ -39,7 +40,7 @@ func handleEnableNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			_, execErr := db.ExecContext(r.Context(), `
 				UPDATE nodes
 				SET is_disabled = true, active_config_profile_uuid = NULL, is_connecting = false,
-					is_connected = false, last_status_message = NULL, last_status_change = ?, users_online = 0
+					is_connected = false, last_status_message = NULL, last_status_change = ?
 				WHERE uuid = ?
 			`, time.Now().UTC(), nodeUUID)
 			return execErr
@@ -86,7 +87,7 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 		_, execErr := db.ExecContext(r.Context(), `
 			UPDATE nodes
 			SET is_disabled = true, is_connecting = false, is_connected = false,
-				last_status_message = NULL, last_status_change = ?, users_online = 0,
+				last_status_message = NULL, last_status_change = ?,
 				updated_at = CURRENT_TIMESTAMP
 			WHERE uuid = ?
 		`, time.Now().UTC(), nodeUUID)
@@ -99,6 +100,7 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, manager *dbmanage
 
 	monitor.RequestNodeSync()
 	monitor.RequestNodeDeploy(true, nodeUUID)
+	_ = nodehotcache.Default(cfg).DeleteTransient(r.Context(), nodeUUID)
 	if updated, loadErr := getNodeByUUID(r.Context(), manager, nodeUUID); loadErr == nil {
 		emitNodeNotification(r.Context(), cfg, notifications.EventNodeDisabled, updated, nil)
 	}
@@ -263,7 +265,7 @@ func sendUpdatedNodeResponse(w http.ResponseWriter, r *http.Request, manager *db
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated node", err, cfg)
 		return
 	}
-	response, err := buildNodeResponses(r.Context(), manager, []nodeRecord{node})
+	response, err := buildNodeResponses(r.Context(), manager, cfg, []nodeRecord{node})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return

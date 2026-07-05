@@ -148,10 +148,10 @@ export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildI
                                 </Text>
                             </Group>
                             <Text c="gray.3" ff="monospace" size="xs">
-                                {formatTimeUtil(
-                                    exodusMetadata.build.time,
-                                    'DD.MM.YYYY HH:mm:ss'
-                                )}
+                                {formatTimeUtil({
+                                    time: exodusMetadata.build.time,
+                                    template: 'NUMERIC_DATETIME'
+                                })}
                             </Text>
                         </Paper>
 

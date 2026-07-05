@@ -1,4 +1,5 @@
 import { PiCheck, PiCopy, PiCpu, PiPencil, PiTrashDuotone } from 'react-icons/pi'
+import { GetNodePluginsCommand } from '@exodus/backend-contract'
 import { TbCopyCheck, TbEdit, TbPackage } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { CopyButton, Menu } from '@mantine/core'
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
-import { NodePluginResponse } from '@shared/api/hooks'
 import { ROUTES } from '@shared/constants'
 
 interface IProps {
@@ -15,21 +15,21 @@ interface IProps {
     handleDeleteNodePlugin: (nodePluginUuid: string) => void
     handleShowActiveNodes: (nodePluginUuid: string) => void
     isDragOverlay?: boolean
-    nodePlugin: NodePluginResponse
+    nodePlugin: GetNodePluginsCommand.Response['response']['nodePlugins'][number]
 }
 
 export function NodePluginCardWidget(props: IProps) {
     const {
-        handleCloneNodePlugin,
+        nodePlugin,
         handleDeleteNodePlugin,
+        handleCloneNodePlugin,
         handleShowActiveNodes,
-        isDragOverlay = false,
-        nodePlugin
+        isDragOverlay = false
     } = props
 
     const { t } = useTranslation()
-    const navigate = useNavigate()
     const openModalWithData = useModalsStoreOpenWithData()
+    const navigate = useNavigate()
 
     const navigateToNodePlugin = () => {
         navigate(
@@ -51,10 +51,7 @@ export function NodePluginCardWidget(props: IProps) {
                         <TbPackage size={24} />
                     </EntityCardShared.Icon>
 
-                    <EntityCardShared.Content
-                        subtitle={t('node-plugin-card.widget.plugin')}
-                        title={nodePlugin.name}
-                    />
+                    <EntityCardShared.Content subtitle="PLUGIN" title={nodePlugin.name} />
                 </EntityCardShared.Header>
 
                 <EntityCardShared.Actions>
@@ -109,8 +106,8 @@ export function NodePluginCardWidget(props: IProps) {
                         <Menu.Item
                             color="red"
                             leftSection={<PiTrashDuotone size={18} />}
-                            onClick={(event) => {
-                                event.stopPropagation()
+                            onClick={(e) => {
+                                e.stopPropagation()
                                 handleDeleteNodePlugin(nodePlugin.uuid)
                             }}
                         >

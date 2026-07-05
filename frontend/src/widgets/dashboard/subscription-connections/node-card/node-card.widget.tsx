@@ -64,7 +64,7 @@ export const NodeCardWidget = memo((props: IProps) => {
     }
 
     const nodeSingboxUptime = node.singboxUptime
-    const isOnline = node.isConnected && nodeSingboxUptime !== '0' && !node.isDisabled
+    const isOnline = node.isConnected && nodeSingboxUptime !== 0 && !node.isDisabled
     const { backgroundColor, borderColor, boxShadow } = getNodeColors(node)
 
     const handleCopy = (e: React.MouseEvent) => {

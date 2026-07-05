@@ -39,6 +39,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@exodus/backend-contract": "file:vendor/@exodus/backend-contract",
+    "@exodus/node-plugins": "file:vendor/@exodus/node-plugins",
     "@exodus/subscription-page-types": "file:vendor/@exodus/subscription-page-types",
     "@formkit/auto-animate": "^0.9.0",
     "@gfazioli/mantine-list-view-table": "1.2.3",

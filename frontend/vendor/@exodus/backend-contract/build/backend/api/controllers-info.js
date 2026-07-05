@@ -38,6 +38,18 @@ exports.CONTROLLERS_INFO = {
         tag: 'Nodes Controller',
         description: '',
     },
+    NODE_PLUGINS: {
+        tag: 'Node Plugins Controller',
+        description: '',
+    },
+    NODE_PLUGINS: {
+        tag: 'Node Plugins Controller',
+        description: '',
+    },
+    NODE_PLUGINS: {
+        tag: 'Node Plugins Controller',
+        description: '',
+    },
     BANDWIDTH_STATS: {
         tag: 'Bandwidth Stats Controller',
         description: '',

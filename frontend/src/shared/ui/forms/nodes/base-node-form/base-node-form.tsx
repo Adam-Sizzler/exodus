@@ -1,3 +1,9 @@
+import {
+    GetNodePluginsCommand,
+    GetOneNodeCommand,
+    GetPubKeyCommand,
+    UpdateNodeCommand
+} from '@exodus/backend-contract'
 import { Button, CopyButton, em, Group, Menu, px, Stack } from '@mantine/core'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'
 import { UseFormReturnType } from '@mantine/form'
@@ -46,29 +52,25 @@ const cardVariants = {
     }
 }
 
-interface IProps<T extends UpdateNodeRequest> {
-    advancedOpened: boolean
+interface IProps<T extends UpdateNodeCommand.Request> {
     form: UseFormReturnType<T>
     handleClose: () => void
     handleSubmit: () => void
     isDataSubmitting: boolean
     node: NodeResponse
     nodeDetailsCard?: ReactNode
-    nodePlugins: NodePluginResponse[]
+    nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     nodeSystemCard?: ReactNode
     pubKey: NodeKeygenResponse | undefined
-    setAdvancedOpened: (value: boolean) => void
 }
 
 export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
     const {
         form,
         node,
-        pubKey,
-        advancedOpened,
-        setAdvancedOpened,
-        nodeDetailsCard,
         nodePlugins,
+        pubKey,
+        nodeDetailsCard,
         nodeSystemCard,
         handleClose,
         handleSubmit,
@@ -111,11 +113,9 @@ export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
                     />
 
                     <NodeTrackingAndBillingCard
-                        advancedOpened={advancedOpened}
                         cardVariants={cardVariants}
                         form={form}
                         motionWrapper={MotionWrapper}
-                        setAdvancedOpened={setAdvancedOpened}
                     />
 
                     <NodeConsumptionCard
@@ -174,17 +174,15 @@ export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
                         />
 
                         <NodeTrackingAndBillingCard
-                            advancedOpened={advancedOpened}
                             cardVariants={cardVariants}
                             form={form}
                             motionWrapper={MotionWrapper}
-                            setAdvancedOpened={setAdvancedOpened}
                         />
                     </MotionStack>
                 </Group>
             )}
 
-            <ModalFooter>
+            <ModalFooter isMobile={isMobile}>
                 {node && (
                     <Menu keepMounted={true} position="top-end" shadow="md">
                         <Menu.Target>

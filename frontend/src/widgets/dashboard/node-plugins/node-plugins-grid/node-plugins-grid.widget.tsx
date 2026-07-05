@@ -1,15 +1,22 @@
-import { TbAlertTriangle, TbLogin, TbLogout, TbPackage, TbShieldLock } from 'react-icons/tb'
+import {
+    TbAlertTriangle,
+    TbFlame,
+    TbLogin,
+    TbLogout,
+    TbPackage,
+    TbPlugConnectedX
+} from 'react-icons/tb'
+import { GetAllNodesCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
 import { Badge, Center, Group, Stack, Text, ThemeIcon } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 
 import {
-    NodePluginResponse,
-    NodeResponse,
     QueryKeys,
     useCloneNodePlugin,
     useDeleteNodePlugin,
-    useReorderNodePlugins
+    useReorderNodePlugins,
+    NodeResponse
 } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
@@ -21,58 +28,71 @@ import { NodePluginCardWidget } from '../node-plugin-card/node-plugin-card.widge
 
 interface IProps {
     nodes: NodeResponse[]
-    plugins: NodePluginResponse[]
+    plugins: GetNodePluginsCommand.Response['response']['nodePlugins']
 }
 
 export function NodePluginsGridWidget(props: IProps) {
     const { t } = useTranslation()
     const { nodes, plugins } = props
 
-    const invalidate = async () => {
-        await queryClient.invalidateQueries({
-            queryKey: QueryKeys.nodes.getNodePlugins.queryKey
-        })
-        await queryClient.invalidateQueries({
-            queryKey: QueryKeys.nodes.getAllNodes.queryKey
-        })
-    }
-
     const { mutate: deleteNodePlugin } = useDeleteNodePlugin({
         mutationFns: {
-            onSuccess: invalidate
-        }
-    })
-    const { mutate: cloneNodePlugin } = useCloneNodePlugin({
-        mutationFns: {
-            onSuccess: invalidate
+            onSuccess: () => {
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.nodePlugins.getNodePlugins.queryKey
+                })
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.nodes.getAllNodes.queryKey
+                })
+            }
         }
     })
     const { mutate: reorderNodePlugins } = useReorderNodePlugins({
         mutationFns: {
             onSuccess: (data) => {
-                queryClient.setQueryData(QueryKeys.nodes.getNodePlugins.queryKey, data)
+                queryClient.setQueryData(QueryKeys.nodePlugins.getNodePlugins.queryKey, data)
+            }
+        }
+    })
+
+    const { mutate: cloneNodePlugin } = useCloneNodePlugin({
+        mutationFns: {
+            onSuccess: () => {
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.nodePlugins.getNodePlugins.queryKey
+                })
             }
         }
     })
 
     const handleDeleteNodePlugin = (nodePluginUuid: string) => {
         modals.openConfirmModal({
-            centered: true,
             title: t('common.confirm-action'),
-            children: t(
-                'node-plugins-grid.widget.delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin'
-            ),
+            children: t('common.confirm-action-description'),
             labels: {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
+            cancelProps: { variant: 'subtle', color: 'gray' },
             confirmProps: { color: 'red' },
+            centered: true,
             onConfirm: () => {
                 deleteNodePlugin({
                     route: {
                         uuid: nodePluginUuid
                     }
                 })
+            }
+        })
+    }
+
+    const handleReorder = (reorderedItems: typeof plugins) => {
+        reorderNodePlugins({
+            variables: {
+                items: reorderedItems.map((item, index) => ({
+                    uuid: item.uuid,
+                    viewPosition: index
+                }))
             }
         })
     }
@@ -89,37 +109,27 @@ export function NodePluginsGridWidget(props: IProps) {
         const activeOnNodes = nodes.filter((node) => node.activePluginUuid === nodePluginUuid)
 
         modals.open({
-            centered: true,
-            size: 'lg',
+            children: <ActivePluginsOnNodesModalShared nodes={activeOnNodes} />,
             title: (
                 <BaseOverlayHeader
-                    IconComponent={TbPackage}
                     iconColor="teal"
+                    IconComponent={TbPackage}
                     iconVariant="soft"
                     title={t('node-plugin-card.widget.active-on-nodes')}
+                    titleOrder={5}
                 />
             ),
-            children: <ActivePluginsOnNodesModalShared nodes={activeOnNodes} />
+            size: 'lg',
+            centered: true
         })
     }
 
-    const handleReorder = (reorderedItems: typeof plugins) => {
-        reorderNodePlugins({
-            variables: {
-                items: reorderedItems.map((plugin, position) => ({
-                    uuid: plugin.uuid,
-                    viewPosition: position
-                }))
-            }
-        })
-    }
-
-    if (!plugins.length) {
+    if (!plugins || plugins.length === 0) {
         return (
             <SectionCard.Root p="xl">
                 <SectionCard.Section>
                     <BaseOverlayHeader
-                        themeIconProps={{ color: 'orange' }}
+                        iconColor="orange"
                         IconComponent={TbAlertTriangle}
                         iconVariant="soft"
                         subtitle={t(
@@ -141,7 +151,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                 <Text fw={600} size="lg" ta="center">
                                     {t('node-plugins-grid.widget.no-node-plugins-yet')}
                                 </Text>
-                                <Text c="dimmed" maw={460} size="sm" ta="center">
+                                <Text c="dimmed" maw={400} size="sm" ta="center">
                                     {t(
                                         'node-plugins-grid.widget.create-a-plugin-to-extend-node-capabilities-with'
                                     )}
@@ -150,13 +160,21 @@ export function NodePluginsGridWidget(props: IProps) {
 
                             <Group gap="sm" justify="center">
                                 <Badge
+                                    leftSection={<TbFlame size={16} />}
+                                    radius="md"
+                                    size="lg"
+                                    variant="light"
+                                >
+                                    Torrent Blocker
+                                </Badge>
+                                <Badge
                                     color="teal"
                                     leftSection={<TbLogin size={16} />}
                                     radius="md"
                                     size="lg"
                                     variant="light"
                                 >
-                                    {t('node-plugins-grid.widget.ingress-filter')}
+                                    Ingress Filter
                                 </Badge>
                                 <Badge
                                     color="orange"
@@ -165,16 +183,16 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    {t('node-plugins-grid.widget.egress-filter')}
+                                    Egress Filter
                                 </Badge>
                                 <Badge
-                                    color="teal"
-                                    leftSection={<TbShieldLock size={16} />}
+                                    color="grape"
+                                    leftSection={<TbPlugConnectedX size={16} />}
                                     radius="md"
                                     size="lg"
                                     variant="light"
                                 >
-                                    {t('node-plugins-grid.widget.haproxy-auth')}
+                                    Connection Drop
                                 </Badge>
                             </Group>
                         </Stack>
@@ -188,7 +206,7 @@ export function NodePluginsGridWidget(props: IProps) {
         <VirtualizedDndGrid
             enableDnd={true}
             items={plugins}
-            key="node-plugins-grid-widget"
+            key={`node-plugins-grid-widget`}
             onReorder={handleReorder}
             renderDragOverlay={(nodePlugin) => (
                 <NodePluginCardWidget

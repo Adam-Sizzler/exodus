@@ -1,3 +1,4 @@
+import { ActionIcon, Tooltip } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { ActionIcon, Menu, Tooltip } from '@mantine/core'
 import { TbServerCog } from 'react-icons/tb'
@@ -30,9 +31,20 @@ const GetNodeLinkedHostsFeatureComponent = (props: IProps) => {
     }
 
     return (
-        <Menu.Item leftSection={<TbServerCog size="16px" />} onClick={handleOpen}>
-            {label}
-        </Menu.Item>
+        <Tooltip label={t('get-node-linked-hosts.feature.linked-hosts')}>
+            <ActionIcon
+                color="cyan"
+                onClick={() => {
+                    openModalWithData(MODALS.SHOW_NODE_LINKED_HOSTS_DRAWER, {
+                        nodeUuid
+                    })
+                }}
+                size="lg"
+                variant="soft"
+            >
+                <TbServerCog size="22px" />
+            </ActionIcon>
+        </Tooltip>
     )
 }
 

@@ -39,9 +39,6 @@ export const HelpDrawerShared = memo(() => {
         }
 
         setLoading(true)
-        setError(null)
-        setContent('')
-        setShowContent(false)
 
         fetch(resolveDocsUrl(internalState.screen, i18n.language))
             .then((res) => {
@@ -81,8 +78,9 @@ export const HelpDrawerShared = memo(() => {
             size="lg"
             title={
                 <BaseOverlayHeader
+                    iconColor="yellow"
                     IconComponent={TbQuestionMark}
-                    iconVariant="soft" iconColor="yellow"
+                    iconVariant="soft"
                     title={t('help-action-icon.shared.help-article')}
                 />
             }

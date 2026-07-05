@@ -115,6 +115,8 @@ func NodesBulkActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 		switch path {
 		case "":
 			handleBulkNodesActions(w, r, manager, cfg)
+		case "update":
+			handleBulkNodesUpdate(w, r, manager, cfg)
 		case "profile-modification":
 			handleBulkProfileModification(w, r, manager, cfg)
 		default:

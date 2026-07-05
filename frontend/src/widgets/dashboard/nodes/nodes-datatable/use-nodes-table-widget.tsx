@@ -5,7 +5,11 @@ import {
     PiUsersDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import { GetConfigProfilesCommand } from '@exodus/backend-contract'
+import {
+    GetAllNodesCommand,
+    GetConfigProfilesCommand,
+    GetNodePluginsCommand
+} from '@exodus/backend-contract'
 import { ActionIcon, Avatar, Badge, Group, MultiSelect, Text, TextInput } from '@mantine/core'
 import { TbEdit, TbSearch, TbX } from 'react-icons/tb'
 import { DataTableColumn } from 'mantine-datatable'
@@ -14,9 +18,9 @@ import { TFunction } from 'i18next'
 import sortBy from 'lodash/sortBy'
 
 import { prettyBytesUtil, prettySiBytesUtil, prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
-import { formatDurationUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
-import { NodePluginResponse, NodeResponse } from '@shared/api/hooks'
+import { formatDurationUtil } from '@shared/utils/time-utils'
 import { faviconResolver } from '@shared/utils/misc'
+import { NodeResponse } from '@shared/api/hooks'
 
 import { NodeStatusSimplfiedBadgeWidget } from '../node-status-simplfied-badge'
 
@@ -47,19 +51,20 @@ export interface NodesTableFilters {
 export function getNodesTableColumns(
     t: TFunction,
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles'],
-    nodePlugins: NodePluginResponse[],
+    nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins'],
     handleViewNode: (nodeUuid: string) => void,
     filters: NodesTableFilters
 ): DataTableColumn<NodeResponse>[] {
     return [
         {
             accessor: 'name',
-            draggable: false,
+            sortable: true,
+            title: t('use-nodes-table-widget.name'),
             filter: (
                 <TextInput
                     label={t('use-nodes-table-widget.name')}
                     leftSection={<TbSearch size={16} />}
-                    onChange={(event) => filters.setNameQuery(event.currentTarget.value)}
+                    onChange={(e) => filters.setNameQuery(e.currentTarget.value)}
                     rightSection={
                         filters.nameQuery ? (
                             <ActionIcon
@@ -75,11 +80,11 @@ export function getNodesTableColumns(
                     value={filters.nameQuery}
                 />
             ),
-            filtering: filters.nameQuery !== '',
-            resizable: false,
-            sortable: true,
-            title: t('use-nodes-table-widget.name'),
+            draggable: false,
             toggleable: false,
+            resizable: false,
+
+            filtering: filters.nameQuery !== '',
             render: ({ name, countryCode }) => (
                 <Group gap={6} wrap="nowrap">
                     {countryCode && countryCode !== 'XX' && (
@@ -107,6 +112,8 @@ export function getNodesTableColumns(
         },
         {
             accessor: 'isConnected',
+            sortable: true,
+            title: '',
             filter: (
                 <MultiSelect
                     clearable
@@ -165,8 +172,6 @@ export function getNodesTableColumns(
                 />
             ),
             filtering: filters.selectedStatuses.length > 0,
-            sortable: true,
-            title: '',
             render: ({ isConnected, isConnecting, isDisabled, uuid }) => (
                 <NodeStatusSimplfiedBadgeWidget
                     isConnected={isConnected}
@@ -176,6 +181,7 @@ export function getNodesTableColumns(
                 />
             )
         },
+
         {
             accessor: 'usersOnline',
             sortable: true,
@@ -192,6 +198,7 @@ export function getNodesTableColumns(
                 </Badge>
             )
         },
+
         {
             accessor: 'address',
             sortable: true,
@@ -239,9 +246,9 @@ export function getNodesTableColumns(
                     value={filters.selectedInbounds}
                 />
             ),
+            toggleable: true,
             filtering: filters.selectedInbounds.length > 0,
             title: t('use-nodes-table-widget.inbounds'),
-            toggleable: true,
             render: ({ configProfile }) =>
                 sortBy(configProfile?.activeInbounds ?? [], 'tag')
                     .map((inbound) => inbound.tag)
@@ -251,23 +258,24 @@ export function getNodesTableColumns(
             accessor: 'versions.singbox',
             sortable: true,
             title: t('use-nodes-table-widget.singbox-v'),
-            render: ({ versions, singboxVersion }) => versions?.singbox ?? singboxVersion ?? '-'
+            render: ({ versions }) => (versions ? versions.singbox : '-')
         },
         {
             accessor: 'singboxUptime',
             sortable: true,
-            title: 'Sing-box Uptime',
-            render: ({ singboxUptime }) =>
-                singboxUptime && singboxUptime !== '0' ? getSingboxUptimeUtil(singboxUptime) : '-'
+            title: 'Singbox Uptime',
+            render: ({ singboxUptime }) => (singboxUptime !== 0 ? formatDurationUtil(singboxUptime) : '-')
         },
         {
             accessor: 'versions.node',
             sortable: true,
             title: t('use-nodes-table-widget.node-v'),
-            render: ({ versions, nodeVersion }) => versions?.node ?? nodeVersion ?? '-'
+            render: ({ versions }) => (versions ? versions.node : '-')
         },
         {
             accessor: 'provider.name',
+            sortable: true,
+            title: t('use-nodes-table-widget.provider'),
             filter: (
                 <MultiSelect
                     clearable
@@ -281,8 +289,6 @@ export function getNodesTableColumns(
                 />
             ),
             filtering: filters.selectedProviders.length > 0,
-            sortable: true,
-            title: t('use-nodes-table-widget.provider'),
             render: ({ provider }) =>
                 provider ? (
                     <Group gap="xs" wrap="nowrap">
@@ -306,6 +312,8 @@ export function getNodesTableColumns(
         },
         {
             accessor: 'tags',
+            sortable: true,
+            title: t('use-nodes-table-widget.tags'),
             filter: (
                 <MultiSelect
                     clearable
@@ -319,8 +327,6 @@ export function getNodesTableColumns(
                 />
             ),
             filtering: filters.selectedTags.length > 0,
-            sortable: true,
-            title: t('use-nodes-table-widget.tags'),
             render: ({ tags }) => tags?.join(', ') ?? '-'
         },
         {
@@ -341,13 +347,12 @@ export function getNodesTableColumns(
             sortable: true,
             title: 'Plugin',
             render: ({ activePluginUuid }) =>
-                nodePlugins.find((plugin) => plugin.uuid === activePluginUuid)?.name ?? '-'
+                nodePlugins.find((plugin) => plugin.uuid === activePluginUuid)?.name || '-'
         },
         {
             accessor: 'system.info.cpus',
             sortable: true,
-            title: 'CPU Cores',
-            render: ({ system, cpuCount }) => system?.info.cpus ?? cpuCount ?? '-'
+            title: 'CPU Cores'
         },
         {
             accessor: 'system.stats.memoryFree',
@@ -365,14 +370,12 @@ export function getNodesTableColumns(
             accessor: 'system.info.memoryTotal',
             sortable: true,
             title: t('use-nodes-table-widget.total-ram'),
-            render: ({ system, totalRam }) =>
-                system ? prettyBytesUtil(system.info.memoryTotal, false) : (totalRam ?? '-')
+            render: ({ system }) => (system ? prettyBytesUtil(system.info.memoryTotal, false) : '-')
         },
         {
             accessor: 'system.info.cpuModel',
             sortable: true,
-            title: t('use-nodes-table-widget.cpu-model'),
-            render: ({ system, cpuModel }) => system?.info.cpuModel ?? cpuModel ?? '-'
+            title: t('use-nodes-table-widget.cpu-model')
         },
         {
             accessor: 'system.stats.uptime',
@@ -391,7 +394,7 @@ export function getNodesTableColumns(
             sortable: true,
             title: 'RX Speed',
             render: ({ system }) =>
-                system?.stats.interface
+                system && system.stats.interface
                     ? prettySiRealtimeBytesUtil(system.stats.interface.rxBytesPerSec, true, true)
                     : '-'
         },
@@ -400,7 +403,7 @@ export function getNodesTableColumns(
             sortable: true,
             title: 'TX Speed',
             render: ({ system }) =>
-                system?.stats.interface
+                system && system.stats.interface
                     ? prettySiRealtimeBytesUtil(system.stats.interface.txBytesPerSec, true, true)
                     : '-'
         },
@@ -409,7 +412,7 @@ export function getNodesTableColumns(
             sortable: true,
             title: 'RX Total',
             render: ({ system }) =>
-                system?.stats.interface
+                system && system.stats.interface
                     ? prettySiBytesUtil(system.stats.interface.rxTotal, true)
                     : '-'
         },
@@ -418,7 +421,7 @@ export function getNodesTableColumns(
             sortable: true,
             title: 'TX Total',
             render: ({ system }) =>
-                system?.stats.interface
+                system && system.stats.interface
                     ? prettySiBytesUtil(system.stats.interface.txTotal, true)
                     : '-'
         },
@@ -426,24 +429,27 @@ export function getNodesTableColumns(
             accessor: 'system.info.release',
             sortable: true,
             title: 'OS Release',
-            render: ({ system }) => system?.info.release ?? '-'
+            render: ({ system }) => (system ? system.info.release : '-')
         },
         {
             accessor: 'actions',
-            cellsStyle: () => ({
-                backgroundColor: 'var(--mantine-color-dark-7)'
-            }),
             draggable: false,
             resizable: false,
-            textAlign: 'right',
+            titleStyle: {
+                backgroundColor: 'var(--mantine-color-dark-7)'
+            },
+            cellsStyle: () => {
+                return {
+                    backgroundColor: 'var(--mantine-color-dark-7)'
+                }
+            },
             title: (
                 <Group c="dimmed" gap={4} justify="flex-end" pr={4} wrap="nowrap">
                     <TbEdit size={18} />
                 </Group>
             ),
-            titleStyle: {
-                backgroundColor: 'var(--mantine-color-dark-7)'
-            },
+
+            textAlign: 'right',
             toggleable: false,
             render: ({ uuid }) => (
                 <Group gap={4} justify="flex-end" wrap="nowrap">
@@ -451,7 +457,7 @@ export function getNodesTableColumns(
                         color="teal"
                         onClick={() => handleViewNode(uuid)}
                         size="md"
-                        variant="soft"
+                        variant="outline"
                     >
                         <TbEdit size={18} />
                     </ActionIcon>

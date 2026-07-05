@@ -22,6 +22,7 @@ exports.HostsSchema = zod_1.z.object({
     singboxMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
     clashMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
     sockoptParams: zod_1.z.nullable(zod_1.z.unknown()),
+    finalMask: zod_1.z.nullable(zod_1.z.unknown()),
     inbound: zod_1.z.object({
         configProfileUuid: zod_1.z.string().uuid().nullable(),
         configProfileInboundUuid: zod_1.z.string().uuid().nullable(),

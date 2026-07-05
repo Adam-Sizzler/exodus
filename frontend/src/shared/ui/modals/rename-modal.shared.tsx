@@ -2,7 +2,7 @@ import {
     UpdateConfigProfileCommand,
     UpdateExternalSquadCommand,
     UpdateInternalSquadCommand,
-    UpdateNodeCommand,
+    UpdateNodePluginCommand,
     UpdatePasskeyCommand,
     UpdateSubscriptionPageConfigCommand,
     UpdateSubscriptionTemplateCommand
@@ -84,7 +84,7 @@ export function RenameModalShared({ renameFrom }: IProps) {
                 }
 
                 if (renameFrom === 'nodePlugin') {
-                    return UpdateNodeCommand.RequestSchema.pick({ name: true }).safeParse({
+                    return UpdateNodePluginCommand.RequestSchema.omit({ uuid: true }).safeParse({
                         name: value
                     })
                 }
@@ -180,7 +180,7 @@ export function RenameModalShared({ renameFrom }: IProps) {
         mutationFns: {
             onSuccess: () => {
                 queryClient.refetchQueries({
-                    queryKey: QueryKeys.nodes.getNodePlugins.queryKey
+                    queryKey: QueryKeys.nodePlugins.getNodePlugins.queryKey
                 })
                 handleModalClose()
             }
@@ -248,10 +248,8 @@ export function RenameModalShared({ renameFrom }: IProps) {
             if (!internalState) return
 
             updateNodePlugin({
-                route: {
-                    uuid: internalState.uuid
-                },
                 variables: {
+                    uuid: internalState.uuid,
                     name: nameField.getValue()
                 }
             })
@@ -275,8 +273,9 @@ export function RenameModalShared({ renameFrom }: IProps) {
             opened={isOpen}
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbPencil}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title={t('common.rename')}
                 />
             }

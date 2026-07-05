@@ -7,6 +7,7 @@ import { PiListChecks } from 'react-icons/pi'
 import { modals } from '@mantine/modals'
 import { useForm } from '@mantine/form'
 import { Drawer } from '@mantine/core'
+import consola from 'consola/browser'
 
 import {
     QueryKeys,
@@ -22,7 +23,6 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { cloneString } from '@shared/utils/misc/clone-string'
 import { queryClient } from '@shared/api'
-import {} from '@entities/dashboard'
 
 type OptionalJSONParseResult = { ok: false } | { ok: true; value: null | unknown }
 
@@ -91,6 +91,11 @@ export const EditHostModalWidget = memo(() => {
         name: 'edit-host-form',
         mode: 'uncontrolled',
         validateInputOnBlur: true,
+        onValuesChange: (values) => {
+            if (typeof values.vlessRouteId === 'string' && values.vlessRouteId === '') {
+                form.setFieldValue('vlessRouteId', null)
+            }
+        },
         validate: zodResolver(UpdateHostCommand.RequestSchema.omit({ uuid: true }))
     })
 
@@ -135,18 +140,16 @@ export const EditHostModalWidget = memo(() => {
             let singboxMuxParamsParsed: null | object | string
             let clashMuxParamsParsed: null | object | string
             let sockoptParamsParsed: null | object | string
+            let finalMaskParsed: null | object | string
 
-            if (
-                typeof hostAny.xHttpExtraParams === 'object' &&
-                hostAny.xHttpExtraParams !== null
-            ) {
-                xHttpExtraParamsParsed = JSON.stringify(hostAny.xHttpExtraParams, null, 2)
+            if (typeof host.xHttpExtraParams === 'object' && host.xHttpExtraParams !== null) {
+                xHttpExtraParamsParsed = JSON.stringify(host.xHttpExtraParams, null, 2)
             } else {
                 xHttpExtraParamsParsed = ''
             }
 
-            if (typeof hostAny.muxParams === 'object' && hostAny.muxParams !== null) {
-                muxParamsParsed = JSON.stringify(hostAny.muxParams, null, 2)
+            if (typeof host.muxParams === 'object' && host.muxParams !== null) {
+                muxParamsParsed = JSON.stringify(host.muxParams, null, 2)
             } else {
                 muxParamsParsed = ''
             }
@@ -174,6 +177,12 @@ export const EditHostModalWidget = memo(() => {
                 sockoptParamsParsed = ''
             }
 
+            if (typeof host.finalMask === 'object' && host.finalMask !== null) {
+                finalMaskParsed = JSON.stringify(host.finalMask, null, 2)
+            } else {
+                finalMaskParsed = ''
+            }
+
             form.setValues({
                 remark: host.remark,
                 address: host.address,
@@ -196,10 +205,12 @@ export const EditHostModalWidget = memo(() => {
                 singboxMuxParams: singboxMuxParamsParsed,
                 clashMuxParams: clashMuxParamsParsed,
                 sockoptParams: sockoptParamsParsed,
+                finalMask: finalMaskParsed,
                 tag: host.tag ?? undefined,
                 isHidden: host.isHidden,
                 overrideSniFromAddress: host.overrideSniFromAddress,
                 keepSniBlank: host.keepSniBlank,
+                vlessRouteId: host.vlessRouteId ?? undefined,
                 overrideProtocolCredential: hostAny.overrideProtocolCredential ?? false,
                 protocolCredential: hostAny.protocolCredential ?? undefined,
                 allowInsecure: host.allowInsecure ?? undefined,
@@ -271,17 +282,19 @@ export const EditHostModalWidget = memo(() => {
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
+        let finalMask
 
-        const xHttpExtraParamsResult = parseOptionalJSONValue(values.xHttpExtraParams)
-        if (!xHttpExtraParamsResult.ok) {
-            notifications.show({
-                title: t('edit-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return
+        try {
+            if (values.xHttpExtraParams === '') {
+                xHttpExtraParams = null
+            } else {
+                xHttpExtraParams = JSON.parse(values.xHttpExtraParams as unknown as string)
+            }
+        } catch (error) {
+            consola.error(error)
+            xHttpExtraParams = null
+            // silence
         }
-        xHttpExtraParams = xHttpExtraParamsResult.value
 
         const muxParamsResult = parseOptionalJSONValue(values.muxParams)
         if (!muxParamsResult.ok) {
@@ -310,8 +323,29 @@ export const EditHostModalWidget = memo(() => {
                 ? values.clashMuxParams
                 : null
 
-        const sockoptParamsResult = parseOptionalJSONValue(values.sockoptParams)
-        sockoptParams = sockoptParamsResult.ok ? sockoptParamsResult.value : null
+        try {
+            if (values.sockoptParams === '') {
+                sockoptParams = null
+            } else {
+                sockoptParams = JSON.parse(values.sockoptParams as unknown as string)
+            }
+        } catch (error) {
+            consola.error(error)
+            sockoptParams = null
+            // silence
+        }
+
+        try {
+            if (values.finalMask === '') {
+                finalMask = null
+            } else {
+                finalMask = JSON.parse(values.finalMask as unknown as string)
+            }
+        } catch (error) {
+            consola.error(error)
+            finalMask = null
+            // silence
+        }
 
         updateHost({
             variables: {
@@ -327,6 +361,7 @@ export const EditHostModalWidget = memo(() => {
                 singboxMuxParams,
                 clashMuxParams,
                 sockoptParams,
+                finalMask,
                 tag: values.tag === '' ? null : values.tag
             } as any
         })
@@ -373,6 +408,7 @@ export const EditHostModalWidget = memo(() => {
                 tag: host.tag ?? undefined,
                 overrideSniFromAddress: host.overrideSniFromAddress,
                 keepSniBlank: host.keepSniBlank,
+                vlessRouteId: host.vlessRouteId ?? undefined,
                 overrideProtocolCredential: (host as any).overrideProtocolCredential ?? undefined,
                 protocolCredential: (host as any).overrideProtocolCredential
                     ? ((host as any).protocolCredential ?? undefined)
@@ -381,8 +417,9 @@ export const EditHostModalWidget = memo(() => {
                 selectorNodesFirst: (host as any).selectorNodesFirst ?? undefined,
                 nodes: host.nodes ?? undefined,
                 xrayJsonTemplateUuid: host.xrayJsonTemplateUuid ?? undefined,
-                excludedInternalSquads: host.excludedInternalSquads ?? undefined
-            } as any
+                excludedInternalSquads: host.excludedInternalSquads ?? undefined,
+                finalMask: host.finalMask ?? undefined
+            }
         })
     }
 
@@ -397,8 +434,9 @@ export const EditHostModalWidget = memo(() => {
             size="lg"
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={PiListChecks}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     subtitle={host?.uuid}
                     title={t('edit-host-modal.widget.edit-host')}
                     withCopy={true}

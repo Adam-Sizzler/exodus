@@ -70,7 +70,6 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
                     })
 
                     setIsResponseRulesValid(true)
-                    setHasUnsavedChanges(false)
 
                     const newValue = JSON.stringify(updatedResponseRules.responseRules, null, 2)
 
@@ -83,6 +82,8 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
                         QueryKeys.subscriptionSettings.getSubscriptionSettings.queryKey,
                         updatedResponseRules
                     )
+
+                    setHasUnsavedChanges(false)
                 },
                 onError: (error) => {
                     setIsResponseRulesValid(false)
@@ -217,8 +218,9 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
         modals.open({
             title: (
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbBug}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title={t('response-rules-editor-actions.feature.response-rules-debugger')}
                 />
             ),

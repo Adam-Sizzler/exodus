@@ -215,7 +215,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                         }}
                         spacing="xs"
                     >
-                        {nodeSingboxUptime !== '0' && (
+                        {nodeSingboxUptime !== 0 && (
                             <Paper
                                 hiddenFrom="sm"
                                 p="xs"

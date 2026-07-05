@@ -1,5 +1,4 @@
 import { useMediaQuery } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { TbTerminal } from 'react-icons/tb'
 import { em, Modal } from '@mantine/core'
 import { motion } from 'motion/react'
@@ -12,10 +11,11 @@ import { useGetNodes } from '@shared/api/hooks'
 import { NodePluginExecutorContent } from './node-plugin-executor.content'
 
 export const NodePluginExecutorDrawer = () => {
-    const { t } = useTranslation()
     const { isOpen } = useModalState(MODALS.NODE_PLUGIN_EXECUTOR_DRAWER)
     const close = useModalClose(MODALS.NODE_PLUGIN_EXECUTOR_DRAWER)
+
     const { data: nodes, isLoading } = useGetNodes()
+
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
     return (
@@ -27,10 +27,10 @@ export const NodePluginExecutorDrawer = () => {
             size="800px"
             title={
                 <BaseOverlayHeader
-                    themeIconProps={{ color: 'cyan' }}
+                    iconColor="cyan"
                     IconComponent={TbTerminal}
                     iconVariant="soft"
-                    title={t('node-plugin-executor.drawer.executor')}
+                    title="Executor"
                 />
             }
             transitionProps={isMobile ? { transition: 'fade', duration: 200 } : undefined}

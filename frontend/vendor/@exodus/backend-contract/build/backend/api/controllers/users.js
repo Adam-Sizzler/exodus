@@ -43,4 +43,5 @@ exports.USERS_ROUTES = {
     TAGS: {
         GET: 'tags',
     },
+    RESOLVE: 'resolve',
 };

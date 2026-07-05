@@ -18,6 +18,7 @@ export declare namespace BulkUpdateUsersCommand {
                 readonly DAY: "DAY";
                 readonly WEEK: "WEEK";
                 readonly MONTH: "MONTH";
+                readonly MONTH_ROLLING: "MONTH_ROLLING";
             }>>;
             expireAt: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, Date, string>, Date, string>>;
             description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -31,7 +32,7 @@ export declare namespace BulkUpdateUsersCommand {
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
             description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             expireAt?: Date | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
@@ -42,7 +43,7 @@ export declare namespace BulkUpdateUsersCommand {
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
             description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             expireAt?: string | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
@@ -56,7 +57,7 @@ export declare namespace BulkUpdateUsersCommand {
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
             description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             expireAt?: Date | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
@@ -70,7 +71,7 @@ export declare namespace BulkUpdateUsersCommand {
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
             description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             expireAt?: string | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;

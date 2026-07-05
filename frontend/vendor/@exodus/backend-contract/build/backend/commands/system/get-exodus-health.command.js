@@ -16,7 +16,7 @@ var GetExodusHealthCommand;
                 memory: zod_1.z.string(),
                 cpu: zod_1.z.string(),
             })).optional().default([]),
-            runtimeMetrics: zod_1.z.array(zod_1.z.any()).optional().default([]),
+            exodusMetrics: zod_1.z.array(zod_1.z.any()).optional().default([]),
             runtimeSummary: zod_1.z.any().optional(),
         }).passthrough(),
     });

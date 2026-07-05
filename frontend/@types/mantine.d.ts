@@ -1,18 +1,15 @@
 import {
     ActionIconVariant,
     BadgeVariant,
-    ButtonVariant,
     DefaultMantineColor,
     MantineColorsTuple,
     ThemeIconVariant
 } from '@mantine/core'
 
 type ExtendedThemeIconVariant = 'soft' | ThemeIconVariant
+type ExtendedActionIconVariant = 'soft' | ActionIconVariant
 type ExtendedBadgeVariant = 'soft' | BadgeVariant
-
-type ExtendedActionIconVariant = ExtendedThemeIconVariant | ActionIconVariant
-type ExtendedButtonVariant = 'soft' | ButtonVariant
-type ExtendedCustomColors = 'exodus' | 'shaded-gray' | DefaultMantineColor
+type ExtendedCustomColors = 'shaded-gray' | DefaultMantineColor
 
 declare module '@mantine/core' {
     export interface ThemeIconProps {
@@ -25,10 +22,6 @@ declare module '@mantine/core' {
 
     export interface ActionIconProps {
         variant?: ExtendedActionIconVariant
-    }
-
-    export interface ButtonProps {
-        variant?: ExtendedButtonVariant
     }
 
     export interface MantineThemeColorsOverride {

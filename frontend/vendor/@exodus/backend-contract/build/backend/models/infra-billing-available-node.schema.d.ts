@@ -10,7 +10,7 @@ export declare const InfraBillingAvailableNodeSchema: import("zod").ZodObject<Pi
     lastStatusMessage: import("zod").ZodNullable<import("zod").ZodString>;
     singboxVersion: import("zod").ZodNullable<import("zod").ZodString>;
     nodeVersion: import("zod").ZodNullable<import("zod").ZodString>;
-    singboxUptime: import("zod").ZodString;
+    singboxUptime: import("zod").ZodNumber;
     isTrafficTrackingActive: import("zod").ZodBoolean;
     trafficResetDay: import("zod").ZodNullable<import("zod").ZodNumber>;
     trafficLimitBytes: import("zod").ZodNullable<import("zod").ZodNumber>;

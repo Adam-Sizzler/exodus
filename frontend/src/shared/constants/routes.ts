@@ -17,10 +17,6 @@ export const ROUTES = {
             NODES_BANDWIDTH_TABLE: '/dashboard/management/bandwidth-table',
             NODES_STATS: '/dashboard/management/stats/nodes',
             NODES_METRICS: '/dashboard/management/metrics/nodes',
-            NODE_PLUGINS: {
-                ROOT: '/dashboard/management/plugins',
-                NODE_PLUGIN_BY_UUID: '/dashboard/management/plugins/:uuid'
-            },
             SUBSCRIPTION_SETTINGS: '/dashboard/management/subscription-settings',
             SUBSCRIPTION_CONNECTIONS: '/dashboard/management/subscription-connections',
             RESPONSE_RULES: '/dashboard/management/response-rules',
@@ -29,12 +25,17 @@ export const ROUTES = {
             INTERNAL_SQUADS: '/dashboard/management/internal-squads',
             EXTERNAL_SQUADS: '/dashboard/management/external-squads',
             SRS_LISTS: '/dashboard/management/srs-lists',
-            EXODUS_SETTINGS: '/dashboard/management/settings'
+            EXODUS_SETTINGS: '/dashboard/management/settings',
+            NODE_PLUGINS: {
+                ROOT: '/dashboard/management/plugins',
+                NODE_PLUGIN_BY_UUID: '/dashboard/management/plugins/:uuid'
+            }
         },
         TOOLS: {
             ROOT: '/dashboard/tools',
             HWID_INSPECTOR: '/dashboard/tools/hwid-inspector',
             SRH_INSPECTOR: '/dashboard/tools/srh-inspector'
+            //SESSIONS_EXPLORER: '/dashboard/tools/sessions-explorer'
         },
         TEMPLATES: {
             ROOT: '/dashboard/templates',

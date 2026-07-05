@@ -72,7 +72,7 @@ export const PageHeaderShared = forwardRef<HTMLDivElement, PageHeaderSharedProps
                                     }}
                                 >
                                     {customThemeIcon || (
-                                        <ThemeIcon color="cyan" size="xl" variant="soft">
+                                        <ThemeIcon size="xl" variant="soft">
                                             {icon}
                                         </ThemeIcon>
                                     )}

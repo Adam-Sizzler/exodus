@@ -1,1 +1,1 @@
-export * from './node-plugin-editor.widget'
+export * from './node-plugin-editor-editor.widget'

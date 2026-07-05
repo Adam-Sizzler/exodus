@@ -1,5 +1,4 @@
-import { Navigate, useParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useGetNodePlugin } from '@shared/api/hooks'
 import { LoadingScreen } from '@shared/ui'
@@ -8,24 +7,25 @@ import { ROUTES } from '@shared/constants'
 import { NodePluginEditorPageComponent } from '../components/node-plugin-editor-page.component'
 
 export function NodePluginEditorPageConnector() {
-    const { t } = useTranslation()
-    const { uuid } = useParams<{ uuid: string }>()
+    const { uuid } = useParams()
+    const navigate = useNavigate()
 
-    const { data: plugin, isLoading } = useGetNodePlugin({
+    const { data: plugin, isLoading: isPluginLoading } = useGetNodePlugin({
         route: {
-            uuid: uuid ?? ''
+            uuid: uuid as string
         },
         rQueryParams: {
-            enabled: Boolean(uuid)
+            enabled: !!uuid
         }
     })
 
     if (!uuid) {
-        return <Navigate replace to={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT} />
+        navigate(ROUTES.DASHBOARD.HOME, { replace: true })
+        return null
     }
 
-    if (isLoading || !plugin) {
-        return <LoadingScreen text={t('node-plugins-page.connector.loading-node-plugin')} />
+    if (isPluginLoading || !plugin) {
+        return <LoadingScreen text="Loading plugin..." />
     }
 
     return <NodePluginEditorPageComponent plugin={plugin} />

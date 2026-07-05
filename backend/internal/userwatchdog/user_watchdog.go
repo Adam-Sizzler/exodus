@@ -82,9 +82,10 @@ func handleStatusUpdateResult(cfg *config.BackendConfig, statusName string, resu
 
 func runScheduledTrafficReset(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, now time.Time) {
 	// Traffic resets are now scheduled precisely in the scheduler package:
-	//   DAY   → 00:05 every day
-	//   WEEK  → 00:15 every Monday
-	//   MONTH → 00:20 on 1st of each month
+	//   DAY           → 00:05 every day
+	//   MONTH_ROLLING → 00:10 every day
+	//   WEEK          → 00:15 every Monday
+	//   MONTH         → 00:20 on 1st of each month
 	// This function is kept as a no-op to avoid breaking call sites during startup.
 	_ = ctx
 	_ = manager
@@ -164,7 +165,7 @@ func ResetTrafficByStrategyAt(ctx context.Context, manager *dbmanager.DatabaseMa
 			return err
 		}
 
-		nodeUUIDs, err := queryLimitedUserNodeUUIDsByStrategyTx(ctx, tx, normalizedStrategy, boundary)
+		nodeUUIDs, err := queryLimitedUserNodeUUIDsByStrategyTx(ctx, tx, normalizedStrategy, boundary, now)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
@@ -177,10 +178,20 @@ func ResetTrafficByStrategyAt(ctx context.Context, manager *dbmanager.DatabaseMa
 				    last_triggered_threshold = 0,
 				    status = CASE WHEN status = 'LIMITED' THEN 'ACTIVE' ELSE status END,
 				    updated_at = CURRENT_TIMESTAMP
-				WHERE traffic_limit_strategy = ?
-				  AND COALESCE(last_traffic_reset_at, created_at) < ?
-				RETURNING t_id
-			),
+					WHERE traffic_limit_strategy = ?
+					  AND COALESCE(last_traffic_reset_at, created_at) < ?
+					  AND (
+					      ? <> 'MONTH_ROLLING'
+					      OR (
+					          (created_at + interval '1 month')::date <= ?::date
+					          AND LEAST(
+					              EXTRACT(DAY FROM created_at),
+					              EXTRACT(DAY FROM date_trunc('month', ?::timestamp) + interval '1 month - 1 day')
+					          ) = EXTRACT(DAY FROM ?::timestamp)
+					      )
+					  )
+					RETURNING t_id
+				),
 			reset_traffic AS (
 				INSERT INTO user_traffic (t_id, used_traffic_bytes, lifetime_used_traffic_bytes)
 				SELECT t_id, 0, 0 FROM affected_users
@@ -189,7 +200,7 @@ func ResetTrafficByStrategyAt(ctx context.Context, manager *dbmanager.DatabaseMa
 				RETURNING t_id
 			)
 			SELECT COUNT(*)::bigint FROM reset_traffic
-		`, normalizedStrategy, boundary).Scan(&result.Users)
+			`, normalizedStrategy, boundary, normalizedStrategy, now, now, now).Scan(&result.Users)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
@@ -213,6 +224,8 @@ func resetPeriodBoundary(strategy string, now time.Time) (time.Time, bool) {
 		return dayStart.AddDate(0, 0, -daysSinceMonday), true
 	case "MONTH":
 		return time.Date(local.Year(), local.Month(), 1, 0, 0, 0, 0, local.Location()), true
+	case "MONTH_ROLLING":
+		return dayStart, true
 	default:
 		return time.Time{}, false
 	}
@@ -252,17 +265,27 @@ func updateUsersAndCollectNodes(ctx context.Context, manager *dbmanager.Database
 	return result, err
 }
 
-func queryLimitedUserNodeUUIDsByStrategyTx(ctx context.Context, tx dbmanager.TxExecutor, strategy string, boundary time.Time) ([]string, error) {
+func queryLimitedUserNodeUUIDsByStrategyTx(ctx context.Context, tx dbmanager.TxExecutor, strategy string, boundary time.Time, now time.Time) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
-		SELECT DISTINCT cpitn.node_uuid::text AS node_uuid
-		FROM users u
+			SELECT DISTINCT cpitn.node_uuid::text AS node_uuid
+			FROM users u
 		JOIN internal_squad_members ism ON ism.user_id = u.t_id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
-		WHERE u.status = 'LIMITED'
-		  AND u.traffic_limit_strategy = ?
-		  AND COALESCE(u.last_traffic_reset_at, u.created_at) < ?
-	`, strategy, boundary)
+			WHERE u.status = 'LIMITED'
+			  AND u.traffic_limit_strategy = ?
+			  AND COALESCE(u.last_traffic_reset_at, u.created_at) < ?
+			  AND (
+			      ? <> 'MONTH_ROLLING'
+			      OR (
+			          (u.created_at + interval '1 month')::date <= ?::date
+			          AND LEAST(
+			              EXTRACT(DAY FROM u.created_at),
+			              EXTRACT(DAY FROM date_trunc('month', ?::timestamp) + interval '1 month - 1 day')
+			          ) = EXTRACT(DAY FROM ?::timestamp)
+			      )
+			  )
+		`, strategy, boundary, strategy, now, now, now)
 	if err != nil {
 		return nil, err
 	}

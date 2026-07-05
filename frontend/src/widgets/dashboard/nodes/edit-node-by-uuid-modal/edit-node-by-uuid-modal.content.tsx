@@ -1,7 +1,8 @@
+import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { useEffect, useState } from 'react'
 import { useForm } from '@mantine/form'
 import { motion } from 'motion/react'
+import { useEffect } from 'react'
 
 import {
     configProfilesQueryKeys,
@@ -32,8 +33,6 @@ interface IProps {
 
 export const EditNodeByUuidModalContent = (props: IProps) => {
     const { generatedCredentials, nodeUuid, onClose } = props
-
-    const [advancedOpened, setAdvancedOpened] = useState(false)
 
     const form = useForm<UpdateNodeRequest>({
         name: 'edit-node-form',
@@ -75,7 +74,6 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
 
     useEffect(() => {
         if (fetchedNode) {
-            setAdvancedOpened(fetchedNode.isTrafficTrackingActive ?? false)
             const normalizedFetchedSchema = (fetchedNode.apiSchema ?? '').toLowerCase()
             const apiSchema: 'mtls' | 'tls' = normalizedFetchedSchema === 'tls' ? 'tls' : 'mtls'
             form.initialize({
@@ -86,7 +84,6 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 port: fetchedNode.port ?? undefined,
                 apiSchema,
                 apiPath: fetchedNode.apiPath ?? '/',
-                activePluginUuid: fetchedNode.activePluginUuid ?? null,
                 isTrafficTrackingActive: fetchedNode.isTrafficTrackingActive ?? undefined,
                 trafficLimitBytes: bytesToGbUtil(fetchedNode.trafficLimitBytes ?? undefined),
                 trafficResetDay: fetchedNode.trafficResetDay ?? undefined,
@@ -102,7 +99,8 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                         []
                 },
 
-                providerUuid: fetchedNode.providerUuid ?? undefined
+                providerUuid: fetchedNode.providerUuid ?? undefined,
+                activePluginUuid: fetchedNode.activePluginUuid ?? undefined
             })
         }
     }, [fetchedNode])
@@ -119,7 +117,6 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 address: values.address?.trim(),
                 apiSchema: values.apiSchema === 'tls' ? 'tls' : 'mtls',
                 apiPath: values.apiPath?.trim() || '/',
-                activePluginUuid: values.activePluginUuid || null,
                 trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes),
                 configProfile: {
                     activeConfigProfileUuid: values.configProfile?.activeConfigProfileUuid ?? '',
@@ -143,7 +140,6 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
 
     return (
         <BaseNodeForm
-            advancedOpened={advancedOpened}
             form={form}
             handleClose={onClose}
             handleSubmit={handleSubmit}
@@ -151,9 +147,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             node={fetchedNode}
             nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode} />}
             nodePlugins={nodePlugins?.nodePlugins ?? []}
-            nodeSystemCard={
-                fetchedNode.isConnected ? <NodeSystemCardWidget node={fetchedNode} /> : null
-            }
+            nodeSystemCard={<NodeSystemCardWidget node={fetchedNode} />}
             pubKey={
                 (generatedCredentials ?? pubKey)
                     ? {
@@ -165,7 +159,6 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                       }
                     : undefined
             }
-            setAdvancedOpened={setAdvancedOpened}
         />
     )
 }

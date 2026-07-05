@@ -80,17 +80,6 @@ const getPubKeyResponseSchema = z.object({
     })
 })
 
-const getNodePluginsResponseSchema = z.object({
-    response: z.object({
-        nodePlugins: z.array(nodePluginSchema).optional().default([]),
-        total: z.number().optional().default(0)
-    })
-})
-
-const getNodePluginResponseSchema = z.object({
-    response: nodePluginSchema
-})
-
 export type NodeKeygenResponse = z.infer<typeof getPubKeyResponseSchema>['response']
 export type NodePluginResponse = z.infer<typeof nodePluginSchema>
 export type NodeResponse = z.infer<typeof nodeResponseSchema>
@@ -105,12 +94,6 @@ export const nodesQueryKeys = createQueryKeys('nodes', {
     getPubKey: {
         queryKey: null
     },
-    getNodePlugins: {
-        queryKey: null
-    },
-    getNodePlugin: (route: { uuid: string }) => ({
-        queryKey: [route]
-    }),
     getAllTags: {
         queryKey: null
     }
@@ -150,27 +133,6 @@ export const useGetPubKey = createGetQueryHook({
     },
 
     errorHandler: (error) => errorHandler(error, 'Get PubKey')
-})
-
-export const useGetNodePlugins = createGetQueryHook({
-    endpoint: '/api/node-plugins',
-    responseSchema: getNodePluginsResponseSchema,
-    getQueryKey: () => nodesQueryKeys.getNodePlugins.queryKey,
-    rQueryParams: {
-        staleTime: sToMs(30)
-    },
-    errorHandler: (error) => errorHandler(error, 'Get Node Plugins')
-})
-
-export const useGetNodePlugin = createGetQueryHook({
-    endpoint: '/api/node-plugins/:uuid',
-    responseSchema: getNodePluginResponseSchema,
-    routeParamsSchema: z.object({ uuid: z.string().uuid() }),
-    getQueryKey: ({ route }) => nodesQueryKeys.getNodePlugin(route!).queryKey,
-    rQueryParams: {
-        staleTime: sToMs(5)
-    },
-    errorHandler: (error) => errorHandler(error, 'Get Node Plugin')
 })
 
 export const useGetNodesTags = createGetQueryHook({

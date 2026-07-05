@@ -5,9 +5,8 @@ import dayjs from 'dayjs'
 dayjs.extend(duration)
 dayjs.extend(relativeTime)
 
-export function getSingboxUptimeUtil(uptimeInSeconds: string): string {
-    const totalSeconds = parseInt(uptimeInSeconds, 10)
-    const duration = dayjs.duration(totalSeconds, 'seconds')
+export function getSingboxUptimeUtil(uptimeInSeconds: number): string {
+    const duration = dayjs.duration(uptimeInSeconds, 'seconds')
 
     if (duration.asDays() >= 1) {
         return `${duration.asDays().toFixed(0)}d`
@@ -31,6 +30,5 @@ export function getSingboxUptimeUtil(uptimeInSeconds: string): string {
 export function formatDurationUtil(uptimeInSeconds: number): string {
     const d = dayjs.duration(uptimeInSeconds, 'seconds')
     const totalDays = Math.floor(d.asDays())
-
     return `${totalDays}d ${d.hours()}h ${d.minutes()}m ${d.seconds()}s`
 }

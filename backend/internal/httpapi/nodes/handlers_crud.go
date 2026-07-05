@@ -26,7 +26,7 @@ func handleGetNodes(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 		return
 	}
 
-	response, err := buildNodeResponses(r.Context(), manager, nodes)
+	response, err := buildNodeResponses(r.Context(), manager, cfg, nodes)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return
@@ -46,7 +46,7 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, manager *dbmanager.Da
 		return
 	}
 
-	response, err := buildNodeResponses(r.Context(), manager, []nodeRecord{node})
+	response, err := buildNodeResponses(r.Context(), manager, cfg, []nodeRecord{node})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return
@@ -97,10 +97,10 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			INSERT INTO nodes (
 				uuid, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
+				consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, country_code, tags, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`,
 			nodeUUID,
 			strings.TrimSpace(req.Name),
@@ -116,10 +116,6 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			false,
 			nil,
 			nil,
-			nil,
-			nil,
-			"0",
-			0,
 			toNanoMultiplier(coalesceFloat(req.ConsumptionMultiplier, 1)),
 			coalesceBool(req.IsTrafficTrackingActive, false),
 			coalesceInt(req.TrafficResetDay, 1),
@@ -156,7 +152,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created node", err, cfg)
 		return
 	}
-	response, err := buildNodeResponses(r.Context(), manager, []nodeRecord{node})
+	response, err := buildNodeResponses(r.Context(), manager, cfg, []nodeRecord{node})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return
@@ -315,7 +311,7 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated node", err, cfg)
 		return
 	}
-	response, err := buildNodeResponses(r.Context(), manager, []nodeRecord{node})
+	response, err := buildNodeResponses(r.Context(), manager, cfg, []nodeRecord{node})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, cfg)
 		return

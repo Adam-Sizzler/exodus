@@ -35,6 +35,10 @@ export declare const CONTROLLERS_INFO: {
         readonly tag: "Nodes Controller";
         readonly description: "";
     };
+    readonly NODE_PLUGINS: {
+        readonly tag: "Node Plugins Controller";
+        readonly description: "";
+    };
     readonly BANDWIDTH_STATS: {
         readonly tag: "Bandwidth Stats Controller";
         readonly description: "";

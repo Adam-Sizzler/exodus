@@ -5,7 +5,7 @@ import { TbEyeOff } from 'react-icons/tb'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 
 interface IProps {
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles']
@@ -24,21 +24,21 @@ export const HostsSpotlightWidget = (props: IProps) => {
     const getHostIcon = (isDisabled: boolean, isHidden: boolean) => {
         if (isDisabled) {
             return (
-                <ThemeIcon size="lg" style={{ flexShrink: 0 }} variant="soft" color="gray">
+                <ThemeIcon color="gray" size="lg" style={{ flexShrink: 0 }} variant="soft">
                     <PiProhibit size={20} />
                 </ThemeIcon>
             )
         }
         if (!isDisabled && isHidden) {
             return (
-                <ThemeIcon size="lg" style={{ flexShrink: 0 }} variant="soft" color="violet">
+                <ThemeIcon color="violet" size="lg" style={{ flexShrink: 0 }} variant="soft">
                     <TbEyeOff size={20} />
                 </ThemeIcon>
             )
         }
         if (!isDisabled && !isHidden) {
             return (
-                <ThemeIcon size="lg" style={{ flexShrink: 0 }} variant="soft" color="teal">
+                <ThemeIcon color="teal" size="lg" style={{ flexShrink: 0 }} variant="soft">
                     <PiPulse size={20} />
                 </ThemeIcon>
             )
@@ -84,13 +84,8 @@ export const HostsSpotlightWidget = (props: IProps) => {
                     </Group>
 
                     {host.xrayJsonTemplateUuid && (
-                        <ThemeIcon
-                            color="teal"
-                            size="lg"
-                            style={{ flexShrink: 0 }}
-                            variant="soft"
-                        >
-                            <XrayLogo size={20} />
+                        <ThemeIcon color="teal" size="lg" style={{ flexShrink: 0 }} variant="soft">
+                            <SingboxLogo size={20} />
                         </ThemeIcon>
                     )}
                 </Group>

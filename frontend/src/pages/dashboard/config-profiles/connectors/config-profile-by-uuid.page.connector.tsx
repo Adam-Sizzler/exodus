@@ -29,52 +29,26 @@ export function ConfigProfileByUuidPageConnector() {
     useLayoutEffect(() => {
         const initWasm = async () => {
             try {
-                if (typeof window.Go !== 'function') {
-                    throw new Error('Go WASM runtime is not loaded. Check /assets/wasm_exec.js')
-                }
-
                 const go = new window.Go()
                 const wasmInitialized = new Promise<void>((resolve) => {
-                    const timeoutId = window.setTimeout(() => {
-                        resolve()
-                    }, 5000)
-
                     window.onWasmInitialized = () => {
-                        window.clearTimeout(timeoutId)
                         consola.info('WASM module initialized')
                         resolve()
                     }
                 })
 
-                const wasmBytes: ArrayBuffer = await fetchWithProgress(
+                const wasmBytes = await fetchWithProgress(
                     app.configEditor.wasmUrl,
                     setDownloadProgress
-                ) as ArrayBuffer
-                const wasmUint8 = new Uint8Array(wasmBytes)
-                if (wasmUint8.byteLength < 8) {
-                    throw new Error('Downloaded WASM is too small')
-                }
-                const wasmMagicOk =
-                    wasmUint8[0] === 0x00 &&
-                    wasmUint8[1] === 0x61 &&
-                    wasmUint8[2] === 0x73 &&
-                    wasmUint8[3] === 0x6d
-                if (!wasmMagicOk) {
-                    throw new Error(
-                        'Downloaded file is not a valid wasm binary (magic number mismatch). Check /assets/main.wasm source.'
-                    )
-                }
-
-                const { instance } = await WebAssembly.instantiate(wasmUint8, go.importObject)
+                )
+                const { instance } = await WebAssembly.instantiate(wasmBytes, go.importObject)
                 go.run(instance)
                 await wasmInitialized
 
                 if (typeof window.SingboxParseConfig === 'function') {
                     setIsLoading(false)
                 } else {
-                    throw new Error(
-                        'SingboxParseConfig is not initialized. Ensure your wasm exports this function and calls window.onWasmInitialized().'
-                    )
+                    throw new Error('SingboxParseConfig not initialized')
                 }
             } catch (err: unknown) {
                 consola.error('WASM initialization error:', err)

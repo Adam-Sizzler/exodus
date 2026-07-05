@@ -1,18 +1,19 @@
+import { GetNodePluginCommand } from '@exodus/backend-contract'
 import { TbArrowBackUp, TbBook, TbPackage } from 'react-icons/tb'
 import { ActionIcon, Box, Flex, Group } from '@mantine/core'
 import { useNavigate } from 'react-router-dom'
 
 import { NodePluginEditorWidget } from '@widgets/dashboard/node-plugins/node-plugin-editor'
-import { NodePluginResponse } from '@shared/api/hooks'
 import { Page, PageHeaderShared } from '@shared/ui'
 import { ROUTES } from '@shared/constants'
 
-interface IProps {
-    plugin: NodePluginResponse
+interface Props {
+    plugin: GetNodePluginCommand.Response['response']
 }
 
-export function NodePluginEditorPageComponent(props: IProps) {
+export const NodePluginEditorPageComponent = (props: Props) => {
     const { plugin } = props
+
     const navigate = useNavigate()
 
     return (
@@ -20,6 +21,11 @@ export function NodePluginEditorPageComponent(props: IProps) {
             <PageHeaderShared
                 actions={
                     <Group>
+                        {/* <HelpActionIconShared
+                            hidden={!isHelpDrawerVisible}
+                            screen="EDITOR_TEMPLATES_XRAY_JSON"
+                        /> */}
+
                         <ActionIcon
                             color="lime"
                             component="a"
@@ -45,7 +51,6 @@ export function NodePluginEditorPageComponent(props: IProps) {
                 icon={<TbPackage size={24} />}
                 title={plugin.name}
             />
-
             <Flex gap="md">
                 <Box style={{ flex: 1, minWidth: 0 }}>
                     <NodePluginEditorWidget

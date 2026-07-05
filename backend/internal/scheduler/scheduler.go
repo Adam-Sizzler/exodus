@@ -105,11 +105,15 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	}
 
 	// Traffic reset schedules — mirrors remnawave cron jobs:
-	//   DAY:   0 5 * * *   (every day at 00:05)
-	//   WEEK:  15 0 * * 1  (Monday at 00:15)
-	//   MONTH: 20 0 1 * *  (1st of month at 00:20)
+	//   DAY:           0 5 * * *   (every day at 00:05)
+	//   MONTH_ROLLING: 10 0 * * *  (every day at 00:10)
+	//   WEEK:          15 0 * * 1  (Monday at 00:15)
+	//   MONTH:         20 0 1 * *  (1st of month at 00:20)
 	if local.Hour() == 0 && local.Minute() == 5 && s.shouldRun("trafficResetDay", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetDay", s.trafficResetDay)
+	}
+	if local.Hour() == 0 && local.Minute() == 10 && s.shouldRun("trafficResetMonthRolling", local.Format("2006-01-02")) {
+		s.runJob(ctx, "trafficResetMonthRolling", s.trafficResetMonthRolling)
 	}
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 15 && s.shouldRun("trafficResetWeek", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetWeek", s.trafficResetWeek)

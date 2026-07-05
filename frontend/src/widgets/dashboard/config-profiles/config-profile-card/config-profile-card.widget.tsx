@@ -107,8 +107,9 @@ export function ConfigProfileCardWidget(props: IProps) {
                 size: 'xl',
                 title: (
                     <BaseOverlayHeader
+                        iconColor="teal"
                         IconComponent={TbEye}
-                        iconVariant="soft" iconColor="teal"
+                        iconVariant="soft"
                         title={computedConfigProfile.data.name}
                         titleOrder={5}
                     />
@@ -217,8 +218,9 @@ export function ConfigProfileCardWidget(props: IProps) {
                                     ),
                                     title: (
                                         <BaseOverlayHeader
+                                            iconColor="teal"
                                             IconComponent={TbEye}
-                                            iconVariant="soft" iconColor="teal"
+                                            iconVariant="soft"
                                             title={configProfile.name}
                                             titleOrder={5}
                                         />

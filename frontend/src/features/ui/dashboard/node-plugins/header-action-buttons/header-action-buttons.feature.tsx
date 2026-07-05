@@ -9,6 +9,7 @@ import {
     Tooltip
 } from '@mantine/core'
 import { TbBook, TbPackage, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
+import { CreateNodePluginCommand } from '@exodus/backend-contract'
 import { generatePath, useNavigate } from 'react-router-dom'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'react-i18next'
@@ -21,45 +22,46 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { ROUTES } from '@shared/constants'
 import { queryClient } from '@shared/api'
 
-export function NodePluginsHeaderActionButtonsFeature() {
+export const NodePluginsHeaderActionButtonsFeature = () => {
     const { t } = useTranslation()
-    const [opened, { open, close }] = useDisclosure(false)
-    const navigate = useNavigate()
-    const openModalWithData = useModalsStoreOpenWithData()
 
     const { isFetching } = useGetNodePlugins()
 
-    const nameField = useField<string>({
+    const openModalWithData = useModalsStoreOpenWithData()
+
+    const [opened, { open, close }] = useDisclosure(false)
+    const navigate = useNavigate()
+
+    const handleUpdate = async () => {
+        await queryClient.refetchQueries({
+            queryKey: QueryKeys.nodePlugins.getNodePlugins.queryKey
+        })
+    }
+
+    const nameField = useField<CreateNodePluginCommand.Request['name']>({
         initialValue: '',
         validateOnChange: true,
-        validate: (value) =>
-            value.trim().length > 0
-                ? null
-                : t('node-plugins-header-action-buttons.feature.name-is-required')
+        validate: (value) => {
+            const result = CreateNodePluginCommand.RequestSchema.safeParse({
+                name: value
+            })
+            return result.success ? null : result.error.errors[0]?.message
+        }
     })
-
     const { mutate: createNodePlugin, isPending } = useCreateNodePlugin({
         mutationFns: {
-            onSuccess: async (plugin) => {
-                await queryClient.invalidateQueries({
-                    queryKey: QueryKeys.nodes.getNodePlugins.queryKey
-                })
-                nameField.reset()
+            onSuccess: (data) => {
                 close()
+                nameField.reset()
+                handleUpdate()
                 navigate(
                     generatePath(ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.NODE_PLUGIN_BY_UUID, {
-                        uuid: plugin.uuid
+                        uuid: data.uuid
                     })
                 )
             }
         }
     })
-
-    const handleRefresh = async () => {
-        await queryClient.invalidateQueries({
-            queryKey: QueryKeys.nodes.getNodePlugins.queryKey
-        })
-    }
 
     return (
         <Group grow preventGrowOverflow={false} wrap="wrap">
@@ -77,7 +79,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
             <UniversalSpotlightActionIconShared />
 
             <ActionIconGroup>
-                <Tooltip label={t('node-plugin-executor.drawer.executor')} withArrow>
+                <Tooltip label="Executor" withArrow>
                     <ActionIcon
                         color="grape"
                         onClick={() =>
@@ -95,7 +97,7 @@ export function NodePluginsHeaderActionButtonsFeature() {
                 <Tooltip label={t('common.refresh')} withArrow>
                     <ActionIcon
                         loading={isFetching}
-                        onClick={handleRefresh}
+                        onClick={handleUpdate}
                         size="input-md"
                         variant="soft"
                     >
@@ -114,18 +116,19 @@ export function NodePluginsHeaderActionButtonsFeature() {
                 centered
                 onClose={close}
                 opened={opened}
+                size="md"
                 title={
                     <BaseOverlayHeader
+                        iconColor="teal"
                         IconComponent={TbPackage}
                         iconVariant="soft"
-                        iconColor="teal"
                         title={t('common.create')}
                     />
                 }
             >
                 <form
-                    onSubmit={(event) => {
-                        event.preventDefault()
+                    onSubmit={(e) => {
+                        e.preventDefault()
                         createNodePlugin({
                             variables: {
                                 name: nameField.getValue()
@@ -137,17 +140,15 @@ export function NodePluginsHeaderActionButtonsFeature() {
                         <TextInput
                             data-autofocus
                             label={t('common.name')}
-                            placeholder={t(
-                                'node-plugins-header-action-buttons.feature.my-node-plugin'
-                            )}
+                            placeholder="My Node Plugin"
                             required
                             {...nameField.getInputProps()}
                         />
-
                         <Group justify="flex-end">
                             <Button color="gray" onClick={close} variant="light">
                                 {t('common.cancel')}
                             </Button>
+
                             <Button color="teal" loading={isPending} type="submit">
                                 {t('common.create')}
                             </Button>

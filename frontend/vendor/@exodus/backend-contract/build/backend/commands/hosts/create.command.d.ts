@@ -50,6 +50,9 @@ export declare namespace CreateHostCommand {
         singboxMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         clashMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         sockoptParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
+        overrideProtocolCredential: z.ZodOptional<z.ZodBoolean>;
+        protocolCredential: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        finalMask: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         isHidden: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
@@ -93,6 +96,9 @@ export declare namespace CreateHostCommand {
         singboxMuxParams?: unknown;
         clashMuxParams?: unknown;
         sockoptParams?: unknown;
+        overrideProtocolCredential?: boolean | undefined;
+        protocolCredential?: string | null | undefined;
+        finalMask?: unknown;
         serverDescription?: string | null | undefined;
         isHidden?: boolean | undefined;
         overrideSniFromAddress?: boolean | undefined;
@@ -127,6 +133,9 @@ export declare namespace CreateHostCommand {
         singboxMuxParams?: unknown;
         clashMuxParams?: unknown;
         sockoptParams?: unknown;
+        overrideProtocolCredential?: boolean | undefined;
+        protocolCredential?: string | null | undefined;
+        finalMask?: unknown;
         serverDescription?: string | null | undefined;
         isHidden?: boolean | undefined;
         overrideSniFromAddress?: boolean | undefined;
@@ -162,6 +171,9 @@ export declare namespace CreateHostCommand {
             xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
+            overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
+            protocolCredential: z.ZodNullable<z.ZodString>;
+            finalMask: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
                 configProfileUuid: z.ZodNullable<z.ZodString>;
                 configProfileInboundUuid: z.ZodNullable<z.ZodString>;
@@ -224,6 +236,9 @@ export declare namespace CreateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential: boolean;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
         }, {
             nodes: string[];
@@ -253,6 +268,9 @@ export declare namespace CreateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential: boolean;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             isHidden?: boolean | undefined;
             overrideSniFromAddress?: boolean | undefined;
             keepSniBlank?: boolean | undefined;
@@ -292,6 +310,9 @@ export declare namespace CreateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential?: boolean | undefined;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
         };
     }, {
@@ -323,6 +344,9 @@ export declare namespace CreateHostCommand {
             xHttpExtraParams?: unknown;
             muxParams?: unknown;
             sockoptParams?: unknown;
+            overrideProtocolCredential: boolean;
+            protocolCredential: string | null;
+            finalMask?: unknown;
             isHidden?: boolean | undefined;
             overrideSniFromAddress?: boolean | undefined;
             keepSniBlank?: boolean | undefined;

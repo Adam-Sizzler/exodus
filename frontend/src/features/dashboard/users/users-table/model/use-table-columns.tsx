@@ -130,7 +130,6 @@ export const useUserTableColumns = (
                 minSize: 400,
                 maxSize: 800,
                 enableColumnFilterModes: false,
-
                 mantineTableBodyCellProps: {
                     align: 'center'
                 }
@@ -143,7 +142,6 @@ export const useUserTableColumns = (
                 minSize: 250,
                 size: 400,
                 enableColumnFilterModes: false,
-
                 mantineTableBodyCellProps: {
                     align: 'center',
                     style: { whiteSpace: 'normal', wordBreak: 'break-word' }
@@ -170,6 +168,7 @@ export const useUserTableColumns = (
                         {cell.row.original.tag || '–'}
                     </Text>
                 ),
+
                 mantineTableBodyCellProps: {
                     align: 'center'
                 },

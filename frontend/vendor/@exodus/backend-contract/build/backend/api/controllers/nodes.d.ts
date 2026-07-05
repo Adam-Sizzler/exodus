@@ -17,6 +17,7 @@ export declare const NODES_ROUTES: {
     readonly BULK_ACTIONS: {
         readonly PROFILE_MODIFICATION: "bulk-actions/profile-modification";
         readonly ACTIONS: "bulk-actions";
+        readonly UPDATE: "bulk-actions/update";
     };
     readonly TAGS: {
         readonly GET: "tags";

@@ -1,9 +1,4 @@
-import {
-    PiClockCountdownDuotone,
-    PiClockUserDuotone,
-    PiProhibitDuotone,
-    PiPulseDuotone
-} from 'react-icons/pi'
+import { PiClockCountdown, PiClockUser, PiProhibit, PiPulse } from 'react-icons/pi'
 import { TUsersStatus, USERS_STATUS } from '@exodus/backend-contract'
 import { Badge, BadgeProps } from '@mantine/core'
 
@@ -13,22 +8,22 @@ interface IProps extends Omit<BadgeProps, 'children' | 'color'> {
 
 export function UserStatusBadge({ status, ...props }: IProps) {
     let icon: React.ReactNode
-    let color: BadgeProps['color'] = 'shaded-gray'
+    let color: BadgeProps['color'] = 'gray'
     switch (status) {
         case USERS_STATUS.ACTIVE:
-            icon = <PiPulseDuotone size={18} />
+            icon = <PiPulse size={18} />
             color = 'teal'
             break
         case USERS_STATUS.DISABLED:
-            icon = <PiProhibitDuotone size={18} />
+            icon = <PiProhibit size={18} />
             color = 'shaded-gray'
             break
         case USERS_STATUS.EXPIRED:
-            icon = <PiClockUserDuotone size={18} />
+            icon = <PiClockUser size={18} />
             color = 'red'
             break
         case USERS_STATUS.LIMITED:
-            icon = <PiClockCountdownDuotone size={18} />
+            icon = <PiClockCountdown size={18} />
             color = 'orange'
             break
         default:

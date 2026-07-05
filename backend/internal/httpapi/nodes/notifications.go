@@ -6,6 +6,7 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/nodehotcache"
 	"exodus/internal/notifications"
 )
 
@@ -13,7 +14,7 @@ func emitNodeNotification(ctx context.Context, cfg *config.BackendConfig, event 
 	notifications.Emit(ctx, cfg, notifications.Event{
 		Scope: notifications.ScopeNode,
 		Event: event,
-		Data:  nodeRecordNotificationData(record),
+		Data:  nodeRecordNotificationData(ctx, cfg, record),
 		Meta:  meta,
 	})
 }
@@ -43,7 +44,14 @@ func emitNodesByUUIDsNotification(ctx context.Context, manager *dbmanager.Databa
 	}
 }
 
-func nodeRecordNotificationData(record nodeRecord) map[string]any {
+func nodeRecordNotificationData(ctx context.Context, cfg *config.BackendConfig, record nodeRecord) map[string]any {
+	hot, _ := nodehotcache.Default(cfg).GetOne(ctx, record.UUID)
+	var singboxVersion *string
+	var nodeVersion *string
+	if hot.Versions != nil {
+		singboxVersion = stringPtrIfNotEmpty(hot.Versions.Singbox)
+		nodeVersion = stringPtrIfNotEmpty(hot.Versions.Node)
+	}
 	return map[string]any{
 		"id":                      record.ID,
 		"uuid":                    record.UUID,
@@ -59,10 +67,10 @@ func nodeRecordNotificationData(record nodeRecord) map[string]any {
 		"isDisabled":              record.IsDisabled,
 		"lastStatusChange":        optionalTimeString(record.LastStatusChange),
 		"lastStatusMessage":       record.LastStatusMessage,
-		"singboxVersion":          record.SingboxVersion,
-		"nodeVersion":             record.NodeVersion,
-		"singboxUptime":           record.SingboxUptime,
-		"usersOnline":             record.UsersOnline,
+		"singboxVersion":          singboxVersion,
+		"nodeVersion":             nodeVersion,
+		"singboxUptime":           hot.SingboxUptime,
+		"usersOnline":             hot.UsersOnline,
 		"consumptionMultiplier":   fromNanoMultiplier(record.ConsumptionMultiplier),
 		"isTrafficTrackingActive": record.IsTrafficTrackingActive,
 		"trafficResetDay":         record.TrafficResetDay,

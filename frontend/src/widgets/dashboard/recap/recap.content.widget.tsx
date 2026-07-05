@@ -346,7 +346,7 @@ export function RecapContent() {
                                 color: alpha(accent, 0.7)
                             }}
                         >
-                            {recap.version}
+                            v{recap.version}
                         </span>
                     </div>
                 </div>
@@ -381,7 +381,7 @@ export function RecapContent() {
                         <TextInput
                             maxLength={40}
                             onChange={(e) => setCustomNote(e.currentTarget.value)}
-                            placeholder="EX <3"
+                            placeholder="RW <3"
                             size="xs"
                             value={customNote}
                         />

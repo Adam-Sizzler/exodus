@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"strings"
 
+	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/httpapi/shared"
+	"exodus/internal/nodehotcache"
 )
 
-func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager, records []nodeRecord) ([]nodeAPI, error) {
+func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, records []nodeRecord) ([]nodeAPI, error) {
 	nodeUUIDs := make([]string, 0, len(records))
 	providerUUIDs := make([]string, 0, len(records))
 	for _, record := range records {
@@ -26,9 +29,11 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	if err != nil {
 		return nil, err
 	}
+	hotCache, _ := nodehotcache.Default(cfg).GetMany(ctx, nodeUUIDs)
 
 	response := make([]nodeAPI, 0, len(records))
 	for _, record := range records {
+		hot := hotCache[record.UUID]
 		var item nodeAPI
 		item.UUID = record.UUID
 		item.Name = record.Name
@@ -43,27 +48,33 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.IsConnecting = record.IsConnecting
 		item.LastStatusChange = record.LastStatusChange
 		item.LastStatusMessage = record.LastStatusMessage
-		item.SingboxVersion = record.SingboxVersion
-		item.NodeVersion = record.NodeVersion
-		item.SingboxUptime = record.SingboxUptime
+		if hot.Versions != nil {
+			item.SingboxVersion = stringPtrIfNotEmpty(hot.Versions.Singbox)
+			item.NodeVersion = stringPtrIfNotEmpty(hot.Versions.Node)
+		}
+		item.SingboxUptime = hot.SingboxUptime
 		item.IsTrafficTrackingActive = record.IsTrafficTrackingActive
 		item.TrafficResetDay = record.TrafficResetDay
 		item.TrafficLimitBytes = record.TrafficLimitBytes
 		item.TrafficUsedBytes = record.TrafficUsedBytes
 		item.NotifyPercent = record.NotifyPercent
-		item.UsersOnline = record.UsersOnline
+		usersOnline := hot.UsersOnline
+		item.UsersOnline = &usersOnline
 		item.ViewPosition = record.ViewPosition
 		item.CountryCode = record.CountryCode
 		item.ConsumptionMultiplier = fromNanoMultiplier(record.ConsumptionMultiplier)
 		item.Tags = ensureStringSlice(record.Tags)
-		item.CPUCount = record.CPUCount
-		item.CPUModel = record.CPUModel
-		item.TotalRAM = record.TotalRAM
-		item.System = buildNodeSystem(record.SystemInfoRaw, record.SystemStatsRaw)
-		item.Versions = buildNodeVersions(record.SingboxVersion, record.NodeVersion)
+		item.System = buildNodeSystemFromCache(hot.System)
+		item.Versions = buildNodeVersions(item.SingboxVersion, item.NodeVersion)
+		if item.System != nil {
+			item.CPUCount = &item.System.Info.CPUs
+			item.CPUModel = stringPtrIfNotEmpty(item.System.Info.CPUModel)
+			totalRAM := shared.FormatBytes(int64(item.System.Info.MemoryTotal))
+			item.TotalRAM = &totalRAM
+		}
 		if !record.IsConnected || record.IsConnecting || record.IsDisabled {
 			usersOnline := 0
-			item.SingboxUptime = "0"
+			item.SingboxUptime = 0
 			item.UsersOnline = &usersOnline
 			item.CPUCount = nil
 			item.CPUModel = nil
@@ -82,6 +93,13 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 	}
 
 	return response, nil
+}
+
+func buildNodeSystemFromCache(system *nodehotcache.NodeSystem) *nodeSystemResponse {
+	if system == nil {
+		return nil
+	}
+	return buildNodeSystem(system.Info, system.Stats)
 }
 
 func buildNodeSystem(infoRaw []byte, statsRaw []byte) *nodeSystemResponse {
@@ -125,4 +143,12 @@ func buildNodeVersions(singboxVersion *string, nodeVersion *string) *nodeVersion
 		versions.Node = strings.TrimSpace(*nodeVersion)
 	}
 	return versions
+}
+
+func stringPtrIfNotEmpty(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return &value
 }

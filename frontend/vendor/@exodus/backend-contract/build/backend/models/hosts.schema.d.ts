@@ -21,6 +21,7 @@ export declare const HostsSchema: z.ZodObject<{
     singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
     clashMuxParams: z.ZodNullable<z.ZodUnknown>;
     sockoptParams: z.ZodNullable<z.ZodUnknown>;
+    finalMask: z.ZodNullable<z.ZodUnknown>;
     inbound: z.ZodObject<{
         configProfileUuid: z.ZodNullable<z.ZodString>;
         configProfileInboundUuid: z.ZodNullable<z.ZodString>;
@@ -89,6 +90,7 @@ export declare const HostsSchema: z.ZodObject<{
     singboxMuxParams?: unknown;
     clashMuxParams?: unknown;
     sockoptParams?: unknown;
+    finalMask?: unknown;
     excludeFromSubscriptionTypes?: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[] | undefined;
 }, {
     nodes: string[];
@@ -121,6 +123,7 @@ export declare const HostsSchema: z.ZodObject<{
     singboxMuxParams?: unknown;
     clashMuxParams?: unknown;
     sockoptParams?: unknown;
+    finalMask?: unknown;
     isHidden?: boolean | undefined;
     overrideSniFromAddress?: boolean | undefined;
     keepSniBlank?: boolean | undefined;

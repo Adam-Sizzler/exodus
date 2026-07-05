@@ -255,8 +255,9 @@ export const UserHwidDevicesDrawerWidget = () => {
             }}
             title={
                 <BaseOverlayHeader
+                    iconColor="violet"
                     IconComponent={TbDevices}
-                    iconVariant="soft" iconColor="violet"
+                    iconVariant="soft"
                     title={t('get-hwid-user-devices.feature.hwid-devices')}
                 />
             }

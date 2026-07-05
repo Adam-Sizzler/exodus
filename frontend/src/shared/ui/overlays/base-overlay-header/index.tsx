@@ -7,8 +7,8 @@ type IProps = {
     countryCode?: string
     hideIcon?: boolean
     icon?: ReactNode
-    IconComponent: React.ComponentType<{ size: number }>
     iconColor?: ThemeIconProps['color']
+    IconComponent: React.ComponentType<{ size: number }>
     iconSize?: number
     iconVariant: ThemeIconProps['variant']
     subtitle?: ReactNode | string

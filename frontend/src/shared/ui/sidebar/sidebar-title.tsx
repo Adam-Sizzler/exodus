@@ -18,7 +18,7 @@ export const SidebarTitleShared = () => {
             { text: 'Exo', color: 'exodus-logo-exo.6' },
             { text: 'dus', color: 'exodus-logo-dus.6' }
         ]
-    }, [authStatus?.branding.title])
+    }, [authStatus])
 
     return (
         <Text className={classes.logoTitle}>

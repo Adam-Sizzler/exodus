@@ -19,8 +19,8 @@ export interface IMetricCardProps {
 
 export function MetricCardShared(props: IMetricCardProps) {
     const {
-        themeIconProps,
         iconColor,
+        themeIconProps,
         IconComponent,
         iconSize = 24,
         iconVariant,

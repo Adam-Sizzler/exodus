@@ -6,5 +6,6 @@ exports.RESET_PERIODS = {
     DAY: 'DAY',
     WEEK: 'WEEK',
     MONTH: 'MONTH',
+    MONTH_ROLLING: 'MONTH_ROLLING',
 };
 exports.RESET_PERIODS_VALUES = Object.values(exports.RESET_PERIODS);

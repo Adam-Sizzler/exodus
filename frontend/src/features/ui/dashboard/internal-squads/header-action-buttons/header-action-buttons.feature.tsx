@@ -106,9 +106,9 @@ export const InternalSquadsHeaderActionButtonsFeature = (props: IProps) => {
                 size="md"
                 title={
                     <BaseOverlayHeader
+                        iconColor="teal"
                         IconComponent={TbCirclesRelation}
                         iconVariant="soft"
-                        iconColor="teal"
                         title={t(
                             'internal-squad-header-action-buttons.feature.create-internal-squad'
                         )}

@@ -124,6 +124,38 @@ func validateUpdateRequest(req updateNodeRequest) error {
 	return nil
 }
 
+func validateBulkUpdateRequest(req bulkUpdateNodesRequest) error {
+	if err := validateUUIDs(req.UUIDs); err != nil {
+		return err
+	}
+	fields := req.Fields
+	if fields.ConsumptionMultiplier != nil && (*fields.ConsumptionMultiplier < 0 || *fields.ConsumptionMultiplier > 100) {
+		return fmt.Errorf("consumptionMultiplier must be between 0 and 100")
+	}
+	if fields.CountryCode != nil {
+		code := strings.TrimSpace(*fields.CountryCode)
+		if code != "" && len(code) != 2 {
+			return fmt.Errorf("countryCode must be 2 characters")
+		}
+	}
+	if fields.ProviderUUID.Set && fields.ProviderUUID.Value != nil && strings.TrimSpace(*fields.ProviderUUID.Value) != "" {
+		if _, err := uuid.Parse(strings.TrimSpace(*fields.ProviderUUID.Value)); err != nil {
+			return fmt.Errorf("invalid providerUuid")
+		}
+	}
+	if fields.ActivePluginUUID.Set && fields.ActivePluginUUID.Value != nil && strings.TrimSpace(*fields.ActivePluginUUID.Value) != "" {
+		if _, err := uuid.Parse(strings.TrimSpace(*fields.ActivePluginUUID.Value)); err != nil {
+			return fmt.Errorf("invalid activePluginUuid")
+		}
+	}
+	if fields.Tags != nil {
+		if err := validateTags(*fields.Tags); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func validateUUIDs(values []string) error {
 	if len(values) == 0 {
 		return fmt.Errorf("uuids cannot be empty")

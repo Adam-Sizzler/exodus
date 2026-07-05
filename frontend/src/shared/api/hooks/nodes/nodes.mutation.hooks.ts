@@ -1,6 +1,7 @@
 import {
     BulkNodesActionsCommand,
     BulkNodesProfileModificationCommand,
+    BulkNodesUpdateCommand,
     CreateNodeCommand,
     DeleteNodeCommand,
     DisableNodeCommand,
@@ -35,93 +36,6 @@ export const updateNodeRequestSchema = UpdateNodeCommand.RequestSchema.extend({
 export const updateNodeFormSchema = updateNodeRequestSchema.omit({ uuid: true })
 export type UpdateNodeRequest = z.infer<typeof updateNodeRequestSchema>
 
-const pluginConfigSchema = z
-    .record(z.unknown())
-    .refine((value) => !('torrentBlocker' in value), {
-        message: 'torrentBlocker plugin is not supported'
-    })
-    .refine((value) => !('connectionDrop' in value), {
-        message: 'connectionDrop plugin is not supported'
-    })
-
-const nodePluginResponseSchema = z.object({
-    response: z.object({
-        uuid: z.string(),
-        name: z.string(),
-        pluginConfig: pluginConfigSchema,
-        viewPosition: z.number().optional().default(0)
-    })
-})
-
-const nodePluginsListResponseSchema = z.object({
-    response: z.object({
-        nodePlugins: z.array(nodePluginResponseSchema.shape.response),
-        total: z.number().optional().default(0)
-    })
-})
-
-const createNodePluginRequestSchema = z.object({
-    name: z.string().trim().min(1),
-    pluginConfig: pluginConfigSchema.optional()
-})
-
-const updateNodePluginRequestSchema = z.object({
-    name: z.string().trim().min(1).optional(),
-    pluginConfig: pluginConfigSchema.optional(),
-    viewPosition: z.number().optional()
-})
-
-const deleteNodePluginResponseSchema = z.object({
-    response: z.object({
-        isDeleted: z.boolean()
-    })
-})
-
-const reorderNodePluginsRequestSchema = z.object({
-    items: z.array(
-        z.object({
-            uuid: z.string().uuid(),
-            viewPosition: z.number()
-        })
-    )
-})
-
-const cloneNodePluginRequestSchema = z.object({
-    cloneFromUuid: z.string().uuid(),
-    name: z.string().trim().min(1).optional()
-})
-
-const nodePluginExecutorRequestSchema = z.object({
-    command: z.discriminatedUnion('command', [
-        z.object({
-            command: z.literal('blockIps'),
-            ips: z.array(
-                z.object({
-                    ip: z.string().min(1),
-                    timeout: z.number().int().min(0)
-                })
-            )
-        }),
-        z.object({
-            command: z.literal('unblockIps'),
-            ips: z.array(z.string().min(1))
-        }),
-        z.object({
-            command: z.literal('recreateTables')
-        })
-    ]),
-    targetNodes: z.object({
-        target: z.literal('specificNodes'),
-        nodeUuids: z.array(z.string().uuid()).min(1)
-    })
-})
-
-const nodePluginExecutorResponseSchema = z.object({
-    response: z.object({
-        eventSent: z.boolean()
-    })
-})
-
 export const useCreateNode = createMutationHook({
     endpoint: CreateNodeCommand.TSQ_url,
     bodySchema: createNodeRequestSchema,
@@ -138,102 +52,6 @@ export const useCreateNode = createMutationHook({
         onError: (error) => {
             notifications.show({
                 title: `Create Node`,
-                message:
-                    error instanceof Error ? error.message : `Request failed with unknown error.`,
-                color: 'red'
-            })
-        }
-    }
-})
-
-export const useCreateNodePlugin = createMutationHook({
-    endpoint: '/api/node-plugins',
-    bodySchema: createNodePluginRequestSchema,
-    responseSchema: nodePluginResponseSchema,
-    requestMethod: 'post',
-    rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Node plugin created successfully',
-                color: 'teal'
-            })
-        }
-    }
-})
-
-export const useUpdateNodePlugin = createMutationHook({
-    endpoint: '/api/node-plugins/:uuid',
-    bodySchema: updateNodePluginRequestSchema,
-    responseSchema: nodePluginResponseSchema,
-    routeParamsSchema: z.object({ uuid: z.string().uuid() }),
-    requestMethod: 'patch',
-    rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Node plugin updated successfully',
-                color: 'teal'
-            })
-        }
-    }
-})
-
-export const useDeleteNodePlugin = createMutationHook({
-    endpoint: '/api/node-plugins/:uuid',
-    responseSchema: deleteNodePluginResponseSchema,
-    routeParamsSchema: z.object({ uuid: z.string().uuid() }),
-    requestMethod: 'delete',
-    rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Node plugin deleted successfully',
-                color: 'teal'
-            })
-        }
-    }
-})
-
-export const useReorderNodePlugins = createMutationHook({
-    endpoint: '/api/node-plugins/actions/reorder',
-    bodySchema: reorderNodePluginsRequestSchema,
-    responseSchema: nodePluginsListResponseSchema,
-    requestMethod: 'post'
-})
-
-export const useCloneNodePlugin = createMutationHook({
-    endpoint: '/api/node-plugins/actions/clone',
-    bodySchema: cloneNodePluginRequestSchema,
-    responseSchema: nodePluginResponseSchema,
-    requestMethod: 'post',
-    rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Node plugin cloned successfully',
-                color: 'teal'
-            })
-        }
-    }
-})
-
-export const useNodePluginExecutor = createMutationHook({
-    endpoint: '/api/node-plugins/executor',
-    bodySchema: nodePluginExecutorRequestSchema,
-    responseSchema: nodePluginExecutorResponseSchema,
-    requestMethod: 'post',
-    rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Request sent',
-                color: 'teal'
-            })
-        },
-        onError: (error) => {
-            notifications.show({
-                title: `Node Plugin Executor`,
                 message:
                     error instanceof Error ? error.message : `Request failed with unknown error.`,
                 color: 'red'
@@ -466,6 +284,30 @@ export const useBulkNodesActions = createMutationHook({
         onError: (error) => {
             notifications.show({
                 title: `Bulk Nodes Actions`,
+                message:
+                    error instanceof Error ? error.message : `Request failed with unknown error.`,
+                color: 'red'
+            })
+        }
+    }
+})
+
+export const useBulkNodesUpdate = createMutationHook({
+    endpoint: BulkNodesUpdateCommand.TSQ_url,
+    responseSchema: BulkNodesUpdateCommand.ResponseSchema,
+    bodySchema: BulkNodesUpdateCommand.RequestSchema,
+    requestMethod: BulkNodesUpdateCommand.endpointDetails.REQUEST_METHOD,
+    rMutationParams: {
+        onSuccess: () => {
+            notifications.show({
+                title: 'Success',
+                message: 'Nodes updated successfully.',
+                color: 'teal'
+            })
+        },
+        onError: (error) => {
+            notifications.show({
+                title: `Bulk Nodes Update`,
                 message:
                     error instanceof Error ? error.message : `Request failed with unknown error.`,
                 color: 'red'

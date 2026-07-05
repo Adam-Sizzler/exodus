@@ -10,6 +10,7 @@ export * from './internal-squads';
 export * from './ip-control';
 export * from './keygen';
 export * from './nodes';
+export * from './node-plugins';
 export * from './passkeys';
 export * from './exodus-settings';
 export * from './snippets';

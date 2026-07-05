@@ -20,6 +20,12 @@ func (s *Scheduler) trafficResetWeek(ctx context.Context) error {
 	return s.trafficResetByStrategy(ctx, "WEEK")
 }
 
+// trafficResetMonthRolling resets traffic for users with strategy=MONTH_ROLLING.
+// Runs at 00:10 every day and resets users whose monthly rolling day is due.
+func (s *Scheduler) trafficResetMonthRolling(ctx context.Context) error {
+	return s.trafficResetByStrategy(ctx, "MONTH_ROLLING")
+}
+
 // trafficResetMonth resets traffic for users with strategy=MONTH.
 // Runs at 00:20 on 1st of each month — mirrors remnawave cron "20 0 1 * *".
 func (s *Scheduler) trafficResetMonth(ctx context.Context) error {

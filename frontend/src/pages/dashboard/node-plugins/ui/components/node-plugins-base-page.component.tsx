@@ -1,21 +1,23 @@
+import { GetNodePluginsCommand } from '@exodus/backend-contract'
+import { useTranslation } from 'react-i18next'
 import { TbPackage } from 'react-icons/tb'
 import { motion } from 'motion/react'
-import { useTranslation } from 'react-i18next'
 
+import { NodeResponse } from '@shared/api/hooks'
+
+import { NodePluginExecutorDrawer } from '@widgets/dashboard/node-plugins/node-plugin-executor/node-plugin-executor.drawer'
 import { NodePluginsGridWidget } from '@widgets/dashboard/node-plugins/node-plugins-grid/node-plugins-grid.widget'
 import { NodePluginsHeaderActionButtonsFeature } from '@features/ui/dashboard/node-plugins/header-action-buttons'
 import { NodePluginsSpotlightWidget } from '@widgets/dashboard/node-plugins/node-plugins-spotlight'
-import { NodePluginExecutorDrawer } from '@widgets/dashboard/node-plugins/node-plugin-executor'
 import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
-import { NodePluginResponse, NodeResponse } from '@shared/api/hooks'
 import { Page, PageHeaderShared } from '@shared/ui'
 
-interface IProps {
+interface Props {
     nodes: NodeResponse[]
-    plugins: NodePluginResponse[]
+    plugins: GetNodePluginsCommand.Response['response']['nodePlugins']
 }
 
-export function NodePluginsBasePageComponent(props: IProps) {
+export const NodePluginsBasePageComponent = (props: Props) => {
     const { nodes, plugins } = props
     const { t } = useTranslation()
 
@@ -25,7 +27,6 @@ export function NodePluginsBasePageComponent(props: IProps) {
                 actions={<NodePluginsHeaderActionButtonsFeature />}
                 icon={<TbPackage size={24} />}
                 title={`${t('constants.node-plugins')} β`}
-                wrapActions
             />
 
             <motion.div

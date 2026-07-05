@@ -20,18 +20,19 @@ import {
     TbSend,
     TbServer2
 } from 'react-icons/tb'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import ReactCountryFlag from 'react-country-flag'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
 import { z } from 'zod'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { NodeResponse, useNodePluginExecutor } from '@shared/api/hooks'
+import { useNodePluginExecutor } from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui/action-card'
 import { SectionCard } from '@shared/ui/section-card'
 
 interface IProps {
-    nodes: NodeResponse[]
+    nodes: GetAllNodesCommand.Response['response']
     onClose: () => void
 }
 
@@ -46,27 +47,29 @@ const UNBLOCK_PLACEHOLDER = `192.168.1.1
 10.0.0.1
 172.16.0.1`
 
+const ipSchema = z.string().ip({ message: 'Invalid IP address' })
+
 export const NodePluginExecutorContent = (props: IProps) => {
     const { nodes, onClose } = props
     const { t } = useTranslation()
-    const ipSchema = z.string().ip({
-        message: t('node-plugin-executor.content.invalid-ip-address')
-    })
 
     const { mutate: executeNodePlugin, isPending } = useNodePluginExecutor({
         mutationFns: {
-            onSuccess: () => onClose()
+            onSuccess: () => {
+                onClose()
+            }
         }
     })
 
     const [step, setStep] = useState<Step>('command')
     const [command, setCommand] = useState<CommandType | null>(null)
     const [selectedNodeUuids, setSelectedNodeUuids] = useState<Set<string>>(new Set())
+
     const [blockText, setBlockText] = useState('')
     const [unblockText, setUnblockText] = useState('')
     const [textError, setTextError] = useState<null | string>(null)
 
-    const connectedNodes = nodes.filter((node) => node.isConnected)
+    const connectedNodes = nodes.filter((n) => n.isConnected)
 
     const resetAll = () => {
         setCommand(null)
@@ -78,23 +81,30 @@ export const NodePluginExecutorContent = (props: IProps) => {
 
     const selectCommand = (cmd: CommandType) => {
         setCommand(cmd)
-        setStep(cmd === 'recreateTables' ? 'target' : 'configure')
+        if (cmd === 'recreateTables') {
+            setStep('target')
+        } else {
+            setStep('configure')
+        }
     }
 
     const goBack = () => {
         if (step === 'target' && command !== 'recreateTables') {
             setStep('configure')
-            return
+        } else {
+            setStep('command')
+            resetAll()
         }
-        setStep('command')
-        resetAll()
     }
 
     const toggleNode = useCallback((uuid: string) => {
         setSelectedNodeUuids((prev) => {
             const next = new Set(prev)
-            if (next.has(uuid)) next.delete(uuid)
-            else next.add(uuid)
+            if (next.has(uuid)) {
+                next.delete(uuid)
+            } else {
+                next.add(uuid)
+            }
             return next
         })
     }, [])
@@ -102,23 +112,19 @@ export const NodePluginExecutorContent = (props: IProps) => {
     const parseBlockText = () => {
         const lines = blockText
             .split('\n')
-            .map((line) => line.trim())
+            .map((l) => l.trim())
             .filter(Boolean)
         const errors: string[] = []
         const entries: { ip: string; timeout: number }[] = []
 
-        lines.forEach((line, index) => {
+        lines.forEach((line, i) => {
             const parts = line.split(';')
             const ip = parts[0]?.trim() ?? ''
             const timeout = parseInt(parts[1]?.trim() ?? '0', 10)
 
             const result = ipSchema.safeParse(ip)
             if (!result.success) {
-                errors.push(
-                    `${t('node-plugin-executor.content.line')} ${index + 1}: "${ip}" - ${
-                        result.error.errors[0].message
-                    }`
-                )
+                errors.push(`Line ${i + 1}: "${ip}" — ${result.error.errors[0].message}`)
             } else {
                 entries.push({ ip, timeout: Number.isNaN(timeout) ? 0 : timeout })
             }
@@ -130,19 +136,15 @@ export const NodePluginExecutorContent = (props: IProps) => {
     const parseUnblockText = () => {
         const lines = unblockText
             .split('\n')
-            .map((line) => line.trim())
+            .map((l) => l.trim())
             .filter(Boolean)
         const errors: string[] = []
         const ips: string[] = []
 
-        lines.forEach((line, index) => {
+        lines.forEach((line, i) => {
             const result = ipSchema.safeParse(line)
             if (!result.success) {
-                errors.push(
-                    `${t('node-plugin-executor.content.line')} ${index + 1}: "${line}" - ${
-                        result.error.errors[0].message
-                    }`
-                )
+                errors.push(`Line ${i + 1}: "${line}" — ${result.error.errors[0].message}`)
             } else {
                 ips.push(line)
             }
@@ -151,7 +153,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
         return { errors, ips }
     }
 
-    const validateAndProceed = () => {
+    const validateAndProceed = (): boolean => {
         if (command === 'blockIps') {
             const { entries, errors } = parseBlockText()
             if (entries.length === 0 && errors.length === 0) {
@@ -162,6 +164,8 @@ export const NodePluginExecutorContent = (props: IProps) => {
                 setTextError(errors.join('\n'))
                 return false
             }
+            setTextError(null)
+            return true
         }
 
         if (command === 'unblockIps') {
@@ -174,9 +178,10 @@ export const NodePluginExecutorContent = (props: IProps) => {
                 setTextError(errors.join('\n'))
                 return false
             }
+            setTextError(null)
+            return true
         }
 
-        setTextError(null)
         return true
     }
 
@@ -186,39 +191,27 @@ export const NodePluginExecutorContent = (props: IProps) => {
             nodeUuids: Array.from(selectedNodeUuids)
         }
 
-        if (command === 'blockIps') {
-            executeNodePlugin({
-                variables: {
-                    command: { command: 'blockIps', ips: parseBlockText().entries },
-                    targetNodes
-                }
-            })
-            return
+        let commandPayload
+
+        switch (command) {
+            case 'blockIps': {
+                const { entries } = parseBlockText()
+                commandPayload = { command: 'blockIps' as const, ips: entries }
+                break
+            }
+            case 'recreateTables':
+                commandPayload = { command: 'recreateTables' as const }
+                break
+            case 'unblockIps': {
+                const { ips } = parseUnblockText()
+                commandPayload = { command: 'unblockIps' as const, ips }
+                break
+            }
+            default:
+                commandPayload = { command: 'recreateTables' as const }
         }
 
-        if (command === 'unblockIps') {
-            executeNodePlugin({
-                variables: {
-                    command: { command: 'unblockIps', ips: parseUnblockText().ips },
-                    targetNodes
-                }
-            })
-            return
-        }
-
-        executeNodePlugin({
-            variables: { command: { command: 'recreateTables' }, targetNodes }
-        })
-    }
-
-    const countryFlag = (countryCode: null | string) => {
-        if (!countryCode || countryCode === 'XX') return <TbServer2 size={14} />
-        return (
-            <ReactCountryFlag
-                countryCode={countryCode}
-                style={{ fontSize: '1.1em', borderRadius: '2px' }}
-            />
-        )
+        executeNodePlugin({ variables: { command: commandPayload, targetNodes } })
     }
 
     const STEP_MIN_HEIGHT = 380
@@ -317,9 +310,12 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             error={textError}
                             maxRows={10}
                             minRows={5}
-                            onChange={(event) => {
-                                if (isBlock) setBlockText(event.currentTarget.value)
-                                else setUnblockText(event.currentTarget.value)
+                            onChange={(e) => {
+                                if (isBlock) {
+                                    setBlockText(e.currentTarget.value)
+                                } else {
+                                    setUnblockText(e.currentTarget.value)
+                                }
                                 if (textError) setTextError(null)
                             }}
                             placeholder={isBlock ? BLOCK_PLACEHOLDER : UNBLOCK_PLACEHOLDER}
@@ -347,6 +343,16 @@ export const NodePluginExecutorContent = (props: IProps) => {
         )
     }
 
+    const countryFlag = (countryCode: null | string) => {
+        if (!countryCode || countryCode === 'XX') return <TbServer2 size={14} />
+        return (
+            <ReactCountryFlag
+                countryCode={countryCode}
+                style={{ fontSize: '1.1em', borderRadius: '2px' }}
+            />
+        )
+    }
+
     return (
         <Box mih={STEP_MIN_HEIGHT}>
             <SectionCard.Root>
@@ -356,9 +362,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                             iconColor="violet"
                             IconComponent={TbServer2}
                             iconVariant="soft"
-                            subtitle={t('node-plugin-executor.content.selected-count', {
-                                count: selectedNodeUuids.size
-                            })}
+                            subtitle={`${selectedNodeUuids.size} selected`}
                             title={t('constants.nodes')}
                             titleOrder={5}
                         />
@@ -442,7 +446,7 @@ export const NodePluginExecutorContent = (props: IProps) => {
                                         setSelectedNodeUuids(new Set())
                                     } else {
                                         setSelectedNodeUuids(
-                                            new Set(connectedNodes.map((node) => node.uuid))
+                                            new Set(connectedNodes.map((n) => n.uuid))
                                         )
                                     }
                                 }}

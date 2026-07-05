@@ -4,6 +4,7 @@ import {
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
 import zodToJsonSchema, { jsonDescription } from 'zod-to-json-schema'
+import { NodePluginSchema } from '@exodus/node-plugins'
 import { Monaco } from '@monaco-editor/react'
 import consola from 'consola'
 import axios from 'axios'
@@ -392,7 +393,7 @@ export const MonacoSetupNodePluginEditorFeature = {
     setup: async (monaco: Monaco) => {
         try {
             const schema = zodToJsonSchema(NodePluginSchema, {
-                name: 'Node Plugin Config Schema',
+                name: 'Node Plugin Schema',
                 applyRegexFlags: true,
                 errorMessages: true,
                 postProcess: jsonDescription
@@ -402,6 +403,7 @@ export const MonacoSetupNodePluginEditorFeature = {
                 schemaValidation: 'error',
                 comments: 'error',
                 trailingCommas: 'error',
+
                 schemas: [
                     {
                         fileMatch: ['node-plugin://*'],
@@ -430,7 +432,7 @@ export const MonacoSetupNodePluginEditorFeature = {
                 base: 'vs-dark'
             })
         } catch (error) {
-            consola.error('Failed to load node plugin JSON schema:', error)
+            consola.error('Failed to load JSON schema:', error)
         }
     }
 }

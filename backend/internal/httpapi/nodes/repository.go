@@ -19,10 +19,10 @@ func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 			SELECT
 					uuid, id, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
+				consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, view_position, country_code, tags,
-				cpu_count, cpu_model, total_ram, system_info, system_stats, created_at, updated_at
+				created_at, updated_at
 			FROM nodes
 			ORDER BY view_position ASC
 		`)
@@ -49,10 +49,10 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 			SELECT
 					uuid, id, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				singbox_version, node_version, singbox_uptime, users_online, consumption_multiplier,
+				consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
 				notify_percent, provider_uuid, view_position, country_code, tags,
-				cpu_count, cpu_model, total_ram, system_info, system_stats, created_at, updated_at
+				created_at, updated_at
 			FROM nodes
 			WHERE uuid = ?
 		`, nodeUUID)
@@ -71,19 +71,11 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var activePluginUUID sql.NullString
 	var lastStatusChange sql.NullTime
 	var lastStatusMessage sql.NullString
-	var singboxVersion sql.NullString
-	var nodeVersion sql.NullString
-	var usersOnline sql.NullInt64
 	var trafficResetDay sql.NullInt64
 	var trafficLimitBytes sql.NullInt64
 	var trafficUsedBytes sql.NullInt64
 	var notifyPercent sql.NullInt64
 	var providerUUID sql.NullString
-	var cpuCount sql.NullInt64
-	var cpuModel sql.NullString
-	var totalRAM sql.NullString
-	var systemInfoRaw []byte
-	var systemStatsRaw []byte
 	var tags dbutil.StringArray
 
 	err := scanner.Scan(
@@ -102,10 +94,6 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.IsDisabled,
 		&lastStatusChange,
 		&lastStatusMessage,
-		&singboxVersion,
-		&nodeVersion,
-		&node.SingboxUptime,
-		&usersOnline,
 		&node.ConsumptionMultiplier,
 		&node.IsTrafficTrackingActive,
 		&trafficResetDay,
@@ -116,11 +104,6 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.ViewPosition,
 		&node.CountryCode,
 		&tags,
-		&cpuCount,
-		&cpuModel,
-		&totalRAM,
-		&systemInfoRaw,
-		&systemStatsRaw,
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
@@ -147,16 +130,6 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	if lastStatusMessage.Valid {
 		node.LastStatusMessage = &lastStatusMessage.String
 	}
-	if singboxVersion.Valid {
-		node.SingboxVersion = &singboxVersion.String
-	}
-	if nodeVersion.Valid {
-		node.NodeVersion = &nodeVersion.String
-	}
-	if usersOnline.Valid {
-		value := int(usersOnline.Int64)
-		node.UsersOnline = &value
-	}
 	if trafficResetDay.Valid {
 		value := int(trafficResetDay.Int64)
 		node.TrafficResetDay = &value
@@ -173,22 +146,6 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	}
 	if providerUUID.Valid {
 		node.ProviderUUID = &providerUUID.String
-	}
-	if cpuCount.Valid {
-		value := int(cpuCount.Int64)
-		node.CPUCount = &value
-	}
-	if cpuModel.Valid {
-		node.CPUModel = &cpuModel.String
-	}
-	if totalRAM.Valid {
-		node.TotalRAM = &totalRAM.String
-	}
-	if len(systemInfoRaw) > 0 {
-		node.SystemInfoRaw = append([]byte(nil), systemInfoRaw...)
-	}
-	if len(systemStatsRaw) > 0 {
-		node.SystemStatsRaw = append([]byte(nil), systemStatsRaw...)
 	}
 	node.Tags = tags.Slice()
 

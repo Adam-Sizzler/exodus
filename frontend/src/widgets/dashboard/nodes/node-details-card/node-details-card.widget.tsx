@@ -25,8 +25,8 @@ import { memo, useCallback, useMemo } from 'react'
 
 import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/nodes/get-node-linked-hosts'
 import { GetNodeUsersUsageFeature } from '@features/ui/dashboard/nodes/get-node-users-usage'
-import { NodeResponse, QueryKeys, useDisableNode, useEnableNode } from '@shared/api/hooks'
 import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
+import { NodeResponse, QueryKeys, useDisableNode, useEnableNode } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
 import { SectionCard } from '@shared/ui/section-card'
@@ -145,8 +145,8 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
             <SectionCard.Section>
                 <Group align="flex-center" justify="space-between">
                     <BaseOverlayHeader
-                        IconComponent={IconComponent}
                         iconColor={themeIconColor}
+                        IconComponent={IconComponent}
                         iconSize={20}
                         iconVariant="soft"
                         title={t('node-details-card.widget.node-details')}
@@ -251,6 +251,21 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                     </Group>
                 </Group>
             </SectionCard.Section>
+
+            <SectionCard.Section>
+                <Group gap="xs" justify="flex-end">
+                    <Group gap="xs" justify="center">
+                        <GetNodeLinkedHostsFeature nodeUuid={node.uuid} />
+                    </Group>
+
+                    <Divider opacity={0.3} orientation="vertical" />
+
+                    <Group gap="xs" justify="center">
+                        <GetNodeUsersUsageFeature nodeUuid={node.uuid} />
+                    </Group>
+                </Group>
+            </SectionCard.Section>
+
             <SectionCard.Section>
                 <Group gap="xs" justify="flex-end">
                     <Group gap="xs" justify="center">
@@ -342,7 +357,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             </Group>
                         </Paper>
 
-                        {nodeSingboxVersion && (
+                        {node.versions && (
                             <Paper
                                 p="xs"
                                 radius="md"
@@ -358,14 +373,14 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                             size={16}
                                         />
                                         <Text c="violet.5" fw={600} size="sm">
-                                            {nodeSingboxVersion}
+                                            {node.versions.singbox}
                                         </Text>
                                     </Group>
                                 </Tooltip>
                             </Paper>
                         )}
 
-                        {nodeSingboxUptime !== '0' && (
+                        {node.singboxUptime !== 0 && (
                             <Paper
                                 hiddenFrom="sm"
                                 p="xs"
@@ -398,7 +413,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             </Paper>
                         )}
 
-                        {nodeVersion && (
+                        {node.versions && (
                             <Paper
                                 p="xs"
                                 radius="md"
@@ -411,7 +426,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />
                                         <Text c="indigo.5" fw={600} size="sm">
-                                            {nodeVersion}
+                                            {node.versions.node}
                                         </Text>
                                     </Group>
                                 </Tooltip>

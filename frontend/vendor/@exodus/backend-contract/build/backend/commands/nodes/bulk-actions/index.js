@@ -16,3 +16,4 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./actions.command"), exports);
 __exportStar(require("./profile-modification.command"), exports);
+__exportStar(require("./bulk-update.command"), exports);

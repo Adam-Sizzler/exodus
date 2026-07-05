@@ -18,6 +18,7 @@ import (
 	"exodus/internal/config"
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/nodehotcache"
 	"exodus/internal/notifications"
 	"exodus/internal/proto"
 
@@ -56,6 +57,7 @@ type NodeMonitor struct {
 	metricsLock       sync.RWMutex
 
 	usageRecorder NodeUserUsageRecorder
+	hotCache      *nodehotcache.Cache
 }
 
 type deployRequest struct {
@@ -137,6 +139,7 @@ func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 		deployNow:         make(chan deployRequest, 1),
 		srsSyncNow:        make(chan struct{}, 1),
 		metricsByNodeUUID: make(map[string]*NodeMetricsSnapshot),
+		hotCache:          nodehotcache.Default(cfg),
 	}
 }
 
@@ -629,14 +632,11 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 		nm.updateConnectionStatus(nodeName, false, false, message)
 	}
 
-	singboxVersion := firstNonEmpty(values["singbox_version"])
-	nodeVersion := firstNonEmpty(values["node_version"])
-	singboxUptime := firstNonEmpty(values["singbox_uptime"])
-	cpuCount := parseOptionalInt(values["cpu_count"])
-	cpuModel := parseOptionalString(values["cpu_model"])
-	totalRAM := parseOptionalString(values["total_ram"])
-	systemInfo := parseOptionalJSON(values["system_info"])
-	systemStats := parseOptionalJSON(values["system_stats"])
+	singboxVersion := firstNonEmptyString(values["singbox_version"])
+	nodeVersion := firstNonEmptyString(values["node_version"])
+	singboxUptime, hasSingboxUptime := parseOptionalUptimeSeconds(values["singbox_uptime"])
+	systemInfo := parseOptionalJSONRaw(values["system_info"])
+	systemStats := parseOptionalJSONRaw(values["system_stats"])
 	usersOnline := trafficDelta.UsersOnline
 
 	persistedNodeUUID := ""
@@ -652,20 +652,10 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 		}
 		persistedNodeUUID = nodeUUID
 
-		query := `
+		if _, execErr := db.Exec(`
 			UPDATE nodes
-			SET singbox_version = COALESCE(?, singbox_version),
-			    node_version = COALESCE(?, node_version),
-			    singbox_uptime = COALESCE(?, singbox_uptime),
-			    cpu_count = COALESCE(?, cpu_count),
-			    cpu_model = COALESCE(?, cpu_model),
-			    total_ram = COALESCE(?, total_ram),
-			    system_info = COALESCE(?::jsonb, system_info),
-			    system_stats = COALESCE(?::jsonb, system_stats),
-			    users_online = COALESCE(?, users_online),
-			    updated_at = CURRENT_TIMESTAMP
-			WHERE name = ?`
-		if _, execErr := db.Exec(query, singboxVersion, nodeVersion, singboxUptime, cpuCount, cpuModel, totalRAM, systemInfo, systemStats, usersOnline, nodeName); execErr != nil {
+			SET updated_at = CURRENT_TIMESTAMP
+			WHERE name = ?`, nodeName); execErr != nil {
 			return execErr
 		}
 
@@ -825,10 +815,65 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	}
 
 	if persistedNodeUUID != "" {
+		nm.updateNodeHotCache(persistedNodeUUID, singboxVersion, nodeVersion, singboxUptime, hasSingboxUptime, systemInfo, systemStats, usersOnline)
 		nm.updateNodeMetricsSnapshot(persistedNodeUUID, usersOnline, trafficDelta)
 	}
 	for _, event := range firstConnectedEvents {
 		notifications.Emit(context.Background(), nm.cfg, event)
+	}
+}
+
+func (nm *NodeMonitor) updateNodeHotCache(
+	nodeUUID string,
+	singboxVersion string,
+	nodeVersion string,
+	singboxUptime int64,
+	hasSingboxUptime bool,
+	systemInfo json.RawMessage,
+	systemStats json.RawMessage,
+	usersOnline int,
+) {
+	if nm.hotCache == nil || strings.TrimSpace(nodeUUID) == "" {
+		return
+	}
+	ctx := nm.globalCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if err := nm.hotCache.SetUsersOnline(ctx, nodeUUID, usersOnline); err != nil {
+		nm.cfg.Logger.Warn("Failed to update node users online cache", "node_uuid", nodeUUID, "error", err)
+	}
+	if hasSingboxUptime {
+		if err := nm.hotCache.SetUptime(ctx, nodeUUID, singboxUptime); err != nil {
+			nm.cfg.Logger.Warn("Failed to update node sing-box uptime cache", "node_uuid", nodeUUID, "error", err)
+		}
+	}
+	if len(systemStats) > 0 {
+		if err := nm.hotCache.SetSystemStats(ctx, nodeUUID, systemStats); err != nil {
+			nm.cfg.Logger.Warn("Failed to update node system stats cache", "node_uuid", nodeUUID, "error", err)
+		}
+	}
+	if len(systemInfo) > 0 {
+		if err := nm.hotCache.SetSystemInfo(ctx, nodeUUID, systemInfo); err != nil {
+			nm.cfg.Logger.Warn("Failed to update node system info cache", "node_uuid", nodeUUID, "error", err)
+		}
+	}
+	if singboxVersion != "" || nodeVersion != "" {
+		if singboxVersion == "" || nodeVersion == "" {
+			hot, _ := nm.hotCache.GetOne(ctx, nodeUUID)
+			if hot.Versions != nil {
+				if singboxVersion == "" {
+					singboxVersion = hot.Versions.Singbox
+				}
+				if nodeVersion == "" {
+					nodeVersion = hot.Versions.Node
+				}
+			}
+		}
+		if err := nm.hotCache.SetVersions(ctx, nodeUUID, singboxVersion, nodeVersion); err != nil {
+			nm.cfg.Logger.Warn("Failed to update node versions cache", "node_uuid", nodeUUID, "error", err)
+		}
 	}
 }
 
@@ -1061,26 +1106,7 @@ func bulkUpsertNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor
 	return nil
 }
 
-func parseOptionalInt(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	parsed, err := strconv.Atoi(strings.TrimSpace(value))
-	if err != nil {
-		return nil
-	}
-	return parsed
-}
-
-func parseOptionalString(value string) any {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return nil
-	}
-	return trimmed
-}
-
-func parseOptionalJSON(value string) any {
+func parseOptionalJSONRaw(value string) json.RawMessage {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return nil
@@ -1089,39 +1115,26 @@ func parseOptionalJSON(value string) any {
 	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil || len(raw) == 0 {
 		return nil
 	}
-	return trimmed
+	return raw
 }
 
-func firstNonEmpty(values ...string) any {
-	for _, value := range values {
-		trimmed := strings.TrimSpace(value)
-		if trimmed != "" {
-			return trimmed
-		}
+func parseOptionalUptimeSeconds(value string) (int64, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, false
 	}
-	return nil
+	parsed, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return parsed, true
 }
 
-func clearDisconnectedNodeRuntimeFields(db dbmanager.DBExecutor, nodeName string) error {
-	_, err := db.Exec(`
-		UPDATE nodes
-		SET singbox_uptime = '0',
-		    users_online = 0,
-		    cpu_count = NULL,
-		    cpu_model = NULL,
-		    total_ram = NULL,
-		    system_info = NULL,
-		    system_stats = NULL,
-		    updated_at = CURRENT_TIMESTAMP
-		WHERE name = ?
-		  AND (singbox_uptime <> '0'
-		       OR users_online IS DISTINCT FROM 0
-		       OR cpu_count IS NOT NULL
-		       OR cpu_model IS NOT NULL
-		       OR total_ram IS NOT NULL
-		       OR system_info IS NOT NULL
-		       OR system_stats IS NOT NULL)`, nodeName)
-	if err != nil {
+func (nm *NodeMonitor) clearDisconnectedNodeRuntimeFields(ctx context.Context, nodeUUID string) error {
+	if nm.hotCache == nil {
+		return nil
+	}
+	if err := nm.hotCache.DeleteTransient(ctx, nodeUUID); err != nil {
 		return fmt.Errorf("clear disconnected node runtime fields: %w", err)
 	}
 	return nil
@@ -1161,7 +1174,7 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 			// No status change. Still clear live-only runtime fields for offline nodes
 			// so stale stats from a previous connection cannot leak to the API.
 			if !isConnected {
-				return clearDisconnectedNodeRuntimeFields(db, nodeName)
+				return nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID)
 			}
 			return nil
 		}
@@ -1174,16 +1187,6 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 			    last_status_message = ?,
 			    last_status_change = CURRENT_TIMESTAMP`
 		args := []any{isConnected, isConnecting, message}
-		if !isConnected {
-			query += `,
-			    singbox_uptime = '0',
-			    users_online = 0,
-			    cpu_count = NULL,
-			    cpu_model = NULL,
-			    total_ram = NULL,
-			    system_info = NULL,
-			    system_stats = NULL`
-		}
 		query += `,
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE name = ?`
@@ -1192,6 +1195,11 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 
 		if err != nil {
 			return fmt.Errorf("update node status: %w", err)
+		}
+		if !isConnected {
+			if err := nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID); err != nil {
+				return err
+			}
 		}
 
 		if currentConnected != isConnected {

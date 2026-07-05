@@ -52,6 +52,24 @@ export declare const REST_API: {
         readonly BULK_ACTIONS: {
             readonly PROFILE_MODIFICATION: "/api/nodes/bulk-actions/profile-modification";
             readonly ACTIONS: "/api/nodes/bulk-actions";
+            readonly UPDATE: "/api/nodes/bulk-actions/update";
+        };
+    };
+    readonly NODE_PLUGINS: {
+        readonly GET: (uuid: string) => string;
+        readonly GET_ALL: "/api/node-plugins/";
+        readonly UPDATE: "/api/node-plugins/";
+        readonly DELETE: (uuid: string) => string;
+        readonly CREATE: "/api/node-plugins/";
+        readonly ACTIONS: {
+            readonly REORDER: "/api/node-plugins/actions/reorder";
+            readonly CLONE: "/api/node-plugins/actions/clone";
+        };
+        readonly EXECUTOR: "/api/node-plugins/executor";
+        readonly TORRENT_BLOCKER: {
+            readonly GET_REPORTS: "/api/node-plugins/torrent-blocker";
+            readonly GET_REPORTS_STATS: "/api/node-plugins/torrent-blocker/stats";
+            readonly TRUNCATE_REPORTS: "/api/node-plugins/torrent-blocker/truncate";
         };
     };
     readonly USERS: {

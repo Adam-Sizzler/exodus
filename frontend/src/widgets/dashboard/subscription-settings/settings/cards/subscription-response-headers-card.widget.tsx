@@ -22,7 +22,7 @@ interface IProps {
 }
 
 const HEADER_NAME_REGEX = /^[!#$%&'*+\-.0-9A-Z^_`a-z|~]+$/
-const HEADER_VALUE_REGEX = /^[\x21-\x7E]([\x20-\x7E]*[\x21-\x7E])?$/
+const HEADER_VALUE_REGEX = /^$|^[\x21-\x7E]([\x20-\x7E]*[\x21-\x7E])?$/
 
 export const SubscriptionResponseHeadersCardWidget = (props: IProps) => {
     const { subscriptionSettings } = props
@@ -185,6 +185,8 @@ export const SubscriptionResponseHeadersCardWidget = (props: IProps) => {
                         'subscription-tabs.widget.headers-that-will-be-sent-with-subscription-content'
                     )}
                     icon={<PiChatsCircle size={24} />}
+                    iconColor="cyan"
+                    iconVariant="soft"
                     title={t('subscription-tabs.widget.additional-response-headers')}
                 />
 

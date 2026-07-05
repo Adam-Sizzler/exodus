@@ -3,6 +3,7 @@ package system
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"exodus/internal/constant"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/nodehotcache"
 )
 
 type usageRange struct {
@@ -174,7 +176,7 @@ func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 			return
 		}
 
-		totalOnline, err := readTotalOnlineOnNodes(r.Context(), manager)
+		totalOnline, err := readTotalOnlineOnNodes(r.Context(), manager, cfg)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes online stats", err, cfg)
 			return
@@ -240,7 +242,7 @@ func RecapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 			return
 		}
 
-		nodes, err := readNodesRecap(r.Context(), manager)
+		nodes, err := readNodesRecap(r.Context(), manager, cfg)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes recap", err, cfg)
 			return
@@ -358,8 +360,8 @@ func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 			"response": health,
 		}
 
-		if len(health.RuntimeMetrics) > 0 {
-			metric := health.RuntimeMetrics[0]
+		if len(health.ExodusMetrics) > 0 {
+			metric := health.ExodusMetrics[0]
 			cfg.Logger.Debug(
 				"System Go runtime health requested",
 				"remote_addr", r.RemoteAddr,
@@ -536,15 +538,35 @@ func readOnlineStats(ctx context.Context, manager *dbmanager.DatabaseManager) (o
 	return stats, err
 }
 
-func readTotalOnlineOnNodes(ctx context.Context, manager *dbmanager.DatabaseManager) (int64, error) {
-	var total int64
+func readTotalOnlineOnNodes(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (int64, error) {
+	uuids := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT COALESCE(SUM(users_online), 0)
+		rows, err := db.QueryContext(ctx, `
+			SELECT uuid
 			FROM nodes
 			WHERE is_connected = TRUE
-		`).Scan(&total)
+		`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var uuid string
+			if err := rows.Scan(&uuid); err != nil {
+				return err
+			}
+			uuids = append(uuids, uuid)
+		}
+		return rows.Err()
 	})
+	if err != nil {
+		return 0, err
+	}
+	cache, _ := nodehotcache.Default(cfg).GetMany(ctx, uuids)
+	var total int64
+	for _, uuid := range uuids {
+		total += int64(cache[uuid].UsersOnline)
+	}
 	return total, err
 }
 
@@ -572,34 +594,60 @@ func readUsersRecap(ctx context.Context, manager *dbmanager.DatabaseManager, sta
 	return recap, err
 }
 
-func readNodesRecap(ctx context.Context, manager *dbmanager.DatabaseManager) (nodesRecap, error) {
+func readNodesRecap(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (nodesRecap, error) {
 	recap := nodesRecap{}
+	uuids := make([]string, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
+		if err := db.QueryRowContext(ctx, `
 			SELECT
 				COUNT(*)::bigint AS total,
-				COALESCE(SUM(
-					CASE
-						WHEN system_info IS NOT NULL AND system_info->>'memoryTotal' IS NOT NULL
-						THEN (system_info->>'memoryTotal')::bigint
-						ELSE 0
-					END
-				), 0)::text AS total_ram,
-				COALESCE(SUM(
-					CASE
-						WHEN system_info IS NOT NULL AND system_info->>'cpus' IS NOT NULL
-						THEN (system_info->>'cpus')::bigint
-						ELSE 0
-					END
-				), 0)::bigint AS total_cpu_cores,
 				COUNT(DISTINCT CASE
 					WHEN country_code IS NOT NULL AND country_code <> '' AND country_code <> 'XX'
 					THEN country_code
 					ELSE NULL
 				END)::bigint AS distinct_countries
 			FROM nodes
-		`).Scan(&recap.total, &recap.totalRam, &recap.totalCpuCores, &recap.distinctCountries)
+		`).Scan(&recap.total, &recap.distinctCountries); err != nil {
+			return err
+		}
+
+		rows, err := db.QueryContext(ctx, `SELECT uuid FROM nodes`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var uuid string
+			if err := rows.Scan(&uuid); err != nil {
+				return err
+			}
+			uuids = append(uuids, uuid)
+		}
+		return rows.Err()
 	})
+	if err != nil {
+		return recap, err
+	}
+	cache, _ := nodehotcache.Default(cfg).GetMany(ctx, uuids)
+	var totalRAM int64
+	var totalCPUCores int64
+	for _, uuid := range uuids {
+		system := cache[uuid].System
+		if system == nil || len(system.Info) == 0 {
+			continue
+		}
+		var info struct {
+			MemoryTotal int64 `json:"memoryTotal"`
+			CPUs        int64 `json:"cpus"`
+		}
+		if err := json.Unmarshal(system.Info, &info); err != nil {
+			continue
+		}
+		totalRAM += info.MemoryTotal
+		totalCPUCores += info.CPUs
+	}
+	recap.totalRam = fmt.Sprintf("%d", totalRAM)
+	recap.totalCpuCores = totalCPUCores
 	return recap, err
 }
 

@@ -1,7 +1,12 @@
-import { NODES_BULK_ACTIONS, TNodesBulkActions } from '@exodus/backend-contract'
-import { TbCheck, TbPlayerStop, TbRefresh, TbRocket } from 'react-icons/tb'
+import {
+    GetAllNodesCommand,
+    NODES_BULK_ACTIONS,
+    TNodesBulkActions
+} from '@exodus/backend-contract'
+import { TbCancel, TbRefresh, TbRocket } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
+import { PiPulse } from 'react-icons/pi'
 import { Stack } from '@mantine/core'
 
 import { NodeResponse, QueryKeys, useBulkNodesActions } from '@shared/api/hooks'
@@ -36,37 +41,37 @@ export const MultiSelectNodesModalContent = (props: IProps) => {
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
                 icon={<TbRocket size={20} />}
+                iconColor="teal"
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.RESTART)}
                 title={t('restart-node-button.feature.restart')}
-                iconColor="teal"
                 variant="soft"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
-                icon={<TbPlayerStop size={20} />}
+                icon={<TbCancel size={20} />}
+                iconColor="orange"
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.DISABLE)}
                 title={t('common.disable')}
-                iconColor="orange"
                 variant="soft"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
-                icon={<TbCheck size={20} />}
+                icon={<PiPulse size={20} />}
+                iconColor="cyan"
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.ENABLE)}
                 title={t('common.enable')}
-                iconColor="cyan"
                 variant="soft"
             />
             <ActionCardShared
                 description={`${uuids.length} node(s)`}
                 icon={<TbRefresh size={20} />}
+                iconColor="violet"
                 isLoading={isPending}
                 onClick={() => handleAction(NODES_BULK_ACTIONS.RESET_TRAFFIC)}
                 title={t('reset-node-traffic.feature.reset-traffic')}
-                iconColor="violet"
                 variant="soft"
             />
         </Stack>

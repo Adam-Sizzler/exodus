@@ -21,7 +21,7 @@ var (
 
 type goHealthResponse struct {
 	PM2Stats       []pm2ProcessStat  `json:"pm2Stats"`
-	RuntimeMetrics []goRuntimeMetric `json:"runtimeMetrics"`
+	ExodusMetrics  []goRuntimeMetric `json:"exodusMetrics"`
 	RuntimeSummary goRuntimeSummary  `json:"runtimeSummary"`
 	RuntimeNotes   []string          `json:"runtimeNotes"`
 }
@@ -197,7 +197,7 @@ func buildGoHealthResponse() goHealthResponse {
 
 	return goHealthResponse{
 		PM2Stats:       []pm2ProcessStat{},
-		RuntimeMetrics: []goRuntimeMetric{metric},
+		ExodusMetrics:  []goRuntimeMetric{metric},
 		RuntimeSummary: goRuntimeSummary{
 			TotalProcesses:          1,
 			StartedAt:               startedAt,
@@ -209,7 +209,7 @@ func buildGoHealthResponse() goHealthResponse {
 			AverageSchedulerP99Ms:   metric.Scheduler.SchedulerP99Ms,
 		},
 		RuntimeNotes: []string{
-			"pm2Stats is kept empty for frontend compatibility; runtimeMetrics/runtimeSummary contain the Go runtime data.",
+			"pm2Stats is kept empty for frontend compatibility; exodusMetrics/runtimeSummary contain the Go runtime data.",
 			"Go has no Node.js event loop delay; schedulerP99Ms is read from runtime/metrics /sched/latencies when available.",
 			"RSS and CPU are read from /proc on Linux; fallback values are used when /proc is unavailable.",
 		},

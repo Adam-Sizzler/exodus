@@ -20,6 +20,7 @@ export declare const ExodusWebhookUserEvents: z.ZodObject<{
             readonly DAY: "DAY";
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
+            readonly MONTH_ROLLING: "MONTH_ROLLING";
         }>>;
         expireAt: z.ZodEffects<z.ZodString, Date, string>;
         telegramId: z.ZodNullable<z.ZodNumber>;
@@ -78,7 +79,7 @@ export declare const ExodusWebhookUserEvents: z.ZodObject<{
         shortUuid: string;
         trafficLimitBytes: number;
         description: string | null;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         expireAt: Date;
         telegramId: number | null;
         email: string | null;
@@ -135,7 +136,7 @@ export declare const ExodusWebhookUserEvents: z.ZodObject<{
         };
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
         trafficLimitBytes?: number | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
         lastTriggeredThreshold?: number | undefined;
     }>;
     meta: z.ZodNullable<z.ZodObject<{
@@ -157,7 +158,7 @@ export declare const ExodusWebhookUserEvents: z.ZodObject<{
         shortUuid: string;
         trafficLimitBytes: number;
         description: string | null;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         expireAt: Date;
         telegramId: number | null;
         email: string | null;
@@ -222,7 +223,7 @@ export declare const ExodusWebhookUserEvents: z.ZodObject<{
         };
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
         trafficLimitBytes?: number | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
         lastTriggeredThreshold?: number | undefined;
     };
     scope: "user";
@@ -254,6 +255,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
                 readonly DAY: "DAY";
                 readonly WEEK: "WEEK";
                 readonly MONTH: "MONTH";
+                readonly MONTH_ROLLING: "MONTH_ROLLING";
             }>>;
             expireAt: z.ZodEffects<z.ZodString, Date, string>;
             telegramId: z.ZodNullable<z.ZodNumber>;
@@ -312,7 +314,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -369,7 +371,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         }>;
         hwidUserDevice: z.ZodObject<{
@@ -412,7 +414,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -481,7 +483,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
         hwidUserDevice: {
@@ -508,7 +510,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -582,7 +584,7 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
         hwidUserDevice: {
@@ -616,7 +618,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
         lastStatusMessage: z.ZodNullable<z.ZodString>;
         singboxVersion: z.ZodNullable<z.ZodString>;
         nodeVersion: z.ZodNullable<z.ZodString>;
-        singboxUptime: z.ZodString;
+        singboxUptime: z.ZodNumber;
         isTrafficTrackingActive: z.ZodBoolean;
         trafficResetDay: z.ZodNullable<z.ZodNumber>;
         trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -736,7 +738,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -786,7 +788,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -838,7 +840,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -893,7 +895,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1109,6 +1111,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             readonly DAY: "DAY";
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
+            readonly MONTH_ROLLING: "MONTH_ROLLING";
         }>>;
         expireAt: z.ZodEffects<z.ZodString, Date, string>;
         telegramId: z.ZodNullable<z.ZodNumber>;
@@ -1167,7 +1170,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         shortUuid: string;
         trafficLimitBytes: number;
         description: string | null;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         expireAt: Date;
         telegramId: number | null;
         email: string | null;
@@ -1224,7 +1227,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         };
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
         trafficLimitBytes?: number | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
         lastTriggeredThreshold?: number | undefined;
     }>;
     meta: z.ZodNullable<z.ZodObject<{
@@ -1246,7 +1249,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         shortUuid: string;
         trafficLimitBytes: number;
         description: string | null;
-        trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+        trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
         expireAt: Date;
         telegramId: number | null;
         email: string | null;
@@ -1311,7 +1314,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         };
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
         trafficLimitBytes?: number | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
         lastTriggeredThreshold?: number | undefined;
     };
     scope: "user";
@@ -1342,6 +1345,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
                 readonly DAY: "DAY";
                 readonly WEEK: "WEEK";
                 readonly MONTH: "MONTH";
+                readonly MONTH_ROLLING: "MONTH_ROLLING";
             }>>;
             expireAt: z.ZodEffects<z.ZodString, Date, string>;
             telegramId: z.ZodNullable<z.ZodNumber>;
@@ -1400,7 +1404,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -1457,7 +1461,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         }>;
         hwidUserDevice: z.ZodObject<{
@@ -1500,7 +1504,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -1569,7 +1573,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
         hwidUserDevice: {
@@ -1596,7 +1600,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             shortUuid: string;
             trafficLimitBytes: number;
             description: string | null;
-            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
             expireAt: Date;
             telegramId: number | null;
             email: string | null;
@@ -1670,7 +1674,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
         hwidUserDevice: {
@@ -1703,7 +1707,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         lastStatusMessage: z.ZodNullable<z.ZodString>;
         singboxVersion: z.ZodNullable<z.ZodString>;
         nodeVersion: z.ZodNullable<z.ZodString>;
-        singboxUptime: z.ZodString;
+        singboxUptime: z.ZodNumber;
         isTrafficTrackingActive: z.ZodBoolean;
         trafficResetDay: z.ZodNullable<z.ZodNumber>;
         trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -1823,7 +1827,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1873,7 +1877,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1925,7 +1929,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1980,7 +1984,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", 
         lastStatusMessage: string | null;
         singboxVersion: string | null;
         nodeVersion: string | null;
-        singboxUptime: string;
+        singboxUptime: number;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;

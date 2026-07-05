@@ -3,6 +3,7 @@ import {
     GetMetadataCommand,
     GetNodesMetricsCommand,
     GetNodesStatisticsCommand,
+    GetRecapCommand,
     GetExodusHealthCommand,
     GetStatsCommand
 } from '@exodus/backend-contract'

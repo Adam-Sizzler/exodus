@@ -10,7 +10,7 @@ import {
     Tooltip,
     Transition
 } from '@mantine/core'
-import { TbDevices, TbRefresh, TbRewindBackward50 } from 'react-icons/tb'
+import { TbDevices, TbRefresh, TbTimeline } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
@@ -57,7 +57,9 @@ export const UserSubscriptionRequestsDrawerWidget = () => {
                                         {subscriptionRequestHistory?.total ?? 0}
                                     </Text>
                                     <Text c="dimmed" size="xs">
-                                        Total records
+                                        {t(
+                                            'user-subscription-requests-drawer.widget.total-records'
+                                        )}
                                     </Text>
                                 </Stack>
                             </Group>
@@ -100,8 +102,9 @@ export const UserSubscriptionRequestsDrawerWidget = () => {
             size="500px"
             title={
                 <BaseOverlayHeader
-                    IconComponent={TbRewindBackward50}
-                    iconVariant="soft" iconColor="teal"
+                    iconColor="teal"
+                    IconComponent={TbTimeline}
+                    iconVariant="soft"
                     title={t(
                         'get-user-subscription-request-history.feature.subscription-request-history'
                     )}

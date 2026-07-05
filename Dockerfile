@@ -2,42 +2,20 @@
 FROM node:20-alpine AS panel-ui
 WORKDIR /ui
 ENV NODE_OPTIONS=--max-old-space-size=4096
-ARG SINGBOX_WASM_URL=https://adam-sizzler.github.io/s-validator/main.wasm
-ARG SINGBOX_SCHEMA_URL=https://adam-sizzler.github.io/s-validator/singbox.schema.json
-ARG SINGBOX_SCHEMA_CN_URL=https://adam-sizzler.github.io/s-validator/singbox.schema.json
+
+ARG SINGBOX_ASSETS_URL=https://adam-sizzler.github.io/s-validator
+
 COPY frontend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps --no-audit --prefer-offline
-RUN mkdir -p /tmp/exodus-assets
-RUN set -eu; \
-    fetch_with_retry() { \
-      url="$1"; out="$2"; name="$3"; \
-      [ -n "$url" ] || return 0; \
-      n=1; ok=0; \
-      while [ "$n" -le 4 ]; do \
-        if wget -T 12 -t 1 -qO "$out" "$url"; then \
-          ok=1; break; \
-        fi; \
-        echo "WARN: download failed for $name (attempt $n/4): $url"; \
-        rm -f "$out"; \
-        n=$((n+1)); \
-        sleep 2; \
-      done; \
-      if [ "$ok" -ne 1 ]; then \
-        echo "WARN: skip $name after retries: $url"; \
-      fi; \
-    }; \
-    fetch_with_retry "$SINGBOX_WASM_URL" /tmp/exodus-assets/main.wasm main.wasm; \
-    fetch_with_retry "$SINGBOX_SCHEMA_URL" /tmp/exodus-assets/singbox.schema.json singbox.schema.json; \
-    fetch_with_retry "$SINGBOX_SCHEMA_CN_URL" /tmp/exodus-assets/singbox.schema.cn.json singbox.schema.cn.json
-RUN if [ -f /tmp/exodus-assets/main.wasm ]; then \
-      magic="$(od -An -t x1 -N 4 /tmp/exodus-assets/main.wasm | tr -d ' \n')"; \
-      [ "$magic" = "0061736d" ] || { echo "Invalid WASM magic for main.wasm: $magic"; exit 1; }; \
-      echo "WASM artifact attached: /tmp/exodus-assets/main.wasm"; \
-    else \
-      echo "WARN: /tmp/exodus-assets/main.wasm is missing. Sing-box validator will be disabled in UI."; \
-    fi
+
 COPY frontend/ ./
-RUN mkdir -p /ui/public/assets && cp -f /tmp/exodus-assets/* /ui/public/assets/ 2>/dev/null || true
+
+RUN apk add --no-cache curl \
+    && mkdir -p public/assets \
+    && curl -L ${SINGBOX_ASSETS_URL}/wasm_exec.js -o public/assets/wasm_exec.js \
+    && curl -L ${SINGBOX_ASSETS_URL}/singbox.schema.json -o public/assets/singbox.schema.json \
+    && curl -L ${SINGBOX_ASSETS_URL}/main.wasm -o public/assets/main.wasm
+
 RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache npm run cb
 
 FROM golang:1.25-alpine AS builder

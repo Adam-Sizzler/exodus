@@ -47,9 +47,9 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
         modals.open({
             title: (
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbRocket}
                     iconVariant="soft"
-                    iconColor="teal"
                     title={t('nodes-header-action-buttons.feature.restart-all-nodes')}
                 />
             ),
@@ -62,6 +62,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             'nodes-header-action-buttons.feature.force-restart-description'
                         )}
                         icon={<TbAlertCircle size={22} />}
+                        iconColor="red"
                         isLoading={isPending}
                         onClick={() => {
                             restartAllNodes({
@@ -72,7 +73,6 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             modals.closeAll()
                         }}
                         title={t('nodes-header-action-buttons.feature.force')}
-                        iconColor="red"
                         variant="soft"
                     />
 
@@ -81,6 +81,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             'nodes-header-action-buttons.feature.graceful-restart-description-1'
                         )}
                         icon={<TbRocket size={22} />}
+                        iconColor="teal"
                         isLoading={isPending}
                         onClick={() => {
                             restartAllNodes({
@@ -91,7 +92,6 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                             modals.closeAll()
                         }}
                         title={t('nodes-header-action-buttons.feature.graceful')}
-                        iconColor="teal"
                         variant="soft"
                     />
                 </Stack>

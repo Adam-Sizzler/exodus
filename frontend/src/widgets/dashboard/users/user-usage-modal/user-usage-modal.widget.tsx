@@ -103,8 +103,9 @@ export const UserUsageModalWidget = (props: IProps) => {
             size="900px"
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbChartPie}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title={t('user-usage-modal.widget.traffic-statistics')}
                 />
             }

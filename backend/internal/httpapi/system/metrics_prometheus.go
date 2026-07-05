@@ -17,6 +17,7 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/nodehotcache"
 	monitor "exodus/internal/nodes"
 )
 
@@ -100,7 +101,7 @@ func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
 	ttl := metricsCacheTTL(cfg)
 	if ttl <= 0 {
-		return renderPrometheusMetrics(ctx, manager)
+		return renderPrometheusMetrics(ctx, manager, cfg)
 	}
 
 	now := time.Now()
@@ -129,7 +130,7 @@ func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.Datab
 		prometheusMetricsCache.refreshing = true
 		prometheusMetricsCache.ready = make(chan struct{})
 		prometheusMetricsCache.Unlock()
-		payload, err := renderPrometheusMetrics(ctx, manager)
+		payload, err := renderPrometheusMetrics(ctx, manager, cfg)
 		prometheusMetricsCache.Lock()
 		prometheusMetricsCache.refreshing = false
 		ready := prometheusMetricsCache.ready
@@ -142,7 +143,7 @@ func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.Datab
 		prometheusMetricsCache.Unlock()
 		return payload, err
 	}
-	payload, err := renderPrometheusMetrics(ctx, manager)
+	payload, err := renderPrometheusMetrics(ctx, manager, cfg)
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +166,7 @@ func metricsCacheTTL(cfg *config.BackendConfig) time.Duration {
 }
 
 func loadNodesMetricsViaPrometheus(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]nodeMetricsItem, error) {
-	nodesMeta, err := loadNodesMetricsMeta(ctx, manager)
+	nodesMeta, err := loadNodesMetricsMeta(ctx, manager, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +310,7 @@ func loadNodesMetricsViaPrometheus(ctx context.Context, manager *dbmanager.Datab
 	return result, nil
 }
 
-func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nodeMetricsMeta, error) {
+func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]nodeMetricsMeta, error) {
 	result := make([]nodeMetricsMeta, 0)
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
@@ -319,8 +320,7 @@ func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManage
 				COALESCE(n.country_code, ''),
 				COALESCE(p.name, 'unknown'),
 				n.view_position,
-				n.is_connected,
-				COALESCE(n.users_online, 0)
+				n.is_connected
 			FROM nodes n
 			LEFT JOIN infra_providers p ON p.uuid = n.provider_uuid
 			ORDER BY n.view_position ASC, n.name ASC
@@ -339,7 +339,6 @@ func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManage
 				&item.ProviderName,
 				&item.ViewPosition,
 				&item.IsConnected,
-				&item.UsersOnline,
 			); scanErr != nil {
 				return scanErr
 			}
@@ -347,11 +346,24 @@ func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManage
 		}
 		return rows.Err()
 	})
+	if err != nil {
+		return result, err
+	}
+	uuids := make([]string, 0, len(result))
+	for _, item := range result {
+		uuids = append(uuids, item.UUID)
+	}
+	cache, _ := nodehotcache.Default(cfg).GetMany(ctx, uuids)
+	for i := range result {
+		if result[i].IsConnected {
+			result[i].UsersOnline = cache[result[i].UUID].UsersOnline
+		}
+	}
 	return result, err
 }
 
-func renderPrometheusMetrics(ctx context.Context, manager *dbmanager.DatabaseManager) (string, error) {
-	nodesMeta, err := loadNodesMetricsMeta(ctx, manager)
+func renderPrometheusMetrics(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
+	nodesMeta, err := loadNodesMetricsMeta(ctx, manager, cfg)
 	if err != nil {
 		return "", err
 	}

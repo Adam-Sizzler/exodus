@@ -103,8 +103,9 @@ export const NodeUsersUsageDrawer = () => {
             size="600px"
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={TbChartArcs}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title={t('node-users-usage-drawer.widget.user-traffic-statistics')}
                 />
             }

@@ -37,7 +37,6 @@ const MODAL_KEY = MODALS.CONFIG_PROFILE_SHOW_SNIPPETS_DRAWER
 export function ConfigEditorActionsFeature(props: Props) {
     const {
         editorRef,
-        monacoRef,
         isConfigValid,
         setResult,
         setIsConfigValid,
@@ -67,7 +66,6 @@ export function ConfigEditorActionsFeature(props: Props) {
                 })
 
                 setIsConfigValid(true)
-                setHasUnsavedChanges(false)
 
                 const newValue = JSON.stringify(updatedConfigProfile.config, null, 2)
 
@@ -82,6 +80,8 @@ export function ConfigEditorActionsFeature(props: Props) {
                     }).queryKey,
                     updatedConfigProfile
                 )
+
+                setHasUnsavedChanges(false)
             },
             onError: (error) => {
                 setIsConfigValid(false)
@@ -98,7 +98,6 @@ export function ConfigEditorActionsFeature(props: Props) {
 
     const handleSave = () => {
         if (!editorRef.current) return
-        if (!monacoRef.current) return
 
         const currentValue = editorRef.current.getValue()
 
@@ -296,8 +295,9 @@ export function ConfigEditorActionsFeature(props: Props) {
                                 modals.open({
                                     title: (
                                         <BaseOverlayHeader
+                                            iconColor="teal"
                                             IconComponent={TbTools}
-                                            iconVariant="soft" iconColor="teal"
+                                            iconVariant="soft"
                                             title={t('config-editor-actions.feature.tools')}
                                         />
                                     ),

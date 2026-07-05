@@ -43,6 +43,7 @@ export function HeaderControls({
         <Group gap="xs" {...others}>
             {withTelegram && <TelegramControl link={telegramLink} />}
             {withSupport && <SupportControl />}
+
             {withVersion && <VersionControl />}
             {withGithub && (
                 <GithubControl isLoading={isGithubLoading} link={githubLink!} stars={stars} />

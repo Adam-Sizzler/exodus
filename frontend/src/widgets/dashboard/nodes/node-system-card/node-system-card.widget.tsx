@@ -8,12 +8,17 @@ import {
     PiTimerDuotone
 } from 'react-icons/pi'
 import { ActionIcon, Badge, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
+import { GetOneNodeCommand } from '@exodus/backend-contract'
+import { memo, useMemo, useRef, useState } from 'react'
 import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'react-i18next'
 import { TbCamera } from 'react-icons/tb'
-import { memo, useMemo, useRef, useState } from 'react'
 
-import { prettyBytesToAnyUtil, prettyRealtimeBytesUtil } from '@shared/utils/bytes'
+import {
+    prettyBytesToAnyUtil,
+    prettySiBytesUtil,
+    prettySiRealtimeBytesUtil
+} from '@shared/utils/bytes'
 import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { formatDurationUtil } from '@shared/utils/time-utils'
@@ -54,7 +59,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
 
         const total = node.system.info.memoryTotal
         const free = node.system.stats.memoryFree
-        const used = total > 0 ? total - free : node.system.stats.memoryUsed
+        const used = total - free
         const percentage = total > 0 ? Math.round((used / total) * 100) : 0
 
         let color = 'teal'
@@ -62,9 +67,9 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
         else if (percentage > 70) color = 'yellow'
 
         return {
-            total: prettyBytesToAnyUtil(total, true) || '0 B',
-            free: prettyBytesToAnyUtil(free, true) || '0 B',
-            used: prettyBytesToAnyUtil(used, true) || '0 B',
+            total: prettyBytesToAnyUtil(total) || '0 B',
+            free: prettyBytesToAnyUtil(free) || '0 B',
+            used: prettyBytesToAnyUtil(used) || '0 B',
             percentage,
             color
         }
@@ -78,21 +83,20 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
     const interfaceData = useMemo(() => {
         if (!node.system?.stats.interface) return null
 
-        const iface = node.system.stats.interface
+        const { interface: iface } = node.system.stats
 
         return {
             name: iface.interface,
-            rxSpeed: prettyRealtimeBytesUtil(iface.rxBytesPerSec, true, true),
-            txSpeed: prettyRealtimeBytesUtil(iface.txBytesPerSec, true, true),
-            rxTotal: prettyBytesToAnyUtil(iface.rxTotal, true) || '0 B',
-            txTotal: prettyBytesToAnyUtil(iface.txTotal, true) || '0 B'
+            rxSpeed: prettySiRealtimeBytesUtil(iface.rxBytesPerSec, true, true),
+            txSpeed: prettySiRealtimeBytesUtil(iface.txBytesPerSec, true, true),
+            rxTotal: prettySiBytesUtil(iface.rxTotal) || '0 B',
+            txTotal: prettySiBytesUtil(iface.txTotal) || '0 B'
         }
     }, [node.system])
 
     if (!node.system) return null
 
     const { info } = node.system
-    const networkInterfaces = info.networkInterfaces.filter((item) => item !== 'lo')
 
     return (
         <div className={classes.wrapper}>
@@ -112,7 +116,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                 <SectionCard.Section>
                     <Group justify="space-between" wrap="nowrap">
                         <BaseOverlayHeader
-                            themeIconProps={{ color: 'violet' }}
+                            iconColor="violet"
                             IconComponent={PiDesktopTowerDuotone}
                             iconSize={20}
                             iconVariant="soft"
@@ -121,7 +125,13 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                         />
 
                         <Group gap="xs">
-                            <Badge color="violet" ff="monospace" size="sm" variant="soft">
+                            <Badge
+                                color="violet"
+                                ff="monospace"
+                                size="sm"
+                                variant="soft"
+                                visibleFrom="sm"
+                            >
                                 {info.platform} / {info.arch}
                             </Badge>
                             <Badge
@@ -140,7 +150,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                 <SectionCard.Section>
                     <div className={classes.memorySection}>
                         <Stack gap={6}>
-                            <Text c="dimmed" fw={600} lh={1} size="10px" tt="uppercase">
+                            <Text c="dimmed" fw={600} lh={1} lts={1} size="10px" tt="uppercase">
                                 {t('node-system-card.widget.memory')}
                             </Text>
 
@@ -169,7 +179,14 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                         <div className={classes.interfaceSection}>
                             <Stack gap={6}>
                                 <Group gap={6} justify="space-between">
-                                    <Text c="dimmed" fw={600} lh={1} size="10px" tt="uppercase">
+                                    <Text
+                                        c="dimmed"
+                                        fw={600}
+                                        lh={1}
+                                        lts={1}
+                                        size="10px"
+                                        tt="uppercase"
+                                    >
                                         {t('node-system-card.widget.interface')}
                                     </Text>
                                     <Badge color="cyan" ff="monospace" size="xs" variant="soft">
@@ -223,7 +240,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                 <SectionCard.Section>
                     <div className={classes.infoSection}>
                         <Stack gap={6}>
-                            <Text c="dimmed" fw={600} lh={1} size="10px" tt="uppercase">
+                            <Text c="dimmed" fw={600} lh={1} lts={1} size="10px" tt="uppercase">
                                 {t('node-system-card.widget.system')}
                             </Text>
 
@@ -251,7 +268,7 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                                     </Text>
                                     <Text className={classes.statValue}>{info.release}</Text>
                                 </Stack>
-                                {networkInterfaces.length > 0 && (
+                                {info.networkInterfaces.length > 0 && (
                                     <Stack gap={0} style={{ minWidth: 0 }}>
                                         <Text className={classes.statLabel} component="div">
                                             <Group gap={4}>
@@ -260,13 +277,26 @@ export const NodeSystemCardWidget = memo((props: IProps) => {
                                             </Group>
                                         </Text>
                                         <Tooltip
-                                            disabled={networkInterfaces.length <= 3}
-                                            label={networkInterfaces.join(', ')}
+                                            disabled={
+                                                info.networkInterfaces.filter((i) => i !== 'lo')
+                                                    .length <= 3
+                                            }
+                                            label={info.networkInterfaces
+                                                .filter((i) => i !== 'lo')
+                                                .join(', ')}
                                         >
                                             <Text className={classes.statValue}>
-                                                {networkInterfaces.length > 3
-                                                    ? `${networkInterfaces.slice(0, 3).join(', ')} +${networkInterfaces.length - 3}`
-                                                    : networkInterfaces.join(', ')}
+                                                {(() => {
+                                                    const ifaces = info.networkInterfaces.filter(
+                                                        (i) => i !== 'lo'
+                                                    )
+                                                    const visible = ifaces.slice(0, 3)
+                                                    const rest = ifaces.length - 3
+
+                                                    return rest > 0
+                                                        ? `${visible.join(', ')} +${rest}`
+                                                        : visible.join(', ')
+                                                })()}
                                             </Text>
                                         </Tooltip>
                                     </Stack>

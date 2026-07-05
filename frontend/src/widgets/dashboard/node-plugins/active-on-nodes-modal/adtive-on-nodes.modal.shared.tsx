@@ -1,3 +1,4 @@
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { Center, Stack, Text, ThemeIcon } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { TbServer } from 'react-icons/tb'
@@ -5,10 +6,9 @@ import { PiCpu } from 'react-icons/pi'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
-import { NodeResponse } from '@shared/api/hooks'
 
 interface IProps {
-    nodes: NodeResponse[]
+    nodes: GetAllNodesCommand.Response['response']
 }
 
 export const ActivePluginsOnNodesModalShared = (props: IProps) => {
@@ -37,6 +37,7 @@ export const ActivePluginsOnNodesModalShared = (props: IProps) => {
                     <SectionCard.Section key={node.uuid}>
                         <BaseOverlayHeader
                             countryCode={node.countryCode}
+                            iconColor="blue"
                             IconComponent={TbServer}
                             iconVariant="soft"
                             subtitle={node.address}

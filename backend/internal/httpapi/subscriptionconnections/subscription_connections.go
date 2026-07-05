@@ -85,7 +85,7 @@ type nodeAPI struct {
 	LastStatusMessage       *string    `json:"lastStatusMessage"`
 	SingboxVersion          *string    `json:"singboxVersion"`
 	NodeVersion             *string    `json:"nodeVersion"`
-	SingboxUptime           string     `json:"singboxUptime"`
+	SingboxUptime           int64      `json:"singboxUptime"`
 	IsTrafficTrackingActive bool       `json:"isTrafficTrackingActive"`
 	TrafficResetDay         *int       `json:"trafficResetDay"`
 	TrafficLimitBytes       *int64     `json:"trafficLimitBytes"`
@@ -1129,7 +1129,7 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.LastStatusMessage = record.LastStatusMessage
 		item.SingboxVersion = record.SingboxVersion
 		item.NodeVersion = record.NodeVersion
-		item.SingboxUptime = record.SingboxUptime
+		item.SingboxUptime = shared.ParseUptimeSeconds(record.SingboxUptime)
 		item.IsTrafficTrackingActive = record.IsTrafficTrackingActive
 		item.TrafficResetDay = record.TrafficResetDay
 		item.TrafficLimitBytes = record.TrafficLimitBytes

@@ -145,6 +145,7 @@ export const CreateHostModalWidget = () => {
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
+        let finalMask
 
         const xHttpExtraParamsResult = parseOptionalJSONValue(values.xHttpExtraParams)
         if (!xHttpExtraParamsResult.ok) {
@@ -187,6 +188,17 @@ export const CreateHostModalWidget = () => {
         const sockoptParamsResult = parseOptionalJSONValue(values.sockoptParams)
         sockoptParams = sockoptParamsResult.ok ? sockoptParamsResult.value : null
 
+        try {
+            if (values.finalMask === '') {
+                finalMask = null
+            } else {
+                finalMask = JSON.parse(values.finalMask as unknown as string)
+            }
+        } catch {
+            finalMask = null
+            // silence
+        }
+
         createHost({
             variables: {
                 ...values,
@@ -200,6 +212,7 @@ export const CreateHostModalWidget = () => {
                 muxParams,
                 singboxMuxParams,
                 clashMuxParams,
+                finalMask,
                 inbound: {
                     configProfileInboundUuid: values.inbound.configProfileInboundUuid,
                     configProfileUuid: values.inbound.configProfileUuid
@@ -238,8 +251,9 @@ export const CreateHostModalWidget = () => {
             size="lg"
             title={
                 <BaseOverlayHeader
+                    iconColor="teal"
                     IconComponent={PiListChecks}
-                    iconVariant="soft" iconColor="teal"
+                    iconVariant="soft"
                     title={t('create-host-modal.widget.new-host')}
                 />
             }

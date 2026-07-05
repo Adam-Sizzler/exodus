@@ -19,7 +19,7 @@ exports.NodesSchema = zod_1.z.object({
     lastStatusMessage: zod_1.z.nullable(zod_1.z.string()),
     singboxVersion: zod_1.z.nullable(zod_1.z.string()),
     nodeVersion: zod_1.z.nullable(zod_1.z.string()),
-    singboxUptime: zod_1.z.string(),
+    singboxUptime: zod_1.z.number(),
     isTrafficTrackingActive: zod_1.z.boolean(),
     trafficResetDay: zod_1.z.nullable(zod_1.z.number().int()),
     trafficLimitBytes: zod_1.z.nullable(zod_1.z.number()),

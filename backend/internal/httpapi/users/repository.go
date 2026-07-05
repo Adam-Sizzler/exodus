@@ -318,3 +318,38 @@ func resolveUserUUIDForUpdate(ctx context.Context, manager *dbmanager.DatabaseMa
 	})
 	return resolved, err
 }
+
+func resolveUser(ctx context.Context, manager *dbmanager.DatabaseManager, req resolveUserRequest) (resolveUserResponse, error) {
+	var response resolveUserResponse
+	clause := ""
+	var arg any
+	switch {
+	case req.UUID != nil:
+		clause = "uuid = ?"
+		arg = strings.TrimSpace(*req.UUID)
+	case req.ID != nil:
+		clause = "t_id = ?"
+		arg = *req.ID
+	case req.ShortUUID != nil:
+		clause = "short_uuid = ?"
+		arg = strings.TrimSpace(*req.ShortUUID)
+	case req.Username != nil:
+		clause = "username = ?"
+		arg = strings.TrimSpace(*req.Username)
+	default:
+		return response, fmt.Errorf("missing user lookup field")
+	}
+
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		err := db.QueryRowContext(ctx, fmt.Sprintf(`
+			SELECT uuid, t_id, short_uuid, username
+			FROM users
+			WHERE %s
+		`, clause), arg).Scan(&response.UUID, &response.ID, &response.ShortUUID, &response.Username)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errUserNotFound
+		}
+		return err
+	})
+	return response, err
+}

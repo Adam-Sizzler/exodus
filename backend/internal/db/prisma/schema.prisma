@@ -53,7 +53,7 @@ model Users {
   /// @kyselyType('ACTIVE' | 'DISABLED' | 'LIMITED' | 'EXPIRED')
   status                 String    @default("ACTIVE") @map("status") @db.VarChar(10)
   trafficLimitBytes      BigInt    @default(0) @map("traffic_limit_bytes")
-  /// @kyselyType('NO_RESET' | 'DAY' | 'WEEK' | 'MONTH')
+  /// @kyselyType('NO_RESET' | 'DAY' | 'WEEK' | 'MONTH' | 'MONTH_ROLLING')
   trafficLimitStrategy   String    @default("NO_RESET") @map("traffic_limit_strategy")
   expireAt               DateTime  @map("expire_at")
   lastTrafficResetAt     DateTime? @map("last_traffic_reset_at")
@@ -201,11 +201,7 @@ model Nodes {
 
   lastStatusChange  DateTime? @map("last_status_change")
   lastStatusMessage String?   @map("last_status_message")
-  singboxVersion    String?   @map("singbox_version")
-  nodeVersion       String?   @map("node_version")
-  singboxUptime     String    @default("0") @map("singbox_uptime")
 
-  usersOnline           Int?   @default(0) @map("users_online")
   consumptionMultiplier BigInt @default(1000000000) @map("consumption_multiplier")
 
   isTrafficTrackingActive Boolean @default(false) @map("is_traffic_tracking_active")
@@ -219,12 +215,6 @@ model Nodes {
   viewPosition Int      @default(autoincrement()) @map("view_position")
   countryCode  String   @default("XX") @map("country_code")
   tags         String[] @default([]) @map("tags")
-
-  cpuCount Int?    @map("cpu_count")
-  cpuModel String? @map("cpu_model")
-  totalRam String? @map("total_ram")
-  systemInfo Json? @map("system_info")
-  systemStats Json? @map("system_stats")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
