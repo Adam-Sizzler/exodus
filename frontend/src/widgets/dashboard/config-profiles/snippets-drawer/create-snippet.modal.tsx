@@ -1,19 +1,19 @@
 import type { editor } from 'monaco-editor'
 
-import { Button, Code, Group, Paper, Stack, TextInput } from '@mantine/core'
-import { CreateSnippetCommand } from '@exodus/backend-contract'
-import { Editor, Monaco, useMonaco } from '@monaco-editor/react'
-import { zodResolver } from 'mantine-form-zod-resolver'
-import { useTranslation } from 'react-i18next'
-import { useEffect, useRef } from 'react'
-import { modals } from '@mantine/modals'
-import { useForm } from '@mantine/form'
-
 import { MonacoSetupSnippetsFeature } from '@features/dashboard/config-profiles/monaco-setup'
+import { Button, Code, Group, Paper, Stack, TextInput } from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { modals } from '@mantine/modals'
+import { Editor, Monaco, useMonaco } from '@monaco-editor/react'
+import { CreateSnippetCommand } from '@exodus/backend-contract'
+import { zodResolver } from 'mantine-form-zod-resolver'
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { queryClient } from '@shared/api'
+import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useCreateSnippet } from '@shared/api/hooks/snippets/snippets.mutation.hooks'
 import { monacoTheme } from '@shared/constants/monaco-theme'
-import { QueryKeys } from '@shared/api/hooks/keys-factory'
-import { queryClient } from '@shared/api'
 
 import classes from './SnippetsDrawer.module.css'
 

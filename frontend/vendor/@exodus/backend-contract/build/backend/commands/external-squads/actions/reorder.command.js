@@ -9,7 +9,7 @@ var ReorderExternalSquadCommand;
 (function (ReorderExternalSquadCommand) {
     ReorderExternalSquadCommand.url = api_1.REST_API.EXTERNAL_SQUADS.ACTIONS.REORDER;
     ReorderExternalSquadCommand.TSQ_url = ReorderExternalSquadCommand.url;
-    ReorderExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.ACTIONS.REORDER, 'post', 'Reorder external squads');
+    ReorderExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.ACTIONS.REORDER, 'post', 'Reorder external squads', { scope: 'reorder', kind: 'write' });
     ReorderExternalSquadCommand.RequestSchema = zod_1.z.object({
         items: zod_1.z.array(models_1.ExternalSquadSchema.pick({
             viewPosition: true,

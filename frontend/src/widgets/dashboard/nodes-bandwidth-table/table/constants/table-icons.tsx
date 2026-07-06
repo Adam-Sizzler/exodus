@@ -1,3 +1,5 @@
+import { MRT_Icons } from '@kastov/mantine-react-table-open'
+import { IconBaseProps } from 'react-icons/lib'
 /* eslint-disable camelcase */
 import {
     PiArrowsDownUp,
@@ -29,8 +31,6 @@ import {
     PiX,
     PiXCircle
 } from 'react-icons/pi'
-import { MRT_Icons } from 'mantine-react-table'
-import { IconBaseProps } from 'react-icons/lib'
 import { JSX } from 'react/jsx-runtime'
 
 export const customIcons: Partial<MRT_Icons> = {

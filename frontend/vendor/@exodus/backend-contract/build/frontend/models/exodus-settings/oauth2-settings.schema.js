@@ -100,4 +100,27 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
         authorizationUrl: null,
         allowedEmails: [],
     }),
+    telegram: zod_1.default
+        .object({
+        enabled: zod_1.default.boolean(),
+        clientId: zod_1.default.nullable(zod_1.default.string()),
+        clientSecret: zod_1.default.nullable(zod_1.default.string()),
+        allowedIds: zod_1.default.array(zod_1.default.string()),
+        frontendDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
+            const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
+            if (fqdnRegex.test(val)) {
+                return true;
+            }
+            return false;
+        }, {
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+        })),
+    })
+        .default({
+        enabled: false,
+        clientId: null,
+        clientSecret: null,
+        allowedIds: [],
+        frontendDomain: null,
+    }),
 });

@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import {
     CloneSubscriptionPageConfigCommand,
     CreateSubscriptionPageConfigCommand,
@@ -5,7 +6,6 @@ import {
     ReorderSubscriptionPageConfigsCommand,
     UpdateSubscriptionPageConfigCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 

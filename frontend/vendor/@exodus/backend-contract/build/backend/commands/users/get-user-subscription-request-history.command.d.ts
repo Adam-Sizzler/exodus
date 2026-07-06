@@ -16,19 +16,19 @@ export declare namespace GetUserSubscriptionRequestHistoryCommand {
             total: z.ZodNumber;
             records: z.ZodArray<z.ZodObject<{
                 id: z.ZodNumber;
-                userUuid: z.ZodString;
+                userId: z.ZodNumber;
                 requestAt: z.ZodEffects<z.ZodString, Date, string>;
                 requestIp: z.ZodNullable<z.ZodOptional<z.ZodString>>;
                 userAgent: z.ZodNullable<z.ZodOptional<z.ZodString>>;
             }, "strip", z.ZodTypeAny, {
                 id: number;
-                userUuid: string;
+                userId: number;
                 requestAt: Date;
                 userAgent?: string | null | undefined;
                 requestIp?: string | null | undefined;
             }, {
                 id: number;
-                userUuid: string;
+                userId: number;
                 requestAt: string;
                 userAgent?: string | null | undefined;
                 requestIp?: string | null | undefined;
@@ -37,7 +37,7 @@ export declare namespace GetUserSubscriptionRequestHistoryCommand {
             total: number;
             records: {
                 id: number;
-                userUuid: string;
+                userId: number;
                 requestAt: Date;
                 userAgent?: string | null | undefined;
                 requestIp?: string | null | undefined;
@@ -46,7 +46,7 @@ export declare namespace GetUserSubscriptionRequestHistoryCommand {
             total: number;
             records: {
                 id: number;
-                userUuid: string;
+                userId: number;
                 requestAt: string;
                 userAgent?: string | null | undefined;
                 requestIp?: string | null | undefined;
@@ -57,7 +57,7 @@ export declare namespace GetUserSubscriptionRequestHistoryCommand {
             total: number;
             records: {
                 id: number;
-                userUuid: string;
+                userId: number;
                 requestAt: Date;
                 userAgent?: string | null | undefined;
                 requestIp?: string | null | undefined;
@@ -68,7 +68,7 @@ export declare namespace GetUserSubscriptionRequestHistoryCommand {
             total: number;
             records: {
                 id: number;
-                userUuid: string;
+                userId: number;
                 requestAt: string;
                 userAgent?: string | null | undefined;
                 requestIp?: string | null | undefined;

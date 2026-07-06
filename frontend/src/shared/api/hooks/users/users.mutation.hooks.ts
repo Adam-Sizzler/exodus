@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import {
     BulkAllExtendExpirationDateCommand,
     BulkAllResetTrafficUsersCommand,
@@ -18,7 +19,6 @@ import {
     RevokeUserSubscriptionCommand,
     UpdateUserCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 

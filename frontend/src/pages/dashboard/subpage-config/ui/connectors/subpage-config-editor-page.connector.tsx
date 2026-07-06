@@ -1,8 +1,8 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 
 import { useGetSubscriptionPageConfig } from '@shared/api/hooks'
-import { LoadingScreen } from '@shared/ui'
 import { ROUTES } from '@shared/constants'
+import { LoadingScreen } from '@shared/ui'
 
 import { SubpageConfigEditorPageComponent } from '../components/subpage-config-editor-page.component'
 

@@ -1,6 +1,5 @@
-export function cloneString(str: string, limit: number = 40) {
+export function cloneString(str: string, limit: number = 40, prefix: string = '#_') {
     let inputString = str
-    const prefix = '#_'
     if (str.startsWith(prefix)) {
         inputString = str.slice(prefix.length + 3)
     }

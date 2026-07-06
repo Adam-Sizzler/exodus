@@ -1,3 +1,4 @@
+import { Button, Card, Drawer, Stack, Text, TextInput } from '@mantine/core'
 import {
     TSubscriptionPageBlockConfig,
     TSubscriptionPageButtonConfig,
@@ -5,16 +6,15 @@ import {
     TSubscriptionPageSvgLibrary
 } from '@exodus/subscription-page-types'
 import { IconChevronRight, IconPalette, IconPlus } from '@tabler/icons-react'
-import { Button, Card, Drawer, Stack, Text, TextInput } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { LocalizedTextEditor } from './localized-text-editor.component'
 import styles from '../subpage-config-visual-editor.module.css'
+import { ButtonEditor } from './button-editor.component'
+import { LocalizedTextEditor } from './localized-text-editor.component'
 import { SubpageTooltips } from './subpage-tooltips.component'
 import { SvgIconSelect } from './svg-icon-select.component'
-import { ButtonEditor } from './button-editor.component'
 
 interface IProps {
     block: null | TSubscriptionPageBlockConfig

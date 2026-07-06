@@ -1,3 +1,4 @@
+// oxlint-disable
 import { Modal } from '@mantine/core'
 
 import classes from './modal.module.css'

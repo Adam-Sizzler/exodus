@@ -271,6 +271,9 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 			log.Debug("Synthetic HWID generated", "hwid", hwidHeaders.Hwid, "platform", hwidHeaders.Platform, "model", hwidHeaders.DeviceModel, "user_agent", hwidHeaders.UserAgent)
 		}
 	}
+	if hwidHeaders != nil && hwidHeaders.RequestIP == nil {
+		hwidHeaders.RequestIP = stringPtrIfNotEmpty(requestIP)
+	}
 	log.Debug("HWID headers extracted", "hwid_headers", hwidHeaders)
 
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
@@ -307,7 +310,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	} else {
 		if hwidHeaders != nil {
 			log.Debug("HWID disabled, inserting device record")
-			if err := enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwidHeaders); err != nil {
+			if err := enqueueOrUpsertHwidUserDevice(ctx, manager, user.TID, *hwidHeaders); err != nil {
 				log.Warn("Failed to upsert HWID user device", "error", err)
 			} else {
 				log.Debug("HWID device record upserted")
@@ -387,7 +390,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	}
 
 	log.Debug("Updating subscription request history")
-	updateSubscriptionRequest(ctx, manager, user.UUID, r.Header.Get("User-Agent"), requestIP)
+	updateSubscriptionRequest(ctx, manager, user.UUID, user.TID, r.Header.Get("User-Agent"), requestIP)
 
 	log.Debug("Writing subscription response", "bytes", len(subscription.Body))
 	writeSubscriptionResponse(w, headers, subscription.ContentType, subscription.Body)

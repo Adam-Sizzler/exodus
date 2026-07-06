@@ -1,13 +1,14 @@
-import { PiArrowsClockwise, PiSignOutDuotone } from 'react-icons/pi'
 import { ActionIcon, Group } from '@mantine/core'
-import { useNavigate } from 'react-router-dom'
+import { PiArrowsClockwise, PiSignOutDuotone } from 'react-icons/pi'
+import { useNavigate } from 'react-router'
 
-import { LanguagePicker } from '@shared/ui/language-picker/language-picker.shared'
-import { resetAllStores } from '@shared/hocs/store-wrapper'
 import { clearQueryClient } from '@shared/api'
-import { removeToken } from '@entities/auth'
 import { ROUTES } from '@shared/constants'
+import { resetAllStores } from '@shared/hocs/store-wrapper'
 import { useAuth } from '@shared/hooks'
+import { LanguagePicker } from '@shared/ui/language-picker/language-picker.shared'
+
+import { removeToken } from '@entities/auth'
 
 export const HeaderButtons = () => {
     const { setIsAuthenticated } = useAuth()

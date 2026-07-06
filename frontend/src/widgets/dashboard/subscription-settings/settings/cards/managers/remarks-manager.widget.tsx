@@ -1,3 +1,4 @@
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import {
     ActionIcon,
     Button,
@@ -10,11 +11,10 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
-import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useDebouncedValue } from '@mantine/hooks'
-import { PiPlus, PiTrash } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiPlus, PiTrash } from 'react-icons/pi'
 
 import { TemplateInfoPopoverShared } from '@shared/ui/popovers/template-info-popover/template-info-popover.shared'
 

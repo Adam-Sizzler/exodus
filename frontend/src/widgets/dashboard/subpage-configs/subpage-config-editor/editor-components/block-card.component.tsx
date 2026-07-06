@@ -1,9 +1,9 @@
+import { ActionIcon, Badge, Card, Group, Text } from '@mantine/core'
 import {
     TSubscriptionPageBlockConfig,
     TSubscriptionPageLanguageCode
 } from '@exodus/subscription-page-types'
 import { IconArrowDown, IconArrowUp, IconTrash } from '@tabler/icons-react'
-import { ActionIcon, Badge, Card, Group, Text } from '@mantine/core'
 
 import styles from '../subpage-config-visual-editor.module.css'
 

@@ -7,13 +7,13 @@ import {
     Center,
     Group
 } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { PiCheckBold, PiXBold } from 'react-icons/pi'
-import { modals } from '@mantine/modals'
 
+import { SingboxLogo } from '@shared/ui/logos'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { XrayLogo } from '@shared/ui/logos'
 
 interface IProps extends AccordionControlProps {
     hideSelectActions?: boolean
@@ -47,7 +47,7 @@ export const AccordionControlShared = (props: IProps) => {
             title: (
                 <BaseOverlayHeader
                     iconColor="teal"
-                    IconComponent={XrayLogo}
+                    IconComponent={SingboxLogo}
                     iconVariant="soft"
                     title={profile.name}
                 />
@@ -104,7 +104,7 @@ export const AccordionControlShared = (props: IProps) => {
                         size="lg"
                         variant="subtle"
                     >
-                        <XrayLogo size={16} />
+                        <SingboxLogo size={16} />
                     </ActionIcon>
                 </ActionIconGroup>
             </Group>

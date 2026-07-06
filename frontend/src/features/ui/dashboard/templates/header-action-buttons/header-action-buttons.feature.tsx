@@ -8,25 +8,25 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
+import { useField } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
 import {
     CreateSubscriptionTemplateCommand,
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
-import { generatePath, useNavigate } from 'react-router-dom'
-import { TbFolder, TbPlus, TbRefresh } from 'react-icons/tb'
-import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'react-i18next'
-import { useField } from '@mantine/form'
+import { TbFolder, TbPlus, TbRefresh } from 'react-icons/tb'
+import { generatePath, useNavigate } from 'react-router'
 
+import { queryClient } from '@shared/api'
 import {
     QueryKeys,
     useCreateSubscriptionTemplate,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
-import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { ROUTES } from '@shared/constants'
-import { queryClient } from '@shared/api'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
 
 interface IProps {
     templateType: TSubscriptionTemplateType

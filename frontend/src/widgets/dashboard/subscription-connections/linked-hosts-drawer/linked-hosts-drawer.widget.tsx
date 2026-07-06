@@ -1,6 +1,6 @@
 import { ActionIcon, Badge, Box, Center, Drawer, Group, Stack, Text } from '@mantine/core'
 import { PiListChecks, PiProhibit, PiPulse, PiTag } from 'react-icons/pi'
-import { createSearchParams, useNavigate } from 'react-router-dom'
+import { createSearchParams, useNavigate } from 'react-router'
 import { TbAlertCircle, TbEyeOff } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
 import ColorHash from 'color-hash'

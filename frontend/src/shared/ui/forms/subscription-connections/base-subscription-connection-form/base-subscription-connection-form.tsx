@@ -1,4 +1,3 @@
-import { GetOneNodeCommand } from '@exodus/backend-contract'
 import { Button, CopyButton, Menu, px, SimpleGrid, Stack } from '@mantine/core'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'
 import { UseFormReturnType } from '@mantine/form'
@@ -11,6 +10,7 @@ import { ToggleNodeStatusButtonFeature } from '@features/ui/dashboard/subscripti
 import { RestartNodeButtonFeature } from '@features/ui/dashboard/subscription-connections/restart-node-button'
 import { DeleteNodeFeature } from '@features/ui/dashboard/subscription-connections/delete-node'
 import { ModalAccordionWidget } from '@widgets/dashboard/subscription-connections/modal-accordeon-widget'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 import { ModalFooter } from '@shared/ui/modal-footer'
 
 import { NodeVitalsCard } from './node-vitals.card'
@@ -60,7 +60,7 @@ interface IProps<T extends BaseSubscriptionConnectionFormValues> {
     handleClose: () => void
     handleSubmit: () => void
     isDataSubmitting: boolean
-    node: GetOneNodeCommand.Response['response']
+    node: SubscriptionConnectionResponse
     nodeDetailsCard?: ReactNode
     pubKey: SubscriptionConnectionKeygenResponse | undefined
 }

@@ -37,16 +37,16 @@ export declare namespace GetStatsUserUsageCommand {
                 total: z.ZodNumber;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }, {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }>, "many">;
             series: z.ZodArray<z.ZodObject<{
                 uuid: z.ZodString;
@@ -57,17 +57,17 @@ export declare namespace GetStatsUserUsageCommand {
                 data: z.ZodArray<z.ZodNumber, "many">;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
                 data: number[];
             }, {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
                 data: number[];
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
@@ -75,17 +75,17 @@ export declare namespace GetStatsUserUsageCommand {
             sparklineData: number[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
             series: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
                 data: number[];
             }[];
         }, {
@@ -93,17 +93,17 @@ export declare namespace GetStatsUserUsageCommand {
             sparklineData: number[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
             series: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
                 data: number[];
             }[];
         }>;
@@ -113,17 +113,17 @@ export declare namespace GetStatsUserUsageCommand {
             sparklineData: number[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
             series: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
                 data: number[];
             }[];
         };
@@ -133,17 +133,17 @@ export declare namespace GetStatsUserUsageCommand {
             sparklineData: number[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
             series: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
                 data: number[];
             }[];
         };

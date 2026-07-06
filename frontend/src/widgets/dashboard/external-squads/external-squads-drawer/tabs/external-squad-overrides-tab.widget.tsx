@@ -13,15 +13,15 @@ import {
     TextInput
 } from '@mantine/core'
 import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
+import { TFunction } from 'i18next'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PiPlus, PiTrash } from 'react-icons/pi'
 import { TbDeviceFloppy } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
-import { TFunction } from 'i18next'
 import { z } from 'zod'
 
-import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 
 interface IFieldConfig {
     description?: string

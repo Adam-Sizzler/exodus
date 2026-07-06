@@ -8,7 +8,7 @@ var GetAllPasskeysCommand;
 (function (GetAllPasskeysCommand) {
     GetAllPasskeysCommand.url = api_1.REST_API.PASSKEYS.GET_ALL_PASSKEYS;
     GetAllPasskeysCommand.TSQ_url = GetAllPasskeysCommand.url;
-    GetAllPasskeysCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.GET_ALL_PASSKEYS, 'get', 'Get all passkeys');
+    GetAllPasskeysCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.GET_ALL_PASSKEYS, 'get', 'Get all passkeys', { scope: 'list', kind: 'read' });
     GetAllPasskeysCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             passkeys: zod_1.z.array(zod_1.z.object({

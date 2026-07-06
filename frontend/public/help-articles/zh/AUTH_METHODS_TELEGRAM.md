@@ -15,7 +15,7 @@
 
 - `panel.domain.com`
 
-如果面板地址是 `https://data.s-backup.online/panel/auth/login`，BotFather 中应填写 `data.s-backup.online`。
+如果面板地址是 `https://panel.domain.com/panel/auth/login`，BotFather 中应填写 `panel.domain.com`。
 
 ### 访问权限配置
 
@@ -34,7 +34,7 @@
 
 ###### 错误：BOT_DOMAIN_INVALID
 
-此错误发生在 backend callback 之前，Telegram 会比较页面 `origin` 和机器人域名。对于 `https://data.s-backup.online/panel/auth/login`，Telegram 检查的是 `https://data.s-backup.online`，因此 BotFather 中必须填写 `data.s-backup.online`，不要包含 `/panel/auth/login`。
+此错误发生在 backend callback 之前，Telegram 会比较页面 `origin` 和机器人域名。对于 `https://panel.domain.com/panel/auth/login`，Telegram 检查的是 `https://panel.domain.com`，因此 BotFather 中必须填写 `panel.domain.com`，不要包含 `/panel/auth/login`。
 
 ###### 错误：登录时未收到 Telegram 验证码
 

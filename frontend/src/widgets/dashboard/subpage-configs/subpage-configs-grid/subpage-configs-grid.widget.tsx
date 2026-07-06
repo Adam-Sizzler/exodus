@@ -1,5 +1,5 @@
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
+import { useTranslation } from 'react-i18next'
 
 import {
     QueryKeys,
@@ -7,8 +7,8 @@ import {
     useDeleteSubscriptionPageConfig,
     useReorderSubscriptionPageConfigs
 } from '@shared/api/hooks'
-import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 import { queryClient } from '@shared/api/query-client'
+import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 
 import { SubpageConfigCardWidget } from '../subpage-config-card/subpage-config-card.widget'
 import { IProps } from './interfaces'

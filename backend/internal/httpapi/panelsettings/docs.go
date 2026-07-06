@@ -19,18 +19,18 @@ var openapiJSON []byte
 func buildDocsResponse(cfg *config.BackendConfig) map[string]any {
 	if !cfg.Docs.IsEnabled {
 		return map[string]any{
-			"isDocsEnabled": false,
-			"scalarPath":    nil,
-			"swaggerPath":   nil,
+			"enabled":     false,
+			"scalarPath":  nil,
+			"swaggerPath": nil,
 		}
 	}
 
 	basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
 
 	return map[string]any{
-		"isDocsEnabled": true,
-		"scalarPath":    fmt.Sprintf("%s%s", basePath, cfg.Docs.ScalarPath),
-		"swaggerPath":   fmt.Sprintf("%s%s", basePath, cfg.Docs.SwaggerPath),
+		"enabled":     true,
+		"scalarPath":  fmt.Sprintf("%s%s", basePath, cfg.Docs.ScalarPath),
+		"swaggerPath": fmt.Sprintf("%s%s", basePath, cfg.Docs.SwaggerPath),
 	}
 }
 

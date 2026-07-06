@@ -1,7 +1,7 @@
 import { TbHeartFilled } from 'react-icons/tb'
 
-import classes from './SupportControl.module.css'
 import { HeaderControl } from './HeaderControl'
+import classes from './SupportControl.module.css'
 
 export function SupportControl() {
     return (

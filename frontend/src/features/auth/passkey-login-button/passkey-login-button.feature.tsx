@@ -1,9 +1,12 @@
-import * as SimpleWebAuthnBrowser from '@simplewebauthn/browser'
-import { GetStatusCommand } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
-import { TbFingerprint } from 'react-icons/tb'
 import { Button } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
+import { GetStatusCommand } from '@exodus/backend-contract'
+import {
+    type PublicKeyCredentialRequestOptionsJSON,
+    startAuthentication
+} from '@simplewebauthn/browser'
 import { useState } from 'react'
+import { TbFingerprint } from 'react-icons/tb'
 
 import { usePasskeyAuthenticationOptions, usePasskeyAuthenticationVerify } from '@shared/api/hooks'
 import { useAuth } from '@shared/hooks/use-auth'
@@ -28,8 +31,8 @@ export const PasskeyLoginButtonFeature = (props: IProps) => {
         try {
             const verificationOptions = await refetch()
 
-            const authenticationResponse = await (SimpleWebAuthnBrowser as any).startAuthentication({
-                optionsJSON: verificationOptions.data as any
+            const authenticationResponse = await startAuthentication({
+                optionsJSON: verificationOptions.data as PublicKeyCredentialRequestOptionsJSON
             })
 
             await verifyAuthentication(

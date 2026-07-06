@@ -1,11 +1,11 @@
+import { Card, Divider, Select, SimpleGrid, Stack } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
 import {
     INSTALLATION_GUIDE_BLOCKS_VARIANTS_VALUES,
     SUBSCRIPTION_INFO_BLOCK_VARIANTS_VALUES,
     TSubscriptionPageRawConfig
 } from '@exodus/subscription-page-types'
-import { Card, Divider, Select, SimpleGrid, Stack } from '@mantine/core'
 import { IconPalette } from '@tabler/icons-react'
-import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

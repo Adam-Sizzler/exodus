@@ -1,12 +1,4 @@
 import {
-    BUTTON_TYPES_VALUES,
-    SUBSCRIPTION_PAGE_TEMPLATE_KEYS,
-    TButtonType,
-    TSubscriptionPageButtonConfig,
-    TSubscriptionPageLanguageCode,
-    TSubscriptionPageSvgLibrary
-} from '@exodus/subscription-page-types'
-import {
     ActionIcon,
     Badge,
     Card,
@@ -17,15 +9,23 @@ import {
     Text,
     TextInput
 } from '@mantine/core'
-import { IconArrowDown, IconArrowUp, IconChevronRight, IconTrash } from '@tabler/icons-react'
-import { TbExternalLink } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
+import {
+    BUTTON_TYPES_VALUES,
+    SUBSCRIPTION_PAGE_TEMPLATE_KEYS,
+    TButtonType,
+    TSubscriptionPageButtonConfig,
+    TSubscriptionPageLanguageCode,
+    TSubscriptionPageSvgLibrary
+} from '@exodus/subscription-page-types'
+import { IconArrowDown, IconArrowUp, IconChevronRight, IconTrash } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
+import { TbExternalLink } from 'react-icons/tb'
 
 import { TemplateInfoPopoverShared } from '@shared/ui/popovers'
 
-import { LocalizedTextEditor } from './localized-text-editor.component'
 import styles from '../subpage-config-visual-editor.module.css'
+import { LocalizedTextEditor } from './localized-text-editor.component'
 import { SvgIconSelect } from './svg-icon-select.component'
 
 interface IProps {
@@ -125,7 +125,7 @@ export function ButtonEditor(props: IProps) {
                     </Group>
                 </Group>
 
-                <Collapse in={opened}>
+                <Collapse expanded={opened}>
                     <Stack gap="sm" pt="sm">
                         <Select
                             allowDeselect={false}

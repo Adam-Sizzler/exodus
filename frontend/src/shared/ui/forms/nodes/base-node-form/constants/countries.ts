@@ -43,7 +43,7 @@ export const COUNTRIES = [
     { value: 'CG', label: '🇨🇬 Congo' },
     { value: 'CD', label: '🇨🇩 Congo (DRC)' },
     { value: 'CR', label: '🇨🇷 Costa Rica' },
-    { value: 'CI', label: '🇨🇮 Côte d\'Ivoire' },
+    { value: 'CI', label: "🇨🇮 Côte d'Ivoire" },
     { value: 'HR', label: '🇭🇷 Croatia' },
     { value: 'CU', label: '🇨🇺 Cuba' },
     { value: 'CY', label: '🇨🇾 Cyprus' },

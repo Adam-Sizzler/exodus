@@ -10,36 +10,58 @@ import {
     useSensor,
     useSensors
 } from '@dnd-kit/core'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { Box, Container, Stack } from '@mantine/core'
+import { useListState } from '@mantine/hooks'
 import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
-import { useListState, useMediaQuery } from '@mantine/hooks'
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { Box, Container, em, Stack } from '@mantine/core'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import { NodeResponse, nodesQueryKeys, useGetNodes, useReorderNodes } from '@shared/api/hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { queryClient } from '@shared/api'
+import { nodesQueryKeys, useGetNodes, useReorderNodes } from '@shared/api/hooks'
+import { useIsMobile } from '@shared/hooks'
+import { NO_TAG, TagFilterBar } from '@shared/ui'
 import { EmptyPageLayout } from '@shared/ui/layouts/empty-page'
 import { sToMs } from '@shared/utils/time-utils'
-import { queryClient } from '@shared/api'
 
-import { NodesSpotlightSearchWidget } from '../nodes-spotlight-search'
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import {
+    useNodesActiveTag,
+    useViewPreferencesStoreActions
+} from '@entities/dashboard/view-preferences-store'
+
 import { NodeCardWidget } from '../node-card'
-import styles from './NodesTable.module.css'
+import { NodesSpotlightSearchWidget } from '../nodes-spotlight-search'
 import { IProps } from './interfaces'
+import styles from './NodesTable.module.css'
 
 export const NodesTableWidget = memo((props: IProps) => {
     const { nodes } = props
-    const [state, handlers] = useListState(nodes || [])
+
+    const activeTag = useNodesActiveTag()
+    const { setNodesActiveTag } = useViewPreferencesStoreActions()
+
+    const visibleNodes = useMemo(() => {
+        if (!nodes) return []
+        if (activeTag === null) return nodes
+        if (activeTag === NO_TAG) return nodes.filter((node) => (node.tags ?? []).length === 0)
+        return nodes.filter((node) => (node.tags ?? []).includes(activeTag))
+    }, [nodes, activeTag])
+
+    const [state, handlers] = useListState(visibleNodes)
 
     const openModalWithData = useModalsStoreOpenWithData()
     const [isPollingEnabled, setIsPollingEnabled] = useState(true)
-    const [draggedNode, setDraggedNode] = useState<NodeResponse | null>(null)
+    const [draggedNode, setDraggedNode] = useState<
+        GetAllNodesCommand.Response['response'][number] | null
+    >(null)
     const [scrollMargin, setScrollMargin] = useState(0)
     const listRef = useRef<HTMLDivElement | null>(null)
     const prevStateRef = useRef(state)
-    const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
+    const activeTagRef = useRef(activeTag)
+    activeTagRef.current = activeTag
+    const isMobile = useIsMobile()
 
     useGetNodes({
         rQueryParams: {
@@ -90,13 +112,18 @@ export const NodesTableWidget = memo((props: IProps) => {
                 return
             }
 
+            if (activeTagRef.current !== null) {
+                prevStateRef.current = state
+                return
+            }
+
             const updatedNodes = state.map((node, index) => ({
                 uuid: node.uuid,
                 viewPosition: index
             }))
 
             const hasOrderChanged = prevStateRef.current?.some(
-                (node, index) => node.uuid !== state[index].uuid
+                (node, index) => state[index] && node.uuid !== state[index].uuid
             )
 
             if (hasOrderChanged) {
@@ -108,9 +135,9 @@ export const NodesTableWidget = memo((props: IProps) => {
     }, [state])
 
     useEffect(() => {
-        handlers.setState(nodes || [])
-        prevStateRef.current = nodes || []
-    }, [nodes])
+        handlers.setState(visibleNodes)
+        prevStateRef.current = visibleNodes
+    }, [visibleNodes])
 
     useLayoutEffect(() => {
         if (listRef.current) {
@@ -170,6 +197,8 @@ export const NodesTableWidget = memo((props: IProps) => {
 
     return (
         <>
+            <TagFilterBar activeTag={activeTag} items={nodes} onChange={setNodesActiveTag} />
+
             <DndContext
                 collisionDetection={closestCenter}
                 modifiers={[restrictToVerticalAxis]}
@@ -207,11 +236,13 @@ export const NodesTableWidget = memo((props: IProps) => {
                                                     transform: `translateY(${
                                                         virtualItem.start -
                                                         virtualizer.options.scrollMargin
-                                                    }px)`
+                                                    }px)`,
+                                                    willChange: 'transform'
                                                 }}
                                             >
                                                 <div className={styles.nodeFadeIn}>
                                                     <NodeCardWidget
+                                                        disableReordering={activeTag !== null}
                                                         handleViewNode={handleViewNode}
                                                         isMobile={isMobile}
                                                         node={item}

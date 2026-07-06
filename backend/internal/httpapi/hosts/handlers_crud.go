@@ -143,18 +143,24 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			_ = tx.Rollback()
 			return err
 		}
+		finalMask, err := normalizeJSONValue(req.FinalMask, true)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
 
 		_, err = tx.ExecContext(r.Context(), `
             INSERT INTO hosts (
                 uuid, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params, final_mask,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
-                allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
+                vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
+                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
                 xray_json_template_uuid, keep_sni_blank,
-                exclude_from_subscription_types, tag, is_hidden,
+                exclude_from_subscription_types, tags, is_hidden,
                 override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
 			hostUUID,
 			req.Remark,
@@ -171,18 +177,22 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			singboxMux,
 			clashMux,
 			sockopt,
+			finalMask,
 			coalesceBool(req.IsDisabled, false),
 			normalizeOptionalStringAllowEmpty(req.ServerDescription),
 			coalesceBool(req.OverrideProtocolCredential, false),
 			normalizeProtocolCredentialForCreate(req.OverrideProtocolCredential, req.ProtocolCredential),
+			normalizeNullableInt(req.VlessRouteID),
+			normalizeNullableString(req.PinnedPeerCertSha256),
+			normalizeNullableString(req.VerifyPeerCertByName),
 			coalesceBool(req.AllowInsecure, false),
 			coalesceBool(req.ShuffleHost, false),
-			coalesceBool(req.SelectorNodesFirst, false),
 			coalesceBool(req.MihomoX25519, false),
+			normalizeMihomoIPVersion(req.MihomoIPVersion),
 			normalizeOptionalStringAllowEmpty(req.XrayJSONTemplateUUID),
 			coalesceBool(req.KeepSNIBlank, false),
 			ensureStringSlice(req.ExcludeFromSubscription),
-			normalizeOptionalStringAllowEmpty(req.Tag),
+			normalizeTags(req.Tags),
 			coalesceBool(req.IsHidden, false),
 			coalesceBool(req.OverrideSNIFromAddress, false),
 			normalizeOptionalStringAllowEmpty(req.Inbound.ConfigProfileUUID),
@@ -388,6 +398,16 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 				add("sockopt_params", val)
 			}
 		}
+		if set, val, err := normalizeOptionalJSONField(req.FinalMask, true); err != nil {
+			_ = tx.Rollback()
+			return err
+		} else if set {
+			if val == nil {
+				clauses = append(clauses, "final_mask = NULL")
+			} else {
+				add("final_mask", val)
+			}
+		}
 
 		if req.IsDisabled != nil {
 			add("is_disabled", *req.IsDisabled)
@@ -415,17 +435,42 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 				add("protocol_credential", *normalizedCredential)
 			}
 		}
+		if req.VlessRouteID.Set {
+			if req.VlessRouteID.Value == nil {
+				clauses = append(clauses, "vless_route_id = NULL")
+			} else {
+				add("vless_route_id", *req.VlessRouteID.Value)
+			}
+		}
+		if req.PinnedPeerCertSha256.Set {
+			if req.PinnedPeerCertSha256.Value == nil {
+				clauses = append(clauses, "pinned_peer_cert_sha256 = NULL")
+			} else {
+				add("pinned_peer_cert_sha256", strings.TrimSpace(*req.PinnedPeerCertSha256.Value))
+			}
+		}
+		if req.VerifyPeerCertByName.Set {
+			if req.VerifyPeerCertByName.Value == nil {
+				clauses = append(clauses, "verify_peer_cert_by_name = NULL")
+			} else {
+				add("verify_peer_cert_by_name", strings.TrimSpace(*req.VerifyPeerCertByName.Value))
+			}
+		}
 		if req.AllowInsecure != nil {
 			add("allow_insecure", *req.AllowInsecure)
 		}
 		if req.ShuffleHost != nil {
 			add("shuffle_host", *req.ShuffleHost)
 		}
-		if req.SelectorNodesFirst != nil {
-			add("selector_nodes_first", *req.SelectorNodesFirst)
-		}
 		if req.MihomoX25519 != nil {
 			add("mihomo_x25519", *req.MihomoX25519)
+		}
+		if req.MihomoIPVersion.Set {
+			if req.MihomoIPVersion.Value == nil {
+				clauses = append(clauses, "mihomo_ip_version = NULL")
+			} else {
+				add("mihomo_ip_version", normalizeMihomoIPVersion(req.MihomoIPVersion.Value))
+			}
 		}
 		if req.XrayJSONTemplateUUID.Set {
 			if req.XrayJSONTemplateUUID.Value == nil {
@@ -437,12 +482,8 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		if req.KeepSNIBlank != nil {
 			add("keep_sni_blank", *req.KeepSNIBlank)
 		}
-		if req.Tag.Set {
-			if req.Tag.Value == nil {
-				clauses = append(clauses, "tag = NULL")
-			} else {
-				add("tag", strings.TrimSpace(*req.Tag.Value))
-			}
+		if req.Tags != nil {
+			add("tags", normalizeTags(req.Tags))
 		}
 		if req.IsHidden != nil {
 			add("is_hidden", *req.IsHidden)

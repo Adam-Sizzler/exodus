@@ -1,6 +1,8 @@
 .card {
     cursor: pointer;
-    transition: background-color 150ms ease;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.08);
 
@@ -26,6 +28,15 @@
         transparent 100%
     );
     animation: shimmer 1.5s infinite;
+}
+
+.card.confirming {
+    background: rgba(250, 82, 82, 0.04);
+    border-color: rgba(250, 82, 82, 0.4);
+}
+
+.card.confirming:hover {
+    background: rgba(250, 82, 82, 0.08);
 }
 
 @keyframes shimmer {

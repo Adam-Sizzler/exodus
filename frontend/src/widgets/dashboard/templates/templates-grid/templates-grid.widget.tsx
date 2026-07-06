@@ -1,18 +1,18 @@
-import { PiBracketsAngle } from 'react-icons/pi'
 import { modals } from '@mantine/modals'
 import { useMemo } from 'react'
+import { PiBracketsAngle } from 'react-icons/pi'
 
 import {
     QueryKeys,
     useDeleteSubscriptionTemplate,
     useReorderSubscriptionTemplates
 } from '@shared/api/hooks'
-import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
-import { SingboxLogo } from '@shared/ui/logos/singbox-logo'
-import { MihomoLogo } from '@shared/ui/logos/mihomo-logo'
-import { StashLogo } from '@shared/ui/logos/stash-logo'
 import { queryClient } from '@shared/api/query-client'
+import { MihomoLogo } from '@shared/ui/logos/mihomo-logo'
+import { SingboxLogo } from '@shared/ui/logos/singbox-logo'
+import { StashLogo } from '@shared/ui/logos/stash-logo'
 import { XrayLogo } from '@shared/ui/logos/xray-logo'
+import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 
 import { TemplatesCardWidget } from '../template-card/templates-card.widget'
 import { IProps } from './interfaces'

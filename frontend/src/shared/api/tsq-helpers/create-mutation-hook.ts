@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 
+import { instance } from '../axios'
 import { createUrl, handleRequestError } from '../helpers'
 import { CreateMutationHookArgs } from '../interfaces'
-import { instance } from '../axios'
 
 export function createMutationHook<
     RouteParamsSchema extends z.ZodType,

@@ -12,7 +12,6 @@
         "overview": "Обзор",
         "management": "Управление",
         "subscription-settings": "Настройки",
-        "subscription-connections": "Ноды",
         "utils": "Утилиты",
         "happ-routing-builder": "Happ-роутинг",
         "templates": "Шаблоны",
@@ -21,15 +20,18 @@
         "config-profiles": "Профили",
         "internal-squads": "Внутренние сквады",
         "external-squads": "Внешние сквады",
-        "srs-lists": "SRS списки",
         "infra-billing": "Инфра-биллинг",
         "hwid-inspector": "Инспектор HWID",
         "tools": "Инструменты",
         "srh-inspector": "Инспектор SRH",
-        "modules": "Модули",
         "response-rules": "Правила ответов",
         "exodus-settings": "Настройки Exodus",
-        "node-plugins": "Плагины нод"
+        "node-plugins": "Плагины нод",
+        "tb-reports": "Torrent Blocker Reports",
+        "sessions-explorer": "Обозреватель сессий",
+        "subscription-connections": "Ноды",
+        "srs-lists": "SRS списки",
+        "modules": "Модули"
     },
     "common": {
         "delete": "Удалить",
@@ -37,6 +39,7 @@
         "cancel": "Закрыть",
         "copied": "Скопировано",
         "copy": "Скопировать",
+        "paste": "Вставить",
         "refresh": "Обновить",
         "save": "Сохранить",
         "update": "Обновить",
@@ -61,7 +64,13 @@
         "nothing-found": "Ничего не найдено",
         "name": "Имя",
         "clone": "Клонировать",
-        "event-sent": "Запрос отправлен"
+        "event-sent": "Запрос отправлен",
+        "open": "Открыть",
+        "view": "Посмотреть",
+        "clear": "Очистить",
+        "color": "Цвет",
+        "all": "Все",
+        "without-tags": "Без тегов"
     },
     "bandwidth-metrics": {
         "current-year": "Текущий год",
@@ -154,7 +163,8 @@
         "internal-squads": "Внутренние сквады",
         "first-connected-at": "Первое подключение",
         "sub-last-opened-at": "Последний запрос подписки",
-        "tag": "Tag"
+        "tag": "Tag",
+        "used-traffic": "Использованный трафик (%)"
     },
     "header-buttons": {
         "feature": {}
@@ -298,8 +308,6 @@
             "pick-value": "Выберите значение",
             "traffic-reset-strategy": "Стратегия сброса трафика",
             "traffic-reset-strategy-description": "Как часто следует сбрасывать трафик пользователя",
-            "data-limit": "Лимит трафика",
-            "data-limit-description": "Введите лимит данных в ГБ, 0 – безлимит.",
             "username-cannot-be-changed-later": "Имя пользователя нельзя будет изменить позже",
             "loading-user-creation": "Загрузка создания пользователя...",
             "create-user": "Создать пользователя",
@@ -314,7 +322,9 @@
             "hwid-device-limit": "Ограничение HWID устройств",
             "expire-at-description": "Дата и время истечения срока действия подписки пользователя.",
             "internal-squads": "Внутренние сквады",
-            "internal-squads-description": "Выберите в каких внутренних группах будет состоять пользователь."
+            "internal-squads-description": "Выберите в каких внутренних группах будет состоять пользователь.",
+            "data-limit": "Лимит трафика",
+            "data-limit-description": "Введите лимит данных в ГБ, 0 – безлимит."
         }
     },
     "login-form-feature": {
@@ -372,8 +382,6 @@
         "path-e-g-ws": "путь (например, /ws)",
         "security-layer": "Security Layer",
         "tls-transport-layer-security": "TLS (Transport Layer Security)",
-        "uuid-override-placeholder": "UUID (например, 00000000-0000-0000-0000-000000000000)",
-        "password-override-placeholder": "Пароль (например, my-secret-password)",
         "none": "None",
         "inbounds-default": "По умолчанию",
         "here-you-can-override-security-settings-from-xtls-config": "Здесь вы можете переопределить настройки безопасности из конфигурации XTLS.",
@@ -393,10 +401,8 @@
         "select-one-inbound-to-apply-to-the-host": "Select one inbound to apply to the host",
         "server-description-header": "Server Description",
         "server-description-placeholder": "Максимум 30 символов",
-        "this-will-only-be-used-for-xray-json-output": "Это будет использоваться только для Xray JSON.",
-        "this-will-only-be-used-for-selected-core-output": "Это будет использоваться только для {{core}}.",
+        "this-will-only-be-used-for-xray-json-output": "Это будет использоваться только для Singbox JSON.",
         "please-ensure-you-provide-a-valid-json-mux-object": "Убедитесь, что вы предоставили правильный объект JSON MUX.",
-        "please-ensure-you-provide-a-valid-yaml-mux-object": "Убедитесь, что вы указали корректный YAML для MUX.",
         "for-more-information-refer-to": "За дополнительной информацией обратитесь к",
         "xtls-documentation": "документации XTLS",
         "final-mask-description": "Переопределение finalMask позволяет точно настроить finalMask в случаях, когда конфигурации finalMask на стороне сервера и клиента должны отличаться.<br/><br/>FinalMask применяется только к форматам вывода клиента Xray-JSON и Base64.<br/><br/>Обязательно ознакомьтесь с <anchor>документацией Xray</anchor>.",
@@ -407,7 +413,6 @@
         "advanced": "Расширенные",
         "connection-overrides": "Переопределения соединений",
         "xray-json-and-raw": "Конфигурация и Raw",
-        "mux-core": "MUX Core",
         "hide-host": "Скрыть хост",
         "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "Скрыть хост от пользователей, Exodus отправит этот хост только для RAW-формата подписки",
         "apps-specific": "Настройки для приложений",
@@ -420,21 +425,10 @@
         "override-sni-from-address": "Переопределить SNI из адреса",
         "override-sni-from-address-description": "Эта опция заменяет значение SNI на указанное значение поля Адрес. Это особенно полезно для опций: мульти-домен или Wildcard-домен.",
         "legacy-options": "Устаревшие настройки",
-        "allow-insecure": "Разрешить небезопасные",
         "shuffled-hosts-hover-card": "Перемешиваемые узлы будут помещены в верхней части списка и отсортированы случайным образом.",
-        "override-protocol-credential": "Переопределить credential протокола",
-        "override-protocol-credential-select-inbound": "Выберите inbound на вкладке Basic",
-        "override-protocol-credential-unsupported": "Протокол выбранного inbound не поддерживается",
-        "uuid-for-all-users": "UUID для всех пользователей",
-        "password-for-all-users": "Пароль для всех пользователей",
-        "uuid-override": "Переопределение UUID",
-        "password-override": "Переопределение Password",
-        "generate-protocol-credential": "Сгенерировать credential",
-        "replaces-user-credential": "Заменяет credential пользователя при генерации конфигов.",
+        "vless-route-description": "От 1 до 65535, оставьте пустым (или 0) для отключения",
         "misc-settings": "Прочие настройки",
         "shuffle-host": "Перемешать хост",
-        "selector-nodes-first": "Нода в начале селектора",
-        "selector-nodes-first-description": "Для групп select в Sing-box и Mihomo. Включено: эта нода ставится перед шаблонными элементами вроде auto. Выключено: после них.",
         "mihomo-specific": "Настройки для Mihomo",
         "enable-x25519mlkem768": "Включение x25519mlkem768",
         "pick-nodes-which-resolved-from-this-host-only-visual-assignment": "Выберите ноды, которые направлены на этот хост. Это поле влияет только на визуальное отображение.",
@@ -452,7 +446,24 @@
         "hidden-host-description": "По умолчанию Exodus не будет включать скрытые хосты в подписку. Скрытый хост можно использовать с Mihomo и Xray-Json Advanced, Raw.",
         "server-description-1": "В поддерживаемых клиентах имя протокола (например, vless) будет заменено на описание, указанное здесь.",
         "server-description-2": "Не все клиентские приложения поддерживают эту функцию. Для получения более подробной информации обратитесь к документации по приложениям, перечисленным ниже.",
-        "supported-clients": "Поддерживаемые клиенты"
+        "supported-clients": "Поддерживаемые клиенты",
+        "uuid-override-placeholder": "UUID (например, 00000000-0000-0000-0000-000000000000)",
+        "password-override-placeholder": "Пароль (например, my-secret-password)",
+        "this-will-only-be-used-for-selected-core-output": "Это будет использоваться только для {{core}}.",
+        "please-ensure-you-provide-a-valid-yaml-mux-object": "Убедитесь, что вы указали корректный YAML для MUX.",
+        "mux-core": "MUX Core",
+        "allow-insecure": "Разрешить небезопасные",
+        "override-protocol-credential": "Переопределить credential протокола",
+        "override-protocol-credential-select-inbound": "Выберите inbound на вкладке Basic",
+        "override-protocol-credential-unsupported": "Протокол выбранного inbound не поддерживается",
+        "uuid-for-all-users": "UUID для всех пользователей",
+        "password-for-all-users": "Пароль для всех пользователей",
+        "uuid-override": "Переопределение UUID",
+        "password-override": "Переопределение Password",
+        "generate-protocol-credential": "Сгенерировать credential",
+        "replaces-user-credential": "Заменяет credential пользователя при генерации конфигов.",
+        "selector-nodes-first": "Нода в начале селектора",
+        "selector-nodes-first-description": "Для групп select в Sing-box и Mihomo. Включено: эта нода ставится перед шаблонными элементами вроде auto. Выключено: после них."
     },
     "base-node-form": {
         "country": "Страна",
@@ -460,6 +471,23 @@
         "internal-name": "Внутреннее имя",
         "internal-name-placeholder": "e.g. US-NY-Node-01",
         "address": "Адрес",
+        "e-g-example-com": "например, example.com",
+        "traffic-tracking": "Отслеживание трафика",
+        "limit": "Лимит",
+        "reset-day": "День сброса",
+        "e-g-1-31": "например, 1-31",
+        "notify-percent": "% уведомления",
+        "e-g-50": "например, 50",
+        "consumption-m-line-1": "Применяет выбранный множитель к трафику пользователя (1,0 = обычный, 0,5 = половина, 2,0 = двойной).",
+        "consumption-m-line-2": "Проще говоря, это означает, что если лимит трафика пользователя составляет 1 GB, а множитель потребления равен 2,0, пользователь сможет использовать только 0,5 GB трафика (реальное использование), но Exodus покажет использование как 1 GB, и пользователь будет переведен в статус LIMITED.",
+        "node-vitals": "Параметры ноды",
+        "consumption": "Потребление",
+        "core-configuration": "Конфигурация ядра",
+        "tracking-and-billing": "Трекинг & Биллинг",
+        "more-actions": "Действия",
+        "quick-actions": "Быстрые действия",
+        "copy-node-uuid": "Скопировать UUID ноды",
+        "management": "Менеджмент",
         "node-port": "Порт ноды",
         "node-port-placeholder": "2222",
         "api-schema": "Режим защиты gRPC",
@@ -476,27 +504,10 @@
         "grpc-token-sub-grpc-token": "gRPC-токен (SUB_GRPC_TOKEN)",
         "exodus-api-token-https-only": "Exodus API токен (только HTTPS)",
         "select-token": "Выберите токен",
-        "e-g-example-com": "например, example.com",
         "consumption-multiplier": "Коэффициент использования",
-        "traffic-tracking": "Отслеживание трафика",
-        "limit": "Лимит",
-        "reset-day": "День сброса",
-        "e-g-1-31": "например, 1-31",
-        "notify-percent": "% уведомления",
-        "e-g-50": "например, 50",
-        "consumption-m-line-1": "Применяет выбранный множитель к трафику пользователя (1,0 = обычный, 0,5 = половина, 2,0 = двойной).",
-        "consumption-m-line-2": "Проще говоря, это означает, что если лимит трафика пользователя составляет 1 GB, а множитель потребления равен 2,0, пользователь сможет использовать только 0,5 GB трафика (реальное использование), но Exodus покажет использование как 1 GB, и пользователь будет переведен в статус LIMITED.",
-        "node-vitals": "Параметры ноды",
         "subscription-configuration": "Конфигурация подписки",
         "subscription-profile": "Профиль подписки",
-        "select-subscription-profile": "Выберите профиль подписки",
-        "consumption": "Потребление",
-        "core-configuration": "Конфигурация ядра",
-        "tracking-and-billing": "Трекинг & Биллинг",
-        "more-actions": "Действия",
-        "quick-actions": "Быстрые действия",
-        "copy-node-uuid": "Скопировать UUID ноды",
-        "management": "Менеджмент"
+        "select-subscription-profile": "Выберите профиль подписки"
     },
     "home": {
         "page": {
@@ -507,6 +518,26 @@
             "exodus-usage": "Использование Exodus",
             "process-details": "Детали по процессам",
             "runtime": "Runtime"
+        },
+        "runtime-info": {
+            "title": "Справка по runtime-метрикам Exodus",
+            "subtitle": "Что означает каждое значение в runtime-карточках",
+            "intro": "Каждая карта показывает текущее состояние <highlight>Go-процесса Exodus</highlight>. Используйте это описание, чтобы понимать метрики и замечать реальные проблемы.",
+            "instance-types-title": "Процесс",
+            "instance-types-description": "Exodus сейчас показывает один Go runtime-процесс. Эта карточка описывает API-процесс, который обслуживает панель, подписки и координацию с нодами.",
+            "api-description": "Обрабатывает запросы панели, подписки и координацию с нодами. Это <highlight>основной пользовательский процесс</highlight>.",
+            "scheduler-description": "Запускает периодические проверки, обслуживание и уведомления. Его задача — делать плановую работу предсказуемой и не блокировать API.",
+            "processor-description": "Выполняет фоновые задачи: <highlight>проверки нод</highlight>, <highlight>агрегацию трафика</highlight> и операции, которые не должны тормозить API.",
+            "memory-description": "Память, которую Go runtime и операционная система видят у процесса Exodus.",
+            "heap-description": "Go heap в формате <highlight>heap alloc / heap sys</highlight>. Alloc — реально занятая heap-память, sys — heap-память, зарезервированная Go runtime у ОС.",
+            "rss-description": "<highlight>Resident Set Size</highlight> — физическая RAM, которую процесс реально занимает сейчас. Это быстрый индикатор настоящего давления по памяти.",
+            "external-description": "<highlight>Go Sys</highlight> — вся память, полученная Go runtime у ОС: heap, стеки, metadata и внутренние структуры runtime.",
+            "array-buffers-description": "<highlight>Stack</highlight> — память стеков goroutine. Обычно растёт вместе с количеством goroutine.",
+            "event-loop-description": "Состояние Go scheduler. Эти значения показывают, не ждут ли goroutine запуска слишком долго.",
+            "delay-description": "Средняя задержка scheduler. Чем ниже, тем лучше; стабильный рост может указывать на CPU-нагрузку или блокирующую работу.",
+            "p99-description": "<highlight>99-й перцентиль</highlight> задержки scheduler. Показывает пики, которые среднее значение может скрывать.",
+            "active-handles-description": "<highlight>Goroutines</highlight> — лёгкие задачи Go. Стабильное число нормально; бесконечный рост обычно означает утечку или зависшую работу.",
+            "threads-description": "Потоки ОС, используемые Go-процессом. Обычно меняются из-за блокирующих syscall, cgo и решений scheduler."
         }
     },
     "login-form": {
@@ -653,39 +684,15 @@
             "set-port": "Установить порт",
             "port": "Порт",
             "clear-selection": "Очистить выбор",
-            "select-all": "Выбрать все"
+            "select-all": "Выбрать все",
+            "dangling-hosts-skipped": "{{count}} хостов было пропущено при клонировании."
         }
     },
-    "srs-lists": {
-        "feature": {
-            "available": "доступен",
-            "unavailable": "недоступен",
-            "add-links": "Добавить ссылки",
-            "direct-link-required": "Требуется прямая ссылка",
-            "direct-url-hint": "Используйте прямую ссылку на .srs файл (пример: https://raw.githubusercontent.com/.../ruleset.srs). Ссылки с /blob/ ведут на страницу и не подойдут как прямой источник файла.",
-            "settings": "Настройки",
-            "optional-for-single-url": "Необязательно для одной ссылки",
-            "multiple-urls-hint": "Одна или несколько ссылок через пробел, запятую или новую строку",
-            "selected": "Выбрано",
-            "selected-count": "Выбрано",
-            "delete-selected-title": "Удалить выбранные SRS списки",
-            "set-update-interval": "Установить интервал",
-            "update-interval": "Интервал обновления",
-            "update-interval-hint": "Поддерживается парсером длительности sing-box. Примеры: 10m, 1h, 12h, 1d, 7d.",
-            "search-by-name": "Поиск по имени",
-            "search-by-address": "Поиск по адресу",
-            "last-error": "Ошибка",
-            "search-by-url": "Поиск по ссылке",
-            "filters": "Фильтры",
-            "filter-by-tags": "Фильтр по тегам",
-            "all-tags": "Все теги",
-            "enabled": "Включен",
-            "disabled": "Отключен",
-            "urls": "Ссылки",
-            "edit-list": "Редактировать SRS список",
-            "url": "Ссылка",
-            "status": "Статус"
-        }
+    "edit-many-hosts-drawer": {
+        "confirm-title": "Подтвердите массовое обновление",
+        "confirm-description": "Следующие поля будут обновлены для {{count}} хостов:",
+        "no-changes-title": "Обновлять нечего",
+        "no-changes-description": "Вы не изменили ни одного поля."
     },
     "bulk-user-actions-drawer": {
         "widget": {
@@ -757,15 +764,15 @@
                     "perform-action-on-users": "Выполнить действия для {{usersCount}} выбранных пользователей",
                     "resets-the-traffic-usage-to-zero-for-all-selected-users": "Сбрасывает использование трафика до нуля для всех выбранных пользователей",
                     "revokes-subscription-for-all-selected-users": "Отзывает подписку для всех выбранных пользователей",
-                    "change-active-internal-squads": "Изменить активные внутренние группы",
                     "specify-internal-squads-that-will-be-assigned-to-the-user": "Выберите внутренние сквады, в которых будет состоять пользователь",
                     "internal-squads": "Внутренние сквады",
-                    "changes-the-active-internal-squads-for-all-selected-users": "Изменить активные внутренние сквады для всех выбранных пользователей",
                     "extend-expiration-date": "Продлить срок действия",
                     "enter-the-number-of-days-to-extend-the-expiration-date": "Введите количество дней, чтобы продлить срок действия",
                     "extend-days": "Добавить дни",
                     "extend": "Продлить",
-                    "extend-expiration-date-description": "Дни будут добавлены к текущей дате истечения срока действия, для всех выбранных пользователей."
+                    "extend-expiration-date-description": "Дни будут добавлены к текущей дате истечения срока действия, для всех выбранных пользователей.",
+                    "change-active-internal-squads": "Изменить активные внутренние группы",
+                    "changes-the-active-internal-squads-for-all-selected-users": "Изменить активные внутренние сквады для всех выбранных пользователей"
                 }
             }
         },
@@ -888,7 +895,6 @@
             "revoked-at": "Дата отзыва",
             "connection-information": "Информация о подключении",
             "trojan-password": "Trojan Password",
-            "vless-uuid": "VLESS UUID",
             "ss-password": "SS Password",
             "last-online": "Последний раз в сети",
             "last-connected-node": "Последняя подключенная нода",
@@ -897,7 +903,8 @@
             "updated-at": "Дата обновления",
             "tag": "Tag",
             "first-connected-at": "Первое подключение",
-            "active-internal-squads": "Активные внутренние сквады"
+            "active-internal-squads": "Активные внутренние сквады",
+            "vless-uuid": "VLESS UUID"
         }
     },
     "subscription-tabs": {
@@ -1054,6 +1061,8 @@
             "nodes": "Ноды",
             "download": "Скачать",
             "quick-view": "Быстрый просмотр",
+            "edit-xray-config": "Изменить конфиг Singbox",
+            "xray-config": "Конфиг Singbox",
             "edit-singbox-config": "Singbox Конфиг"
         }
     },
@@ -1163,7 +1172,10 @@
                 "please-select-a-provider-and-billing-node": "Пожалуйста, выберите провайдера и биллинг ноду",
                 "billing-node": "Биллинг нода",
                 "next-billing-at": "Следующий платеж",
-                "next-billing-at-description": "Дата и время для следующей оплаты этого узла. Exodus уведомит вас о предстоящем платеже."
+                "next-billing-at-description": "Дата и время для следующей оплаты этого узла. Exodus уведомит вас о предстоящем платеже.",
+                "existing-node": "Существующий узел",
+                "custom-name": "Пользовательское название",
+                "custom-name-description": "Если узел не управляется Exodus, используйте пользовательское имя."
             }
         }
     },
@@ -1264,9 +1276,9 @@
     "show-config-profiles-with-inbounds": {
         "feature": {
             "config-profile": "Профили",
-            "select-the-config-profile-that-will-be-applied-to-this-node": "Выберите профиль, который будет применить для этой ноды.",
             "no-config-profile-selected": "Профиль не выбран",
-            "choose-a-profile-to-configure-inbounds-for-this-node": "Выберите профиль для настройки инбаундов для этой ноды"
+            "choose-a-profile-to-configure-inbounds-for-this-node": "Выберите профиль для настройки инбаундов для этой ноды",
+            "select-the-config-profile-that-will-be-applied-to-this-node": "Выберите профиль, который будет применить для этой ноды."
         }
     },
     "access-settings-card": {
@@ -1288,11 +1300,12 @@
                 "unknown-inbound": "Неизвестный инбаунд",
                 "selected": "выбрано",
                 "no-inbound-selected": "Инбаунд не выбран",
-                "choose-an-inbound-to-apply-to-the-host": "Выберите инбаунд, который будет привязан к хосту.",
-                "apply-changes": "Применить изменения",
                 "search-profiles-or-inbounds": "Поиск по профилям или инбаундам...",
                 "no-profiles-or-inbounds-found": "Профили или инбаунды не найдены",
-                "no-config-profiles-available": "Нет доступных профилей"
+                "no-config-profiles-available": "Нет доступных профилей",
+                "assign-an-inbound-to-the-host": "[deprecated]",
+                "choose-an-inbound-to-apply-to-the-host": "Выберите инбаунд, который будет привязан к хосту.",
+                "apply-changes": "Применить изменения"
             }
         }
     },
@@ -1304,7 +1317,12 @@
             "payments-in": "Платежей в {{month}}",
             "total-payments-made": "всего платежей",
             "total-spent": "Всего потрачено",
-            "lifetime-spending": "суммарных трат"
+            "lifetime-spending": "суммарных трат",
+            "overdue": "Просрочено",
+            "payment-overdue": "платеж просрочен",
+            "all-up-to-date": "все актуально",
+            "next-payment": "Следующий платёж",
+            "no-upcoming-payments": "нет предстоящих платежей"
         }
     },
     "edit-node-by-uuid-modal": {
@@ -1323,6 +1341,16 @@
             "address": "Поиск по адресу...",
             "filter-by-tags": "Фильтр по тегам"
         }
+    },
+    "disclaimer-overlay": {
+        "title": "Дисклеймер",
+        "subtitle": "Пожалуйста, прочтите это уведомление прежде чем продолжить.",
+        "intro": "Exodus — это <highlight>решение с открытым исходным кодом для самостоятельного размещения</highlight>, предназначенное для управления прокси и пользователями. Программное обеспечение предоставляется <warning>«как есть», без каких-либо гарантий</warning>, явных или подразумеваемых.",
+        "responsibility": "Вы несёте полную ответственность за то, как вы развертываете и используете это программное обеспечение.",
+        "compliance": "Вы обязаны соблюдать все законы и правила, действующие в вашей юрисдикции.",
+        "liability": "Разработчики и контрибьюторы проекта не несут никакой ответственности за любое неправомерное использование, ущерб или потерю данных.",
+        "license-acknowledgement": "Продолжая, вы подтверждаете, что прочитали и согласны с <anchor>условиями лицензии</anchor>.",
+        "accept-button": "Я понимаю и принимаю"
     },
     "mobile-warning-overlay": {
         "mobile-device-detected": "Обнаружен смартфон",
@@ -1356,7 +1384,9 @@
     },
     "restart-node-button": {
         "feature": {
-            "restart": "Перезапустить"
+            "restart": "Перезапустить",
+            "restart-description-line-1": "гарантирует перезапуск ядра Xray на ноде. Рекомендуется использовать данный вариант.",
+            "restart-description-line-2": "будет отправлен запрос этой ноде для перезапуска Xray, но запрос может быть невыполнен, если хэш узла совпадает с текущим."
         }
     },
     "node-details-card": {
@@ -1369,22 +1399,9 @@
             "enable-node": "Включить ноды",
             "disable-node": "Выключить ноду",
             "config-profile-or-inbounds-is-missing": "Профиль или инбаунд не выбран",
-            "singbox-core-version": "Версия ядра Singbox",
-            "exodus-node-version": "Версия модуля @exodus/node"
-        }
-    },
-    "node-system-card": {
-        "widget": {
-            "system-info": "Система",
-            "memory": "Память",
-            "used": "Использовано",
-            "free": "Свободно",
-            "total": "Всего",
-            "system": "Система",
-            "system-uptime": "Время работы системы",
-            "network": "Сеть",
-            "kernel": "Ядро",
-            "interface": "Интерфейс"
+            "xray-core-version": "Версия ядра Singbox",
+            "exodus-node-version": "Версия модуля @exodus/node",
+            "singbox-core-version": "Версия ядра Singbox"
         }
     },
     "config-profiles": {
@@ -1393,11 +1410,11 @@
                 "config-profiles": "Профили",
                 "no-profile-selected": "Профиль не выбран",
                 "no-inbounds-selected": "Инбаунды не выбраны",
-                "choose-config-profile-to-apply-to-the-node": "Выберите Профиль для применения к ноде.",
-                "apply-changes": "Сохранить",
                 "search-profiles-or-inbounds": "Поиск по профилям или инбаундам...",
                 "no-profiles-or-inbounds-found": "Профили или инбаунды не найдены",
-                "no-config-profiles-available": "Нет доступных профилей"
+                "no-config-profiles-available": "Нет доступных профилей",
+                "choose-config-profile-to-apply-to-the-node": "Выберите Профиль для применения к ноде.",
+                "apply-changes": "Сохранить"
             }
         }
     },
@@ -1430,6 +1447,7 @@
         "card": {
             "stats": "Статистика",
             "traffic-refill-in-days": "Сброс трафика (дней):",
+            "represents-the-uptime-of-the-xray-core": "Отражает время работы ядра Singbox",
             "represents-the-uptime-of-the-singbox-core": "Отражает время работы ядра Singbox",
             "represents-the-uptime-of-the-subscription-node-container": "Отражает время работы контейнера ноды подписки"
         }
@@ -1552,7 +1570,7 @@
                 "snippets-help-line-2": "Сниппет должен содержать массив объектов Outbound или Rules и требуется хотя бы один элемент внутри этого массива.",
                 "snippets-help-line-3": "Автозаполнение доступно для имен сниппетов. Кроме того, вы можете быстро просмотреть сниппет, наведя курсор на имя в редакторе.",
                 "snippets-help-line-4": "Внутри outbounds[], вы можете ссылаться на сниппеты по имени.",
-                "snippets-help-line-5": "Внутри routing.rules[], вы можете ссылаться на сниппеты по имени."
+                "snippets-help-line-5": "Внутри route.rules[], вы можете ссылаться на сниппеты по имени."
             }
         }
     },
@@ -1576,14 +1594,16 @@
         "copy-the": "Скопируйте",
         "content-for-the-exodus-node-below": "содержимое для Exodus node ниже.",
         "learn-more": "Дополнительная информация.",
-        "domain-or-ip": "Домен или IP"
+        "domain-or-ip": "Домен или IP",
+        "additional-options": "Дополнительные параметры"
     },
     "create-node-step-3-status": {
         "establishing-mtls-connection": "Установка mTLS соединения...",
-        "singbox-core-is-up-and-running": "Ядро Singbox запущено и работает!",
+        "xray-core-is-up-and-running": "Ядро Singbox запущено и работает!",
         "exodus-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться...",
         "no-errros-so-far": "Пока никаких ошибок нет",
-        "last-error-message": "Последнее сообщение об ошибке"
+        "last-error-message": "Последнее сообщение об ошибке",
+        "singbox-core-is-up-and-running": "Ядро Singbox запущено и работает!"
     },
     "external-squad-card": {
         "widget": {
@@ -1734,12 +1754,29 @@
             "color-format-note": "💡 Цвет применяется только к словам, непосредственно следующим за маркером. Без маркеров текст будет белым."
         }
     },
+    "visual-settings-card": {
+        "widget": {
+            "layout-style": "Стиль оформления",
+            "choose-how-the-desktop-navigation-is-displayed": "Выберите способ навигации по интерфейсу панели",
+            "compact": "Компактный",
+            "sidebar": "Боковая панель"
+        }
+    },
     "api-tokens-card": {
         "widget": {
             "api-tokens-description": "Управление API токенами для доступа из кода.",
             "api-tokens": "API токены",
             "no-api-tokens-found": "API токены не найдены",
-            "token-name": "Название токена"
+            "token-name": "Название токена",
+            "create-api-token": "Создать API токен",
+            "full-access": "Полные права",
+            "col-scopes": "Области",
+            "col-created": "Создано",
+            "col-expires": "Истекает",
+            "expired": "Истек",
+            "expires-in-days": "Срок жизни (дней)",
+            "expires-in": "Истекает",
+            "one-time-notice": "Из соображений безопасности токен отображается <emphasis>только один раз</emphasis> сразу после создания. Обязательно скопируйте и сохраните его в надежном месте — вы больше не сможете его увидеть."
         }
     },
     "external-squads-hosts": {
@@ -1831,12 +1868,13 @@
         "traffic-used": "Польз. трафик",
         "config-profile": "Профиль",
         "inbounds": "Инбаунды",
-        "singbox-v": "вер. Sb",
+        "xray-v": "вер. Xray",
         "node-v": "вер. Ноды",
         "provider": "Провайдер",
         "tags": "Теги",
         "total-ram": "Всего памяти",
-        "cpu-model": "Модель CPU"
+        "cpu-model": "Модель CPU",
+        "singbox-v": "вер. Sb"
     },
     "subpage-config-visual-editor": {
         "widget": {
@@ -2055,7 +2093,9 @@
         "contact-information": "Контактная информация"
     },
     "traffic-limits-card": {
-        "traffic-and-limits": "Трафик и лимиты"
+        "traffic-and-limits": "Трафик и лимиты",
+        "traffic-limit-description": "0 - неограниченно",
+        "traffic-limit": "Лимит трафика"
     },
     "node-plugin-editor-page": {
         "component": {
@@ -2067,7 +2107,9 @@
             "plugin": "Плагин",
             "review-documentation-for-more-information": "Просмотрите документацию для более подробной информации.",
             "nothing-found": "Ничего не найдено...",
-            "select-plugin": "Выбрать плагин"
+            "select-plugin": "Выбрать плагин",
+            "proxy-url": "Адрес прокси",
+            "proxy-url-description": "Необязательно. Если указано, внутреннее API-соединение между панелью и узлом будет осуществляться через этот прокси сервер."
         }
     },
     "node-plugin-card": {
@@ -2084,11 +2126,11 @@
     },
     "node-plugins-grid": {
         "widget": {
-            "delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin": "Удалить этот плагин ноды? Ноды, использующие его, будут отвязаны от плагина.",
             "node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use": "Плагины нод являются расширенной функцией. Пожалуйста, ознакомьтесь с документацией перед использованием.",
             "warning": "Предупреждение",
             "no-node-plugins-yet": "Плагины для нод отсутствуют",
             "create-a-plugin-to-extend-node-capabilities-with": "Создайте плагин для расширения возможностей узла с",
+            "delete-this-node-plugin-nodes-using-it-will-be-detached-from-the-plugin": "Удалить этот плагин ноды? Ноды, использующие его, будут отвязаны от плагина.",
             "create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth": "Создайте плагин для включения возможностей на уровне нод. Эта сборка поддерживает ingress-фильтр, egress-фильтр, shared lists и HAProxy Auth.",
             "ingress-filter": "Входящий фильтр",
             "egress-filter": "Исходящий фильтр",
@@ -2203,7 +2245,9 @@
             "billing-nodes": "Биллинг нод",
             "upcoming": "Предстоящие",
             "per-month": "За месяц",
-            "total-spent": "Всего потрачено"
+            "total-spent": "Всего потрачено",
+            "overdue": "Просрочено",
+            "no-upcoming": "Нет предстоящих"
         }
     },
     "mobile-providers-list": {
@@ -2217,11 +2261,89 @@
             "providers": "Провайдеры"
         }
     },
+    "prime-modal": {
+        "shared": {
+            "description": "Поддержите проект и станьте частью его ближайшего окружения — будьте ближе к команде, плану развития и самой работе.",
+            "priority-support-title": "Приоритетная поддержка",
+            "priority-support-description": "Избегайте очередей — на ваши вопросы ответят в первую очередь непосредственно сотрудники команды.",
+            "private-community-title": "Частное сообщество",
+            "private-community-description": "Приватный круг членов Prime.",
+            "shape-the-roadmap-title": "Сформируйте дорожную карту",
+            "shape-the-roadmap-description": "Проголосуйте за будущие нововведения, и помогите определить дальнейшее направление проекта.",
+            "direct-developer-access-title": "Прямой доступ для разработчиков",
+            "direct-developer-access-description": "Прямая связь с разработчиком — никаких заявок, никаких посредников.",
+            "join-button": "Присоединиться к RW Prime"
+        }
+    },
+    "hosts-datatable": {
+        "widget": {
+            "reset-sort": "Сброс сортировки"
+        }
+    },
+    "columns-visibility-popover": {
+        "show-all": "Показать все",
+        "hide-all": "Cкрыть все"
+    },
+    "use-hosts-table-widget": {
+        "disabled": "Выключено",
+        "enabled": "Включено",
+        "hidden": "Скрыто"
+    },
+    "node-tracking-and-billing": {
+        "card": {
+            "note": "Заметка"
+        }
+    },
+    "node-consumption": {
+        "card": {
+            "node-consumption-multiplier-1": "Применяется выбранный множитель к трафику ноды (1,0 = обычный, 0,5 = половина, 2,0 = двойной).",
+            "node-consumption-multiplier-2": "В основном используется для точного отображения лимитов использования при включенном отслеживании трафика. Множитель потребления узла не влияет на отображение подробной статистики (на графиках).",
+            "node-consumption-multiplier": "Коэффициент потребления нодой",
+            "user-consumption-multiplier": "Коэффициент потребления пользователем"
+        }
+    },
+    "keypair-generator": {
+        "widget": {
+            "generate": "Сгенерировать"
+        }
+    },
+    "srs-lists": {
+        "feature": {
+            "available": "доступен",
+            "unavailable": "недоступен",
+            "add-links": "Добавить ссылки",
+            "direct-link-required": "Требуется прямая ссылка",
+            "direct-url-hint": "Используйте прямую ссылку на .srs файл (пример: https://raw.githubusercontent.com/.../ruleset.srs). Ссылки с /blob/ ведут на страницу и не подойдут как прямой источник файла.",
+            "settings": "Настройки",
+            "optional-for-single-url": "Необязательно для одной ссылки",
+            "multiple-urls-hint": "Одна или несколько ссылок через пробел, запятую или новую строку",
+            "selected": "Выбрано",
+            "selected-count": "Выбрано",
+            "delete-selected-title": "Удалить выбранные SRS списки",
+            "set-update-interval": "Установить интервал",
+            "update-interval": "Интервал обновления",
+            "update-interval-hint": "Поддерживается парсером длительности sing-box. Примеры: 10m, 1h, 12h, 1d, 7d.",
+            "search-by-name": "Поиск по имени",
+            "search-by-address": "Поиск по адресу",
+            "last-error": "Ошибка",
+            "search-by-url": "Поиск по ссылке",
+            "filters": "Фильтры",
+            "filter-by-tags": "Фильтр по тегам",
+            "all-tags": "Все теги",
+            "enabled": "Включен",
+            "disabled": "Отключен",
+            "urls": "Ссылки",
+            "edit-list": "Редактировать SRS список",
+            "url": "Ссылка",
+            "status": "Статус"
+        }
+    },
     "runtime-metrics": {
         "uptime": "Время работы",
         "total-memory": "Всего памяти",
         "average-cpu": "Средний CPU",
         "scheduler-p99": "P99 планировщика",
+        "started-at": "Старт",
         "heap-used": "Использование heap",
         "goroutines": "Горутины",
         "threads": "Потоки",

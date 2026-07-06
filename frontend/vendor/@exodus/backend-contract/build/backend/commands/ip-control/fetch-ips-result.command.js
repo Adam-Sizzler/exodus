@@ -8,7 +8,7 @@ var FetchIpsResultCommand;
 (function (FetchIpsResultCommand) {
     FetchIpsResultCommand.url = api_1.REST_API.IP_CONTROL.GET_FETCH_IPS_RESULT;
     FetchIpsResultCommand.TSQ_url = FetchIpsResultCommand.url(':jobId');
-    FetchIpsResultCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.GET_FETCH_IPS_RESULT(':jobId'), 'get', 'Get IP List Result by Job ID');
+    FetchIpsResultCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.GET_FETCH_IPS_RESULT(':jobId'), 'get', 'Get IP List Result by Job ID', { scope: 'fetch-ips-result', kind: 'read' });
     FetchIpsResultCommand.RequestSchema = zod_1.z.object({
         jobId: zod_1.z.string(),
     });
@@ -30,7 +30,16 @@ var FetchIpsResultCommand;
                     nodeUuid: zod_1.z.string().uuid(),
                     nodeName: zod_1.z.string(),
                     countryCode: zod_1.z.string(),
-                    ips: zod_1.z.array(zod_1.z.string()),
+                    ips: zod_1.z.array(zod_1.z.object({
+                        ip: zod_1.z.string(),
+                        lastSeen: zod_1.z
+                            .string()
+                            .datetime({
+                            local: true,
+                            offset: true,
+                        })
+                            .transform((str) => new Date(str)),
+                    })),
                 })),
             })
                 .nullable(),

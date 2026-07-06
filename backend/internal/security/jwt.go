@@ -35,6 +35,13 @@ func SignAPITokenJWT(secret, uuid string) (string, int64, error) {
 	return signJWT(secret, nil, uuid, "API", APITokenLifetime)
 }
 
+func SignAPITokenJWTWithLifetime(secret, uuid string, lifetime time.Duration) (string, int64, error) {
+	if lifetime <= 0 {
+		lifetime = APITokenLifetime
+	}
+	return signJWT(secret, nil, uuid, "API", lifetime)
+}
+
 func ParseJWT(secret, rawToken string) (*JWTPayload, error) {
 	if err := validateJWTSecret(secret); err != nil {
 		return nil, err

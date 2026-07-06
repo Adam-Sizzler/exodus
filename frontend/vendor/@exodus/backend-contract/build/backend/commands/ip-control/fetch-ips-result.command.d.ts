@@ -36,38 +36,59 @@ export declare namespace FetchIpsResultCommand {
                     nodeUuid: z.ZodString;
                     nodeName: z.ZodString;
                     countryCode: z.ZodString;
-                    ips: z.ZodArray<z.ZodString, "many">;
+                    ips: z.ZodArray<z.ZodObject<{
+                        ip: z.ZodString;
+                        lastSeen: z.ZodEffects<z.ZodString, Date, string>;
+                    }, "strip", z.ZodTypeAny, {
+                        ip: string;
+                        lastSeen: Date;
+                    }, {
+                        ip: string;
+                        lastSeen: string;
+                    }>, "many">;
                 }, "strip", z.ZodTypeAny, {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: Date;
+                    }[];
                 }, {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: string;
+                    }[];
                 }>, "many">;
             }, "strip", z.ZodTypeAny, {
                 nodes: {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: Date;
+                    }[];
                 }[];
                 userUuid: string;
-                success: boolean;
                 userId: string;
+                success: boolean;
             }, {
                 nodes: {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: string;
+                    }[];
                 }[];
                 userUuid: string;
-                success: boolean;
                 userId: string;
+                success: boolean;
             }>>;
         }, "strip", z.ZodTypeAny, {
             isCompleted: boolean;
@@ -82,11 +103,14 @@ export declare namespace FetchIpsResultCommand {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: Date;
+                    }[];
                 }[];
                 userUuid: string;
-                success: boolean;
                 userId: string;
+                success: boolean;
             } | null;
         }, {
             isCompleted: boolean;
@@ -101,11 +125,14 @@ export declare namespace FetchIpsResultCommand {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: string;
+                    }[];
                 }[];
                 userUuid: string;
-                success: boolean;
                 userId: string;
+                success: boolean;
             } | null;
         }>;
     }, "strip", z.ZodTypeAny, {
@@ -122,11 +149,14 @@ export declare namespace FetchIpsResultCommand {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: Date;
+                    }[];
                 }[];
                 userUuid: string;
-                success: boolean;
                 userId: string;
+                success: boolean;
             } | null;
         };
     }, {
@@ -143,11 +173,14 @@ export declare namespace FetchIpsResultCommand {
                     nodeUuid: string;
                     nodeName: string;
                     countryCode: string;
-                    ips: string[];
+                    ips: {
+                        ip: string;
+                        lastSeen: string;
+                    }[];
                 }[];
                 userUuid: string;
-                success: boolean;
                 userId: string;
+                success: boolean;
             } | null;
         };
     }>;

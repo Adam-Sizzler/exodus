@@ -1,3 +1,5 @@
+import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/nodes/get-node-linked-hosts'
+import { GetNodeUsersUsageFeature } from '@features/ui/dashboard/nodes/get-node-users-usage'
 import {
     ActionIcon,
     Badge,
@@ -12,37 +14,34 @@ import {
     ThemeIconProps,
     Tooltip
 } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import { GetOneNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
+import { githubDarkTheme, JsonEditor } from 'json-edit-react'
+import { memo, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
     PiArrowsCounterClockwise,
     PiCloudArrowUpDuotone,
     PiUsersDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import { UpdateNodeCommand } from '@exodus/backend-contract'
-import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
-import { memo, useCallback, useMemo } from 'react'
+import { TbJson, TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
 
-import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/nodes/get-node-linked-hosts'
-import { GetNodeUsersUsageFeature } from '@features/ui/dashboard/nodes/get-node-users-usage'
-import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
-import { NodeResponse, QueryKeys, useDisableNode, useEnableNode } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
-import { SectionCard } from '@shared/ui/section-card'
-import { SingboxLogo } from '@shared/ui/logos'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useDisableNode, useEnableNode, useGetNodeMetadata } from '@shared/api/hooks'
 import { Logo } from '@shared/ui'
+import { SingboxLogo } from '@shared/ui/logos'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { SectionCard } from '@shared/ui/section-card'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
+import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
 
 interface IProps {
-    node: NodeResponse
+    node: GetOneNodeCommand.Response['response']
 }
 
 export const NodeDetailsCardWidget = memo((props: IProps) => {
     const { node } = props
-    const nodeSingboxVersion = node.versions?.singbox ?? node.singboxVersion
-    const nodeVersion = node.versions?.node ?? node.nodeVersion
-    const nodeSingboxUptime = node.singboxUptime
 
     const { t } = useTranslation()
 
@@ -60,6 +59,9 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
         }
     }
 
+    const { data: metadata, isLoading: isMetadataLoading } = useGetNodeMetadata({
+        route: { uuid: node.uuid }
+    })
     const { mutate: disableNode, isPending: isDisableNodePending } = useDisableNode(mutationParams)
     const { mutate: enableNode, isPending: isEnableNodePending } = useEnableNode(mutationParams)
 
@@ -104,10 +106,10 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
         let maxData = '∞'
         let percentage = 0
 
-        const prettyUsedData = prettyBytesToAnyUtil(node.trafficUsedBytes || 0) || '0 B'
+        const prettyUsedData = prettifyBytesUtil(node.trafficUsedBytes || 0) || '0 B'
 
         if (node.isTrafficTrackingActive) {
-            maxData = prettyBytesToAnyUtil(node.trafficLimitBytes || 0) || '∞'
+            maxData = prettifyBytesUtil(node.trafficLimitBytes || 0) || '∞'
             if (node.trafficLimitBytes === 0) {
                 percentage = 100
             } else {
@@ -156,9 +158,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                     <Group gap="xs">
                         {node.isConnected && (
                             <Tooltip
-                                label={t(
-                                    'node-stats.card.represents-the-uptime-of-the-singbox-core'
-                                )}
+                                label={t('node-stats.card.represents-the-uptime-of-the-singbox-core')}
                             >
                                 <Badge
                                     color="teal"
@@ -168,7 +168,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     variant="light"
                                     visibleFrom="sm"
                                 >
-                                    {getSingboxUptimeUtil(nodeSingboxUptime)}
+                                    {getSingboxUptimeUtil(node.singboxUptime)}
                                 </Badge>
                             </Tooltip>
                         )}
@@ -255,6 +255,50 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
             <SectionCard.Section>
                 <Group gap="xs" justify="flex-end">
                     <Group gap="xs" justify="center">
+                        <Tooltip label="Metadata">
+                            <ActionIcon
+                                color="teal"
+                                disabled={!metadata}
+                                loading={isMetadataLoading}
+                                onClick={() => {
+                                    if (!metadata) return
+                                    modals.open({
+                                        centered: true,
+                                        size: 'auto',
+                                        title: (
+                                            <BaseOverlayHeader
+                                                iconColor="teal"
+                                                IconComponent={TbJson}
+                                                iconVariant="soft"
+                                                title="Metadata"
+                                            />
+                                        ),
+                                        children: (
+                                            <Box>
+                                                <JsonEditor
+                                                    collapse={3}
+                                                    data={metadata.metadata as object}
+                                                    indent={4}
+                                                    maxWidth="100%"
+                                                    rootName=""
+                                                    theme={githubDarkTheme}
+                                                    viewOnly
+                                                />
+                                            </Box>
+                                        )
+                                    })
+                                }}
+                                size="lg"
+                                variant="soft"
+                            >
+                                <TbJson size={22} />
+                            </ActionIcon>
+                        </Tooltip>
+                    </Group>
+
+                    <Divider opacity={0.3} orientation="vertical" />
+
+                    <Group gap="xs" justify="center">
                         <GetNodeLinkedHostsFeature nodeUuid={node.uuid} />
                     </Group>
 
@@ -266,19 +310,6 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                 </Group>
             </SectionCard.Section>
 
-            <SectionCard.Section>
-                <Group gap="xs" justify="flex-end">
-                    <Group gap="xs" justify="center">
-                        <GetNodeLinkedHostsFeature nodeUuid={node.uuid} renderAs="action" />
-                    </Group>
-
-                    <Divider opacity={0.3} orientation="vertical" />
-
-                    <Group gap="xs" justify="center">
-                        <GetNodeUsersUsageFeature nodeUuid={node.uuid} renderAs="action" />
-                    </Group>
-                </Group>
-            </SectionCard.Section>
             <SectionCard.Section>
                 <Box>
                     <Group gap="xs" justify="space-between" mb={6}>
@@ -368,10 +399,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                             >
                                 <Tooltip label={t('node-details-card.widget.singbox-core-version')}>
                                     <Group gap="xs" justify="center">
-                                        <SingboxLogo
-                                            color="var(--mantine-color-violet-5)"
-                                            size={16}
-                                        />
+                                        <SingboxLogo color="var(--mantine-color-violet-5)" size={16} />
                                         <Text c="violet.5" fw={600} size="sm">
                                             {node.versions.singbox}
                                         </Text>
@@ -396,17 +424,14 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     )}
                                 >
                                     <Group gap="xs" justify="center">
-                                        <SingboxLogo
-                                            color="var(--mantine-color-teal-5)"
-                                            size={16}
-                                        />
+                                        <SingboxLogo color="var(--mantine-color-teal-5)" size={16} />
                                         <Text
                                             c="teal.5"
                                             fw={600}
                                             size="sm"
                                             style={{ textTransform: 'uppercase' }}
                                         >
-                                            {getSingboxUptimeUtil(nodeSingboxUptime)}
+                                            {getSingboxUptimeUtil(node.singboxUptime)}
                                         </Text>
                                     </Group>
                                 </Tooltip>
@@ -422,7 +447,9 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     border: '1px solid rgba(99, 102, 241, 0.2)'
                                 }}
                             >
-                                <Tooltip label={t('node-details-card.widget.exodus-node-version')}>
+                                <Tooltip
+                                    label={t('node-details-card.widget.exodus-node-version')}
+                                >
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />
                                         <Text c="indigo.5" fw={600} size="sm">

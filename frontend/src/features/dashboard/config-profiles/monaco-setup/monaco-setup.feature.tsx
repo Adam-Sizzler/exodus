@@ -3,15 +3,14 @@ import {
     ResponseRulesConfigSchema,
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
-import zodToJsonSchema, { jsonDescription } from 'zod-to-json-schema'
 import { NodePluginSchema } from '@exodus/node-plugins'
 import { Monaco } from '@monaco-editor/react'
-import consola from 'consola'
 import axios from 'axios'
-import { z } from 'zod'
+import consola from 'consola'
+import { app } from 'src/config'
+import zodToJsonSchema, { jsonDescription } from 'zod-to-json-schema'
 
 import { monacoTheme } from '@shared/constants/monaco-theme'
-import { app } from 'src/config'
 
 export const MonacoSetupFeature = {
     setup: async (
@@ -55,14 +54,6 @@ export const MonacoSetupFeature = {
                     'Snippet name can only contain: letters, numbers, spaces, _ and -'
             }
 
-            const addSnippetProperty = (target?: { properties?: Record<string, unknown> }) => {
-                if (!target) return
-                target.properties = {
-                    ...(target.properties ?? {}),
-                    snippet: snippetSchema
-                }
-            }
-
             if (schema.definitions?.OutboundObject?.properties) {
                 schema.definitions.OutboundObject.properties.snippet = snippetSchema
             }
@@ -71,46 +62,33 @@ export const MonacoSetupFeature = {
                 schema.definitions.RuleObject.properties.snippet = snippetSchema
             }
 
-            if (schema.definitions?.BalancerObject?.properties) {
-                schema.definitions.BalancerObject.properties.snippet = snippetSchema
+            if (schema.properties?.outbounds?.items) {
+                schema.properties.outbounds.items.properties = {
+                    ...schema.properties.outbounds.items.properties,
+                    snippet: snippetSchema
+                }
             }
-
-            addSnippetProperty(schema.properties?.outbounds?.items)
 
             if (schema.properties?.route) {
-                schema.properties.route.properties = {
-                    ...(schema.properties.route.properties ?? {}),
-                    rules: schema.properties.route.properties?.rules ?? {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            additionalProperties: true
-                        }
-                    }
-                }
-                addSnippetProperty(schema.properties.route.properties.rules.items)
-            }
+                schema.properties.route.properties = schema.properties.route.properties ?? {}
+                const routeProperties = schema.properties.route.properties
 
-            if (schema.properties?.routing) {
-                schema.properties.routing.properties = {
-                    ...(schema.properties.routing.properties ?? {}),
-                    rules: schema.properties.routing.properties?.rules ?? {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            additionalProperties: true
-                        }
-                    },
-                    balancers: schema.properties.routing.properties?.balancers ?? {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            additionalProperties: true
-                        }
+                routeProperties.rules = routeProperties.rules ?? {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        additionalProperties: true
                     }
                 }
-                addSnippetProperty(schema.properties.routing.properties.rules.items)
-                addSnippetProperty(schema.properties.routing.properties.balancers.items)
+
+                routeProperties.rules.items = routeProperties.rules.items ?? {
+                    type: 'object',
+                    additionalProperties: true
+                }
+                routeProperties.rules.items.properties = {
+                    ...routeProperties.rules.items.properties,
+                    snippet: snippetSchema
+                }
             }
 
             monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
@@ -131,7 +109,6 @@ export const MonacoSetupFeature = {
         }
     }
 }
-
 export const MonacoSetupSnippetsFeature = {
     setup: async (monaco: Monaco, currentLanguage: string) => {
         try {
@@ -146,43 +123,28 @@ export const MonacoSetupSnippetsFeature = {
 
             const response = await axios.get(jsonSchemaUrl)
             const schema = await response.data
-            const outboundObject =
-                schema.definitions?.OutboundObject || schema.properties?.outbounds?.items || {
-                    type: 'object',
-                    additionalProperties: true
-                }
-            const ruleObject =
-                schema.definitions?.RuleObject ||
-                schema.properties?.route?.properties?.rules?.items || {
-                    type: 'object',
-                    additionalProperties: true
-                }
-            const balancerObject = schema.definitions?.BalancerObject || {
-                type: 'object',
-                additionalProperties: true
-            }
 
             const snippetArraySchema = {
                 $schema: 'http://json-schema.org/draft-07/schema#',
                 title: 'Snippet Array',
-                description: 'Array of Outbound, Rule or Balancer objects for snippets',
+                description: 'Array of Outbound, Rule or Rule Set objects for snippets',
                 type: 'array',
                 items: {
                     oneOf: [
                         {
-                            ...outboundObject,
+                            ...schema.definitions?.OutboundObject,
                             title: 'Outbound Object',
                             description: 'Outbound configuration (for outbounds[])'
                         },
                         {
-                            ...ruleObject,
+                            ...schema.definitions?.RuleObject,
                             title: 'Rule Object',
-                            description: 'Routing rule (for routing.rules[])'
+                            description: 'Routing rule (for route.rules[])'
                         },
                         {
-                            ...balancerObject,
-                            title: 'Balancer Object',
-                            description: 'Balancer configuration (for routing.balancers[])'
+                            ...schema.definitions?.RuleSetObject,
+                            title: 'Rule Set Object',
+                            description: 'Rule set configuration (for route.rule_set[])'
                         }
                     ]
                 },
@@ -252,6 +214,7 @@ export const MonacoSetupResponseRulesFeature = {
                                 },
                                 required: ['responseType']
                             },
+                            // oxlint-disable-next-line
                             then: {
                                 properties: {
                                     responseModifications: {
@@ -276,6 +239,7 @@ export const MonacoSetupResponseRulesFeature = {
                                 },
                                 required: ['responseType']
                             },
+                            // oxlint-disable-next-line
                             then: {
                                 properties: {
                                     responseModifications: {
@@ -351,43 +315,6 @@ export const MonacoSetupResponseRulesFeature = {
         }
     }
 }
-
-const ipListSchema = z.array(z.string()).default([])
-
-export const NodePluginSchema = z
-    .object({
-        ingressFilter: z
-            .object({
-                enabled: z.boolean().default(false),
-                blockedIps: ipListSchema
-            })
-            .optional()
-            .describe('Ingress traffic filter.'),
-        egressFilter: z
-            .object({
-                enabled: z.boolean().default(false),
-                blockedIps: ipListSchema,
-                blockedPorts: z.array(z.number()).default([])
-            })
-            .optional()
-            .describe('Egress traffic filter.'),
-        haproxyAuth: z
-            .object({
-                enabled: z.boolean().default(false)
-            })
-            .optional()
-            .describe('Enable HAProxy authorization for the selected node.'),
-        sharedLists: z
-            .array(
-                z.object({
-                    name: z.string(),
-                    type: z.literal('ipList'),
-                    items: z.array(z.string())
-                })
-            )
-            .default([])
-    })
-    .strict()
 
 export const MonacoSetupNodePluginEditorFeature = {
     setup: async (monaco: Monaco) => {

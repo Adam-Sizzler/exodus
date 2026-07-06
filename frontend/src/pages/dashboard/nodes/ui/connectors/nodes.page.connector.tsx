@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 
+import { queryClient } from '@shared/api'
 import {
     nodesQueryKeys,
     QueryKeys,
@@ -8,11 +9,11 @@ import {
     useGetNodes,
     useGetNodesTags
 } from '@shared/api/hooks'
+
 import {
     useNodesStoreActions,
     useNodesStoreCreateModalIsOpen
 } from '@entities/dashboard/nodes/nodes-store'
-import { queryClient } from '@shared/api'
 
 import NodesPageComponent from '../components/nodes.page.component'
 

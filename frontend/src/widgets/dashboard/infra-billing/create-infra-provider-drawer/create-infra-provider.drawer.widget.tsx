@@ -1,15 +1,16 @@
-import { CreateInfraProviderCommand } from '@exodus/backend-contract'
 import { Button, Drawer, Stack, TextInput } from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { CreateInfraProviderCommand } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'react-i18next'
 import { TbServer } from 'react-icons/tb'
-import { useForm } from '@mantine/form'
+
+import { queryClient } from '@shared/api'
+import { QueryKeys, useCreateInfraProvider } from '@shared/api/hooks'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { handleFormErrors } from '@shared/utils/misc'
 
 import { MODALS, useModalClose, useModalIsOpen } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { QueryKeys, useCreateInfraProvider } from '@shared/api/hooks'
-import { handleFormErrors } from '@shared/utils/misc'
-import { queryClient } from '@shared/api'
 
 export function CreateInfraProviderDrawerWidget() {
     const isOpen = useModalIsOpen(MODALS.CREATE_INFRA_PROVIDER_DRAWER)

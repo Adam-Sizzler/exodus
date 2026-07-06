@@ -10,11 +10,11 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
-import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
-import { TbHealthRecognition, TbKey, TbLink } from 'react-icons/tb'
-import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { UseFormReturnType } from '@mantine/form'
+import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
 import { useTranslation } from 'react-i18next'
+import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { TbHealthRecognition, TbKey, TbLink } from 'react-icons/tb'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

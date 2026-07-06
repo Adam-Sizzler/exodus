@@ -1,17 +1,17 @@
+import { Button, Paper, Select, Stack, Text } from '@mantine/core'
 import {
     GetExternalSquadByUuidCommand,
     SUBSCRIPTION_TEMPLATE_TYPE,
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
-import { Button, Paper, Select, Stack, Text } from '@mantine/core'
 import { useEffect, useMemo, useState } from 'react'
-import { TbDeviceFloppy } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
+import { TbDeviceFloppy } from 'react-icons/tb'
 
+import { queryClient } from '@shared/api'
+import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 import { useGetSubscriptionTemplates } from '@shared/api/hooks/subscription-template/subscription-template.query.hooks'
 import { MihomoLogo, SingboxLogo, StashLogo, XrayLogo } from '@shared/ui/logos'
-import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
-import { queryClient } from '@shared/api'
 
 interface IProps {
     externalSquad: GetExternalSquadByUuidCommand.Response['response']

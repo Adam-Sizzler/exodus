@@ -12,12 +12,12 @@ import { motion } from 'motion/react'
 import { useMemo } from 'react'
 
 import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
-import { prettyBytesToAnyUtil, prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
-import { NodeResponse } from '@shared/api/hooks'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
+import { prettifyBytesUtil, prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
 
 interface IProps {
     isLoading: boolean
-    nodes: NodeResponse[] | undefined
+    nodes: SubscriptionConnectionResponse[] | undefined
 }
 
 export function NodesRealtimeUsageMetrics(props: IProps) {
@@ -64,7 +64,7 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
         {
             IconComponent: TbSum,
             title: t('nodes-quick-stats.widget.cumulative-traffic'),
-            value: prettyBytesToAnyUtil(
+            value: prettifyBytesUtil(
                 nodes?.reduce((acc, curr) => acc + (curr.trafficUsedBytes ?? 0), 0) ?? 0,
                 true
             ),
@@ -75,7 +75,7 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
             IconComponent: PiArrowUpDuotone,
             title: t('nodes-realtime-metrics.widget.total-upload'),
             subtitle: t('node-system-card.widget.interface'),
-            value: prettyBytesToAnyUtil(aggregated?.txTotal ?? 0, true) || '0 B',
+            value: prettifyBytesUtil(aggregated?.txTotal ?? 0, true) || '0 B',
             iconVariant: 'soft',
             iconColor: 'blue'
         },
@@ -83,7 +83,7 @@ export function NodesRealtimeUsageMetrics(props: IProps) {
             IconComponent: PiArrowDownDuotone,
             title: t('nodes-realtime-metrics.widget.total-download'),
             subtitle: t('node-system-card.widget.interface'),
-            value: prettyBytesToAnyUtil(aggregated?.rxTotal ?? 0, true) || '0 B',
+            value: prettifyBytesUtil(aggregated?.rxTotal ?? 0, true) || '0 B',
             iconVariant: 'soft',
             iconColor: 'teal'
         },

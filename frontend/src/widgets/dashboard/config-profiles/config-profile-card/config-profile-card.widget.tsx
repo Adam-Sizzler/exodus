@@ -1,21 +1,22 @@
 import { Badge, Box, CopyButton, Divider, Group, Loader, Menu, Text, Tooltip } from '@mantine/core'
-import { PiCheck, PiCopy, PiCpu, PiPencil, PiTag, PiTrashDuotone } from 'react-icons/pi'
-import { TbCheck, TbCpu2, TbDownload, TbEdit, TbEye } from 'react-icons/tb'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
-import { generatePath, useNavigate } from 'react-router-dom'
-import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'react-i18next'
-import { modals } from '@mantine/modals'
+import { PiCheck, PiCopy, PiCpu, PiPencil, PiTag, PiTrashDuotone } from 'react-icons/pi'
+import { TbCheck, TbCpu2, TbDownload, TbEdit, TbEye } from 'react-icons/tb'
+import { generatePath, useNavigate } from 'react-router'
 
 import { useGetComputedConfigProfile } from '@shared/api/hooks/config-profiles/config-profiles.query.hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { ROUTES } from '@shared/constants'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
-import { formatInt } from '@shared/utils/misc'
 import { SingboxLogo } from '@shared/ui/logos'
-import { ROUTES } from '@shared/constants'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { formatInt } from '@shared/utils/misc'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     configProfile: GetConfigProfilesCommand.Response['response']['configProfiles'][number]
@@ -195,7 +196,7 @@ export function ConfigProfileCardWidget(props: IProps) {
                         leftSection={<TbEdit size={16} />}
                         onClick={handleEditConfigProfile}
                     >
-                        {t('config-profiles-grid.widget.edit-singbox-config')}
+                        {t('config-profiles-grid.widget.xray-config')}
                     </EntityCardShared.Button>
                     <EntityCardShared.Menu>
                         <Menu.Item

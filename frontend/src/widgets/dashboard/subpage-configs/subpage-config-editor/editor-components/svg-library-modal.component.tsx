@@ -14,12 +14,12 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { TSubscriptionPageSvgLibrary } from '@exodus/subscription-page-types'
 import { IconBulb, IconPhoto, IconPlus, IconTrash } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
-import { useEffect, useState } from 'react'
 import isSvg from 'is-svg'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

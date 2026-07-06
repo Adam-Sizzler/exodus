@@ -1,11 +1,11 @@
+import { GetStatsCommand } from '@exodus/backend-contract'
+import { TFunction } from 'i18next'
 import {
     PiClockCountdownDuotone,
     PiProhibitDuotone,
     PiPulseDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { GetStatsCommand } from '@exodus/backend-contract'
-import { TFunction } from 'i18next'
 
 import { IMetricCardProps } from '@shared/ui/metrics/metric-card'
 import { formatInt } from '@shared/utils/misc'

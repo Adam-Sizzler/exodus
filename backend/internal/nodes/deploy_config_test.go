@@ -45,3 +45,97 @@ func TestBuildInboundUsersUsesSingboxProtocolCredentials(t *testing.T) {
 		t.Fatalf("tuic uuid got %#v, want %#v", got, users[0].VLESSUUID)
 	}
 }
+
+func TestParseDeployCoreState(t *testing.T) {
+	tests := []struct {
+		name        string
+		message     string
+		wantHas     bool
+		wantReady   bool
+		wantMessage string
+	}{
+		{
+			name:        "ready core marks node connected",
+			message:     "success: users=4 core_ready=true core_process_after=running",
+			wantHas:     true,
+			wantReady:   true,
+			wantMessage: "",
+		},
+		{
+			name:        "failed core reports reload error",
+			message:     `success: users=4 core_ready=false reload_error="parse config: unknown outbound"`,
+			wantHas:     true,
+			wantReady:   false,
+			wantMessage: "Core error: parse config: unknown outbound",
+		},
+		{
+			name:        "missing core readiness does not imply connected",
+			message:     "success: users=4 restarted=true",
+			wantHas:     false,
+			wantReady:   false,
+			wantMessage: "",
+		},
+		{
+			name:        "invalid core readiness is a failed core state",
+			message:     "success: core_ready=maybe",
+			wantHas:     true,
+			wantReady:   false,
+			wantMessage: "success: core_ready=maybe",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotHas, gotReady, gotMessage := parseDeployCoreState(tc.message)
+			if gotHas != tc.wantHas {
+				t.Fatalf("has got %v, want %v", gotHas, tc.wantHas)
+			}
+			if gotReady != tc.wantReady {
+				t.Fatalf("ready got %v, want %v", gotReady, tc.wantReady)
+			}
+			if gotMessage != tc.wantMessage {
+				t.Fatalf("message got %q, want %q", gotMessage, tc.wantMessage)
+			}
+		})
+	}
+}
+
+func TestOptionalStatusMessage(t *testing.T) {
+	tests := []struct {
+		name      string
+		message   string
+		want      string
+		wantDBNil bool
+	}{
+		{
+			name:      "empty message becomes null",
+			message:   "",
+			want:      "",
+			wantDBNil: true,
+		},
+		{
+			name:      "whitespace message becomes null",
+			message:   "  ",
+			want:      "",
+			wantDBNil: true,
+		},
+		{
+			name:      "error message is preserved",
+			message:   " Core error: parse config failed ",
+			want:      "Core error: parse config failed",
+			wantDBNil: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, gotDB := optionalStatusMessage(tc.message)
+			if got != tc.want {
+				t.Fatalf("message got %q, want %q", got, tc.want)
+			}
+			if (gotDB == nil) != tc.wantDBNil {
+				t.Fatalf("db nil got %v, want %v", gotDB == nil, tc.wantDBNil)
+			}
+		})
+	}
+}

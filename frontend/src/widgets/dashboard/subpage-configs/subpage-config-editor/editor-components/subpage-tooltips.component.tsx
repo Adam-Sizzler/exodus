@@ -16,7 +16,7 @@ export const SubpageTooltips = (props: IProps) => {
                 </ActionIcon>
             </HoverCard.Target>
             <HoverCard.Dropdown>
-                {children && children}
+                {children ?? children}
                 {text && (
                     <Stack gap="md">
                         <Stack gap="sm">

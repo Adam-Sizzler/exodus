@@ -1,14 +1,14 @@
+import { LoginFormFeature } from '@features/auth/login-form'
+import { OAuth2LoginButtonsFeature } from '@features/auth/oauth2-login-button/oauth2-login-button.feature'
+import { PasskeyLoginButtonFeature } from '@features/auth/passkey-login-button'
+import { RegisterFormFeature } from '@features/auth/register-form'
 import { Badge, Box, Center, Divider, Group, Image, Stack, Text, Title } from '@mantine/core'
 import { GetStatusCommand } from '@exodus/backend-contract'
 import { useMemo } from 'react'
 
-import { OAuth2LoginButtonsFeature } from '@features/auth/oauth2-login-button/oauth2-login-button.feature'
-import { PasskeyLoginButtonFeature } from '@features/auth/passkey-login-button'
 import { useGetAuthStatus } from '@shared/api/hooks/auth/auth.query.hooks'
-import { RegisterFormFeature } from '@features/auth/register-form'
-import { LoginFormFeature } from '@features/auth/login-form'
-import { parseColoredTextUtil } from '@shared/utils/misc'
 import { Logo, Page } from '@shared/ui'
+import { parseColoredTextUtil } from '@shared/utils/misc'
 
 const getAuthMethods = (authStatus: GetStatusCommand.Response['response'] | undefined) => {
     const isPasswordEnabled = authStatus?.authentication?.password?.enabled ?? false

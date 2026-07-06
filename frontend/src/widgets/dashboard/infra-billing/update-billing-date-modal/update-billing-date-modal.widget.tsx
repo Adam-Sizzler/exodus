@@ -1,14 +1,16 @@
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { DatePicker } from '@mantine/dates'
-import { useEffect, useState } from 'react'
-import { TbCalendar } from 'react-icons/tb'
 import dayjs from 'dayjs'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbCalendar } from 'react-icons/tb'
+
+import { queryClient } from '@shared/api'
+import { QueryKeys, useUpdateInfraBillingNode } from '@shared/api/hooks'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { toUtcDayISO } from '@shared/utils/time-utils'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { QueryKeys, useUpdateInfraBillingNode } from '@shared/api/hooks'
-import { queryClient } from '@shared/api'
 
 import styles from './UpdateModal.module.css'
 
@@ -52,7 +54,7 @@ export function UpdateBillingDateModalWidget() {
             variables: {
                 uuids: billingNode.uuids,
                 // @ts-expect-error - TODO: fix ZOD schema
-                nextBillingAt: selectedDate ? dayjs(selectedDate).toISOString() : undefined
+                nextBillingAt: toUtcDayISO(selectedDate)
             }
         })
     }

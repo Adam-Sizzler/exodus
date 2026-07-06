@@ -1,8 +1,7 @@
-import { TbSparkles } from 'react-icons/tb'
-import { modals } from '@mantine/modals'
 import { rem } from '@mantine/core'
-
+import { modals } from '@mantine/modals'
 import { RecapContent } from '@widgets/dashboard/recap/recap.content.widget'
+import { TbSparkles } from 'react-icons/tb'
 
 import { BaseOverlayHeader } from '../overlays/base-overlay-header'
 import { HeaderControl } from './HeaderControl'

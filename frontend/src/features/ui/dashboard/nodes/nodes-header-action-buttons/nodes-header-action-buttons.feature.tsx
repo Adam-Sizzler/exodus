@@ -1,3 +1,8 @@
+import { ActionIcon, ActionIconGroup, Group, Stack, Tooltip } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import { spotlight } from '@mantine/spotlight'
+import { useTranslation } from 'react-i18next'
+import { PiSpiral } from 'react-icons/pi'
 import {
     TbAlertCircle,
     TbCards,
@@ -7,21 +12,17 @@ import {
     TbSearch,
     TbTable
 } from 'react-icons/tb'
-import { ActionIcon, ActionIconGroup, Group, Stack, Tooltip } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-import { spotlight } from '@mantine/spotlight'
-import { PiSpiral } from 'react-icons/pi'
-import { modals } from '@mantine/modals'
 
-import { useNodesStoreActions } from '@entities/dashboard/nodes/nodes-store/nodes-store'
-import { NodesViewMode } from '@pages/dashboard/nodes/ui/components/interfaces'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetNodes, useRestartAllNodes } from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { useNodesStoreActions } from '@entities/dashboard/nodes/nodes-store/nodes-store'
+import { NODES_VIEW_MODE } from '@entities/dashboard/view-preferences-store'
 
 interface IProps {
-    setViewMode: (viewMode: NodesViewMode) => void
-    viewMode: NodesViewMode
+    setViewMode: (viewMode: NODES_VIEW_MODE) => void
+    viewMode: NODES_VIEW_MODE
 }
 
 export const NodesHeaderActionButtonsFeature = (props: IProps) => {
@@ -101,7 +102,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
 
     return (
         <Group grow preventGrowOverflow={false} wrap="wrap">
-            {viewMode === NodesViewMode.CARDS && (
+            {viewMode === NODES_VIEW_MODE.CARDS && (
                 <ActionIconGroup>
                     <Tooltip label={t('nodes-header-action-buttons.feature.search-nodes')}>
                         <ActionIcon
@@ -122,15 +123,15 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                         color="gray"
                         onClick={() =>
                             setViewMode(
-                                viewMode === NodesViewMode.TABLE
-                                    ? NodesViewMode.CARDS
-                                    : NodesViewMode.TABLE
+                                viewMode === NODES_VIEW_MODE.TABLE
+                                    ? NODES_VIEW_MODE.CARDS
+                                    : NODES_VIEW_MODE.TABLE
                             )
                         }
                         size="input-md"
                         variant="soft"
                     >
-                        {viewMode === NodesViewMode.CARDS ? (
+                        {viewMode === NODES_VIEW_MODE.CARDS ? (
                             <TbTable size="24px" />
                         ) : (
                             <TbCards size="24px" />
@@ -156,6 +157,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
                     </ActionIcon>
                 </Tooltip>
             </ActionIconGroup>
+
             <ActionIconGroup>
                 <Tooltip label={t('common.update')} withArrow>
                     <ActionIcon

@@ -5,16 +5,16 @@
   "license": "AGPL-3.0-only",
   "description": "A types library for Exodus Subscription Page.",
   "author": "EXODUS <github.com/exodus>",
-  "homepage": "https://github.com/Adam-Sizzler",
+  "homepage": "https://github.com/exodus",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Adam-Sizzler/exodus.git"
+    "url": "git+https://github.com/exodus/backend.git"
   },
   "bugs": {
-    "url": "https://github.com/Adam-Sizzler/exodus/issues"
+    "url": "https://github.com/exodus/backend/issues"
   },
   "main": "build/backend/index.js",
-  "browser": "build/frontend/index.mjs",
+  "browser": "build/frontend/index.js",
   "types": "build/backend/index.d.ts",
   "files": [
     "build/**/*"
@@ -29,6 +29,5 @@
   "keywords": [],
   "dependencies": {
     "zod": "3.25.76"
-  },
-  "module": "build/frontend/index.mjs"
+  }
 }

@@ -26,6 +26,7 @@ __exportStar(require("./nodes"), exports);
 __exportStar(require("./oauth2"), exports);
 __exportStar(require("./response-rules"), exports);
 __exportStar(require("./roles"), exports);
+__exportStar(require("./scopes"), exports);
 __exportStar(require("./subscription-template"), exports);
 __exportStar(require("./templates"), exports);
 __exportStar(require("./users"), exports);

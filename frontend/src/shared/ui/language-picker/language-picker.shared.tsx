@@ -1,7 +1,7 @@
 import { ActionIcon, Menu, Text, useDirection } from '@mantine/core'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TbLanguage } from 'react-icons/tb'
-import { useEffect } from 'react'
 
 const data = [
     { label: 'English', emoji: '🇬🇧', value: 'en' },

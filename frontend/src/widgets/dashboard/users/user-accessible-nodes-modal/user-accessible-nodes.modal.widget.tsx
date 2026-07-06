@@ -1,16 +1,17 @@
 import { Badge, Box, Center, Drawer, Group, Loader, Stack, Text } from '@mantine/core'
-import { TbChevronRight, TbCirclesRelation, TbServer } from 'react-icons/tb'
 import { GetUserAccessibleNodesCommand } from '@exodus/backend-contract'
-import { useTranslation } from 'react-i18next'
-import { DataTable } from 'mantine-datatable'
-import { PiTag } from 'react-icons/pi'
-import { useState } from 'react'
 import clsx from 'clsx'
+import { DataTable } from 'mantine-datatable'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiTag } from 'react-icons/pi'
+import { TbChevronRight, TbCirclesRelation, TbServer } from 'react-icons/tb'
 
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetUserAccessibleNodes } from '@shared/api/hooks'
 import { CountryFlag } from '@shared/ui/get-country-flag'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 import classes from './user-accessible.module.css'
 

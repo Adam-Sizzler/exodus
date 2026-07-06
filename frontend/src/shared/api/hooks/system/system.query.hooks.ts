@@ -1,3 +1,4 @@
+import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
     GetBandwidthStatsCommand,
     GetMetadataCommand,
@@ -7,9 +8,7 @@ import {
     GetExodusHealthCommand,
     GetStatsCommand
 } from '@exodus/backend-contract'
-import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
-import { z } from 'zod'
 
 import { getUserTimezoneUtil, sToMs } from '@shared/utils/time-utils'
 
@@ -17,31 +16,6 @@ import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 const STALE_TIME = 5_000
 const REFETCH_INTERVAL = 5_100
-
-const GetRecapCommand = {
-    TSQ_url: '/api/system/stats/recap',
-    ResponseSchema: z.object({
-        response: z.object({
-            thisMonth: z.object({
-                users: z.number(),
-                traffic: z.string()
-            }),
-            total: z.object({
-                users: z.number(),
-                nodes: z.number(),
-                traffic: z.string(),
-                nodesRam: z.string(),
-                nodesCpuCores: z.number(),
-                distinctCountries: z.number()
-            }),
-            version: z.string(),
-            initDate: z
-                .string()
-                .datetime({ local: true, offset: true })
-                .transform((str) => new Date(str))
-        })
-    })
-}
 
 export const systemQueryKeys = createQueryKeys('system', {
     getSystemStats: {

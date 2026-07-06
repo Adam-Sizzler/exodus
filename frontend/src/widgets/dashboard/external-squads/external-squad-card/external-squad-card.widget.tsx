@@ -1,17 +1,19 @@
-import { PiCheck, PiCopy, PiPencil, PiTrashDuotone, PiUsers } from 'react-icons/pi'
-import { TbSettings, TbUsersMinus, TbUsersPlus, TbWebhook } from 'react-icons/tb'
 import { Badge, CopyButton, Group, Menu, Tooltip } from '@mantine/core'
 import { GetExternalSquadsCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
+import { PiCheck, PiCopy, PiPencil, PiTrashDuotone, PiUsers } from 'react-icons/pi'
+import { TbCopy, TbSettings, TbUsersMinus, TbUsersPlus, TbWebhook } from 'react-icons/tb'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
 import { formatInt } from '@shared/utils/misc'
 
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+
 interface IProps {
     externalSquad: GetExternalSquadsCommand.Response['response']['externalSquads'][number]
     handleAddToUsers: (externalSquadUuid: string) => void
+    handleCloneExternalSquad: (externalSquadUuid: string) => void
     handleDeleteExternalSquad: (externalSquadUuid: string) => void
     handleRemoveFromUsers: (externalSquadUuid: string) => void
     isDragOverlay?: boolean
@@ -22,6 +24,7 @@ export function ExternalSquadCardWidget(props: IProps) {
         handleAddToUsers,
         handleDeleteExternalSquad,
         handleRemoveFromUsers,
+        handleCloneExternalSquad,
         externalSquad,
         isDragOverlay = false
     } = props
@@ -120,6 +123,13 @@ export function ExternalSquadCardWidget(props: IProps) {
 
                         <Menu.Item leftSection={<PiPencil size={18} />} onClick={handleRename}>
                             {t('common.rename')}
+                        </Menu.Item>
+
+                        <Menu.Item
+                            leftSection={<TbCopy size={18} />}
+                            onClick={() => handleCloneExternalSquad(externalSquad.uuid)}
+                        >
+                            {t('common.clone')}
                         </Menu.Item>
 
                         <Menu.Item

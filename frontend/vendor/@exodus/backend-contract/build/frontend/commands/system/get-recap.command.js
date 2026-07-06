@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetRecapCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 var GetRecapCommand;
 (function (GetRecapCommand) {
     GetRecapCommand.url = api_1.REST_API.SYSTEM.STATS.RECAP;
     GetRecapCommand.TSQ_url = GetRecapCommand.url;
-    GetRecapCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.STATS.RECAP, 'get', 'Get Recap');
+    GetRecapCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.STATS.RECAP, 'get', 'Get Recap', { scope: 'recap', kind: 'read' });
     GetRecapCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             thisMonth: zod_1.z.object({

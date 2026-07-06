@@ -1,19 +1,67 @@
+.list {
+    display: flex;
+    flex-wrap: wrap;
+    container-type: inline-size;
+}
+
+.item {
+    box-sizing: border-box;
+    flex: none;
+    width: 100%;
+    padding: calc(var(--mantine-spacing-md) / 2);
+}
+
+@container (min-width: 800px) {
+    .item {
+        width: 50%;
+    }
+}
+
+@container (min-width: 1000px) {
+    .item {
+        width: 33.3333%;
+    }
+}
+
+@container (min-width: 1200px) {
+    .item {
+        width: 25%;
+    }
+}
+
+@container (min-width: 1800px) {
+    .item {
+        width: 20%;
+    }
+}
+
+@container (min-width: 2400px) {
+    .item {
+        width: 16.6666%;
+    }
+}
+
+@container (min-width: 3000px) {
+    .item {
+        width: 14.2857%;
+    }
+}
+
 .itemWrapper {
-    animation: fadeIn 0.2s ease-out;
-    -webkit-animation: fadeIn 0.2s ease-out;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-perspective: 1000px;
-    perspective: 1000px;
+    display: flex;
+    width: 100%;
+    animation: fadeIn 0.25s ease-out;
+}
+
+.itemWrapper > * {
+    width: 100%;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateZ(0) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateZ(0) scale(1);
     }
 }

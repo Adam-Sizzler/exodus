@@ -8,7 +8,7 @@ var GetConnectionKeysByUuidCommand;
 (function (GetConnectionKeysByUuidCommand) {
     GetConnectionKeysByUuidCommand.url = api_1.REST_API.SUBSCRIPTIONS.GET_CONNECTION_KEYS_BY_UUID;
     GetConnectionKeysByUuidCommand.TSQ_url = GetConnectionKeysByUuidCommand.url(':uuid');
-    GetConnectionKeysByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET_CONNECTION_KEYS_BY_UUID(':uuid'), 'get', 'Get connection keys (base64 format) by uuid');
+    GetConnectionKeysByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET_CONNECTION_KEYS_BY_UUID(':uuid'), 'get', 'Get connection keys (base64 format) by uuid', { scope: 'connection-keys', kind: 'read' });
     GetConnectionKeysByUuidCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string(),
     });

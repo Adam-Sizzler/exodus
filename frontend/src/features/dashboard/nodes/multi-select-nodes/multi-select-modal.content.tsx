@@ -1,19 +1,19 @@
+import { Stack } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import {
     GetAllNodesCommand,
     NODES_BULK_ACTIONS,
     TNodesBulkActions
 } from '@exodus/backend-contract'
-import { TbCancel, TbRefresh, TbRocket } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
-import { modals } from '@mantine/modals'
 import { PiPulse } from 'react-icons/pi'
-import { Stack } from '@mantine/core'
+import { TbCancel, TbRefresh, TbRocket } from 'react-icons/tb'
 
-import { NodeResponse, QueryKeys, useBulkNodesActions } from '@shared/api/hooks'
+import { QueryKeys, useBulkNodesActions } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
 import { ActionCardShared } from '@shared/ui'
 
-type NodeType = NodeResponse
+type NodeType = GetAllNodesCommand.Response['response'][number]
 
 interface IProps {
     selectedRecords: NodeType[]

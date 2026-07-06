@@ -9,7 +9,7 @@ var GetInternalSquadsCommand;
 (function (GetInternalSquadsCommand) {
     GetInternalSquadsCommand.url = api_1.REST_API.INTERNAL_SQUADS.GET;
     GetInternalSquadsCommand.TSQ_url = GetInternalSquadsCommand.url;
-    GetInternalSquadsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.GET, 'get', 'Get all internal squads');
+    GetInternalSquadsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.GET, 'get', 'Get all internal squads', { scope: 'list', kind: 'read' });
     GetInternalSquadsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             total: zod_1.z.number(),

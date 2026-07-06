@@ -1,21 +1,24 @@
 import { Affix, Badge, Button, Group, Paper, Stack, Transition } from '@mantine/core'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import { TbDots } from 'react-icons/tb'
 
 import { ConfigProfilesDrawer } from '@widgets/dashboard/subscription-connections/config-profiles-drawer'
-import { QueryKeys, useBulkSubscriptionConnectionsProfileModification } from '@shared/api/hooks'
+import {
+    QueryKeys,
+    SubscriptionConnectionResponse,
+    useBulkSubscriptionConnectionsProfileModification
+} from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { queryClient } from '@shared/api'
 
 import { MultiSelectNodesModalContent } from './multi-select-modal.content'
 
 interface IProps {
-    selectedRecords: GetAllNodesCommand.Response['response'][number][]
-    setSelectedRecords: (records: GetAllNodesCommand.Response['response'][number][]) => void
+    selectedRecords: SubscriptionConnectionResponse[]
+    setSelectedRecords: (records: SubscriptionConnectionResponse[]) => void
 }
 
 export const MultiSelectNodesFeature = (props: IProps) => {
@@ -97,7 +100,7 @@ export const MultiSelectNodesFeature = (props: IProps) => {
                                 <Button
                                     color="cyan"
                                     fullWidth
-                                    leftSection={<XrayLogo size={18} />}
+                                    leftSection={<SingboxLogo size={18} />}
                                     onClick={handlers.open}
                                     size="md"
                                     variant="light"

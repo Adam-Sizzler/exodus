@@ -36,8 +36,8 @@ export declare namespace GetInternalSquadByUuidCommand {
                 port: z.ZodNullable<z.ZodNumber>;
                 rawInbound: z.ZodNullable<z.ZodUnknown>;
             }, "strip", z.ZodTypeAny, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -45,8 +45,8 @@ export declare namespace GetInternalSquadByUuidCommand {
                 port: number | null;
                 rawInbound?: unknown;
             }, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -58,8 +58,8 @@ export declare namespace GetInternalSquadByUuidCommand {
             updatedAt: z.ZodEffects<z.ZodString, Date, string>;
         }, "strip", z.ZodTypeAny, {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -68,9 +68,9 @@ export declare namespace GetInternalSquadByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             info: {
                 membersCount: number;
@@ -78,8 +78,8 @@ export declare namespace GetInternalSquadByUuidCommand {
             };
         }, {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -88,9 +88,9 @@ export declare namespace GetInternalSquadByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             info: {
                 membersCount: number;
@@ -100,8 +100,8 @@ export declare namespace GetInternalSquadByUuidCommand {
     }, "strip", z.ZodTypeAny, {
         response: {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -110,9 +110,9 @@ export declare namespace GetInternalSquadByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             info: {
                 membersCount: number;
@@ -122,8 +122,8 @@ export declare namespace GetInternalSquadByUuidCommand {
     }, {
         response: {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -132,9 +132,9 @@ export declare namespace GetInternalSquadByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             info: {
                 membersCount: number;

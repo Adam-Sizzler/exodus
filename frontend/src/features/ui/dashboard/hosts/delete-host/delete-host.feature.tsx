@@ -2,8 +2,9 @@ import { ActionIcon, Tooltip } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { TbTrash } from 'react-icons/tb'
 
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { useDeleteHost } from '@shared/api/hooks'
+
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 export function DeleteHostFeature() {
     const { t } = useTranslation()

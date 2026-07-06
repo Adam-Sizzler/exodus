@@ -1,14 +1,15 @@
-import { useTranslation } from 'react-i18next'
-import { useMediaQuery } from '@mantine/hooks'
-import { em, Modal } from '@mantine/core'
-import { TbCpu } from 'react-icons/tb'
+import { Modal } from '@mantine/core'
 import { motion } from 'motion/react'
+import { useTranslation } from 'react-i18next'
+import { TbCpu } from 'react-icons/tb'
+
+import { queryClient } from '@shared/api'
+import { nodesQueryKeys, QueryKeys } from '@shared/api/hooks'
+import { useIsMobile } from '@shared/hooks'
+import { LoaderModalShared } from '@shared/ui/loader-modal'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import { MODALS, useModalCloseActions, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { nodesQueryKeys, QueryKeys } from '@shared/api/hooks'
-import { LoaderModalShared } from '@shared/ui/loader-modal'
-import { queryClient } from '@shared/api'
 
 import { EditNodeByUuidModalContent } from './edit-node-by-uuid-modal.content'
 
@@ -19,7 +20,7 @@ export const EditNodeByUuidModalWidget = () => {
 
     const [handleClose, clearInternalState] = useModalCloseActions(MODALS.EDIT_NODE_BY_UUID_MODAL)
 
-    const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
+    const isMobile = useIsMobile()
 
     const clearInternalStateAndClose = () => {
         clearInternalState()
@@ -62,11 +63,7 @@ export const EditNodeByUuidModalWidget = () => {
                     <LoaderModalShared h="78vh" />
                 </motion.div>
             ) : (
-                <EditNodeByUuidModalContent
-                    generatedCredentials={nodeUuid.generatedCredentials}
-                    nodeUuid={nodeUuid.nodeUuid}
-                    onClose={handleClose}
-                />
+                <EditNodeByUuidModalContent nodeUuid={nodeUuid.nodeUuid} onClose={handleClose} />
             )}
         </Modal>
     )

@@ -8,7 +8,7 @@ var DeletePasskeyCommand;
 (function (DeletePasskeyCommand) {
     DeletePasskeyCommand.url = api_1.REST_API.PASSKEYS.DELETE_PASSKEY;
     DeletePasskeyCommand.TSQ_url = DeletePasskeyCommand.url;
-    DeletePasskeyCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.DELETE_PASSKEY, 'delete', 'Delete a passkey by ID');
+    DeletePasskeyCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.DELETE_PASSKEY, 'delete', 'Delete a passkey by ID', { scope: 'delete', kind: 'write' });
     DeletePasskeyCommand.RequestSchema = zod_1.z.object({
         id: zod_1.z.string(),
     });

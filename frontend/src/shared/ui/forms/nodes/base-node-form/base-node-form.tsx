@@ -1,34 +1,28 @@
+import { DeleteNodeFeature } from '@features/ui/dashboard/nodes/delete-node'
+import { ResetNodeTrafficFeature } from '@features/ui/dashboard/nodes/reset-node-traffic'
+import { RestartNodeButtonFeature } from '@features/ui/dashboard/nodes/restart-node-button'
+import { ToggleNodeStatusButtonFeature } from '@features/ui/dashboard/nodes/toggle-node-status-button'
+import { Button, CopyButton, Group, Menu, px, Stack } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
 import {
     GetNodePluginsCommand,
     GetOneNodeCommand,
     GetPubKeyCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
-import { Button, CopyButton, em, Group, Menu, px, Stack } from '@mantine/core'
-import { PiFloppyDiskDuotone } from 'react-icons/pi'
-import { UseFormReturnType } from '@mantine/form'
-import { TbCopy, TbDots } from 'react-icons/tb'
-import { useMediaQuery } from '@mantine/hooks'
-import { motion } from 'framer-motion'
-import { ReactNode } from 'react'
-import { t } from 'i18next'
-
-import {
-    NodeKeygenResponse,
-    NodePluginResponse,
-    NodeResponse,
-    UpdateNodeRequest
-} from '@shared/api/hooks'
-import { ToggleNodeStatusButtonFeature } from '@features/ui/dashboard/nodes/toggle-node-status-button'
-import { RestartNodeButtonFeature } from '@features/ui/dashboard/nodes/restart-node-button'
-import { ResetNodeTrafficFeature } from '@features/ui/dashboard/nodes/reset-node-traffic'
 import { ModalAccordionWidget } from '@widgets/dashboard/nodes/modal-accordeon-widget'
-import { DeleteNodeFeature } from '@features/ui/dashboard/nodes/delete-node'
+import { motion } from 'framer-motion'
+import { t } from 'i18next'
+import { ReactNode } from 'react'
+import { PiFloppyDiskDuotone } from 'react-icons/pi'
+import { TbCopy, TbDots } from 'react-icons/tb'
+
+import { useIsMobile } from '@shared/hooks'
 import { ModalFooter } from '@shared/ui/modal-footer'
 
-import { NodeTrackingAndBillingCard } from './node-tracking-and-billing.card'
 import { NodeConfigProfilesCard } from './node-config-profiles.card'
 import { NodeConsumptionCard } from './node-consumption.card'
+import { NodeTrackingAndBillingCard } from './node-tracking-and-billing.card'
 import { NodeVitalsCard } from './node-vitals.card'
 
 const MotionWrapper = motion.div
@@ -57,14 +51,14 @@ interface IProps<T extends UpdateNodeCommand.Request> {
     handleClose: () => void
     handleSubmit: () => void
     isDataSubmitting: boolean
-    node: NodeResponse
+    node: GetOneNodeCommand.Response['response']
     nodeDetailsCard?: ReactNode
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     nodeSystemCard?: ReactNode
-    pubKey: NodeKeygenResponse | undefined
+    pubKey: GetPubKeyCommand.Response['response'] | undefined
 }
 
-export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
+export const BaseNodeForm = <T extends UpdateNodeCommand.Request>(props: IProps<T>) => {
     const {
         form,
         node,
@@ -77,7 +71,7 @@ export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
         isDataSubmitting
     } = props
 
-    const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
+    const isMobile = useIsMobile()
 
     return (
         <>
@@ -103,6 +97,7 @@ export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
                         form={form}
                         motionWrapper={MotionWrapper}
                         nodePlugins={nodePlugins}
+                        nodeUuid={node.uuid}
                         pubKey={pubKey}
                     />
 
@@ -145,6 +140,7 @@ export const BaseNodeForm = <T extends UpdateNodeRequest>(props: IProps<T>) => {
                             form={form}
                             motionWrapper={MotionWrapper}
                             nodePlugins={nodePlugins}
+                            nodeUuid={node.uuid}
                             pubKey={pubKey}
                         />
 

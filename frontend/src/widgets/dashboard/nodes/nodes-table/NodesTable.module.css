@@ -3,6 +3,7 @@
     -webkit-animation: fadeIn 0.2s ease-out;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+    will-change: transform, opacity;
 }
 
 @keyframes fadeIn {

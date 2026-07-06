@@ -45,16 +45,16 @@ export declare namespace GetTorrentBlockerReportsStatsCommand {
                 total: z.ZodNumber;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }, {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             stats: {
@@ -71,10 +71,10 @@ export declare namespace GetTorrentBlockerReportsStatsCommand {
             }[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
         }, {
             stats: {
@@ -91,10 +91,10 @@ export declare namespace GetTorrentBlockerReportsStatsCommand {
             }[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
         }>;
     }, "strip", z.ZodTypeAny, {
@@ -113,10 +113,10 @@ export declare namespace GetTorrentBlockerReportsStatsCommand {
             }[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
         };
     }, {
@@ -135,10 +135,10 @@ export declare namespace GetTorrentBlockerReportsStatsCommand {
             }[];
             topNodes: {
                 uuid: string;
+                name: string;
                 total: number;
                 countryCode: string;
                 color: string;
-                name: string;
             }[];
         };
     }>;

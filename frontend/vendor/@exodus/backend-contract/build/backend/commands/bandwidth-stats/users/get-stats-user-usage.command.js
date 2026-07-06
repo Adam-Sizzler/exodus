@@ -8,7 +8,7 @@ var GetStatsUserUsageCommand;
 (function (GetStatsUserUsageCommand) {
     GetStatsUserUsageCommand.url = api_1.REST_API.BANDWIDTH_STATS.USERS.GET_BY_UUID;
     GetStatsUserUsageCommand.TSQ_url = GetStatsUserUsageCommand.url(':uuid');
-    GetStatsUserUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.USERS.GET_BY_UUID(':uuid'), 'get', 'Get User Usage by Range');
+    GetStatsUserUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.USERS.GET_BY_UUID(':uuid'), 'get', 'Get User Usage by Range', { scope: 'user-usage', kind: 'read' });
     GetStatsUserUsageCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

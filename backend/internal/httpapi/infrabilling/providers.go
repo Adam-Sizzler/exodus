@@ -16,8 +16,12 @@ import (
 )
 
 type providerNode struct {
+	Name    string               `json:"name"`
+	Details *providerNodeDetails `json:"details"`
+}
+
+type providerNodeDetails struct {
 	NodeUUID    string `json:"nodeUuid"`
-	Name        string `json:"name"`
 	CountryCode string `json:"countryCode"`
 }
 
@@ -344,9 +348,11 @@ func getProviders(ctx context.Context, manager *dbmanager.DatabaseManager) ([]pr
 		for rows.Next() {
 			var providerUUID string
 			var node providerNode
-			if scanErr := rows.Scan(&providerUUID, &node.NodeUUID, &node.Name, &node.CountryCode); scanErr != nil {
+			var details providerNodeDetails
+			if scanErr := rows.Scan(&providerUUID, &details.NodeUUID, &node.Name, &details.CountryCode); scanErr != nil {
 				return scanErr
 			}
+			node.Details = &details
 			nodesByProvider[providerUUID] = append(nodesByProvider[providerUUID], node)
 		}
 		return rows.Err()

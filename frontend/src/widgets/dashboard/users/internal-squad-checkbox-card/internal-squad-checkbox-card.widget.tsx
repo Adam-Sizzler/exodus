@@ -1,10 +1,11 @@
 import { ActionIcon, Badge, Checkbox, Group, Text } from '@mantine/core'
+import { memo } from 'react'
 import { PiTag, PiUsers } from 'react-icons/pi'
 import { TbEdit } from 'react-icons/tb'
-import { memo } from 'react'
+
+import { formatInt } from '@shared/utils/misc'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { formatInt } from '@shared/utils/misc'
 
 import classes from './Checkbox.module.css'
 import { IProps } from './interfaces'

@@ -1,42 +1,41 @@
 ## Telegram OAuth2
 
-> Этот гайд актуален для версии **2.7.0** и выше.
+To configure the "Login via Telegram" feature, you need a Telegram bot. Additionally, you need to configure the bot for the feature to work correctly.
 
-Для настройки функции "Вход через Telegram" вам необходим Telegram-бот, так же необходимо дополнительно настроить бота, чтобы функция работала корректно.
+### Bot Configuration
 
-### Настройка бота
+1. Open @BotFather (https://t.me/botfather)
+2. Open the MiniApp by pressing "Open"
+3. Select your bot and press `Bot Settings`
+4. If there is already a domain specified in the `Web Login` section — delete it.
+5. Press the Switch to OpenID Connect Login button.
+   `If this button is not available, after deleting the domain go back one menu level and repeat from step 3`
+6. Press Add an Allowed URL.
+   Specify the following values:
 
-1. Откройте @BotFather (https://t.me/botfather)
-2. Откройте MiniApp кнопкой "Open"
-3. Выберите вашего бота и нажмите `Bot Settings`
-4. Откройте раздел `Web Login`.
-5. Укажите домен панели командой `/setdomain` или через поле домена в `Web Login`.
-   Указывайте только домен без схемы и пути:
+- Trusted Origins: https://panel.domain.com
+- Redirect URIs: https://panel.domain.com/oauth2/callback/telegram
 
-- `panel.domain.com`
+### Access Configuration
 
-Для панели, открытой по адресу `https://data.s-backup.online/panel/auth/login`, в BotFather должен быть указан домен `data.s-backup.online`.
+After filling in `Client ID`, `Client Secret` and `Frontend Domain`, you need to specify a list of administrator IDs who will have access to login.
 
-### Настройка доступа
-
-После заполнения `Bot Token` вам необходимо указать список ID – администраторов, для которых будет доступен вход.
-
-1. С нужного аккаунта запустите бота – https://t.me/Get_myidrobot
-2. В ответ бот пришлет вам ваш ID, введите его в соответсвующее поле.
+1. From the required account, launch the bot – https://t.me/Get_myidrobot
+2. In response, the bot will send you your ID, enter it in the corresponding field.
 
 ---
 
-### Решение известных ошибок
+### Known Error Solutions
 
-###### Разного рода защиты установленные поверх панели (наподобие куки, и тд.) могут работать некорректно с `Telegram OAuth2`.
+###### Various protections installed on top of the panel (such as cookies, etc.) may not work correctly with `Telegram OAuth2`.
 
-Используйте путь /oauth2/ в своих реверс прокси для решения этой проблемы
+Use the /oauth2/ path in your reverse proxy to resolve this issue
 
-###### Ошибка: BOT_DOMAIN_INVALID
+###### Error: BOT_DOMAIN_INVALID
 
-Эта ошибка возникает до запроса в backend, когда Telegram сравнивает `origin` страницы с доменом бота. Для адреса `https://data.s-backup.online/panel/auth/login` Telegram проверяет `https://data.s-backup.online`, поэтому в BotFather должен быть указан именно `data.s-backup.online`, без `/panel/auth/login`.
+This error occurs due to incorrect bot domain configuration – review the "Bot Configuration" section (above). If necessary, repeat this step-by-step process.
 
-###### Ошибка: не приходит код подтверждения от Telegram при логине
+###### Error: Telegram confirmation code not received during login
 
-К сожалению, со стороны Exodus эту проблему не решить. Попробуйте использовать бота, который был создан давно или использовать другой браузер.
-Так же, как вариант вы можете попробовать залогиниться на одном из "официальных" ресурсорв – например https://fragment.com. Так как сессия Telegram в рамках браузера будет общей – вы можете попробовать залогиниться в панель.
+Unfortunately, this issue cannot be resolved from the Exodus side. Try using a bot that was created a while ago or use a different browser.
+Alternatively, you can try logging in on one of the "official" resources – for example, https://fragment.com. Since the Telegram session within the browser will be shared – you can try logging into the panel.

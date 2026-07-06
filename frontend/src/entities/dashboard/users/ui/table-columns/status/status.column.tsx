@@ -1,7 +1,7 @@
-import { useTranslation } from 'react-i18next'
 import { Stack, Text } from '@mantine/core'
-
 import { UserStatusBadge } from '@widgets/dashboard/users/user-status-badge'
+import { useTranslation } from 'react-i18next'
+
 import { getExpirationTextUtil } from '@shared/utils/time-utils'
 
 import { IProps } from './interface'

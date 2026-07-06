@@ -1,31 +1,15 @@
 /* eslint-disable no-param-reassign */
 import xbytes from 'xbytes'
 
-export function prettyBytesToAnyUtil(
-    bytesInput: number | string | undefined,
+export function prettifyBytesUtil(
+    bytesInput: null | number | string | undefined,
     returnZero: true
 ): string
-export function prettyBytesToAnyUtil(
-    bytesInput: number | string | undefined,
+export function prettifyBytesUtil(
+    bytesInput: null | number | string | undefined,
     returnZero?: false
 ): string | undefined
-export function prettyBytesToAnyUtil(
-    bytesInput: number | string | undefined,
-    returnZero: boolean = false
-): string | undefined {
-    if (!bytesInput) {
-        return returnZero ? '0' : undefined
-    }
-    if (typeof bytesInput === 'string') {
-        bytesInput = Number(bytesInput)
-    }
-
-    const res = xbytes.parseBytes(bytesInput, { sticky: true, iec: true })
-
-    return String(res.size)
-}
-
-export function prettyBytesUtil(
+export function prettifyBytesUtil(
     bytesInput: null | number | string | undefined,
     returnZero: boolean = false
 ): string | undefined {
@@ -36,42 +20,7 @@ export function prettyBytesUtil(
         bytesInput = Number(bytesInput)
     }
 
-    const res = xbytes.parseBytes(bytesInput, { sticky: true, prefixIndex: 3, iec: true })
-
-    return String(res.size)
-}
-
-export function prettyBytesUtilWithoutPrefix(
-    bytesInput: number | string | undefined,
-    returnZero: boolean = false
-): string | undefined {
-    if (!bytesInput) {
-        return returnZero ? '0' : undefined
-    }
-    if (typeof bytesInput === 'string') {
-        bytesInput = Number(bytesInput)
-    }
-
-    const res = xbytes.parseBytes(bytesInput, { sticky: true, iec: true })
-
-    return String(res.size)
-}
-
-export function prettyRealtimeBytesUtil(
-    bytesInput: number | string | undefined,
-    returnZero: boolean = false,
-    withSeconds: boolean = false
-): string | undefined {
-    if (!bytesInput) {
-        return returnZero ? '0 B/s' : undefined
-    }
-    if (typeof bytesInput === 'string') {
-        bytesInput = Number(bytesInput)
-    }
-
-    const res = xbytes.parseBytes(bytesInput, { sticky: true, iec: true })
-
-    return `${res.size}${withSeconds ? '/s' : ''}`
+    return xbytes(bytesInput, { iec: true })
 }
 
 export function prettySiBytesUtil(
@@ -85,9 +34,7 @@ export function prettySiBytesUtil(
         bytesInput = Number(bytesInput)
     }
 
-    const res = xbytes.parseBytes(bytesInput, { sticky: true, iec: false })
-
-    return String(res.size)
+    return xbytes(bytesInput, { iec: false })
 }
 
 export function prettySiRealtimeBytesUtil(
@@ -102,7 +49,7 @@ export function prettySiRealtimeBytesUtil(
         bytesInput = Number(bytesInput)
     }
 
-    const res = xbytes.parseBytes(bytesInput, { sticky: true, iec: false, bits: true })
+    const res = xbytes(bytesInput, { iec: false, bits: true })
 
-    return `${res.size}${withSeconds ? '/s' : ''}`
+    return `${res}${withSeconds ? '/s' : ''}`
 }

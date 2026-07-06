@@ -1,12 +1,12 @@
-import { GetConfigProfilesCommand } from '@exodus/backend-contract'
-import { generatePath, useNavigate } from 'react-router-dom'
-import { PiCpu, PiTag } from 'react-icons/pi'
 import { Badge, Group } from '@mantine/core'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
+import { PiCpu, PiTag } from 'react-icons/pi'
+import { generatePath, useNavigate } from 'react-router'
 
+import { ROUTES } from '@shared/constants'
+import { SingboxLogo } from '@shared/ui/logos'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 import { formatInt } from '@shared/utils/misc'
-import { SingboxLogo } from '@shared/ui/logos'
-import { ROUTES } from '@shared/constants'
 
 interface IProps {
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles']

@@ -30,18 +30,19 @@ type UpdateUserSubscriptionPayload struct {
 }
 
 type AddSubscriptionRequestRecordPayload struct {
-	UserUUID  string `json:"userUuid"`
+	UserID    int64  `json:"userId"`
 	RequestIP string `json:"requestIp"`
 	UserAgent string `json:"userAgent"`
 }
 
 type UpsertHwidDevicePayload struct {
-	UserUUID    string  `json:"userUuid"`
+	UserID      int64   `json:"userId"`
 	Hwid        string  `json:"hwid"`
 	Platform    *string `json:"platform,omitempty"`
 	OsVersion   *string `json:"osVersion,omitempty"`
 	DeviceModel *string `json:"deviceModel,omitempty"`
 	UserAgent   *string `json:"userAgent,omitempty"`
+	RequestIP   *string `json:"requestIp,omitempty"`
 }
 
 var (
@@ -124,18 +125,18 @@ func EnqueueUpdateUserSubscription(ctx context.Context, payload UpdateUserSubscr
 
 func EnqueueAddSubscriptionRequestRecord(ctx context.Context, payload AddSubscriptionRequestRecordPayload) (bool, error) {
 	return enqueueSubscriptionJob(ctx, jobAddSubscriptionRecord, payload, JobOptions{
-		ID:       fmt.Sprintf("%s:AR", payload.UserUUID),
-		DedupeID: fmt.Sprintf("%s:AR", payload.UserUUID),
+		ID:       fmt.Sprintf("%d:AR", payload.UserID),
+		DedupeID: fmt.Sprintf("%d:AR", payload.UserID),
 		Attempts: 3,
 		Backoff:  time.Second,
 	})
 }
 
 func EnqueueUpsertHwidDevice(ctx context.Context, payload UpsertHwidDevicePayload) (bool, error) {
-	if payload.Hwid == "" || payload.UserUUID == "" {
+	if payload.Hwid == "" || payload.UserID <= 0 {
 		return false, nil
 	}
-	jobID := fmt.Sprintf("%s:%s:CAUHD", payload.UserUUID, payload.Hwid)
+	jobID := fmt.Sprintf("%d:%s:CAUHD", payload.UserID, payload.Hwid)
 	return enqueueSubscriptionJob(ctx, jobUpsertHwidDevice, payload, JobOptions{
 		ID:       jobID,
 		DedupeID: jobID,
@@ -162,49 +163,50 @@ func updateUserSubscription(ctx context.Context, manager *dbmanager.DatabaseMana
 }
 
 func addSubscriptionRequestRecord(ctx context.Context, manager *dbmanager.DatabaseManager, payload AddSubscriptionRequestRecordPayload) error {
-	if payload.UserUUID == "" {
+	if payload.UserID <= 0 {
 		return nil
 	}
 	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		if _, err := db.ExecContext(ctx, `
-			INSERT INTO user_subscription_request_history (user_uuid, request_ip, user_agent)
+			INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
 			VALUES (?, ?, ?)
-		`, payload.UserUUID, payload.RequestIP, payload.UserAgent); err != nil {
+		`, payload.UserID, payload.RequestIP, payload.UserAgent); err != nil {
 			return err
 		}
 
 		_, err := db.ExecContext(ctx, `
 			DELETE FROM user_subscription_request_history
-			WHERE user_uuid = ?
+			WHERE user_id = ?
 			  AND id NOT IN (
 				  SELECT id
 				  FROM user_subscription_request_history
-				  WHERE user_uuid = ?
+				  WHERE user_id = ?
 				  ORDER BY request_at DESC, id DESC
 				  LIMIT 24
 			  )
-		`, payload.UserUUID, payload.UserUUID)
+		`, payload.UserID, payload.UserID)
 		return err
 	})
 }
 
 func upsertHwidDevice(ctx context.Context, manager *dbmanager.DatabaseManager, payload UpsertHwidDevicePayload) error {
-	if payload.UserUUID == "" || payload.Hwid == "" {
+	if payload.UserID <= 0 || payload.Hwid == "" {
 		return nil
 	}
 	payload.Platform = lowerStringPtr(payload.Platform)
 	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		_, err := db.ExecContext(ctx, `
-			INSERT INTO hwid_user_devices (hwid, user_uuid, platform, os_version, device_model, user_agent)
-			VALUES (?, ?, ?, ?, ?, ?)
-			ON CONFLICT (hwid, user_uuid)
+			INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (hwid, user_id)
 			DO UPDATE SET
 				platform = EXCLUDED.platform,
 				os_version = EXCLUDED.os_version,
 				device_model = EXCLUDED.device_model,
 				user_agent = EXCLUDED.user_agent,
+				request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
 				updated_at = now()
-		`, payload.Hwid, payload.UserUUID, payload.Platform, payload.OsVersion, payload.DeviceModel, payload.UserAgent)
+		`, payload.Hwid, payload.UserID, payload.Platform, payload.OsVersion, payload.DeviceModel, payload.UserAgent, payload.RequestIP)
 		return err
 	})
 }

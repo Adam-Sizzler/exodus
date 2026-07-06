@@ -8,7 +8,7 @@ var PluginExecutorCommand;
 (function (PluginExecutorCommand) {
     PluginExecutorCommand.url = api_1.REST_API.NODE_PLUGINS.EXECUTOR;
     PluginExecutorCommand.TSQ_url = PluginExecutorCommand.url;
-    PluginExecutorCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.EXECUTOR, 'post', 'Execute command on node plugins');
+    PluginExecutorCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.EXECUTOR, 'post', 'Execute command on node plugins', { scope: 'executor', kind: 'write' });
     PluginExecutorCommand.CommandSchema = zod_1.z.discriminatedUnion('command', [
         zod_1.z
             .object({

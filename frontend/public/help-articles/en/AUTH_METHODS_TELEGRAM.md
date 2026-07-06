@@ -15,7 +15,7 @@ To configure the "Login via Telegram" feature, you need a Telegram bot. Addition
 
 - `panel.domain.com`
 
-For a panel opened at `https://data.s-backup.online/panel/auth/login`, BotFather must contain `data.s-backup.online`.
+For a panel opened at `https://panel.domain.com/panel/auth/login`, BotFather must contain `panel.domain.com`.
 
 ### Access Configuration
 
@@ -34,7 +34,7 @@ Use the /oauth2/ path in your reverse proxy to resolve this issue
 
 ###### Error: BOT_DOMAIN_INVALID
 
-This error happens before the backend callback when Telegram compares the page `origin` with the bot domain. For `https://data.s-backup.online/panel/auth/login`, Telegram checks `https://data.s-backup.online`, so BotFather must contain `data.s-backup.online`, without `/panel/auth/login`.
+This error happens before the backend callback when Telegram compares the page `origin` with the bot domain. For `https://panel.domain.com/panel/auth/login`, Telegram checks `https://panel.domain.com`, so BotFather must contain `panel.domain.com`, without `/panel/auth/login`.
 
 ###### Error: Telegram confirmation code not received during login
 

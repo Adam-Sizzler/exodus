@@ -1,15 +1,15 @@
 import { Card, Stack, Text, Title } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
+import { useTranslation } from 'react-i18next'
 
-import { ActiveNodesListModalWithStoreShared } from '@shared/ui/config-profiles/active-nodes-list-modal-with-store/active-nodes-list-with-store.modal.shared'
 import { QueryKeys, useDeleteConfigProfile, useReorderConfigProfiles } from '@shared/api/hooks'
-import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 import { queryClient } from '@shared/api/query-client'
+import { ActiveNodesListModalWithStoreShared } from '@shared/ui/config-profiles/active-nodes-list-modal-with-store/active-nodes-list-with-store.modal.shared'
 import { SingboxLogo } from '@shared/ui/logos'
+import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 
-import { ConfigProfileInboundsDrawerWidget } from '../config-profile-inbounds-drawer/config-profile-inbounds.drawer.widget'
 import { ConfigProfileCardWidget } from '../config-profile-card/config-profile-card.widget'
+import { ConfigProfileInboundsDrawerWidget } from '../config-profile-inbounds-drawer/config-profile-inbounds.drawer.widget'
 import { IProps } from './interfaces'
 
 export function ConfigProfilesGridWidget(props: IProps) {

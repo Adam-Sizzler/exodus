@@ -1,9 +1,10 @@
-import { RESET_PERIODS } from '@exodus/backend-contract'
 import { Box, Group, Progress, Text } from '@mantine/core'
+import { RESET_PERIODS } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 
+import { prettifyBytesUtil } from '@shared/utils/bytes'
+
 import { IProps } from '@entities/dashboard/users/ui/table-columns/username/interface'
-import { prettyBytesUtil } from '@shared/utils/bytes'
 
 export function DataUsageColumnEntity(props: IProps) {
     const { t } = useTranslation()
@@ -20,13 +21,13 @@ export function DataUsageColumnEntity(props: IProps) {
         [RESET_PERIODS.MONTH]: t('data-usage.column.monthly'),
         [RESET_PERIODS.WEEK]: t('data-usage.column.weekly'),
         [RESET_PERIODS.DAY]: t('data-usage.column.daily'),
-        [RESET_PERIODS.MONTH_ROLLING]: t('data-usage.column.monthly-rolling'),
+        [RESET_PERIODS.MONTH_ROLLING]: `${t('data-usage.column.monthly')} ↻`,
         [RESET_PERIODS.NO_RESET]: '∞'
     }[user.trafficLimitStrategy]
 
-    const prettyUsedData = prettyBytesUtil(usedBytes) || '0 B'
-    const prettyLifetimeData = prettyBytesUtil(lifetimeBytes) || '0 B'
-    const maxData = isUnlimited ? '∞' : prettyBytesUtil(limitBytes) || '∞'
+    const prettyUsedData = prettifyBytesUtil(usedBytes) || '0 B'
+    const prettyLifetimeData = prettifyBytesUtil(lifetimeBytes) || '0 B'
+    const maxData = isUnlimited ? '∞' : prettifyBytesUtil(limitBytes) || '∞'
 
     const getProgressColor = () => {
         if (isUnlimited) return 'teal'

@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetTopUsersByHwidDevicesCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 var GetTopUsersByHwidDevicesCommand;
 (function (GetTopUsersByHwidDevicesCommand) {
     GetTopUsersByHwidDevicesCommand.url = api_1.REST_API.HWID.TOP_USERS_BY_DEVICES;
     GetTopUsersByHwidDevicesCommand.TSQ_url = GetTopUsersByHwidDevicesCommand.url;
-    GetTopUsersByHwidDevicesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HWID_ROUTES.TOP_USERS_BY_DEVICES, 'get', 'Get top users by HWID devices');
+    GetTopUsersByHwidDevicesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HWID_ROUTES.TOP_USERS_BY_DEVICES, 'get', 'Get top users by HWID devices', { scope: 'top-users', kind: 'read' });
     GetTopUsersByHwidDevicesCommand.RequestQuerySchema = zod_1.z.object({
         start: zod_1.z.coerce
             .number()

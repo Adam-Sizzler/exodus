@@ -9,7 +9,7 @@ var GetNodePluginsCommand;
 (function (GetNodePluginsCommand) {
     GetNodePluginsCommand.url = api_1.REST_API.NODE_PLUGINS.GET_ALL;
     GetNodePluginsCommand.TSQ_url = GetNodePluginsCommand.url;
-    GetNodePluginsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.GET_ALL, 'get', 'Get all Node Plugins');
+    GetNodePluginsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.GET_ALL, 'get', 'Get all Node Plugins', { scope: 'list', kind: 'read' });
     GetNodePluginsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             total: zod_1.z.number(),

@@ -1,7 +1,7 @@
 import { Card, Stack, Text, Title } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import { useTranslation } from 'react-i18next'
 import { PiEmpty } from 'react-icons/pi'
-import { modals } from '@mantine/modals'
 
 import {
     QueryKeys,
@@ -11,9 +11,9 @@ import {
     useGetInternalSquads,
     useReorderInternalSquads
 } from '@shared/api/hooks'
+import { queryClient } from '@shared/api/query-client'
 import { baseNotificationsMutations } from '@shared/ui/notifications/base-notification-mutations'
 import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
-import { queryClient } from '@shared/api/query-client'
 import { sToMs } from '@shared/utils/time-utils'
 
 import { InternalSquadCardWidget } from '../internal-squad-card/internal-squad-card.widget'

@@ -1,3 +1,8 @@
+import { ActionIcon, Badge, Box, Card, Group, Text } from '@mantine/core'
+import {
+    TSubscriptionPageAppConfig,
+    TSubscriptionPageSvgLibrary
+} from '@exodus/subscription-page-types'
 import {
     IconArrowDown,
     IconArrowUp,
@@ -6,11 +11,6 @@ import {
     IconStar,
     IconTrash
 } from '@tabler/icons-react'
-import {
-    TSubscriptionPageAppConfig,
-    TSubscriptionPageSvgLibrary
-} from '@exodus/subscription-page-types'
-import { ActionIcon, Badge, Box, Card, Group, Text } from '@mantine/core'
 import isSvg from 'is-svg'
 
 import styles from '../subpage-config-visual-editor.module.css'

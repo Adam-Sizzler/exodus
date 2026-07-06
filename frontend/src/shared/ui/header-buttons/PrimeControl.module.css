@@ -1,0 +1,49 @@
+.support {
+    svg {
+        width: rem(22);
+        height: rem(22);
+    }
+
+    @mixin light {
+        border-color: rgba(184, 134, 11, 0.4);
+        color: #a87b00;
+
+        svg {
+            color: #b8860b;
+        }
+
+        @mixin hover {
+            border-color: rgba(184, 134, 11, 0.65);
+            color: #936a00;
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                0 0 16px rgba(212, 175, 55, 0.3);
+
+            svg {
+                color: #c79a1e;
+            }
+        }
+    }
+
+    @mixin dark {
+        border-color: rgba(212, 175, 55, 0.38);
+        color: #d4af37;
+
+        svg {
+            color: #d9b85c;
+        }
+
+        @mixin hover {
+            border-color: rgba(212, 175, 55, 0.6);
+            color: #e6c869;
+
+            svg {
+                color: #ecd07a;
+            }
+
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.3),
+                0 0 18px rgba(212, 175, 55, 0.28);
+        }
+    }
+}

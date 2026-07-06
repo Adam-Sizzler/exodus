@@ -1,16 +1,12 @@
-import { PiClockDuotone, PiCloudDuotone, PiGearSixDuotone, PiQueueDuotone } from 'react-icons/pi'
 import { Badge, Card, Grid, Group, Progress, Stack, Text, ThemeIcon } from '@mantine/core'
-import { TFunction } from 'i18next'
+import { GetExodusHealthCommand } from '@exodus/backend-contract'
+import { PiClockDuotone, PiCloudDuotone, PiGearSixDuotone, PiQueueDuotone } from 'react-icons/pi'
 
-import {
-    ExodusMetric,
-    formatBytes,
-    formatMilliseconds,
-    getHeapUsedPercent,
-    getHeapUsedValue
-} from '../metrics/exodus-metrics'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
 
 import classes from './runtime-detail-card.module.css'
+
+type RuntimeMetric = GetExodusHealthCommand.Response['response']['runtimeMetrics'][number]
 
 const PROCESS_CONFIG: Record<
     string,
@@ -36,26 +32,12 @@ const PROCESS_CONFIG: Record<
         Icon: PiClockDuotone,
         name: 'Scheduler'
     },
-    worker: {
-        accentColor: 'var(--mantine-color-teal-6)',
-        accentGlow: 'rgba(20, 184, 166, 0.2)',
-        color: 'teal',
-        Icon: PiQueueDuotone,
-        name: 'Workers'
-    },
-    workers: {
-        accentColor: 'var(--mantine-color-teal-6)',
-        accentGlow: 'rgba(20, 184, 166, 0.2)',
-        color: 'teal',
-        Icon: PiQueueDuotone,
-        name: 'Workers'
-    },
     processor: {
         accentColor: 'var(--mantine-color-teal-6)',
         accentGlow: 'rgba(20, 184, 166, 0.2)',
         color: 'teal',
         Icon: PiQueueDuotone,
-        name: 'Workers'
+        name: 'Processor'
     }
 }
 
@@ -64,28 +46,16 @@ const DEFAULT_PROCESS = {
     accentGlow: 'rgba(108, 117, 125, 0.2)',
     color: 'gray',
     Icon: PiGearSixDuotone,
-    name: 'Runtime'
+    name: 'Unknown'
 }
 
 interface RuntimeDetailCardProps {
-    metric: ExodusMetric
-    t: TFunction
+    metric: RuntimeMetric
 }
 
-const RuntimeValue = ({ label, value }: { label: string; value: number | string }) => (
-    <Stack gap={0}>
-        <Text className={classes.statLabel}>{label}</Text>
-        <Text className={classes.statValue}>{value}</Text>
-    </Stack>
-)
-
-export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
-    const instanceType = metric.instanceType?.toLowerCase() ?? 'api'
-    const config = PROCESS_CONFIG[instanceType] ?? DEFAULT_PROCESS
-    const heapPercent = getHeapUsedPercent(metric)
-    const scheduler = metric.scheduler as
-        | (ExodusMetric['scheduler'] & { schedulerDelayMs?: number })
-        | undefined
+export function RuntimeDetailCard({ metric }: RuntimeDetailCardProps) {
+    const config = PROCESS_CONFIG[metric.instanceType] ?? DEFAULT_PROCESS
+    const heapPercent = metric.heapTotal > 0 ? (metric.heapUsed / metric.heapTotal) * 100 : 0
 
     return (
         <Card
@@ -109,32 +79,29 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
                         </ThemeIcon>
                         <Stack gap={2}>
                             <Text c="white" ff="monospace" fw={700} lh={1} size="sm">
-                                {config.name}-{metric.instanceId ?? 0}
+                                {config.name}-{metric.instanceId}
                             </Text>
-                            {typeof metric.pid === 'number' && (
-                                <Badge color={config.color} ff="monospace" size="xs" variant="soft">
-                                    PID: {metric.pid}
-                                </Badge>
-                            )}
+                            <Badge color={config.color} ff="monospace" size="xs" variant="soft">
+                                PID: {metric.pid}
+                            </Badge>
                         </Stack>
                     </Group>
                 </Group>
 
-                <Grid gutter="sm">
+                <Grid gap="sm">
                     <Grid.Col span={{ base: 12, sm: 7 }}>
                         <div className={classes.memorySection}>
                             <Stack gap={6}>
                                 <Text c="dimmed" fw={600} lh={1} lts={1} size="10px" tt="uppercase">
-                                    {t('runtime-metrics.memory')}
+                                    Memory
                                 </Text>
 
                                 <div>
-                                    <Group gap="xs" justify="space-between" mb={4} wrap="nowrap">
-                                        <Text className={classes.statLabel}>
-                                            {t('runtime-metrics.heap')}
-                                        </Text>
+                                    <Group justify="space-between" mb={4}>
+                                        <Text className={classes.statLabel}>Heap</Text>
                                         <Text className={classes.heapValues}>
-                                            {getHeapUsedValue(metric)}{' '}
+                                            {prettifyBytesUtil(metric.heapUsed, true)} /{' '}
+                                            {prettifyBytesUtil(metric.heapTotal, true)}{' '}
                                             <span className={classes.heapPercent}>
                                                 ({heapPercent.toFixed(0)}%)
                                             </span>
@@ -149,18 +116,24 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
                                 </div>
 
                                 <Group grow>
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.rss')}
-                                        value={formatBytes(metric.memory?.rssBytes)}
-                                    />
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.go-sys')}
-                                        value={formatBytes(metric.memory?.sysBytes)}
-                                    />
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.stack')}
-                                        value={formatBytes(metric.memory?.stackInuseBytes)}
-                                    />
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>RSS</Text>
+                                        <Text className={classes.statValue}>
+                                            {prettifyBytesUtil(metric.rss, true)}
+                                        </Text>
+                                    </Stack>
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>External</Text>
+                                        <Text className={classes.statValue}>
+                                            {prettifyBytesUtil(metric.external, true)}
+                                        </Text>
+                                    </Stack>
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>Array Buffers</Text>
+                                        <Text className={classes.statValue}>
+                                            {prettifyBytesUtil(metric.arrayBuffers, true)}
+                                        </Text>
+                                    </Stack>
                                 </Group>
                             </Stack>
                         </div>
@@ -170,49 +143,51 @@ export function RuntimeDetailCard({ metric, t }: RuntimeDetailCardProps) {
                         <div className={classes.perfSection}>
                             <Stack gap={6}>
                                 <Text c="dimmed" fw={600} lh={1} lts={1} size="10px" tt="uppercase">
-                                    {t('runtime-metrics.scheduler')}
+                                    Event Loop
                                 </Text>
 
                                 <Group grow hiddenFrom="sm">
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.delay')}
-                                        value={formatMilliseconds(scheduler?.schedulerDelayMs)}
-                                    />
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.p99')}
-                                        value={formatMilliseconds(scheduler?.schedulerP99Ms)}
-                                    />
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.goroutines')}
-                                        value={scheduler?.goroutines ?? 0}
-                                    />
-                                    <RuntimeValue
-                                        label={t('runtime-metrics.threads')}
-                                        value={metric.process?.threads ?? 0}
-                                    />
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>Delay</Text>
+                                        <Text className={classes.statValue}>
+                                            {metric.eventLoopDelayMs.toFixed(2)} ms
+                                        </Text>
+                                    </Stack>
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>P99</Text>
+                                        <Text className={classes.statValue}>
+                                            {metric.eventLoopP99Ms.toFixed(2)} ms
+                                        </Text>
+                                    </Stack>
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>Handles</Text>
+                                        <Text className={classes.statValue}>
+                                            {metric.activeHandles}
+                                        </Text>
+                                    </Stack>
                                 </Group>
 
                                 <Stack gap={6} visibleFrom="sm">
                                     <Group grow>
-                                        <RuntimeValue
-                                            label={t('runtime-metrics.delay')}
-                                            value={formatMilliseconds(scheduler?.schedulerDelayMs)}
-                                        />
-                                        <RuntimeValue
-                                            label={t('runtime-metrics.p99')}
-                                            value={formatMilliseconds(scheduler?.schedulerP99Ms)}
-                                        />
+                                        <Stack gap={0}>
+                                            <Text className={classes.statLabel}>Delay</Text>
+                                            <Text className={classes.statValue}>
+                                                {metric.eventLoopDelayMs.toFixed(2)} ms
+                                            </Text>
+                                        </Stack>
+                                        <Stack gap={0}>
+                                            <Text className={classes.statLabel}>P99</Text>
+                                            <Text className={classes.statValue}>
+                                                {metric.eventLoopP99Ms.toFixed(2)} ms
+                                            </Text>
+                                        </Stack>
                                     </Group>
-                                    <Group grow>
-                                        <RuntimeValue
-                                            label={t('runtime-metrics.goroutines')}
-                                            value={scheduler?.goroutines ?? 0}
-                                        />
-                                        <RuntimeValue
-                                            label={t('runtime-metrics.threads')}
-                                            value={metric.process?.threads ?? 0}
-                                        />
-                                    </Group>
+                                    <Stack gap={0}>
+                                        <Text className={classes.statLabel}>Active Handles</Text>
+                                        <Text className={classes.statValue}>
+                                            {metric.activeHandles}
+                                        </Text>
+                                    </Stack>
                                 </Stack>
                             </Stack>
                         </div>

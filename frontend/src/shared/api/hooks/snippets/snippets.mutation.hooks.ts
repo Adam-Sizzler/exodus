@@ -1,9 +1,9 @@
+import { notifications } from '@mantine/notifications'
 import {
     CreateSnippetCommand,
     DeleteSnippetCommand,
     UpdateSnippetCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 

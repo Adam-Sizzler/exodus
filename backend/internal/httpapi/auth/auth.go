@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -114,11 +113,12 @@ type authContextKey string
 const authPrincipalContextKey authContextKey = "auth_principal"
 
 type AuthPrincipal struct {
-	AdminUUID string `json:"admin_uuid,omitempty"`
-	Username  string `json:"username,omitempty"`
-	Role      string `json:"role"`
-	TokenType string `json:"token_type"`
-	ExpiresAt int64  `json:"expires_at,omitempty"`
+	AdminUUID string   `json:"admin_uuid,omitempty"`
+	Username  string   `json:"username,omitempty"`
+	Role      string   `json:"role"`
+	TokenType string   `json:"token_type"`
+	ExpiresAt int64    `json:"expires_at,omitempty"`
+	Scopes    []string `json:"scopes,omitempty"`
 }
 
 type LoginRequest struct {
@@ -195,6 +195,196 @@ func RequireAdminRole(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+func requireAPITokenScope(principal *AuthPrincipal, r *http.Request) bool {
+	if principal == nil || principal.TokenType != "jwt_api_token" {
+		return true
+	}
+
+	scopes := normalizeAPITokenPrincipalScopes(principal.Scopes)
+	if hasScope(scopes, "*") {
+		return true
+	}
+
+	resource, endpointScope, kind := apiTokenScopeForRequest(r.Method, r.URL.Path)
+	if resource == "" {
+		return false
+	}
+	if endpointScope != "" && hasScope(scopes, endpointScope) {
+		return true
+	}
+	return hasScope(scopes, resource+":*") || hasScope(scopes, resource+":"+kind)
+}
+
+func normalizeAPITokenPrincipalScopes(scopes []string) []string {
+	out := make([]string, 0, len(scopes))
+	seen := map[string]struct{}{}
+	for _, scope := range scopes {
+		scope = strings.TrimSpace(scope)
+		if scope == "" {
+			continue
+		}
+		if _, ok := seen[scope]; ok {
+			continue
+		}
+		seen[scope] = struct{}{}
+		out = append(out, scope)
+	}
+	if len(out) == 0 {
+		return []string{"*"}
+	}
+	return out
+}
+
+func hasScope(scopes []string, expected string) bool {
+	for _, scope := range scopes {
+		if scope == expected {
+			return true
+		}
+	}
+	return false
+}
+
+func apiTokenScopeForRequest(method, requestPath string) (resource, endpointScope, kind string) {
+	p := cleanPath(requestPath)
+	kind = "read"
+	if method != http.MethodGet && method != http.MethodHead && method != http.MethodOptions {
+		kind = "write"
+	}
+
+	switch {
+	case p == "/api/system/stats":
+		return "system", "system:stats", kind
+	case p == "/api/system/metadata":
+		return "system", "system:metadata", kind
+	case p == "/api/system/health":
+		return "system", "system:health", kind
+	case p == "/api/system/stats/recap" || p == "/api/system/recap":
+		return "system", "system:recap", kind
+	case strings.HasPrefix(p, "/api/system/"):
+		return "system", "", kind
+	case p == "/api/users":
+		if kind == "read" {
+			return "users", "users:list", kind
+		}
+		return "users", "users:create", kind
+	case p == "/api/users/tags":
+		return "users", "users:list", kind
+	case strings.HasPrefix(p, "/api/users/bulk/"):
+		return "users", "users:update", kind
+	case strings.HasPrefix(p, "/api/users/"):
+		return crudEndpointScope("users", method, kind)
+	case p == "/api/nodes":
+		if kind == "read" {
+			return "nodes", "nodes:list", kind
+		}
+		return "nodes", "nodes:create", kind
+	case p == "/api/nodes/tags":
+		return "nodes", "nodes:list", kind
+	case strings.HasPrefix(p, "/api/nodes/actions/") || strings.HasPrefix(p, "/api/nodes/bulk-actions"):
+		return "nodes", "nodes:update", kind
+	case strings.HasPrefix(p, "/api/nodes/"):
+		return crudEndpointScope("nodes", method, kind)
+	case p == "/api/hosts":
+		if kind == "read" {
+			return "hosts", "hosts:list", kind
+		}
+		return "hosts", "hosts:create", kind
+	case p == "/api/hosts/tags":
+		return "hosts", "hosts:list", kind
+	case strings.HasPrefix(p, "/api/hosts/actions/") || strings.HasPrefix(p, "/api/hosts/bulk/"):
+		return "hosts", "hosts:update", kind
+	case strings.HasPrefix(p, "/api/hosts/"):
+		return crudEndpointScope("hosts", method, kind)
+	case p == "/api/config-profiles":
+		if kind == "read" {
+			return "config-profiles", "config-profiles:list", kind
+		}
+		return "config-profiles", "config-profiles:create", kind
+	case strings.HasPrefix(p, "/api/config-profiles/actions/") || p == "/api/config-profiles/inbounds" || p == "/api/config-profiles-with-inbounds":
+		return "config-profiles", "config-profiles:update", kind
+	case strings.HasPrefix(p, "/api/config-profiles/"):
+		return crudEndpointScope("config-profiles", method, kind)
+	case strings.HasPrefix(p, "/api/subscription-page-configs"):
+		return genericCRUDScope("subscription-page-configs", method, p, "/api/subscription-page-configs", kind)
+	case strings.HasPrefix(p, "/api/subscriptions"):
+		return "subscriptions", "subscriptions:get", kind
+	case strings.HasPrefix(p, "/api/metadata/user/"):
+		if kind == "read" {
+			return "metadata", "metadata:get-user", kind
+		}
+		return "metadata", "metadata:upsert-user", kind
+	case strings.HasPrefix(p, "/api/metadata/node/"):
+		if kind == "read" {
+			return "metadata", "metadata:get-node", kind
+		}
+		return "metadata", "metadata:upsert-node", kind
+	case strings.HasPrefix(p, "/api/node-plugins"):
+		return genericCRUDScope("node-plugins", method, p, "/api/node-plugins", kind)
+	case strings.HasPrefix(p, "/api/hwid/devices"):
+		if kind == "read" {
+			if strings.HasSuffix(p, "/stats") {
+				return "hwid-user-devices", "hwid-user-devices:stats", kind
+			}
+			return "hwid-user-devices", "hwid-user-devices:list", kind
+		}
+		if strings.Contains(p, "delete") {
+			return "hwid-user-devices", "hwid-user-devices:delete", kind
+		}
+		return "hwid-user-devices", "hwid-user-devices:create", kind
+	case strings.HasPrefix(p, "/api/bandwidth-stats/nodes"):
+		return "bandwidth-stats", "bandwidth-stats:nodes", kind
+	case strings.HasPrefix(p, "/api/bandwidth-stats/users"):
+		return "bandwidth-stats", "bandwidth-stats:users", kind
+	case strings.HasPrefix(p, "/api/srs-lists"):
+		return genericCRUDScope("srs-lists", method, p, "/api/srs-lists", kind)
+	case strings.HasPrefix(p, "/api/subscription-connections"):
+		return genericCRUDScope("subscription-connections", method, p, "/api/subscription-connections", kind)
+	case strings.HasPrefix(p, "/api/subscription-settings"):
+		return "subscription-settings", "subscription-settings:" + kind, kind
+	case strings.HasPrefix(p, "/api/infra-billing"):
+		return "infra-billing", "infra-billing:" + kind, kind
+	case strings.HasPrefix(p, "/api/internal-squads"):
+		return "internal-squads", "internal-squads:" + kind, kind
+	case strings.HasPrefix(p, "/api/external-squads"):
+		return "external-squads", "external-squads:" + kind, kind
+	case strings.HasPrefix(p, "/api/subscription-templates"):
+		return genericCRUDScope("subscription-template", method, p, "/api/subscription-templates", kind)
+	case strings.HasPrefix(p, "/api/subscription-request-history"):
+		return "subscription-request-history", "subscription-request-history:" + kind, kind
+	case strings.HasPrefix(p, "/api/snippets"):
+		return "snippets", "snippets:" + kind, kind
+	case strings.HasPrefix(p, "/api/keygen"):
+		return "keygen", "keygen:" + kind, kind
+	default:
+		return "", "", kind
+	}
+}
+
+func crudEndpointScope(resource, method, kind string) (string, string, string) {
+	switch method {
+	case http.MethodGet:
+		return resource, resource + ":get", kind
+	case http.MethodPost:
+		return resource, resource + ":create", kind
+	case http.MethodPatch, http.MethodPut:
+		return resource, resource + ":update", kind
+	case http.MethodDelete:
+		return resource, resource + ":delete", kind
+	default:
+		return resource, "", kind
+	}
+}
+
+func genericCRUDScope(resource, method, requestPath, collectionPath, kind string) (string, string, string) {
+	if cleanPath(requestPath) == collectionPath {
+		if kind == "read" {
+			return resource, resource + ":list", kind
+		}
+		return resource, resource + ":create", kind
+	}
+	return crudEndpointScope(resource, method, kind)
 }
 
 func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, username, adminUUID, password, reason string, r *http.Request) {
@@ -285,6 +475,10 @@ func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		if !requireAPITokenScope(principal, r) {
+			shared.WriteJSONError(w, http.StatusForbidden, "api token scope is not allowed for this endpoint")
+			return
+		}
 
 		ctx := context.WithValue(r.Context(), authPrincipalContextKey, principal)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -295,7 +489,7 @@ func isPublicAPIPath(p string) bool {
 	switch p {
 	case "/api/health",
 		"/api/auth/status", "/api/auth/login", "/api/auth/register",
-		"/api/auth/oauth2/authorize", "/api/auth/oauth2/callback", "/api/auth/oauth2/tg/callback",
+		"/api/auth/oauth2/authorize", "/api/auth/oauth2/callback",
 		"/api/auth/passkey/authentication/options", "/api/auth/passkey/authentication/verify",
 		"/api/system/metadata":
 		return true
@@ -433,15 +627,20 @@ func resolveAPIJWT(token string, manager *dbmanager.DatabaseManager, cfg *config
 	var principal *AuthPrincipal
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
-			SELECT uuid, token_name
+			SELECT uuid, name, expire_at, array_to_json(COALESCE(scopes, ARRAY['*']::text[]))::text AS scopes
 			FROM api_tokens
 			WHERE uuid = ?
 			LIMIT 1
 		`, payload.UUID)
 
 		var tokenUUID, tokenName string
-		if scanErr := row.Scan(&tokenUUID, &tokenName); scanErr != nil {
+		var tokenExpireAt time.Time
+		var scopesRaw string
+		if scanErr := row.Scan(&tokenUUID, &tokenName, &tokenExpireAt, &scopesRaw); scanErr != nil {
 			return scanErr
+		}
+		if time.Now().After(tokenExpireAt) {
+			return errors.New("api token expired")
 		}
 
 		expiresAt := int64(0)
@@ -454,6 +653,7 @@ func resolveAPIJWT(token string, manager *dbmanager.DatabaseManager, cfg *config
 			Role:      "API",
 			TokenType: "jwt_api_token",
 			ExpiresAt: expiresAt,
+			Scopes:    parseAPITokenPrincipalScopes(scopesRaw),
 		}
 		return nil
 	})
@@ -464,6 +664,14 @@ func resolveAPIJWT(token string, manager *dbmanager.DatabaseManager, cfg *config
 		return nil, errors.New("api token not found")
 	}
 	return principal, nil
+}
+
+func parseAPITokenPrincipalScopes(raw string) []string {
+	var scopes []string
+	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &scopes); err != nil {
+		return []string{"*"}
+	}
+	return normalizeAPITokenPrincipalScopes(scopes)
 }
 
 func createAdminAccessToken(cfg *config.BackendConfig, username, adminUUID, role string) (string, int64, error) {
@@ -531,11 +739,10 @@ func AuthStatusHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		title, _ := brandingSettings["title"].(string)
 		logoURL, _ := brandingSettings["logoUrl"].(string)
 		if hasAdmin {
-			passkeyEnabled, tgEnabled, tgBotID, oauth2Providers := getAuthMethodsStatus(manager)
+			passkeyEnabled, oauth2Providers := getAuthMethodsStatus(manager)
 			passwordEnabled := resolvePasswordAuthEnabled(
 				passwordSettings,
 				passkeyEnabled,
-				tgEnabled,
 				oauth2Providers,
 				cfg,
 			)
@@ -547,10 +754,6 @@ func AuthStatusHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 					"authentication": map[string]any{
 						"passkey": map[string]any{
 							"enabled": passkeyEnabled,
-						},
-						"tgAuth": map[string]any{
-							"enabled": tgEnabled,
-							"botId":   tgBotID,
 						},
 						"oauth2": map[string]any{
 							"providers": oauth2Providers,
@@ -625,11 +828,10 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 
-		passkeyEnabled, tgEnabled, _, oauth2Providers := getAuthMethodsStatus(manager)
+		passkeyEnabled, oauth2Providers := getAuthMethodsStatus(manager)
 		passwordEnabled := resolvePasswordAuthEnabled(
 			passwordSettings,
 			passkeyEnabled,
-			tgEnabled,
 			oauth2Providers,
 			cfg,
 		)
@@ -1091,27 +1293,27 @@ func defaultPasswordSettings() map[string]any {
 	}
 }
 
-func getAuthMethodsStatus(manager *dbmanager.DatabaseManager) (passkeyEnabled bool, tgEnabled bool, tgBotID *int, oauth2Providers map[string]bool) {
+func getAuthMethodsStatus(manager *dbmanager.DatabaseManager) (passkeyEnabled bool, oauth2Providers map[string]bool) {
 	passkeyEnabled = false
-	tgEnabled = false
 	oauth2Providers = map[string]bool{
 		"github":   false,
 		"yandex":   false,
 		"generic":  false,
 		"keycloak": false,
 		"pocketid": false,
+		"telegram": false,
 	}
 
 	_ = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
-			SELECT passkey_settings, oauth2_settings, tg_auth_settings
+			SELECT passkey_settings, oauth2_settings
 			FROM exodus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)
 
-		var passkeyRaw, oauth2Raw, tgRaw sql.NullString
-		if err := row.Scan(&passkeyRaw, &oauth2Raw, &tgRaw); err != nil {
+		var passkeyRaw, oauth2Raw sql.NullString
+		if err := row.Scan(&passkeyRaw, &oauth2Raw); err != nil {
 			return nil
 		}
 
@@ -1120,22 +1322,6 @@ func getAuthMethodsStatus(manager *dbmanager.DatabaseManager) (passkeyEnabled bo
 			if json.Unmarshal([]byte(passkeyRaw.String), &passkeyObj) == nil {
 				if enabled, ok := passkeyObj["enabled"].(bool); ok {
 					passkeyEnabled = enabled
-				}
-			}
-		}
-
-		if tgRaw.Valid && strings.TrimSpace(tgRaw.String) != "" {
-			var tgObj map[string]any
-			if json.Unmarshal([]byte(tgRaw.String), &tgObj) == nil {
-				if enabled, ok := tgObj["enabled"].(bool); ok {
-					tgEnabled = enabled
-				}
-				if token, ok := tgObj["botToken"].(string); ok && strings.TrimSpace(token) != "" {
-					prefix := strings.SplitN(token, ":", 2)[0]
-					if parsed, err := strconv.Atoi(prefix); err == nil {
-						botID := parsed
-						tgBotID = &botID
-					}
 				}
 			}
 		}
@@ -1156,13 +1342,12 @@ func getAuthMethodsStatus(manager *dbmanager.DatabaseManager) (passkeyEnabled bo
 		return nil
 	})
 
-	return passkeyEnabled, tgEnabled, tgBotID, oauth2Providers
+	return passkeyEnabled, oauth2Providers
 }
 
 func resolvePasswordAuthEnabled(
 	passwordSettings map[string]any,
 	passkeyEnabled bool,
-	tgEnabled bool,
 	oauth2Providers map[string]bool,
 	cfg *config.BackendConfig,
 ) bool {
@@ -1186,7 +1371,7 @@ func resolvePasswordAuthEnabled(
 	}
 
 	// Avoid hard lockout when all auth methods are disabled by misconfiguration.
-	if !passkeyEnabled && !tgEnabled && !hasOAuth2Enabled {
+	if !passkeyEnabled && !hasOAuth2Enabled {
 		if cfg != nil && cfg.Logger != nil {
 			cfg.Logger.Warn("All authentication methods are disabled. Falling back to password auth enabled=true to prevent lockout.")
 		}

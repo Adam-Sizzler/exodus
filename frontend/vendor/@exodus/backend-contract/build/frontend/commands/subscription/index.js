@@ -15,7 +15,6 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("../subscriptions/get-by/get-raw-subscription-by-short-uuid.command"), exports);
-__exportStar(require("./get-outline-subscription-by-short-uuid.command"), exports);
 __exportStar(require("./get-subscription-by-short-uuid-by-client-type.command"), exports);
 __exportStar(require("./get-subscription-by-short-uuid.command"), exports);
 __exportStar(require("./get-subscription-info-by-short-uuid.command"), exports);

@@ -1,7 +1,7 @@
-import { useWindowScroll } from '@mantine/hooks'
 import { Box, BoxProps } from '@mantine/core'
-import { ReactNode } from 'react'
+import { useWindowScroll } from '@mantine/hooks'
 import clsx from 'clsx'
+import { ReactNode } from 'react'
 
 import classes from './sticky-header.module.css'
 

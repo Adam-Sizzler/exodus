@@ -2,6 +2,7 @@ import { ElementType } from 'react'
 
 export interface MenuItem {
     header?: string
+    icon?: ElementType
     id?: string
     section: {
         dropdownItems?: {

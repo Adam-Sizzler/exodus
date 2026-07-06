@@ -1,10 +1,10 @@
+import { EditNodeByUuidModalWidget } from '@widgets/dashboard/nodes/edit-node-by-uuid-modal'
+import { LinkedHostsDrawer } from '@widgets/dashboard/nodes/linked-hosts-drawer'
+import { NodeUsersUsageDrawer } from '@widgets/dashboard/nodes/node-users-usage-statistic'
+import { NodeMetricsWidget } from '@widgets/dashboard/nodes/nodes-metrics'
 import { useTranslation } from 'react-i18next'
 import { PiSpeedometer } from 'react-icons/pi'
 
-import { EditNodeByUuidModalWidget } from '@widgets/dashboard/nodes/edit-node-by-uuid-modal'
-import { NodeUsersUsageDrawer } from '@widgets/dashboard/nodes/node-users-usage-statistic'
-import { LinkedHostsDrawer } from '@widgets/dashboard/nodes/linked-hosts-drawer'
-import { NodeMetricsWidget } from '@widgets/dashboard/nodes/nodes-metrics'
 import { LoadingScreen, Page, PageHeaderShared } from '@shared/ui'
 
 import { IProps } from './interfaces'

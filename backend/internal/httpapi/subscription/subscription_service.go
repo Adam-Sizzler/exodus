@@ -144,8 +144,8 @@ type SubscriptionHost struct {
 	ProtocolCredential           *string
 	AllowInsecure                bool
 	ShuffleHost                  bool
-	SelectorNodesFirst           bool
 	MihomoX25519                 bool
+	MihomoIPVersion              *string
 	XrayJSONTemplateUUID         *string
 	KeepSNIBlank                 bool
 	ExcludeFromSubscriptionTypes []string
@@ -237,6 +237,7 @@ type HwidHeaders struct {
 	OsVersion   *string
 	DeviceModel *string
 	UserAgent   *string
+	RequestIP   *string
 	Synthetic   bool
 }
 
@@ -588,10 +589,10 @@ func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.Database
 			v := externalSquadUUID.String
 			user.ExternalSquadUUID = &v
 		}
-		user.NaivePassword = firstNonEmpty(nullableSQLString(naivePassword), user.TrojanPassword)
-		user.ShadowtlsPassword = firstNonEmpty(nullableSQLString(shadowtlsPassword), user.SSPassword)
-		user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.TrojanPassword)
-		user.AnytlsPassword = firstNonEmpty(nullableSQLString(anytlsPassword), user.TrojanPassword)
+		user.NaivePassword = nullableSQLString(naivePassword)
+		user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
+		user.Hysteria2Password = nullableSQLString(hysteria2Password)
+		user.AnytlsPassword = nullableSQLString(anytlsPassword)
 		return nil
 	})
 	if err != nil {
@@ -610,8 +611,8 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
                        h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
                        h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
-                       h.selector_nodes_first, h.mihomo_x25519, h.xray_json_template_uuid, h.keep_sni_blank,
-                       h.exclude_from_subscription_types, h.tag, h.is_hidden, h.override_sni_from_address,
+                       h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
+                       h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
                        h.config_profile_uuid, h.config_profile_inbound_uuid,
                        cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
                 FROM internal_squad_members ism
@@ -645,17 +646,28 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
 	return hosts, nil
 }
 
+func firstHostTag(tags []string) *string {
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed == "" {
+			continue
+		}
+		return &trimmed
+	}
+	return nil
+}
+
 func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
 	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription, protocolCredential sql.NullString
-	var xrayJSONTemplateUUID, tag, configProfileUUID, configProfileInboundUUID sql.NullString
+	var xrayJSONTemplateUUID, mihomoIPVersion, configProfileUUID, configProfileInboundUUID sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
-	var excludeTypes dbutil.StringArray
-	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var excludeTypes, hostTags dbutil.StringArray
+	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 
 	err := scanner.Scan(
 		&h.UUID,
@@ -680,12 +692,12 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&protocolCredential,
 		&allowInsecure,
 		&shuffleHost,
-		&selectorNodesFirst,
 		&mihomoX25519,
+		&mihomoIPVersion,
 		&xrayJSONTemplateUUID,
 		&keepSNIBlank,
 		&excludeTypes,
-		&tag,
+		&hostTags,
 		&isHidden,
 		&overrideSNIFromAddress,
 		&configProfileUUID,
@@ -757,11 +769,11 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if shuffleHost.Valid {
 		h.ShuffleHost = shuffleHost.Bool
 	}
-	if selectorNodesFirst.Valid {
-		h.SelectorNodesFirst = selectorNodesFirst.Bool
-	}
 	if mihomoX25519.Valid {
 		h.MihomoX25519 = mihomoX25519.Bool
+	}
+	if mihomoIPVersion.Valid {
+		h.MihomoIPVersion = &mihomoIPVersion.String
 	}
 	if xrayJSONTemplateUUID.Valid {
 		h.XrayJSONTemplateUUID = &xrayJSONTemplateUUID.String
@@ -769,8 +781,8 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if keepSNIBlank.Valid {
 		h.KeepSNIBlank = keepSNIBlank.Bool
 	}
-	if tag.Valid {
-		h.Tag = &tag.String
+	if firstTag := firstHostTag(hostTags.Slice()); firstTag != nil {
+		h.Tag = firstTag
 	}
 	if isHidden.Valid {
 		h.IsHidden = isHidden.Bool
@@ -844,8 +856,6 @@ func extractHwidHeaders(r *http.Request) *HwidHeaders {
 }
 
 func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *HwidHeaders {
-	_ = requestIP
-
 	userAgent := strings.TrimSpace(r.Header.Get("User-Agent"))
 	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform")
 	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version")
@@ -876,6 +886,7 @@ func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *H
 		OsVersion:   osVersion,
 		DeviceModel: deviceModel,
 		UserAgent:   userAgentPtr,
+		RequestIP:   stringPtrIfNotEmpty(requestIP),
 		Synthetic:   true,
 	}
 }
@@ -1048,7 +1059,7 @@ func inferPlatformFromUserAgent(userAgent string) string {
 func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
 		if hwid != nil {
-			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
+			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.TID, *hwid)
 		}
 		return true, false, false
 	}
@@ -1057,13 +1068,13 @@ func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManage
 		return false, false, true
 	}
 
-	exists, err := hwidDeviceExists(ctx, manager, user.UUID, hwid.Hwid)
+	exists, err := hwidDeviceExists(ctx, manager, user.TID, hwid.Hwid)
 	if err == nil && exists {
-		_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.UUID, *hwid)
+		_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.TID, *hwid)
 		return true, false, false
 	}
 
-	count, err := countHwidDevices(ctx, manager, user.UUID)
+	count, err := countHwidDevices(ctx, manager, user.TID)
 	if err != nil {
 		return false, true, false
 	}
@@ -1077,17 +1088,17 @@ func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManage
 		return false, true, false
 	}
 
-	if err := upsertHwidUserDevice(ctx, manager, user.UUID, *hwid); err != nil {
+	if err := upsertHwidUserDevice(ctx, manager, user.TID, *hwid); err != nil {
 		return false, true, false
 	}
 
 	return true, false, false
 }
 
-func countHwidDevices(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string) (int, error) {
+func countHwidDevices(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64) (int, error) {
 	var count int
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_uuid = ?`, userUUID).Scan(&count)
+		return db.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_id = ?`, userID).Scan(&count)
 	})
 	if err != nil {
 		return 0, err
@@ -1095,11 +1106,11 @@ func countHwidDevices(ctx context.Context, manager *dbmanager.DatabaseManager, u
 	return count, nil
 }
 
-func hwidDeviceExists(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID, hwid string) (bool, error) {
+func hwidDeviceExists(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64, hwid string) (bool, error) {
 	var exists bool
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var tmp int
-		err := db.QueryRowContext(ctx, `SELECT 1 FROM hwid_user_devices WHERE user_uuid = ? AND hwid = ?`, userUUID, hwid).Scan(&tmp)
+		err := db.QueryRowContext(ctx, `SELECT 1 FROM hwid_user_devices WHERE user_id = ? AND hwid = ?`, userID, hwid).Scan(&tmp)
 		if err == sql.ErrNoRows {
 			exists = false
 			return nil
@@ -1116,42 +1127,49 @@ func hwidDeviceExists(ctx context.Context, manager *dbmanager.DatabaseManager, u
 	return exists, nil
 }
 
-func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, hwid HwidHeaders) error {
+func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64, hwid HwidHeaders) error {
 	hwid.Platform = lowerStringPtr(hwid.Platform)
 	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		_, err := db.ExecContext(ctx, `
-            INSERT INTO hwid_user_devices (hwid, user_uuid, platform, os_version, device_model, user_agent)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT (hwid, user_uuid)
-            DO UPDATE SET platform = EXCLUDED.platform, os_version = EXCLUDED.os_version, device_model = EXCLUDED.device_model, user_agent = EXCLUDED.user_agent, updated_at = now()
-        `, hwid.Hwid, userUUID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent)
+            INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (hwid, user_id)
+            DO UPDATE SET
+                platform = EXCLUDED.platform,
+                os_version = EXCLUDED.os_version,
+                device_model = EXCLUDED.device_model,
+                user_agent = EXCLUDED.user_agent,
+                request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
+                updated_at = now()
+        `, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP)
 		return err
 	})
 }
 
-func enqueueOrUpsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, hwid HwidHeaders) error {
+func enqueueOrUpsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64, hwid HwidHeaders) error {
 	hwid.Platform = lowerStringPtr(hwid.Platform)
 	queued, err := jobqueue.EnqueueUpsertHwidDevice(ctx, jobqueue.UpsertHwidDevicePayload{
-		UserUUID:    userUUID,
+		UserID:      userID,
 		Hwid:        hwid.Hwid,
 		Platform:    hwid.Platform,
 		OsVersion:   hwid.OsVersion,
 		DeviceModel: hwid.DeviceModel,
 		UserAgent:   hwid.UserAgent,
+		RequestIP:   hwid.RequestIP,
 	})
 	if err == nil && queued {
 		return nil
 	}
-	return upsertHwidUserDevice(ctx, manager, userUUID, hwid)
+	return upsertHwidUserDevice(ctx, manager, userID, hwid)
 }
 
-func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID, userAgent, requestIP string) {
+func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, userID int64, userAgent, requestIP string) {
 	updateQueued, updateErr := jobqueue.EnqueueUpdateUserSubscription(ctx, jobqueue.UpdateUserSubscriptionPayload{
 		UserUUID:  userUUID,
 		UserAgent: userAgent,
 	})
 	recordQueued, recordErr := jobqueue.EnqueueAddSubscriptionRequestRecord(ctx, jobqueue.AddSubscriptionRequestRecordPayload{
-		UserUUID:  userUUID,
+		UserID:    userID,
 		RequestIP: requestIP,
 		UserAgent: userAgent,
 	})
@@ -1165,23 +1183,23 @@ func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseM
 
 		_ = manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 			if _, err := db.ExecContext(jobCtx, `
-	            INSERT INTO user_subscription_request_history (user_uuid, request_ip, user_agent)
+	            INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
 	            VALUES (?, ?, ?)
-	        `, userUUID, requestIP, userAgent); err != nil {
+	        `, userID, requestIP, userAgent); err != nil {
 				return err
 			}
 
 			_, err := db.ExecContext(jobCtx, `
 	            DELETE FROM user_subscription_request_history
-	            WHERE user_uuid = ?
+	            WHERE user_id = ?
 	              AND id NOT IN (
                   SELECT id
                   FROM user_subscription_request_history
-                  WHERE user_uuid = ?
+                  WHERE user_id = ?
                   ORDER BY request_at DESC, id DESC
 	                  LIMIT 24
 	              )
-	        `, userUUID, userUUID)
+	        `, userID, userID)
 			return err
 		})
 	}()
@@ -1581,10 +1599,10 @@ func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseMana
 				v := externalSquadUUID.String
 				user.ExternalSquadUUID = &v
 			}
-			user.NaivePassword = firstNonEmpty(nullableSQLString(naivePassword), user.TrojanPassword)
-			user.ShadowtlsPassword = firstNonEmpty(nullableSQLString(shadowtlsPassword), user.SSPassword)
-			user.Hysteria2Password = firstNonEmpty(nullableSQLString(hysteria2Password), user.TrojanPassword)
-			user.AnytlsPassword = firstNonEmpty(nullableSQLString(anytlsPassword), user.TrojanPassword)
+			user.NaivePassword = nullableSQLString(naivePassword)
+			user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
+			user.Hysteria2Password = nullableSQLString(hysteria2Password)
+			user.AnytlsPassword = nullableSQLString(anytlsPassword)
 
 			users = append(users, user)
 		}

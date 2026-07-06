@@ -1,5 +1,10 @@
+import { GetHwidUserDevicesFeature } from '@features/ui/dashboard/users/get-hwid-user-devices'
+import { GetUserSubscriptionLinksFeature } from '@features/ui/dashboard/users/get-user-subscription-links'
+import { GetUserSubscriptionRequestHistoryFeature } from '@features/ui/dashboard/users/get-user-subscription-request-history'
+import { GetUserUsageFeature } from '@features/ui/dashboard/users/get-user-usage'
 import {
     ActionIcon,
+    Box,
     Code,
     Divider,
     Group,
@@ -11,34 +16,33 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { TbCalendar, TbChartArcs, TbServerCog, TbUser, TbWifi } from 'react-icons/tb'
-import { GetUserByUuidCommand, USERS_STATUS } from '@exodus/backend-contract'
-import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { PiLinkDuotone, PiQrCode, PiUserCircle } from 'react-icons/pi'
-import { HiQuestionMarkCircle } from 'react-icons/hi'
-import { useTranslation } from 'react-i18next'
 import { useDisclosure } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
-import { renderSVG } from 'uqr'
-import { memo } from 'react'
-import dayjs from 'dayjs'
-
-import { GetUserSubscriptionRequestHistoryFeature } from '@features/ui/dashboard/users/get-user-subscription-request-history'
-import { GetUserSubscriptionLinksFeature } from '@features/ui/dashboard/users/get-user-subscription-links'
-import { formatRelativeDateUtil, formatTimeUtil, getTimeAgoUtil } from '@shared/utils/time-utils'
-import { buildSubscriptionLinksFromNodes } from '@shared/utils/misc/subscription-links'
-import { useGetSubscriptionConnections } from '@shared/api/hooks/subscription-connections/subscription-connections.query.hooks'
-import { GetHwidUserDevicesFeature } from '@features/ui/dashboard/users/get-hwid-user-devices'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { GetUserUsageFeature } from '@features/ui/dashboard/users/get-user-usage'
-import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
-import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
+import { GetUserByUuidCommand, USERS_STATUS } from '@exodus/backend-contract'
 import { UserStatusBadge } from '@widgets/dashboard/users/user-status-badge'
-import { resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import dayjs from 'dayjs'
+import { githubDarkTheme, JsonEditor } from 'json-edit-react'
+import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { PiLinkDuotone, PiQrCode, PiUserCircle } from 'react-icons/pi'
+import { TbCalendar, TbChartArcs, TbJson, TbServerCog, TbUser, TbWifi } from 'react-icons/tb'
+
+import { useGetUserMetadata } from '@shared/api/hooks'
+import { useGetSubscriptionConnections } from '@shared/api/hooks/subscription-connections/subscription-connections.query.hooks'
 import { CopyableCodeBlock } from '@shared/ui/copyable-code-block'
-import { prettyBytesUtil } from '@shared/utils/bytes'
+import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { QrCodeBuilder } from '@shared/ui/qr-code-builder'
 import { SectionCard } from '@shared/ui/section-card'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
+import { resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
+import { buildSubscriptionLinksFromNodes } from '@shared/utils/misc/subscription-links'
+import { formatRelativeDateUtil, formatTimeUtil, getTimeAgoUtil } from '@shared/utils/time-utils'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
 
 interface IProps {
     cardVariants: Variants
@@ -71,16 +75,21 @@ export const UserIdentificationCard = memo((props: IProps) => {
 
     const MotionWrapper = motionWrapper
 
+    const { data: metadata, isLoading: isMetadataLoading } = useGetUserMetadata({
+        route: { uuid: user.uuid }
+    })
+
     const actions = useUserModalStoreActions()
     const openModalWithData = useModalsStoreOpenWithData()
 
     const { data: subNodes } = useGetSubscriptionConnections()
 
     const subscriptionPageLinks = buildSubscriptionLinksFromNodes(
-        (subNodes ?? []).filter((n) => !n.isDisabled),
+        (subNodes ?? []).filter((node) => !node.isDisabled),
         user.shortUuid,
         user.subscriptionUrl
     )
+    const primarySubscriptionUrl = subscriptionPageLinks[0]?.url ?? user.subscriptionUrl
 
     const statusIconColor = statusIconColorMap[user.status] ?? 'gray'
 
@@ -90,9 +99,9 @@ export const UserIdentificationCard = memo((props: IProps) => {
     const isUnlimited = limitBytes === 0
     const percentage = isUnlimited ? 0 : Math.floor((usedBytes * 100) / limitBytes)
 
-    const prettyUsedData = prettyBytesUtil(usedBytes) || '0 B'
-    const prettyLifetimeData = prettyBytesUtil(lifetimeBytes) || '0 B'
-    const maxData = isUnlimited ? '∞' : prettyBytesUtil(limitBytes) || '∞'
+    const prettyUsedData = prettifyBytesUtil(usedBytes) || '0 B'
+    const prettyLifetimeData = prettifyBytesUtil(lifetimeBytes) || '0 B'
+    const maxData = isUnlimited ? '∞' : prettifyBytesUtil(limitBytes) || '∞'
 
     const getProgressColor = () => {
         if (isUnlimited) return 'teal'
@@ -141,8 +150,8 @@ export const UserIdentificationCard = memo((props: IProps) => {
                             IconComponent={TbUser}
                             iconSize={20}
                             iconVariant="soft"
-                            subtitle={user.id.toString()}
-                            title={user.username}
+                            title={user.id.toString()}
+                            subtitle={user.username}
                             titleOrder={5}
                             withCopy
                         />
@@ -165,12 +174,9 @@ export const UserIdentificationCard = memo((props: IProps) => {
                                 <ActionIcon
                                     color="teal"
                                     onClick={() => {
-                                        const subscriptionQrCode = renderSVG(user.subscriptionUrl, {
-                                            whiteColor: '#161B22',
-                                            blackColor: '#3CC9DB'
-                                        })
                                         modals.open({
                                             centered: true,
+                                            size: 'auto',
                                             title: (
                                                 <BaseOverlayHeader
                                                     iconColor="teal"
@@ -182,10 +188,9 @@ export const UserIdentificationCard = memo((props: IProps) => {
                                                 />
                                             ),
                                             children: (
-                                                <div
-                                                    dangerouslySetInnerHTML={{
-                                                        __html: subscriptionQrCode
-                                                    }}
+                                                <QrCodeBuilder
+                                                    data={primarySubscriptionUrl}
+                                                    title={user.username}
                                                 />
                                             )
                                         })
@@ -198,6 +203,46 @@ export const UserIdentificationCard = memo((props: IProps) => {
                             </Tooltip>
 
                             <GetUserSubscriptionLinksFeature uuid={user.uuid} />
+
+                            <Tooltip label="Metadata">
+                                <ActionIcon
+                                    color="teal"
+                                    disabled={!metadata}
+                                    loading={isMetadataLoading}
+                                    onClick={() => {
+                                        if (!metadata) return
+                                        modals.open({
+                                            centered: true,
+                                            size: 'auto',
+                                            title: (
+                                                <BaseOverlayHeader
+                                                    iconColor="teal"
+                                                    IconComponent={TbJson}
+                                                    iconVariant="soft"
+                                                    title="Metadata"
+                                                />
+                                            ),
+                                            children: (
+                                                <Box>
+                                                    <JsonEditor
+                                                        collapse={3}
+                                                        data={metadata.metadata as object}
+                                                        indent={4}
+                                                        maxWidth="100%"
+                                                        rootName=""
+                                                        theme={githubDarkTheme}
+                                                        viewOnly
+                                                    />
+                                                </Box>
+                                            )
+                                        })
+                                    }}
+                                    size="lg"
+                                    variant="soft"
+                                >
+                                    <TbJson size={22} />
+                                </ActionIcon>
+                            </Tooltip>
                         </Group>
 
                         <Divider opacity={0.3} orientation="vertical" />
@@ -402,12 +447,16 @@ export const UserIdentificationCard = memo((props: IProps) => {
                                             {t('view-user-modal.widget.subscription-url')}
                                         </Text>
                                         <Text c="dimmed" size="sm">
-                                            {t('view-user-modal.widget.subscription-url-description-line-1')}{' '}
+                                            {t(
+                                                'view-user-modal.widget.subscription-url-description-line-1'
+                                            )}{' '}
                                             <Code bg="gray.1" c="dark.4" fw={700}>
                                                 SUB_PUBLIC_DOMAIN/API_PATH
                                             </Code>
                                             <br />
-                                            {t('view-user-modal.widget.subscription-url-description-line-2')}
+                                            {t(
+                                                'view-user-modal.widget.subscription-url-description-line-2'
+                                            )}
                                         </Text>
                                     </Stack>
                                 </HoverCard.Dropdown>

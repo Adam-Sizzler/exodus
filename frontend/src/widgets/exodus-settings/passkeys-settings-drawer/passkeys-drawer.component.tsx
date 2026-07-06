@@ -15,15 +15,19 @@ import {
     Title,
     Tooltip
 } from '@mantine/core'
-import * as SimpleWebAuthnBrowser from '@simplewebauthn/browser'
-import { PiClockDuotone, PiKey, PiPencil, PiTrash } from 'react-icons/pi'
-import { notifications } from '@mantine/notifications'
-import { TbFingerprint } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import {
+    type PublicKeyCredentialCreationOptionsJSON,
+    startRegistration
+} from '@simplewebauthn/browser'
 import consola from 'consola/browser'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiClockDuotone, PiKey, PiPencil, PiTrash } from 'react-icons/pi'
+import { TbFingerprint } from 'react-icons/tb'
 
+import { queryClient } from '@shared/api'
 import {
     QueryKeys,
     useDeletePasskey,
@@ -31,13 +35,13 @@ import {
     usePasskeyRegistrationOptions,
     usePasskeyRegistrationVerify
 } from '@shared/api/hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
-import { formatDate } from '@shared/utils/misc/date'
 import { LoadingScreen } from '@shared/ui'
-import { queryClient } from '@shared/api'
+import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
+import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { formatDate } from '@shared/utils/misc/date'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     onClose: () => void
@@ -119,8 +123,8 @@ export const PasskeysDrawerComponent = ({ onClose, opened }: IProps) => {
                 return
             }
 
-            const registrationResponse = await (SimpleWebAuthnBrowser as any).startRegistration({
-                optionsJSON: registrationOptions as any
+            const registrationResponse = await startRegistration({
+                optionsJSON: registrationOptions as PublicKeyCredentialCreationOptionsJSON
             })
 
             await verifyRegistration({

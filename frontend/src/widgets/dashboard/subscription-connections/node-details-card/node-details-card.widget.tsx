@@ -10,7 +10,6 @@ import {
     Tooltip
 } from '@mantine/core'
 import { PiCloudArrowUpDuotone, PiWarningCircle } from 'react-icons/pi'
-import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { TbPower, TbWifi, TbWifiOff } from 'react-icons/tb'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +41,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
             uuid: node.uuid
         },
         mutationFns: {
-            onSuccess: async (node: UpdateNodeCommand.Response['response']) => {
+            onSuccess: async (node: SubscriptionConnectionResponse) => {
                 await queryClient.setQueryData(
                     QueryKeys.subscriptionConnections.getNode({ uuid: node.uuid }).queryKey,
                     node

@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import {
     CloneNodePluginCommand,
     CreateNodePluginCommand,
@@ -6,7 +7,6 @@ import {
     ReorderNodePluginCommand,
     UpdateNodePluginCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 
@@ -146,5 +146,3 @@ export const useNodePluginExecutor = createMutationHook({
         }
     }
 })
-
-

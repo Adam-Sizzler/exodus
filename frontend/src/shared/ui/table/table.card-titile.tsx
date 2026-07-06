@@ -9,8 +9,8 @@ import {
     Text,
     Title
 } from '@mantine/core'
-import { forwardRef, ReactNode } from 'react'
 import { motion } from 'motion/react'
+import { forwardRef, ReactNode } from 'react'
 
 import classes from './table.module.css'
 
@@ -26,6 +26,7 @@ export const CardTitle = forwardRef<HTMLDivElement, CardTitleProps>(
     ({ title, description, style, actions, withBorder = true, icon, iconProps, ...props }, ref) => (
         <CardSection
             className={classes.card}
+            data-orientation="vertical"
             inheritPadding
             py="md"
             ref={ref}
@@ -56,7 +57,7 @@ export const CardTitle = forwardRef<HTMLDivElement, CardTitleProps>(
                                     className={classes.actionIcon}
                                     color="cyan"
                                     size="input-md"
-                                    variant="light"
+                                    variant="soft"
                                     {...iconProps}
                                 >
                                     {icon}

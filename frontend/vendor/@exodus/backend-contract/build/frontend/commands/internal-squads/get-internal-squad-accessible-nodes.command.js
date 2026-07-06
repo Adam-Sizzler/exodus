@@ -8,7 +8,7 @@ var GetInternalSquadAccessibleNodesCommand;
 (function (GetInternalSquadAccessibleNodesCommand) {
     GetInternalSquadAccessibleNodesCommand.url = api_1.REST_API.INTERNAL_SQUADS.ACCESSIBLE_NODES;
     GetInternalSquadAccessibleNodesCommand.TSQ_url = GetInternalSquadAccessibleNodesCommand.url(':uuid');
-    GetInternalSquadAccessibleNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.ACCESSIBLE_NODES(':uuid'), 'get', 'Get internal squad accessible nodes');
+    GetInternalSquadAccessibleNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.ACCESSIBLE_NODES(':uuid'), 'get', 'Get internal squad accessible nodes', { scope: 'accessible-nodes', kind: 'read' });
     GetInternalSquadAccessibleNodesCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

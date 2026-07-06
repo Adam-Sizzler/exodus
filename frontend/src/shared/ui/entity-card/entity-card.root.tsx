@@ -1,6 +1,6 @@
 import { Box, Card, Stack } from '@mantine/core'
-import { useState } from 'react'
 import clsx from 'clsx'
+import { useState } from 'react'
 
 import { EntityCardContext } from './entity-card.context'
 import classes from './entity-card.module.css'

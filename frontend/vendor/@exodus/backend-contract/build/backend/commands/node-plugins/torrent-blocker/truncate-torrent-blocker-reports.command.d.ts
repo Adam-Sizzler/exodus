@@ -86,11 +86,16 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                     name: z.ZodString;
                     address: z.ZodString;
                     port: z.ZodNullable<z.ZodNumber>;
+                    proxyUrl: z.ZodNullable<z.ZodString>;
                     isConnected: z.ZodBoolean;
                     isDisabled: z.ZodBoolean;
                     isConnecting: z.ZodBoolean;
                     lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                    lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
                     isTrafficTrackingActive: z.ZodBoolean;
                     trafficResetDay: z.ZodNullable<z.ZodNumber>;
                     trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -99,6 +104,7 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                     viewPosition: z.ZodNumber;
                     countryCode: z.ZodString;
                     consumptionMultiplier: z.ZodNumber;
+                    nodeConsumptionMultiplier: z.ZodNumber;
                     tags: z.ZodArray<z.ZodString, "many">;
                     createdAt: z.ZodEffects<z.ZodString, Date, string>;
                     updatedAt: z.ZodEffects<z.ZodString, Date, string>;
@@ -114,8 +120,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                             port: z.ZodNullable<z.ZodNumber>;
                             rawInbound: z.ZodNullable<z.ZodUnknown>;
                         }, "strip", z.ZodTypeAny, {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -123,8 +129,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                             port: number | null;
                             rawInbound?: unknown;
                         }, {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -135,8 +141,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                     }, "strip", z.ZodTypeAny, {
                         activeConfigProfileUuid: string | null;
                         activeInbounds: {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -147,8 +153,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                     }, {
                         activeConfigProfileUuid: string | null;
                         activeInbounds: {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -167,16 +173,16 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                         updatedAt: z.ZodEffects<z.ZodString, Date, string>;
                     }, "strip", z.ZodTypeAny, {
                         uuid: string;
+                        name: string;
                         createdAt: Date;
                         updatedAt: Date;
-                        name: string;
                         faviconLink: string | null;
                         loginUrl: string | null;
                     }, {
                         uuid: string;
+                        name: string;
                         createdAt: string;
                         updatedAt: string;
-                        name: string;
                         faviconLink: string | null;
                         loginUrl: string | null;
                     }>>;
@@ -319,25 +325,26 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                         };
                     }>>;
                     versions: z.ZodNullable<z.ZodObject<{
-                        xray: z.ZodString;
+                        singbox: z.ZodString;
                         node: z.ZodString;
                     }, "strip", z.ZodTypeAny, {
                         node: string;
-                        xray: string;
+                        singbox: string;
                     }, {
                         node: string;
-                        xray: string;
+                        singbox: string;
                     }>>;
-                    xrayUptime: z.ZodNumber;
+                    singboxUptime: z.ZodNumber;
                     usersOnline: z.ZodNumber;
-                }, "uuid" | "countryCode" | "name">, "strip", z.ZodTypeAny, {
+                    note: z.ZodNullable<z.ZodString>;
+                }, "uuid" | "name" | "countryCode">, "strip", z.ZodTypeAny, {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 }, {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 }>;
                 report: z.ZodObject<{
                     actionReport: z.ZodObject<{
@@ -462,8 +469,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                 };
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 };
                 createdAt: Date;
                 id: number;
@@ -501,8 +508,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                 };
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 };
                 createdAt: string;
                 id: number;
@@ -544,8 +551,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                 };
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 };
                 createdAt: Date;
                 id: number;
@@ -586,8 +593,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                 };
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 };
                 createdAt: string;
                 id: number;
@@ -630,8 +637,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                 };
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 };
                 createdAt: Date;
                 id: number;
@@ -674,8 +681,8 @@ export declare namespace TruncateTorrentBlockerReportsCommand {
                 };
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 };
                 createdAt: string;
                 id: number;

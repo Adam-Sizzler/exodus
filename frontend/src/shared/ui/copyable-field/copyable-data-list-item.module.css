@@ -1,0 +1,58 @@
+.itemValue {
+    min-width: 0;
+}
+
+:global([data-orientation='vertical']) .itemValue {
+    width: 100%;
+}
+
+.value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding-inline: 6px;
+    margin-inline: -6px;
+    border-radius: var(--mantine-radius-sm);
+    color: var(--mantine-color-text);
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease;
+}
+
+.value:hover {
+    background-color: var(--mantine-color-default-hover);
+}
+
+.value[data-copied] {
+    color: var(--mantine-color-teal-6);
+}
+
+.text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.value[data-monospace] .text {
+    font-family: monospace;
+}
+
+.icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+.value:hover .icon,
+.value[data-copied] .icon {
+    opacity: 0.7;
+}
+
+.empty {
+    color: var(--mantine-color-dimmed);
+}

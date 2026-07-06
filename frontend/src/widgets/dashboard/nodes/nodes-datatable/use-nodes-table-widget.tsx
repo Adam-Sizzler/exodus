@@ -1,3 +1,13 @@
+import { ActionIcon, Avatar, Badge, Group, MultiSelect, Text, TextInput } from '@mantine/core'
+import {
+    GetAllNodesCommand,
+    GetConfigProfilesCommand,
+    GetNodePluginsCommand
+} from '@exodus/backend-contract'
+import { TFunction } from 'i18next'
+import sortBy from 'lodash/sortBy'
+import { DataTableColumn } from 'mantine-datatable'
+import ReactCountryFlag from 'react-country-flag'
 import {
     PiCloudArrowUpDuotone,
     PiProhibitDuotone,
@@ -5,22 +15,15 @@ import {
     PiUsersDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import {
-    GetAllNodesCommand,
-    GetConfigProfilesCommand,
-    GetNodePluginsCommand
-} from '@exodus/backend-contract'
-import { ActionIcon, Avatar, Badge, Group, MultiSelect, Text, TextInput } from '@mantine/core'
 import { TbEdit, TbSearch, TbX } from 'react-icons/tb'
-import { DataTableColumn } from 'mantine-datatable'
-import ReactCountryFlag from 'react-country-flag'
-import { TFunction } from 'i18next'
-import sortBy from 'lodash/sortBy'
 
-import { prettyBytesUtil, prettySiBytesUtil, prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
-import { formatDurationUtil } from '@shared/utils/time-utils'
+import {
+    prettifyBytesUtil,
+    prettySiBytesUtil,
+    prettySiRealtimeBytesUtil
+} from '@shared/utils/bytes'
 import { faviconResolver } from '@shared/utils/misc'
-import { NodeResponse } from '@shared/api/hooks'
+import { formatDurationUtil } from '@shared/utils/time-utils'
 
 import { NodeStatusSimplfiedBadgeWidget } from '../node-status-simplfied-badge'
 
@@ -54,7 +57,7 @@ export function getNodesTableColumns(
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins'],
     handleViewNode: (nodeUuid: string) => void,
     filters: NodesTableFilters
-): DataTableColumn<NodeResponse>[] {
+): DataTableColumn<GetAllNodesCommand.Response['response'][number]>[] {
     return [
         {
             accessor: 'name',
@@ -209,7 +212,7 @@ export function getNodesTableColumns(
             accessor: 'trafficUsedBytes',
             sortable: true,
             title: t('use-nodes-table-widget.traffic-used'),
-            render: ({ trafficUsedBytes }) => prettyBytesUtil(trafficUsedBytes, false)
+            render: ({ trafficUsedBytes }) => prettifyBytesUtil(trafficUsedBytes, false)
         },
         {
             accessor: 'configProfile.activeConfigProfileUuid',
@@ -227,10 +230,8 @@ export function getNodesTableColumns(
             ),
             filtering: filters.selectedConfigProfiles.length > 0,
             title: t('use-nodes-table-widget.config-profile'),
-            render: ({ configProfile }) =>
-                configProfiles.find(
-                    (profile) => profile.uuid === configProfile?.activeConfigProfileUuid
-                )?.name ?? '-'
+            render: ({ configProfile: { activeConfigProfileUuid } }) =>
+                configProfiles.find((profile) => profile.uuid === activeConfigProfileUuid)?.name
         },
         {
             accessor: 'configProfile.activeInbounds',
@@ -249,10 +250,22 @@ export function getNodesTableColumns(
             toggleable: true,
             filtering: filters.selectedInbounds.length > 0,
             title: t('use-nodes-table-widget.inbounds'),
-            render: ({ configProfile }) =>
-                sortBy(configProfile?.activeInbounds ?? [], 'tag')
+            render: ({ configProfile: { activeInbounds } }) =>
+                sortBy(activeInbounds, 'tag')
                     .map((inbound) => inbound.tag)
                     .join(', ')
+        },
+        {
+            accessor: 'consumptionMultiplier',
+            sortable: false,
+            title: t('node-consumption.card.user-consumption-multiplier'),
+            render: ({ consumptionMultiplier }) => consumptionMultiplier.toFixed(1)
+        },
+        {
+            accessor: 'nodeConsumptionMultiplier',
+            sortable: false,
+            title: t('node-consumption.card.node-consumption-multiplier'),
+            render: ({ nodeConsumptionMultiplier }) => nodeConsumptionMultiplier.toFixed(1)
         },
         {
             accessor: 'versions.singbox',
@@ -295,6 +308,7 @@ export function getNodesTableColumns(
                         <Avatar
                             alt={provider.name}
                             color="initials"
+                            imageProps={{ decoding: 'async', loading: 'lazy' }}
                             name={provider.name}
                             onLoad={(event) => {
                                 const img = event.target as HTMLImageElement
@@ -306,6 +320,7 @@ export function getNodesTableColumns(
                             size={16}
                             src={faviconResolver(provider.faviconLink)}
                         />
+
                         <Text size="sm">{provider.name}</Text>
                     </Group>
                 ) : null
@@ -358,19 +373,22 @@ export function getNodesTableColumns(
             accessor: 'system.stats.memoryFree',
             sortable: true,
             title: 'Free RAM',
-            render: ({ system }) => (system ? prettyBytesUtil(system.stats.memoryFree, false) : '-')
+            render: ({ system }) =>
+                system ? prettifyBytesUtil(system.stats.memoryFree, false) : '-'
         },
         {
             accessor: 'system.stats.memoryUsed',
             sortable: true,
             title: 'Used RAM',
-            render: ({ system }) => (system ? prettyBytesUtil(system.stats.memoryUsed, false) : '-')
+            render: ({ system }) =>
+                system ? prettifyBytesUtil(system.stats.memoryUsed, false) : '-'
         },
         {
             accessor: 'system.info.memoryTotal',
             sortable: true,
             title: t('use-nodes-table-widget.total-ram'),
-            render: ({ system }) => (system ? prettyBytesUtil(system.info.memoryTotal, false) : '-')
+            render: ({ system }) =>
+                system ? prettifyBytesUtil(system.info.memoryTotal, false) : '-'
         },
         {
             accessor: 'system.info.cpuModel',

@@ -61,10 +61,10 @@ model Users {
   trojanPassword         String    @map("trojan_password")
   vlessUuid              String    @map("vless_uuid") @db.Uuid
   ssPassword             String    @map("ss_password")
-  naivePassword          String?   @map("naive_password")
-  shadowtlsPassword      String?   @map("shadowtls_password")
-  hysteria2Password      String?   @map("hysteria2_password")
-  anytlsPassword         String?   @map("anytls_password")
+  naivePassword          String    @map("naive_password")
+  shadowtlsPassword      String    @map("shadowtls_password")
+  hysteria2Password      String    @map("hysteria2_password")
+  anytlsPassword         String    @map("anytls_password")
   description            String?   @map("description")
   tag                    String?   @map("tag")
   telegramId             BigInt?   @map("telegram_id")
@@ -81,6 +81,7 @@ model Users {
   activeInternalSquads           InternalSquadMembers[]
   userSubscriptionRequestHistory UserSubscriptionRequestHistory[]
   traffic                        UserTraffic?
+  metadata                       UserMetadata?
 
   externalSquad ExternalSquads? @relation(fields: [externalSquadUuid], references: [uuid], onDelete: SetNull)
 
@@ -106,14 +107,33 @@ model UserTraffic {
 }
 
 model ApiTokens {
-  uuid      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  token     String @unique @map("token")
-  tokenName String @map("token_name")
+  uuid     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String   @map("name")
+  expireAt DateTime @default(dbgenerated("now() + interval '99999 days'")) @map("expire_at")
+  scopes   String[] @default(["*"]) @map("scopes")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
 
   @@map("api_tokens")
+}
+
+model UserMetadata {
+  userId   BigInt @id @map("user_id")
+  metadata Json   @default("{}") @map("metadata")
+
+  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
+
+  @@map("user_meta")
+}
+
+model NodeMetadata {
+  nodeId   BigInt @id @map("node_id")
+  metadata Json   @default("{}") @map("metadata")
+
+  node Nodes @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@map("node_meta")
 }
 
 model Admin {
@@ -226,6 +246,7 @@ model Nodes {
   infraBillingNodes            InfraBillingNodes[]
   hosts                        HostsToNodes[]
   connectedUsers               UserTraffic[]
+  metadata                     NodeMetadata?
 
   activeConfigProfile ConfigProfiles? @relation(fields: [activeConfigProfileUuid], references: [uuid], onDelete: SetNull)
   provider            InfraProviders? @relation(fields: [providerUuid], references: [uuid], onDelete: SetNull)
@@ -294,19 +315,23 @@ model Hosts {
   singboxMuxParams             Json?    @map("singbox_mux_params")
   clashMuxParams               Json?    @map("clash_mux_params")
   sockoptParams                Json?    @map("sockopt_params")
+  finalMask                    Json?    @map("final_mask")
   isDisabled                   Boolean  @default(false) @map("is_disabled")
   serverDescription            String?  @map("server_description") @db.VarChar(30)
   overrideProtocolCredential   Boolean  @default(false) @map("override_protocol_credential")
   protocolCredential           String?  @map("protocol_credential")
+  vlessRouteId                 Int?     @map("vless_route_id")
+  pinnedPeerCertSha256         String?  @map("pinned_peer_cert_sha256")
+  verifyPeerCertByName         String?  @map("verify_peer_cert_by_name")
   allowInsecure                Boolean  @default(false) @map("allow_insecure")
   shuffleHost                  Boolean  @default(false) @map("shuffle_host")
-  selectorNodesFirst           Boolean  @default(false) @map("selector_nodes_first")
   mihomoX25519                 Boolean  @default(false) @map("mihomo_x25519")
+  mihomoIpVersion              String?  @map("mihomo_ip_version")
   xrayJsonTemplateUuid         String?  @map("xray_json_template_uuid") @db.Uuid
   keepSniBlank                 Boolean  @default(false) @map("keep_sni_blank")
   excludeFromSubscriptionTypes String[] @default([]) @map("exclude_from_subscription_types")
 
-  tag      String? @map("tag")
+  tags     String[] @default([]) @map("tags")
   isHidden Boolean @default(false) @map("is_hidden")
 
   overrideSniFromAddress Boolean @default(false) @map("override_sni_from_address")
@@ -401,18 +426,19 @@ model SubscriptionSettings {
 
 model HwidUserDevices {
   hwid        String  @map("hwid")
-  userUuid    String  @map("user_uuid") @db.Uuid
+  userId      BigInt  @map("user_id")
   platform    String? @map("platform")
   osVersion   String? @map("os_version")
   deviceModel String? @map("device_model")
   userAgent   String? @map("user_agent")
+  requestIp   String? @map("request_ip")
 
-  user Users @relation(fields: [userUuid], references: [uuid], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
 
-  @@id([hwid, userUuid])
+  @@id([hwid, userId])
   @@map("hwid_user_devices")
 }
 
@@ -552,14 +578,14 @@ model InfraBillingHistory {
 
 model UserSubscriptionRequestHistory {
   id        BigInt   @id @default(autoincrement())
-  userUuid  String   @map("user_uuid") @db.Uuid
+  userId    BigInt   @map("user_id")
   requestIp String?  @map("request_ip")
   userAgent String?  @map("user_agent")
   requestAt DateTime @default(dbgenerated("now()")) @map("request_at")
 
-  user Users @relation(fields: [userUuid], references: [uuid], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
 
-  @@index([userUuid])
+  @@index([userId])
   @@index([requestAt(sort: Asc)])
   @@map("user_subscription_request_history")
 }

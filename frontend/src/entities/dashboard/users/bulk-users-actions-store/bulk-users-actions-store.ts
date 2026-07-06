@@ -1,6 +1,4 @@
-/* eslint-disable camelcase */
-
-import { MRT_RowSelectionState } from 'mantine-react-table'
+import { MRT_RowSelectionState } from '@kastov/mantine-react-table-open'
 import { devtools } from 'zustand/middleware'
 
 import { create } from '@shared/hocs/store-wrapper'
@@ -34,12 +32,10 @@ export const useBulkUsersActionsStore = create<IActions & IState>()(
                     }))
                 },
                 getUuidLength: () => {
-                    return Object.values(get().tableSelection).filter(Boolean).length
+                    return Object.keys(get().tableSelection).length
                 },
                 getUuids: (): string[] => {
-                    return Object.entries(get().tableSelection)
-                        .filter(([, selected]) => Boolean(selected))
-                        .map(([uuid]) => uuid)
+                    return Object.keys(get().tableSelection).map((uuid) => uuid)
                 },
 
                 getInitialState: () => {

@@ -1,0 +1,61 @@
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.crownRing {
+    width: 76px;
+    height: 76px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ecd07a;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.22) 0%, rgba(184, 134, 11, 0.06) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+.title {
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, #ecd07a 0%, #d4af37 50%, #b8860b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.featureIcon {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d9b85c;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.joinButton {
+    color: #ecd07a !important;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.16) 0%, rgba(184, 134, 11, 0.07) 100%);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease;
+
+    &:hover {
+        border-color: rgba(212, 175, 55, 0.7);
+        background: linear-gradient(
+            135deg,
+            rgba(212, 175, 55, 0.26) 0%,
+            rgba(184, 134, 11, 0.12) 100%
+        );
+    }
+}

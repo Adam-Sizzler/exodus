@@ -22,8 +22,10 @@ type PanelSettingsResponse struct {
 
 type APITokenRecord struct {
 	UUID      string    `json:"uuid"`
-	Token     string    `json:"token"`
-	TokenName string    `json:"token_name"`
+	Token     string    `json:"-"`
+	Name      string    `json:"name"`
+	ExpireAt  time.Time `json:"expire_at"`
+	Scopes    []string  `json:"scopes"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -133,47 +135,62 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{
 				"response": map[string]any{
-					"apiKeys": toAPITokensResponse(tokens),
-					"docs":    buildDocsResponse(cfg),
+					"tokens": toAPITokensResponse(tokens),
+					"docs":   buildDocsResponse(cfg),
 				},
 			})
 		case http.MethodPost:
 			var payload struct {
-				TokenNameLegacy string `json:"token_name"`
-				TokenName       string `json:"tokenName"`
+				TokenNameLegacy string   `json:"token_name"`
+				TokenName       string   `json:"tokenName"`
+				Name            string   `json:"name"`
+				ExpiresInDays   int      `json:"expiresInDays"`
+				Scopes          []string `json:"scopes"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 				return
 			}
-			tokenName := strings.TrimSpace(payload.TokenName)
+			tokenName := strings.TrimSpace(payload.Name)
+			if tokenName == "" {
+				tokenName = strings.TrimSpace(payload.TokenName)
+			}
 			if tokenName == "" {
 				tokenName = strings.TrimSpace(payload.TokenNameLegacy)
 			}
 			if tokenName == "" {
-				shared.WriteJSONError(w, http.StatusBadRequest, "tokenName is required")
+				shared.WriteJSONError(w, http.StatusBadRequest, "name is required")
 				return
 			}
+			expiresInDays := payload.ExpiresInDays
+			if expiresInDays <= 0 {
+				expiresInDays = int(security.APITokenLifetime / (24 * time.Hour))
+			}
+			scopes := normalizeAPITokenScopes(payload.Scopes)
 
 			tokenUUID := uuid.NewString()
-			tokenValue, _, err := security.SignAPITokenJWT(cfg.JWT.APITokensSecret, tokenUUID)
+			lifetime := time.Duration(expiresInDays) * 24 * time.Hour
+			tokenValue, expiresAtUnix, err := security.SignAPITokenJWTWithLifetime(cfg.JWT.APITokensSecret, tokenUUID, lifetime)
 			if err != nil {
 				cfg.Logger.Error("Failed to generate api token", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to generate api token")
 				return
 			}
+			expireAt := time.Unix(expiresAtUnix, 0).UTC()
 
 			record := APITokenRecord{
-				UUID:      tokenUUID,
-				Token:     tokenValue,
-				TokenName: tokenName,
+				UUID:     tokenUUID,
+				Token:    tokenValue,
+				Name:     tokenName,
+				ExpireAt: expireAt,
+				Scopes:   scopes,
 			}
 
 			err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 				_, execErr := db.Exec(`
-					INSERT INTO api_tokens (uuid, token, token_name)
-					VALUES (?, ?, ?)
-				`, record.UUID, record.Token, record.TokenName)
+					INSERT INTO api_tokens (uuid, name, expire_at, scopes)
+					VALUES (?, ?, ?, ?::text[])
+				`, record.UUID, record.Name, record.ExpireAt, postgresTextArrayLiteral(record.Scopes))
 				return execErr
 			})
 			if err != nil {
@@ -184,14 +201,26 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 
 			// Return full token only in create response.
 			shared.WriteJSON(w, http.StatusCreated, map[string]any{
-				"response": map[string]any{
-					"uuid":  record.UUID,
-					"token": record.Token,
-				},
+				"response": toAPITokenResponse(record, true),
 			})
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
+	}
+}
+
+func PanelAPITokenScopesHandler(_ *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{
+				"wildcard":  "*",
+				"resources": buildAPITokenScopes(cfg),
+			},
+		})
 	}
 }
 
@@ -268,8 +297,6 @@ func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 					adapted["passkey_settings"] = value
 				case "oauth2Settings":
 					adapted["oauth2_settings"] = value
-				case "tgAuthSettings":
-					adapted["tg_auth_settings"] = value
 				case "passwordSettings":
 					adapted["password_settings"] = value
 				case "brandingSettings":
@@ -313,8 +340,10 @@ func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 
 type apiTokenResponse struct {
 	UUID      string    `json:"uuid"`
-	Token     string    `json:"token"`
-	TokenName string    `json:"tokenName"`
+	Name      string    `json:"name"`
+	Token     string    `json:"token,omitempty"`
+	ExpireAt  time.Time `json:"expireAt"`
+	Scopes    []string  `json:"scopes"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -322,22 +351,31 @@ type apiTokenResponse struct {
 func toAPITokensResponse(items []APITokenRecord) []apiTokenResponse {
 	out := make([]apiTokenResponse, 0, len(items))
 	for _, item := range items {
-		out = append(out, apiTokenResponse{
-			UUID:      item.UUID,
-			Token:     item.Token,
-			TokenName: item.TokenName,
-			CreatedAt: item.CreatedAt,
-			UpdatedAt: item.UpdatedAt,
-		})
+		out = append(out, toAPITokenResponse(item, false))
 	}
 	return out
+}
+
+func toAPITokenResponse(item APITokenRecord, includeToken bool) apiTokenResponse {
+	token := ""
+	if includeToken {
+		token = item.Token
+	}
+	return apiTokenResponse{
+		UUID:      item.UUID,
+		Name:      item.Name,
+		Token:     token,
+		ExpireAt:  item.ExpireAt,
+		Scopes:    normalizeAPITokenScopes(item.Scopes),
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
+	}
 }
 
 func toExodusSettingsResponse(settings map[string]any) map[string]any {
 	return map[string]any{
 		"passkeySettings":  settings["passkey_settings"],
-		"oauth2Settings":   settings["oauth2_settings"],
-		"tgAuthSettings":   settings["tg_auth_settings"],
+		"oauth2Settings":   normalizeOAuth2Settings(settings["oauth2_settings"]),
 		"passwordSettings": settings["password_settings"],
 		"brandingSettings": settings["branding_settings"],
 		"modulesSettings":  settings["modules_settings"],
@@ -370,7 +408,7 @@ func (r *responseRecorder) WriteHeader(statusCode int) { r.status = statusCode }
 func loadPanelSettings(manager *dbmanager.DatabaseManager) (map[string]any, error) {
 	settings := map[string]any{
 		"passkey_settings":  map[string]any{"rpId": nil, "origin": nil, "enabled": false},
-		"oauth2_settings":   map[string]any{},
+		"oauth2_settings":   defaultOAuth2Settings(),
 		"tg_auth_settings":  map[string]any{"enabled": false, "adminIds": []any{}, "botToken": nil},
 		"password_settings": map[string]any{"enabled": true},
 		"branding_settings": map[string]any{"title": "EXODUS", "logoUrl": nil},
@@ -410,7 +448,13 @@ func loadAPITokens(manager *dbmanager.DatabaseManager) ([]APITokenRecord, error)
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, queryErr := db.Query(`
-			SELECT uuid, token, token_name, created_at, updated_at
+			SELECT
+				uuid,
+				name,
+				expire_at,
+				array_to_json(COALESCE(scopes, ARRAY['*']::text[]))::text AS scopes,
+				created_at,
+				updated_at
 			FROM api_tokens
 			ORDER BY created_at DESC
 		`)
@@ -421,9 +465,11 @@ func loadAPITokens(manager *dbmanager.DatabaseManager) ([]APITokenRecord, error)
 
 		for rows.Next() {
 			var row APITokenRecord
-			if scanErr := rows.Scan(&row.UUID, &row.Token, &row.TokenName, &row.CreatedAt, &row.UpdatedAt); scanErr != nil {
+			var scopesRaw string
+			if scanErr := rows.Scan(&row.UUID, &row.Name, &row.ExpireAt, &scopesRaw, &row.CreatedAt, &row.UpdatedAt); scanErr != nil {
 				return scanErr
 			}
+			row.Scopes = parseAPITokenScopes(scopesRaw)
 			tokens = append(tokens, row)
 		}
 		return rows.Err()
@@ -452,4 +498,49 @@ func mergeJSONObject(target map[string]any, key, raw string) {
 	}
 
 	target[key] = decoded
+}
+
+func defaultOAuth2Settings() map[string]any {
+	return map[string]any{
+		"github": map[string]any{
+			"enabled": false, "clientId": nil, "clientSecret": nil, "allowedEmails": []any{},
+		},
+		"pocketid": map[string]any{
+			"enabled": false, "clientId": nil, "clientSecret": nil, "plainDomain": nil, "allowedEmails": []any{},
+		},
+		"yandex": map[string]any{
+			"enabled": false, "clientId": nil, "clientSecret": nil, "allowedEmails": []any{},
+		},
+		"keycloak": map[string]any{
+			"enabled": false, "realm": nil, "clientId": nil, "clientSecret": nil, "frontendDomain": nil, "keycloakDomain": nil, "allowedEmails": []any{},
+		},
+		"generic": map[string]any{
+			"enabled": false, "clientId": nil, "clientSecret": nil, "withPkce": false, "authorizationUrl": nil, "tokenUrl": nil, "frontendDomain": nil, "allowedEmails": []any{},
+		},
+		"telegram": map[string]any{
+			"enabled": false, "clientId": nil, "clientSecret": nil, "allowedIds": []any{}, "frontendDomain": nil,
+		},
+	}
+}
+
+func normalizeOAuth2Settings(value any) map[string]any {
+	normalized := defaultOAuth2Settings()
+	raw, ok := value.(map[string]any)
+	if !ok {
+		return normalized
+	}
+
+	for provider, defaults := range normalized {
+		providerRaw, ok := raw[provider].(map[string]any)
+		if !ok {
+			continue
+		}
+		providerDefaults, _ := defaults.(map[string]any)
+		for key, val := range providerRaw {
+			providerDefaults[key] = val
+		}
+		normalized[provider] = providerDefaults
+	}
+
+	return normalized
 }

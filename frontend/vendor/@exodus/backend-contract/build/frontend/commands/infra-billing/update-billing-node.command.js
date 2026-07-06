@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateInfraBillingNodeCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var UpdateInfraBillingNodeCommand;
 (function (UpdateInfraBillingNodeCommand) {
     UpdateInfraBillingNodeCommand.url = api_1.REST_API.INFRA_BILLING.UPDATE_BILLING_NODE;
     UpdateInfraBillingNodeCommand.TSQ_url = UpdateInfraBillingNodeCommand.url;
-    UpdateInfraBillingNodeCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.UPDATE_BILLING_NODE, 'patch', 'Update infra billing nodes');
+    UpdateInfraBillingNodeCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.UPDATE_BILLING_NODE, 'patch', 'Update infra billing nodes', { scope: 'update-billing-node', kind: 'write' });
     UpdateInfraBillingNodeCommand.RequestSchema = zod_1.z.object({
         uuids: zod_1.z.array(zod_1.z.string().uuid()),
         nextBillingAt: zod_1.z

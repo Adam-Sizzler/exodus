@@ -1,8 +1,8 @@
-import { CSSProperties, forwardRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import { RiDraggable } from 'react-icons/ri'
-import { ActionIcon } from '@mantine/core'
 import { CSS } from '@dnd-kit/utilities'
+import { ActionIcon } from '@mantine/core'
+import { CSSProperties, forwardRef } from 'react'
+import { RiDraggable } from 'react-icons/ri'
 
 import classes from './with-dnd-sortable.module.css'
 

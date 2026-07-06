@@ -151,13 +151,7 @@ func validateUpdateUserRequest(req updateUserRequest) error {
 		if !field.Set {
 			continue
 		}
-		if field.Value == nil {
-			if name == "trojanPassword" || name == "ssPassword" {
-				return fmt.Errorf("%s cannot be empty", name)
-			}
-			continue
-		}
-		if (name == "trojanPassword" || name == "ssPassword") && strings.TrimSpace(*field.Value) == "" {
+		if field.Value == nil || strings.TrimSpace(*field.Value) == "" {
 			return fmt.Errorf("%s cannot be empty", name)
 		}
 		if len(strings.TrimSpace(*field.Value)) > 256 {

@@ -1,25 +1,36 @@
 import { Card, Grid, Group, Stack, Text, ThemeIcon } from '@mantine/core'
-import { MdPayment, MdTrendingUp } from 'react-icons/md'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
 import { useTranslation } from 'react-i18next'
-import { TbCalendarUp } from 'react-icons/tb'
 import { FaServer } from 'react-icons/fa'
+import { MdPayment, MdTrendingUp } from 'react-icons/md'
+import { TbAlertTriangle } from 'react-icons/tb'
 
 import { useGetInfraBillingNodes } from '@shared/api/hooks'
 import { formatCurrency } from '@shared/utils/misc'
+
+dayjs.extend(utc)
 
 export function MobileStatsWidget() {
     const { data: nodes } = useGetInfraBillingNodes()
     const { t } = useTranslation()
 
+    const today = dayjs.utc().startOf('day')
+    const billingNodes = nodes?.billingNodes ?? []
+
+    const overdueCount = billingNodes.filter((node) =>
+        dayjs.utc(node.nextBillingAt).startOf('day').isBefore(today)
+    ).length
+
     const stats = [
         {
-            icon: FaServer,
-            color: 'blue',
-            value: nodes?.totalBillingNodes ?? 0,
-            label: t('mobile-stats.widget.billing-nodes')
+            icon: TbAlertTriangle,
+            color: overdueCount > 0 ? 'red' : 'teal',
+            value: overdueCount,
+            label: t('mobile-stats.widget.overdue')
         },
         {
-            icon: TbCalendarUp,
+            icon: FaServer,
             color: 'orange',
             value: nodes?.stats.upcomingNodesCount ?? 0,
             label: t('mobile-stats.widget.upcoming')
@@ -39,7 +50,7 @@ export function MobileStatsWidget() {
     ]
 
     return (
-        <Grid gutter="xs" mb="md">
+        <Grid gap="xs" mb="md">
             {stats.map((stat, index) => (
                 <Grid.Col key={index} span={6}>
                     <Card padding="sm">
@@ -47,11 +58,11 @@ export function MobileStatsWidget() {
                             <ThemeIcon color={stat.color} radius="md" size="lg" variant="soft">
                                 <stat.icon size={18} />
                             </ThemeIcon>
-                            <Stack gap={0}>
-                                <Text fw={700} size="lg">
+                            <Stack gap={0} miw={0}>
+                                <Text fw={700} size="lg" truncate="end">
                                     {stat.value}
                                 </Text>
-                                <Text c="dimmed" size="xs">
+                                <Text c="dimmed" size="xs" truncate="end">
                                     {stat.label}
                                 </Text>
                             </Stack>

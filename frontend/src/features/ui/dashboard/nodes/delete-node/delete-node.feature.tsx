@@ -1,5 +1,5 @@
-import { useTranslation } from 'react-i18next'
 import { Loader, Menu } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
 import { TbTrash } from 'react-icons/tb'
 
 import { useDeleteNode } from '@shared/api/hooks'

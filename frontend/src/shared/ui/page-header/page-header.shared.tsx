@@ -1,9 +1,9 @@
 import { Box, Card, CardProps, Group, Stack, Text, ThemeIcon, Title } from '@mantine/core'
-import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'react-i18next'
-import { forwardRef, ReactNode } from 'react'
 import { useClipboard } from '@mantine/hooks'
+import { notifications } from '@mantine/notifications'
 import { motion } from 'motion/react'
+import { forwardRef, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import classes from './page-header.module.css'
 

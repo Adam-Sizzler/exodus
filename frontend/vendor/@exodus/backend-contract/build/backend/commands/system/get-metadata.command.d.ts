@@ -17,7 +17,6 @@ export declare namespace GetMetadataCommand {
                 time: string;
             }>;
             git: z.ZodObject<{
-                repositoryUrl: z.ZodString;
                 backend: z.ZodObject<{
                     commitSha: z.ZodString;
                     branch: z.ZodString;
@@ -42,7 +41,6 @@ export declare namespace GetMetadataCommand {
                     commitUrl: string;
                 }>;
             }, "strip", z.ZodTypeAny, {
-                repositoryUrl: string;
                 backend: {
                     commitSha: string;
                     branch: string;
@@ -53,7 +51,6 @@ export declare namespace GetMetadataCommand {
                     commitUrl: string;
                 };
             }, {
-                repositoryUrl: string;
                 backend: {
                     commitSha: string;
                     branch: string;
@@ -71,7 +68,6 @@ export declare namespace GetMetadataCommand {
                 time: string;
             };
             git: {
-                repositoryUrl: string;
                 backend: {
                     commitSha: string;
                     branch: string;
@@ -89,7 +85,6 @@ export declare namespace GetMetadataCommand {
                 time: string;
             };
             git: {
-                repositoryUrl: string;
                 backend: {
                     commitSha: string;
                     branch: string;
@@ -109,7 +104,6 @@ export declare namespace GetMetadataCommand {
                 time: string;
             };
             git: {
-                repositoryUrl: string;
                 backend: {
                     commitSha: string;
                     branch: string;
@@ -129,7 +123,6 @@ export declare namespace GetMetadataCommand {
                 time: string;
             };
             git: {
-                repositoryUrl: string;
                 backend: {
                     commitSha: string;
                     branch: string;

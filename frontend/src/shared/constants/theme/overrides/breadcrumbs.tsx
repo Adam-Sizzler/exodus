@@ -1,5 +1,6 @@
-import { GoDotFill as BreadcrumbsSeparator } from 'react-icons/go'
+// oxlint-disable
 import { Breadcrumbs, px } from '@mantine/core'
+import { GoDotFill as BreadcrumbsSeparator } from 'react-icons/go'
 
 export default {
     Breadcrumbs: Breadcrumbs.extend({

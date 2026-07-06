@@ -1,7 +1,7 @@
 import { Group, Stack, Text, ThemeIcon, ThemeIconProps, Title, TitleProps } from '@mantine/core'
-import ReactCountryFlag from 'react-country-flag'
 import { useClipboard } from '@mantine/hooks'
 import { ReactNode } from 'react'
+import ReactCountryFlag from 'react-country-flag'
 
 type IProps = {
     countryCode?: string
@@ -46,7 +46,7 @@ export const BaseOverlayHeader = (props: IProps) => {
                 </ThemeIcon>
             )}
 
-            {icon && icon}
+            {icon ?? icon}
 
             {countryCode && countryCode !== 'XX' && (
                 <ReactCountryFlag countryCode={countryCode} style={{ fontSize: '1.5em' }} />

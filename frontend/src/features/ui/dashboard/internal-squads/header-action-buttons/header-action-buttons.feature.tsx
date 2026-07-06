@@ -8,18 +8,19 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateInternalSquadCommand } from '@exodus/backend-contract'
-import { TbCirclesRelation, TbPlus, TbRefresh } from 'react-icons/tb'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
+import { CreateInternalSquadCommand } from '@exodus/backend-contract'
+import { useTranslation } from 'react-i18next'
+import { TbCirclesRelation, TbPlus, TbRefresh } from 'react-icons/tb'
 
-import { QueryKeys, useCreateInternalSquad, useGetInternalSquads } from '@shared/api/hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { HelpActionIconShared } from '@shared/ui/help-drawer'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useCreateInternalSquad, useGetInternalSquads } from '@shared/api/hooks'
+import { HelpActionIconShared } from '@shared/ui/help-drawer'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     internalSquadCount: number

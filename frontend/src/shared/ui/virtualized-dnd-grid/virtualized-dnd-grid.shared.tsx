@@ -11,14 +11,14 @@ import {
     useSensor,
     useSensors
 } from '@dnd-kit/core'
-import { arrayMove, rectSortingStrategy, SortableContext } from '@dnd-kit/sortable'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
+import { arrayMove, rectSortingStrategy, SortableContext } from '@dnd-kit/sortable'
+import { Box } from '@mantine/core'
 import { ReactNode, useEffect, useState } from 'react'
 import { VirtuosoGrid } from 'react-virtuoso'
-import { Box } from '@mantine/core'
 
-import { VirtualizedGridComponents } from './virtualized-grid-components'
 import classes from './virtualized-dnd-grid.module.css'
+import { VirtualizedGridComponents } from './virtualized-grid-components'
 
 interface VirtualizedDndGridProps<T extends { uuid: string }> {
     enableDnd?: boolean
@@ -95,7 +95,7 @@ export function VirtualizedDndGrid<T extends { uuid: string }>(props: Virtualize
         if (!item) return null
 
         return (
-            <div className={classes.itemWrapper} style={{ width: '100%' }}>
+            <div className={classes.itemWrapper} key={item.uuid}>
                 {renderItem(item, index)}
             </div>
         )
@@ -129,8 +129,8 @@ export function VirtualizedDndGrid<T extends { uuid: string }>(props: Virtualize
                         components={VirtualizedGridComponents}
                         itemContent={itemContent}
                         overscan={{
-                            main: 4,
-                            reverse: 4
+                            main: 10,
+                            reverse: 10
                         }}
                         totalCount={items.length}
                         useWindowScroll={useWindowScroll}

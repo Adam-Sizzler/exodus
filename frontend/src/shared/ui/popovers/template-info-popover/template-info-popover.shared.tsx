@@ -1,13 +1,13 @@
-import { TSubscriptionPageTemplateKey } from '@exodus/subscription-page-types'
-import { TEMPLATE_KEYS, TemplateKeys } from '@exodus/backend-contract'
 import { ActionIcon, SimpleGrid, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-import { useMediaQuery } from '@mantine/hooks'
-import { TbInfoSquare } from 'react-icons/tb'
 import { modals } from '@mantine/modals'
+import { TEMPLATE_KEYS, TemplateKeys } from '@exodus/backend-contract'
+import { TSubscriptionPageTemplateKey } from '@exodus/subscription-page-types'
+import { useTranslation } from 'react-i18next'
+import { TbInfoSquare } from 'react-icons/tb'
 
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { useIsMobile } from '@shared/hooks'
 import { CopyableCodeBlock } from '@shared/ui/copyable-code-block'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 interface IProps {
     templateKeys?: readonly TemplateKeys[] | readonly TSubscriptionPageTemplateKey[]
@@ -16,7 +16,7 @@ interface IProps {
 export const TemplateInfoPopoverShared = (props: IProps) => {
     const { templateKeys = TEMPLATE_KEYS } = props
 
-    const isMobile = useMediaQuery('(max-width: 768px)')
+    const isMobile = useIsMobile()
 
     const { t } = useTranslation()
 

@@ -1,74 +1,27 @@
+import { Drawer } from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { notifications } from '@mantine/notifications'
 import { CreateHostCommand, SECURITY_LAYERS } from '@exodus/backend-contract'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { notifications } from '@mantine/notifications'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PiListChecks } from 'react-icons/pi'
-import { useForm } from '@mantine/form'
-import { Drawer } from '@mantine/core'
-import { useState } from 'react'
 
+import { queryClient } from '@shared/api'
 import {
     QueryKeys,
     useCreateHost,
     useGetConfigProfiles,
+    useGetHostTags,
     useGetInternalSquads,
     useGetNodes,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
-import { queryClient } from '@shared/api'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { parseJsonField } from '@shared/utils/misc'
 
-type OptionalJSONParseResult = { ok: false } | { ok: true; value: null | unknown }
-
-const parseOptionalJSONValue = (value: unknown): OptionalJSONParseResult => {
-    if (value === null || value === undefined) {
-        return {
-            ok: true,
-            value: null
-        }
-    }
-
-    if (typeof value === 'string') {
-        const trimmed = value.trim()
-        if (trimmed === '' || trimmed === 'null') {
-            return {
-                ok: true,
-                value: null
-            }
-        }
-
-        try {
-            return {
-                ok: true,
-                value: JSON.parse(trimmed)
-            }
-        } catch {
-            return {
-                ok: false
-            }
-        }
-    }
-
-    if (typeof value === 'object') {
-        if (!Array.isArray(value) && Object.keys(value).length === 0) {
-            return {
-                ok: true,
-                value: null
-            }
-        }
-
-        return {
-            ok: true,
-            value
-        }
-    }
-
-    return {
-        ok: false
-    }
-}
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 export const CreateHostModalWidget = () => {
     const { t } = useTranslation()
@@ -80,6 +33,7 @@ export const CreateHostModalWidget = () => {
     const { data: nodes } = useGetNodes()
     const { data: internalSquads } = useGetInternalSquads()
     const { data: templates } = useGetSubscriptionTemplates()
+    const { data: hostTags } = useGetHostTags()
 
     const [advancedOpened, setAdvancedOpened] = useState(false)
 
@@ -87,6 +41,11 @@ export const CreateHostModalWidget = () => {
         mode: 'uncontrolled',
         name: 'create-host-form',
         validateInputOnBlur: true,
+        onValuesChange: (values) => {
+            if (typeof values.vlessRouteId === 'string' && values.vlessRouteId === '') {
+                form.setFieldValue('vlessRouteId', null)
+            }
+        },
         validate: zodResolver(CreateHostCommand.RequestSchema),
 
         initialValues: {
@@ -94,14 +53,11 @@ export const CreateHostModalWidget = () => {
             port: 0,
             remark: '',
             address: '',
-            selectorNodesFirst: false,
-            overrideProtocolCredential: false,
-            protocolCredential: null,
             inbound: {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''
             }
-        } as CreateHostCommand.Request
+        }
     })
 
     const handleClose = () => {
@@ -120,16 +76,17 @@ export const CreateHostModalWidget = () => {
                 await queryClient.refetchQueries({
                     queryKey: QueryKeys.hosts.getAllTags.queryKey
                 })
+
+                notifications.show({
+                    title: 'Success',
+                    message: 'Host created successfully',
+                    color: 'teal'
+                })
             }
         }
     })
 
     const handleSubmit = form.onSubmit(async (values) => {
-        const valuesAny = values as CreateHostCommand.Request & {
-            overrideProtocolCredential?: boolean
-            protocolCredential?: string | null
-        }
-
         if (!values.inbound.configProfileInboundUuid || !values.inbound.configProfileUuid) {
             notifications.show({
                 title: t('create-host-modal.widget.error'),
@@ -140,53 +97,54 @@ export const CreateHostModalWidget = () => {
             return null
         }
 
-        let xHttpExtraParams
+        let xhttpExtraParams
         let muxParams
         let singboxMuxParams
         let clashMuxParams
         let sockoptParams
         let finalMask
-
-        const xHttpExtraParamsResult = parseOptionalJSONValue(values.xHttpExtraParams)
-        if (!xHttpExtraParamsResult.ok) {
-            notifications.show({
-                title: t('create-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return null
+        const valuesAny = values as typeof values & {
+            clashMuxParams?: unknown
+            overrideProtocolCredential?: boolean
+            protocolCredential?: string | null
+            singboxMuxParams?: unknown
         }
-        xHttpExtraParams = xHttpExtraParamsResult.value
 
-        const muxParamsResult = parseOptionalJSONValue(values.muxParams)
-        if (!muxParamsResult.ok) {
-            notifications.show({
-                title: t('create-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return null
+        try {
+            if (values.xhttpExtraParams === '') {
+                xhttpExtraParams = null
+            } else {
+                xhttpExtraParams = JSON.parse(values.xhttpExtraParams as unknown as string)
+            }
+        } catch {
+            xhttpExtraParams = null
+            // silence
         }
-        muxParams = muxParamsResult.value
 
-        const singboxMuxParamsResult = parseOptionalJSONValue(values.singboxMuxParams)
-        if (!singboxMuxParamsResult.ok) {
-            notifications.show({
-                title: t('create-host-modal.widget.error'),
-                message: t('base-host-form.invalid-json'),
-                color: 'red'
-            })
-            return null
+        try {
+            if (values.muxParams === '') {
+                muxParams = null
+            } else {
+                muxParams = JSON.parse(values.muxParams as unknown as string)
+            }
+        } catch {
+            muxParams = null
+            // silence
         }
-        singboxMuxParams = singboxMuxParamsResult.value
 
-        clashMuxParams =
-            typeof values.clashMuxParams === 'string' && values.clashMuxParams.trim() !== ''
-                ? values.clashMuxParams
-                : null
+        singboxMuxParams = parseJsonField(valuesAny.singboxMuxParams)
+        clashMuxParams = parseJsonField(valuesAny.clashMuxParams)
 
-        const sockoptParamsResult = parseOptionalJSONValue(values.sockoptParams)
-        sockoptParams = sockoptParamsResult.ok ? sockoptParamsResult.value : null
+        try {
+            if (values.sockoptParams === '') {
+                sockoptParams = null
+            } else {
+                sockoptParams = JSON.parse(values.sockoptParams as unknown as string)
+            }
+        } catch {
+            sockoptParams = null
+            // silence
+        }
 
         try {
             if (values.finalMask === '') {
@@ -199,26 +157,26 @@ export const CreateHostModalWidget = () => {
             // silence
         }
 
-        createHost({
-            variables: {
-                ...values,
-                isDisabled: !values.isDisabled,
-                overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),
-                protocolCredential: valuesAny.overrideProtocolCredential
-                    ? valuesAny.protocolCredential || null
-                    : null,
-                xHttpExtraParams,
-                sockoptParams,
-                muxParams,
-                singboxMuxParams,
-                clashMuxParams,
-                finalMask,
-                inbound: {
-                    configProfileInboundUuid: values.inbound.configProfileInboundUuid,
-                    configProfileUuid: values.inbound.configProfileUuid
-                }
-            } as any
-        })
+        const variables = {
+            ...valuesAny,
+            isDisabled: !values.isDisabled,
+            sockoptParams,
+            muxParams,
+            singboxMuxParams,
+            clashMuxParams,
+            xhttpExtraParams,
+            finalMask,
+            overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),
+            protocolCredential: valuesAny.overrideProtocolCredential
+                ? valuesAny.protocolCredential || null
+                : null,
+            inbound: {
+                configProfileInboundUuid: values.inbound.configProfileInboundUuid,
+                configProfileUuid: values.inbound.configProfileUuid
+            }
+        } as unknown as CreateHostCommand.Request
+
+        createHost({ variables })
 
         return null
     })
@@ -263,6 +221,7 @@ export const CreateHostModalWidget = () => {
                 configProfiles={configProfiles?.configProfiles ?? []}
                 form={form}
                 handleSubmit={handleSubmit}
+                hostTags={hostTags?.tags ?? []}
                 internalSquads={internalSquads?.internalSquads ?? []}
                 isSubmitting={isCreateHostPending}
                 nodes={nodes!}

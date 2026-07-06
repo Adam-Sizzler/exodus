@@ -1,8 +1,8 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 
 import { useGetNodePlugin } from '@shared/api/hooks'
-import { LoadingScreen } from '@shared/ui'
 import { ROUTES } from '@shared/constants'
+import { LoadingScreen } from '@shared/ui'
 
 import { NodePluginEditorPageComponent } from '../components/node-plugin-editor-page.component'
 

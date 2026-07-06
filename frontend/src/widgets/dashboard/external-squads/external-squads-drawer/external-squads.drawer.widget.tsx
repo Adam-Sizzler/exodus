@@ -13,6 +13,9 @@ import {
     Tooltip,
     Transition
 } from '@mantine/core'
+import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiCheck, PiCopy, PiIdentificationBadge, PiListChecks, PiUsers } from 'react-icons/pi'
 import {
     TbFolder,
     TbListLetters,
@@ -21,19 +24,18 @@ import {
     TbSettings,
     TbWebhook
 } from 'react-icons/tb'
-import { PiCheck, PiCopy, PiIdentificationBadge, PiListChecks, PiUsers } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
-import { memo, useState } from 'react'
 
 import {
     useGetExternalSquad,
     useGetSubscriptionPageConfigs,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { LoaderModalShared } from '@shared/ui/loader-modal'
 import { formatInt } from '@shared/utils/misc'
 
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
+
+import classes from './external-squads.module.css'
 import {
     ExternalSquadsHostOverridesTabWidget,
     ExternalSquadsHwidSettingsTabWidget,
@@ -41,9 +43,8 @@ import {
     ExternalSquadsSubpageConfigTabWidget,
     ExternalSquadsTemplatesTabWidget
 } from './tabs'
-import { ExternalSquadsResponseHeadersTabWidget } from './tabs/external-squads-response-headers.widget'
 import { ExternalSquadsCustomRemarksTabWidget } from './tabs/external-squads-custom-remarks.widget'
-import classes from './external-squads.module.css'
+import { ExternalSquadsResponseHeadersTabWidget } from './tabs/external-squads-response-headers.widget'
 
 const TAB_TYPE = {
     settings: 'settings',
@@ -166,6 +167,7 @@ export const ExternalSquadsDrawer = memo(() => {
                     }}
                     color="cyan"
                     defaultValue={TAB_TYPE.templates}
+                    keepMountedMode="display-none"
                     onChange={(value) => {
                         if (value) {
                             setActiveTab(value as TabType)

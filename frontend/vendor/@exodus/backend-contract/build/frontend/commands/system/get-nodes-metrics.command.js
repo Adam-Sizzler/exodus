@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetNodesMetricsCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 var GetNodesMetricsCommand;
 (function (GetNodesMetricsCommand) {
     GetNodesMetricsCommand.url = api_1.REST_API.SYSTEM.STATS.NODES_METRICS;
     GetNodesMetricsCommand.TSQ_url = GetNodesMetricsCommand.url;
-    GetNodesMetricsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.STATS.NODES_METRICS, 'get', 'Get Nodes Metrics');
+    GetNodesMetricsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.STATS.NODES_METRICS, 'get', 'Get Nodes Metrics', { scope: 'nodes-metrics', kind: 'read' });
     GetNodesMetricsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             nodes: zod_1.z.array(zod_1.z.object({

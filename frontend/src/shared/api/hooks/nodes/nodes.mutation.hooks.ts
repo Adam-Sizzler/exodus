@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import {
     BulkNodesActionsCommand,
     BulkNodesProfileModificationCommand,
@@ -12,33 +13,12 @@ import {
     RestartNodeCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
-import { z } from 'zod'
 
 import { createMutationHook } from '../../tsq-helpers'
 
-const nodeConnectionSchema = {
-    apiSchema: z.enum(['mtls', 'tls']).default('mtls'),
-    apiPath: z.string().trim().min(1).default('/'),
-    grpcAuthToken: z.string().trim().length(64).optional(),
-    activePluginUuid: z.string().uuid().nullable().optional()
-}
-
-export const createNodeRequestSchema = CreateNodeCommand.RequestSchema.extend(nodeConnectionSchema)
-export type CreateNodeRequest = z.infer<typeof createNodeRequestSchema>
-
-export const updateNodeRequestSchema = UpdateNodeCommand.RequestSchema.extend({
-    apiSchema: nodeConnectionSchema.apiSchema.optional(),
-    apiPath: nodeConnectionSchema.apiPath.optional(),
-    grpcAuthToken: nodeConnectionSchema.grpcAuthToken,
-    activePluginUuid: nodeConnectionSchema.activePluginUuid
-})
-export const updateNodeFormSchema = updateNodeRequestSchema.omit({ uuid: true })
-export type UpdateNodeRequest = z.infer<typeof updateNodeRequestSchema>
-
 export const useCreateNode = createMutationHook({
     endpoint: CreateNodeCommand.TSQ_url,
-    bodySchema: createNodeRequestSchema,
+    bodySchema: CreateNodeCommand.RequestSchema,
     responseSchema: CreateNodeCommand.ResponseSchema,
     requestMethod: CreateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -62,7 +42,7 @@ export const useCreateNode = createMutationHook({
 
 export const useUpdateNode = createMutationHook({
     endpoint: UpdateNodeCommand.TSQ_url,
-    bodySchema: updateNodeRequestSchema,
+    bodySchema: UpdateNodeCommand.RequestSchema,
     responseSchema: UpdateNodeCommand.ResponseSchema,
     requestMethod: UpdateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -200,6 +180,7 @@ export const useRestartNode = createMutationHook({
     endpoint: RestartNodeCommand.TSQ_url,
     responseSchema: RestartNodeCommand.ResponseSchema,
     routeParamsSchema: RestartNodeCommand.RequestSchema,
+    bodySchema: RestartNodeCommand.RequestBodySchema,
     requestMethod: RestartNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {

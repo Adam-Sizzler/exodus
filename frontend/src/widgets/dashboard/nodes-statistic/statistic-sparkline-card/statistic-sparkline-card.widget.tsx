@@ -1,8 +1,8 @@
+import { Sparkline } from '@mantine/charts'
 import { Box, Card, SimpleGrid, Skeleton, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
-import { Sparkline } from '@mantine/charts'
 
-import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
 
 interface IProps {
     isLoading: boolean
@@ -37,7 +37,7 @@ export const NodesStatisticSparklineCardWidget = (props: IProps) => {
                         <Skeleton height={28} width={140} />
                     ) : (
                         <Text fw={700} style={{ fontSize: '2rem', lineHeight: 1 }}>
-                            {prettyBytesToAnyUtil(totalUsage) || '0 GiB'}
+                            {prettifyBytesUtil(totalUsage) || '0 GiB'}
                         </Text>
                     )}
                 </Box>
@@ -51,7 +51,7 @@ export const NodesStatisticSparklineCardWidget = (props: IProps) => {
                             <Skeleton height={20} mt={4} width={80} />
                         ) : (
                             <Text fw={600} size="sm">
-                                {prettyBytesToAnyUtil(dailyAverage) || '0 GiB'}
+                                {prettifyBytesUtil(dailyAverage) || '0 GiB'}
                             </Text>
                         )}
                     </Box>
@@ -63,7 +63,7 @@ export const NodesStatisticSparklineCardWidget = (props: IProps) => {
                             <Skeleton height={20} mt={4} width={80} />
                         ) : (
                             <Text fw={600} size="sm">
-                                {prettyBytesToAnyUtil(peakDay) || '0 GiB'}
+                                {prettifyBytesUtil(peakDay) || '0 GiB'}
                             </Text>
                         )}
                     </Box>

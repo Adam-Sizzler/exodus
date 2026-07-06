@@ -1,8 +1,8 @@
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { useTranslation } from 'react-i18next'
 import { Stack, Text } from '@mantine/core'
-import { PiEmpty } from 'react-icons/pi'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { memo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiEmpty } from 'react-icons/pi'
 
 import { InternalSquadCardShared } from '../internal-squad-card'
 import { IProps } from './interfaces'

@@ -5,60 +5,64 @@ import {
     Divider,
     Group,
     NumberInput,
+    Popover,
     Select,
-    SimpleGrid,
     Stack,
+    TagsInput,
     Text,
-    TextInput
+    TextInput,
+    UnstyledButton
 } from '@mantine/core'
-import { TbCertificate, TbId, TbMapPin, TbPlugConnected, TbRoute2, TbWorld } from 'react-icons/tb'
 import { UseFormReturnType } from '@mantine/form'
+import { CreateNodeCommand } from '@exodus/backend-contract'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PiArrowRight } from 'react-icons/pi'
+import { PiArrowRight, PiTagDuotone } from 'react-icons/pi'
+import {
+    TbCertificate,
+    TbChevronDown,
+    TbId,
+    TbMapPin,
+    TbPackage,
+    TbSettings,
+    TbWorld
+} from 'react-icons/tb'
 
-import { CreateNodeRequest, NodeKeygenResponse } from '@shared/api/hooks'
+import { useGetNodePlugins, useGetNodesTags } from '@shared/api/hooks'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { COUNTRIES } from '@shared/ui/forms/nodes/base-node-form/constants'
+import { SelectInfraProviderShared } from '@shared/ui/infra-billing/select-infra-provider/select-infra-provider.shared'
+import { TagInputPill } from '@shared/ui/tag-input-pill'
+
+import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    form: UseFormReturnType<CreateNodeRequest, any>
+    form: UseFormReturnType<CreateNodeCommand.Request, any>
     onNext: () => void
-    pubKey: NodeKeygenResponse | undefined
+    port: number
+    pubKey: string | undefined
 }
 
-export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
+export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps) => {
     const { t } = useTranslation()
-    const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
-    const apiSchemaInputProps = form.getInputProps('apiSchema')
-    const credentialLabel =
-        apiSchema === 'tls'
-            ? t('base-node-form.grpc-token-node-grpc-token', {
-                  defaultValue: 'gRPC Token (NODE_GRPC_TOKEN)'
-              })
-            : t('base-node-form.secret-key-secret-key', {
-                  defaultValue: 'Secret Key (SECRET_KEY)'
-              })
-    const credentialValue =
-        apiSchema === 'tls'
-            ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
-            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
+
+    const { data: nodePlugins } = useGetNodePlugins()
+    const { data: nodesTags } = useGetNodesTags()
+
+    const [additionalOpened, setAdditionalOpened] = useState(false)
 
     const handleNext = async () => {
         const nameErrors = form.validateField('name')
         const countryCodeErrors = form.validateField('countryCode')
         const addressErrors = form.validateField('address')
         const portErrors = form.validateField('port')
-        const apiSchemaErrors = form.validateField('apiSchema')
-        const apiPathErrors = form.validateField('apiPath')
 
         if (
             nameErrors.hasError ||
             countryCodeErrors.hasError ||
             addressErrors.hasError ||
-            portErrors.hasError ||
-            apiSchemaErrors.hasError ||
-            apiPathErrors.hasError
+            portErrors.hasError
         ) {
             return
         }
@@ -95,10 +99,10 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                 <Divider />
                 <Stack gap="xs">
                     <CopyableFieldShared
-                        label={credentialLabel}
+                        label="Secret Key (SECRET_KEY)"
                         leftSection={<TbCertificate size={16} />}
                         size="sm"
-                        value={credentialValue}
+                        value={`${pubKey?.trimEnd()}`}
                     />
 
                     <TextInput
@@ -128,7 +132,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                         }}
                     />
 
-                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                    <Group align="flex-start" gap="xs" w="100%">
                         <TextInput
                             key={form.key('address')}
                             label={t('create-node-step-1-connection.domain-or-ip')}
@@ -140,6 +144,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                             styles={{
                                 label: { fontWeight: 500 }
                             }}
+                            w="70%"
                         />
 
                         <NumberInput
@@ -158,63 +163,128 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                             styles={{
                                 label: { fontWeight: 500 }
                             }}
+                            w="25%"
                         />
-                    </SimpleGrid>
+                    </Group>
 
-                    <Stack gap="xs">
-                        <Select
-                            key={form.key('apiSchema')}
-                            data={[
-                                {
-                                    label: t('base-node-form.api-schema-mtls'),
-                                    value: 'mtls'
-                                },
-                                {
-                                    label: t('base-node-form.api-schema-tls-token'),
-                                    value: 'tls'
-                                }
-                            ]}
-                            description={t('base-node-form.api-schema-description')}
-                            label={t('base-node-form.api-schema')}
-                            leftSection={<TbPlugConnected size={16} />}
-                            required
-                            size="sm"
-                            styles={{
-                                label: { fontWeight: 500 }
-                            }}
-                            {...apiSchemaInputProps}
-                            onChange={(value) => {
-                                apiSchemaInputProps.onChange(value)
-                            }}
+                    <Popover
+                        closeOnClickOutside={false}
+                        onChange={setAdditionalOpened}
+                        opened={additionalOpened}
+                        position="bottom"
+                        shadow="md"
+                        width={340}
+                        withArrow
+                    >
+                        <Divider
+                            label={
+                                <Popover.Target>
+                                    <UnstyledButton
+                                        c="dimmed"
+                                        onClick={() => setAdditionalOpened((opened) => !opened)}
+                                        px={4}
+                                        type="button"
+                                    >
+                                        <Group gap={6}>
+                                            <TbSettings size={16} />
+                                            <Text fw={500} size="sm">
+                                                {t(
+                                                    'create-node-step-1-connection.additional-options'
+                                                )}
+                                            </Text>
+                                            <TbChevronDown
+                                                size={14}
+                                                style={{
+                                                    transform: additionalOpened
+                                                        ? 'rotate(180deg)'
+                                                        : undefined,
+                                                    transition: 'transform 200ms ease'
+                                                }}
+                                            />
+                                        </Group>
+                                    </UnstyledButton>
+                                </Popover.Target>
+                            }
+                            labelPosition="center"
                         />
 
-                        <TextInput
-                            key={form.key('apiPath')}
-                            description={t('base-node-form.api-path-description')}
-                            label={t('base-node-form.api-path')}
-                            leftSection={<TbRoute2 size={16} />}
-                            placeholder={t('base-node-form.api-path-placeholder')}
-                            required
-                            size="sm"
-                            styles={{
-                                label: { fontWeight: 500 }
-                            }}
-                            {...form.getInputProps('apiPath')}
-                        />
-                    </Stack>
+                        <Popover.Dropdown>
+                            <Stack gap="sm">
+                                <SelectInfraProviderShared
+                                    selectedInfraProviderUuid={form.getValues().providerUuid}
+                                    setSelectedInfraProviderUuid={(providerUuid) => {
+                                        form.setValues({ providerUuid })
+                                        form.setTouched({ providerUuid: true })
+                                        form.setDirty({ providerUuid: true })
+                                    }}
+                                />
+
+                                <Select
+                                    key={form.key('activePluginUuid')}
+                                    label={t('node-vitals.card.plugin')}
+                                    {...form.getInputProps('activePluginUuid')}
+                                    allowDeselect
+                                    clearable
+                                    data={(nodePlugins?.nodePlugins ?? []).map((nodePlugin) => ({
+                                        label: nodePlugin.name,
+                                        value: nodePlugin.uuid
+                                    }))}
+                                    description={t(
+                                        'node-vitals.card.review-documentation-for-more-information'
+                                    )}
+                                    leftSection={<TbPackage size={16} />}
+                                    nothingFoundMessage={t('node-vitals.card.nothing-found')}
+                                    placeholder={t('node-vitals.card.select-plugin')}
+                                    searchable
+                                    size="sm"
+                                    styles={{
+                                        label: { fontWeight: 500 }
+                                    }}
+                                />
+
+                                <TagsInput
+                                    clearable
+                                    data={nodesTags?.tags || []}
+                                    key={form.key('tags')}
+                                    label={t('use-nodes-table-widget.tags')}
+                                    leftSection={<PiTagDuotone size="16px" />}
+                                    maxTags={10}
+                                    placeholder="Enter tags (comma, space, semicolon)"
+                                    size="sm"
+                                    splitChars={[',', ' ', ';']}
+                                    {...form.getInputProps('tags')}
+                                    error={
+                                        Object.keys(form.errors)
+                                            .filter((key) => key.startsWith('tags.'))
+                                            .map((key) => form.errors[key])
+                                            .join(', ') || form.getInputProps('tags').error
+                                    }
+                                    renderPill={({ value, onRemove }) => (
+                                        <TagInputPill onRemove={onRemove} value={value} />
+                                    )}
+                                    styles={{
+                                        label: { fontWeight: 500 }
+                                    }}
+                                />
+                            </Stack>
+                        </Popover.Dropdown>
+                    </Popover>
                 </Stack>
 
-                <Group justify="flex-end" mt="auto">
-                    <Button
-                        color="teal"
-                        disabled={!pubKey}
-                        rightSection={<PiArrowRight size={18} />}
-                        size="md"
-                        type="submit"
-                    >
-                        {t('create-node-modal.widget.next')}
-                    </Button>
-                </Group>
+                <Stack gap="xs" mt="auto">
+                    <CopyDockerComposeWidget port={port} />
+
+                    <Group justify="flex-end" mt="auto">
+                        <Button
+                            color="teal"
+                            rightSection={<PiArrowRight size={18} />}
+                            size="md"
+                            type="submit"
+                        >
+                            {t('create-node-modal.widget.next')}
+                        </Button>
+                    </Group>
+                </Stack>
             </Stack>
         </form>
     )

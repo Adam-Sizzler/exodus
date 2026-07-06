@@ -1,17 +1,18 @@
 import { Badge, Box, Center, Drawer, Group, Loader, Stack, Text } from '@mantine/core'
 import { GetInternalSquadAccessibleNodesCommand } from '@exodus/backend-contract'
-import { TbChevronRight, TbServer } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
-import { DataTable } from 'mantine-datatable'
-import { PiTag } from 'react-icons/pi'
-import { useState } from 'react'
 import clsx from 'clsx'
+import { DataTable } from 'mantine-datatable'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiTag } from 'react-icons/pi'
+import { TbChevronRight, TbServer } from 'react-icons/tb'
 
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetInternalSquadAccessibleNodes } from '@shared/api/hooks'
 import { CountryFlag } from '@shared/ui/get-country-flag'
 import { XrayLogo } from '@shared/ui/logos'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 import classes from './internal-squad-accessible-nodes.module.css'
 

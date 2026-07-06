@@ -49,6 +49,17 @@ func TestGetSubscriptionRefillDateAt(t *testing.T) {
 	}
 }
 
+func TestFirstHostTag(t *testing.T) {
+	tag := firstHostTag([]string{"", " edge ", "backup"})
+	if tag == nil || *tag != "edge" {
+		t.Fatalf("got %#v, want edge", tag)
+	}
+
+	if tag := firstHostTag([]string{"", "   "}); tag != nil {
+		t.Fatalf("got %#v, want nil", tag)
+	}
+}
+
 func TestBuildXrayOutboundIncludesXHTTPExtraAndSockopt(t *testing.T) {
 	protocol := "vless"
 	network := "xhttp"
@@ -132,22 +143,20 @@ rules:
 	protocol := "trojan"
 	hosts := []SubscriptionHost{
 		{
-			Remark:             "seiko",
-			Address:            "one.example.com",
-			Port:               443,
-			InboundType:        &protocol,
-			InboundNetwork:     &network,
-			InboundSecurity:    &security,
-			SelectorNodesFirst: true,
+			Remark:          "seiko",
+			Address:         "one.example.com",
+			Port:            443,
+			InboundType:     &protocol,
+			InboundNetwork:  &network,
+			InboundSecurity: &security,
 		},
 		{
-			Remark:             "aeza",
-			Address:            "two.example.com",
-			Port:               443,
-			InboundType:        &protocol,
-			InboundNetwork:     &network,
-			InboundSecurity:    &security,
-			SelectorNodesFirst: true,
+			Remark:          "aeza",
+			Address:         "two.example.com",
+			Port:            443,
+			InboundType:     &protocol,
+			InboundNetwork:  &network,
+			InboundSecurity: &security,
 		},
 		{
 			Remark:          "timeweb",
@@ -185,12 +194,12 @@ rules:
 	if !strings.Contains(rendered, `  - name: select
     type: select
     proxies:
+      - auto
       - seiko
       - aeza
-      - auto
       - timeweb
 `) {
-		t.Fatalf("expected select group to place flagged nodes before auto and others after, got:\n%s", rendered)
+		t.Fatalf("expected select group to keep template entries before host nodes, got:\n%s", rendered)
 	}
 
 	proxyGroupsIndex := strings.Index(rendered, "proxy-groups:")
@@ -235,22 +244,20 @@ func TestGenerateSingboxConfigPreservesNestedTemplateOrderAndSelectorNodePlaceme
 	security := "tls"
 	rendered, err := generateSingboxConfig(template, []SubscriptionHost{
 		{
-			Remark:             "seiko",
-			Address:            "one.example.com",
-			Port:               443,
-			InboundType:        &protocol,
-			InboundNetwork:     &network,
-			InboundSecurity:    &security,
-			SelectorNodesFirst: true,
+			Remark:          "seiko",
+			Address:         "one.example.com",
+			Port:            443,
+			InboundType:     &protocol,
+			InboundNetwork:  &network,
+			InboundSecurity: &security,
 		},
 		{
-			Remark:             "aeza",
-			Address:            "two.example.com",
-			Port:               443,
-			InboundType:        &protocol,
-			InboundNetwork:     &network,
-			InboundSecurity:    &security,
-			SelectorNodesFirst: true,
+			Remark:          "aeza",
+			Address:         "two.example.com",
+			Port:            443,
+			InboundType:     &protocol,
+			InboundNetwork:  &network,
+			InboundSecurity: &security,
 		},
 		{
 			Remark:          "timeweb",
@@ -269,13 +276,13 @@ func TestGenerateSingboxConfigPreservesNestedTemplateOrderAndSelectorNodePlaceme
       "type": "selector",
       "tag": "select",
       "outbounds": [
+        "auto",
         "seiko",
         "aeza",
-        "auto",
         "timeweb"
       ]
     }`) {
-		t.Fatalf("expected selector order to be preferred nodes, template entries, then remaining nodes, got:\n%s", rendered)
+		t.Fatalf("expected selector order to keep template entries before host nodes, got:\n%s", rendered)
 	}
 
 	if !strings.Contains(rendered, `{
@@ -362,13 +369,12 @@ func TestGenerateSingboxConfigKeepsTemplateSelectorEntriesBetweenLeadingAndTrail
 	security := "tls"
 	rendered, err := generateSingboxConfig(template, []SubscriptionHost{
 		{
-			Remark:             "aeza",
-			Address:            "two.example.com",
-			Port:               443,
-			InboundType:        &protocol,
-			InboundNetwork:     &network,
-			InboundSecurity:    &security,
-			SelectorNodesFirst: true,
+			Remark:          "aeza",
+			Address:         "two.example.com",
+			Port:            443,
+			InboundType:     &protocol,
+			InboundNetwork:  &network,
+			InboundSecurity: &security,
 		},
 		{
 			Remark:          "timeweb",
@@ -387,13 +393,13 @@ func TestGenerateSingboxConfigKeepsTemplateSelectorEntriesBetweenLeadingAndTrail
       "type": "selector",
       "tag": "select",
       "outbounds": [
-        "aeza",
         "auto",
         "direct",
+        "aeza",
         "timeweb"
       ]
     }`) {
-		t.Fatalf("expected selector to preserve template entries between leading and trailing nodes, got:\n%s", rendered)
+		t.Fatalf("expected selector to preserve template entries before host nodes, got:\n%s", rendered)
 	}
 }
 
@@ -427,13 +433,12 @@ func TestGenerateSingboxConfigKeepsURLTestOrderByHostOrder(t *testing.T) {
 			InboundSecurity: &security,
 		},
 		{
-			Remark:             "aeza",
-			Address:            "two.example.com",
-			Port:               443,
-			InboundType:        &protocol,
-			InboundNetwork:     &network,
-			InboundSecurity:    &security,
-			SelectorNodesFirst: true,
+			Remark:          "aeza",
+			Address:         "two.example.com",
+			Port:            443,
+			InboundType:     &protocol,
+			InboundNetwork:  &network,
+			InboundSecurity: &security,
 		},
 		{
 			Remark:          "timeweb",
@@ -452,13 +457,13 @@ func TestGenerateSingboxConfigKeepsURLTestOrderByHostOrder(t *testing.T) {
       "type": "selector",
       "tag": "select",
       "outbounds": [
-        "aeza",
         "auto",
         "seiko",
+        "aeza",
         "timeweb"
       ]
     }`) {
-		t.Fatalf("expected selector to place preferred nodes before template entries, got:\n%s", rendered)
+		t.Fatalf("expected selector to keep template entries before host nodes, got:\n%s", rendered)
 	}
 
 	if !strings.Contains(rendered, `{
@@ -563,7 +568,7 @@ func TestGenerateSingboxConfigUsesSingboxProtocolCredentials(t *testing.T) {
 	}
 }
 
-func TestHysteria2CredentialFallsBackToPasswordNotUUID(t *testing.T) {
+func TestHysteria2CredentialDoesNotFallbackToOtherProtocols(t *testing.T) {
 	protocol := "hysteria2"
 	host := SubscriptionHost{InboundType: &protocol}
 	user := SubscriptionUser{
@@ -571,8 +576,13 @@ func TestHysteria2CredentialFallsBackToPasswordNotUUID(t *testing.T) {
 		TrojanPassword: "trojan-secret",
 	}
 
-	if got := effectiveProtocolCredential(host, user); got != "trojan-secret" {
-		t.Fatalf("got %q, want trojan-secret", got)
+	if got := effectiveProtocolCredential(host, user); got != "" {
+		t.Fatalf("got %q, want empty dedicated hysteria2 password", got)
+	}
+
+	user.Hysteria2Password = "hysteria-secret"
+	if got := effectiveProtocolCredential(host, user); got != "hysteria-secret" {
+		t.Fatalf("got %q, want dedicated hysteria2 password", got)
 	}
 }
 

@@ -1,5 +1,6 @@
-import { Drawer, em, Group } from '@mantine/core'
-import { useMediaQuery } from '@mantine/hooks'
+import { Drawer, Group } from '@mantine/core'
+
+import { useIsMobile } from '@shared/hooks'
 
 import styles from './DrawerFooter.module.css'
 
@@ -9,7 +10,7 @@ interface IProps {
 
 export function DrawerFooter(props: IProps) {
     const { children } = props
-    const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
+    const isMobile = useIsMobile()
 
     return (
         <Drawer.Header

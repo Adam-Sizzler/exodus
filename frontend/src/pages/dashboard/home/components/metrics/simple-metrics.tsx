@@ -1,9 +1,9 @@
-import { PiChartBarDuotone, PiCpuDuotone, PiMemoryFill, PiMemoryLight } from 'react-icons/pi'
 import { GetStatsCommand } from '@exodus/backend-contract'
 import { TFunction } from 'i18next'
+import { PiChartBarDuotone, PiCpuDuotone, PiMemoryFill, PiMemoryLight } from 'react-icons/pi'
 
-import { prettyBytesUtil, prettyBytesUtilWithoutPrefix } from '@shared/utils/bytes'
 import { IMetricCardProps } from '@shared/ui/metrics/metric-card'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
 
 export const getSimpleMetrics = (
     systemInfo: GetStatsCommand.Response['response'],
@@ -11,8 +11,8 @@ export const getSimpleMetrics = (
 ): IMetricCardProps[] => {
     const { memory, nodes } = systemInfo
 
-    const totalRamGB = prettyBytesUtil(memory.total) ?? 0
-    const usedRamGB = prettyBytesUtil(memory.used) ?? 0
+    const totalRamGB = prettifyBytesUtil(memory.total) ?? 0
+    const usedRamGB = prettifyBytesUtil(memory.used) ?? 0
 
     return [
         {
@@ -23,7 +23,7 @@ export const getSimpleMetrics = (
             iconColor: 'blue'
         },
         {
-            value: prettyBytesUtilWithoutPrefix(Number(nodes.totalBytesLifetime)) ?? 0,
+            value: prettifyBytesUtil(Number(nodes.totalBytesLifetime)) ?? 0,
             IconComponent: PiChartBarDuotone,
             title: t('simple-metrics.total-traffic'),
             iconVariant: 'soft',

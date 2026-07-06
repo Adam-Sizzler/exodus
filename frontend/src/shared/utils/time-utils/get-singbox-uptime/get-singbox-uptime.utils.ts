@@ -1,6 +1,6 @@
-import relativeTime from 'dayjs/plugin/relativeTime'
-import duration from 'dayjs/plugin/duration'
 import dayjs from 'dayjs'
+import duration from 'dayjs/plugin/duration'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
 dayjs.extend(duration)
 dayjs.extend(relativeTime)
@@ -25,10 +25,4 @@ export function getSingboxUptimeUtil(uptimeInSeconds: number): string {
     }
 
     return '0s'
-}
-
-export function formatDurationUtil(uptimeInSeconds: number): string {
-    const d = dayjs.duration(uptimeInSeconds, 'seconds')
-    const totalDays = Math.floor(d.asDays())
-    return `${totalDays}d ${d.hours()}h ${d.minutes()}m ${d.seconds()}s`
 }

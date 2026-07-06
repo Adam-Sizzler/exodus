@@ -1,13 +1,13 @@
-import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
 import { ActionIcon, Group } from '@mantine/core'
-import { useNavigate } from 'react-router-dom'
-import { TbArrowBackUp } from 'react-icons/tb'
-
+import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
 import { SubscriptionTemplateEditorWidget } from '@widgets/dashboard/templates/subscription-template-editor'
+import { TbArrowBackUp } from 'react-icons/tb'
+import { useNavigate } from 'react-router'
+
+import { ROUTES } from '@shared/constants'
+import { Page, PageHeaderShared } from '@shared/ui'
 import { getCoreLogoFromType } from '@shared/ui/get-core-logo-from-type'
 import { HelpActionIconShared } from '@shared/ui/help-drawer'
-import { Page, PageHeaderShared } from '@shared/ui'
-import { ROUTES } from '@shared/constants'
 
 interface Props {
     editorType: 'json' | 'yaml'

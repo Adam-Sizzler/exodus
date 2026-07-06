@@ -9,21 +9,22 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateConfigProfileCommand } from '@exodus/backend-contract'
-import { generatePath, useNavigate } from 'react-router-dom'
-import { TbCode, TbPlus, TbRefresh } from 'react-icons/tb'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
+import { CreateConfigProfileCommand } from '@exodus/backend-contract'
+import { useTranslation } from 'react-i18next'
+import { TbCode, TbPlus, TbRefresh } from 'react-icons/tb'
+import { generatePath, useNavigate } from 'react-router'
 
-import { CONFIG_PROFILES_VIEW_MODE } from '@pages/dashboard/config-profiles/components/interfaces'
+import { queryClient } from '@shared/api'
 import { QueryKeys, useCreateConfigProfile, useGetConfigProfiles } from '@shared/api/hooks'
-import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { ROUTES } from '@shared/constants'
 import { HelpActionIconShared } from '@shared/ui/help-drawer'
 import { SingboxLogo } from '@shared/ui/logos'
-import { ROUTES } from '@shared/constants'
-import { queryClient } from '@shared/api'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
+
+import { CONFIG_PROFILES_VIEW_MODE } from '@entities/dashboard/view-preferences-store'
 
 interface IProps {
     configProfileCount: number
@@ -42,17 +43,26 @@ const generateDefaultConfig = () => {
             servers: [
                 {
                     tag: 'dns-remote',
-                    address: 'https://1.1.1.1/dns-query',
+                    type: 'udp',
+                    server: '1.1.1.1',
                     detour: 'direct'
                 }
             ]
         },
         inbounds: [
             {
-                type: 'mixed',
-                tag: `mixed_${randomNumber}`,
+                type: 'shadowsocks',
+                tag: `ss-in-${randomNumber}`,
                 listen: '127.0.0.1',
-                listen_port: 2080
+                listen_port: 2080,
+                method: 'chacha20-ietf-poly1305'
+            },
+            {
+                type: 'trojan',
+                tag: `trojan-in-${randomNumber}`,
+                listen: '127.0.0.1',
+                listen_port: 2443,
+                users: []
             }
         ],
         outbounds: [
@@ -132,7 +142,7 @@ export const ConfigProfilesHeaderActionButtonsFeature = (props: IProps) => {
                     {viewMode === CONFIG_PROFILES_VIEW_MODE.PROFILES ? (
                         <TbCode size="24px" />
                     ) : (
-                        <SingboxLogo size={24} />
+                        <SingboxLogo size="24px" />
                     )}
                 </ActionIcon>
             </ActionIconGroup>

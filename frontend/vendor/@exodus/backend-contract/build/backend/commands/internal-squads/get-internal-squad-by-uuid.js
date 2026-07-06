@@ -9,7 +9,7 @@ var GetInternalSquadByUuidCommand;
 (function (GetInternalSquadByUuidCommand) {
     GetInternalSquadByUuidCommand.url = api_1.REST_API.INTERNAL_SQUADS.GET_BY_UUID;
     GetInternalSquadByUuidCommand.TSQ_url = GetInternalSquadByUuidCommand.url(':uuid');
-    GetInternalSquadByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.GET_BY_UUID(':uuid'), 'get', 'Get internal squad by uuid');
+    GetInternalSquadByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.GET_BY_UUID(':uuid'), 'get', 'Get internal squad by uuid', { scope: 'get', kind: 'read' });
     GetInternalSquadByUuidCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

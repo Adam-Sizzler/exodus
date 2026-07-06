@@ -1,20 +1,22 @@
-import { CreateInfraBillingHistoryRecordCommand } from '@exodus/backend-contract'
 import { Button, Modal, NumberInput, Stack } from '@mantine/core'
-import { HiCalendar, HiCurrencyDollar } from 'react-icons/hi'
-import { zodResolver } from 'mantine-form-zod-resolver'
-import { notifications } from '@mantine/notifications'
 import { DatePickerInput } from '@mantine/dates'
-import { useTranslation } from 'react-i18next'
-import { TbInvoice } from 'react-icons/tb'
 import { useForm } from '@mantine/form'
+import { notifications } from '@mantine/notifications'
+import { CreateInfraBillingHistoryRecordCommand } from '@exodus/backend-contract'
 import dayjs from 'dayjs'
+import { zodResolver } from 'mantine-form-zod-resolver'
+import { useTranslation } from 'react-i18next'
+import { HiCalendar, HiCurrencyDollar } from 'react-icons/hi'
+import { TbInvoice } from 'react-icons/tb'
 
-import { SelectInfraProviderShared } from '@shared/ui/infra-billing/select-infra-provider/select-infra-provider.shared'
-import { MODALS, useModalClose, useModalIsOpen } from '@entities/dashboard/modal-store'
+import { queryClient } from '@shared/api'
 import { QueryKeys, useCreateInfraBillingHistoryRecord } from '@shared/api/hooks'
+import { SelectInfraProviderShared } from '@shared/ui/infra-billing/select-infra-provider/select-infra-provider.shared'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { handleFormErrors } from '@shared/utils/misc'
-import { queryClient } from '@shared/api'
+import { toUtcDayISO } from '@shared/utils/time-utils'
+
+import { MODALS, useModalClose, useModalIsOpen } from '@entities/dashboard/modal-store'
 
 export function CreateInfraBillingRecordDrawerWidget() {
     const isOpen = useModalIsOpen(MODALS.CREATE_INFRA_BILLING_RECORD_DRAWER)
@@ -43,10 +45,7 @@ export function CreateInfraBillingRecordDrawerWidget() {
             mutationFns: {
                 onSuccess: () => {
                     queryClient.refetchQueries({
-                        queryKey: QueryKeys.infraBilling.getInfraBillingHistoryRecords({
-                            start: 0,
-                            size: 50
-                        }).queryKey
+                        queryKey: QueryKeys.infraBilling.getInfraBillingHistoryRecords._def
                     })
 
                     queryClient.refetchQueries({
@@ -80,9 +79,7 @@ export function CreateInfraBillingRecordDrawerWidget() {
         createInfraBillingRecord({
             variables: {
                 // @ts-expect-error - TODO: fix ZOD schema
-                billedAt: values.billedAt
-                    ? dayjs(values.billedAt).startOf('day').toISOString()
-                    : undefined,
+                billedAt: toUtcDayISO(values.billedAt),
                 providerUuid: values.providerUuid,
                 amount: values.amount
             }
@@ -154,7 +151,11 @@ export function CreateInfraBillingRecordDrawerWidget() {
                         {...form.getInputProps('amount')}
                     />
 
-                    <Button loading={isCreateInfraBillingRecordPending} type="submit">
+                    <Button
+                        loading={isCreateInfraBillingRecordPending}
+                        type="submit"
+                        variant="soft"
+                    >
                         {t('common.create')}
                     </Button>
                 </Stack>

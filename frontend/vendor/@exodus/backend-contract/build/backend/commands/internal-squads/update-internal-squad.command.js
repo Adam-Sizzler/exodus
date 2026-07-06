@@ -9,7 +9,7 @@ var UpdateInternalSquadCommand;
 (function (UpdateInternalSquadCommand) {
     UpdateInternalSquadCommand.url = api_1.REST_API.INTERNAL_SQUADS.UPDATE;
     UpdateInternalSquadCommand.TSQ_url = UpdateInternalSquadCommand.url;
-    UpdateInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.UPDATE, 'patch', 'Update internal squad');
+    UpdateInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.UPDATE, 'patch', 'Update internal squad', { scope: 'update', kind: 'write' });
     UpdateInternalSquadCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
         name: zod_1.z

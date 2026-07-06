@@ -1,3 +1,5 @@
+import { Accordion, ActionIcon, Button, Center, Divider, Drawer, Group, Stack } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import {
     TSubscriptionPageAppConfig,
     TSubscriptionPageLanguageCode,
@@ -5,20 +7,18 @@ import {
     TSubscriptionPagePlatformSchema,
     TSubscriptionPageSvgLibrary
 } from '@exodus/subscription-page-types'
-import { Accordion, ActionIcon, Button, Center, Divider, Drawer, Group, Stack } from '@mantine/core'
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { AppEditorDrawerContent } from './app-editor-drawer-content.component'
-import { PLATFORM_ICONS, PLATFORM_LABELS } from '../subpage-config.constants'
-import { LocalizedTextEditor } from './localized-text-editor.component'
 import styles from '../subpage-config-visual-editor.module.css'
-import { SvgIconSelect } from './svg-icon-select.component'
+import { PLATFORM_ICONS, PLATFORM_LABELS } from '../subpage-config.constants'
 import { AppCard } from './app-card.component'
+import { AppEditorDrawerContent } from './app-editor-drawer-content.component'
+import { LocalizedTextEditor } from './localized-text-editor.component'
+import { SvgIconSelect } from './svg-icon-select.component'
 
 interface IProps {
     enabledLocales: TSubscriptionPageLanguageCode[]

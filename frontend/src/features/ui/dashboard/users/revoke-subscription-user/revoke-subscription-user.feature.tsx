@@ -1,13 +1,13 @@
-import { TbAlertTriangle, TbKey } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
-import { PiKeyDuotone } from 'react-icons/pi'
 import { Menu, Stack } from '@mantine/core'
 import { modals } from '@mantine/modals'
+import { useTranslation } from 'react-i18next'
+import { PiKeyDuotone } from 'react-icons/pi'
+import { TbAlertTriangle, TbKey } from 'react-icons/tb'
 
-import { useRevokeUserSubscription, usersQueryKeys } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { ActionCardShared } from '@shared/ui/action-card'
 import { queryClient } from '@shared/api'
+import { useRevokeUserSubscription, usersQueryKeys } from '@shared/api/hooks'
+import { ActionCardShared } from '@shared/ui/action-card'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import { IProps } from './interfaces'
 

@@ -107,6 +107,19 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate: z.ZodOptional<z.ZodString>;
                 ignoreHostXrayJsonTemplate: z.ZodOptional<z.ZodBoolean>;
                 ignoreServeJsonAtBaseSubscription: z.ZodOptional<z.ZodBoolean>;
+                additionalExtendedClientsRegex: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+                disableHwidCheck: z.ZodOptional<z.ZodBoolean>;
+                encryption: z.ZodOptional<z.ZodObject<{
+                    method: z.ZodEnum<["age1", "age1pq1"]>;
+                    key: z.ZodString;
+                }, "strip", z.ZodTypeAny, {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                }, {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                }>>;
+                excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             }, "strip", z.ZodTypeAny, {
                 headers?: {
                     value: string;
@@ -116,6 +129,13 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             }, {
                 headers?: {
                     value: string;
@@ -125,10 +145,17 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             }>>;
         }, "strip", z.ZodTypeAny, {
-            enabled: boolean;
             name: string;
+            enabled: boolean;
             operator: "AND" | "OR";
             conditions: {
                 value: string;
@@ -147,10 +174,17 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             } | undefined;
         }, {
-            enabled: boolean;
             name: string;
+            enabled: boolean;
             operator: "AND" | "OR";
             conditions: {
                 value: string;
@@ -169,13 +203,20 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             } | undefined;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
         version: "1";
         rules: {
-            enabled: boolean;
             name: string;
+            enabled: boolean;
             operator: "AND" | "OR";
             conditions: {
                 value: string;
@@ -194,6 +235,13 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             } | undefined;
         }[];
         settings?: {
@@ -202,8 +250,8 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
     }, {
         version: "1";
         rules: {
-            enabled: boolean;
             name: string;
+            enabled: boolean;
             operator: "AND" | "OR";
             conditions: {
                 value: string;
@@ -222,6 +270,13 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             } | undefined;
         }[];
         settings?: {
@@ -268,8 +323,8 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
     responseRules: {
         version: "1";
         rules: {
-            enabled: boolean;
             name: string;
+            enabled: boolean;
             operator: "AND" | "OR";
             conditions: {
                 value: string;
@@ -288,6 +343,13 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             } | undefined;
         }[];
         settings?: {
@@ -324,8 +386,8 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
     responseRules: {
         version: "1";
         rules: {
-            enabled: boolean;
             name: string;
+            enabled: boolean;
             operator: "AND" | "OR";
             conditions: {
                 value: string;
@@ -344,6 +406,13 @@ export declare const SubscriptionSettingsSchema: z.ZodObject<{
                 subscriptionTemplate?: string | undefined;
                 ignoreHostXrayJsonTemplate?: boolean | undefined;
                 ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                additionalExtendedClientsRegex?: string[] | undefined;
+                disableHwidCheck?: boolean | undefined;
+                encryption?: {
+                    key: string;
+                    method: "age1" | "age1pq1";
+                } | undefined;
+                excludeHostsByTags?: string[] | undefined;
             } | undefined;
         }[];
         settings?: {

@@ -35,7 +35,6 @@ export const ROUTES = {
             ROOT: '/dashboard/tools',
             HWID_INSPECTOR: '/dashboard/tools/hwid-inspector',
             SRH_INSPECTOR: '/dashboard/tools/srh-inspector'
-            //SESSIONS_EXPLORER: '/dashboard/tools/sessions-explorer'
         },
         TEMPLATES: {
             ROOT: '/dashboard/templates',

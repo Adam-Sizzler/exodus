@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateExternalSquadCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var UpdateExternalSquadCommand;
 (function (UpdateExternalSquadCommand) {
     UpdateExternalSquadCommand.url = api_1.REST_API.EXTERNAL_SQUADS.UPDATE;
     UpdateExternalSquadCommand.TSQ_url = UpdateExternalSquadCommand.url;
-    UpdateExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.UPDATE, 'patch', 'Update external squad');
+    UpdateExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.UPDATE, 'patch', 'Update external squad', { scope: 'update', kind: 'write' });
     UpdateExternalSquadCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
         name: zod_1.z

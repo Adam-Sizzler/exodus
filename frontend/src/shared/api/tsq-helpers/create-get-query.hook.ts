@@ -1,9 +1,9 @@
 import { QueryKey, useQuery, UseQueryResult } from '@tanstack/react-query'
 import { z } from 'zod'
 
+import { instance } from '../axios'
 import { createUrl, handleRequestError } from '../helpers'
 import { CreateGetQueryHookArgs } from '../interfaces'
-import { instance } from '../axios'
 
 type QueryParams<R, Q> = {
     query?: Q

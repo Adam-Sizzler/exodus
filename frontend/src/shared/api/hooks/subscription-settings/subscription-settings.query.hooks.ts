@@ -1,5 +1,5 @@
-import { GetSubscriptionSettingsCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
+import { GetSubscriptionSettingsCommand } from '@exodus/backend-contract'
 
 import { sToMs } from '@shared/utils/time-utils'
 

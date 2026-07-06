@@ -15,13 +15,13 @@ import {
     HwidSettingsSchema,
     THwidSettings
 } from '@exodus/backend-contract'
-import { TbDeviceFloppy, TbDevices2 } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbDeviceFloppy, TbDevices2 } from 'react-icons/tb'
 
+import { queryClient } from '@shared/api'
 import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 import { TemplateInfoPopoverShared } from '@shared/ui/popovers'
-import { queryClient } from '@shared/api'
 
 interface IProps {
     externalSquad: GetExternalSquadByUuidCommand.Response['response']

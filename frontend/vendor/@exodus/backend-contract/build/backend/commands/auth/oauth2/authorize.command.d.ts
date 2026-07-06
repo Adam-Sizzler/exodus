@@ -5,6 +5,7 @@ export declare namespace OAuth2AuthorizeCommand {
     const endpointDetails: import("../../../constants").EndpointDetails;
     const RequestSchema: z.ZodObject<{
         provider: z.ZodNativeEnum<{
+            readonly TELEGRAM: "telegram";
             readonly GITHUB: "github";
             readonly POCKETID: "pocketid";
             readonly YANDEX: "yandex";
@@ -12,9 +13,9 @@ export declare namespace OAuth2AuthorizeCommand {
             readonly GENERIC: "generic";
         }>;
     }, "strip", z.ZodTypeAny, {
-        provider: "github" | "pocketid" | "yandex" | "keycloak" | "generic";
+        provider: "telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic";
     }, {
-        provider: "github" | "pocketid" | "yandex" | "keycloak" | "generic";
+        provider: "telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic";
     }>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{

@@ -243,10 +243,12 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 
 		if hasCoreReady, coreReady, coreMessage := parseDeployCoreState(resp.Message); hasCoreReady {
 			if coreReady {
-				nm.updateConnectionStatus(target.name, true, false, "Connected")
+				nm.updateConnectionStatus(target.name, true, false, "")
 			} else {
 				nm.updateConnectionStatus(target.name, false, false, coreMessage)
 			}
+		} else {
+			nm.updateConnectionStatus(target.name, false, true, "")
 		}
 
 		nm.cfg.Logger.Info("Node config deployed", "node", target.name, "restart", restart, "force_restart", forceRestart, "message", resp.Message)
@@ -263,7 +265,7 @@ func parseDeployCoreState(message string) (bool, bool, string) {
 		return true, false, firstNonEmptyString(message, "Core start result is invalid")
 	}
 	if coreReady {
-		return true, true, "Connected"
+		return true, true, ""
 	}
 
 	reloadErr, _ := deployMessageValue(message, "reload_error")
@@ -438,11 +440,11 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 							ELSE ''
 						END AS trojan_password,
 						CASE
-							WHEN bool_or(lower(cpi.type) = 'naive') THEN COALESCE(NULLIF(u.naive_password, ''), u.trojan_password)
+							WHEN bool_or(lower(cpi.type) = 'naive') THEN u.naive_password
 							ELSE ''
 						END AS naive_password,
 						CASE
-							WHEN bool_or(lower(cpi.type) = 'anytls') THEN COALESCE(NULLIF(u.anytls_password, ''), u.trojan_password)
+							WHEN bool_or(lower(cpi.type) = 'anytls') THEN u.anytls_password
 							ELSE ''
 						END AS anytls_password
 					FROM config_profile_inbounds_to_nodes cpitn
@@ -554,10 +556,10 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 					u.vless_uuid,
 					u.trojan_password,
 					u.ss_password,
-					COALESCE(NULLIF(u.naive_password, ''), u.trojan_password),
-					COALESCE(NULLIF(u.shadowtls_password, ''), u.ss_password),
-					COALESCE(NULLIF(u.hysteria2_password, ''), u.trojan_password),
-					COALESCE(NULLIF(u.anytls_password, ''), u.trojan_password)
+					u.naive_password,
+					u.shadowtls_password,
+					u.hysteria2_password,
+					u.anytls_password
 				FROM internal_squad_inbounds isi
 				JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
 				JOIN users u ON u.t_id = ism.user_id

@@ -9,7 +9,7 @@ var CreateConfigProfileCommand;
 (function (CreateConfigProfileCommand) {
     CreateConfigProfileCommand.url = api_1.REST_API.CONFIG_PROFILES.CREATE;
     CreateConfigProfileCommand.TSQ_url = CreateConfigProfileCommand.url;
-    CreateConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.CREATE, 'post', 'Create config profile');
+    CreateConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.CREATE, 'post', 'Create config profile', { scope: 'create', kind: 'write' });
     CreateConfigProfileCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

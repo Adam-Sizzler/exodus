@@ -1,47 +1,47 @@
+import { LoginPage } from '@pages/auth/login'
+import { Oauth2CallbackPage } from '@pages/auth/oauth2-callback/oauth2-callback.page'
+import { ConfigProfilesPageConnector } from '@pages/dashboard/config-profiles/connectors'
+import { ConfigProfileByUuidPageConnector } from '@pages/dashboard/config-profiles/connectors/config-profile-by-uuid.page.connector'
+import { InfraBillingPageConnector } from '@pages/dashboard/crm/infra-billing/connectors/infra-billing.page.connector'
+import { ExternalSquadsPageConnector } from '@pages/dashboard/external-squads/connectors'
+import { HomePageConnector } from '@pages/dashboard/home/connectors'
+import { HostsPageConnector } from '@pages/dashboard/hosts/ui/connectors'
+import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
+import { InternalSquadsPageConnector } from '@pages/dashboard/internal-squads/connectors/internal-squads.page.connector'
+import { NodePluginEditorPageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugin-editor-page.connector'
+import { NodePluginsBasePageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugins-base-page.connector'
+import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
+import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
+import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
+import { ExodusSettingsConnector } from '@pages/dashboard/exodus-settings/connectors'
+import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
+import { SrhInspectorPageConnector } from '@pages/dashboard/srh-inspector/ui/connectors'
+import { SRSListsPageConnector } from '@pages/dashboard/srs-lists/connectors'
+import { StatisticNodesConnector } from '@pages/dashboard/statistic-nodes/connectors'
+import { SubpageConfigBasePageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-base-page.connector'
+import { SubpageConfigEditorPageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-editor-page.connector'
+import { SubscriptionConnectionsPageConnector } from '@pages/dashboard/subscription-connections/ui/connectors'
+import { SubscriptionSettingsConnector } from '@pages/dashboard/subscription-settings/connectors'
+import { TemplateBasePageConnector } from '@pages/dashboard/templates/ui/connectors/template-base-page.connector'
+import { TemplateEditorPageConnector } from '@pages/dashboard/templates/ui/connectors/template-editor-page.connector'
+import { UsersPageConnector } from '@pages/dashboard/users/ui/connectors'
+import { NotFoundPageComponent } from '@pages/errors/4xx-error'
+import { ErrorPageComponent } from '@pages/errors/5xx-error'
 import {
     createBrowserRouter,
     createRoutesFromElements,
     Navigate,
     Route,
     RouterProvider
-} from 'react-router-dom'
+} from 'react-router'
 
-import { SubpageConfigEditorPageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-editor-page.connector'
-import { ConfigProfileByUuidPageConnector } from '@pages/dashboard/config-profiles/connectors/config-profile-by-uuid.page.connector'
-import { SubpageConfigBasePageConnector } from '@pages/dashboard/subpage-config/ui/connectors/subpage-config-base-page.connector'
-import { NodePluginEditorPageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugin-editor-page.connector'
-import { NodePluginsBasePageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugins-base-page.connector'
-import { InternalSquadsPageConnector } from '@pages/dashboard/internal-squads/connectors/internal-squads.page.connector'
-import { InfraBillingPageConnector } from '@pages/dashboard/crm/infra-billing/connectors/infra-billing.page.connector'
-import { ResponseRulesPageConnector } from '@pages/dashboard/response-rules/connectors/response-rules.page.connector'
-import { TemplateEditorPageConnector } from '@pages/dashboard/templates/ui/connectors/template-editor-page.connector'
-import { TemplateBasePageConnector } from '@pages/dashboard/templates/ui/connectors/template-base-page.connector'
-import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
-import { SubscriptionSettingsConnector } from '@pages/dashboard/subscription-settings/connectors'
-import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
-import { ConfigProfilesPageConnector } from '@pages/dashboard/config-profiles/connectors'
-import { ExternalSquadsPageConnector } from '@pages/dashboard/external-squads/connectors'
-import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
-import { SrhInspectorPageConnector } from '@pages/dashboard/srh-inspector/ui/connectors'
-import { ExodusSettingsConnector } from '@pages/dashboard/exodus-settings/connectors'
-import { StatisticNodesConnector } from '@pages/dashboard/statistic-nodes/connectors'
-import { Oauth2CallbackPage } from '@pages/auth/oauth2-callback/oauth2-callback.page'
-import { SRSListsPageConnector } from '@pages/dashboard/srs-lists/connectors'
-import { HostsPageConnector } from '@pages/dashboard/hosts/ui/connectors'
-import { UsersPageConnector } from '@pages/dashboard/users/ui/connectors'
-import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
-import { SubscriptionConnectionsPageConnector } from '@pages/dashboard/subscription-connections/ui/connectors'
-import { HomePageConnector } from '@pages/dashboard/home/connectors'
-import { NotFoundPageComponent } from '@pages/errors/4xx-error'
 import { ErrorBoundaryHoc } from '@shared/hocs/error-boundary'
-import { ErrorPageComponent } from '@pages/errors/5xx-error'
 import { APP_BASE_PATH } from '@shared/constants/base-path'
 import { AuthGuard } from '@shared/hocs/guards/auth-guard'
-import { LoginPage } from '@pages/auth/login'
 
-import { MainLayout } from '../layouts/dashboard/main-layout/main.layout'
 import { ROUTES } from '../../shared/constants'
 import { AuthLayout } from '../layouts/auth'
+import { MainLayout } from '../layouts/dashboard/main-layout/layout'
 
 const router = createBrowserRouter(
     createRoutesFromElements(
@@ -78,14 +78,6 @@ const router = createBrowserRouter(
                             path={ROUTES.DASHBOARD.MANAGEMENT.NODES}
                         />
 
-                        <Route
-                            element={<NodePluginsBasePageConnector />}
-                            path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT}
-                        />
-                        <Route
-                            element={<NodePluginEditorPageConnector />}
-                            path={ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.NODE_PLUGIN_BY_UUID}
-                        />
                         <Route
                             element={<NodesBandwidthTablePageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.NODES_BANDWIDTH_TABLE}
@@ -156,6 +148,7 @@ const router = createBrowserRouter(
                             element={<SrhInspectorPageConnector />}
                             path={ROUTES.DASHBOARD.TOOLS.SRH_INSPECTOR}
                         />
+
                     </Route>
 
                     <Route path={ROUTES.DASHBOARD.TEMPLATES.ROOT}>

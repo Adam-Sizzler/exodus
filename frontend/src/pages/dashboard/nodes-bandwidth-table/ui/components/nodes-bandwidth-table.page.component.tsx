@@ -1,7 +1,6 @@
-import { useTranslation } from 'react-i18next'
-import { Grid } from '@mantine/core'
-
 import { NodesBandwidthTableWidget } from '@widgets/dashboard/nodes-bandwidth-table/table'
+import { useTranslation } from 'react-i18next'
+
 import { LoadingScreen, Page } from '@shared/ui'
 
 import { IProps } from './interfaces'
@@ -12,11 +11,7 @@ export default function NodesBandwidthTablePageComponent(props: IProps) {
 
     return (
         <Page title={t('constants.nodes-bandwidth-table')}>
-            <Grid>
-                <Grid.Col span={12}>
-                    {isLoading ? <LoadingScreen height="60vh" /> : <NodesBandwidthTableWidget />}
-                </Grid.Col>
-            </Grid>
+            {isLoading ? <LoadingScreen height="60vh" /> : <NodesBandwidthTableWidget />}
         </Page>
     )
 }

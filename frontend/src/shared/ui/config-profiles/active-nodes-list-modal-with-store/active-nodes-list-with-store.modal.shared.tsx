@@ -9,13 +9,14 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { PiCheck, PiCopy, PiCpu } from 'react-icons/pi'
 import ReactCountryFlag from 'react-country-flag'
 import { useTranslation } from 'react-i18next'
+import { PiCheck, PiCopy, PiCpu } from 'react-icons/pi'
 import { TbServer } from 'react-icons/tb'
 
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 export const ActiveNodesListModalWithStoreShared = () => {
     const { isOpen, internalState: nodes } = useModalState(MODALS.CONFIG_PROFILES_SHOW_ACTIVE_NODE)

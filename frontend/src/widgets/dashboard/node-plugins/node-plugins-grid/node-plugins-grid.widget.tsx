@@ -1,33 +1,31 @@
+import { Badge, Center, Group, Stack, Text, ThemeIcon } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import { GetAllNodesCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
+import { useTranslation } from 'react-i18next'
 import {
     TbAlertTriangle,
-    TbFlame,
     TbLogin,
     TbLogout,
     TbPackage,
-    TbPlugConnectedX
+    TbShieldLock
 } from 'react-icons/tb'
-import { GetAllNodesCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
-import { Badge, Center, Group, Stack, Text, ThemeIcon } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-import { modals } from '@mantine/modals'
 
 import {
     QueryKeys,
     useCloneNodePlugin,
     useDeleteNodePlugin,
-    useReorderNodePlugins,
-    NodeResponse
+    useReorderNodePlugins
 } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 import { queryClient } from '@shared/api/query-client'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
+import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 
 import { ActivePluginsOnNodesModalShared } from '../active-on-nodes-modal/adtive-on-nodes.modal.shared'
 import { NodePluginCardWidget } from '../node-plugin-card/node-plugin-card.widget'
 
 interface IProps {
-    nodes: NodeResponse[]
+    nodes: GetAllNodesCommand.Response['response']
     plugins: GetNodePluginsCommand.Response['response']['nodePlugins']
 }
 
@@ -153,20 +151,12 @@ export function NodePluginsGridWidget(props: IProps) {
                                 </Text>
                                 <Text c="dimmed" maw={400} size="sm" ta="center">
                                     {t(
-                                        'node-plugins-grid.widget.create-a-plugin-to-extend-node-capabilities-with'
+                                        'node-plugins-grid.widget.create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth'
                                     )}
                                 </Text>
                             </Stack>
 
                             <Group gap="sm" justify="center">
-                                <Badge
-                                    leftSection={<TbFlame size={16} />}
-                                    radius="md"
-                                    size="lg"
-                                    variant="light"
-                                >
-                                    Torrent Blocker
-                                </Badge>
                                 <Badge
                                     color="teal"
                                     leftSection={<TbLogin size={16} />}
@@ -174,7 +164,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    Ingress Filter
+                                    {t('node-plugins-grid.widget.ingress-filter')}
                                 </Badge>
                                 <Badge
                                     color="orange"
@@ -183,16 +173,16 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    Egress Filter
+                                    {t('node-plugins-grid.widget.egress-filter')}
                                 </Badge>
                                 <Badge
                                     color="grape"
-                                    leftSection={<TbPlugConnectedX size={16} />}
+                                    leftSection={<TbShieldLock size={16} />}
                                     radius="md"
                                     size="lg"
                                     variant="light"
                                 >
-                                    Connection Drop
+                                    {t('node-plugins-grid.widget.haproxy-auth')}
                                 </Badge>
                             </Group>
                         </Stack>

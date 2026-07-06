@@ -1,29 +1,37 @@
-import { MdCalendarToday, MdPayment, MdTrendingUp } from 'react-icons/md'
-import { useTranslation } from 'react-i18next'
-import { FaServer } from 'react-icons/fa'
 import { Grid } from '@mantine/core'
 import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
+import { FaServer } from 'react-icons/fa'
+import { MdPayment, MdTrendingUp } from 'react-icons/md'
+import { TbAlertTriangle } from 'react-icons/tb'
 
-import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
 import { useGetInfraBillingNodes } from '@shared/api/hooks'
+import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
 import { formatCurrency } from '@shared/utils/misc'
 
 export function StatsWidget() {
-    const currentDate = dayjs()
-    const currentMonth = currentDate.format('MMMM YYYY')
-    const currentMonthOnly = currentDate.format('MMMM')
-    const currentDay = currentDate.format('D')
+    const currentMonthOnly = dayjs().format('MMMM')
 
     const { data: nodes, isLoading } = useGetInfraBillingNodes()
     const { t } = useTranslation()
 
+    const today = dayjs().startOf('day')
+    const billingNodes = nodes?.billingNodes ?? []
+
+    const overdueCount = billingNodes.filter((node) =>
+        dayjs(node.nextBillingAt).startOf('day').isBefore(today)
+    ).length
+
     const stats: IMetricCardProps[] = [
         {
-            title: t('stats.widget.current-date'),
-            value: currentDay,
-            subtitle: currentMonth,
-            IconComponent: MdCalendarToday,
-            iconColor: 'blue',
+            title: t('stats.widget.overdue'),
+            value: overdueCount,
+            subtitle:
+                overdueCount > 0
+                    ? t('stats.widget.payment-overdue')
+                    : t('stats.widget.all-up-to-date'),
+            IconComponent: TbAlertTriangle,
+            iconColor: overdueCount > 0 ? 'red' : 'teal',
             iconVariant: 'soft'
         },
         {

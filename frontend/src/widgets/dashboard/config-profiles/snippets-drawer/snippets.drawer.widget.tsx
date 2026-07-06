@@ -9,15 +9,16 @@ import {
     Stack,
     Text
 } from '@mantine/core'
-import { TbCode, TbPlus, TbQuestionMark, TbRefresh, TbX } from 'react-icons/tb'
 import { useMediaQuery } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
+import { useTranslation } from 'react-i18next'
+import { TbCode, TbPlus, TbQuestionMark, TbRefresh, TbX } from 'react-icons/tb'
 
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
+import { useGetSnippets } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
-import { useGetSnippets } from '@shared/api/hooks'
+
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 import { CREATE_SNIPPET_MODAL_ID, CreateSnippetModal } from './create-snippet.modal'
 import { SnippetsGridWidget } from './snippets-grid.widget'

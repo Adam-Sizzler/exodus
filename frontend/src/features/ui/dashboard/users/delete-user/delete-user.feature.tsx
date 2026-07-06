@@ -1,10 +1,11 @@
-import { useTranslation } from 'react-i18next'
 import { Loader, Menu } from '@mantine/core'
 import { modals } from '@mantine/modals'
+import { useTranslation } from 'react-i18next'
 import { TbTrash } from 'react-icons/tb'
 
-import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store/user-modal-store'
 import { useDeleteUser } from '@shared/api/hooks'
+
+import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store/user-modal-store'
 
 import { IProps } from './interfaces'
 

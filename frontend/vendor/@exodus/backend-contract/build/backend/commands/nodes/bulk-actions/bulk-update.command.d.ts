@@ -8,21 +8,27 @@ export declare namespace BulkNodesUpdateCommand {
         fields: z.ZodObject<{
             countryCode: z.ZodOptional<z.ZodString>;
             consumptionMultiplier: z.ZodOptional<z.ZodEffects<z.ZodNumber, number, number>>;
+            nodeConsumptionMultiplier: z.ZodOptional<z.ZodEffects<z.ZodNumber, number, number>>;
             providerUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
             tags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             activePluginUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            note: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         }, "strip", z.ZodTypeAny, {
             tags?: string[] | undefined;
             countryCode?: string | undefined;
             consumptionMultiplier?: number | undefined;
+            nodeConsumptionMultiplier?: number | undefined;
             providerUuid?: string | null | undefined;
             activePluginUuid?: string | null | undefined;
+            note?: string | null | undefined;
         }, {
             tags?: string[] | undefined;
             countryCode?: string | undefined;
             consumptionMultiplier?: number | undefined;
+            nodeConsumptionMultiplier?: number | undefined;
             providerUuid?: string | null | undefined;
             activePluginUuid?: string | null | undefined;
+            note?: string | null | undefined;
         }>;
     }, "strip", z.ZodTypeAny, {
         uuids: string[];
@@ -30,8 +36,10 @@ export declare namespace BulkNodesUpdateCommand {
             tags?: string[] | undefined;
             countryCode?: string | undefined;
             consumptionMultiplier?: number | undefined;
+            nodeConsumptionMultiplier?: number | undefined;
             providerUuid?: string | null | undefined;
             activePluginUuid?: string | null | undefined;
+            note?: string | null | undefined;
         };
     }, {
         uuids: string[];
@@ -39,8 +47,10 @@ export declare namespace BulkNodesUpdateCommand {
             tags?: string[] | undefined;
             countryCode?: string | undefined;
             consumptionMultiplier?: number | undefined;
+            nodeConsumptionMultiplier?: number | undefined;
             providerUuid?: string | null | undefined;
             activePluginUuid?: string | null | undefined;
+            note?: string | null | undefined;
         };
     }>;
     type Request = z.infer<typeof RequestSchema>;

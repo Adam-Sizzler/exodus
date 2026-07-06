@@ -429,16 +429,6 @@ export declare const ERRORS: {
         readonly message: "Bulk disable hosts error";
         readonly httpCode: 500;
     };
-    readonly SET_INBOUND_TO_HOSTS_ERROR: {
-        readonly code: "A082";
-        readonly message: "Set inbound to hosts error";
-        readonly httpCode: 500;
-    };
-    readonly SET_PORT_TO_HOSTS_ERROR: {
-        readonly code: "A083";
-        readonly message: "Set port to hosts error";
-        readonly httpCode: 500;
-    };
     readonly BULK_DELETE_USERS_BY_UUID_ERROR: {
         readonly code: "A084";
         readonly message: "Bulk delete users by UUID error";
@@ -497,11 +487,6 @@ export declare const ERRORS: {
     readonly GET_NODES_USER_USAGE_BY_RANGE_ERROR: {
         readonly code: "A094";
         readonly message: "Get nodes user usage by range error";
-        readonly httpCode: 500;
-    };
-    readonly GET_NODES_REALTIME_USAGE_ERROR: {
-        readonly code: "A095";
-        readonly message: "Get nodes realtime usage error";
         readonly httpCode: 500;
     };
     readonly CREATE_HWID_USER_DEVICE_ERROR: {
@@ -1133,6 +1118,66 @@ export declare const ERRORS: {
         readonly code: "A219";
         readonly message: "Connected nodes not found";
         readonly httpCode: 404;
+    };
+    readonly GET_ALL_NODE_PLUGINS_ERROR: {
+        readonly code: "A219";
+        readonly message: "Get all node plugins error";
+        readonly httpCode: 500;
+    };
+    readonly NODE_PLUGIN_NOT_FOUND: {
+        readonly code: "A220";
+        readonly message: "Node plugin not found";
+        readonly httpCode: 404;
+    };
+    readonly GET_NODE_PLUGIN_BY_UUID_ERROR: {
+        readonly code: "A221";
+        readonly message: "Get node plugin by UUID error";
+        readonly httpCode: 500;
+    };
+    readonly INVALID_NODE_PLUGIN_CONFIG: {
+        readonly code: "A222";
+        readonly message: "Invalid node plugin config";
+        readonly httpCode: 400;
+    };
+    readonly NODE_PLUGIN_NAME_ALREADY_EXISTS: {
+        readonly code: "A223";
+        readonly message: "Node plugin name already exists";
+        readonly httpCode: 400;
+    };
+    readonly UPDATE_NODE_PLUGIN_ERROR: {
+        readonly code: "A224";
+        readonly message: "Update node plugin error";
+        readonly httpCode: 500;
+    };
+    readonly CREATE_NODE_PLUGIN_ERROR: {
+        readonly code: "A225";
+        readonly message: "Create node plugin error";
+        readonly httpCode: 500;
+    };
+    readonly METADATA_NOT_FOUND: {
+        readonly code: "A226";
+        readonly message: "Metadata not found";
+        readonly httpCode: 404;
+    };
+    readonly GET_TORRENT_BLOCKER_REPORTS_ERROR: {
+        readonly code: "A227";
+        readonly message: "Get torrent blocker reports error";
+        readonly httpCode: 500;
+    };
+    readonly UPDATE_HOSTS_ERROR: {
+        readonly code: "A228";
+        readonly message: "Update hosts error";
+        readonly httpCode: 500;
+    };
+    readonly INVALID_API_TOKEN_SCOPE: {
+        readonly code: "A229";
+        readonly message: "One or more provided API token scopes are invalid";
+        readonly httpCode: 400;
+    };
+    readonly CREATE_INFRA_BILLING_NODE_MISSING_TARGET: {
+        readonly code: "A230";
+        readonly message: "Either nodeUuid or name must be provided";
+        readonly httpCode: 400;
     };
 };
 //# sourceMappingURL=errors.d.ts.map

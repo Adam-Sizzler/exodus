@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NodePluginSchema = exports.EgressFilterPluginSchema = exports.IngressFilterPluginSchema = exports.ConnectionDropPluginSchema = exports.TorrentBlockerPluginSchema = exports.SharedListSchema = void 0;
+exports.NodePluginSchema = exports.HaproxyAuthPluginSchema = exports.EgressFilterPluginSchema = exports.IngressFilterPluginSchema = exports.SharedListSchema = void 0;
 const zod_1 = require("zod");
-const DOCS_LINK = `\n\n[📖 Documentation](https://docs.rw/docs/learn/node-plugins)`;
+const DOCS_LINK = `\n\n[📖 Documentation](https://docs.exodus.dev/docs/learn/node-plugins)`;
 const IpCidrOrExtSchema = zod_1.z
     .union([
     zod_1.z.string().cidr({ version: 'v4' }),
@@ -13,55 +13,22 @@ const IpCidrOrExtSchema = zod_1.z
     .describe(JSON.stringify({
     markdownDescription: `IP address or CIDR range. \n\n You can use lists from **sharedLists** in the format: **ext:list_name**.${DOCS_LINK}`,
 }));
-exports.SharedListSchema = zod_1.z.object({
-    name: zod_1.z.string().startsWith('ext:'),
-    type: zod_1.z.enum(['ipList']),
-    items: zod_1.z.array(zod_1.z.union([
-        zod_1.z.string().cidr({ version: 'v4' }),
-        zod_1.z.string().cidr({ version: 'v6' }),
-        zod_1.z.string().ip(),
-    ])),
-});
-exports.TorrentBlockerPluginSchema = zod_1.z.object({
-    enabled: zod_1.z.boolean().describe(JSON.stringify({
-        markdownDescription: `Please review documentation for this plugin before enabling it.${DOCS_LINK}`,
-    })),
-    blockDuration: zod_1.z
-        .number()
-        .int()
-        .describe(JSON.stringify({
-        markdownDescription: `Duration of the block in seconds. \n\n If the block duration is 0, the block will be permanent. \n\n For example, if the block duration is 3600, the block will be permanent for 1 hour.${DOCS_LINK}`,
-    })),
-    ignoreLists: zod_1.z
-        .object({
-        ip: zod_1.z
-            .array(zod_1.z.union([zod_1.z.string().ip(), zod_1.z.string().startsWith('ext:')]))
-            .optional()
-            .describe(JSON.stringify({
-            markdownDescription: `List of IP addresses ranges to ignore from the block. \n\n You can use lists from **sharedLists** in the format: **ext:list_name**. \n\n You can also specify user IDs to ignore from the block. Please note that this field only supports IP addresses ranges, not CIDR ranges.${DOCS_LINK}`,
-        })),
-        userId: zod_1.z
-            .array(zod_1.z.number().int())
-            .optional()
-            .describe(JSON.stringify({
-            markdownDescription: `List of user IDs to ignore from the block. \n\n You can also specify user IDs to ignore from the block.${DOCS_LINK}`,
-        })),
-    })
-        .describe(JSON.stringify({
-        markdownDescription: `List of IP addresses to ignore from the block. \n\n You can use lists from **sharedLists** in the format: **ext:list_name**. \n\n You can also specify user IDs to ignore from the block.${DOCS_LINK}`,
-    })),
-    includeRuleTags: zod_1.z.optional(zod_1.z.array(zod_1.z.string()).min(1)).describe(JSON.stringify({
-        markdownDescription: `By default, Torrent Blocker creates a dedicated rule and injects it as **routing.rules[0]**. Specify an array of **ruleTag** values here if you want to block IPs matched by other routing rules as well.${DOCS_LINK}`,
-    })),
-});
-exports.ConnectionDropPluginSchema = zod_1.z.object({
-    enabled: zod_1.z.boolean().describe(JSON.stringify({
-        markdownDescription: `Controls whether IP addresses from the **whitelistIps** object will be used.${DOCS_LINK}`,
-    })),
-    whitelistIps: zod_1.z.array(zod_1.z.union([zod_1.z.string().ip(), zod_1.z.string().startsWith('ext:')])).describe(JSON.stringify({
-        markdownDescription: `List of IP addresses, for which the connection drop will not be applied, which is enabled by default for all IP addresses. \n\n You can use lists from **sharedLists** in the format: **ext:list_name**. Please note that this field only supports IP addresses ranges, not CIDR ranges.${DOCS_LINK}`,
-    })),
-});
+exports.SharedListSchema = zod_1.z.discriminatedUnion('type', [
+    zod_1.z.object({
+        name: zod_1.z.string().startsWith('ext:'),
+        type: zod_1.z.literal('ipList'),
+        items: zod_1.z.array(zod_1.z.union([
+            zod_1.z.string().cidr({ version: 'v4' }),
+            zod_1.z.string().cidr({ version: 'v6' }),
+            zod_1.z.string().ip(),
+        ])),
+    }),
+    zod_1.z.object({
+        name: zod_1.z.string().startsWith('ext:'),
+        type: zod_1.z.literal('asList'),
+        items: zod_1.z.array(zod_1.z.number().int().min(1).max(4294967295)),
+    }),
+]);
 exports.IngressFilterPluginSchema = zod_1.z.object({
     enabled: zod_1.z.boolean().describe(JSON.stringify({
         markdownDescription: `If this plugin is enabled, all IP addresses specified in the **blockedIps** object will be blocked via nftables. **Use with caution.**${DOCS_LINK}`,
@@ -87,6 +54,11 @@ exports.EgressFilterPluginSchema = zod_1.z.object({
         markdownDescription: `List of destination ports to block. \n\n Example: \`[25, 465, 587]\` to block SMTP traffic.${DOCS_LINK}`,
     })),
 });
+exports.HaproxyAuthPluginSchema = zod_1.z.object({
+    enabled: zod_1.z.boolean().describe(JSON.stringify({
+        markdownDescription: `If this plugin is enabled, HAProxy authentication users will be included in the node deploy payload.${DOCS_LINK}`,
+    })),
+});
 exports.NodePluginSchema = zod_1.z.object({
     sharedLists: zod_1.z
         .array(exports.SharedListSchema)
@@ -95,16 +67,13 @@ exports.NodePluginSchema = zod_1.z.object({
         .describe(JSON.stringify({
         markdownDescription: `Array of shared lists, which can be used in other plugins. Optional.${DOCS_LINK}`,
     })),
-    torrentBlocker: exports.TorrentBlockerPluginSchema.optional().describe(JSON.stringify({
-        markdownDescription: `Torrent Blocker Plugin configuration. Optional.${DOCS_LINK}`,
-    })),
     ingressFilter: exports.IngressFilterPluginSchema.optional().describe(JSON.stringify({
         markdownDescription: `Ingress Filter Plugin configuration. Optional.${DOCS_LINK}`,
     })),
     egressFilter: exports.EgressFilterPluginSchema.optional().describe(JSON.stringify({
         markdownDescription: `Egress Filter Plugin configuration. Optional.${DOCS_LINK}`,
     })),
-    connectionDrop: exports.ConnectionDropPluginSchema.optional().describe(JSON.stringify({
-        markdownDescription: `Connection Drop Plugin configuration. Optional.${DOCS_LINK}`,
+    haproxyAuth: exports.HaproxyAuthPluginSchema.optional().describe(JSON.stringify({
+        markdownDescription: `HAProxy Auth Plugin configuration. Optional.${DOCS_LINK}`,
     })),
 });

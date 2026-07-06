@@ -1,20 +1,18 @@
-import { useTranslation } from 'react-i18next'
-import { useMediaQuery } from '@mantine/hooks'
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
 import { Stack } from '@mantine/core'
-
-import { UserSubscriptionRequestsDrawerWidget } from '@widgets/dashboard/users/user-subscription-requests-drawer/user-subscription-requests-drawer.widget'
-import { UserAccessibleNodesModalWidget } from '@widgets/dashboard/users/user-accessible-nodes-modal/user-accessible-nodes.modal.widget'
-import { DetailedUserInfoDrawerWidget } from '@widgets/dashboard/users/detailed-user-info-drawer/detailed-user-info-drawer.widget'
-import { UserHwidDevicesDrawerWidget } from '@widgets/dashboard/users/user-hwid-devices-drawer/user-hwid-devices.drawer.widget'
-import { InternalSquadsDrawerWithStore } from '@widgets/dashboard/users/internal-squads-drawer-with-store'
-import { MobileWarningOverlay } from '@shared/ui/mobile-warning-overlay/mobile-warning-overlay'
+import { useMediaQuery } from '@mantine/hooks'
 import { CreateUserModalWidget } from '@widgets/dashboard/users/create-user-modal'
-import { ViewUserModal } from '@widgets/dashboard/users/view-user-modal'
-import { UserTableWidget } from '@widgets/dashboard/users/users-table'
+import { DetailedUserInfoDrawerWidget } from '@widgets/dashboard/users/detailed-user-info-drawer/detailed-user-info-drawer.widget'
+import { InternalSquadsDrawerWithStore } from '@widgets/dashboard/users/internal-squads-drawer-with-store'
+import { UserAccessibleNodesModalWidget } from '@widgets/dashboard/users/user-accessible-nodes-modal/user-accessible-nodes.modal.widget'
 import { UsersMetrics } from '@widgets/dashboard/users/users-metrics'
+import { UserTableWidget } from '@widgets/dashboard/users/users-table'
+import { ViewUserModal } from '@widgets/dashboard/users/view-user-modal'
+import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 import { LoadingScreen } from '@shared/ui'
+import { MobileWarningOverlay } from '@shared/ui/mobile-warning-overlay/mobile-warning-overlay'
 import { Page } from '@shared/ui/page'
 
 const DeferredUserTableWidget = () => {
@@ -58,8 +56,6 @@ export default function UsersPageComponent() {
             <DetailedUserInfoDrawerWidget key="detailed-user-info-drawer" />
             <UserAccessibleNodesModalWidget key="user-accessible-nodes-modal" />
             <InternalSquadsDrawerWithStore key="internal-squads-drawer-with-store" />
-            <UserHwidDevicesDrawerWidget key="user-hwid-devices-drawer" />
-            <UserSubscriptionRequestsDrawerWidget key="user-subscription-requests-drawer" />
         </Page>
     )
 }

@@ -14,6 +14,7 @@ import (
 	"exodus/internal/httpapi/hwiduserdevices"
 	"exodus/internal/httpapi/infrabilling"
 	"exodus/internal/httpapi/keygen"
+	"exodus/internal/httpapi/metadata"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/modulessettings"
 	"exodus/internal/httpapi/nodeplugins"
@@ -50,12 +51,12 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/auth/me", auth.AuthMeHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/oauth2/authorize", auth.OAuth2AuthorizeHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/oauth2/callback", auth.OAuth2CallbackHandler(manager, cfg))
-	mux.HandleFunc("/api/auth/oauth2/tg/callback", auth.TelegramCallbackHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/options", passkeys.AuthenticationOptionsHandler(manager, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/verify", passkeys.VerifyAuthenticationHandler(manager, cfg))
 
 	mux.HandleFunc("/api/exodus-settings", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(manager, cfg)))
 	mux.HandleFunc("/api/exodus-settings/", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(manager, cfg)))
+	mux.HandleFunc("/api/tokens/scopes", auth.RequireAdminRole(panelsettings.PanelAPITokenScopesHandler(manager, cfg)))
 	mux.HandleFunc("/api/tokens", auth.RequireAdminRole(panelsettings.PanelAPITokensHandler(manager, cfg)))
 	mux.HandleFunc("/api/tokens/", auth.RequireAdminRole(panelsettings.PanelAPITokenByUUIDHandler(manager, cfg)))
 
@@ -77,6 +78,8 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc("/api/nodes-with-config", squads.NodesWithConfigHandler(manager, cfg))
 	mux.HandleFunc("/api/node-plugins", nodeplugins.Handler(manager, cfg))
 	mux.HandleFunc("/api/node-plugins/", nodeplugins.Handler(manager, cfg))
+	mux.HandleFunc("/api/metadata/user/", auth.RequireAdminRole(metadata.UserHandler(manager, cfg)))
+	mux.HandleFunc("/api/metadata/node/", auth.RequireAdminRole(metadata.NodeHandler(manager, cfg)))
 
 	mux.HandleFunc("/api/subscription-connections", subscriptionconnections.NodesHandler(manager, cfg))
 	mux.HandleFunc("/api/subscription-connections/", subscriptionconnections.NodeByUUIDHandler(manager, cfg))

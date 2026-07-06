@@ -1,22 +1,34 @@
-import { Affix, Badge, Button, Group, Paper, Stack, Transition } from '@mantine/core'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
-import { TbCategoryPlus, TbDots } from 'react-icons/tb'
+import {
+    Affix,
+    Badge,
+    Button,
+    CloseButton,
+    Group,
+    Paper,
+    Stack,
+    Tooltip,
+    Transition
+} from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
-
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { ConfigProfilesDrawer } from '@widgets/dashboard/nodes/config-profiles-drawer'
-import { NodeResponse, QueryKeys, useBulkNodesProfileModification } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { XrayLogo } from '@shared/ui/logos'
+import { useTranslation } from 'react-i18next'
+import { TbCategoryPlus, TbChartArcs3, TbDots } from 'react-icons/tb'
+
 import { queryClient } from '@shared/api'
+import { QueryKeys, useBulkNodesProfileModification } from '@shared/api/hooks'
+import { SingboxLogo } from '@shared/ui/logos'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 import { BulkUpdateNodesModalContent } from './bulk-update-nodes.modal.content'
 import { MultiSelectNodesModalContent } from './multi-select-modal.content'
 
 interface IProps {
-    selectedRecords: NodeResponse[]
-    setSelectedRecords: (records: NodeResponse[]) => void
+    selectedRecords: GetAllNodesCommand.Response['response'][number][]
+    setSelectedRecords: (records: GetAllNodesCommand.Response['response'][number][]) => void
 }
 
 export const MultiSelectNodesFeature = (props: IProps) => {
@@ -24,6 +36,8 @@ export const MultiSelectNodesFeature = (props: IProps) => {
     const { t } = useTranslation()
 
     const [opened, handlers] = useDisclosure(false)
+
+    const openModalWithData = useModalsStoreOpenWithData()
 
     const hasSelection = selectedRecords.length > 0
 
@@ -75,25 +89,38 @@ export const MultiSelectNodesFeature = (props: IProps) => {
                             }}
                         >
                             <Stack gap="sm">
-                                <Group justify="center">
-                                    <Badge color="gray" size="lg" variant="filled">
+                                <Group justify="space-between">
+                                    <Badge color="shaded-gray" size="lg" variant="soft">
                                         {t('internal-squads.drawer.widget.selected')}:{' '}
                                         {selectedRecords.length}
                                     </Badge>
-                                    <Group
-                                        grow
-                                        justify="apart"
-                                        preventGrowOverflow={false}
-                                        wrap="wrap"
+                                    <Tooltip
+                                        label={t('multi-select-hosts.feature.clear-selection')}
+                                        withArrow
                                     >
-                                        <Button
-                                            onClick={() => setSelectedRecords([])}
-                                            variant="subtle"
-                                        >
-                                            {t('multi-select-hosts.feature.clear-selection')}
-                                        </Button>
-                                    </Group>
+                                        <CloseButton onClick={() => setSelectedRecords([])} />
+                                    </Tooltip>
                                 </Group>
+
+                                <Button
+                                    color="cyan"
+                                    fullWidth
+                                    leftSection={<TbChartArcs3 size={18} />}
+                                    onClick={() => {
+                                        openModalWithData(
+                                            MODALS.NODES_USERS_USAGE_STATISTICS_MODAL,
+                                            {
+                                                nodeUuids: selectedRecords.map(
+                                                    (record) => record.uuid
+                                                )
+                                            }
+                                        )
+                                    }}
+                                    size="sm"
+                                    variant="soft"
+                                >
+                                    {t('node-users-usage-drawer.widget.user-traffic-statistics')}
+                                </Button>
 
                                 <Button
                                     color="cyan"
@@ -119,8 +146,8 @@ export const MultiSelectNodesFeature = (props: IProps) => {
                                             )
                                         })
                                     }
-                                    size="md"
-                                    variant="light"
+                                    size="sm"
+                                    variant="soft"
                                 >
                                     {t('common.update')}
                                 </Button>
@@ -128,10 +155,10 @@ export const MultiSelectNodesFeature = (props: IProps) => {
                                 <Button
                                     color="cyan"
                                     fullWidth
-                                    leftSection={<XrayLogo size={18} />}
+                                    leftSection={<SingboxLogo size={18} />}
                                     onClick={handlers.open}
-                                    size="md"
-                                    variant="light"
+                                    size="sm"
+                                    variant="soft"
                                 >
                                     {t('multi-select-nodes.feature.profile-and-inbounds')}
                                 </Button>
@@ -160,8 +187,8 @@ export const MultiSelectNodesFeature = (props: IProps) => {
                                             )
                                         })
                                     }
-                                    size="md"
-                                    variant="light"
+                                    size="sm"
+                                    variant="soft"
                                 >
                                     {t('base-node-form.more-actions')}
                                 </Button>

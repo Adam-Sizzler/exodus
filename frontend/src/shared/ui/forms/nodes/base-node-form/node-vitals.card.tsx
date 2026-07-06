@@ -1,66 +1,36 @@
+import { Group, NumberInput, Select, Stack, TextInput } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
 import {
     CreateNodeCommand,
     GetNodePluginsCommand,
     GetPubKeyCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
-import {
-    TbCertificate,
-    TbMapPin,
-    TbPackage,
-    TbPlugConnected,
-    TbRoute2,
-    TbUserCheck,
-    TbWorld
-} from 'react-icons/tb'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { NumberInput, Select, SimpleGrid, Stack, TextInput } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
-import { UseFormReturnType } from '@mantine/form'
 import { HiOutlineServer } from 'react-icons/hi'
+import { TbCertificate, TbMapPin, TbNetwork, TbPackage, TbUserCheck, TbWorld } from 'react-icons/tb'
 
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
-import { NodeKeygenResponse } from '@shared/api/hooks'
 
 import { COUNTRIES } from './constants'
 
-interface NodeVitalsForm {
-    activePluginUuid?: null | string
-    address?: string
-    apiPath?: string
-    apiSchema?: 'mtls' | 'tls'
-    countryCode?: string
-    name?: string
-    port?: number
-}
-
-interface IProps<T extends NodeVitalsForm> {
+interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
-    pubKey: NodeKeygenResponse | undefined
+    nodeUuid: string
+    pubKey: GetPubKeyCommand.Response['response'] | undefined
 }
 
-export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
+export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeCommand.Request>(
+    props: IProps<T>
+) => {
     const { t } = useTranslation()
-    const { cardVariants, form, motionWrapper, nodePlugins, pubKey } = props
-    const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
-    const apiSchemaInputProps = form.getInputProps('apiSchema')
-    const credentialLabel =
-        apiSchema === 'tls'
-            ? t('base-node-form.grpc-token-node-grpc-token', {
-                defaultValue: 'gRPC Token (NODE_GRPC_TOKEN)'
-            })
-            : t('base-node-form.secret-key-secret-key', {
-                defaultValue: 'Secret Key (SECRET_KEY)'
-            })
-    const credentialValue =
-        apiSchema === 'tls'
-            ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
-            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
+    const { cardVariants, form, motionWrapper, nodePlugins, pubKey, nodeUuid } = props
 
     const MotionWrapper = motionWrapper
 
@@ -72,8 +42,10 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                         iconColor="blue"
                         IconComponent={HiOutlineServer}
                         iconVariant="soft"
+                        subtitle={nodeUuid}
                         title={t('base-node-form.node-vitals')}
                         titleOrder={5}
+                        withCopy
                     />
                 </SectionCard.Section>
                 <SectionCard.Section>
@@ -103,7 +75,7 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                             }}
                         />
 
-                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                        <Group gap="xs" grow justify="space-between" w="100%">
                             <TextInput
                                 key={form.key('address')}
                                 label={t('base-node-form.address')}
@@ -112,7 +84,8 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                                 placeholder={t('base-node-form.e-g-example-com')}
                                 required
                                 styles={{
-                                    label: { fontWeight: 500 }
+                                    label: { fontWeight: 500 },
+                                    root: { flex: '1 1 70%' }
                                 }}
                             />
 
@@ -129,58 +102,17 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                                 placeholder="2222"
                                 required
                                 styles={{
-                                    label: { fontWeight: 500 }
+                                    label: { fontWeight: 500 },
+                                    root: { flex: '1 1 25%' }
                                 }}
                             />
-                        </SimpleGrid>
-
-                        <Stack gap="xs">
-                            <Select
-                                data={[
-                                    {
-                                        label: t('base-node-form.api-schema-mtls'),
-                                        value: 'mtls'
-                                    },
-                                    {
-                                        label: t('base-node-form.api-schema-tls-token'),
-                                        value: 'tls'
-                                    }
-                                ]}
-                                description={t('base-node-form.api-schema-description')}
-                                key={form.key('apiSchema')}
-                                label={t('base-node-form.api-schema')}
-                                leftSection={<TbPlugConnected size={16} />}
-                                required
-                                size="sm"
-                                styles={{
-                                    label: { fontWeight: 500 }
-                                }}
-                                {...apiSchemaInputProps}
-                                onChange={(value) => {
-                                    apiSchemaInputProps.onChange(value)
-                                }}
-                            />
-
-                            <TextInput
-                                description={t('base-node-form.api-path-description')}
-                                key={form.key('apiPath')}
-                                label={t('base-node-form.api-path')}
-                                leftSection={<TbRoute2 size={16} />}
-                                placeholder={t('base-node-form.api-path-placeholder')}
-                                required
-                                size="sm"
-                                styles={{
-                                    label: { fontWeight: 500 }
-                                }}
-                                {...form.getInputProps('apiPath')}
-                            />
-                        </Stack>
+                        </Group>
 
                         <CopyableFieldShared
-                            label={credentialLabel}
+                            label="Secret Key (SECRET_KEY)"
                             leftSection={<TbCertificate size={16} />}
                             size="sm"
-                            value={credentialValue}
+                            value={`${pubKey?.pubKey.trimEnd() ?? 'Error loading...'}`}
                         />
 
                         <Select
@@ -203,6 +135,15 @@ export const NodeVitalsCard = <T extends NodeVitalsForm>(props: IProps<T>) => {
                             styles={{
                                 label: { fontWeight: 500 }
                             }}
+                        />
+
+                        <TextInput
+                            key={form.key('proxyUrl')}
+                            label={t('node-vitals.card.proxy-url')}
+                            {...form.getInputProps('proxyUrl')}
+                            description={t('node-vitals.card.proxy-url-description')}
+                            leftSection={<TbNetwork size={16} />}
+                            placeholder="socks5://user:pass@address:port"
                         />
                     </Stack>
                 </SectionCard.Section>

@@ -1,11 +1,11 @@
-import { GetNodePluginCommand } from '@exodus/backend-contract'
-import { TbArrowBackUp, TbBook, TbPackage } from 'react-icons/tb'
 import { ActionIcon, Box, Flex, Group } from '@mantine/core'
-import { useNavigate } from 'react-router-dom'
-
+import { GetNodePluginCommand } from '@exodus/backend-contract'
 import { NodePluginEditorWidget } from '@widgets/dashboard/node-plugins/node-plugin-editor'
-import { Page, PageHeaderShared } from '@shared/ui'
+import { TbArrowBackUp, TbBook, TbPackage } from 'react-icons/tb'
+import { useNavigate } from 'react-router'
+
 import { ROUTES } from '@shared/constants'
+import { Page, PageHeaderShared } from '@shared/ui'
 
 interface Props {
     plugin: GetNodePluginCommand.Response['response']
@@ -29,7 +29,7 @@ export const NodePluginEditorPageComponent = (props: Props) => {
                         <ActionIcon
                             color="lime"
                             component="a"
-                            href="https://docs.rw/docs/learn/node-plugins"
+                            href="https://docs.exodus.dev/docs/learn/node-plugins"
                             size="input-md"
                             target="_blank"
                             variant="soft"

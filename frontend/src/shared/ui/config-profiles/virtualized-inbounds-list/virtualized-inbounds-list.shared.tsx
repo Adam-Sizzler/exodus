@@ -1,8 +1,8 @@
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { Box, Checkbox } from '@mantine/core'
-import { memo, useRef } from 'react'
-
 import type { IProps } from './interfaces/props.interface'
+
+import { Box, Checkbox } from '@mantine/core'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { memo, useRef } from 'react'
 
 import { InboundCheckboxCardShared } from '../inbound-checkbox-card/inbound-checkbox-card.shared'
 

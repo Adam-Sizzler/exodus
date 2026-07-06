@@ -16,7 +16,7 @@ import (
 
 type historyRecord struct {
 	ID        int64   `json:"id"`
-	UserUUID  string  `json:"userUuid"`
+	UserID    int64   `json:"userId"`
 	RequestIP *string `json:"requestIp"`
 	UserAgent *string `json:"userAgent"`
 	RequestAt string  `json:"requestAt"`
@@ -43,7 +43,7 @@ func SubscriptionRequestHistoryHandler(manager *dbmanager.DatabaseManager, cfg *
 		size := parseInt(r.URL.Query().Get("size"), 25, 1, 500)
 		columns := map[string]string{
 			"id":        "id",
-			"userUuid":  "user_uuid",
+			"userId":    "user_id",
 			"requestIp": "request_ip",
 			"userAgent": "user_agent",
 			"requestAt": "request_at",
@@ -61,7 +61,7 @@ func SubscriptionRequestHistoryHandler(manager *dbmanager.DatabaseManager, cfg *
 
 			args := append(append([]any{}, whereArgs...), start, size)
 			query := `
-				SELECT id, user_uuid, request_ip, user_agent, request_at
+				SELECT id, user_id, request_ip, user_agent, request_at
 				FROM user_subscription_request_history
 			` + whereSQL + orderSQL + ` OFFSET ? LIMIT ?`
 			rows, err := db.QueryContext(r.Context(), query, args...)
@@ -72,7 +72,7 @@ func SubscriptionRequestHistoryHandler(manager *dbmanager.DatabaseManager, cfg *
 			for rows.Next() {
 				var item historyRecord
 				var requestAt sql.NullTime
-				if scanErr := rows.Scan(&item.ID, &item.UserUUID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
+				if scanErr := rows.Scan(&item.ID, &item.UserID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
 					return scanErr
 				}
 				if requestAt.Valid {

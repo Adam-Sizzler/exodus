@@ -1,10 +1,10 @@
 import { ActionIcon, Box, Button, Group, Stack, Text } from '@mantine/core'
-import { TbFile, TbSettings } from 'react-icons/tb'
 import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
-import cx from 'clsx'
-
 import { HostsConfigProfilesDrawer } from '@widgets/dashboard/hosts/hosts-config-profiles-drawer/hosts-config-profiles.drawer.widget'
+import cx from 'clsx'
+import { useTranslation } from 'react-i18next'
+import { TbFile, TbSettings } from 'react-icons/tb'
+
 import { SingboxLogo } from '@shared/ui/logos'
 
 import classes from './host-select-inbound.module.css'

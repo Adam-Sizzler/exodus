@@ -67,16 +67,16 @@ export declare const ExtendedUsersSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
     uuid: string;
+    expireAt: Date;
     createdAt: Date;
     updatedAt: Date;
+    description: string | null;
     username: string;
-    id: number;
     tag: string | null;
+    id: number;
     shortUuid: string;
     trafficLimitBytes: number;
-    description: string | null;
-    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
-    expireAt: Date;
+    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
     telegramId: number | null;
     email: string | null;
     hwidDeviceLimit: number | null;
@@ -101,14 +101,14 @@ export declare const ExtendedUsersSchema: z.ZodObject<{
     };
 }, {
     uuid: string;
+    expireAt: string;
     createdAt: string;
     updatedAt: string;
-    username: string;
-    id: number;
-    tag: string | null;
-    shortUuid: string;
     description: string | null;
-    expireAt: string;
+    username: string;
+    tag: string | null;
+    id: number;
+    shortUuid: string;
     telegramId: number | null;
     email: string | null;
     hwidDeviceLimit: number | null;
@@ -132,7 +132,7 @@ export declare const ExtendedUsersSchema: z.ZodObject<{
     };
     status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
     trafficLimitBytes?: number | undefined;
-    trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+    trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
     lastTriggeredThreshold?: number | undefined;
 }>;
 //# sourceMappingURL=extended-users.schema.d.ts.map

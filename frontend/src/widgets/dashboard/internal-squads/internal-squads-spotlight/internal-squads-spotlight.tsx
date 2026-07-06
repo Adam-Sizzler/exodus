@@ -1,11 +1,12 @@
-import { GetInternalSquadsCommand } from '@exodus/backend-contract'
-import { TbCirclesRelation } from 'react-icons/tb'
-import { PiTag, PiUsers } from 'react-icons/pi'
 import { Badge, Group } from '@mantine/core'
+import { GetInternalSquadsCommand } from '@exodus/backend-contract'
+import { PiTag, PiUsers } from 'react-icons/pi'
+import { TbCirclesRelation } from 'react-icons/tb'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 import { formatInt } from '@shared/utils/misc'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     internalSquads: GetInternalSquadsCommand.Response['response']['internalSquads']

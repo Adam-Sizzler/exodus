@@ -9,7 +9,7 @@ var UpdateSnippetCommand;
 (function (UpdateSnippetCommand) {
     UpdateSnippetCommand.url = api_1.REST_API.SNIPPETS.UPDATE;
     UpdateSnippetCommand.TSQ_url = UpdateSnippetCommand.url;
-    UpdateSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.UPDATE, 'patch', 'Update snippet');
+    UpdateSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.UPDATE, 'patch', 'Update snippet', { scope: 'update', kind: 'write' });
     UpdateSnippetCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

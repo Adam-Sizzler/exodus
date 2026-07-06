@@ -8,7 +8,7 @@ var FetchUsersIpsResultCommand;
 (function (FetchUsersIpsResultCommand) {
     FetchUsersIpsResultCommand.url = api_1.REST_API.IP_CONTROL.GET_FETCH_USERS_IPS_RESULT;
     FetchUsersIpsResultCommand.TSQ_url = FetchUsersIpsResultCommand.url(':jobId');
-    FetchUsersIpsResultCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.GET_FETCH_USERS_IPS_RESULT(':jobId'), 'get', 'Get Users IPs List Result by Job ID');
+    FetchUsersIpsResultCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.GET_FETCH_USERS_IPS_RESULT(':jobId'), 'get', 'Get Users IPs List Result by Job ID', { scope: 'fetch-users-ips-result', kind: 'read' });
     FetchUsersIpsResultCommand.RequestSchema = zod_1.z.object({
         jobId: zod_1.z.string(),
     });

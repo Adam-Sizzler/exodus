@@ -14,7 +14,7 @@ export declare namespace UpdateUserCommand {
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
             readonly MONTH_ROLLING: "MONTH_ROLLING";
-        }>>, "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK", "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined>>;
+        }>>, "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING", "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined>>;
         expireAt: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, Date, string>, Date, string>>;
         description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -26,12 +26,12 @@ export declare namespace UpdateUserCommand {
     }, "strip", z.ZodTypeAny, {
         status?: "DISABLED" | "ACTIVE" | undefined;
         uuid?: string | undefined;
+        expireAt?: Date | undefined;
+        description?: string | null | undefined;
         username?: string | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: Date | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;
@@ -40,12 +40,12 @@ export declare namespace UpdateUserCommand {
     }, {
         status?: "DISABLED" | "ACTIVE" | undefined;
         uuid?: string | undefined;
+        expireAt?: string | undefined;
+        description?: string | null | undefined;
         username?: string | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: string | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;
@@ -54,12 +54,12 @@ export declare namespace UpdateUserCommand {
     }>, {
         status?: "DISABLED" | "ACTIVE" | undefined;
         uuid?: string | undefined;
+        expireAt?: Date | undefined;
+        description?: string | null | undefined;
         username?: string | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: Date | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;
@@ -68,12 +68,12 @@ export declare namespace UpdateUserCommand {
     }, {
         status?: "DISABLED" | "ACTIVE" | undefined;
         uuid?: string | undefined;
+        expireAt?: string | undefined;
+        description?: string | null | undefined;
         username?: string | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: string | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;
@@ -150,16 +150,16 @@ export declare namespace UpdateUserCommand {
         }, "strip", z.ZodTypeAny, {
             status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
             uuid: string;
+            expireAt: Date;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
             username: string;
-            id: number;
             tag: string | null;
+            id: number;
             shortUuid: string;
             trafficLimitBytes: number;
-            description: string | null;
-            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
-            expireAt: Date;
+            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
             telegramId: number | null;
             email: string | null;
             hwidDeviceLimit: number | null;
@@ -184,14 +184,14 @@ export declare namespace UpdateUserCommand {
             };
         }, {
             uuid: string;
+            expireAt: string;
             createdAt: string;
             updatedAt: string;
-            username: string;
-            id: number;
-            tag: string | null;
-            shortUuid: string;
             description: string | null;
-            expireAt: string;
+            username: string;
+            tag: string | null;
+            id: number;
+            shortUuid: string;
             telegramId: number | null;
             email: string | null;
             hwidDeviceLimit: number | null;
@@ -215,23 +215,23 @@ export declare namespace UpdateUserCommand {
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
             lastTriggeredThreshold?: number | undefined;
         }>;
     }, "strip", z.ZodTypeAny, {
         response: {
             status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
             uuid: string;
+            expireAt: Date;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
             username: string;
-            id: number;
             tag: string | null;
+            id: number;
             shortUuid: string;
             trafficLimitBytes: number;
-            description: string | null;
-            trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
-            expireAt: Date;
+            trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
             telegramId: number | null;
             email: string | null;
             hwidDeviceLimit: number | null;
@@ -258,14 +258,14 @@ export declare namespace UpdateUserCommand {
     }, {
         response: {
             uuid: string;
+            expireAt: string;
             createdAt: string;
             updatedAt: string;
-            username: string;
-            id: number;
-            tag: string | null;
-            shortUuid: string;
             description: string | null;
-            expireAt: string;
+            username: string;
+            tag: string | null;
+            id: number;
+            shortUuid: string;
             telegramId: number | null;
             email: string | null;
             hwidDeviceLimit: number | null;
@@ -289,7 +289,7 @@ export declare namespace UpdateUserCommand {
             };
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
             trafficLimitBytes?: number | undefined;
-            trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
             lastTriggeredThreshold?: number | undefined;
         };
     }>;

@@ -15,5 +15,5 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./get-stats-node-users-usage.command"), exports);
-__exportStar(require("./get-stats-nodes-realtime-usage.command"), exports);
 __exportStar(require("./get-stats-nodes-usage.command"), exports);
+__exportStar(require("./get-stats-nodes-users-usage.command"), exports);

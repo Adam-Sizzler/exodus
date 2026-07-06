@@ -1,5 +1,5 @@
-import { UpdateExodusSettingsCommand } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
+import { UpdateExodusSettingsCommand } from '@exodus/backend-contract'
 
 import { createMutationHook } from '../../tsq-helpers'
 

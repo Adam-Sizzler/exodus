@@ -1,13 +1,13 @@
+import type { IProps } from './interfaces/props.interface'
+
 import { ActionIcon, Badge, Checkbox, Group, Stack, Text } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { useTranslation } from 'react-i18next'
-import { modals } from '@mantine/modals'
 import { TbCode } from 'react-icons/tb'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-
-import type { IProps } from './interfaces/props.interface'
 
 import classes from './FlatInboundCheckboxCard.module.css'
 
@@ -67,11 +67,11 @@ export const FlatInboundCheckboxCardShared = (props: IProps) => {
                 </Group>
 
                 <Group gap="xs" wrap="nowrap">
-                    <Badge color="gray" size="xs" variant="outline">
+                    <Badge color="gray" size="xs" variant="soft">
                         {inbound.type}
                     </Badge>
                     {inbound.port && (
-                        <Badge color="teal" size="xs" variant="outline">
+                        <Badge color="teal" size="xs" variant="soft">
                             {inbound.port}
                         </Badge>
                     )}
@@ -83,6 +83,7 @@ export const FlatInboundCheckboxCardShared = (props: IProps) => {
                             handleShowInboundJson(inbound)
                         }}
                         size="md"
+                        variant="soft"
                     >
                         <TbCode size={16} />
                     </ActionIcon>

@@ -1,5 +1,5 @@
-import { CreateApiTokenCommand, DeleteApiTokenCommand } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
+import { CreateApiTokenCommand, DeleteApiTokenCommand } from '@exodus/backend-contract'
 
 import { createMutationHook } from '@shared/api/tsq-helpers/create-mutation-hook'
 

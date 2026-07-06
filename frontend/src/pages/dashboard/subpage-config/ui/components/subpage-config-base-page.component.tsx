@@ -1,13 +1,13 @@
+import { SubpageConfigsHeaderActionButtonsFeature } from '@features/ui/dashboard/subpage-configs/header-action-buttons'
 import { GetSubscriptionPageConfigsCommand } from '@exodus/backend-contract'
+import { SubpageConfigsGridWidget } from '@widgets/dashboard/subpage-configs/subpage-configs-grid/subpage-configs-grid.widget'
+import { SubpageConfigsSpotlightWidget } from '@widgets/dashboard/subpage-configs/subpage-configs-spotlight'
+import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { TbFile } from 'react-icons/tb'
-import { motion } from 'motion/react'
 
-import { SubpageConfigsGridWidget } from '@widgets/dashboard/subpage-configs/subpage-configs-grid/subpage-configs-grid.widget'
-import { SubpageConfigsHeaderActionButtonsFeature } from '@features/ui/dashboard/subpage-configs/header-action-buttons'
-import { SubpageConfigsSpotlightWidget } from '@widgets/dashboard/subpage-configs/subpage-configs-spotlight'
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 import { Page, PageHeaderShared } from '@shared/ui'
+import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 
 interface Props {
     configs: GetSubscriptionPageConfigsCommand.Response['response']['configs']

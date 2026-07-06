@@ -28,10 +28,6 @@ export declare const UsersSchema: z.ZodObject<{
     trojanPassword: z.ZodString;
     vlessUuid: z.ZodString;
     ssPassword: z.ZodString;
-    naivePassword: z.ZodString;
-    shadowtlsPassword: z.ZodString;
-    hysteria2Password: z.ZodString;
-    anytlsPassword: z.ZodString;
     lastTriggeredThreshold: z.ZodDefault<z.ZodNumber>;
     subRevokedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
     lastTrafficResetAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
@@ -40,16 +36,16 @@ export declare const UsersSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
     uuid: string;
+    expireAt: Date;
     createdAt: Date;
     updatedAt: Date;
+    description: string | null;
     username: string;
-    id: number;
     tag: string | null;
+    id: number;
     shortUuid: string;
     trafficLimitBytes: number;
-    description: string | null;
-    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
-    expireAt: Date;
+    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
     telegramId: number | null;
     email: string | null;
     hwidDeviceLimit: number | null;
@@ -57,23 +53,19 @@ export declare const UsersSchema: z.ZodObject<{
     trojanPassword: string;
     vlessUuid: string;
     ssPassword: string;
-    naivePassword: string;
-    shadowtlsPassword: string;
-    hysteria2Password: string;
-    anytlsPassword: string;
     lastTriggeredThreshold: number;
     subRevokedAt: Date | null;
     lastTrafficResetAt: Date | null;
 }, {
     uuid: string;
+    expireAt: string;
     createdAt: string;
     updatedAt: string;
-    username: string;
-    id: number;
-    tag: string | null;
-    shortUuid: string;
     description: string | null;
-    expireAt: string;
+    username: string;
+    tag: string | null;
+    id: number;
+    shortUuid: string;
     telegramId: number | null;
     email: string | null;
     hwidDeviceLimit: number | null;
@@ -81,15 +73,11 @@ export declare const UsersSchema: z.ZodObject<{
     trojanPassword: string;
     vlessUuid: string;
     ssPassword: string;
-    naivePassword: string;
-    shadowtlsPassword: string;
-    hysteria2Password: string;
-    anytlsPassword: string;
     subRevokedAt: string | null;
     lastTrafficResetAt: string | null;
     status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
     trafficLimitBytes?: number | undefined;
-    trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+    trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
     lastTriggeredThreshold?: number | undefined;
 }>;
 //# sourceMappingURL=users.schema.d.ts.map

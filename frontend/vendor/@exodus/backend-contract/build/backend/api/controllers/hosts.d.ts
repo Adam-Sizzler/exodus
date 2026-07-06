@@ -13,8 +13,7 @@ export declare const HOSTS_ROUTES: {
         readonly ENABLE_HOSTS: "bulk/enable";
         readonly DISABLE_HOSTS: "bulk/disable";
         readonly DELETE_HOSTS: "bulk/delete";
-        readonly SET_INBOUND: "bulk/set-inbound";
-        readonly SET_PORT: "bulk/set-port";
+        readonly UPDATE: "bulk/update";
     };
     readonly TAGS: {
         readonly GET: "tags";

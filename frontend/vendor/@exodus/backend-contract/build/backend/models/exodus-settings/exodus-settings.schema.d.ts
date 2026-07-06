@@ -118,7 +118,33 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             withPkce: boolean;
             tokenUrl: string | null;
         }>>;
+        telegram: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            allowedIds: z.ZodArray<z.ZodString, "many">;
+            frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        }>>;
     }, "strip", z.ZodTypeAny, {
+        telegram: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        };
         github: {
             enabled: boolean;
             clientId: string | null;
@@ -177,6 +203,13 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             clientSecret: string | null;
             allowedEmails: string[];
         };
+        telegram?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        } | undefined;
         keycloak?: {
             enabled: boolean;
             clientId: string | null;
@@ -196,19 +229,6 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             withPkce: boolean;
             tokenUrl: string | null;
         } | undefined;
-    }>>;
-    tgAuthSettings: z.ZodNullable<z.ZodObject<{
-        enabled: z.ZodBoolean;
-        botToken: z.ZodNullable<z.ZodString>;
-        adminIds: z.ZodArray<z.ZodString, "many">;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
-    }, {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
     }>>;
     passwordSettings: z.ZodNullable<z.ZodObject<{
         enabled: z.ZodBoolean;
@@ -234,6 +254,13 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
         origin: string | null;
     } | null;
     oauth2Settings: {
+        telegram: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        };
         github: {
             enabled: boolean;
             clientId: string | null;
@@ -272,11 +299,6 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             withPkce: boolean;
             tokenUrl: string | null;
         };
-    } | null;
-    tgAuthSettings: {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
     } | null;
     passwordSettings: {
         enabled: boolean;
@@ -311,6 +333,13 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             clientSecret: string | null;
             allowedEmails: string[];
         };
+        telegram?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        } | undefined;
         keycloak?: {
             enabled: boolean;
             clientId: string | null;
@@ -330,11 +359,6 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             withPkce: boolean;
             tokenUrl: string | null;
         } | undefined;
-    } | null;
-    tgAuthSettings: {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
     } | null;
     passwordSettings: {
         enabled: boolean;

@@ -26,21 +26,21 @@ export declare namespace BulkAllUpdateUsersCommand {
         hwidDeviceLimit: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     }, "strip", z.ZodTypeAny, {
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+        expireAt?: Date | undefined;
+        description?: string | null | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: Date | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;
     }, {
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+        expireAt?: string | undefined;
+        description?: string | null | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: string | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;

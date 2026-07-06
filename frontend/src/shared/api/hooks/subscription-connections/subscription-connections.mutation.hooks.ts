@@ -15,6 +15,12 @@ import { notifications } from '@mantine/notifications'
 import { z } from 'zod'
 
 import { createMutationHook } from '../../tsq-helpers'
+import {
+    deleteSubscriptionConnectionResponseSchema,
+    getAllSubscriptionConnectionsResponseSchema,
+    getOneSubscriptionConnectionResponseSchema,
+    subscriptionConnectionEventSentResponseSchema
+} from './subscription-connections.query.hooks'
 
 const SUBSCRIPTION_CONNECTIONS_API = {
     CREATE: '/api/subscription-connections',
@@ -111,7 +117,7 @@ export type UpdateSubscriptionConnectionRequest = z.infer<typeof updateSubscript
 export const useCreateSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.CREATE,
     bodySchema: createSubscriptionConnectionSchema,
-    responseSchema: CreateNodeCommand.ResponseSchema,
+    responseSchema: getOneSubscriptionConnectionResponseSchema,
     requestMethod: CreateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -135,7 +141,7 @@ export const useCreateSubscriptionConnection = createMutationHook({
 export const useUpdateSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.UPDATE,
     bodySchema: updateSubscriptionConnectionSchema,
-    responseSchema: UpdateNodeCommand.ResponseSchema,
+    responseSchema: getOneSubscriptionConnectionResponseSchema,
     requestMethod: UpdateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -158,7 +164,7 @@ export const useUpdateSubscriptionConnection = createMutationHook({
 
 export const useDeleteSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.DELETE,
-    responseSchema: DeleteNodeCommand.ResponseSchema,
+    responseSchema: deleteSubscriptionConnectionResponseSchema,
     routeParamsSchema: DeleteNodeCommand.RequestSchema,
     requestMethod: DeleteNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -182,7 +188,7 @@ export const useDeleteSubscriptionConnection = createMutationHook({
 
 export const useEnableSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.ENABLE,
-    responseSchema: EnableNodeCommand.ResponseSchema,
+    responseSchema: getOneSubscriptionConnectionResponseSchema,
     routeParamsSchema: EnableNodeCommand.RequestSchema,
     requestMethod: EnableNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -206,7 +212,7 @@ export const useEnableSubscriptionConnection = createMutationHook({
 
 export const useDisableSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.DISABLE,
-    responseSchema: DisableNodeCommand.ResponseSchema,
+    responseSchema: getOneSubscriptionConnectionResponseSchema,
     routeParamsSchema: DisableNodeCommand.RequestSchema,
     requestMethod: DisableNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -230,7 +236,7 @@ export const useDisableSubscriptionConnection = createMutationHook({
 
 export const useRestartAllSubscriptionConnections = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.RESTART_ALL,
-    responseSchema: RestartAllNodesCommand.ResponseSchema,
+    responseSchema: subscriptionConnectionEventSentResponseSchema,
     bodySchema: RestartAllNodesCommand.RequestBodySchema,
     requestMethod: RestartAllNodesCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -255,7 +261,7 @@ export const useRestartAllSubscriptionConnections = createMutationHook({
 export const useReorderSubscriptionConnections = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.REORDER,
     bodySchema: ReorderNodeCommand.RequestSchema,
-    responseSchema: ReorderNodeCommand.ResponseSchema,
+    responseSchema: getAllSubscriptionConnectionsResponseSchema,
     requestMethod: ReorderNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onError: (error) => {
@@ -271,7 +277,7 @@ export const useReorderSubscriptionConnections = createMutationHook({
 
 export const useRestartSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.RESTART,
-    responseSchema: RestartNodeCommand.ResponseSchema,
+    responseSchema: subscriptionConnectionEventSentResponseSchema,
     routeParamsSchema: RestartNodeCommand.RequestSchema,
     requestMethod: RestartNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -295,7 +301,7 @@ export const useRestartSubscriptionConnection = createMutationHook({
 
 export const useResetSubscriptionConnectionTraffic = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.RESET_TRAFFIC,
-    responseSchema: ResetNodeTrafficCommand.ResponseSchema,
+    responseSchema: subscriptionConnectionEventSentResponseSchema,
     routeParamsSchema: ResetNodeTrafficCommand.RequestSchema,
     requestMethod: ResetNodeTrafficCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -319,7 +325,7 @@ export const useResetSubscriptionConnectionTraffic = createMutationHook({
 
 export const useBulkSubscriptionConnectionsProfileModification = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.BULK_PROFILE_MODIFICATION,
-    responseSchema: BulkNodesProfileModificationCommand.ResponseSchema,
+    responseSchema: subscriptionConnectionEventSentResponseSchema,
     bodySchema: BulkNodesProfileModificationCommand.RequestSchema,
     requestMethod: BulkNodesProfileModificationCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -343,7 +349,7 @@ export const useBulkSubscriptionConnectionsProfileModification = createMutationH
 
 export const useBulkSubscriptionConnectionsActions = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.BULK_ACTIONS,
-    responseSchema: BulkNodesActionsCommand.ResponseSchema,
+    responseSchema: subscriptionConnectionEventSentResponseSchema,
     bodySchema: BulkNodesActionsCommand.RequestSchema,
     requestMethod: BulkNodesActionsCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

@@ -16,42 +16,46 @@ export declare namespace GetUserHwidDevicesCommand {
             total: z.ZodNumber;
             devices: z.ZodArray<z.ZodObject<{
                 hwid: z.ZodString;
-                userUuid: z.ZodString;
+                userId: z.ZodNumber;
                 platform: z.ZodNullable<z.ZodString>;
                 osVersion: z.ZodNullable<z.ZodString>;
                 deviceModel: z.ZodNullable<z.ZodString>;
                 userAgent: z.ZodNullable<z.ZodString>;
+                requestIp: z.ZodNullable<z.ZodString>;
                 createdAt: z.ZodEffects<z.ZodString, Date, string>;
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
                 hwid: string;
                 createdAt: Date;
                 updatedAt: Date;
-                userUuid: string;
+                userId: number;
                 platform: string | null;
                 osVersion: string | null;
                 deviceModel: string | null;
                 userAgent: string | null;
+                requestIp: string | null;
             }, {
                 hwid: string;
                 createdAt: string;
                 updatedAt: string;
-                userUuid: string;
+                userId: number;
                 platform: string | null;
                 osVersion: string | null;
                 deviceModel: string | null;
                 userAgent: string | null;
+                requestIp: string | null;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             devices: {
                 hwid: string;
                 createdAt: Date;
                 updatedAt: Date;
-                userUuid: string;
+                userId: number;
                 platform: string | null;
                 osVersion: string | null;
                 deviceModel: string | null;
                 userAgent: string | null;
+                requestIp: string | null;
             }[];
             total: number;
         }, {
@@ -59,11 +63,12 @@ export declare namespace GetUserHwidDevicesCommand {
                 hwid: string;
                 createdAt: string;
                 updatedAt: string;
-                userUuid: string;
+                userId: number;
                 platform: string | null;
                 osVersion: string | null;
                 deviceModel: string | null;
                 userAgent: string | null;
+                requestIp: string | null;
             }[];
             total: number;
         }>;
@@ -73,11 +78,12 @@ export declare namespace GetUserHwidDevicesCommand {
                 hwid: string;
                 createdAt: Date;
                 updatedAt: Date;
-                userUuid: string;
+                userId: number;
                 platform: string | null;
                 osVersion: string | null;
                 deviceModel: string | null;
                 userAgent: string | null;
+                requestIp: string | null;
             }[];
             total: number;
         };
@@ -87,11 +93,12 @@ export declare namespace GetUserHwidDevicesCommand {
                 hwid: string;
                 createdAt: string;
                 updatedAt: string;
-                userUuid: string;
+                userId: number;
                 platform: string | null;
                 osVersion: string | null;
                 deviceModel: string | null;
                 userAgent: string | null;
+                requestIp: string | null;
             }[];
             total: number;
         };

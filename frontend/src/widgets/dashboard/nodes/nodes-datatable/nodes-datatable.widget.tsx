@@ -1,18 +1,19 @@
-import { DataTable, type DataTableSortStatus, useDataTableColumns } from 'mantine-datatable'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
-import { memo, useLayoutEffect, useMemo, useState } from 'react'
 import { Box, Button, Group, Stack, Text } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
-import { TbRestore } from 'react-icons/tb'
-import { PiEmpty } from 'react-icons/pi'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import get from 'lodash/get'
+import { DataTable, type DataTableSortStatus, useDataTableColumns } from 'mantine-datatable'
+import { memo, useLayoutEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiEmpty } from 'react-icons/pi'
+import { TbRestore } from 'react-icons/tb'
 
-import { useGetConfigProfiles, useGetNodePlugins, useGetNodes, NodeResponse } from '@shared/api/hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { useGetConfigProfiles, useGetNodePlugins, useGetNodes } from '@shared/api/hooks'
+import { LoadingScreen } from '@shared/ui'
 import { preventBackScrollTables } from '@shared/utils/misc'
 import { sToMs } from '@shared/utils/time-utils'
-import { LoadingScreen } from '@shared/ui'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 import {
     getNodesTableColumns,
@@ -20,21 +21,21 @@ import {
     type NodeStatusFilter
 } from './use-nodes-table-widget'
 
-type NodeType = NodeResponse
+type NodeType = GetAllNodesCommand.Response['response'][number]
 
 function getNodeSortValue(node: NodeType, accessor: string): unknown {
     return get(node, accessor)
 }
 
 interface IProps {
-    nodes: NodeResponse[] | undefined
+    nodes: GetAllNodesCommand.Response['response'] | undefined
     selectedRecords: NodeType[]
     setSelectedRecords: (records: NodeType[]) => void
 }
 
 const PAGE_SIZE = 50
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 150, 200]
-const NODES_CACHE_KEY = 'nodes-datatable-nodes-v2'
+const NODES_CACHE_KEY = 'nodes-datatable-nodes-v4'
 
 export const NodesDataTableWidget = memo((props: IProps) => {
     const { nodes, selectedRecords, setSelectedRecords } = props
@@ -249,7 +250,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
         setPage(1)
     }
 
-    if (!nodes || !configProfiles || !nodePlugins) return <LoadingScreen height="60vh" />
+    if (!nodes || !configProfiles) return <LoadingScreen height="60vh" />
 
     return (
         <>

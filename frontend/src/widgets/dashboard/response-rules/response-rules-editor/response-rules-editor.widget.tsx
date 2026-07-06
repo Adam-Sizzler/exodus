@@ -1,23 +1,30 @@
 import type { editor } from 'monaco-editor'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Card, Code, Paper, Text } from '@mantine/core'
-import Editor, { Monaco } from '@monaco-editor/react'
-import { useTranslation } from 'react-i18next'
-import { useBlocker } from 'react-router-dom'
-import { modals } from '@mantine/modals'
-
-import { ResponseRulesEditorActionsFeature } from '@features/dashboard/response-rules/response-rules-editor-actions'
 import { MonacoSetupResponseRulesFeature } from '@features/dashboard/config-profiles/monaco-setup'
+import { ResponseRulesEditorActionsFeature } from '@features/dashboard/response-rules/response-rules-editor-actions'
+import { Box, Card, Code, Paper, Stack } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import Editor, { Monaco } from '@monaco-editor/react'
+import clsx from 'clsx'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbAlertTriangle } from 'react-icons/tb'
+import { useBlocker } from 'react-router'
+
+import { usePseudoFullscreen } from '@shared/hooks'
+import { fullscreenClasses, FullscreenToggleButton } from '@shared/ui/fullscreen-toggle-button'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { preventBackScroll } from '@shared/utils/misc'
 
-import styles from './ResponseRulesEditor.module.css'
 import { IProps } from './interfaces'
+import styles from './ResponseRulesEditor.module.css'
 
 export function ResponseRulesEditorWidget(props: IProps) {
     const { t } = useTranslation()
 
     const { groupedTemplates, responseRules, subscriptionSettingsUuid } = props
+
+    const { isFullscreen, toggle: toggleFullscreen } = usePseudoFullscreen()
 
     const [result, setResult] = useState('')
     const [isConfigValid, setIsConfigValid] = useState(false)
@@ -37,13 +44,17 @@ export function ResponseRulesEditorWidget(props: IProps) {
     useEffect(() => {
         if (blocker.state === 'blocked') {
             modals.openConfirmModal({
-                title: t('config-editor.widget.unsaved-changes'),
-                children: (
-                    <Text c="dimmed" size="md">
-                        {t(
-                            'config-editor.widget.your-changes-will-be-lost-if-you-leave-this-page-without-saving'
-                        )}
-                    </Text>
+                title: (
+                    <BaseOverlayHeader
+                        iconColor="red"
+                        IconComponent={TbAlertTriangle}
+                        iconSize={20}
+                        iconVariant="soft"
+                        title={t('config-editor.widget.unsaved-changes')}
+                    />
+                ),
+                children: t(
+                    'config-editor.widget.your-changes-will-be-lost-if-you-leave-this-page-without-saving'
                 ),
                 centered: true,
                 labels: {
@@ -53,7 +64,7 @@ export function ResponseRulesEditorWidget(props: IProps) {
 
                 confirmProps: {
                     color: 'red',
-                    variant: 'light'
+                    variant: 'soft'
                 },
                 cancelProps: {
                     variant: 'light'
@@ -92,41 +103,18 @@ export function ResponseRulesEditorWidget(props: IProps) {
     }, [])
 
     return (
-        <Box className={styles.container}>
-            {result && (
-                <Paper
-                    className={styles.validationMessage}
-                    mb="md"
-                    p="md"
-                    radius="sm"
-                    style={{
-                        backgroundColor: isConfigValid
-                            ? 'rgba(51, 171, 132, 0.1)'
-                            : 'rgba(241, 65, 65, 0.1)',
-                        border: `1px solid ${isConfigValid ? 'rgb(51, 171, 132)' : 'rgb(241, 65, 65)'}`
-                    }}
-                >
-                    <Code
-                        color={isConfigValid ? 'teal' : 'red'}
-                        style={{
-                            backgroundColor: 'transparent',
-                            fontSize: '0.9rem',
-                            padding: 0
-                        }}
-                    >
-                        {result}
-                    </Code>
-                </Paper>
-            )}
-
+        <Box className={clsx(styles.container, isFullscreen && fullscreenClasses.overlay)}>
             <Paper
-                className={styles.editorWrapper}
+                className={clsx(styles.editorWrapper, isFullscreen && fullscreenClasses.fill)}
                 p={0}
+                pos="relative"
                 style={{
                     direction: 'ltr'
                 }}
                 withBorder
             >
+                <FullscreenToggleButton isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
+
                 <Editor
                     beforeMount={handleEditorDidMount}
                     className={styles.monacoEditor}
@@ -202,21 +190,50 @@ export function ResponseRulesEditorWidget(props: IProps) {
                 />
             </Paper>
 
-            <Card className={styles.footer} h="auto" m="0" mt="md" pos="sticky">
-                <ResponseRulesEditorActionsFeature
-                    editorRef={editorRef}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    isResponseRulesValid={isConfigValid}
-                    monacoRef={monacoRef}
-                    originalValue={originalValue}
-                    responseRules={responseRules}
-                    setHasUnsavedChanges={setHasUnsavedChanges}
-                    setIsResponseRulesValid={setIsConfigValid}
-                    setOriginalValue={setOriginalValue}
-                    setResult={setResult}
-                    subscriptionSettingsUuid={subscriptionSettingsUuid}
-                />
-            </Card>
+            {!isFullscreen && (
+                <Card className={styles.footer} h="auto" m="0" pos="sticky">
+                    <Stack gap="md">
+                        {result && (
+                            <Paper
+                                className={styles.validationMessage}
+                                p="md"
+                                radius="sm"
+                                style={{
+                                    backgroundColor: isConfigValid
+                                        ? 'rgba(51, 171, 132, 0.1)'
+                                        : 'rgba(241, 65, 65, 0.1)',
+                                    border: `1px solid ${isConfigValid ? 'rgb(51, 171, 132)' : 'rgb(241, 65, 65)'}`
+                                }}
+                            >
+                                <Code
+                                    color={isConfigValid ? 'teal' : 'red'}
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                        fontSize: '0.9rem',
+                                        padding: 0
+                                    }}
+                                >
+                                    {result}
+                                </Code>
+                            </Paper>
+                        )}
+
+                        <ResponseRulesEditorActionsFeature
+                            editorRef={editorRef}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            isResponseRulesValid={isConfigValid}
+                            monacoRef={monacoRef}
+                            originalValue={originalValue}
+                            responseRules={responseRules}
+                            setHasUnsavedChanges={setHasUnsavedChanges}
+                            setIsResponseRulesValid={setIsConfigValid}
+                            setOriginalValue={setOriginalValue}
+                            setResult={setResult}
+                            subscriptionSettingsUuid={subscriptionSettingsUuid}
+                        />
+                    </Stack>
+                </Card>
+            )}
         </Box>
     )
 }

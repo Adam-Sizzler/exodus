@@ -8,12 +8,12 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { TSubscriptionPageSvgLibrary } from '@exodus/subscription-page-types'
 import { IconCheck, IconPhoto, IconX } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
-import { useMemo } from 'react'
 import isSvg from 'is-svg'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import styles from '../subpage-config-visual-editor.module.css'
 import { RequiredAsterisk } from './required-asterisk'

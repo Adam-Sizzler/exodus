@@ -9,7 +9,7 @@ var DeleteSnippetCommand;
 (function (DeleteSnippetCommand) {
     DeleteSnippetCommand.url = api_1.REST_API.SNIPPETS.DELETE;
     DeleteSnippetCommand.TSQ_url = DeleteSnippetCommand.url;
-    DeleteSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.DELETE, 'delete', 'Delete snippet');
+    DeleteSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.DELETE, 'delete', 'Delete snippet', { scope: 'delete', kind: 'write' });
     DeleteSnippetCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

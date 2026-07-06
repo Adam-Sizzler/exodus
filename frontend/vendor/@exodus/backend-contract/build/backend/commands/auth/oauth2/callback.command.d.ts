@@ -5,6 +5,7 @@ export declare namespace OAuth2CallbackCommand {
     const endpointDetails: import("../../../constants").EndpointDetails;
     const RequestSchema: z.ZodObject<{
         provider: z.ZodNativeEnum<{
+            readonly TELEGRAM: "telegram";
             readonly GITHUB: "github";
             readonly POCKETID: "pocketid";
             readonly YANDEX: "yandex";
@@ -15,11 +16,11 @@ export declare namespace OAuth2CallbackCommand {
         state: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         code: string;
-        provider: "github" | "pocketid" | "yandex" | "keycloak" | "generic";
+        provider: "telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic";
         state: string;
     }, {
         code: string;
-        provider: "github" | "pocketid" | "yandex" | "keycloak" | "generic";
+        provider: "telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic";
         state: string;
     }>;
     type Request = z.infer<typeof RequestSchema>;

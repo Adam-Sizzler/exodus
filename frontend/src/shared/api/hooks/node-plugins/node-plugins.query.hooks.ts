@@ -1,6 +1,8 @@
-import { GetNodePluginCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
-import { keepPreviousData } from '@tanstack/react-query'
+import {
+    GetNodePluginCommand,
+    GetNodePluginsCommand
+} from '@exodus/backend-contract'
 
 import { sToMs } from '@shared/utils/time-utils'
 
@@ -37,5 +39,3 @@ export const useGetNodePlugins = createGetQueryHook({
     },
     errorHandler: (error) => errorHandler(error, 'Get Node Plugins')
 })
-
-

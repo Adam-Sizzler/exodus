@@ -1,29 +1,24 @@
 .PHONY: download-monaco-deps clean bump-patch bump-minor bump-major tag-release
 
 MONACO_FILES = \
-	public/assets/wasm_exec.js \
-	public/assets/xray.schema.json \
-	public/assets/xray.schema.cn.json \
-	public/assets/main.wasm
+	public/wasm_exec.js \
+	public/xray.schema.json \
+	public/main.wasm
 
-MONACO_BASE_URL ?= https://Adam-Sizzler.github.io/s-validator
+MONACO_BASE_URL = https://exodus.github.io/xray-monaco-editor
 
 download-monaco-deps: $(MONACO_FILES)
 
-public/assets/wasm_exec.js:
-	@mkdir -p public/assets
+public/wasm_exec.js:
+	@mkdir -p public
 	curl -o $@ $(MONACO_BASE_URL)/wasm_exec.js
 
-public/assets/xray.schema.json:
-	@mkdir -p public/assets
+public/xray.schema.json:
+	@mkdir -p public
 	curl -o $@ $(MONACO_BASE_URL)/xray.schema.json
 
-public/assets/xray.schema.cn.json:
-	@mkdir -p public/assets
-	curl -o $@ $(MONACO_BASE_URL)/xray.schema.cn.json
-
-public/assets/main.wasm:
-	@mkdir -p public/assets
+public/main.wasm:
+	@mkdir -p public
 	curl -o $@ $(MONACO_BASE_URL)/main.wasm
 
 clean:

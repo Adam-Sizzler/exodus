@@ -1,18 +1,18 @@
+import { Accordion, Card, Divider, Group, Select, Stack, Text } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
 import {
     TSubscriptionPagePlatformKey,
     TSubscriptionPagePlatformSchema,
     TSubscriptionPageRawConfig
 } from '@exodus/subscription-page-types'
-import { Accordion, Card, Divider, Group, Select, Stack, Text } from '@mantine/core'
 import { IconDeviceDesktop, IconPlus } from '@tabler/icons-react'
-import { UseFormReturnType } from '@mantine/form'
 import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { AVAILABLE_PLATFORMS, PLATFORM_LABELS } from '../subpage-config.constants'
 import { PlatformEditor } from '../editor-components/platform-editor.component'
 import styles from '../subpage-config-visual-editor.module.css'
+import { AVAILABLE_PLATFORMS, PLATFORM_LABELS } from '../subpage-config.constants'
 
 interface IProps {
     form: UseFormReturnType<TSubscriptionPageRawConfig>

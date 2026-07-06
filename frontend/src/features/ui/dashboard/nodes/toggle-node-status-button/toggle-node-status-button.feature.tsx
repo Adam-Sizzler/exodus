@@ -1,6 +1,6 @@
-import { PiCellSignalFullDuotone, PiCellSignalSlashDuotone, PiTrashDuotone } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
 import { Loader, Menu } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
+import { PiCellSignalFullDuotone, PiCellSignalSlashDuotone, PiTrashDuotone } from 'react-icons/pi'
 
 import { useDisableNode, useEnableNode } from '@shared/api/hooks'
 

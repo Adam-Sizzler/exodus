@@ -1,9 +1,9 @@
-import { ExternalSquadHostOverridesSchema } from '@exodus/backend-contract'
 import { ActionIcon, HoverCard, px, Stack, Text } from '@mantine/core'
-import { PiIdentificationBadge } from 'react-icons/pi'
-import { HiQuestionMarkCircle } from 'react-icons/hi'
-import { TbFileDescription } from 'react-icons/tb'
+import { ExternalSquadHostOverridesSchema } from '@exodus/backend-contract'
 import { TFunction } from 'i18next'
+import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { PiIdentificationBadge } from 'react-icons/pi'
+import { TbFileDescription } from 'react-icons/tb'
 
 const hoverCard = (text: string) => {
     return (
@@ -43,6 +43,15 @@ export function resolveHostFormFields(
                 label: t('base-host-form.server-description-header'),
                 leftSection: <TbFileDescription size={20} />,
                 inputType: 'string'
+            }
+
+        case 'vlessRouteId':
+            return {
+                description: t('base-host-form.vless-route-description'),
+                label: 'Vless Route ID',
+                inputType: 'number',
+                hoverCard: hoverCard(t('base-host-form.vless-route-description')),
+                leftSection: <PiIdentificationBadge size={px('1.2rem')} />
             }
 
         default:

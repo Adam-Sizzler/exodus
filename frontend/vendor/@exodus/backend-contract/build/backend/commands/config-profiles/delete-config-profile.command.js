@@ -8,7 +8,7 @@ var DeleteConfigProfileCommand;
 (function (DeleteConfigProfileCommand) {
     DeleteConfigProfileCommand.url = api_1.REST_API.CONFIG_PROFILES.DELETE;
     DeleteConfigProfileCommand.TSQ_url = DeleteConfigProfileCommand.url(':uuid');
-    DeleteConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.DELETE(':uuid'), 'delete', 'Delete config profile');
+    DeleteConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.DELETE(':uuid'), 'delete', 'Delete config profile', { scope: 'delete', kind: 'write' });
     DeleteConfigProfileCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

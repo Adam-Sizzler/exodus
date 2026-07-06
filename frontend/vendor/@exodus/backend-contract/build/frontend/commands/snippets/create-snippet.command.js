@@ -9,7 +9,7 @@ var CreateSnippetCommand;
 (function (CreateSnippetCommand) {
     CreateSnippetCommand.url = api_1.REST_API.SNIPPETS.CREATE;
     CreateSnippetCommand.TSQ_url = CreateSnippetCommand.url;
-    CreateSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.CREATE, 'post', 'Create snippet');
+    CreateSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.CREATE, 'post', 'Create snippet', { scope: 'create', kind: 'write' });
     CreateSnippetCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

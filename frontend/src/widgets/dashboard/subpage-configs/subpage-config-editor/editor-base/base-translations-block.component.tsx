@@ -1,13 +1,13 @@
+import { Badge, Button, Card, Group } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
 import {
     BASE_TRANSLATION_LABELS,
     TSubscriptionPageBaseTranslationKeys,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageRawConfig
 } from '@exodus/subscription-page-types'
-import { Badge, Button, Card, Group } from '@mantine/core'
 import { IconLanguage } from '@tabler/icons-react'
-import { UseFormReturnType } from '@mantine/form'
-import { useDisclosure } from '@mantine/hooks'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

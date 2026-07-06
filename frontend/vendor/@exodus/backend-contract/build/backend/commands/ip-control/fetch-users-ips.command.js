@@ -8,7 +8,7 @@ var FetchUsersIpsCommand;
 (function (FetchUsersIpsCommand) {
     FetchUsersIpsCommand.url = api_1.REST_API.IP_CONTROL.FETCH_USERS_IPS;
     FetchUsersIpsCommand.TSQ_url = FetchUsersIpsCommand.url(':nodeUuid');
-    FetchUsersIpsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.FETCH_USERS_IPS(':nodeUuid'), 'post', 'Request Users IPs List for Node');
+    FetchUsersIpsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.FETCH_USERS_IPS(':nodeUuid'), 'post', 'Request Users IPs List for Node', { scope: 'fetch-users-ips', kind: 'read' });
     FetchUsersIpsCommand.RequestSchema = zod_1.z.object({
         nodeUuid: zod_1.z.string().uuid(),
     });

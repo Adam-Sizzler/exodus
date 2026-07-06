@@ -1,78 +1,21 @@
-/* eslint-disable no-nested-ternary */
-import { Box, Card, Center, Group, Loader, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core'
-import { PiChartBar, PiChartPieDuotone } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
 import { Chart } from '@highcharts/react'
-import { useMemo } from 'react'
+import { Box, Card, Center, Group, Loader, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core'
+import ColorHash from 'color-hash'
 import dayjs from 'dayjs'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiAppWindowDuotone, PiChartBar } from 'react-icons/pi'
 
 import { useGetSubscriptionRequestHistoryStats } from '@shared/api/hooks'
+import { TopLeaderboardCardShared } from '@shared/ui/leaderboard-item-card'
+import { formatInt } from '@shared/utils/misc'
 
 export function SrhInspectorMetrics() {
     const { t } = useTranslation()
 
     const { data: stats, isLoading } = useGetSubscriptionRequestHistoryStats()
 
-    const getPieChartConfig = (chartFor: 'apps' | 'platforms') => {
-        return {
-            chart: {
-                type: 'pie',
-                backgroundColor: 'transparent',
-                height: 300,
-                style: {
-                    fontFamily: 'inherit'
-                }
-            },
-            accessibility: {
-                enabled: false
-            },
-            title: {
-                text: undefined
-            },
-            tooltip: {
-                headerFormat: '',
-                pointFormat: '<b>{point.name}</b> – <b>{point.y}<b>',
-                valueSuffix: ' request(s)',
-                backgroundColor: 'var(--mantine-color-body)',
-                borderColor: 'var(--mantine-color-gray-4)',
-                style: {
-                    color: 'var(--mantine-color-text)'
-                }
-            },
-            plotOptions: {
-                pie: {
-                    innerSize: '60%',
-                    allowPointSelect: true,
-                    cursor: 'pointer',
-                    dataLabels: {
-                        enabled: true,
-                        format: '<b>{point.name}</b>, {point.percentage:.1f}%',
-                        style: {
-                            color: 'var(--mantine-color-text)',
-                            fontSize: '12px'
-                        },
-                        distance: 1
-                    },
-                    showInLegend: false,
-                    borderWidth: 2,
-                    borderColor: 'var(--mantine-color-body)'
-                }
-            },
-            series: [
-                {
-                    type: 'pie',
-                    name:
-                        chartFor === 'apps'
-                            ? t('hwid-inspector-metrics.widget.apps')
-                            : t('hwid-inspector-metrics.widget.platforms'),
-                    colorByPoint: true
-                }
-            ],
-            credits: {
-                enabled: false
-            }
-        }
-    }
+    const ch = new ColorHash({ lightness: [0.65, 0.65, 0.65] })
 
     const getBarChartConfig = () => {
         return {
@@ -132,7 +75,6 @@ export function SrhInspectorMetrics() {
                 style: {
                     color: 'var(--mantine-color-text)'
                 },
-                // eslint-disable-next-line react-hooks/unsupported-syntax
                 pointFormatter(this: { x: number; y: number }): string {
                     return `<b>${dayjs(this.x).format('DD.MM.YYYY, HH:mm')}</b> </br> Requests: <b>${this.y}<b>`
                 }
@@ -162,20 +104,6 @@ export function SrhInspectorMetrics() {
             }
         }
     }
-
-    const platformChartOptions = useMemo(() => {
-        if (!stats?.byParsedApp || stats.byParsedApp.length === 0) return {}
-
-        const data = stats.byParsedApp.map((item) => ({
-            name: item.app || 'Unknown',
-            y: item.count
-        }))
-
-        return {
-            ...getPieChartConfig('platforms'),
-            series: [{ ...getPieChartConfig('platforms').series[0], data }]
-        }
-    }, [stats?.byParsedApp])
 
     const hourlyChartOptions = useMemo(() => {
         if (!stats?.hourlyRequestStats || stats.hourlyRequestStats.length === 0) return {}
@@ -215,7 +143,7 @@ export function SrhInspectorMetrics() {
                 >
                     <Group align="center" gap="sm" mb="lg" wrap="nowrap">
                         <ThemeIcon color="teal" size="lg" variant="outline">
-                            <PiChartPieDuotone size="20px" />
+                            <PiAppWindowDuotone size="20px" />
                         </ThemeIcon>
 
                         <Text
@@ -230,25 +158,18 @@ export function SrhInspectorMetrics() {
                             {t('hwid-inspector-metrics.widget.app-distribution')}
                         </Text>
                     </Group>
-                    {isLoading ? (
-                        loaderCard
-                    ) : stats?.byParsedApp && stats.byParsedApp.length > 0 ? (
-                        <Box h={300}>
-                            <Chart options={platformChartOptions} />
-                        </Box>
-                    ) : (
-                        <Center h={300}>
-                            <Stack align="center" gap="sm">
-                                <PiChartPieDuotone
-                                    color="var(--mantine-color-gray-4)"
-                                    size="48px"
-                                />
-                                <Text c="dimmed" size="sm">
-                                    {t('hwid-inspector-metrics.widget.no-app-data')}
-                                </Text>
-                            </Stack>
-                        </Center>
-                    )}
+                    <TopLeaderboardCardShared
+                        emptyText={t('hwid-inspector-metrics.widget.no-app-data')}
+                        formatValue={(value) => formatInt(value, { thousandSeparator: ' ' })}
+                        isLoading={isLoading}
+                        items={stats?.byParsedApp?.map((item) => ({
+                            color: ch.hex(item.app || 'Unknown'),
+                            name: item.app || 'Unknown',
+                            total: item.count
+                        }))}
+                        maxHeight={300}
+                        wrapper={(children) => children}
+                    />
                 </Card>
 
                 <Card

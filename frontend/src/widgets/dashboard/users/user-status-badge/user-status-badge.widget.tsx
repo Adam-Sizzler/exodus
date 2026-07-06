@@ -1,6 +1,6 @@
-import { PiClockCountdown, PiClockUser, PiProhibit, PiPulse } from 'react-icons/pi'
-import { TUsersStatus, USERS_STATUS } from '@exodus/backend-contract'
 import { Badge, BadgeProps } from '@mantine/core'
+import { TUsersStatus, USERS_STATUS } from '@exodus/backend-contract'
+import { PiClockCountdown, PiClockUser, PiProhibit, PiPulse } from 'react-icons/pi'
 
 interface IProps extends Omit<BadgeProps, 'children' | 'color'> {
     status: TUsersStatus

@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TestSrrMatcherCommand = void 0;
 const zod_1 = require("zod");
+const api_1 = require("../../../api");
 const constants_1 = require("../../../constants");
 const models_1 = require("../../../models");
-const api_1 = require("../../../api");
 var TestSrrMatcherCommand;
 (function (TestSrrMatcherCommand) {
     TestSrrMatcherCommand.url = api_1.REST_API.SYSTEM.TESTERS.SRR_MATCHER;
     TestSrrMatcherCommand.TSQ_url = TestSrrMatcherCommand.url;
-    TestSrrMatcherCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.TESTERS.SRR_MATCHER, 'post', 'Test SRR Matcher');
+    TestSrrMatcherCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.TESTERS.SRR_MATCHER, 'post', 'Test SRR Matcher', { scope: 'test-srr-matcher', kind: 'write' });
     TestSrrMatcherCommand.RequestSchema = zod_1.z.object({
         responseRules: models_1.ResponseRulesConfigSchema,
     });

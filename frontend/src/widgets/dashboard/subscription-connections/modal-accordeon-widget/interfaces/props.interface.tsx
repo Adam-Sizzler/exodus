@@ -1,5 +1,5 @@
-import { GetOneNodeCommand } from '@exodus/backend-contract'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 
 export interface IProps {
-    node: GetOneNodeCommand.Response['response']
+    node: SubscriptionConnectionResponse
 }

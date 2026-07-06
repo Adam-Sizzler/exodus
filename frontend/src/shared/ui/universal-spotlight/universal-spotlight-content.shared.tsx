@@ -1,7 +1,7 @@
-import { Spotlight, SpotlightProps } from '@mantine/spotlight'
 import { Center, Stack, Text } from '@mantine/core'
-import { PiEmptyDuotone } from 'react-icons/pi'
+import { Spotlight, SpotlightProps } from '@mantine/spotlight'
 import { useTranslation } from 'react-i18next'
+import { PiEmptyDuotone } from 'react-icons/pi'
 import { TbSearch } from 'react-icons/tb'
 
 interface IProps {

@@ -9,7 +9,7 @@ var GetInfraProviderByUuidCommand;
 (function (GetInfraProviderByUuidCommand) {
     GetInfraProviderByUuidCommand.url = api_1.REST_API.INFRA_BILLING.GET_PROVIDER_BY_UUID;
     GetInfraProviderByUuidCommand.TSQ_url = GetInfraProviderByUuidCommand.url(':uuid');
-    GetInfraProviderByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_PROVIDER_BY_UUID(':uuid'), 'get', 'Get infra provider by uuid');
+    GetInfraProviderByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_PROVIDER_BY_UUID(':uuid'), 'get', 'Get infra provider by uuid', { scope: 'get-provider', kind: 'read' });
     GetInfraProviderByUuidCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

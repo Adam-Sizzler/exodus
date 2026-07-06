@@ -1,7 +1,7 @@
 import { Box, Group, Text } from '@mantine/core'
 import { ReactNode } from 'react'
 
-import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
 
 import styles from './leaderboard-item-card.module.css'
 
@@ -40,7 +40,7 @@ export const LeaderboardItemCardShared = (props: IProps) => {
                 }}
             />
             <Group gap={10} justify="space-between" style={{ position: 'relative' }} wrap="nowrap">
-                <Group gap={10} wrap="nowrap">
+                <Group gap={10} style={{ minWidth: 0 }} wrap="nowrap">
                     <Box
                         h={8}
                         style={{
@@ -51,12 +51,12 @@ export const LeaderboardItemCardShared = (props: IProps) => {
                         w={8}
                     />
                     {countryFlag}
-                    <Text fw={600} size="sm" truncate>
+                    <Text fw={600} size="sm" style={{ minWidth: 0 }} truncate="end">
                         {name}
                     </Text>
                 </Group>
                 <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
-                    {formatValue ? formatValue(total) : prettyBytesToAnyUtil(total)}
+                    {formatValue ? formatValue(total) : prettifyBytesUtil(total)}
                 </Text>
             </Group>
         </Box>

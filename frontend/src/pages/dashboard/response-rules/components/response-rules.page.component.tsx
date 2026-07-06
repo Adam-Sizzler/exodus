@@ -1,14 +1,14 @@
+import { Box, Flex } from '@mantine/core'
 import {
     GetSubscriptionSettingsCommand,
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
+import { ResponseRulesEditorWidget } from '@widgets/dashboard/response-rules/response-rules-editor'
 import { useTranslation } from 'react-i18next'
-import { Box, Flex } from '@mantine/core'
 import { TbRoute } from 'react-icons/tb'
 
-import { SrrAdvancedWarningOverlay } from '@shared/ui/srr-advanced-warning-overlay/srr-advanced-warning-overlay'
-import { ResponseRulesEditorWidget } from '@widgets/dashboard/response-rules/response-rules-editor'
 import { Page, PageHeaderShared } from '@shared/ui'
+import { SrrAdvancedWarningOverlay } from '@shared/ui/srr-advanced-warning-overlay/srr-advanced-warning-overlay'
 
 interface Props {
     groupedTemplates: Record<TSubscriptionTemplateType, string[]>

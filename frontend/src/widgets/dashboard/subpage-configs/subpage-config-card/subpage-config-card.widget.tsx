@@ -1,15 +1,16 @@
-import { SUBPAGE_DEFAULT_CONFIG_UUID } from '@exodus/subscription-page-types'
+import { CopyButton, Menu } from '@mantine/core'
 import { GetSubscriptionPageConfigsCommand } from '@exodus/backend-contract'
+import { SUBPAGE_DEFAULT_CONFIG_UUID } from '@exodus/subscription-page-types'
+import { useTranslation } from 'react-i18next'
 import { PiCheck, PiCopy, PiPencil, PiTrashDuotone } from 'react-icons/pi'
 import { TbCopyCheck, TbEdit, TbFile } from 'react-icons/tb'
-import { generatePath, useNavigate } from 'react-router-dom'
-import { CopyButton, Menu } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
+import { generatePath, useNavigate } from 'react-router'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { ROUTES } from '@shared/constants'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
-import { ROUTES } from '@shared/constants'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     handleCloneSubpageConfig: (subpageConfigUuid: string) => void

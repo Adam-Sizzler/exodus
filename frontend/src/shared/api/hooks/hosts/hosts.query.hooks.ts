@@ -1,5 +1,5 @@
-import { GetAllHostsCommand, GetAllHostTagsCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
+import { GetAllHostsCommand, GetAllHostTagsCommand } from '@exodus/backend-contract'
 
 import { sToMs } from '@shared/utils/time-utils'
 

@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateUserCommand = void 0;
 const zod_1 = require("zod");
+const api_1 = require("../../api");
 const constants_1 = require("../../constants");
 const models_1 = require("../../models");
-const api_1 = require("../../api");
 var CreateUserCommand;
 (function (CreateUserCommand) {
     CreateUserCommand.url = api_1.REST_API.USERS.CREATE;
     CreateUserCommand.TSQ_url = CreateUserCommand.url;
-    CreateUserCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.CREATE, 'post', 'Create a new user');
+    CreateUserCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.CREATE, 'post', 'Create a new user', { scope: 'create', kind: 'write' });
     CreateUserCommand.RequestSchema = zod_1.z.object({
         username: zod_1.z
             .string({
@@ -61,7 +61,6 @@ var CreateUserCommand;
             .number({
             invalid_type_error: 'Traffic limit must be a number',
         })
-            .int('Traffic limit must be an integer')
             .min(0, 'Traffic limit must be greater than 0')
             .optional()
             .describe('Optional. Traffic limit in bytes. Set to 0 for unlimited traffic.'),

@@ -1,9 +1,11 @@
-import { forwardRef, ReactNode, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { nprogress } from '@mantine/nprogress'
 import { Box, BoxProps } from '@mantine/core'
-
+import { nprogress } from '@mantine/nprogress'
+import { AnimatePresence, motion } from 'framer-motion'
+import { forwardRef, ReactNode, useEffect, useMemo } from 'react'
 import { app } from 'src/config'
+
+import { useGetAuthStatus } from '@shared/api/hooks/auth/auth.query.hooks'
+import { parseColoredTextUtil } from '@shared/utils/misc'
 
 interface PageProps extends BoxProps {
     children: ReactNode
@@ -13,12 +15,24 @@ interface PageProps extends BoxProps {
 
 export const Page = forwardRef<HTMLDivElement, PageProps>(
     ({ children, title = '', meta, ...other }, ref) => {
+        const { data: authStatus } = useGetAuthStatus()
+
         useEffect(() => {
             nprogress.complete()
             return () => nprogress.start()
         }, [])
 
-        const pageTitle = `${title} | ${app.name}`
+        const titleParts = useMemo(() => {
+            if (authStatus?.branding.title) {
+                return parseColoredTextUtil(authStatus.branding.title)
+                    .map((part) => part.text)
+                    .join('')
+            }
+
+            return app.name
+        }, [authStatus])
+
+        const pageTitle = `${title} | ${titleParts}`
 
         return (
             <>

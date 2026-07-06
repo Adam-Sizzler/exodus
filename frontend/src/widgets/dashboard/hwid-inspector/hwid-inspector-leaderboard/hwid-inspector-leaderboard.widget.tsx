@@ -1,14 +1,15 @@
-import { notifications } from '@mantine/notifications'
 import { ActionIcon, Tooltip } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-import { DataTable } from 'mantine-datatable'
 import { useClipboard } from '@mantine/hooks'
-import { TbRefresh } from 'react-icons/tb'
+import { notifications } from '@mantine/notifications'
+import { DataTable } from 'mantine-datatable'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbRefresh } from 'react-icons/tb'
 
-import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
 import { useGetTopUsersByHwidDevices } from '@shared/api/hooks'
 import { sToMs } from '@shared/utils/time-utils'
+
+import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
 
 import { getHwidInspectorLeaderboardColumns } from './get-hwid-inspector-leaderboard-columns'
 

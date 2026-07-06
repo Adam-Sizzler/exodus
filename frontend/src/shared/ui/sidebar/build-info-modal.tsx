@@ -12,9 +12,9 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
+import { GetMetadataCommand } from '@exodus/backend-contract'
 import {
     TbBrandGithub,
-    TbBrandTelegram,
     TbCalendar,
     TbCheck,
     TbCopy,
@@ -23,41 +23,20 @@ import {
     TbServer,
     TbWorld
 } from 'react-icons/tb'
-import { GetMetadataCommand } from '@exodus/backend-contract'
 
 import { formatTimeUtil } from '@shared/utils/time-utils'
 
 import { CopyableCodeBlock } from '../copyable-code-block'
-import classes from './build-info-modal.module.css'
+import { app } from '../../../config'
 import { Logo } from '../logo'
+import classes from './build-info-modal.module.css'
 
 interface BuildInfoModalProps {
     isNewVersionAvailable: boolean
     exodusMetadata: GetMetadataCommand.Response['response']
 }
 
-function isKnownLink(value: string | undefined) {
-    return Boolean(value && value !== 'unknown')
-}
-
-function getRepositoryUrl(exodusMetadata: BuildInfoModalProps['exodusMetadata']) {
-    if (isKnownLink(exodusMetadata.git.repositoryUrl)) {
-        return exodusMetadata.git.repositoryUrl
-    }
-
-    const commitUrl = exodusMetadata.git.backend.commitUrl
-    const markerIndex = commitUrl.indexOf('/commit/')
-    if (markerIndex > 0) {
-        return commitUrl.slice(0, markerIndex)
-    }
-
-    return commitUrl
-}
-
 export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildInfoModalProps) {
-    const repositoryUrl = getRepositoryUrl(exodusMetadata)
-    const hasRepositoryUrl = isKnownLink(repositoryUrl)
-
     return (
         <Stack gap="md">
             {isNewVersionAvailable && (
@@ -80,8 +59,8 @@ export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildI
                         <Button
                             color="teal"
                             component="a"
-                            href="https://t.me/exodus"
-                            leftSection={<TbBrandTelegram size={14} />}
+                            href={app.githubTags}
+                            leftSection={<TbBrandGithub size={14} />}
                             ml="auto"
                             radius="md"
                             size="xs"
@@ -234,21 +213,19 @@ export function BuildInfoModal({ exodusMetadata, isNewVersionAvailable }: BuildI
 
             <Group gap="sm" grow>
                 <Button
-                    color="cyan"
                     component="a"
-                    href="https://t.me/exodus"
-                    leftSection={<TbBrandTelegram size={16} />}
+                    href={app.githubTags}
+                    leftSection={<TbBrandGithub size={16} />}
                     radius="md"
                     size="sm"
                     target="_blank"
                     variant="light"
                 >
-                    Community
+                    Releases
                 </Button>
                 <Button
                     component="a"
-                    disabled={!hasRepositoryUrl}
-                    href={hasRepositoryUrl ? repositoryUrl : undefined}
+                    href={app.githubRepo}
                     leftSection={<TbBrandGithub size={16} />}
                     radius="md"
                     size="sm"

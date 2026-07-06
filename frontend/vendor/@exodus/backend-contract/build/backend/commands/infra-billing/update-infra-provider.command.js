@@ -9,7 +9,7 @@ var UpdateInfraProviderCommand;
 (function (UpdateInfraProviderCommand) {
     UpdateInfraProviderCommand.url = api_1.REST_API.INFRA_BILLING.UPDATE_PROVIDER;
     UpdateInfraProviderCommand.TSQ_url = UpdateInfraProviderCommand.url;
-    UpdateInfraProviderCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.UPDATE_PROVIDER, 'patch', 'Update infra provider');
+    UpdateInfraProviderCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.UPDATE_PROVIDER, 'patch', 'Update infra provider', { scope: 'update-provider', kind: 'write' });
     UpdateInfraProviderCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
         name: zod_1.z

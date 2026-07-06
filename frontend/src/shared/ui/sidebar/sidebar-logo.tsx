@@ -1,12 +1,12 @@
-import { useNavigate } from 'react-router-dom'
 import { Image } from '@mantine/core'
+import { useNavigate } from 'react-router'
 
 import { useGetAuthStatus } from '@shared/api/hooks/auth/auth.query.hooks'
 import { withBasePath } from '@shared/constants/base-path'
 import { ROUTES } from '@shared/constants'
 
-import classes from './sidebar.module.css'
 import { Logo } from '../logo'
+import classes from './sidebar.module.css'
 
 export const SidebarLogoShared = () => {
     const { data: authStatus } = useGetAuthStatus()

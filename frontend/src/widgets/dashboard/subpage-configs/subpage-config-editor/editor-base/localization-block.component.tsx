@@ -1,10 +1,10 @@
+import { Badge, Card, Divider, Group, ScrollArea, SimpleGrid, Stack } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
 import {
     getLanguagesArray,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageRawConfig
 } from '@exodus/subscription-page-types'
-import { Badge, Card, Divider, Group, ScrollArea, SimpleGrid, Stack } from '@mantine/core'
-import { UseFormReturnType } from '@mantine/form'
 import { IconGlobe } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 

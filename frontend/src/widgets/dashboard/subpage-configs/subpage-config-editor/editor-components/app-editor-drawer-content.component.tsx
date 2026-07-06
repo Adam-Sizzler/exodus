@@ -1,21 +1,21 @@
+import { Button, Card, Group, Stack, Switch, TextInput } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import {
     TSubscriptionPageAppConfig,
     TSubscriptionPageBlockConfig,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageSvgLibrary
 } from '@exodus/subscription-page-types'
-import { Button, Card, Group, Stack, Switch, TextInput } from '@mantine/core'
 import { IconChevronRight, IconPlus, IconStar } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { BlockEditorModal } from './block-editor.modal.component'
 import styles from '../subpage-config-visual-editor.module.css'
-import { SvgIconSelect } from './svg-icon-select.component'
 import { BlockCard } from './block-card.component'
+import { BlockEditorModal } from './block-editor.modal.component'
+import { SvgIconSelect } from './svg-icon-select.component'
 
 interface IProps {
     app: TSubscriptionPageAppConfig

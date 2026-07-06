@@ -327,7 +327,7 @@ func (nm *NodeMonitor) startNode(dbNode db.DBNode) {
 	nm.nodes[dbNode.Name] = state
 
 	// Mark as connecting in DB
-	nm.updateConnectionStatus(dbNode.Name, false, true, "Connecting...")
+	nm.updateConnectionStatus(dbNode.Name, false, true, "")
 
 	go nm.monitorNode(state)
 
@@ -487,7 +487,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	// still be stopped (autostart=false) or failed. Keep the in-memory transport
 	// state ready for deploy tasks, while DB is_connected follows Remnawave-style
 	// core readiness and will be finalized by deploy result / stats.
-	nm.updateConnectionStatus(state.nodeName, false, true, "Connected to node app; starting core...")
+	nm.updateConnectionStatus(state.nodeName, false, true, "")
 
 	nm.cfg.Logger.Info("Node control-plane connected", "node", state.nodeName)
 	nm.RequestDeploy(true, state.nodeUUID)
@@ -623,7 +623,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	coreError := strings.TrimSpace(values["core_error"])
 	switch coreStatus {
 	case "running", "ok", "healthy":
-		nm.updateConnectionStatus(nodeName, true, false, "Connected")
+		nm.updateConnectionStatus(nodeName, true, false, "")
 	case "error", "failed", "unhealthy", "stopped":
 		message := "Core error"
 		if coreError != "" {
@@ -1140,8 +1140,18 @@ func (nm *NodeMonitor) clearDisconnectedNodeRuntimeFields(ctx context.Context, n
 	return nil
 }
 
+func optionalStatusMessage(message string) (string, any) {
+	trimmed := strings.TrimSpace(message)
+	if trimmed == "" {
+		return "", nil
+	}
+	return trimmed, trimmed
+}
+
 // updateConnectionStatus updates node connection status in database (only on change).
 func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isConnecting bool, message string) {
+	message, messageDBValue := optionalStatusMessage(message)
+
 	var notificationEvent notifications.Event
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		// Get current status
@@ -1186,7 +1196,7 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 			    is_connecting = ?,
 			    last_status_message = ?,
 			    last_status_change = CURRENT_TIMESTAMP`
-		args := []any{isConnected, isConnecting, message}
+		args := []any{isConnected, isConnecting, messageDBValue}
 		query += `,
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE name = ?`

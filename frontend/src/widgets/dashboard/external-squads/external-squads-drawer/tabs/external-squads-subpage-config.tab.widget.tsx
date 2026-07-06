@@ -1,12 +1,12 @@
-import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { Button, Paper, Select, Stack, Text } from '@mantine/core'
+import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { IconPalette } from '@tabler/icons-react'
-import { TbDeviceFloppy } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbDeviceFloppy } from 'react-icons/tb'
 
-import { QueryKeys, useGetSubscriptionPageConfigs, useUpdateExternalSquad } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useGetSubscriptionPageConfigs, useUpdateExternalSquad } from '@shared/api/hooks'
 
 interface IProps {
     externalSquad: GetExternalSquadByUuidCommand.Response['response']

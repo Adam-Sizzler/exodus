@@ -1,12 +1,13 @@
-import { useMediaQuery } from '@mantine/hooks'
-import { TbTerminal } from 'react-icons/tb'
-import { em, Modal } from '@mantine/core'
+import { Modal } from '@mantine/core'
 import { motion } from 'motion/react'
+import { TbTerminal } from 'react-icons/tb'
+
+import { useGetNodes } from '@shared/api/hooks'
+import { useIsMobile } from '@shared/hooks'
+import { LoaderModalShared } from '@shared/ui/loader-modal'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { LoaderModalShared } from '@shared/ui/loader-modal'
-import { useGetNodes } from '@shared/api/hooks'
 
 import { NodePluginExecutorContent } from './node-plugin-executor.content'
 
@@ -16,7 +17,7 @@ export const NodePluginExecutorDrawer = () => {
 
     const { data: nodes, isLoading } = useGetNodes()
 
-    const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
+    const isMobile = useIsMobile()
 
     return (
         <Modal

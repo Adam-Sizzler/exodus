@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import {
     BulkDeleteHostsCommand,
     BulkDisableHostsCommand,
@@ -5,11 +6,9 @@ import {
     CreateHostCommand,
     DeleteHostCommand,
     ReorderHostCommand,
-    SetInboundToManyHostsCommand,
-    SetPortToManyHostsCommand,
-    UpdateHostCommand
+    UpdateHostCommand,
+    UpdateManyHostsCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 
@@ -19,13 +18,6 @@ export const useCreateHost = createMutationHook({
     responseSchema: CreateHostCommand.ResponseSchema,
     requestMethod: CreateHostCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Host created successfully',
-                color: 'teal'
-            })
-        },
         onError: (error) => {
             notifications.show({
                 title: `Create Host`,
@@ -174,46 +166,22 @@ export const useBulkDisableHosts = createMutationHook({
     }
 })
 
-export const useSetInboundHosts = createMutationHook({
-    endpoint: SetInboundToManyHostsCommand.TSQ_url,
-    bodySchema: SetInboundToManyHostsCommand.RequestSchema,
-    responseSchema: SetInboundToManyHostsCommand.ResponseSchema,
-    requestMethod: SetInboundToManyHostsCommand.endpointDetails.REQUEST_METHOD,
+export const useUpdateManyHosts = createMutationHook({
+    endpoint: UpdateManyHostsCommand.TSQ_url,
+    bodySchema: UpdateManyHostsCommand.RequestSchema,
+    responseSchema: UpdateManyHostsCommand.ResponseSchema,
+    requestMethod: UpdateManyHostsCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
                 title: 'Success',
-                message: 'Hosts inbound set successfully',
+                message: 'Hosts updated successfully',
                 color: 'teal'
             })
         },
         onError: (error) => {
             notifications.show({
-                title: `Set Inbound To Many Hosts`,
-                message:
-                    error instanceof Error ? error.message : `Request failed with unknown error.`,
-                color: 'red'
-            })
-        }
-    }
-})
-
-export const useSetPortToManyHosts = createMutationHook({
-    endpoint: SetPortToManyHostsCommand.TSQ_url,
-    bodySchema: SetPortToManyHostsCommand.RequestSchema,
-    responseSchema: SetPortToManyHostsCommand.ResponseSchema,
-    requestMethod: SetPortToManyHostsCommand.endpointDetails.REQUEST_METHOD,
-    rMutationParams: {
-        onSuccess: () => {
-            notifications.show({
-                title: 'Success',
-                message: 'Hosts port set successfully',
-                color: 'teal'
-            })
-        },
-        onError: (error) => {
-            notifications.show({
-                title: `Set Port To Many Hosts`,
+                title: `Update Many Hosts`,
                 message:
                     error instanceof Error ? error.message : `Request failed with unknown error.`,
                 color: 'red'

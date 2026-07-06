@@ -28,16 +28,7 @@
 }
 
 .card {
-    background: linear-gradient(
-        135deg,
-        var(--mantine-color-dark-6) 0%,
-        var(--mantine-color-dark-7) 100%
-    );
     animation: fadeIn 200ms linear both;
-    border-top: none;
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        0 2px 8px rgba(0, 0, 0, 0.05);
     position: relative;
 }
 

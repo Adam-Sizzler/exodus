@@ -1,8 +1,8 @@
-import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
-import { TbDevices, TbIcons, TbLanguage, TbReplace } from 'react-icons/tb'
 import { Divider, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
+import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
+import { useTranslation } from 'react-i18next'
+import { TbDevices, TbIcons, TbLanguage, TbReplace } from 'react-icons/tb'
 
 import { ActionCardShared } from '@shared/ui'
 

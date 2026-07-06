@@ -47,7 +47,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -61,7 +61,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -80,7 +80,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -100,7 +100,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -123,7 +123,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -146,7 +146,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -171,7 +171,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;
@@ -196,7 +196,7 @@ export declare namespace GetAllSubscriptionsCommand {
                     username: string;
                     shortUuid: string;
                     trafficLimitBytes: string;
-                    trafficLimitStrategy: "MONTH" | "MONTH_ROLLING" | "NO_RESET" | "DAY" | "WEEK";
+                    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                     trafficUsedBytes: string;
                     daysLeft: number;
                     trafficUsed: string;

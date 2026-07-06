@@ -1,21 +1,24 @@
-import { TbCloud, TbCreditCard, TbPlus, TbRefresh, TbServer } from 'react-icons/tb'
 import { ActionIcon, Group, Stack, Tabs, Transition } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbCloud, TbCreditCard, TbPlus, TbRefresh, TbServer } from 'react-icons/tb'
 
 import {
-    useGetInfraBillingHistoryRecords,
+    useGetInfraBillingHistoryRecordsInfinite,
     useGetInfraBillingNodes,
     useGetInfraProviders
 } from '@shared/api/hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { LoadingScreen } from '@shared/ui'
 
-import { MobileProvidersListWidget } from './mobile-providers-list.widget'
-import { MobileRecordsListWidget } from './mobile-records-list.widget'
-import { MobileNodesListWidget } from './mobile-nodes-list.widget'
-import { MobileStatsWidget } from './mobile-stats.widget'
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+
 import styles from './mobile-infra-billing.module.css'
+import { MobileNodesListWidget } from './mobile-nodes-list.widget'
+import { MobileProvidersListWidget } from './mobile-providers-list.widget'
+import { MobileStatsWidget } from './mobile-stats.widget'
+import { VirtualizedRecordsList } from './virtualized-records-list.widget'
+
+const RECORDS_HEIGHT = 'calc(100vh - 280px)'
 
 type TabValue = 'nodes' | 'providers' | 'records'
 
@@ -34,13 +37,22 @@ export function MobileInfraBillingWidget() {
         isRefetching: isInfraBillingNodesRefetching
     } = useGetInfraBillingNodes()
     const {
-        data: infraBillingRecords,
+        data: infraBillingRecordsData,
         refetch: refetchRecords,
         isLoading: isInfraBillingRecordsLoading,
-        isRefetching: isInfraBillingRecordsRefetching
-    } = useGetInfraBillingHistoryRecords({
-        query: { start: 0, size: 200 }
-    })
+        isRefetching: isInfraBillingRecordsRefetching,
+        fetchNextPage: fetchNextRecordsPage,
+        hasNextPage: hasNextRecordsPage,
+        isFetchingNextPage: isFetchingNextRecordsPage
+    } = useGetInfraBillingHistoryRecordsInfinite()
+
+    const billingRecords = infraBillingRecordsData?.pages.flatMap((page) => page.records) ?? []
+
+    const handleLoadMoreRecords = () => {
+        if (hasNextRecordsPage && !isFetchingNextRecordsPage) {
+            fetchNextRecordsPage()
+        }
+    }
 
     const openModalWithData = useModalsStoreOpenWithData()
     const { t } = useTranslation()
@@ -73,7 +85,7 @@ export function MobileInfraBillingWidget() {
         isInfraBillingRecordsLoading ||
         !infraBillingNodes ||
         !infraProviders ||
-        !infraBillingRecords
+        !infraBillingRecordsData
     ) {
         return <LoadingScreen />
     }
@@ -88,6 +100,7 @@ export function MobileInfraBillingWidget() {
                     tabLabel: styles.tabLabel
                 }}
                 color="cyan"
+                keepMountedMode="display-none"
                 onChange={(value) => {
                     if (value) {
                         setActiveTab(value as TabValue)
@@ -134,8 +147,11 @@ export function MobileInfraBillingWidget() {
                         transition="fade"
                     >
                         {(styles) => (
-                            <MobileRecordsListWidget
-                                records={infraBillingRecords.records}
+                            <VirtualizedRecordsList
+                                height={RECORDS_HEIGHT}
+                                isLoadingMore={isFetchingNextRecordsPage}
+                                onReachBottom={handleLoadMoreRecords}
+                                records={billingRecords}
                                 refetchRecords={refetchRecords}
                                 style={styles}
                             />

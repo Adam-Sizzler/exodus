@@ -1,0 +1,82 @@
+.navRow {
+    display: flex;
+    align-items: stretch;
+    height: 52px;
+    border-top: 1px solid light-dark(rgb(0, 0, 0, 0.06), rgb(255, 255, 255, 0.06));
+}
+
+.navBar {
+    height: 100%;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.navItem {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    padding-inline: 12px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+    background-color: transparent;
+    border-radius: 0;
+    transition:
+        color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.navItem:hover,
+.navItem:focus-visible,
+.navItem[data-expanded] {
+    color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
+    background-color: light-dark(var(--mantine-color-gray-0), rgb(255, 255, 255, 0.03));
+}
+
+/* keep the active section tinted even while its dropdown is open */
+.navItemActive:hover,
+.navItemActive:focus-visible,
+.navItemActive[data-expanded] {
+    color: var(--mantine-color-cyan-4);
+}
+
+.navItemActive {
+    color: var(--mantine-color-cyan-4);
+    text-shadow:
+        0.25px 0 currentColor,
+        -0.25px 0 currentColor;
+}
+
+.navItemActive::after {
+    content: '';
+    position: absolute;
+    inset-inline: 8px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--mantine-color-cyan-4);
+}
+
+/* guarantees consistent icon size for react-icons AND custom logo components */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    color: currentColor;
+}
+
+.icon svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.caret {
+    opacity: 0.45;
+}
+
+/* active dropdown item: tint only the icon, no competing background */
+.menuItemActive .icon {
+    color: var(--mantine-color-cyan-4);
+}

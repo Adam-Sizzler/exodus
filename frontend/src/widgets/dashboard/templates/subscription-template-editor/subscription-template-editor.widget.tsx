@@ -1,19 +1,22 @@
 import type { editor } from 'monaco-editor'
 
-import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
-import Editor, { Monaco } from '@monaco-editor/react'
-import 'monaco-yaml/yaml.worker'
+import { TemplateEditorActionsFeature } from '@features/dashboard/subscription-templates/template-editor-actions'
 import { Box, Card, Paper } from '@mantine/core'
+import Editor, { Monaco } from '@monaco-editor/react'
+import 'monaco-yaml/yaml.worker.js'
+import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
+import { decode } from '@stablelib/base64'
+import clsx from 'clsx'
 import { useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { decode } from '@stablelib/base64'
 
-import { TemplateEditorActionsFeature } from '@features/dashboard/subscription-templates/template-editor-actions'
 import { monacoTheme } from '@shared/constants/monaco-theme/monaco-theme'
+import { usePseudoFullscreen } from '@shared/hooks'
+import { fullscreenClasses, FullscreenToggleButton } from '@shared/ui'
 import { preventBackScroll } from '@shared/utils/misc'
 
-import { configureMonaco } from './utils/setup-template-monaco'
 import styles from './SubscriptionTemplateEditor.module.css'
+import { configureMonaco } from './utils/setup-template-monaco'
 
 interface Props {
     editorType: 'json' | 'yaml'
@@ -24,6 +27,8 @@ interface Props {
 export function SubscriptionTemplateEditorWidget(props: Props) {
     const { t } = useTranslation()
     const { editorType, hosts, template } = props
+
+    const { isFullscreen, toggle: toggleFullscreen } = usePseudoFullscreen()
 
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
     const monacoRef = useRef<Monaco | null>(null)
@@ -76,15 +81,18 @@ export function SubscriptionTemplateEditorWidget(props: Props) {
     }, [])
 
     return (
-        <Box className={styles.container}>
+        <Box className={clsx(styles.container, isFullscreen && fullscreenClasses.overlay)}>
             <Paper
-                className={styles.editorWrapper}
+                className={clsx(styles.editorWrapper, isFullscreen && fullscreenClasses.fill)}
                 p={0}
+                pos="relative"
                 style={{
                     direction: 'ltr'
                 }}
                 withBorder
             >
+                <FullscreenToggleButton isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
+
                 <Editor
                     beforeMount={handleEditorWillMount}
                     className={styles.monacoEditor}
@@ -141,13 +149,15 @@ export function SubscriptionTemplateEditorWidget(props: Props) {
                 />
             </Paper>
 
-            <Card className={styles.footer} h="auto" m="0" mt="md" pos="sticky">
-                <TemplateEditorActionsFeature
-                    editorRef={editorRef}
-                    editorType={editorType}
-                    template={template}
-                />
-            </Card>
+            {!isFullscreen && (
+                <Card className={styles.footer} h="auto" m="0" pos="sticky">
+                    <TemplateEditorActionsFeature
+                        editorRef={editorRef}
+                        editorType={editorType}
+                        template={template}
+                    />
+                </Card>
+            )}
         </Box>
     )
 }

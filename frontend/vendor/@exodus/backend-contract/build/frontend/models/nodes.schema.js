@@ -4,11 +4,13 @@ exports.NodesSchema = void 0;
 const zod_1 = require("zod");
 const config_profile_inbounds_schema_1 = require("./config-profile-inbounds.schema");
 const infra_provider_schema_1 = require("./infra-provider.schema");
+const node_system_schema_1 = require("./node-system.schema");
 exports.NodesSchema = zod_1.z.object({
     uuid: zod_1.z.string().uuid(),
     name: zod_1.z.string(),
     address: zod_1.z.string(),
     port: zod_1.z.nullable(zod_1.z.number().int()),
+    proxyUrl: zod_1.z.nullable(zod_1.z.string()).optional().default(null),
     isConnected: zod_1.z.boolean(),
     isDisabled: zod_1.z.boolean(),
     isConnecting: zod_1.z.boolean(),
@@ -19,20 +21,16 @@ exports.NodesSchema = zod_1.z.object({
     lastStatusMessage: zod_1.z.nullable(zod_1.z.string()),
     singboxVersion: zod_1.z.nullable(zod_1.z.string()),
     nodeVersion: zod_1.z.nullable(zod_1.z.string()),
-    singboxUptime: zod_1.z.number(),
     isTrafficTrackingActive: zod_1.z.boolean(),
     trafficResetDay: zod_1.z.nullable(zod_1.z.number().int()),
     trafficLimitBytes: zod_1.z.nullable(zod_1.z.number()),
     trafficUsedBytes: zod_1.z.nullable(zod_1.z.number()),
     notifyPercent: zod_1.z.nullable(zod_1.z.number().int()),
-    usersOnline: zod_1.z.nullable(zod_1.z.number().int()),
     viewPosition: zod_1.z.number().int(),
     countryCode: zod_1.z.string(),
     consumptionMultiplier: zod_1.z.number(),
+    nodeConsumptionMultiplier: zod_1.z.number().optional().default(1),
     tags: zod_1.z.array(zod_1.z.string()),
-    cpuCount: zod_1.z.nullable(zod_1.z.number().int()),
-    cpuModel: zod_1.z.nullable(zod_1.z.string()),
-    totalRam: zod_1.z.nullable(zod_1.z.string()),
     createdAt: zod_1.z
         .string()
         .datetime()
@@ -47,4 +45,13 @@ exports.NodesSchema = zod_1.z.object({
     }),
     providerUuid: zod_1.z.nullable(zod_1.z.string().uuid()),
     provider: zod_1.z.nullable(infra_provider_schema_1.PartialInfraProviderSchema),
+    activePluginUuid: zod_1.z.nullable(zod_1.z.string().uuid()),
+    system: zod_1.z.nullable(node_system_schema_1.NodeSystemSchema),
+    versions: zod_1.z.nullable(zod_1.z.object({
+        singbox: zod_1.z.string(),
+        node: zod_1.z.string(),
+    })),
+    singboxUptime: zod_1.z.number(),
+    usersOnline: zod_1.z.number(),
+    note: zod_1.z.nullable(zod_1.z.string()).optional().default(null),
 });

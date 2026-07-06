@@ -1,0 +1,24 @@
+.root {
+    background-color: var(--mantine-color-default);
+}
+
+.indicator {
+    background: color-mix(in srgb, var(--mantine-primary-color-6) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--mantine-primary-color-6) 30%, transparent);
+    box-shadow: none;
+}
+
+.label {
+    color: var(--mantine-color-dimmed);
+    font-weight: 500;
+    transition: color 150ms ease;
+}
+
+.label:hover {
+    color: var(--mantine-color-text);
+}
+
+.label[data-active],
+.label[data-active]:hover {
+    color: var(--mantine-primary-color-4);
+}

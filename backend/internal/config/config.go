@@ -69,6 +69,8 @@ type SchedulerConfig struct {
 	BandwidthUsageNotificationsThreshold     []int
 	NotConnectedUsersNotificationsEnabled    bool
 	NotConnectedUsersNotificationsAfterHours []int
+	ExpirationNotificationsEnabled           bool
+	ExpirationNotifications                  []int
 }
 
 type NotificationsConfig struct {
@@ -190,6 +192,8 @@ var defaultConfig = BackendConfig{
 		BandwidthUsageNotificationsThreshold:     nil,
 		NotConnectedUsersNotificationsEnabled:    false,
 		NotConnectedUsersNotificationsAfterHours: nil,
+		ExpirationNotificationsEnabled:           false,
+		ExpirationNotifications:                  nil,
 	},
 	CORS: CORSConfig{
 		AllowedOrigins: []string{},
@@ -512,6 +516,19 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Scheduler.NotConnectedUsersNotificationsAfterHours = parsed
 		}
 	}
+	if value := envFirst("EXPIRATION_NOTIFICATIONS_ENABLED"); value != "" {
+		cfg.Scheduler.ExpirationNotificationsEnabled = parseBoolEnv(value)
+	}
+	if value := envFirst("EXPIRATION_NOTIFICATIONS"); value != "" {
+		parsed, err := parseExpirationNotificationIntervals(value)
+		if err != nil {
+			if cfg.Logger != nil {
+				cfg.Logger.Warn("Invalid EXPIRATION_NOTIFICATIONS value, ignoring", "error", err)
+			}
+		} else {
+			cfg.Scheduler.ExpirationNotifications = parsed
+		}
+	}
 }
 
 func parseTelegramTarget(rawTarget string) (string, string) {
@@ -713,6 +730,45 @@ func parseIntJSONArray(value string) ([]int, error) {
 	if err := json.Unmarshal([]byte(trimmed), &result); err != nil {
 		return nil, err
 	}
+	return result, nil
+}
+
+func parseExpirationNotificationIntervals(value string) ([]int, error) {
+	result, err := parseIntJSONArray(value)
+	if err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("EXPIRATION_NOTIFICATIONS must not be empty")
+	}
+
+	negativeCount := 0
+	positiveCount := 0
+	seen := make(map[int]struct{}, len(result))
+	for i, interval := range result {
+		if interval == 0 || interval < -168 || interval > 168 {
+			return nil, fmt.Errorf("all expiration values must be non-zero integers between -168 and 168")
+		}
+		if i > 0 && interval <= result[i-1] {
+			return nil, fmt.Errorf("EXPIRATION_NOTIFICATIONS values must be in strictly ascending order")
+		}
+		if _, exists := seen[interval]; exists {
+			return nil, fmt.Errorf("EXPIRATION_NOTIFICATIONS must not contain duplicate values")
+		}
+		seen[interval] = struct{}{}
+		if interval < 0 {
+			negativeCount++
+		} else {
+			positiveCount++
+		}
+	}
+	if negativeCount > 5 {
+		return nil, fmt.Errorf("EXPIRATION_NOTIFICATIONS must contain at most 5 negative values")
+	}
+	if positiveCount > 5 {
+		return nil, fmt.Errorf("EXPIRATION_NOTIFICATIONS must contain at most 5 positive values")
+	}
+
 	return result, nil
 }
 

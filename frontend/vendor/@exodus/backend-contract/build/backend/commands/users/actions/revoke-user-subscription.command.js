@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RevokeUserSubscriptionCommand = void 0;
 const zod_1 = require("zod");
+const api_1 = require("../../../api");
 const constants_1 = require("../../../constants");
 const models_1 = require("../../../models");
-const api_1 = require("../../../api");
 var RevokeUserSubscriptionCommand;
 (function (RevokeUserSubscriptionCommand) {
     RevokeUserSubscriptionCommand.url = api_1.REST_API.USERS.ACTIONS.REVOKE_SUBSCRIPTION;
     RevokeUserSubscriptionCommand.TSQ_url = RevokeUserSubscriptionCommand.url(':uuid');
-    RevokeUserSubscriptionCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.ACTIONS.REVOKE_SUBSCRIPTION(':uuid'), 'post', 'Revoke user subscription');
+    RevokeUserSubscriptionCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.ACTIONS.REVOKE_SUBSCRIPTION(':uuid'), 'post', 'Revoke user subscription', { scope: 'revoke-subscription', kind: 'write' });
     RevokeUserSubscriptionCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

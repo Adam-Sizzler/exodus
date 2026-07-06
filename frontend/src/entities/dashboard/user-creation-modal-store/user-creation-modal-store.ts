@@ -1,8 +1,8 @@
 import { devtools } from 'zustand/middleware'
 
-import { create } from '@shared/hocs/store-wrapper'
-import { QueryKeys } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'
+import { QueryKeys } from '@shared/api/hooks'
+import { create } from '@shared/hocs/store-wrapper'
 
 import { IActions, IState } from './interfaces'
 

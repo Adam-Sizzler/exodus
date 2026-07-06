@@ -104,7 +104,33 @@ export declare const Oauth2SettingsSchema: z.ZodObject<{
         withPkce: boolean;
         tokenUrl: string | null;
     }>>;
+    telegram: z.ZodDefault<z.ZodObject<{
+        enabled: z.ZodBoolean;
+        clientId: z.ZodNullable<z.ZodString>;
+        clientSecret: z.ZodNullable<z.ZodString>;
+        allowedIds: z.ZodArray<z.ZodString, "many">;
+        frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+    }, "strip", z.ZodTypeAny, {
+        enabled: boolean;
+        clientId: string | null;
+        clientSecret: string | null;
+        frontendDomain: string | null;
+        allowedIds: string[];
+    }, {
+        enabled: boolean;
+        clientId: string | null;
+        clientSecret: string | null;
+        frontendDomain: string | null;
+        allowedIds: string[];
+    }>>;
 }, "strip", z.ZodTypeAny, {
+    telegram: {
+        enabled: boolean;
+        clientId: string | null;
+        clientSecret: string | null;
+        frontendDomain: string | null;
+        allowedIds: string[];
+    };
     github: {
         enabled: boolean;
         clientId: string | null;
@@ -163,6 +189,13 @@ export declare const Oauth2SettingsSchema: z.ZodObject<{
         clientSecret: string | null;
         allowedEmails: string[];
     };
+    telegram?: {
+        enabled: boolean;
+        clientId: string | null;
+        clientSecret: string | null;
+        frontendDomain: string | null;
+        allowedIds: string[];
+    } | undefined;
     keycloak?: {
         enabled: boolean;
         clientId: string | null;

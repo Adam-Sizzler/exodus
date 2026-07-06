@@ -28,7 +28,6 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
 			outbounds = items
 		}
 	}
-	leadingSelectorNodeTags := make([]string, 0, len(hosts))
 	trailingSelectorNodeTags := make([]string, 0, len(hosts))
 	for _, host := range hosts {
 		if host.IsHidden {
@@ -43,14 +42,10 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
 		if tag == "" {
 			continue
 		}
-		if host.SelectorNodesFirst {
-			leadingSelectorNodeTags = append(leadingSelectorNodeTags, tag)
-		} else {
-			trailingSelectorNodeTags = append(trailingSelectorNodeTags, tag)
-		}
+		trailingSelectorNodeTags = append(trailingSelectorNodeTags, tag)
 	}
 	baseConfig.Set("outbounds", outbounds)
-	patchSingboxSelectors(baseConfig, leadingSelectorNodeTags, trailingSelectorNodeTags)
+	patchSingboxSelectors(baseConfig, nil, trailingSelectorNodeTags)
 	data, err := json.MarshalIndent(baseConfig, "", "  ")
 	if err != nil {
 		return "", err

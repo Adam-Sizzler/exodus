@@ -2,11 +2,11 @@ import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
-import { generatePath, useNavigate } from 'react-router-dom'
+import { generatePath, useNavigate } from 'react-router'
 
-import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
-import { getCoreLogoFromType } from '@shared/ui'
 import { ROUTES } from '@shared/constants'
+import { getCoreLogoFromType } from '@shared/ui'
+import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 
 interface IProps {
     templates: GetSubscriptionTemplatesCommand.Response['response']['templates']

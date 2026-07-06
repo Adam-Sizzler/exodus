@@ -12,7 +12,6 @@
         "overview": "نمای کلی",
         "management": "مدیریت",
         "subscription-settings": "تنظیمات اشتراک",
-        "subscription-connections": "نودها",
         "utils": "ابزارهای کاربردی",
         "happ-routing-builder": "مسیرساز برای Happ",
         "templates": "قالب‌ها",
@@ -21,14 +20,17 @@
         "config-profiles": "پروفایل‌های کانفیگ",
         "internal-squads": "اسکوادهای داخلی",
         "external-squads": "اسکوادهای خارجی",
-        "srs-lists": "SRS Lists",
         "infra-billing": "صورتحساب‌های تجهیزات",
         "hwid-inspector": "بازرسی HWID",
         "tools": "ابزارها",
         "srh-inspector": "بازرسی SRH",
         "response-rules": "قوانین پاسخ",
         "exodus-settings": "تنظیمات Exodus",
-        "node-plugins": "Plugins"
+        "node-plugins": "Plugins",
+        "tb-reports": "Torrent Blocker Reports",
+        "sessions-explorer": "Sessions Explorer",
+        "subscription-connections": "نودها",
+        "srs-lists": "SRS Lists"
     },
     "common": {
         "delete": "حذف",
@@ -36,6 +38,7 @@
         "cancel": "لغو",
         "copied": "کپی شد",
         "copy": "کپی",
+        "paste": "Paste",
         "refresh": "تازه‌سازی",
         "save": "ذخیره",
         "update": "به‌روزرسانی",
@@ -60,7 +63,13 @@
         "nothing-found": "چیزی یافت نشد",
         "name": "اسم",
         "clone": "همانندسازی",
-        "event-sent": "رویداد ارسال شد"
+        "event-sent": "رویداد ارسال شد",
+        "open": "Open",
+        "view": "View",
+        "clear": "Clear",
+        "color": "Color",
+        "all": "All",
+        "without-tags": "Without tags"
     },
     "bandwidth-metrics": {
         "current-year": "امسال",
@@ -153,7 +162,8 @@
         "internal-squads": "اسکوادهای داخلی",
         "first-connected-at": "اولین اتصال",
         "sub-last-opened-at": "آخرین دریافت اشتراک",
-        "tag": "برچسب"
+        "tag": "برچسب",
+        "used-traffic": "Used Traffic (%)"
     },
     "header-buttons": {
         "feature": {}
@@ -297,8 +307,6 @@
             "pick-value": "انتخاب مقدار",
             "traffic-reset-strategy": "دوره بازنشانی ترافیک",
             "traffic-reset-strategy-description": "هر چند وقت یک بار ترافیک کاربر بازنشانی شود",
-            "data-limit": "محدودیت ترافیک",
-            "data-limit-description": "محدودیت ترافیک را به گیگابایت وارد کنید (0 به معنی نامحدود است)",
             "username-cannot-be-changed-later": "نام کاربری نمی تواند بعدا تغییر داده شود",
             "loading-user-creation": "در حال بارگذاری صفحه ساخت کاربر ...",
             "create-user": "ساخت کاربر",
@@ -313,7 +321,9 @@
             "hwid-device-limit": "لیمیت دستگاه براساس HWID",
             "expire-at-description": "تاریخ و ساعت منقضی شدن اشتراک کاربر.",
             "internal-squads": "اسکوادهای داخلی",
-            "internal-squads-description": "اسکوادهایی که کاربر عضو آن‌ها خواهد بود را مشخص کنید."
+            "internal-squads-description": "اسکوادهایی که کاربر عضو آن‌ها خواهد بود را مشخص کنید.",
+            "data-limit": "محدودیت ترافیک",
+            "data-limit-description": "محدودیت ترافیک را به گیگابایت وارد کنید (0 به معنی نامحدود است)"
         }
     },
     "login-form-feature": {
@@ -371,8 +381,6 @@
         "path-e-g-ws": "مسیر (مثلا /ws)",
         "security-layer": "لایه امنیتی",
         "tls-transport-layer-security": "TLS (امنیت لایه حمل و نقل)",
-        "uuid-override-placeholder": "UUID (برای مثال، 00000000-0000-0000-0000-000000000000)",
-        "password-override-placeholder": "رمز عبور (برای مثال، my-secret-password)",
         "none": "هیچ کدام",
         "inbounds-default": "پیش فرض اینباند",
         "here-you-can-override-security-settings-from-xtls-config": "در اینجا می توانید تنظیمات امنیتی را از پیکربندی XTLS نادیده بگیرید.",
@@ -392,10 +400,8 @@
         "select-one-inbound-to-apply-to-the-host": "یک اینباند برای اعمال روی هاست انتخاب کنید",
         "server-description-header": "توضیحات سرور",
         "server-description-placeholder": "حداکثر 30 کاراکتر",
-        "this-will-only-be-used-for-xray-json-output": "این مقادیر فقط در خروجی Xray JSON استفاده خواهد شد.",
-        "this-will-only-be-used-for-selected-core-output": "این مقادیر فقط در خروجی {{core}} استفاده خواهد شد.",
+        "this-will-only-be-used-for-xray-json-output": "این مقادیر فقط در خروجی Singbox JSON استفاده خواهد شد.",
         "please-ensure-you-provide-a-valid-json-mux-object": "لطفا از صحت JSON وارد شده برای Mux اطمینان حاصل کنید",
-        "please-ensure-you-provide-a-valid-yaml-mux-object": "لطفا از صحت YAML وارد شده برای Mux اطمینان حاصل کنید",
         "for-more-information-refer-to": "برای اطلاعات بیشتر مراجعه کنید به",
         "xtls-documentation": "مستندات XTLS",
         "final-mask-description": "The finalMask override allows you to fine-tune the finalMask in cases where the server-side and client-side finalMask configurations need to differ.<br/><br/>FinalMask will only be applied to Xray-JSON and Base64 client output formats.<br/><br/>Make sure to review the <anchor>Xray documentation</anchor>.",
@@ -406,7 +412,6 @@
         "advanced": "پیشرفته",
         "connection-overrides": "تنظیمات اجباری اتصال",
         "xray-json-and-raw": "Config & Raw",
-        "mux-core": "MUX Core",
         "hide-host": "مخفی کردن هاست",
         "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "مخفی کردن هاست از کاربران، Exodus این هاست را فقط برای درخواست‌های اشتراک خام ارسال خواهد کرد",
         "apps-specific": "مختص نرم‌افزارها",
@@ -419,21 +424,10 @@
         "override-sni-from-address": "بازنویسی SNI از آدرس دامنه",
         "override-sni-from-address-description": "این گزینه مقدار SNI را با آدرس مشخص شده جایگزین خواهد کرد که برای کانفیگ‌های چند دامنه‌ای و wildcard قابل استفاده می‌باشد",
         "legacy-options": "تنظیمات قدیمی",
-        "allow-insecure": "اجازه اتصال ناامن",
         "shuffled-hosts-hover-card": "هاست‌های به هم زده شده در بالای لیست قرار گرفته و به صورت تصادفی مرتب خواهند شد.",
-        "override-protocol-credential": "Override protocol credential",
-        "override-protocol-credential-select-inbound": "Select an inbound on the Basic tab",
-        "override-protocol-credential-unsupported": "Selected inbound protocol is not supported",
-        "uuid-for-all-users": "UUID for all users",
-        "password-for-all-users": "Password for all users",
-        "uuid-override": "UUID override",
-        "password-override": "Password override",
-        "generate-protocol-credential": "Generate credential",
-        "replaces-user-credential": "Replaces the user's protocol credential when generating configs.",
+        "vless-route-description": "از 1 تا 65535، برای غیرفعال‌سازی 0 یا خالی بگذارید",
         "misc-settings": "تنظیمات متفرقه",
         "shuffle-host": "به هم زدن هاست‌ها",
-        "selector-nodes-first": "نود در ابتدای Selector",
-        "selector-nodes-first-description": "برای گروه‌های select در Sing-box و Mihomo. روشن: این نود قبل از موارد قالب مثل auto قرار می‌گیرد. خاموش: بعد از آن‌ها.",
         "mihomo-specific": "مخصوص Mihomo",
         "enable-x25519mlkem768": "فعالسازی x25519mlkem768",
         "pick-nodes-which-resolved-from-this-host-only-visual-assignment": "نودهایی که از طریق این هاست استفاده می‌شوند را انتخاب کنید. (تاثیر عملکردی ندارد و فقط جنبه نمایشی دارد)",
@@ -451,7 +445,24 @@
         "hidden-host-description": "By default, Exodus will not include hidden hosts in the subscription. Hidden host can be used with Mihomo and Xray-Json Advanced, Raw.",
         "server-description-1": "In supported clients, the protocol name (e.g. vless) will be replaced with the description specified here.",
         "server-description-2": "Not all client applications support this feature. For more details, refer to the documentation of the apps listed below.",
-        "supported-clients": "Supported clients"
+        "supported-clients": "Supported clients",
+        "uuid-override-placeholder": "UUID (برای مثال، 00000000-0000-0000-0000-000000000000)",
+        "password-override-placeholder": "رمز عبور (برای مثال، my-secret-password)",
+        "this-will-only-be-used-for-selected-core-output": "این مقادیر فقط در خروجی {{core}} استفاده خواهد شد.",
+        "please-ensure-you-provide-a-valid-yaml-mux-object": "لطفا از صحت YAML وارد شده برای Mux اطمینان حاصل کنید",
+        "mux-core": "MUX Core",
+        "allow-insecure": "اجازه اتصال ناامن",
+        "override-protocol-credential": "Override protocol credential",
+        "override-protocol-credential-select-inbound": "Select an inbound on the Basic tab",
+        "override-protocol-credential-unsupported": "Selected inbound protocol is not supported",
+        "uuid-for-all-users": "UUID for all users",
+        "password-for-all-users": "Password for all users",
+        "uuid-override": "UUID override",
+        "password-override": "Password override",
+        "generate-protocol-credential": "Generate credential",
+        "replaces-user-credential": "Replaces the user's protocol credential when generating configs.",
+        "selector-nodes-first": "نود در ابتدای Selector",
+        "selector-nodes-first-description": "برای گروه‌های select در Sing-box و Mihomo. روشن: این نود قبل از موارد قالب مثل auto قرار می‌گیرد. خاموش: بعد از آن‌ها."
     },
     "base-node-form": {
         "country": "کشور",
@@ -460,7 +471,6 @@
         "internal-name-placeholder": "برای مثال US-NY-Node-01",
         "address": "آدرس",
         "e-g-example-com": "مثلا example.com",
-        "consumption-multiplier": "ضریب مصرف ترافیک",
         "traffic-tracking": "پایش مصرف ترافیک",
         "limit": "حد مصرف",
         "reset-day": "روز صفر کردن ترافیک",
@@ -476,7 +486,8 @@
         "more-actions": "عملیات بیشتر",
         "quick-actions": "عملیات سریع",
         "copy-node-uuid": "کپی کردن UUID نود",
-        "management": "مدیریت"
+        "management": "مدیریت",
+        "consumption-multiplier": "ضریب مصرف ترافیک"
     },
     "home": {
         "page": {
@@ -487,6 +498,26 @@
             "exodus-usage": "مصرف منابع Exodus",
             "process-details": "مشخصات Process",
             "runtime": "Runtime"
+        },
+        "runtime-info": {
+            "title": "Exodus Runtime Metrics Guide",
+            "subtitle": "What every number on a runtime card actually means",
+            "intro": "Each card shows a live snapshot of a single <highlight>Exodus Go process</highlight>. Use this guide to understand what each metric measures and when to worry about it.",
+            "instance-types-title": "Process",
+            "instance-types-description": "Exodus currently reports one Go runtime process. This card describes the API process that serves the panel, subscriptions, and node coordination.",
+            "api-description": "Handles dashboard API requests, subscription endpoints, and coordination with nodes. This is the <highlight>main user-facing process</highlight>.",
+            "scheduler-description": "Runs periodic maintenance and notification checks without blocking request handling.",
+            "processor-description": "Runs background work such as <highlight>node health checks</highlight>, <highlight>traffic aggregation</highlight>, and other long-running operations.",
+            "memory-description": "Memory reported by the Go runtime and the operating system for the Exodus process.",
+            "heap-description": "Go heap shown as <highlight>heap alloc / heap sys</highlight>. Alloc is live heap memory; sys is heap memory reserved from the OS by Go.",
+            "rss-description": "<highlight>Resident Set Size</highlight> — the total physical memory the OS has given to the process, including the heap, native code, and shared libraries. The best single signal of <highlight>how much RAM this process is actually using</highlight>.",
+            "external-description": "<highlight>Go Sys</highlight> is total memory obtained from the OS by the Go runtime.",
+            "array-buffers-description": "<highlight>Stack</highlight> is memory currently used by goroutine stacks.",
+            "event-loop-description": "Go scheduler health. These values show whether goroutines are waiting too long to run.",
+            "delay-description": "Average scheduler delay. Lower is better; sustained growth can indicate CPU pressure or blocking work.",
+            "p99-description": "<highlight>99th percentile</highlight> scheduler delay. It reveals latency spikes that the average can hide.",
+            "active-handles-description": "<highlight>Goroutines</highlight> are lightweight Go tasks. Unbounded growth usually points to a leak or stuck work.",
+            "threads-description": "OS threads used by the Go process."
         }
     },
     "login-form": {
@@ -633,35 +664,15 @@
             "set-port": "تنظیم پورت",
             "port": "پورت",
             "clear-selection": "پاک کردن انتخاب",
-            "select-all": "انتخاب همه"
+            "select-all": "انتخاب همه",
+            "dangling-hosts-skipped": "{{count}} dangling host(s) were skipped and not cloned."
         }
     },
-    "srs-lists": {
-        "feature": {
-            "available": "Available",
-            "unavailable": "Unavailable",
-            "add-links": "Add links",
-            "optional-for-single-url": "Optional for one URL",
-            "multiple-urls-hint": "One or multiple URLs separated by spaces, commas or new lines",
-            "selected": "Selected",
-            "selected-count": "Selected",
-            "delete-selected-title": "Delete selected SRS lists",
-            "set-update-interval": "Set update interval",
-            "update-interval": "Update interval",
-            "search-by-name": "Search by name",
-            "search-by-address": "Search by address",
-            "last-error": "Error",
-            "search-by-url": "Search by URL",
-            "filters": "Filters",
-            "filter-by-tags": "Filter by tags",
-            "all-tags": "All tags",
-            "enabled": "Enabled",
-            "disabled": "Disabled",
-            "urls": "URLs",
-            "edit-list": "Edit SRS list",
-            "url": "URL",
-            "status": "Status"
-        }
+    "edit-many-hosts-drawer": {
+        "confirm-title": "Confirm bulk update",
+        "confirm-description": "The following fields will be updated for {{count}} host(s):",
+        "no-changes-title": "Nothing to update",
+        "no-changes-description": "You haven't changed any fields."
     },
     "bulk-user-actions-drawer": {
         "widget": {
@@ -733,15 +744,15 @@
                     "perform-action-on-users": "انجام اقدامات برای {{usersCount}} کاربر انتخاب‌شده",
                     "resets-the-traffic-usage-to-zero-for-all-selected-users": "ترافیک مصرفی را برای همه کاربران انتخاب‌شده به صفر بازنشانی می‌کند",
                     "revokes-subscription-for-all-selected-users": "اشتراک را برای همه کاربران انتخاب‌شده لغو می‌کند",
-                    "change-active-internal-squads": "تغییر دادن اسکوادهای فعال",
                     "specify-internal-squads-that-will-be-assigned-to-the-user": "اسکوادهایی که این کاربر عضو آن‌ها خواهد شد را مشخص کنید",
                     "internal-squads": "اسکوادهای داخلی",
-                    "changes-the-active-internal-squads-for-all-selected-users": "اسکوادهای فعال را برای همه کاربران انتخاب شده تغییر می‌دهد",
                     "extend-expiration-date": "تمدید زمان انقضا",
                     "enter-the-number-of-days-to-extend-the-expiration-date": "تعداد روزهایی که به زمان اشتراک افزوده می‌شوند.",
                     "extend-days": "روزهای تمدید ",
                     "extend": "تمدید",
-                    "extend-expiration-date-description": "افزودن به تعداد روزهای باقی مانده تا انقضای کاربرهای انتخاب شده."
+                    "extend-expiration-date-description": "افزودن به تعداد روزهای باقی مانده تا انقضای کاربرهای انتخاب شده.",
+                    "change-active-internal-squads": "تغییر دادن اسکوادهای فعال",
+                    "changes-the-active-internal-squads-for-all-selected-users": "اسکوادهای فعال را برای همه کاربران انتخاب شده تغییر می‌دهد"
                 }
             }
         },
@@ -864,7 +875,6 @@
             "revoked-at": "لغو شده در",
             "connection-information": "اطلاعات اتصال",
             "trojan-password": "رمز عبور تروجان",
-            "vless-uuid": "(UUID) شناسه VLESS",
             "ss-password": "رمز عبور SS",
             "last-online": "آخرین آنلاین",
             "last-connected-node": "آخرین نود متصل‌شده",
@@ -873,7 +883,8 @@
             "updated-at": "به‌روزرسانی شده در",
             "tag": "برچسب",
             "first-connected-at": "اولین اتصال",
-            "active-internal-squads": "اسکوادهای داخلی فعال"
+            "active-internal-squads": "اسکوادهای داخلی فعال",
+            "vless-uuid": "(UUID) شناسه VLESS"
         }
     },
     "subscription-tabs": {
@@ -1030,6 +1041,8 @@
             "nodes": "نودها",
             "download": "دانلود",
             "quick-view": "نمای سریع",
+            "edit-xray-config": "Singbox Config",
+            "xray-config": "Singbox Config",
             "edit-singbox-config": "پیکربندی Singbox"
         }
     },
@@ -1139,7 +1152,10 @@
                 "please-select-a-provider-and-billing-node": "لطفاً یک ارائه‌دهنده و نود صورتحساب انتخاب کنید",
                 "billing-node": "نود صورتحساب",
                 "next-billing-at": "صورتحساب بعدی در",
-                "next-billing-at-description": "تاریخ و زمانی که نود صورتحساب بعدی صادر می‌شود. Exodus شما را مطلع خواهد کرد."
+                "next-billing-at-description": "تاریخ و زمانی که نود صورتحساب بعدی صادر می‌شود. Exodus شما را مطلع خواهد کرد.",
+                "existing-node": "Existing node",
+                "custom-name": "Custom name",
+                "custom-name-description": "Use a custom name when the node is not managed by Exodus."
             }
         }
     },
@@ -1240,9 +1256,9 @@
     "show-config-profiles-with-inbounds": {
         "feature": {
             "config-profile": "پروفایل پیکربندی",
-            "select-the-config-profile-that-will-be-applied-to-this-node": "پروفایل پیکربندی که به این نود اعمال می‌شود را انتخاب کنید",
             "no-config-profile-selected": "هیچ پروفایلی انتخاب نشده است",
-            "choose-a-profile-to-configure-inbounds-for-this-node": "یک پروفایل برای پیکربندی اینباند برای این نود انتخاب کنید"
+            "choose-a-profile-to-configure-inbounds-for-this-node": "یک پروفایل برای پیکربندی اینباند برای این نود انتخاب کنید",
+            "select-the-config-profile-that-will-be-applied-to-this-node": "پروفایل پیکربندی که به این نود اعمال می‌شود را انتخاب کنید"
         }
     },
     "access-settings-card": {
@@ -1264,11 +1280,12 @@
                 "unknown-inbound": "اینباند ناشناخته",
                 "selected": "انتخاب شده",
                 "no-inbound-selected": "هیچ اینباندی انتخاب نشده است",
-                "choose-an-inbound-to-apply-to-the-host": "یک اینباند برای اعمال به هاست انتخاب کنید.",
-                "apply-changes": "اعمال تغییرات",
                 "search-profiles-or-inbounds": "جستجوی پروفایل یا اینباند...",
                 "no-profiles-or-inbounds-found": "هیچ پروفایل یا اینباند یافت نشد",
-                "no-config-profiles-available": "هیچ پروفایل تنظیمات در دسترس نیست"
+                "no-config-profiles-available": "هیچ پروفایل تنظیمات در دسترس نیست",
+                "assign-an-inbound-to-the-host": "Assign an inbound to the host",
+                "choose-an-inbound-to-apply-to-the-host": "یک اینباند برای اعمال به هاست انتخاب کنید.",
+                "apply-changes": "اعمال تغییرات"
             }
         }
     },
@@ -1280,7 +1297,12 @@
             "payments-in": "پرداخت‌ها در {{month}}",
             "total-payments-made": "کل پرداخت‌های انجام شده",
             "total-spent": "کل هزینه شده",
-            "lifetime-spending": "هزینه کل طول عمر"
+            "lifetime-spending": "هزینه کل طول عمر",
+            "overdue": "Overdue",
+            "payment-overdue": "payment overdue",
+            "all-up-to-date": "all up to date",
+            "next-payment": "Next payment",
+            "no-upcoming-payments": "no upcoming payments"
         }
     },
     "edit-node-by-uuid-modal": {
@@ -1299,6 +1321,16 @@
             "address": "آدرس",
             "filter-by-tags": "فیلتر بر اساس برچسب"
         }
+    },
+    "disclaimer-overlay": {
+        "title": "Disclaimer",
+        "subtitle": "Please read this notice before you continue.",
+        "intro": "Exodus is an <highlight>open-source, self-hosted</highlight> proxy and user-management tool. It is provided <warning>\"as is\", without any warranty</warning> of any kind, express or implied.",
+        "responsibility": "You are <highlight>solely responsible</highlight> for how you deploy and use this software.",
+        "compliance": "You must comply with <highlight>all laws and regulations</highlight> applicable in your jurisdiction.",
+        "liability": "The developers and contributors accept <warning>no liability</warning> for any misuse, damage, or data loss.",
+        "license-acknowledgement": "By continuing you acknowledge that you have read and agree to the <anchor>license terms</anchor>.",
+        "accept-button": "I understand and accept"
     },
     "mobile-warning-overlay": {
         "mobile-device-detected": "دستگاه موبایل شناسایی شد",
@@ -1332,7 +1364,9 @@
     },
     "restart-node-button": {
         "feature": {
-            "restart": "راه‌اندازی مجدد"
+            "restart": "راه‌اندازی مجدد",
+            "restart-description-line-1": "ensures that the node completely restarts the Xray core. It is recommended option.",
+            "restart-description-line-2": "will send a request to this node to restart Xray, but request can be unfulfilled if the node hash is the same as the current one."
         }
     },
     "node-details-card": {
@@ -1345,22 +1379,9 @@
             "enable-node": "فعالسازی نود",
             "disable-node": "غیرفعالسازی نود",
             "config-profile-or-inbounds-is-missing": "پروفایل پیکربندی یا اینباند وجود ندارد",
-            "singbox-core-version": "نسخه هسته Singbox",
-            "exodus-node-version": "نسخه نود، @exodus/node"
-        }
-    },
-    "node-system-card": {
-        "widget": {
-            "system-info": "System Info",
-            "memory": "Memory",
-            "used": "Used",
-            "free": "Free",
-            "total": "Total",
-            "system": "System",
-            "system-uptime": "System Uptime",
-            "network": "Network",
-            "kernel": "Kernel",
-            "interface": "Interface"
+            "xray-core-version": "Singbox Core Version",
+            "exodus-node-version": "نسخه نود، @exodus/node",
+            "singbox-core-version": "نسخه هسته Singbox"
         }
     },
     "config-profiles": {
@@ -1369,11 +1390,11 @@
                 "config-profiles": "پروفایل‌های پیکربندی",
                 "no-profile-selected": "پروفایلی انتخاب نشده",
                 "no-inbounds-selected": "اینباندی انتخاب نشده است",
-                "choose-config-profile-to-apply-to-the-node": "پروفایل پیکربندی‌ای که روی نود اعمال خواهد شد را انتخاب کنید.",
-                "apply-changes": "اعمال تغییرات",
                 "search-profiles-or-inbounds": "جستجوی پروفایل یا اینباند...",
                 "no-profiles-or-inbounds-found": "پروفایل یا اینباندی یافت نشد",
-                "no-config-profiles-available": "پروفایل پیکربندی‌ای موجود نیست"
+                "no-config-profiles-available": "پروفایل پیکربندی‌ای موجود نیست",
+                "choose-config-profile-to-apply-to-the-node": "پروفایل پیکربندی‌ای که روی نود اعمال خواهد شد را انتخاب کنید.",
+                "apply-changes": "اعمال تغییرات"
             }
         }
     },
@@ -1406,6 +1427,7 @@
         "card": {
             "stats": "آمار",
             "traffic-refill-in-days": "شارژ ترافیک در (روز):",
+            "represents-the-uptime-of-the-xray-core": "Represents the uptime of the Singbox Core",
             "represents-the-uptime-of-the-singbox-core": "نشان‌دهنده آپتایم هسته Singbox",
             "represents-the-uptime-of-the-subscription-node-container": "نشان‌دهنده زمان کارکرد کانتینر نود اشتراک"
         }
@@ -1528,7 +1550,7 @@
                 "snippets-help-line-2": "هر قطعه کد باید شامل آرایه‌ای از اشیا Outbound یا Rule باشد و باید حداقل یک آیتم داخل آرایه وجود داشته باشد.",
                 "snippets-help-line-3": "برای اسم قطعه کدها تکمیل خودکار در دسترس است. همچنین با بردن نشانگر موس روی اسم اسنیپت می‌توانید پیش‌نمایش سریعی از محتوای آن را مشاهده کنید.",
                 "snippets-help-line-4": "داخل آرایه outbounds[] می‌توانید به اسم قطعه کدها اشاره کنید.",
-                "snippets-help-line-5": "داخل آرایه routing.rules[] می‌توانید به اسم قطعه کدها اشاره کنید."
+                "snippets-help-line-5": "داخل آرایه route.rules[] می‌توانید به اسم قطعه کدها اشاره کنید."
             }
         }
     },
@@ -1552,14 +1574,16 @@
         "copy-the": "محتوای",
         "content-for-the-exodus-node-below": "زیر را برای نود کپی کنید.",
         "learn-more": "اطلاعات بیشتر.",
-        "domain-or-ip": "دامنه یا آیپی"
+        "domain-or-ip": "دامنه یا آیپی",
+        "additional-options": "Additional options"
     },
     "create-node-step-3-status": {
         "establishing-mtls-connection": "درحال برقراری اتصال mTLS",
-        "singbox-core-is-up-and-running": "هسته Singbox درحال اجرا می‌باشد!",
+        "xray-core-is-up-and-running": "Singbox Core is up and running!",
         "exodus-will-try-to-reconnect-shortly": "به زودی Exodus برای اتصال مجدد تلاش خواهد کرد",
         "no-errros-so-far": "تا کنون خطایی وجود نداشته است",
-        "last-error-message": "آخرین پیام خطا"
+        "last-error-message": "آخرین پیام خطا",
+        "singbox-core-is-up-and-running": "هسته Singbox درحال اجرا می‌باشد!"
     },
     "external-squad-card": {
         "widget": {
@@ -1710,12 +1734,29 @@
             "color-format-note": "💡 رنگ مشخص شده فقط برای کلمه‌ای که به نشانگر رنگ چسبیده اعمال می‌شود. بدون نشانگر، متن سفیدرنگ خواهد بود."
         }
     },
+    "visual-settings-card": {
+        "widget": {
+            "layout-style": "Layout Style",
+            "choose-how-the-desktop-navigation-is-displayed": "Choose how the desktop navigation is displayed",
+            "compact": "Compact",
+            "sidebar": "Sidebar"
+        }
+    },
     "api-tokens-card": {
         "widget": {
             "api-tokens-description": "توکن‌های API خود را مدیریت کنید.",
             "api-tokens": "توکن‌های API",
             "no-api-tokens-found": "هیچ توکن API یافت نشد",
-            "token-name": "نام توکن"
+            "token-name": "نام توکن",
+            "create-api-token": "Create API Token",
+            "full-access": "Full access",
+            "col-scopes": "Scopes",
+            "col-created": "Created",
+            "col-expires": "Expires",
+            "expired": "Expired",
+            "expires-in-days": "Expires in (days)",
+            "expires-in": "Expires",
+            "one-time-notice": "For security reasons, the token is shown <emphasis>only once</emphasis> right after creation. Make sure to copy and store it somewhere safe — you won't be able to see it again."
         }
     },
     "external-squads-hosts": {
@@ -1807,12 +1848,13 @@
         "traffic-used": "ترافیک استفاده‌شده",
         "config-profile": "پروفایل پیکربندی",
         "inbounds": "اینباندها",
-        "singbox-v": "نسخه هسته Singbox",
+        "xray-v": "نسخه هسته Xray",
         "node-v": "نسخه نود",
         "provider": "ارائه‌دهنده",
         "tags": "برچسب‌ها",
         "total-ram": "کل RAM",
-        "cpu-model": "مدل پردازنده"
+        "cpu-model": "مدل پردازنده",
+        "singbox-v": "نسخه هسته Singbox"
     },
     "subpage-config-visual-editor": {
         "widget": {
@@ -2031,7 +2073,9 @@
         "contact-information": "مشخصات تماس"
     },
     "traffic-limits-card": {
-        "traffic-and-limits": "محدودیت ترافیک"
+        "traffic-and-limits": "محدودیت ترافیک",
+        "traffic-limit-description": "0 means unlimited",
+        "traffic-limit": "Traffic limit"
     },
     "node-plugin-editor-page": {
         "component": {
@@ -2043,7 +2087,9 @@
             "plugin": "Plugin",
             "review-documentation-for-more-information": "Review documentation for more information.",
             "nothing-found": "Nothing found...",
-            "select-plugin": "Select plugin"
+            "select-plugin": "Select plugin",
+            "proxy-url": "Proxy URL",
+            "proxy-url-description": "Optional. If provided, internal API connection from panel to node will be proxied through this proxy."
         }
     },
     "node-plugin-card": {
@@ -2174,7 +2220,9 @@
             "billing-nodes": "Billing nodes",
             "upcoming": "Upcoming",
             "per-month": "Per month",
-            "total-spent": "Total spent"
+            "total-spent": "Total spent",
+            "overdue": "Overdue",
+            "no-upcoming": "No upcoming"
         }
     },
     "mobile-providers-list": {
@@ -2186,6 +2234,79 @@
         "widget": {
             "history": "History",
             "providers": "Providers"
+        }
+    },
+    "prime-modal": {
+        "shared": {
+            "description": "Back the project and become part of its inner circle - closer to the team, the roadmap, and the work itself.",
+            "priority-support-title": "Priority Support",
+            "priority-support-description": "Skip the queue - your questions are answered first, directly by the team.",
+            "private-community-title": "Private Community",
+            "private-community-description": "A closed circle of Prime members.",
+            "shape-the-roadmap-title": "Shape the Roadmap",
+            "shape-the-roadmap-description": "Vote on what gets built next and help steer where the project goes.",
+            "direct-developer-access-title": "Direct Developer Access",
+            "direct-developer-access-description": "A direct line to the developer - no tickets, no middlemen.",
+            "join-button": "Join RW Prime"
+        }
+    },
+    "hosts-datatable": {
+        "widget": {
+            "reset-sort": "Reset sort"
+        }
+    },
+    "columns-visibility-popover": {
+        "show-all": "Show all",
+        "hide-all": "Hide all"
+    },
+    "use-hosts-table-widget": {
+        "disabled": "Disabled",
+        "enabled": "Enabled",
+        "hidden": "Hidden"
+    },
+    "node-tracking-and-billing": {
+        "card": {
+            "note": "Note"
+        }
+    },
+    "node-consumption": {
+        "card": {
+            "node-consumption-multiplier-1": "Applies selected multiplier to Node traffic (1.0 = normal, 0.5 = half, 2.0 = double).",
+            "node-consumption-multiplier-2": "Mainly used for accurate display of usage limits when traffic tracking is enabled. The node consumption multiplier does not affect detailed statistics display (on graphs).",
+            "node-consumption-multiplier": "Node Consumption Multiplier",
+            "user-consumption-multiplier": "User Consumption Multiplier"
+        }
+    },
+    "keypair-generator": {
+        "widget": {
+            "generate": "Generate"
+        }
+    },
+    "srs-lists": {
+        "feature": {
+            "available": "Available",
+            "unavailable": "Unavailable",
+            "add-links": "Add links",
+            "optional-for-single-url": "Optional for one URL",
+            "multiple-urls-hint": "One or multiple URLs separated by spaces, commas or new lines",
+            "selected": "Selected",
+            "selected-count": "Selected",
+            "delete-selected-title": "Delete selected SRS lists",
+            "set-update-interval": "Set update interval",
+            "update-interval": "Update interval",
+            "search-by-name": "Search by name",
+            "search-by-address": "Search by address",
+            "last-error": "Error",
+            "search-by-url": "Search by URL",
+            "filters": "Filters",
+            "filter-by-tags": "Filter by tags",
+            "all-tags": "All tags",
+            "enabled": "Enabled",
+            "disabled": "Disabled",
+            "urls": "URLs",
+            "edit-list": "Edit SRS list",
+            "url": "URL",
+            "status": "Status"
         }
     }
 }

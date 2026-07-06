@@ -39,7 +39,7 @@ export interface CreateMutationHookArgs<
         z.infer<ResponseSchema>['response'],
         Error,
         z.infer<BodySchema>,
-        z.infer<RouteParamsSchema>
+        unknown
     >
 
     /** Custom error handler function */

@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResponseRuleSchema = exports.ResponseRuleSchemaBase = void 0;
 const zod_1 = require("zod");
-const response_rules_examples_1 = require("./response-rules-examples");
 const constants_1 = require("../../constants");
-const response_rule_modifications_schema_1 = require("./response-rule-modifications.schema");
 const response_rule_condition_schema_1 = require("./response-rule-condition.schema");
+const response_rule_modifications_schema_1 = require("./response-rule-modifications.schema");
+const response_rules_examples_1 = require("./response-rules-examples");
 exports.ResponseRuleSchemaBase = zod_1.z.object({
     name: zod_1.z
         .string()

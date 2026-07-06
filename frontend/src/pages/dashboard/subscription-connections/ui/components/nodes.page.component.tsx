@@ -1,5 +1,4 @@
 /* eslint-disable no-nested-ternary */
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import { Grid, Stack } from '@mantine/core'
 import { HiServer } from 'react-icons/hi'
@@ -14,6 +13,7 @@ import { EditNodeByUuidModalWidget } from '@widgets/dashboard/subscription-conne
 import { CreateNodeModalWidget } from '@widgets/dashboard/subscription-connections/create-node-modal'
 import { NodesTableWidget } from '@widgets/dashboard/subscription-connections/nodes-table'
 import { LoadingScreen, Page, PageHeaderShared } from '@shared/ui'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 
 import { IProps, NodesViewMode } from './interfaces'
 
@@ -23,9 +23,7 @@ export default function NodesPageComponent(props: IProps) {
     const { t } = useTranslation()
 
     const [viewMode, setViewMode] = useState<NodesViewMode>(NodesViewMode.CARDS)
-    const [selectedRecords, setSelectedRecords] = useState<
-        GetAllNodesCommand.Response['response'][number][]
-    >([])
+    const [selectedRecords, setSelectedRecords] = useState<SubscriptionConnectionResponse[]>([])
 
     return (
         <Page title={t('constants.subscription-connections')}>

@@ -25,34 +25,38 @@ type userNotificationRecord struct {
 }
 
 func (s *Scheduler) findUsersForExpireNotifications(ctx context.Context) error {
-	if !s.cfg.Scheduler.NotificationsEnabled {
+	if !s.cfg.Scheduler.NotificationsEnabled || !s.cfg.Scheduler.ExpirationNotificationsEnabled {
 		return nil
 	}
 
-	now := time.Now().UTC().Truncate(time.Minute)
-	windows := []struct {
-		name  string
-		start time.Time
-		end   time.Time
-	}{
-		{name: notifications.EventUserExpiresIn72Hours, start: now.Add(72 * time.Hour), end: now.Add(72*time.Hour + time.Minute)},
-		{name: notifications.EventUserExpiresIn48Hours, start: now.Add(48 * time.Hour), end: now.Add(48*time.Hour + time.Minute)},
-		{name: notifications.EventUserExpiresIn24Hours, start: now.Add(24 * time.Hour), end: now.Add(24*time.Hour + time.Minute)},
-		{name: notifications.EventUserExpired24HoursAgo, start: now.Add(-24 * time.Hour), end: now.Add(-24*time.Hour + time.Minute)},
+	if len(s.cfg.Scheduler.ExpirationNotifications) == 0 {
+		s.cfg.Logger.Warn("Expiration notifications enabled without valid intervals")
+		return nil
 	}
 
-	for _, window := range windows {
-		users, err := s.usersByExpireAt(ctx, window.start, window.end)
+	now := time.Now().UTC()
+	for _, interval := range s.cfg.Scheduler.ExpirationNotifications {
+		target := now.Add(-time.Duration(interval) * time.Hour)
+		start := target.Truncate(time.Minute)
+		end := start.Add(time.Minute)
+
+		users, err := s.usersByExpireAt(ctx, start, end)
 		if err != nil {
 			return err
 		}
 		if len(users) > 0 {
-			s.cfg.Logger.Info("Users found for expiration notification", "event", window.name, "users", len(users))
+			s.cfg.Logger.Info("Users found for expiration notification", "users", len(users), "expiration_hours", interval)
+			skipTelegram := len(users) >= 500
 			for _, user := range users {
+				meta := map[string]any{"expiration": interval}
+				if skipTelegram {
+					meta["skipTelegramNotification"] = true
+				}
 				notifications.Emit(ctx, s.cfg, notifications.Event{
 					Scope: notifications.ScopeUser,
-					Event: window.name,
+					Event: notifications.EventUserExpiration,
 					Data:  user.notificationData(),
+					Meta:  meta,
 				})
 			}
 		}

@@ -28,6 +28,7 @@ export declare const REST_API: {
         readonly CREATE: "/api/tokens/";
         readonly DELETE: (uuid: string) => string;
         readonly GET: "/api/tokens/";
+        readonly GET_SCOPES: "/api/tokens/scopes";
     };
     readonly KEYGEN: {
         readonly GET: "/api/keygen/";
@@ -55,27 +56,11 @@ export declare const REST_API: {
             readonly UPDATE: "/api/nodes/bulk-actions/update";
         };
     };
-    readonly NODE_PLUGINS: {
-        readonly GET: (uuid: string) => string;
-        readonly GET_ALL: "/api/node-plugins/";
-        readonly UPDATE: "/api/node-plugins/";
-        readonly DELETE: (uuid: string) => string;
-        readonly CREATE: "/api/node-plugins/";
-        readonly ACTIONS: {
-            readonly REORDER: "/api/node-plugins/actions/reorder";
-            readonly CLONE: "/api/node-plugins/actions/clone";
-        };
-        readonly EXECUTOR: "/api/node-plugins/executor";
-        readonly TORRENT_BLOCKER: {
-            readonly GET_REPORTS: "/api/node-plugins/torrent-blocker";
-            readonly GET_REPORTS_STATS: "/api/node-plugins/torrent-blocker/stats";
-            readonly TRUNCATE_REPORTS: "/api/node-plugins/torrent-blocker/truncate";
-        };
-    };
     readonly USERS: {
         readonly CREATE: "/api/users/";
         readonly UPDATE: "/api/users/";
         readonly GET: "/api/users/";
+        readonly STREAM: "/api/users/stream";
         readonly DELETE: (uuid: string) => string;
         readonly GET_BY_UUID: (uuid: string) => string;
         readonly ACCESSIBLE_NODES: (uuid: string) => string;
@@ -95,6 +80,7 @@ export declare const REST_API: {
             readonly EMAIL: (email: string) => string;
             readonly TAG: (tag: string) => string;
         };
+        readonly RESOLVE: "/api/users/resolve";
         readonly BULK: {
             readonly DELETE_BY_STATUS: "/api/users/bulk/delete-by-status";
             readonly UPDATE: "/api/users/bulk/update";
@@ -115,7 +101,6 @@ export declare const REST_API: {
     };
     readonly SUBSCRIPTION: {
         readonly GET: (shortUuid: string) => string;
-        readonly GET_OUTLINE: (shortUuid: string) => string;
         readonly GET_INFO: (shortUuid: string) => string;
     };
     readonly HOSTS: {
@@ -131,8 +116,7 @@ export declare const REST_API: {
             readonly ENABLE_HOSTS: "/api/hosts/bulk/enable";
             readonly DISABLE_HOSTS: "/api/hosts/bulk/disable";
             readonly DELETE_HOSTS: "/api/hosts/bulk/delete";
-            readonly SET_INBOUND: "/api/hosts/bulk/set-inbound";
-            readonly SET_PORT: "/api/hosts/bulk/set-port";
+            readonly UPDATE: "/api/hosts/bulk/update";
         };
         readonly TAGS: {
             readonly GET: "/api/hosts/tags";
@@ -146,10 +130,10 @@ export declare const REST_API: {
             readonly BANDWIDTH_STATS: "/api/system/stats/bandwidth";
             readonly NODES_STATS: "/api/system/stats/nodes";
             readonly NODES_METRICS: "/api/system/nodes/metrics";
+            readonly RECAP: "/api/system/stats/recap";
         };
         readonly TOOLS: {
             readonly GENERATE_X25519: "/api/system/tools/x25519/generate";
-            readonly ENCRYPT_HAPP_CRYPTO_LINK: "/api/system/tools/happ/encrypt";
         };
         readonly TESTERS: {
             readonly SRR_MATCHER: "/api/system/testers/srr-matcher";
@@ -272,11 +256,29 @@ export declare const REST_API: {
             readonly CLONE: "/api/subscription-page-configs/actions/clone";
         };
     };
+    readonly NODE_PLUGINS: {
+        readonly GET: (uuid: string) => string;
+        readonly GET_ALL: "/api/node-plugins/";
+        readonly UPDATE: "/api/node-plugins/";
+        readonly DELETE: (uuid: string) => string;
+        readonly CREATE: "/api/node-plugins/";
+        readonly ACTIONS: {
+            readonly REORDER: "/api/node-plugins/actions/reorder";
+            readonly CLONE: "/api/node-plugins/actions/clone";
+        };
+        readonly EXECUTOR: "/api/node-plugins/executor";
+        readonly TORRENT_BLOCKER: {
+            readonly GET_REPORTS: "/api/node-plugins/torrent-blocker";
+            readonly GET_REPORTS_STATS: "/api/node-plugins/torrent-blocker/stats";
+            readonly TRUNCATE_REPORTS: "/api/node-plugins/torrent-blocker/truncate";
+        };
+    };
     readonly BANDWIDTH_STATS: {
         readonly NODES: {
             readonly GET: "/api/bandwidth-stats/nodes/";
             readonly GET_REALTIME: "/api/bandwidth-stats/nodes/realtime";
             readonly GET_USERS: (uuid: string) => string;
+            readonly GET_USERS_BY_NODES: "/api/bandwidth-stats/nodes/users";
         };
         readonly USERS: {
             readonly GET_BY_UUID: (uuid: string) => string;
@@ -294,6 +296,18 @@ export declare const REST_API: {
         readonly FETCH_IPS: (uuid: string) => string;
         readonly GET_FETCH_IPS_RESULT: (jobId: string) => string;
         readonly DROP_CONNECTIONS: "/api/ip-control/drop-connections";
+        readonly FETCH_USERS_IPS: (nodeUuid: string) => string;
+        readonly GET_FETCH_USERS_IPS_RESULT: (jobId: string) => string;
+    };
+    readonly METADATA: {
+        readonly NODE: {
+            readonly GET: (uuid: string) => string;
+            readonly UPSERT: (uuid: string) => string;
+        };
+        readonly USER: {
+            readonly GET: (uuid: string) => string;
+            readonly UPSERT: (uuid: string) => string;
+        };
     };
 };
 //# sourceMappingURL=routes.d.ts.map

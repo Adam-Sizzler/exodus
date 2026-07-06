@@ -1,11 +1,11 @@
 import type { editor } from 'monaco-editor'
 
-import { TSubscriptionTemplateType } from '@exodus/backend-contract'
-import { useTranslation } from 'react-i18next'
-import { notifications } from '@mantine/notifications'
-import { TbDownload } from 'react-icons/tb'
 import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import { TSubscriptionTemplateType } from '@exodus/backend-contract'
 import { RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbDownload } from 'react-icons/tb'
 
 import { IDownloadableSubscriptionTemplate } from '@shared/constants/templates'
 

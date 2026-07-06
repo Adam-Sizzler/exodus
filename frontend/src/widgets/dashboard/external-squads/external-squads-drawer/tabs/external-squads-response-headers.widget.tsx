@@ -1,14 +1,14 @@
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { ActionIcon, Alert, Button, Group, Paper, Stack, Text, TextInput } from '@mantine/core'
 import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAutoAnimate } from '@formkit/auto-animate/react'
+import { useTranslation } from 'react-i18next'
 import { PiInfo, PiPlus, PiTrash } from 'react-icons/pi'
 import { TbDeviceFloppy } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
 
-import { TemplateInfoPopoverShared } from '@shared/ui/popovers/template-info-popover/template-info-popover.shared'
-import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
+import { TemplateInfoPopoverShared } from '@shared/ui/popovers/template-info-popover/template-info-popover.shared'
 
 interface HeaderItem {
     key: string

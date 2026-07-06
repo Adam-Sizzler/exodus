@@ -2,21 +2,19 @@ html,
 body {
     min-height: 100vh;
     --custom-safe-area-top: env(safe-area-inset-top, 0px);
+
+    .mrt-table-head-sort-button {
+        border-radius: 0;
+        border: none;
+    }
+    .mrt-table-head-cell-filter-label-icon {
+        border-radius: 0;
+        border: none;
+    }
 }
 
 .root {
     height: 100vh;
-
-    @mixin dark {
-        .mrt-table-head-sort-button {
-            border-radius: 0;
-            border: none;
-        }
-        .mrt-table-head-cell-filter-label-icon {
-            border-radius: 0;
-            border: none;
-        }
-    }
 
     @supports (padding: env(safe-area-inset-top)) {
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
@@ -42,7 +40,7 @@ body {
 }
 
 [class*='MRT_TopToolbar-module_root-fullscreen'] {
-    margin-top: 64px !important;
+    margin-top: 116px !important;
     padding-top: env(safe-area-inset-top, 0px) !important;
 }
 

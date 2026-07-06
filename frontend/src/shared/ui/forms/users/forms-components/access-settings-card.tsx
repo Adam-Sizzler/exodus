@@ -1,21 +1,21 @@
+import { Select, Stack } from '@mantine/core'
+import { DateTimePicker, getTimeRange } from '@mantine/dates'
+import { UseFormReturnType } from '@mantine/form'
+import { notifications } from '@mantine/notifications'
 import {
     CreateUserCommand,
     GetExternalSquadsCommand,
     GetInternalSquadsCommand,
     UpdateUserCommand
 } from '@exodus/backend-contract'
-import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { DateTimePicker, getTimeRange } from '@mantine/dates'
-import { notifications } from '@mantine/notifications'
-import { TbShield, TbWebhook } from 'react-icons/tb'
-import { PiCalendarDuotone } from 'react-icons/pi'
-import { UseFormReturnType } from '@mantine/form'
-import { useTranslation } from 'react-i18next'
-import { Select, Stack } from '@mantine/core'
-import { useMemo, useState } from 'react'
-import dayjs from 'dayjs'
-
 import { InternalSquadsListWidget } from '@widgets/dashboard/users/internal-squads-list'
+import dayjs from 'dayjs'
+import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiCalendarDuotone } from 'react-icons/pi'
+import { TbShield, TbWebhook } from 'react-icons/tb'
+
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
@@ -176,6 +176,7 @@ export const AccessSettingsCard = <T extends CreateUserCommand.Request | UpdateU
                                 label: externalSquad.name,
                                 value: externalSquad.uuid
                             }))}
+                            limit={100}
                             defaultValue={form.values.externalSquadUuid}
                             description={t(
                                 'access-settings-card.select-an-external-squad-to-apply-custom-settings-to-this-user'

@@ -13,6 +13,9 @@ import {
     ThemeIcon,
     Tooltip
 } from '@mantine/core'
+import { GetNodesMetricsCommand } from '@exodus/backend-contract'
+import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
     PiArrowDownDuotone,
     PiArrowUpDuotone,
@@ -22,10 +25,7 @@ import {
     PiTag,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { GetNodesMetricsCommand } from '@exodus/backend-contract'
-import { useTranslation } from 'react-i18next'
 import { TbServer2 } from 'react-icons/tb'
-import { memo, useState } from 'react'
 
 import { SectionCard } from '@shared/ui/section-card'
 import { formatInt } from '@shared/utils/misc'

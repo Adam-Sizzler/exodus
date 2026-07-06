@@ -1,18 +1,18 @@
 import { Box, Center, Code, Drawer, Stack, Title, Typography } from '@mantine/core'
-import { TbAlertCircle, TbQuestionMark } from 'react-icons/tb'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TbAlertCircle, TbQuestionMark } from 'react-icons/tb'
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import remarkGfm from 'remark-gfm'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { withBasePath } from '@shared/constants/base-path'
 
-import { BaseOverlayHeader } from '../overlays/base-overlay-header'
-import { THelpDrawerAvailableScreen } from './help-drawer.types'
 import { LoaderModalShared } from '../loader-modal'
+import { BaseOverlayHeader } from '../overlays/base-overlay-header'
 import classes from './help-drawer.module.css'
+import { THelpDrawerAvailableScreen } from './help-drawer.types'
 
 const SUPPORTED_LANGUAGES = new Set(['en', 'fa', 'ru', 'zh'])
 

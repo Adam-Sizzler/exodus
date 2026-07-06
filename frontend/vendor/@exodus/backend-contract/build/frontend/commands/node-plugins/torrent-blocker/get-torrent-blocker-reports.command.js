@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetTorrentBlockerReportsCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../../models");
 const api_1 = require("../../../api");
 const constants_1 = require("../../../constants");
+const models_1 = require("../../../models");
 var GetTorrentBlockerReportsCommand;
 (function (GetTorrentBlockerReportsCommand) {
     GetTorrentBlockerReportsCommand.url = api_1.REST_API.NODE_PLUGINS.TORRENT_BLOCKER.GET_REPORTS;
     GetTorrentBlockerReportsCommand.TSQ_url = GetTorrentBlockerReportsCommand.url;
-    GetTorrentBlockerReportsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.TORRENT_BLOCKER.GET_REPORTS, 'get', 'Get Torrent Blocker Reports');
+    GetTorrentBlockerReportsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.TORRENT_BLOCKER.GET_REPORTS, 'get', 'Get Torrent Blocker Reports', { scope: 'torrent-blocker-reports', kind: 'read' });
     GetTorrentBlockerReportsCommand.RequestQuerySchema = models_1.TanstackQueryRequestQuerySchema;
     GetTorrentBlockerReportsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({

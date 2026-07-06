@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateUserCommand = void 0;
 const zod_1 = require("zod");
+const api_1 = require("../../api");
 const constants_1 = require("../../constants");
 const models_1 = require("../../models");
-const api_1 = require("../../api");
 var UpdateUserCommand;
 (function (UpdateUserCommand) {
     UpdateUserCommand.url = api_1.REST_API.USERS.UPDATE;
     UpdateUserCommand.TSQ_url = UpdateUserCommand.url;
-    UpdateUserCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.UPDATE, 'patch', 'Update a user by UUID or username');
+    UpdateUserCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.UPDATE, 'patch', 'Update a user by UUID or username', { scope: 'update', kind: 'write' });
     UpdateUserCommand.RequestSchema = zod_1.z
         .object({
         username: zod_1.z.optional(zod_1.z.string().describe('Username of the user')),
@@ -28,7 +28,6 @@ var UpdateUserCommand;
             .number({
             invalid_type_error: 'Traffic limit must be a number',
         })
-            .int('Traffic limit must be an integer')
             .min(0, 'Traffic limit must be greater than 0')
             .describe('Traffic limit in bytes. 0 - unlimited')
             .optional(),

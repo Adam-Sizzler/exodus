@@ -1,5 +1,6 @@
-import { useGetBandwidthStats, useGetExodusHealth, useGetSystemStats } from '@shared/api/hooks'
 import { HomePage } from '@pages/dashboard/home/components'
+
+import { useGetBandwidthStats, useGetExodusHealth, useGetSystemStats } from '@shared/api/hooks'
 import { LoadingScreen } from '@shared/ui/loading-screen'
 
 export const HomePageConnector = () => {

@@ -1,6 +1,6 @@
 import { Card, Center, ScrollArea, Skeleton, Stack, Text } from '@mantine/core'
-import { PiEmpty } from 'react-icons/pi'
 import { ReactNode } from 'react'
+import { PiEmpty } from 'react-icons/pi'
 
 import { LeaderboardItemCardShared } from './leaderboard-item-card.shared'
 
@@ -78,7 +78,8 @@ export function TopLeaderboardCardShared<T extends ITopLeaderboardItem>(props: I
                         {maxHeight ? (
                             <ScrollArea.Autosize
                                 mah={maxHeight}
-                                styles={{ scrollbar: { width: '10px' } }}
+                                scrollbars="y"
+                                styles={{ content: { minWidth: 0 }, scrollbar: { width: '10px' } }}
                                 type="hover"
                             >
                                 {content}

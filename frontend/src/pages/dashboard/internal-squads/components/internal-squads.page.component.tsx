@@ -1,14 +1,14 @@
-import { TbCirclesRelation } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
-
-import { InternalSquadAccessibleNodesModalWidget } from '@widgets/dashboard/internal-squads/internal-squad-accessible-nodes-modal/internal-squad-accessible-nodes.modal.widget'
-import { InternalSquadsSpotlightWidget } from '@widgets/dashboard/internal-squads/internal-squads-spotlight/internal-squads-spotlight'
-import { InternalSquadsGridWidget } from '@widgets/dashboard/internal-squads/internal-squads-grid/internal-squads-grid.widget'
 import { InternalSquadsHeaderActionButtonsFeature } from '@features/ui/dashboard/internal-squads/header-action-buttons'
+import { InternalSquadAccessibleNodesModalWidget } from '@widgets/dashboard/internal-squads/internal-squad-accessible-nodes-modal/internal-squad-accessible-nodes.modal.widget'
+import { InternalSquadsGridWidget } from '@widgets/dashboard/internal-squads/internal-squads-grid/internal-squads-grid.widget'
+import { InternalSquadsSpotlightWidget } from '@widgets/dashboard/internal-squads/internal-squads-spotlight/internal-squads-spotlight'
 import { InternalSquadsDrawerWithStore } from '@widgets/dashboard/users/internal-squads-drawer-with-store'
-import { PageHeaderShared } from '@shared/ui/page-header/page-header.shared'
+import { useTranslation } from 'react-i18next'
+import { TbCirclesRelation } from 'react-icons/tb'
+
 import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 import { Page } from '@shared/ui/page'
+import { PageHeaderShared } from '@shared/ui/page-header/page-header.shared'
 
 import { Props } from './interfaces'
 

@@ -11,6 +11,10 @@ import {
     Textarea,
     ThemeIcon
 } from '@mantine/core'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { useCallback, useState } from 'react'
+import ReactCountryFlag from 'react-country-flag'
+import { useTranslation } from 'react-i18next'
 import {
     TbAlertTriangle,
     TbArrowBackUp,
@@ -20,15 +24,11 @@ import {
     TbSend,
     TbServer2
 } from 'react-icons/tb'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
-import ReactCountryFlag from 'react-country-flag'
-import { useTranslation } from 'react-i18next'
-import { useCallback, useState } from 'react'
 import { z } from 'zod'
 
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useNodePluginExecutor } from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui/action-card'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
 interface IProps {

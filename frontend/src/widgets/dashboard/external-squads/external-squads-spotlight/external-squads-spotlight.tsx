@@ -1,11 +1,12 @@
-import { GetExternalSquadsCommand } from '@exodus/backend-contract'
 import { Badge, Group } from '@mantine/core'
-import { TbWebhook } from 'react-icons/tb'
+import { GetExternalSquadsCommand } from '@exodus/backend-contract'
 import { PiUsers } from 'react-icons/pi'
+import { TbWebhook } from 'react-icons/tb'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 import { formatInt } from '@shared/utils/misc'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     externalSquads: GetExternalSquadsCommand.Response['response']['externalSquads']

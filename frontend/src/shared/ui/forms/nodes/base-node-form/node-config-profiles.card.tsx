@@ -1,13 +1,13 @@
-import { ForwardRefComponent, HTMLMotionProps, motion, Variants } from 'motion/react'
-import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
-import { SiSecurityscorecard } from 'react-icons/si'
-import { UseFormReturnType } from '@mantine/form'
-import { Skeleton, Stack } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-
 import { ShowConfigProfilesWithInboundsFeature } from '@features/ui/dashboard/nodes/show-config-profiles-with-inbounds'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { Skeleton, Stack } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
+import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
+import { ForwardRefComponent, HTMLMotionProps, motion, Variants } from 'motion/react'
+import { useTranslation } from 'react-i18next'
+import { SiSecurityscorecard } from 'react-icons/si'
+
 import { useGetConfigProfiles } from '@shared/api/hooks'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
 interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {

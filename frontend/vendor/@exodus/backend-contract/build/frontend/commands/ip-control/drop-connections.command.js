@@ -8,7 +8,7 @@ var DropConnectionsCommand;
 (function (DropConnectionsCommand) {
     DropConnectionsCommand.url = api_1.REST_API.IP_CONTROL.DROP_CONNECTIONS;
     DropConnectionsCommand.TSQ_url = DropConnectionsCommand.url;
-    DropConnectionsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.DROP_CONNECTIONS, 'post', 'Drop Connections for Users or IPs');
+    DropConnectionsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.IP_CONTROL_ROUTES.DROP_CONNECTIONS, 'post', 'Drop Connections for Users or IPs', { scope: 'drop-connections', kind: 'write' });
     DropConnectionsCommand.DropBySchema = zod_1.z.discriminatedUnion('by', [
         zod_1.z
             .object({

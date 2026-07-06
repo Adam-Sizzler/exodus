@@ -11,9 +11,9 @@ import {
     UnstyledButton
 } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
 import ColorHash from 'color-hash'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { IDownloadableSubscriptionTemplate } from '@shared/constants/templates'
 
@@ -57,7 +57,7 @@ export const TemplateSelector = (props: TemplateSelectorProps) => {
             <Group grow justify="space-between">
                 <Button
                     component="a"
-                    href="https://github.com/Adam-Sizzler/exodus"
+                    href="https://github.com/exodus/templates"
                     target="_blank"
                     variant="light"
                 >

@@ -1,8 +1,8 @@
-import { ExternalSquadSubscriptionSettingsSchema } from '@exodus/backend-contract'
-import { PiClock, PiIdentificationBadge, PiLink } from 'react-icons/pi'
 import { ActionIcon, HoverCard, px, Stack, Text } from '@mantine/core'
-import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { ExternalSquadSubscriptionSettingsSchema } from '@exodus/backend-contract'
 import { TFunction } from 'i18next'
+import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { PiClock, PiIdentificationBadge, PiLink } from 'react-icons/pi'
 
 const hoverCard = (text: string) => {
     return (

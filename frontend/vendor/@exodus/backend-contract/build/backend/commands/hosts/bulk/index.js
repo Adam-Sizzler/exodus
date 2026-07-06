@@ -17,5 +17,4 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./delete-many-hosts.command"), exports);
 __exportStar(require("./disable-many-hosts.command"), exports);
 __exportStar(require("./enable-many-hosts.command"), exports);
-__exportStar(require("./set-inbound-to-many-hosts.command"), exports);
-__exportStar(require("./set-port-to-many-hosts.command"), exports);
+__exportStar(require("./update-many-hosts.command"), exports);

@@ -1,8 +1,8 @@
+import { Container } from '@mantine/core'
+import { SubscriptionSettingsTabsWidget } from '@widgets/dashboard/subscription-settings/settings/subscription-tabs.widget'
 import { useTranslation } from 'react-i18next'
 import { TbHexagon } from 'react-icons/tb'
-import { Container } from '@mantine/core'
 
-import { SubscriptionSettingsTabsWidget } from '@widgets/dashboard/subscription-settings/settings/subscription-tabs.widget'
 import { LoadingScreen, Page, PageHeaderShared } from '@shared/ui'
 
 import { IProps } from './interfaces'

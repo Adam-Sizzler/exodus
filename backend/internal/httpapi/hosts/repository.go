@@ -20,11 +20,12 @@ func getHosts(ctx context.Context, manager *dbmanager.DatabaseManager) ([]hostRe
             SELECT
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params, final_mask,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
-                allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
+                vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
+                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
                 xray_json_template_uuid, keep_sni_blank,
-                tag, is_hidden, override_sni_from_address,
+                tags, is_hidden, override_sni_from_address,
                 config_profile_uuid, config_profile_inbound_uuid,
                 exclude_from_subscription_types
             FROM hosts
@@ -53,11 +54,12 @@ func getHostByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, host
             SELECT
                 uuid, view_position, remark, address, port,
                 path, sni, host, alpn, fingerprint, security_layer,
-                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params, final_mask,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
-                allow_insecure, shuffle_host, selector_nodes_first, mihomo_x25519,
+                vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
+                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
                 xray_json_template_uuid, keep_sni_blank,
-                tag, is_hidden, override_sni_from_address,
+                tags, is_hidden, override_sni_from_address,
                 config_profile_uuid, config_profile_inbound_uuid,
                 exclude_from_subscription_types
             FROM hosts
@@ -74,11 +76,12 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var rec hostRecord
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var serverDescription, protocolCredential, tag sql.NullString
+	var serverDescription, protocolCredential, pinnedPeerCertSha256, verifyPeerCertByName, mihomoIPVersion sql.NullString
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
-	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, selectorNodesFirst, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
-	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams []byte
-	var excludeTypes dbutil.StringArray
+	var vlessRouteID sql.NullInt64
+	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams, finalMask []byte
+	var tags, excludeTypes dbutil.StringArray
 
 	err := scanner.Scan(
 		&rec.UUID,
@@ -97,17 +100,21 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&singboxMuxParams,
 		&clashMuxParams,
 		&sockoptParams,
+		&finalMask,
 		&isDisabled,
 		&serverDescription,
 		&overrideProtocolCredential,
 		&protocolCredential,
+		&vlessRouteID,
+		&pinnedPeerCertSha256,
+		&verifyPeerCertByName,
 		&allowInsecure,
 		&shuffleHost,
-		&selectorNodesFirst,
 		&mihomoX25519,
+		&mihomoIPVersion,
 		&xrayJSONTemplateUUID,
 		&keepSNIBlank,
-		&tag,
+		&tags,
 		&isHidden,
 		&overrideSNIFromAddress,
 		&configProfileUUID,
@@ -156,6 +163,9 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	if len(sockoptParams) > 0 {
 		rec.SockoptParams = json.RawMessage(sockoptParams)
 	}
+	if len(finalMask) > 0 {
+		rec.FinalMask = json.RawMessage(finalMask)
+	}
 	if isDisabled.Valid {
 		rec.IsDisabled = isDisabled.Bool
 	}
@@ -168,17 +178,27 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	if protocolCredential.Valid {
 		rec.ProtocolCredential = &protocolCredential.String
 	}
+	if vlessRouteID.Valid {
+		value := int(vlessRouteID.Int64)
+		rec.VlessRouteID = &value
+	}
+	if pinnedPeerCertSha256.Valid {
+		rec.PinnedPeerCertSha256 = &pinnedPeerCertSha256.String
+	}
+	if verifyPeerCertByName.Valid {
+		rec.VerifyPeerCertByName = &verifyPeerCertByName.String
+	}
 	if allowInsecure.Valid {
 		rec.AllowInsecure = allowInsecure.Bool
 	}
 	if shuffleHost.Valid {
 		rec.ShuffleHost = shuffleHost.Bool
 	}
-	if selectorNodesFirst.Valid {
-		rec.SelectorNodesFirst = selectorNodesFirst.Bool
-	}
 	if mihomoX25519.Valid {
 		rec.MihomoX25519 = mihomoX25519.Bool
+	}
+	if mihomoIPVersion.Valid {
+		rec.MihomoIPVersion = &mihomoIPVersion.String
 	}
 	if xrayJSONTemplateUUID.Valid {
 		rec.XrayJSONTemplateUUID = &xrayJSONTemplateUUID.String
@@ -186,8 +206,8 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	if keepSNIBlank.Valid {
 		rec.KeepSNIBlank = keepSNIBlank.Bool
 	}
-	if tag.Valid {
-		rec.Tag = &tag.String
+	if tags != nil {
+		rec.Tags = tags.Slice()
 	}
 	if isHidden.Valid {
 		rec.IsHidden = isHidden.Bool
@@ -296,7 +316,7 @@ func getHostTags(ctx context.Context, manager *dbmanager.DatabaseManager) ([]str
 	tags := make([]string, 0)
 	var err error
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `SELECT DISTINCT tag FROM hosts WHERE tag IS NOT NULL AND tag <> '' ORDER BY tag ASC`)
+		rows, err := db.QueryContext(ctx, `SELECT DISTINCT unnest(tags) AS tag FROM hosts ORDER BY tag ASC`)
 		if err != nil {
 			return err
 		}

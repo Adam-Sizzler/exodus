@@ -7,5 +7,6 @@ export declare const ALPN: {
     readonly H3_H2_COMBINED: "h3,h2";
 };
 export type TAlpn = [keyof typeof ALPN][number];
+export type TAlpnValues = (typeof ALPN)[keyof typeof ALPN];
 export declare const ALPN_VALUES: ("h3" | "h2" | "http/1.1" | "h2,http/1.1" | "h3,h2,http/1.1" | "h3,h2")[];
 //# sourceMappingURL=alpn.d.ts.map

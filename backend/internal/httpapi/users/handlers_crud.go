@@ -82,16 +82,17 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 	userUUID := coalesceUUID(req.UUID)
 	shortUUID := coalesceShortUUID(req.ShortUUID)
-	trojanPassword := coalesceRandomString(req.TrojanPassword, 16)
-	vlessUUID := coalesceUUID(req.VlessUUID)
-	ssPassword := coalesceRandomString(req.SSPassword, 16)
-	naivePassword := coalesceRandomString(req.NaivePassword, 16)
-	shadowtlsPassword := coalesceRandomString(req.ShadowtlsPassword, 16)
-	hysteria2Password := coalesceRandomString(req.Hysteria2Password, 16)
-	anytlsPassword := coalesceRandomString(req.AnytlsPassword, 16)
-
-	if trojanPassword == "" || ssPassword == "" || naivePassword == "" || shadowtlsPassword == "" || hysteria2Password == "" || anytlsPassword == "" {
-		shared.SendError(w, http.StatusInternalServerError, "failed to generate user credentials", nil, cfg)
+	credentials, err := newUserProtocolCredentials(
+		req.TrojanPassword,
+		req.VlessUUID,
+		req.SSPassword,
+		req.NaivePassword,
+		req.ShadowtlsPassword,
+		req.Hysteria2Password,
+		req.AnytlsPassword,
+	)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
@@ -108,7 +109,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	}
 
 	internalSquadNodeUUIDs := make([]string, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
 			return err
@@ -133,13 +134,13 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			normalizeTrafficStrategy(req.TrafficLimitStrategy),
 			expireAt.UTC(),
 			lastTrafficResetAt,
-			trojanPassword,
-			vlessUUID,
-			ssPassword,
-			naivePassword,
-			shadowtlsPassword,
-			hysteria2Password,
-			anytlsPassword,
+			credentials.TrojanPassword,
+			credentials.VlessUUID,
+			credentials.SSPassword,
+			credentials.NaivePassword,
+			credentials.ShadowtlsPassword,
+			credentials.Hysteria2Password,
+			credentials.AnytlsPassword,
 			normalizeNullableString(req.Description),
 			normalizeUserTag(req.Tag),
 			req.TelegramID,
@@ -239,6 +240,19 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 	statusNodeUUIDs := make([]string, 0)
 	statusToSet, shouldSetStatus := plannedUserStatusForUpdate(record, req, time.Now().UTC())
 	statusDeployRequired := shouldSetStatus && userConfigPresenceChanges(record.Status, statusToSet)
+	plannedCredentials := recordProtocolCredentials(record)
+	plannedCredentials.TrojanPassword = applyOptionalProtocolCredential(plannedCredentials.TrojanPassword, req.TrojanPassword)
+	plannedCredentials.VlessUUID = applyOptionalProtocolCredential(plannedCredentials.VlessUUID, req.VlessUUID)
+	plannedCredentials.SSPassword = applyOptionalProtocolCredential(plannedCredentials.SSPassword, req.SSPassword)
+	plannedCredentials.NaivePassword = applyOptionalProtocolCredential(plannedCredentials.NaivePassword, req.NaivePassword)
+	plannedCredentials.ShadowtlsPassword = applyOptionalProtocolCredential(plannedCredentials.ShadowtlsPassword, req.ShadowtlsPassword)
+	plannedCredentials.Hysteria2Password = applyOptionalProtocolCredential(plannedCredentials.Hysteria2Password, req.Hysteria2Password)
+	plannedCredentials.AnytlsPassword = applyOptionalProtocolCredential(plannedCredentials.AnytlsPassword, req.AnytlsPassword)
+	if err := plannedCredentials.validateUnique(); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {
@@ -324,10 +338,10 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		addOptionalCredential(req.TrojanPassword, "trojan_password", false)
 		addOptionalCredential(req.VlessUUID, "vless_uuid", false)
 		addOptionalCredential(req.SSPassword, "ss_password", false)
-		addOptionalCredential(req.NaivePassword, "naive_password", true)
-		addOptionalCredential(req.ShadowtlsPassword, "shadowtls_password", true)
-		addOptionalCredential(req.Hysteria2Password, "hysteria2_password", true)
-		addOptionalCredential(req.AnytlsPassword, "anytls_password", true)
+		addOptionalCredential(req.NaivePassword, "naive_password", false)
+		addOptionalCredential(req.ShadowtlsPassword, "shadowtls_password", false)
+		addOptionalCredential(req.Hysteria2Password, "hysteria2_password", false)
+		addOptionalCredential(req.AnytlsPassword, "anytls_password", false)
 		if req.ExternalSquadUUID.Set {
 			if req.ExternalSquadUUID.Value == nil || strings.TrimSpace(*req.ExternalSquadUUID.Value) == "" {
 				clauses = append(clauses, "external_squad_uuid = NULL")
@@ -409,9 +423,9 @@ func handleGetUserSubscriptionRequestHistory(w http.ResponseWriter, r *http.Requ
 		}
 
 		rows, err := db.QueryContext(r.Context(), `
-			SELECT id, user_uuid, request_ip, user_agent, request_at
+			SELECT id, user_id, request_ip, user_agent, request_at
 			FROM user_subscription_request_history
-			WHERE user_uuid = ?
+			WHERE user_id = (SELECT t_id FROM users WHERE uuid = ?)
 			ORDER BY request_at DESC
 			LIMIT 24
 		`, userUUID)
@@ -423,7 +437,7 @@ func handleGetUserSubscriptionRequestHistory(w http.ResponseWriter, r *http.Requ
 		for rows.Next() {
 			var item userSubscriptionRequestHistoryRecord
 			var requestAt time.Time
-			if scanErr := rows.Scan(&item.ID, &item.UserUUID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
+			if scanErr := rows.Scan(&item.ID, &item.UserID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
 				return scanErr
 			}
 			item.RequestAt = requestAt.UTC().Format("2006-01-02T15:04:05.000Z")

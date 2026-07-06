@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetInfraBillingHistoryRecordsCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var GetInfraBillingHistoryRecordsCommand;
 (function (GetInfraBillingHistoryRecordsCommand) {
     GetInfraBillingHistoryRecordsCommand.url = api_1.REST_API.INFRA_BILLING.GET_BILLING_HISTORY;
     GetInfraBillingHistoryRecordsCommand.TSQ_url = GetInfraBillingHistoryRecordsCommand.url;
-    GetInfraBillingHistoryRecordsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_BILLING_HISTORY, 'get', 'Get infra billing history');
+    GetInfraBillingHistoryRecordsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_BILLING_HISTORY, 'get', 'Get infra billing history', { scope: 'list-bill-records', kind: 'read' });
     GetInfraBillingHistoryRecordsCommand.RequestQuerySchema = zod_1.z.object({
         start: zod_1.z.coerce
             .number()

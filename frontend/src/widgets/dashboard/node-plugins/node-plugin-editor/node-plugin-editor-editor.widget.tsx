@@ -1,15 +1,17 @@
 import type { editor } from 'monaco-editor'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { GetNodePluginCommand } from '@exodus/backend-contract'
-import { Box, Card, Code, Paper, Text } from '@mantine/core'
-import Editor, { Monaco } from '@monaco-editor/react'
-import { useTranslation } from 'react-i18next'
-import { useBlocker } from 'react-router-dom'
-import { modals } from '@mantine/modals'
-
-import { NodePluginsEditorActionsFeature } from '@features/dashboard/node-plugins/node-plugins-editor-actions'
 import { MonacoSetupNodePluginEditorFeature } from '@features/dashboard/config-profiles/monaco-setup'
+import { NodePluginsEditorActionsFeature } from '@features/dashboard/node-plugins/node-plugins-editor-actions'
+import { Box, Card, Code, Paper } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import Editor, { Monaco } from '@monaco-editor/react'
+import { GetNodePluginCommand } from '@exodus/backend-contract'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbAlertTriangle } from 'react-icons/tb'
+import { useBlocker } from 'react-router'
+
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { preventBackScroll } from '@shared/utils/misc'
 
 import styles from './NodePluginEditor.module.css'
@@ -42,13 +44,17 @@ export function NodePluginEditorWidget(props: IProps) {
     useEffect(() => {
         if (blocker.state === 'blocked') {
             modals.openConfirmModal({
-                title: t('config-editor.widget.unsaved-changes'),
-                children: (
-                    <Text c="dimmed" size="md">
-                        {t(
-                            'config-editor.widget.your-changes-will-be-lost-if-you-leave-this-page-without-saving'
-                        )}
-                    </Text>
+                title: (
+                    <BaseOverlayHeader
+                        iconColor="red"
+                        IconComponent={TbAlertTriangle}
+                        iconSize={20}
+                        iconVariant="soft"
+                        title={t('config-editor.widget.unsaved-changes')}
+                    />
+                ),
+                children: t(
+                    'config-editor.widget.your-changes-will-be-lost-if-you-leave-this-page-without-saving'
                 ),
                 centered: true,
                 labels: {
@@ -58,7 +64,7 @@ export function NodePluginEditorWidget(props: IProps) {
 
                 confirmProps: {
                     color: 'red',
-                    variant: 'light'
+                    variant: 'soft'
                 },
                 cancelProps: {
                     variant: 'light'

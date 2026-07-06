@@ -1,5 +1,5 @@
-import { TFunction } from 'i18next'
 import dayjs from 'dayjs'
+import { TFunction } from 'i18next'
 
 export function getTimeAgoUtil(
     dateStr: Date | null | string,

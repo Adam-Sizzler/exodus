@@ -8,17 +8,18 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { CreateExternalSquadCommand } from '@exodus/backend-contract'
-import { TbPlus, TbRefresh, TbWebhook } from 'react-icons/tb'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
+import { CreateExternalSquadCommand } from '@exodus/backend-contract'
+import { useTranslation } from 'react-i18next'
+import { TbPlus, TbRefresh, TbWebhook } from 'react-icons/tb'
+
+import { useCreateExternalSquad, useGetExternalSquads } from '@shared/api/hooks'
+import { HelpActionIconShared } from '@shared/ui/help-drawer'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { useCreateExternalSquad, useGetExternalSquads } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { HelpActionIconShared } from '@shared/ui/help-drawer'
 
 interface IProps {
     externalSquadCount: number

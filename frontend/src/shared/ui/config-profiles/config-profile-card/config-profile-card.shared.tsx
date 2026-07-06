@@ -1,15 +1,15 @@
-import { Accordion, Badge, Group, Text, Tooltip } from '@mantine/core'
-import { PiCheckBold, PiCpu } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
+import type { IProps } from './interfaces/props.interface'
+
+import { Accordion, Badge, Divider, Group, Text, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiCheckBold, PiCpu } from 'react-icons/pi'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import type { IProps } from './interfaces/props.interface'
-
-import { VirtualizedInboundsListShared } from '../virtualized-inbounds-list/virtualized-inbounds-list.shared'
 import { ActiveNodesListModalShared } from '../active-nodes-list-modal/active-nodes-list.modal.shared'
+import { VirtualizedInboundsListShared } from '../virtualized-inbounds-list/virtualized-inbounds-list.shared'
 import { AccordionControlShared } from './accordion-control.shared'
 
 export const ConfigProfileCardShared = memo((props: IProps) => {
@@ -30,7 +30,13 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
     ).length
 
     return (
-        <Accordion.Item value={profile.uuid}>
+        <Accordion.Item
+            style={{
+                border: '1px solid rgb(255, 255, 255, 0.08)',
+                background: 'rgb(255, 255, 255, 0.02)'
+            }}
+            value={profile.uuid}
+        >
             <AccordionControlShared
                 hideSelectActions={hideSelectActions}
                 onSelectAllInbounds={onSelectAllInbounds}
@@ -39,7 +45,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                 value={profile.uuid}
             >
                 <Group mb="xs">
-                    <Text fw={700} size="md">
+                    <Text ff="monospace" fw={700} size="md">
                         {profile.name}
                     </Text>
                 </Group>
@@ -50,9 +56,10 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                                 ? 'teal'
                                 : 'cyan'
                         }
+                        ff="monospace"
                         leftSection={<PiCheckBold />}
                         size="md"
-                        variant="outline"
+                        variant="soft"
                     >
                         {selectedInboundsFromProfile} / {profile.inbounds.length}
                     </Badge>
@@ -60,6 +67,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                     <Tooltip label={t('config-profile-card.shared.active-on-nodes')}>
                         <Badge
                             color={profile.nodes.length > 0 ? 'teal' : 'cyan'}
+                            ff="monospace"
                             leftSection={<PiCpu />}
                             onClick={(e) => {
                                 e.preventDefault()
@@ -83,7 +91,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                             }}
                             size="md"
                             style={{ cursor: 'pointer' }}
-                            variant="outline"
+                            variant="soft"
                         >
                             {profile.nodes.length}
                         </Badge>
@@ -91,6 +99,7 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                 </Group>
             </AccordionControlShared>
             <Accordion.Panel>
+                <Divider p="xs" style={{ opacity: 0.3 }} />
                 {isOpen && (
                     <VirtualizedInboundsListShared
                         onInboundToggle={onInboundToggle}

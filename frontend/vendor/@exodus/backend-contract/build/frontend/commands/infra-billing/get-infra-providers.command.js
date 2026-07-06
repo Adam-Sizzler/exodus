@@ -9,7 +9,7 @@ var GetInfraProvidersCommand;
 (function (GetInfraProvidersCommand) {
     GetInfraProvidersCommand.url = api_1.REST_API.INFRA_BILLING.GET_PROVIDERS;
     GetInfraProvidersCommand.TSQ_url = GetInfraProvidersCommand.url;
-    GetInfraProvidersCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_PROVIDERS, 'get', 'Get all infra providers');
+    GetInfraProvidersCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_PROVIDERS, 'get', 'Get all infra providers', { scope: 'list-providers', kind: 'read' });
     GetInfraProvidersCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             total: zod_1.z.number(),

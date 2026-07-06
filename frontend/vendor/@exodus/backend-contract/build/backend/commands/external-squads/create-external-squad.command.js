@@ -9,7 +9,7 @@ var CreateExternalSquadCommand;
 (function (CreateExternalSquadCommand) {
     CreateExternalSquadCommand.url = api_1.REST_API.EXTERNAL_SQUADS.CREATE;
     CreateExternalSquadCommand.TSQ_url = CreateExternalSquadCommand.url;
-    CreateExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.CREATE, 'post', 'Create external squad');
+    CreateExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.CREATE, 'post', 'Create external squad', { scope: 'create', kind: 'write' });
     CreateExternalSquadCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

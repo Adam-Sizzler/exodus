@@ -39,6 +39,13 @@ var (
 		"CLASH":       {},
 		"SINGBOX":     {},
 	}
+	allowedMihomoIPVersions = map[string]struct{}{
+		"dual":        {},
+		"ipv4":        {},
+		"ipv6":        {},
+		"ipv4-prefer": {},
+		"ipv6-prefer": {},
+	}
 )
 
 var (
@@ -65,17 +72,21 @@ type hostRecord struct {
 	SingboxMuxParams           json.RawMessage
 	ClashMuxParams             json.RawMessage
 	SockoptParams              json.RawMessage
+	FinalMask                  json.RawMessage
 	IsDisabled                 bool
 	ServerDescription          *string
 	OverrideProtocolCredential bool
 	ProtocolCredential         *string
+	VlessRouteID               *int
+	PinnedPeerCertSha256       *string
+	VerifyPeerCertByName       *string
 	AllowInsecure              bool
 	ShuffleHost                bool
-	SelectorNodesFirst         bool
 	MihomoX25519               bool
+	MihomoIPVersion            *string
 	XrayJSONTemplateUUID       *string
 	KeepSNIBlank               bool
-	Tag                        *string
+	Tags                       []string
 	IsHidden                   bool
 	OverrideSNIFromAddress     bool
 	ConfigProfileUUID          *string
@@ -89,6 +100,8 @@ type HostInbound struct {
 }
 
 type OptionalString = shared.OptionalString
+
+type OptionalInt = shared.OptionalInt
 
 type OptionalJSON = shared.OptionalJSON
 
@@ -110,18 +123,22 @@ type HostAPI struct {
 	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
 	ClashMuxParams             interface{} `json:"clashMuxParams"`
 	SockoptParams              interface{} `json:"sockoptParams"`
+	FinalMask                  interface{} `json:"finalMask"`
 	Inbound                    HostInbound `json:"inbound"`
 	ServerDescription          *string     `json:"serverDescription"`
-	Tag                        *string     `json:"tag"`
+	Tags                       []string    `json:"tags"`
 	IsHidden                   bool        `json:"isHidden"`
 	OverrideSNIFromAddress     bool        `json:"overrideSniFromAddress"`
 	KeepSNIBlank               bool        `json:"keepSniBlank"`
 	OverrideProtocolCredential bool        `json:"overrideProtocolCredential"`
 	ProtocolCredential         *string     `json:"protocolCredential"`
+	VlessRouteID               *int        `json:"vlessRouteId"`
+	PinnedPeerCertSha256       *string     `json:"pinnedPeerCertSha256"`
+	VerifyPeerCertByName       *string     `json:"verifyPeerCertByName"`
 	AllowInsecure              bool        `json:"allowInsecure"`
 	ShuffleHost                bool        `json:"shuffleHost"`
-	SelectorNodesFirst         bool        `json:"selectorNodesFirst"`
 	MihomoX25519               bool        `json:"mihomoX25519"`
+	MihomoIPVersion            *string     `json:"mihomoIpVersion"`
 	Nodes                      []string    `json:"nodes"`
 	XrayJSONTemplateUUID       *string     `json:"xrayJsonTemplateUuid"`
 	ExcludedInternalSquads     []string    `json:"excludedInternalSquads"`
@@ -145,17 +162,21 @@ type HostCreateRequestAPI struct {
 	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             *json.RawMessage `json:"clashMuxParams,omitempty"`
 	SockoptParams              *json.RawMessage `json:"sockoptParams,omitempty"`
+	FinalMask                  *json.RawMessage `json:"finalMask,omitempty"`
 	ServerDescription          *string          `json:"serverDescription,omitempty"`
-	Tag                        *string          `json:"tag,omitempty"`
+	Tags                       []string         `json:"tags,omitempty"`
 	IsHidden                   *bool            `json:"isHidden,omitempty"`
 	OverrideSNIFromAddress     *bool            `json:"overrideSniFromAddress,omitempty"`
 	KeepSNIBlank               *bool            `json:"keepSniBlank,omitempty"`
 	AllowInsecure              *bool            `json:"allowInsecure,omitempty"`
 	OverrideProtocolCredential *bool            `json:"overrideProtocolCredential,omitempty"`
 	ProtocolCredential         *string          `json:"protocolCredential,omitempty"`
+	VlessRouteID               *int             `json:"vlessRouteId,omitempty"`
+	PinnedPeerCertSha256       *string          `json:"pinnedPeerCertSha256,omitempty"`
+	VerifyPeerCertByName       *string          `json:"verifyPeerCertByName,omitempty"`
 	ShuffleHost                *bool            `json:"shuffleHost,omitempty"`
-	SelectorNodesFirst         *bool            `json:"selectorNodesFirst,omitempty"`
 	MihomoX25519               *bool            `json:"mihomoX25519,omitempty"`
+	MihomoIPVersion            *string          `json:"mihomoIpVersion,omitempty"`
 	Nodes                      []string         `json:"nodes,omitempty"`
 	XrayJSONTemplateUUID       *string          `json:"xrayJsonTemplateUuid,omitempty"`
 	ExcludedInternalSquads     []string         `json:"excludedInternalSquads,omitempty"`
@@ -180,17 +201,21 @@ type HostUpdateRequestAPI struct {
 	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             OptionalJSON   `json:"clashMuxParams,omitempty"`
 	SockoptParams              OptionalJSON   `json:"sockoptParams,omitempty"`
+	FinalMask                  OptionalJSON   `json:"finalMask,omitempty"`
 	ServerDescription          OptionalString `json:"serverDescription,omitempty"`
-	Tag                        OptionalString `json:"tag,omitempty"`
+	Tags                       []string       `json:"tags,omitempty"`
 	IsHidden                   *bool          `json:"isHidden,omitempty"`
 	OverrideSNIFromAddress     *bool          `json:"overrideSniFromAddress,omitempty"`
 	KeepSNIBlank               *bool          `json:"keepSniBlank,omitempty"`
 	AllowInsecure              *bool          `json:"allowInsecure,omitempty"`
 	OverrideProtocolCredential *bool          `json:"overrideProtocolCredential,omitempty"`
 	ProtocolCredential         OptionalString `json:"protocolCredential,omitempty"`
+	VlessRouteID               OptionalInt    `json:"vlessRouteId,omitempty"`
+	PinnedPeerCertSha256       OptionalString `json:"pinnedPeerCertSha256,omitempty"`
+	VerifyPeerCertByName       OptionalString `json:"verifyPeerCertByName,omitempty"`
 	ShuffleHost                *bool          `json:"shuffleHost,omitempty"`
-	SelectorNodesFirst         *bool          `json:"selectorNodesFirst,omitempty"`
 	MihomoX25519               *bool          `json:"mihomoX25519,omitempty"`
+	MihomoIPVersion            OptionalString `json:"mihomoIpVersion,omitempty"`
 	Nodes                      []string       `json:"nodes,omitempty"`
 	XrayJSONTemplateUUID       OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
 	ExcludedInternalSquads     []string       `json:"excludedInternalSquads,omitempty"`

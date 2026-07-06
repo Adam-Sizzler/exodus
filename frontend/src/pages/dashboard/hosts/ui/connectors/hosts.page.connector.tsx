@@ -1,5 +1,7 @@
+import HostsPageComponent from '@pages/dashboard/hosts/ui/components/hosts.page.component'
 import { useEffect } from 'react'
 
+import { queryClient } from '@shared/api'
 import {
     QueryKeys,
     useGetConfigProfiles,
@@ -9,9 +11,8 @@ import {
     useGetNodes,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
-import HostsPageComponent from '@pages/dashboard/hosts/ui/components/hosts.page.component'
+
 import { MODALS, useModalIsOpen } from '@entities/dashboard/modal-store'
-import { queryClient } from '@shared/api'
 
 export function HostsPageConnector() {
     const { data: hosts, isLoading: isHostsLoading } = useGetHosts()

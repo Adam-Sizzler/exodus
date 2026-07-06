@@ -12,17 +12,18 @@ import {
     Text,
     Tooltip
 } from '@mantine/core'
-import { githubDarkTheme, JsonEditor } from 'json-edit-react'
-import { TbCirclesRelation, TbTag } from 'react-icons/tb'
-import { PiCheck, PiCopy } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
 import { modals } from '@mantine/modals'
 import ColorHash from 'color-hash'
+import { githubDarkTheme, JsonEditor } from 'json-edit-react'
+import { useTranslation } from 'react-i18next'
+import { PiCheck, PiCopy } from 'react-icons/pi'
+import { TbCirclesRelation, TbTag } from 'react-icons/tb'
 
-import { InternalSquadsListSimpleWidgetShared } from '@shared/ui/internal-squads/internal-squads-list-simple'
-import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { useGetConfigProfileInbounds, useGetInternalSquads } from '@shared/api/hooks'
+import { InternalSquadsListSimpleWidgetShared } from '@shared/ui/internal-squads/internal-squads-list-simple'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
 export const ConfigProfileInboundsDrawerWidget = () => {
     const { t } = useTranslation()

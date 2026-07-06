@@ -13,6 +13,24 @@ func normalizeOptionalStringAllowEmpty(value *string) interface{} {
 	return strings.TrimSpace(*value)
 }
 
+func normalizeNullableString(value *string) interface{} {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return trimmed
+}
+
+func normalizeNullableInt(value *int) interface{} {
+	if value == nil {
+		return nil
+	}
+	return *value
+}
+
 func normalizeProtocolCredentialForCreate(override *bool, value *string) *string {
 	if !coalesceBool(override, false) {
 		return nil
@@ -40,6 +58,17 @@ func normalizeSecurityLayer(value *string) string {
 		return upper
 	}
 	return "DEFAULT"
+}
+
+func normalizeMihomoIPVersion(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	normalized := strings.ToLower(strings.TrimSpace(*value))
+	if normalized == "" {
+		return nil
+	}
+	return &normalized
 }
 
 func normalizeJSONField(raw *json.RawMessage, emptyObjectAsNull bool) (bool, []byte, error) {
@@ -89,6 +118,21 @@ func ensureStringSlice(values []string) []string {
 		return []string{}
 	}
 	return values
+}
+
+func normalizeTags(tags []string) []string {
+	if tags == nil {
+		return []string{}
+	}
+	normalized := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		normalized = append(normalized, tag)
+	}
+	return dedupeStrings(normalized)
 }
 
 func parseJSONAny(raw json.RawMessage) interface{} {

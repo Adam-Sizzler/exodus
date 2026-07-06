@@ -1,11 +1,11 @@
+import { ThemeIcon } from '@mantine/core'
+import { memo } from 'react'
 import {
     PiCloudArrowUpDuotone,
     PiProhibitDuotone,
     PiPulseDuotone,
     PiWarningCircle
 } from 'react-icons/pi'
-import { ThemeIcon } from '@mantine/core'
-import { memo } from 'react'
 
 import { IProps } from './interface'
 

@@ -9,7 +9,7 @@ var CreateInfraProviderCommand;
 (function (CreateInfraProviderCommand) {
     CreateInfraProviderCommand.url = api_1.REST_API.INFRA_BILLING.CREATE_PROVIDER;
     CreateInfraProviderCommand.TSQ_url = CreateInfraProviderCommand.url;
-    CreateInfraProviderCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.CREATE_PROVIDER, 'post', 'Create infra provider');
+    CreateInfraProviderCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.CREATE_PROVIDER, 'post', 'Create infra provider', { scope: 'create-provider', kind: 'write' });
     CreateInfraProviderCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

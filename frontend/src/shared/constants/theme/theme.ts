@@ -51,7 +51,6 @@ export const theme = createTheme({
             '#62717c',
             '#535f68'
         ],
-
         dark: [
             '#c9d1d9',
             '#b1bac4',

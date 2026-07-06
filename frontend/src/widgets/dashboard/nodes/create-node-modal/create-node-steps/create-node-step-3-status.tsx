@@ -1,17 +1,17 @@
 import { Alert, Badge, Button, Code, Group, Paper, Stack, Text } from '@mantine/core'
-import { TbAlertCircle, TbCheck, TbLink, TbX } from 'react-icons/tb'
-import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbAlertCircle, TbCheck, TbLink, TbX } from 'react-icons/tb'
+
+import { useGetNode } from '@shared/api/hooks'
+import { LottieLinkShared } from '@shared/ui/lotties'
+import { LottieCheckmarkShared } from '@shared/ui/lotties/checkmark'
+import { LottieStopShared } from '@shared/ui/lotties/stop'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { LottieCheckmarkShared } from '@shared/ui/lotties/checkmark'
 import { useNodesStoreActions } from '@entities/dashboard/nodes'
-import { LottieStopShared } from '@shared/ui/lotties/stop'
-import { LottieLinkShared } from '@shared/ui/lotties'
-import { NodeKeygenResponse, useGetNode } from '@shared/api/hooks'
 
 interface IProps {
-    generatedCredentials?: NodeKeygenResponse
     nodeUuid?: string
     onClose: () => void
 }
@@ -22,15 +22,7 @@ enum STATUS {
     ERROR = 'error'
 }
 
-const isErrorStatusMessage = (message: null | string) => {
-    const normalized = message?.trim().toLowerCase()
-    if (!normalized) {
-        return false
-    }
-    return normalized !== 'connected'
-}
-
-export const CreateNodeStep3Status = ({ generatedCredentials, nodeUuid, onClose }: IProps) => {
+export const CreateNodeStep3Status = ({ nodeUuid, onClose }: IProps) => {
     const { t } = useTranslation()
     const actions = useNodesStoreActions()
 
@@ -76,10 +68,7 @@ export const CreateNodeStep3Status = ({ generatedCredentials, nodeUuid, onClose 
         onClose()
 
         setTimeout(() => {
-            openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, {
-                generatedCredentials,
-                nodeUuid: node.uuid
-            })
+            openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, { nodeUuid: node.uuid })
         }, 300)
     }
 

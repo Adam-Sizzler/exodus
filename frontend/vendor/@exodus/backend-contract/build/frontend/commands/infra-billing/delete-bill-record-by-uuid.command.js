@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DeleteInfraBillingHistoryRecordCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var DeleteInfraBillingHistoryRecordCommand;
 (function (DeleteInfraBillingHistoryRecordCommand) {
     DeleteInfraBillingHistoryRecordCommand.url = api_1.REST_API.INFRA_BILLING.DELETE_BILLING_HISTORY;
     DeleteInfraBillingHistoryRecordCommand.TSQ_url = DeleteInfraBillingHistoryRecordCommand.url(':uuid');
-    DeleteInfraBillingHistoryRecordCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.DELETE_BILLING_HISTORY(':uuid'), 'delete', 'Delete infra billing history');
+    DeleteInfraBillingHistoryRecordCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.DELETE_BILLING_HISTORY(':uuid'), 'delete', 'Delete infra billing history', { scope: 'delete-bill-record', kind: 'write' });
     DeleteInfraBillingHistoryRecordCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateHostCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 const models_1 = require("../../models");
 var UpdateHostCommand;
 (function (UpdateHostCommand) {
     UpdateHostCommand.url = api_1.REST_API.HOSTS.UPDATE;
     UpdateHostCommand.TSQ_url = UpdateHostCommand.url;
-    UpdateHostCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HOSTS_ROUTES.UPDATE, 'patch', 'Update a host');
+    UpdateHostCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HOSTS_ROUTES.UPDATE, 'patch', 'Update a host', { scope: 'update', kind: 'write' });
     UpdateHostCommand.RequestSchema = models_1.HostsSchema.pick({
         uuid: true,
     }).extend({
@@ -38,42 +38,44 @@ var UpdateHostCommand;
         })
             .int()
             .optional(),
-        path: zod_1.z.optional(zod_1.z.string()),
-        sni: zod_1.z.optional(zod_1.z.string()),
-        host: zod_1.z.optional(zod_1.z.string()),
-        alpn: zod_1.z.optional(zod_1.z.nativeEnum(constants_1.ALPN).nullable()),
-        fingerprint: zod_1.z.optional(zod_1.z.nativeEnum(constants_1.FINGERPRINTS).nullable()),
-        isDisabled: zod_1.z.optional(zod_1.z.boolean()),
+        path: zod_1.z.string().nullish(),
+        sni: zod_1.z.string().nullish(),
+        host: zod_1.z.string().nullish(),
+        alpn: zod_1.z.nativeEnum(constants_1.ALPN).nullish(),
+        fingerprint: zod_1.z.string().nullish(),
+        isDisabled: zod_1.z.boolean().default(false),
         securityLayer: zod_1.z.optional(zod_1.z.nativeEnum(constants_1.SECURITY_LAYERS)),
-        xHttpExtraParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
-        muxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
-        singboxMuxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
-        clashMuxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
-        sockoptParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.unknown())),
-        serverDescription: zod_1.z.optional(zod_1.z
+        xhttpExtraParams: zod_1.z.unknown().nullish(),
+        muxParams: zod_1.z.unknown().nullish(),
+        singboxMuxParams: zod_1.z.unknown().nullish(),
+        clashMuxParams: zod_1.z.unknown().nullish(),
+        sockoptParams: zod_1.z.unknown().nullish(),
+        finalMask: zod_1.z.unknown().nullish(),
+        serverDescription: zod_1.z
             .string()
             .max(30, {
             message: 'Server description must be less than 30 characters',
         })
-            .nullable()),
-        tag: zod_1.z
-            .optional(zod_1.z
+            .nullish(),
+        tags: zod_1.z.optional(zod_1.z
+            .array(zod_1.z
             .string()
             .regex(/^[A-Z0-9_:]+$/, 'Tag can only contain uppercase letters, numbers, underscores and colons')
-            .max(32, 'Tag must be less than 32 characters')
-            .nullable())
-            .describe('Optional. Host tag for categorization. Max 32 characters, uppercase letters, numbers, underscores and colons are allowed.'),
+            .max(36, 'Each tag must be less than 36 characters'))
+            .max(10, 'Maximum 10 tags')),
         isHidden: zod_1.z.optional(zod_1.z.boolean()),
         overrideSniFromAddress: zod_1.z.optional(zod_1.z.boolean()),
         keepSniBlank: zod_1.z.optional(zod_1.z.boolean()),
         overrideProtocolCredential: zod_1.z.optional(zod_1.z.boolean()),
-        protocolCredential: zod_1.z.optional(zod_1.z.string().max(256).nullable()),
-        allowInsecure: zod_1.z.optional(zod_1.z.boolean()),
+        protocolCredential: zod_1.z.string().max(256).nullish(),
+        vlessRouteId: zod_1.z.optional(zod_1.z.number().int().min(0).max(65535).nullable()),
+        pinnedPeerCertSha256: zod_1.z.string().nullish(),
+        verifyPeerCertByName: zod_1.z.string().nullish(),
         shuffleHost: zod_1.z.optional(zod_1.z.boolean()),
-        selectorNodesFirst: zod_1.z.optional(zod_1.z.boolean()),
         mihomoX25519: zod_1.z.optional(zod_1.z.boolean()),
+        mihomoIpVersion: zod_1.z.nativeEnum(constants_1.MIHOMO_IP_VERSION).nullish(),
         nodes: zod_1.z.optional(zod_1.z.array(zod_1.z.string().uuid())),
-        xrayJsonTemplateUuid: zod_1.z.optional(zod_1.z.string().uuid().nullable()),
+        xrayJsonTemplateUuid: zod_1.z.string().uuid().nullish(),
         excludedInternalSquads: zod_1.z
             .optional(zod_1.z.array(zod_1.z.string().uuid()))
             .describe('Optional. Internal squads from which the host will be excluded.'),

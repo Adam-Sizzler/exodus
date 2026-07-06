@@ -9,13 +9,13 @@ import {
     TextInput,
     UnstyledButton
 } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import {
     getLanguageName,
     TSubscriptionPageLanguageCode,
     TSubscriptionPageLocalizedText
 } from '@exodus/subscription-page-types'
 import { IconLanguage } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
 import { useTranslation } from 'react-i18next'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'

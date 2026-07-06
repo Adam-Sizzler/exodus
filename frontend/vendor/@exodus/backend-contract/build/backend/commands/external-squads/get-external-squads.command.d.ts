@@ -116,9 +116,9 @@ export declare namespace GetExternalSquadsCommand {
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -159,9 +159,9 @@ export declare namespace GetExternalSquadsCommand {
                 subpageConfigUuid: string | null;
             }, {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -205,9 +205,9 @@ export declare namespace GetExternalSquadsCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -251,9 +251,9 @@ export declare namespace GetExternalSquadsCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -299,9 +299,9 @@ export declare namespace GetExternalSquadsCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -347,9 +347,9 @@ export declare namespace GetExternalSquadsCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];

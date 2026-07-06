@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import {
     AddUsersToExternalSquadCommand,
     CreateExternalSquadCommand,
@@ -6,7 +7,6 @@ import {
     ReorderExternalSquadCommand,
     UpdateExternalSquadCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 

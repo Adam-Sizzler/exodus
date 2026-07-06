@@ -1,11 +1,11 @@
 import { Button, Divider, Group, px, Stack, Tabs, Transition } from '@mantine/core'
-import { TbKey, TbLock, TbSignature } from 'react-icons/tb'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PiKey } from 'react-icons/pi'
-import { useState } from 'react'
+import { TbKey, TbLock, TbSignature } from 'react-icons/tb'
 
-import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { CopyableAreaShared } from '@shared/ui/copyable-area/copyable-area'
+import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 
 import { generateMlDsa65, generateMlKem768, generateX25519 } from './keypair-utils'
 import classes from './KeypairGenerator.module.css'
@@ -30,6 +30,7 @@ export const KeypairGeneratorWidget = () => {
             <Tabs
                 classNames={classes}
                 keepMounted
+                keepMountedMode="display-none"
                 onChange={(value) => value && setActiveTab(value as TabTypes)}
                 value={activeTab}
                 variant="unstyled"
@@ -72,11 +73,11 @@ export const KeypairGeneratorWidget = () => {
                             <Stack gap="md" style={styles}>
                                 <Stack gap="xs">
                                     <CopyableFieldShared
-                                        label={t('keypair.widget.public-key')}
-                                        value={keyPair.publicKey}
+                                        label="Password"
+                                        value={keyPair.password}
                                     />
                                     <CopyableFieldShared
-                                        label={t('keypair.widget.private-key')}
+                                        label="Prvate Key"
                                         value={keyPair.privateKey}
                                     />
                                 </Stack>
@@ -86,7 +87,7 @@ export const KeypairGeneratorWidget = () => {
                                 <Stack gap="xs">
                                     <CopyableAreaShared
                                         label={t('keypair.widget.both-keys')}
-                                        value={`"publicKey": "${keyPair.publicKey}",
+                                        value={`"password": "${keyPair.password}",
 "privateKey": "${keyPair.privateKey}",`}
                                     />
                                 </Stack>
@@ -98,7 +99,7 @@ export const KeypairGeneratorWidget = () => {
                                         size="sm"
                                         variant="default"
                                     >
-                                        {t('keypair.widget.generate-key-pair')}
+                                        {t('keypair-generator.widget.generate')}
                                     </Button>
                                 </Group>
                             </Stack>

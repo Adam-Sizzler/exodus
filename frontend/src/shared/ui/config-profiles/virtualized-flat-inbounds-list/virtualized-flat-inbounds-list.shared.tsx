@@ -1,9 +1,9 @@
+import type { IProps } from './interfaces/props.interface'
+
 import { Box, Center, Checkbox, Text } from '@mantine/core'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import type { IProps } from './interfaces/props.interface'
 
 import { FlatInboundCheckboxCardShared } from '../flat-inbound-checkbox-card/flat-inbound-checkbox-card.shared'
 

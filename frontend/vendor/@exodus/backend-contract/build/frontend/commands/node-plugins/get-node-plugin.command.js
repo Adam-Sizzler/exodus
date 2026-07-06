@@ -9,7 +9,7 @@ var GetNodePluginCommand;
 (function (GetNodePluginCommand) {
     GetNodePluginCommand.url = api_1.REST_API.NODE_PLUGINS.GET;
     GetNodePluginCommand.TSQ_url = GetNodePluginCommand.url(':uuid');
-    GetNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.GET(':uuid'), 'get', 'Get Node Plugin by uuid');
+    GetNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.GET(':uuid'), 'get', 'Get Node Plugin by uuid', { scope: 'get', kind: 'read' });
     GetNodePluginCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

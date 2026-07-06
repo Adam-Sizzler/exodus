@@ -28,6 +28,7 @@ type billingNodeNode struct {
 type billingNodeRecord struct {
 	UUID          string              `json:"uuid"`
 	NodeUUID      string              `json:"nodeUuid"`
+	Name          *string             `json:"name"`
 	ProviderUUID  string              `json:"providerUuid"`
 	Provider      billingNodeProvider `json:"provider"`
 	Node          billingNodeNode     `json:"node"`
@@ -298,6 +299,7 @@ func getBillingNodesResponse(r *http.Request, manager *dbmanager.DatabaseManager
 			); scanErr != nil {
 				return scanErr
 			}
+			item.Name = &item.Node.Name
 			billingNodes = append(billingNodes, item)
 		}
 		return rows.Err()

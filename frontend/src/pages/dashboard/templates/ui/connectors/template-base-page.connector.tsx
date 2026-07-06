@@ -1,5 +1,5 @@
 import { SUBSCRIPTION_TEMPLATE_TYPE, TSubscriptionTemplateType } from '@exodus/backend-contract'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 
 import { useGetSubscriptionTemplates } from '@shared/api/hooks'
 import { ROUTES } from '@shared/constants'

@@ -9,8 +9,8 @@ export declare const ConfigProfileInboundsSchema: z.ZodObject<{
     port: z.ZodNullable<z.ZodNumber>;
     rawInbound: z.ZodNullable<z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
-    type: string;
     uuid: string;
+    type: string;
     profileUuid: string;
     tag: string;
     network: string | null;
@@ -18,8 +18,8 @@ export declare const ConfigProfileInboundsSchema: z.ZodObject<{
     port: number | null;
     rawInbound?: unknown;
 }, {
-    type: string;
     uuid: string;
+    type: string;
     profileUuid: string;
     tag: string;
     network: string | null;

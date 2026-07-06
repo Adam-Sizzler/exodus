@@ -1,5 +1,5 @@
-import ReactCountryFlag from 'react-country-flag'
 import { Group, Text } from '@mantine/core'
+import ReactCountryFlag from 'react-country-flag'
 
 import { IProps } from './interface'
 

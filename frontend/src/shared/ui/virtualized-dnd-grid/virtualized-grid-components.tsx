@@ -1,31 +1,18 @@
-import { SimpleGrid } from '@mantine/core'
 import { forwardRef } from 'react'
+
+import classes from './virtualized-dnd-grid.module.css'
 
 export const VirtualizedGridComponents = {
     List: forwardRef<HTMLDivElement, React.HTMLProps<HTMLDivElement>>(
-        ({ style, children, ...props }, ref) => (
-            <SimpleGrid
-                {...props}
-                cols={{
-                    base: 1,
-                    '800px': 2,
-                    '1000px': 3,
-                    '1200px': 4,
-                    '1800px': 5,
-                    '2400px': 6,
-                    '3000px': 7
-                }}
-                ref={ref}
-                style={{
-                    ...style
-                }}
-                type="container"
-            >
+        ({ children, ...props }, ref) => (
+            <div {...props} className={classes.list} ref={ref}>
                 {children}
-            </SimpleGrid>
+            </div>
         )
     ),
     Item: ({ children, ...props }: React.HTMLProps<HTMLDivElement>) => (
-        <div {...props}>{children}</div>
+        <div {...props} className={classes.item}>
+            {children}
+        </div>
     )
 }

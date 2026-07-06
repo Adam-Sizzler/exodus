@@ -1,3 +1,6 @@
+import { SimpleGrid } from '@mantine/core'
+import { motion } from 'motion/react'
+import { useTranslation } from 'react-i18next'
 import {
     PiClockCountdownDuotone,
     PiClockUserDuotone,
@@ -5,12 +8,9 @@ import {
     PiPulseDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
-import { SimpleGrid } from '@mantine/core'
-import { motion } from 'motion/react'
 
-import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
 import { useGetSystemStats } from '@shared/api/hooks'
+import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
 
 export function UsersMetrics() {
     const { t } = useTranslation()

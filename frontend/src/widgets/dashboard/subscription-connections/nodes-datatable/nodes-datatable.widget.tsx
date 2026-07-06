@@ -1,21 +1,24 @@
 import { DataTable, useDataTableColumns } from 'mantine-datatable'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { Box, Button, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { PiEmpty } from 'react-icons/pi'
 import { memo, useState } from 'react'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { useGetConfigProfiles, useGetSubscriptionConnections } from '@shared/api/hooks'
+import {
+    SubscriptionConnectionResponse,
+    useGetConfigProfiles,
+    useGetSubscriptionConnections
+} from '@shared/api/hooks'
 import { sToMs } from '@shared/utils/time-utils'
 import { LoadingScreen } from '@shared/ui'
 
 import { getNodesTableColumns } from './use-nodes-table-widget'
 
 interface IProps {
-    nodes: GetAllNodesCommand.Response['response'] | undefined
-    selectedRecords: GetAllNodesCommand.Response['response'][number][]
-    setSelectedRecords: (records: GetAllNodesCommand.Response['response'][number][]) => void
+    nodes: SubscriptionConnectionResponse[] | undefined
+    selectedRecords: SubscriptionConnectionResponse[]
+    setSelectedRecords: (records: SubscriptionConnectionResponse[]) => void
 }
 
 const PAGE_SIZE = 20

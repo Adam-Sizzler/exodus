@@ -101,15 +101,15 @@ func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) s
 	case "trojan", "tuic":
 		return strings.TrimSpace(user.TrojanPassword)
 	case "anytls":
-		return firstNonEmpty(user.AnytlsPassword, user.TrojanPassword)
+		return strings.TrimSpace(user.AnytlsPassword)
 	case "naive":
-		return firstNonEmpty(user.NaivePassword, user.TrojanPassword)
+		return strings.TrimSpace(user.NaivePassword)
 	case "shadowsocks":
 		return strings.TrimSpace(user.SSPassword)
 	case "shadowtls":
-		return firstNonEmpty(user.ShadowtlsPassword, user.SSPassword)
+		return strings.TrimSpace(user.ShadowtlsPassword)
 	case "hysteria", "hysteria2":
-		return firstNonEmpty(user.Hysteria2Password, user.TrojanPassword)
+		return strings.TrimSpace(user.Hysteria2Password)
 	default:
 		return ""
 	}

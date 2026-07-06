@@ -41,10 +41,7 @@ const (
 	EventUserExpired                = "user.expired"
 	EventUserTrafficReset           = "user.traffic_reset"
 	EventUserFirstConnected         = "user.first_connected"
-	EventUserExpiresIn72Hours       = "user.expires_in_72_hours"
-	EventUserExpiresIn48Hours       = "user.expires_in_48_hours"
-	EventUserExpiresIn24Hours       = "user.expires_in_24_hours"
-	EventUserExpired24HoursAgo      = "user.expired_24_hours_ago"
+	EventUserExpiration             = "user.expiration"
 	EventUserBandwidthThreshold     = "user.bandwidth_usage_threshold_reached"
 	EventUserNotConnected           = "user.not_connected"
 	EventUserHWIDDeviceAdded        = "user_hwid_devices.added"
@@ -433,14 +430,13 @@ func formatUserMessage(event Event) string {
 		return fmt.Sprintf("%s\n%s\n<b>Traffic:</b> <code>%s</code>", userHeader("<tg-emoji emoji-id='5264727218734524899'>🔄</tg-emoji>", "traffic_reset"), basicInfo, html.EscapeString(formatBytes(traffic)))
 	case EventUserFirstConnected:
 		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5379999674193172777'>🔭</tg-emoji>", "first_connected"), basicInfo)
-	case EventUserExpiresIn72Hours:
-		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5382194935057372936'>⏱️</tg-emoji>", "expires_in_72_hours"), basicInfo)
-	case EventUserExpiresIn48Hours:
-		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5382194935057372936'>⏱️</tg-emoji>", "expires_in_48_hours"), basicInfo)
-	case EventUserExpiresIn24Hours:
-		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5382194935057372936'>⏱️</tg-emoji>", "expires_in_24_hours"), basicInfo)
-	case EventUserExpired24HoursAgo:
-		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5382194935057372936'>⏱️</tg-emoji>", "expired_24_hours_ago"), basicInfo)
+	case EventUserExpiration:
+		hours := intValue(event.Meta, "expiration")
+		tag := fmt.Sprintf("expired_%d_hours_ago", hours)
+		if hours < 0 {
+			tag = fmt.Sprintf("expires_in_%d_hours", -hours)
+		}
+		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5382194935057372936'>⏱️</tg-emoji>", tag), basicInfo)
 	case EventUserBandwidthThreshold:
 		traffic := int64Value(event.Data, "usedTrafficBytes")
 		if traffic == 0 {

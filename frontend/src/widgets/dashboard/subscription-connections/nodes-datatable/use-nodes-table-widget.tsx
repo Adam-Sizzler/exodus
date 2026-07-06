@@ -1,4 +1,4 @@
-import { GetAllNodesCommand, GetConfigProfilesCommand } from '@exodus/backend-contract'
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { ActionIcon, Avatar, Badge, Group, Text } from '@mantine/core'
 import { DataTableColumn } from 'mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'
@@ -7,6 +7,7 @@ import { TFunction } from 'i18next'
 import sortBy from 'lodash/sortBy'
 
 import { faviconResolver } from '@shared/utils/misc'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 
 import { NodeStatusSimplfiedBadgeWidget } from '../node-status-simplfied-badge'
 
@@ -14,7 +15,7 @@ export function getNodesTableColumns(
     t: TFunction,
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles'],
     handleViewNode: (nodeUuid: string) => void
-): DataTableColumn<GetAllNodesCommand.Response['response'][number]>[] {
+): DataTableColumn<SubscriptionConnectionResponse>[] {
     return [
         {
             accessor: 'actions',

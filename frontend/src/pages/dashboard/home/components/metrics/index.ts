@@ -1,5 +1,6 @@
 export * from './bandwidth-metrics'
 export * from './exodus-metrics'
 export * from './online-metrics'
+export * from './runtime-metrics'
 export * from './simple-metrics'
 export * from './users-metrics'

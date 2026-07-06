@@ -1,7 +1,7 @@
 import { PiTelegramLogoBold } from 'react-icons/pi'
 
-import classes from './TelegramControl.module.css'
 import { HeaderControl } from './HeaderControl'
+import classes from './TelegramControl.module.css'
 
 interface TelegramControlProps {
     link: string

@@ -2,10 +2,9 @@ import {
     ExternalSquadSubscriptionSettingsSchema,
     GetExternalSquadByUuidCommand
 } from '@exodus/backend-contract'
+import { resolveSubscriptionSetting } from '@widgets/dashboard/subscription-settings/settings/resolve-settings'
 import { useTranslation } from 'react-i18next'
 import z from 'zod'
-
-import { resolveSubscriptionSetting } from '@widgets/dashboard/subscription-settings/settings/resolve-settings'
 
 import { ExternalSquadOverridesTab } from './external-squad-overrides-tab.widget'
 

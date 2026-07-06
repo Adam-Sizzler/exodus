@@ -86,7 +86,139 @@ func protocolCredentialString(value *string, fallback string) string {
 	if value != nil && strings.TrimSpace(*value) != "" {
 		return strings.TrimSpace(*value)
 	}
-	return strings.TrimSpace(fallback)
+	return ""
+}
+
+type userProtocolCredentials struct {
+	TrojanPassword    string
+	VlessUUID         string
+	SSPassword        string
+	NaivePassword     string
+	ShadowtlsPassword string
+	Hysteria2Password string
+	AnytlsPassword    string
+}
+
+func newUserProtocolCredentials(
+	trojanPassword *string,
+	vlessUUID *string,
+	ssPassword *string,
+	naivePassword *string,
+	shadowtlsPassword *string,
+	hysteria2Password *string,
+	anytlsPassword *string,
+) (userProtocolCredentials, error) {
+	used := map[string]string{}
+	credential := userProtocolCredentials{}
+	var err error
+
+	if credential.TrojanPassword, err = coalesceUniqueRandomString("trojanPassword", trojanPassword, 16, used); err != nil {
+		return credential, err
+	}
+	if credential.VlessUUID, err = coalesceUniqueUUID("vlessUuid", vlessUUID, used); err != nil {
+		return credential, err
+	}
+	if credential.SSPassword, err = coalesceUniqueRandomString("ssPassword", ssPassword, 16, used); err != nil {
+		return credential, err
+	}
+	if credential.NaivePassword, err = coalesceUniqueRandomString("naivePassword", naivePassword, 16, used); err != nil {
+		return credential, err
+	}
+	if credential.ShadowtlsPassword, err = coalesceUniqueRandomString("shadowtlsPassword", shadowtlsPassword, 16, used); err != nil {
+		return credential, err
+	}
+	if credential.Hysteria2Password, err = coalesceUniqueRandomString("hysteria2Password", hysteria2Password, 16, used); err != nil {
+		return credential, err
+	}
+	if credential.AnytlsPassword, err = coalesceUniqueRandomString("anytlsPassword", anytlsPassword, 16, used); err != nil {
+		return credential, err
+	}
+
+	return credential, nil
+}
+
+func recordProtocolCredentials(record userRecord) userProtocolCredentials {
+	return userProtocolCredentials{
+		TrojanPassword:    strings.TrimSpace(record.TrojanPassword),
+		VlessUUID:         strings.TrimSpace(record.VlessUUID),
+		SSPassword:        strings.TrimSpace(record.SSPassword),
+		NaivePassword:     protocolCredentialString(record.NaivePassword, ""),
+		ShadowtlsPassword: protocolCredentialString(record.ShadowtlsPassword, ""),
+		Hysteria2Password: protocolCredentialString(record.Hysteria2Password, ""),
+		AnytlsPassword:    protocolCredentialString(record.AnytlsPassword, ""),
+	}
+}
+
+func (credentials userProtocolCredentials) validateUnique() error {
+	used := map[string]string{}
+	for _, item := range []struct {
+		name  string
+		value string
+	}{
+		{name: "trojanPassword", value: credentials.TrojanPassword},
+		{name: "vlessUuid", value: credentials.VlessUUID},
+		{name: "ssPassword", value: credentials.SSPassword},
+		{name: "naivePassword", value: credentials.NaivePassword},
+		{name: "shadowtlsPassword", value: credentials.ShadowtlsPassword},
+		{name: "hysteria2Password", value: credentials.Hysteria2Password},
+		{name: "anytlsPassword", value: credentials.AnytlsPassword},
+	} {
+		if err := addUniqueProtocolCredential(used, item.name, item.value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func applyOptionalProtocolCredential(current string, field OptionalString) string {
+	if !field.Set || field.Value == nil {
+		return strings.TrimSpace(current)
+	}
+	return strings.TrimSpace(*field.Value)
+}
+
+func coalesceUniqueUUID(name string, value *string, used map[string]string) (string, error) {
+	if value != nil && strings.TrimSpace(*value) != "" {
+		parsed, err := uuid.Parse(strings.TrimSpace(*value))
+		if err != nil {
+			return "", err
+		}
+		normalized := parsed.String()
+		return normalized, addUniqueProtocolCredential(used, name, normalized)
+	}
+	for i := 0; i < 16; i++ {
+		generated := uuid.NewString()
+		if err := addUniqueProtocolCredential(used, name, generated); err == nil {
+			return generated, nil
+		}
+	}
+	return "", fmt.Errorf("failed to generate unique %s", name)
+}
+
+func coalesceUniqueRandomString(name string, value *string, length int, used map[string]string) (string, error) {
+	if value != nil && strings.TrimSpace(*value) != "" {
+		trimmed := strings.TrimSpace(*value)
+		return trimmed, addUniqueProtocolCredential(used, name, trimmed)
+	}
+	for i := 0; i < 16; i++ {
+		generated := generateRandomString(length)
+		if err := addUniqueProtocolCredential(used, name, generated); err == nil {
+			return generated, nil
+		}
+	}
+	return "", fmt.Errorf("failed to generate unique %s", name)
+}
+
+func addUniqueProtocolCredential(used map[string]string, name string, value string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return fmt.Errorf("%s cannot be empty", name)
+	}
+	if existing, ok := used[trimmed]; ok {
+		return fmt.Errorf("%s must be unique and cannot duplicate %s", name, existing)
+	}
+	used[trimmed] = name
+	return nil
 }
 
 func normalizeUserTag(value *string) any {

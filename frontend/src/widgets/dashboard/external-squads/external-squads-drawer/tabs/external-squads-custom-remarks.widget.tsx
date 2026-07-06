@@ -1,13 +1,13 @@
-import { PiClockCountdown, PiClockUser, PiListChecks, PiProhibit } from 'react-icons/pi'
 import { Button, Group, Paper, Stack, Switch, Text, Transition } from '@mantine/core'
-import { TbDeviceFloppy, TbDevices2, TbListLetters, TbX } from 'react-icons/tb'
+import { notifications } from '@mantine/notifications'
 import { GetExternalSquadByUuidCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useState } from 'react'
-import { notifications } from '@mantine/notifications'
 import { useTranslation } from 'react-i18next'
+import { PiClockCountdown, PiClockUser, PiListChecks, PiProhibit } from 'react-icons/pi'
+import { TbDeviceFloppy, TbDevices2, TbListLetters, TbX } from 'react-icons/tb'
 
-import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useUpdateExternalSquad } from '@shared/api/hooks'
 
 import { RemarksManager } from '../../../subscription-settings/settings/cards/managers/remarks-manager.widget'
 

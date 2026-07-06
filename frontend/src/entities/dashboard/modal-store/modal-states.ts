@@ -7,12 +7,9 @@ import {
 import { THelpDrawerAvailableScreen } from '@shared/ui/help-drawer/help-drawer.types'
 
 export const MODALS = {
-    USER_TORRENT_BLOCKER_REPORTS_DRAWER: 'USER_TORRENT_BLOCKER_REPORTS_DRAWER',
     CONFIG_PROFILES_SHOW_ACTIVE_NODE: 'CONFIG_PROFILES_SHOW_ACTIVE_NODE',
     INTERNAL_SQUAD_SHOW_INBOUNDS: 'INTERNAL_SQUAD_SHOW_INBOUNDS',
-    USER_HWID_DEVICES_DRAWER: 'USER_HWID_DEVICES_DRAWER',
     NODE_PLUGIN_EXECUTOR_DRAWER: 'NODE_PLUGIN_EXECUTOR_DRAWER',
-    USER_SUBSCRIPTION_REQUESTS_DRAWER: 'USER_SUBSCRIPTION_REQUESTS_DRAWER',
     EXTERNAL_SQUAD_DRAWER: 'EXTERNAL_SQUAD_DRAWER',
     USER_ACCESSIBLE_NODES_DRAWER: 'USER_ACCESSIBLE_NODES_DRAWER',
     VIEW_INFRA_PROVIDER_DRAWER: 'VIEW_INFRA_PROVIDER_DRAWER',
@@ -28,8 +25,10 @@ export const MODALS = {
     CONFIG_PROFILE_SHOW_INBOUNDS_DRAWER: 'CONFIG_PROFILE_SHOW_INBOUNDS_DRAWER',
     CONFIG_PROFILE_SHOW_SNIPPETS_DRAWER: 'CONFIG_PROFILE_SHOW_SNIPPETS_DRAWER',
     EDIT_HOST_MODAL: 'EDIT_HOST_MODAL',
+    EDIT_MANY_HOSTS_DRAWER: 'EDIT_MANY_HOSTS_DRAWER',
     CREATE_HOST_MODAL: 'CREATE_HOST_MODAL',
-    HELP_DRAWER: 'HELP_DRAWER'
+    HELP_DRAWER: 'HELP_DRAWER',
+    NODES_USERS_USAGE_STATISTICS_MODAL: 'NODES_USERS_USAGE_STATISTICS_MODAL'
 } as const
 
 export interface ModalInternalStates {
@@ -41,6 +40,9 @@ export interface ModalInternalStates {
     CREATE_INFRA_BILLING_RECORD_DRAWER: undefined
     CREATE_INFRA_PROVIDER_DRAWER: undefined
     EDIT_HOST_MODAL: UpdateHostCommand.Response['response']
+    EDIT_MANY_HOSTS_DRAWER: {
+        uuids: string[]
+    }
     EDIT_NODE_BY_UUID_MODAL: {
         generatedCredentials?: {
             grpcToken?: string
@@ -59,6 +61,9 @@ export interface ModalInternalStates {
         squadUuid: string
     }
     NODE_PLUGIN_EXECUTOR_DRAWER: undefined
+    NODES_USERS_USAGE_STATISTICS_MODAL: {
+        nodeUuids: string[]
+    }
     RENAME_SQUAD_OR_CONFIG_PROFILE_MODAL: {
         name: string
         uuid: string
@@ -75,15 +80,6 @@ export interface ModalInternalStates {
         uuids: string[]
     }
     USER_ACCESSIBLE_NODES_DRAWER: {
-        userUuid: string
-    }
-    USER_HWID_DEVICES_DRAWER: {
-        userUuid: string
-    }
-    USER_SUBSCRIPTION_REQUESTS_DRAWER: {
-        userUuid: string
-    }
-    USER_TORRENT_BLOCKER_REPORTS_DRAWER: {
         userUuid: string
     }
     VIEW_INFRA_PROVIDER_DRAWER: GetInfraProvidersCommand.Response['response']['providers'][number]

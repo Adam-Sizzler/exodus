@@ -3,8 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ResponseRuleModificationsSchema = void 0;
+exports.ResponseRuleModificationsSchema = exports.ResponseRuleEncryptionSchema = void 0;
 const zod_1 = __importDefault(require("zod"));
+exports.ResponseRuleEncryptionSchema = zod_1.default.object({
+    method: zod_1.default.enum(['age1', 'age1pq1']),
+    key: zod_1.default.string(),
+});
 exports.ResponseRuleModificationsSchema = zod_1.default
     .object({
     headers: zod_1.default
@@ -67,6 +71,40 @@ exports.ResponseRuleModificationsSchema = zod_1.default
         .optional()
         .describe(JSON.stringify({
         markdownDescription: 'If you set this flag to **true**, the **Serve JSON at Base Subscription** setting will be ignored (set to **false**).',
+    })),
+    additionalExtendedClientsRegex: zod_1.default
+        .array(zod_1.default.string().min(1))
+        .optional()
+        .describe(JSON.stringify({
+        markdownDescription: 'Additional regex patterns to match extended clients. Matched clients will receive `serverDescription` in the subscription response.\n\n' +
+            '**Default Mihomo extended clients:**\n' +
+            '- `^FlClash ?X/`\n' +
+            '- `^Flowvy/`\n' +
+            '- `^prizrak-box/`\n' +
+            '- `^koala-clash/`\n\n' +
+            '**Default Xray extended clients:**\n' +
+            '- `^Happ/`\n' +
+            '- `^INCY/`\n\n' +
+            '**Example:** `["^MyClient/", "^CustomApp\\\\/v2"]`',
+    })),
+    disableHwidCheck: zod_1.default
+        .boolean()
+        .optional()
+        .describe(JSON.stringify({
+        markdownDescription: 'If you set this flag to **true**, the HWID check will be disabled. **This modification have higher priority than settings from Subscription Settings.**',
+    })),
+    encryption: exports.ResponseRuleEncryptionSchema.optional().describe(JSON.stringify({
+        markdownDescription: 'Encrypt response body with given parameters. Generate keypairs with Rescue CLI: `docker exec -it exodus cli`, select "Generate keypairs".',
+    })),
+    excludeHostsByTags: zod_1.default
+        .array(zod_1.default
+        .string()
+        .regex(/^[A-Z0-9_:]+$/, 'Tag can only contain uppercase letters, numbers, underscores and colons')
+        .max(36, 'Each tag must be less than 36 characters'))
+        .min(1)
+        .optional()
+        .describe(JSON.stringify({
+        markdownDescription: 'Excludes hosts from the subscription output if at least one tag in the host matches the given tags.',
     })),
 })
     .optional()

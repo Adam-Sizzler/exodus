@@ -2,24 +2,23 @@ import {
     Accordion,
     ActionIcon,
     Box,
-    Button,
     Drawer,
     Group,
-    Paper,
     Stack,
     Text,
-    TextInput
+    TextInput,
+    Tooltip
 } from '@mantine/core'
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { TbDeviceFloppy, TbSearch, TbX } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
+import { TbDeviceFloppy, TbSearch, TbX } from 'react-icons/tb'
 import { Virtuoso } from 'react-virtuoso'
 
-import { ConfigProfileCardShared } from '@shared/ui/config-profiles/config-profile-card/config-profile-card.shared'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetConfigProfiles } from '@shared/api/hooks'
+import { ConfigProfileCardShared } from '@shared/ui/config-profiles/config-profile-card/config-profile-card.shared'
 import { SingboxLogo } from '@shared/ui/logos'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import classes from './config-profiles.module.css'
 import { IProps } from './interfaces'
@@ -177,81 +176,67 @@ export const ConfigProfilesDrawer = (props: IProps) => {
             }
         >
             <Stack className={classes.drawerContent} gap="md">
-                <Paper p="md" shadow="sm" withBorder>
-                    <Stack gap="md">
-                        <Box
-                            bd="1px solid var(--mantine-color-dark-4)"
-                            bdrs="md"
-                            bg="dark.6"
-                            p="md"
-                        >
-                            <Group align="center" justify="space-between">
-                                <Box flex={1}>
-                                    <Group align="center" justify="space-between">
-                                        <Box>
-                                            {selectedInbounds.size > 0 && selectedProfileUuid ? (
-                                                <>
-                                                    <Text fw={700} size="sm">
-                                                        {filteredProfiles.find(
-                                                            (p) => p.uuid === selectedProfileUuid
-                                                        )?.name ||
-                                                            t(
-                                                                'config-profiles.drawer.widget.no-profile-selected'
-                                                            )}
-                                                    </Text>
-                                                    <Text c="dimmed" size="xs">
-                                                        {t(
-                                                            'internal-squads.drawer.widget.selected-inbounds',
-                                                            {
-                                                                count: selectedInbounds.size
-                                                            }
-                                                        )}
-                                                    </Text>
-                                                </>
-                                            ) : (
-                                                <Box>
-                                                    <Text fw={700} size="sm">
-                                                        {t(
-                                                            'config-profiles.drawer.widget.no-inbounds-selected'
-                                                        )}
-                                                    </Text>
-                                                    <Text c="dimmed" size="xs">
-                                                        {t(
-                                                            'config-profiles.drawer.widget.choose-config-profile-to-apply-to-the-node'
-                                                        )}
-                                                    </Text>
-                                                </Box>
-                                            )}
-                                        </Box>
-                                        {selectedInbounds.size > 0 && (
-                                            <ActionIcon
-                                                color="red"
-                                                onClick={clearSelection}
-                                                size="lg"
-                                                variant="light"
-                                            >
-                                                <TbX size={24} />
-                                            </ActionIcon>
-                                        )}
-                                    </Group>
+                <Box
+                    bdrs="md"
+                    p="md"
+                    style={{
+                        border: '1px solid rgb(255, 255, 255, 0.08)',
+                        background: 'rgb(255, 255, 255, 0.02)'
+                    }}
+                >
+                    <Group align="center" justify="space-between" wrap="nowrap">
+                        <Box>
+                            {selectedInbounds.size > 0 && selectedProfileUuid ? (
+                                <>
+                                    <Text fw={700} size="sm">
+                                        {filteredProfiles.find(
+                                            (p) => p.uuid === selectedProfileUuid
+                                        )?.name ||
+                                            t('config-profiles.drawer.widget.no-profile-selected')}
+                                    </Text>
+                                    <Text c="dimmed" size="xs">
+                                        {t('internal-squads.drawer.widget.selected-inbounds', {
+                                            count: selectedInbounds.size
+                                        })}
+                                    </Text>
+                                </>
+                            ) : (
+                                <Box>
+                                    <Text fw={700} size="sm">
+                                        {t('config-profiles.drawer.widget.no-profile-selected')}
+                                    </Text>
+                                    <Text c="dimmed" size="xs">
+                                        {t('config-profiles.drawer.widget.no-inbounds-selected')}
+                                    </Text>
                                 </Box>
-                            </Group>
+                            )}
                         </Box>
 
-                        <Group justify="flex-end">
-                            <Button
-                                color="teal"
+                        <Group gap="xs" wrap="nowrap">
+                            <ActionIcon
+                                color="red"
                                 disabled={selectedInbounds.size === 0}
-                                fullWidth
-                                leftSection={<TbDeviceFloppy size="1.2rem" />}
-                                onClick={handleSaveInbounds}
-                                size="md"
+                                onClick={clearSelection}
+                                size="lg"
+                                variant="soft"
                             >
-                                {t('config-profiles.drawer.widget.apply-changes')}
-                            </Button>
+                                <TbX size={24} />
+                            </ActionIcon>
+
+                            <Tooltip label={t('common.save')}>
+                                <ActionIcon
+                                    color="teal"
+                                    disabled={selectedInbounds.size === 0}
+                                    onClick={handleSaveInbounds}
+                                    size="lg"
+                                    variant="soft"
+                                >
+                                    <TbDeviceFloppy size={24} />
+                                </ActionIcon>
+                            </Tooltip>
                         </Group>
-                    </Stack>
-                </Paper>
+                    </Group>
+                </Box>
 
                 <TextInput
                     leftSection={<TbSearch size={16} />}

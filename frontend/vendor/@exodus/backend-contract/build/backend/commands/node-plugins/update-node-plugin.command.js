@@ -9,7 +9,7 @@ var UpdateNodePluginCommand;
 (function (UpdateNodePluginCommand) {
     UpdateNodePluginCommand.url = api_1.REST_API.NODE_PLUGINS.UPDATE;
     UpdateNodePluginCommand.TSQ_url = UpdateNodePluginCommand.url;
-    UpdateNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.UPDATE, 'patch', 'Update Node Plugin');
+    UpdateNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.UPDATE, 'patch', 'Update Node Plugin', { scope: 'update', kind: 'write' });
     UpdateNodePluginCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
         name: zod_1.z

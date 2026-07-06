@@ -1,6 +1,6 @@
 import { Button, Center, List, Modal, Stack, Text, ThemeIcon, Title } from '@mantine/core'
-import { TbAlertTriangle, TbCheck } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
+import { TbAlertTriangle, TbCheck } from 'react-icons/tb'
 
 import { useMiscStoreActions, useSrrAdvancedModalClosed } from '@entities/dashboard/misc-store'
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-export declare const SharedListSchema: z.ZodObject<{
+export declare const SharedListSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
     name: z.ZodString;
-    type: z.ZodEnum<["ipList"]>;
+    type: z.ZodLiteral<"ipList">;
     items: z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString, z.ZodString]>, "many">;
 }, "strip", z.ZodTypeAny, {
     type: "ipList";
@@ -11,48 +11,19 @@ export declare const SharedListSchema: z.ZodObject<{
     type: "ipList";
     name: string;
     items: string[];
-}>;
-export declare const TorrentBlockerPluginSchema: z.ZodObject<{
-    enabled: z.ZodBoolean;
-    blockDuration: z.ZodNumber;
-    ignoreLists: z.ZodObject<{
-        ip: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString]>, "many">>;
-        userId: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
-    }, "strip", z.ZodTypeAny, {
-        ip?: string[] | undefined;
-        userId?: number[] | undefined;
-    }, {
-        ip?: string[] | undefined;
-        userId?: number[] | undefined;
-    }>;
-    includeRuleTags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}>, z.ZodObject<{
+    name: z.ZodString;
+    type: z.ZodLiteral<"asList">;
+    items: z.ZodArray<z.ZodNumber, "many">;
 }, "strip", z.ZodTypeAny, {
-    enabled: boolean;
-    blockDuration: number;
-    ignoreLists: {
-        ip?: string[] | undefined;
-        userId?: number[] | undefined;
-    };
-    includeRuleTags?: string[] | undefined;
+    type: "asList";
+    name: string;
+    items: number[];
 }, {
-    enabled: boolean;
-    blockDuration: number;
-    ignoreLists: {
-        ip?: string[] | undefined;
-        userId?: number[] | undefined;
-    };
-    includeRuleTags?: string[] | undefined;
-}>;
-export declare const ConnectionDropPluginSchema: z.ZodObject<{
-    enabled: z.ZodBoolean;
-    whitelistIps: z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString]>, "many">;
-}, "strip", z.ZodTypeAny, {
-    enabled: boolean;
-    whitelistIps: string[];
-}, {
-    enabled: boolean;
-    whitelistIps: string[];
-}>;
+    type: "asList";
+    name: string;
+    items: number[];
+}>]>;
 export declare const IngressFilterPluginSchema: z.ZodObject<{
     enabled: z.ZodBoolean;
     blockedIps: z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString, z.ZodString, z.ZodString]>, "many">;
@@ -76,140 +47,28 @@ export declare const EgressFilterPluginSchema: z.ZodObject<{
     blockedIps?: string[] | undefined;
     blockedPorts?: number[] | undefined;
 }>;
-export declare const NodePluginSchema: z.ZodObject<{
-    sharedLists: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodObject<{
-        name: z.ZodString;
-        type: z.ZodEnum<["ipList"]>;
-        items: z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString, z.ZodString]>, "many">;
-    }, "strip", z.ZodTypeAny, {
-        type: "ipList";
-        name: string;
-        items: string[];
-    }, {
-        type: "ipList";
-        name: string;
-        items: string[];
-    }>, "many">>>;
-    torrentBlocker: z.ZodOptional<z.ZodObject<{
-        enabled: z.ZodBoolean;
-        blockDuration: z.ZodNumber;
-        ignoreLists: z.ZodObject<{
-            ip: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString]>, "many">>;
-            userId: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
-        }, "strip", z.ZodTypeAny, {
-            ip?: string[] | undefined;
-            userId?: number[] | undefined;
-        }, {
-            ip?: string[] | undefined;
-            userId?: number[] | undefined;
-        }>;
-        includeRuleTags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        blockDuration: number;
-        ignoreLists: {
-            ip?: string[] | undefined;
-            userId?: number[] | undefined;
-        };
-        includeRuleTags?: string[] | undefined;
-    }, {
-        enabled: boolean;
-        blockDuration: number;
-        ignoreLists: {
-            ip?: string[] | undefined;
-            userId?: number[] | undefined;
-        };
-        includeRuleTags?: string[] | undefined;
-    }>>;
-    ingressFilter: z.ZodOptional<z.ZodObject<{
-        enabled: z.ZodBoolean;
-        blockedIps: z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString, z.ZodString, z.ZodString]>, "many">;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        blockedIps: string[];
-    }, {
-        enabled: boolean;
-        blockedIps: string[];
-    }>>;
-    egressFilter: z.ZodOptional<z.ZodObject<{
-        enabled: z.ZodBoolean;
-        blockedIps: z.ZodOptional<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString, z.ZodString, z.ZodString]>, "many">>;
-        blockedPorts: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        blockedIps?: string[] | undefined;
-        blockedPorts?: number[] | undefined;
-    }, {
-        enabled: boolean;
-        blockedIps?: string[] | undefined;
-        blockedPorts?: number[] | undefined;
-    }>>;
-    connectionDrop: z.ZodOptional<z.ZodObject<{
-        enabled: z.ZodBoolean;
-        whitelistIps: z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodString]>, "many">;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        whitelistIps: string[];
-    }, {
-        enabled: boolean;
-        whitelistIps: string[];
-    }>>;
+export declare const HaproxyAuthPluginSchema: z.ZodObject<{
+    enabled: z.ZodBoolean;
 }, "strip", z.ZodTypeAny, {
-    sharedLists: {
-        type: "ipList";
-        name: string;
-        items: string[];
-    }[];
-    torrentBlocker?: {
-        enabled: boolean;
-        blockDuration: number;
-        ignoreLists: {
-            ip?: string[] | undefined;
-            userId?: number[] | undefined;
-        };
-        includeRuleTags?: string[] | undefined;
-    } | undefined;
-    ingressFilter?: {
-        enabled: boolean;
-        blockedIps: string[];
-    } | undefined;
-    egressFilter?: {
-        enabled: boolean;
-        blockedIps?: string[] | undefined;
-        blockedPorts?: number[] | undefined;
-    } | undefined;
-    connectionDrop?: {
-        enabled: boolean;
-        whitelistIps: string[];
-    } | undefined;
+    enabled: boolean;
 }, {
-    sharedLists?: {
-        type: "ipList";
-        name: string;
-        items: string[];
-    }[] | undefined;
-    torrentBlocker?: {
-        enabled: boolean;
-        blockDuration: number;
-        ignoreLists: {
-            ip?: string[] | undefined;
-            userId?: number[] | undefined;
-        };
-        includeRuleTags?: string[] | undefined;
-    } | undefined;
-    ingressFilter?: {
-        enabled: boolean;
-        blockedIps: string[];
-    } | undefined;
-    egressFilter?: {
-        enabled: boolean;
-        blockedIps?: string[] | undefined;
-        blockedPorts?: number[] | undefined;
-    } | undefined;
-    connectionDrop?: {
-        enabled: boolean;
-        whitelistIps: string[];
-    } | undefined;
+    enabled: boolean;
+}>;
+export declare const NodePluginSchema: z.ZodObject<{
+    sharedLists: z.ZodDefault<z.ZodOptional<z.ZodArray<typeof SharedListSchema, "many">>>;
+    ingressFilter: z.ZodOptional<typeof IngressFilterPluginSchema>;
+    egressFilter: z.ZodOptional<typeof EgressFilterPluginSchema>;
+    haproxyAuth: z.ZodOptional<typeof HaproxyAuthPluginSchema>;
+}, "strip", z.ZodTypeAny, {
+    sharedLists: z.infer<typeof SharedListSchema>[];
+    ingressFilter?: z.infer<typeof IngressFilterPluginSchema> | undefined;
+    egressFilter?: z.infer<typeof EgressFilterPluginSchema> | undefined;
+    haproxyAuth?: z.infer<typeof HaproxyAuthPluginSchema> | undefined;
+}, {
+    sharedLists?: z.infer<typeof SharedListSchema>[] | undefined;
+    ingressFilter?: z.infer<typeof IngressFilterPluginSchema> | undefined;
+    egressFilter?: z.infer<typeof EgressFilterPluginSchema> | undefined;
+    haproxyAuth?: z.infer<typeof HaproxyAuthPluginSchema> | undefined;
 }>;
 export type TNodePlugin = z.infer<typeof NodePluginSchema>;
 //# sourceMappingURL=node-plugins.schema.d.ts.map

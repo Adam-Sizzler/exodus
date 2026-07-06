@@ -1,3 +1,4 @@
+import { TSubscriptionPagePlatformKey } from '@exodus/subscription-page-types'
 import {
     IconBrandAndroid,
     IconBrandApple,
@@ -5,7 +6,6 @@ import {
     IconDeviceDesktop,
     IconDeviceTv
 } from '@tabler/icons-react'
-import { TSubscriptionPagePlatformKey } from '@exodus/subscription-page-types'
 
 export const PLATFORM_ICONS: Record<
     TSubscriptionPagePlatformKey,

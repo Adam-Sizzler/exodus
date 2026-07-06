@@ -1,15 +1,15 @@
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js'
+import { ml_kem768 } from '@noble/post-quantum/ml-kem.js'
 /* eslint-disable camelcase */
 import { randomBytes } from '@noble/post-quantum/utils.js'
-import { ml_kem768 } from '@noble/post-quantum/ml-kem.js'
-import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js'
-import { generateKeyPair } from '@stablelib/x25519'
 import { encodeURLSafe } from '@stablelib/base64'
+import { generateKeyPair } from '@stablelib/x25519'
 
 export const generateX25519 = () => {
     const kp = generateKeyPair()
     return {
         privateKey: encodeURLSafe(kp.secretKey).replace(/=/g, '').replace(/\n/g, ''),
-        publicKey: encodeURLSafe(kp.publicKey).replace(/=/g, '').replace(/\n/g, '')
+        password: encodeURLSafe(kp.publicKey).replace(/=/g, '').replace(/\n/g, '')
     }
 }
 

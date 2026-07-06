@@ -10,24 +10,24 @@ import {
     Text,
     TextInput
 } from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { modals } from '@mantine/modals'
 import {
     GetExodusSettingsCommand,
     UpdateExodusSettingsCommand
 } from '@exodus/backend-contract'
-import { TbAlertCircle, TbLink, TbStar } from 'react-icons/tb'
 import { zodResolver } from 'mantine-form-zod-resolver'
-import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { useTranslation } from 'react-i18next'
-import { modals } from '@mantine/modals'
-import { useForm } from '@mantine/form'
+import { HiQuestionMarkCircle } from 'react-icons/hi'
+import { TbAlertCircle, TbLink, TbStar } from 'react-icons/tb'
 
+import { queryClient } from '@shared/api'
+import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useUpdateExodusSettings } from '@shared/api/hooks/exodus-settings/exodus-settings.mutation.hooks'
+import { Logo } from '@shared/ui'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SettingsCardShared } from '@shared/ui/settings-card'
-import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { handleFormErrors } from '@shared/utils/misc'
-import { queryClient } from '@shared/api'
-import { Logo } from '@shared/ui'
 
 interface IProps {
     brandingSettings: NonNullable<

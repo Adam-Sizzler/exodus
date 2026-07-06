@@ -2,18 +2,15 @@ package auth
 
 import (
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,22 +51,13 @@ type oauthCallbackRequest struct {
 	State    string `json:"state"`
 }
 
-type telegramCallbackRequest struct {
-	ID        int64   `json:"id"`
-	FirstName string  `json:"first_name"`
-	LastName  *string `json:"last_name,omitempty"`
-	Username  *string `json:"username,omitempty"`
-	PhotoURL  *string `json:"photo_url,omitempty"`
-	AuthDate  int64   `json:"auth_date"`
-	Hash      string  `json:"hash"`
-}
-
 type oauthSettings struct {
 	Github   oauthProviderSettings `json:"github"`
 	PocketID oauthProviderSettings `json:"pocketid"`
 	Yandex   oauthProviderSettings `json:"yandex"`
 	Keycloak oauthProviderSettings `json:"keycloak"`
 	Generic  oauthProviderSettings `json:"generic"`
+	Telegram oauthProviderSettings `json:"telegram"`
 }
 
 type oauthProviderSettings struct {
@@ -84,12 +72,7 @@ type oauthProviderSettings struct {
 	AuthorizationURL string   `json:"authorizationUrl"`
 	TokenURL         string   `json:"tokenUrl"`
 	AllowedEmails    []string `json:"allowedEmails"`
-}
-
-type telegramAuthSettings struct {
-	Enabled  bool     `json:"enabled"`
-	BotToken string   `json:"botToken"`
-	AdminIDs []string `json:"adminIds"`
+	AllowedIDs       []string `json:"allowedIds"`
 }
 
 type oauthTokenResponse struct {
@@ -193,9 +176,9 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
 			return
 		}
-		if email == "" || (!hasCustomClaim && !isEmailAllowed(email, providerSettings.AllowedEmails)) {
+		if email == "" || !isOAuthPrincipalAllowed(provider, email, hasCustomClaim, providerSettings) {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "email_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 email is not allowed", nil, cfg)
+			shared.SendError(w, http.StatusForbidden, "OAuth2 principal is not allowed", nil, cfg)
 			return
 		}
 		token, adminUUID, err := createFirstAdminSession(w, r, manager, cfg)
@@ -205,56 +188,6 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			return
 		}
 		emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, "oauth2", provider, email, adminUUID, "", r)
-		shared.WriteJSON(w, http.StatusOK, map[string]any{
-			"response": map[string]any{"accessToken": token},
-		})
-	}
-}
-
-func TelegramCallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		var req telegramCallbackRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-			return
-		}
-		telegramID := strconv.FormatInt(req.ID, 10)
-		if !isLoginAllowed(manager) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "login_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
-			return
-		}
-		settings, err := loadTelegramAuthSettings(manager)
-		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to load Telegram auth settings", err, cfg)
-			return
-		}
-		if !settings.Enabled || strings.TrimSpace(settings.BotToken) == "" {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "telegram_disabled", r)
-			shared.SendError(w, http.StatusForbidden, "Telegram authentication is disabled", nil, cfg)
-			return
-		}
-		if !containsString(settings.AdminIDs, telegramID) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "telegram_user_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "Telegram user is not allowed", nil, cfg)
-			return
-		}
-		if !verifyTelegramCallback(req, settings.BotToken) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "invalid_telegram_hash", r)
-			shared.SendError(w, http.StatusForbidden, "invalid Telegram callback hash", nil, cfg)
-			return
-		}
-		token, adminUUID, err := createFirstAdminSession(w, r, manager, cfg)
-		if err != nil {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "telegram", "telegram", telegramID, "", "session_create_failed", r)
-			shared.SendError(w, http.StatusForbidden, "failed to create Telegram session", err, cfg)
-			return
-		}
-		emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, "telegram", "telegram", telegramID, adminUUID, "", r)
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{"accessToken": token},
 		})
@@ -343,27 +276,9 @@ func loadOAuthSettings(manager *dbmanager.DatabaseManager) (oauthSettings, error
 	return out, err
 }
 
-func loadTelegramAuthSettings(manager *dbmanager.DatabaseManager) (telegramAuthSettings, error) {
-	var out telegramAuthSettings
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var raw sql.NullString
-		if err := db.QueryRow(`SELECT tg_auth_settings FROM exodus_settings WHERE id = 1 LIMIT 1`).Scan(&raw); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
-		}
-		if raw.Valid && strings.TrimSpace(raw.String) != "" {
-			return json.Unmarshal([]byte(raw.String), &out)
-		}
-		return nil
-	})
-	return out, err
-}
-
 func isSupportedOAuthProvider(provider string) bool {
 	switch provider {
-	case "github", "pocketid", "yandex", "keycloak", "generic":
+	case "github", "pocketid", "yandex", "keycloak", "generic", "telegram":
 		return true
 	default:
 		return false
@@ -382,6 +297,8 @@ func getOAuthProviderSettings(settings oauthSettings, provider string) oauthProv
 		return settings.Keycloak
 	case "generic":
 		return settings.Generic
+	case "telegram":
+		return settings.Telegram
 	default:
 		return oauthProviderSettings{}
 	}
@@ -457,6 +374,24 @@ func buildAuthorizationURL(provider string, settings oauthProviderSettings, stat
 			values.Set("code_challenge", challenge)
 		}
 		return makeOAuthURL(settings.AuthorizationURL, values)
+	case "telegram":
+		if settings.ClientID == "" || settings.ClientSecret == "" || settings.FrontendDomain == "" {
+			return "", errors.New("telegram OAuth2 settings are incomplete")
+		}
+		verifier, challenge, err := generatePKCEPair()
+		if err != nil {
+			return "", err
+		}
+		*codeVerifier = verifier
+		return makeOAuthURL("https://oauth.telegram.org/auth", url.Values{
+			"response_type":         {"code"},
+			"client_id":             {settings.ClientID},
+			"redirect_uri":          {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"state":                 {state},
+			"scope":                 {"openid profile telegram:bot_access"},
+			"code_challenge_method": {"S256"},
+			"code_challenge":        {challenge},
+		})
 	default:
 		return "", errors.New("unsupported OAuth2 provider")
 	}
@@ -541,6 +476,19 @@ func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProvi
 			return "", false, err
 		}
 		return extractEmailFromIDToken(token.IDToken)
+	case "telegram":
+		token, err := requestOAuthToken(ctx, "https://oauth.telegram.org/token", url.Values{
+			"grant_type":    {"authorization_code"},
+			"client_id":     {settings.ClientID},
+			"client_secret": {settings.ClientSecret},
+			"code":          {code},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"code_verifier": {codeVerifier},
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return extractTelegramIDFromIDToken(token.IDToken)
 	default:
 		return "", false, errors.New("unsupported OAuth2 provider")
 	}
@@ -652,6 +600,33 @@ func extractEmailFromIDToken(idToken string) (string, bool, error) {
 	return email, customClaim, nil
 }
 
+func extractTelegramIDFromIDToken(idToken string) (string, bool, error) {
+	parts := strings.Split(idToken, ".")
+	if len(parts) < 2 {
+		return "", false, errors.New("invalid id_token")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", false, err
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return "", false, err
+	}
+	switch id := claims["id"].(type) {
+	case string:
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return "", false, errors.New("missing telegram id in id_token")
+		}
+		return id, false, nil
+	case float64:
+		return strconv.FormatInt(int64(id), 10), false, nil
+	default:
+		return "", false, errors.New("missing telegram id in id_token")
+	}
+}
+
 func storeOAuthState(provider, state, codeVerifier string) {
 	oauthStateCache.Lock()
 	defer oauthStateCache.Unlock()
@@ -702,6 +677,13 @@ func isEmailAllowed(email string, allowed []string) bool {
 	return false
 }
 
+func isOAuthPrincipalAllowed(provider, principal string, hasCustomClaim bool, settings oauthProviderSettings) bool {
+	if provider == "telegram" {
+		return containsString(settings.AllowedIDs, principal)
+	}
+	return hasCustomClaim || isEmailAllowed(principal, settings.AllowedEmails)
+}
+
 func containsString(items []string, target string) bool {
 	target = strings.TrimSpace(target)
 	for _, item := range items {
@@ -710,38 +692,4 @@ func containsString(items []string, target string) bool {
 		}
 	}
 	return false
-}
-
-func verifyTelegramCallback(req telegramCallbackRequest, botToken string) bool {
-	if time.Since(time.Unix(req.AuthDate, 0)) > 15*time.Minute {
-		return false
-	}
-	fields := map[string]string{
-		"auth_date":  strconv.FormatInt(req.AuthDate, 10),
-		"first_name": req.FirstName,
-		"id":         strconv.FormatInt(req.ID, 10),
-	}
-	if req.LastName != nil {
-		fields["last_name"] = *req.LastName
-	}
-	if req.Username != nil {
-		fields["username"] = *req.Username
-	}
-	if req.PhotoURL != nil {
-		fields["photo_url"] = *req.PhotoURL
-	}
-	keys := make([]string, 0, len(fields))
-	for key := range fields {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	lines := make([]string, 0, len(keys))
-	for _, key := range keys {
-		lines = append(lines, key+"="+fields[key])
-	}
-	secret := sha256.Sum256([]byte(botToken))
-	mac := hmac.New(sha256.New, secret[:])
-	_, _ = mac.Write([]byte(strings.Join(lines, "\n")))
-	expected := hex.EncodeToString(mac.Sum(nil))
-	return hmac.Equal([]byte(expected), []byte(strings.ToLower(req.Hash)))
 }

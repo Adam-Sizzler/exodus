@@ -1,25 +1,38 @@
 import {
+    Box,
+    Button,
     Collapse,
-    Divider,
     Group,
     NumberInput,
     Stack,
     Switch,
     TagsInput,
-    Text
+    Text,
+    Textarea
 } from '@mantine/core'
+import { UseFormReturnType } from '@mantine/form'
 import { CreateNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { TbChartBar, TbChartLine } from 'react-icons/tb'
-import { UseFormReturnType } from '@mantine/form'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PiTagDuotone } from 'react-icons/pi'
-import { useState } from 'react'
+import { TbBell, TbChartBar, TbChartLine, TbClock, TbExternalLink } from 'react-icons/tb'
 
+import { useGetNodesTags } from '@shared/api/hooks'
+import { TrafficLimitInput } from '@shared/ui/forms/traffic-limit-input'
 import { SelectInfraProviderShared } from '@shared/ui/infra-billing/select-infra-provider/select-infra-provider.shared'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
-import { useGetNodesTags } from '@shared/api/hooks'
+import { TagInputPill } from '@shared/ui/tag-input-pill'
+
+import classes from './node-tracking-and-billing.card.module.css'
+
+const URL_REGEX = /https?:\/\/[^\s]+/i
+
+function extractFirstUrl(text: string): null | string {
+    const match = text.match(URL_REGEX)
+    return match ? match[0] : null
+}
 
 interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {
     cardVariants: Variants
@@ -37,9 +50,14 @@ export const NodeTrackingAndBillingCard = <
     const { cardVariants, form, motionWrapper } = props
 
     const [advancedOpened, setAdvancedOpened] = useState<boolean>(false)
+    const [firstNoteUrl, setFirstNoteUrl] = useState<null | string>(null)
 
     form.watch('isTrafficTrackingActive', ({ value }) => {
         setAdvancedOpened(value ?? false)
+    })
+
+    form.watch('note', ({ value }) => {
+        setFirstNoteUrl(extractFirstUrl(typeof value === 'string' ? value : ''))
     })
 
     const MotionWrapper = motionWrapper
@@ -73,8 +91,12 @@ export const NodeTrackingAndBillingCard = <
                             }}
                         />
 
-                        <Stack gap={0}>
-                            <Group gap="xs" justify="space-between">
+                        <Box className={classes.trackingCard}>
+                            <Group
+                                className={classes.trackingHeader}
+                                gap="xs"
+                                justify="space-between"
+                            >
                                 <Group gap="xs">
                                     <TbChartLine
                                         size={18}
@@ -99,38 +121,22 @@ export const NodeTrackingAndBillingCard = <
                                 />
                             </Group>
 
-                            <Collapse in={advancedOpened}>
-                                <Stack gap="sm" mt="sm">
-                                    <Divider size="xs" />
+                            <Collapse expanded={advancedOpened}>
+                                <Stack className={classes.trackingBody} gap="sm">
                                     <Group gap="md" grow justify="space-between" w="100%">
-                                        <NumberInput
-                                            allowDecimal={false}
-                                            decimalScale={0}
-                                            defaultValue={0}
+                                        <TrafficLimitInput
                                             hideControls
                                             key={form.key('trafficLimitBytes')}
                                             label={t('base-node-form.limit')}
-                                            leftSection={
-                                                <>
-                                                    <Text
-                                                        display="flex"
-                                                        size="0.75rem"
-                                                        style={{ justifyContent: 'center' }}
-                                                        ta="center"
-                                                        w={26}
-                                                    >
-                                                        GB
-                                                    </Text>
-                                                    <Divider orientation="vertical" />
-                                                </>
-                                            }
-                                            thousandSeparator=","
+                                            leftSection={<TbChartLine size={16} />}
                                             {...form.getInputProps('trafficLimitBytes')}
                                             styles={{
                                                 label: { fontWeight: 500 }
                                             }}
                                         />
+                                    </Group>
 
+                                    <Group gap="md" grow justify="space-between" w="100%">
                                         <NumberInput
                                             key={form.key('trafficResetDay')}
                                             label={t('base-node-form.reset-day')}
@@ -140,6 +146,7 @@ export const NodeTrackingAndBillingCard = <
                                             clampBehavior="strict"
                                             decimalScale={0}
                                             hideControls
+                                            leftSection={<TbClock size={16} />}
                                             max={31}
                                             min={1}
                                             placeholder={t('base-node-form.e-g-1-31')}
@@ -157,6 +164,7 @@ export const NodeTrackingAndBillingCard = <
                                             clampBehavior="strict"
                                             decimalScale={0}
                                             hideControls
+                                            leftSection={<TbBell size={16} />}
                                             max={100}
                                             placeholder={t('base-node-form.e-g-50')}
                                             styles={{
@@ -170,13 +178,13 @@ export const NodeTrackingAndBillingCard = <
                                     </Group>
                                 </Stack>
                             </Collapse>
-                        </Stack>
+                        </Box>
 
                         <TagsInput
                             clearable
                             data={nodesTags?.tags || []}
                             key={form.key('tags')}
-                            label="Tags"
+                            label={t('use-nodes-table-widget.tags')}
                             leftSection={<PiTagDuotone size="16px" />}
                             maxTags={10}
                             placeholder="Enter tags (comma, space, semicolon)"
@@ -188,7 +196,37 @@ export const NodeTrackingAndBillingCard = <
                                     .map((key) => form.errors[key])
                                     .join(', ') || form.getInputProps('tags').error
                             }
+                            renderPill={({ value, onRemove }) => (
+                                <TagInputPill onRemove={onRemove} value={value} />
+                            )}
                         />
+
+                        <Stack gap={6}>
+                            <Textarea
+                                key={form.key('note')}
+                                label={t('node-tracking-and-billing.card.note')}
+                                resize="vertical"
+                                {...form.getInputProps('note')}
+                                styles={{
+                                    label: { fontWeight: 500 }
+                                }}
+                            />
+                            {firstNoteUrl && (
+                                <Button
+                                    component="a"
+                                    href={firstNoteUrl}
+                                    leftSection={<TbExternalLink size={14} />}
+                                    maw="100%"
+                                    rel="noopener noreferrer"
+                                    size="xs"
+                                    target="_blank"
+                                    variant="soft"
+                                    w="fit-content"
+                                >
+                                    {t('common.open')}
+                                </Button>
+                            )}
+                        </Stack>
                     </Stack>
                 </SectionCard.Section>
             </SectionCard.Root>

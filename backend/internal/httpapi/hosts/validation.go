@@ -26,20 +26,16 @@ func validateCreateRequest(req HostCreateRequestAPI) error {
 	if _, err := uuid.Parse(*req.Inbound.ConfigProfileInboundUUID); err != nil {
 		return fmt.Errorf("invalid configProfileInboundUuid")
 	}
-	if req.Tag != nil && *req.Tag != "" {
-		if !hostTagRegex.MatchString(*req.Tag) {
-			return fmt.Errorf("invalid tag format")
-		}
-		if len(*req.Tag) > 32 {
-			return fmt.Errorf("tag must be less than 32 characters")
-		}
-	} else if req.Tag != nil && *req.Tag == "" {
-		return fmt.Errorf("tag cannot be empty")
+	if err := validateHostTags(req.Tags); err != nil {
+		return err
 	}
 	if req.ServerDescription != nil && len(*req.ServerDescription) > 30 {
 		return fmt.Errorf("serverDescription must be less than 30 characters")
 	}
 	if err := validateProtocolCredentialCreate(req.OverrideProtocolCredential, req.ProtocolCredential); err != nil {
+		return err
+	}
+	if err := validateVlessRouteID(req.VlessRouteID); err != nil {
 		return err
 	}
 	if req.SecurityLayer != nil {
@@ -70,6 +66,9 @@ func validateCreateRequest(req HostCreateRequestAPI) error {
 		}
 	} else if req.XrayJSONTemplateUUID != nil && *req.XrayJSONTemplateUUID == "" {
 		return fmt.Errorf("invalid xrayJsonTemplateUuid")
+	}
+	if err := validateMihomoIPVersion(req.MihomoIPVersion); err != nil {
+		return err
 	}
 	if err := validateUUIDList(req.Nodes); err != nil {
 		return err
@@ -107,15 +106,9 @@ func validateUpdateRequest(req HostUpdateRequestAPI) error {
 	if req.Port != nil && (*req.Port < 1 || *req.Port > 65535) {
 		return fmt.Errorf("invalid port")
 	}
-	if req.Tag.Set {
-		if req.Tag.Value == nil {
-			// nullable
-		} else if *req.Tag.Value == "" {
-			return fmt.Errorf("tag cannot be empty")
-		} else if !hostTagRegex.MatchString(*req.Tag.Value) {
-			return fmt.Errorf("invalid tag format")
-		} else if len(*req.Tag.Value) > 32 {
-			return fmt.Errorf("tag must be less than 32 characters")
+	if req.Tags != nil {
+		if err := validateHostTags(req.Tags); err != nil {
+			return err
 		}
 	}
 	if req.ServerDescription.Set && req.ServerDescription.Value != nil {
@@ -125,6 +118,11 @@ func validateUpdateRequest(req HostUpdateRequestAPI) error {
 	}
 	if err := validateProtocolCredentialUpdate(req.OverrideProtocolCredential, req.ProtocolCredential); err != nil {
 		return err
+	}
+	if req.VlessRouteID.Set {
+		if err := validateVlessRouteID(req.VlessRouteID.Value); err != nil {
+			return err
+		}
 	}
 	if req.SecurityLayer != nil {
 		if strings.TrimSpace(*req.SecurityLayer) == "" {
@@ -161,6 +159,11 @@ func validateUpdateRequest(req HostUpdateRequestAPI) error {
 			return fmt.Errorf("invalid xrayJsonTemplateUuid")
 		}
 	}
+	if req.MihomoIPVersion.Set {
+		if err := validateMihomoIPVersion(req.MihomoIPVersion.Value); err != nil {
+			return err
+		}
+	}
 	if req.Inbound != nil {
 		if req.Inbound.ConfigProfileUUID == nil || req.Inbound.ConfigProfileInboundUUID == nil {
 			return fmt.Errorf("inbound configProfileUuid and configProfileInboundUuid are required")
@@ -180,6 +183,24 @@ func validateUpdateRequest(req HostUpdateRequestAPI) error {
 	}
 	if err := validateTemplateTypes(req.ExcludeFromSubscription); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateHostTags(tags []string) error {
+	if len(tags) > 10 {
+		return fmt.Errorf("maximum 10 tags")
+	}
+	for _, tag := range tags {
+		if tag == "" {
+			return fmt.Errorf("tag cannot be empty")
+		}
+		if !hostTagRegex.MatchString(tag) {
+			return fmt.Errorf("invalid tag format")
+		}
+		if len(tag) > 36 {
+			return fmt.Errorf("tag must be less than 36 characters")
+		}
 	}
 	return nil
 }
@@ -230,6 +251,30 @@ func validateProtocolCredentialValue(value *string) error {
 	}
 	if len(strings.TrimSpace(*value)) > maxProtocolCredentialLength {
 		return fmt.Errorf("protocolCredential must be less than 256 characters")
+	}
+	return nil
+}
+
+func validateMihomoIPVersion(value *string) error {
+	if value == nil {
+		return nil
+	}
+	normalized := strings.ToLower(strings.TrimSpace(*value))
+	if normalized == "" {
+		return fmt.Errorf("invalid mihomoIpVersion")
+	}
+	if _, ok := allowedMihomoIPVersions[normalized]; !ok {
+		return fmt.Errorf("invalid mihomoIpVersion")
+	}
+	return nil
+}
+
+func validateVlessRouteID(value *int) error {
+	if value == nil {
+		return nil
+	}
+	if *value < 0 || *value > 65535 {
+		return fmt.Errorf("invalid vlessRouteId")
 	}
 	return nil
 }

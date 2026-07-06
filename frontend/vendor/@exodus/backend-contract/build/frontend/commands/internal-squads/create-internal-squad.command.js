@@ -9,7 +9,7 @@ var CreateInternalSquadCommand;
 (function (CreateInternalSquadCommand) {
     CreateInternalSquadCommand.url = api_1.REST_API.INTERNAL_SQUADS.CREATE;
     CreateInternalSquadCommand.TSQ_url = CreateInternalSquadCommand.url;
-    CreateInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.CREATE, 'post', 'Create internal squad');
+    CreateInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.CREATE, 'post', 'Create internal squad', { scope: 'create', kind: 'write' });
     CreateInternalSquadCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()

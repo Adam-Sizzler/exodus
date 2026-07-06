@@ -400,16 +400,6 @@ exports.ERRORS = {
         message: 'Bulk disable hosts error',
         httpCode: 500,
     },
-    SET_INBOUND_TO_HOSTS_ERROR: {
-        code: 'A082',
-        message: 'Set inbound to hosts error',
-        httpCode: 500,
-    },
-    SET_PORT_TO_HOSTS_ERROR: {
-        code: 'A083',
-        message: 'Set port to hosts error',
-        httpCode: 500,
-    },
     BULK_DELETE_USERS_BY_UUID_ERROR: {
         code: 'A084',
         message: 'Bulk delete users by UUID error',
@@ -468,11 +458,6 @@ exports.ERRORS = {
     GET_NODES_USER_USAGE_BY_RANGE_ERROR: {
         code: 'A094',
         message: 'Get nodes user usage by range error',
-        httpCode: 500,
-    },
-    GET_NODES_REALTIME_USAGE_ERROR: {
-        code: 'A095',
-        message: 'Get nodes realtime usage error',
         httpCode: 500,
     },
     CREATE_HWID_USER_DEVICE_ERROR: {
@@ -1104,5 +1089,65 @@ exports.ERRORS = {
         code: 'A219',
         message: 'Connected nodes not found',
         httpCode: 404,
+    },
+    GET_ALL_NODE_PLUGINS_ERROR: {
+        code: 'A219',
+        message: 'Get all node plugins error',
+        httpCode: 500,
+    },
+    NODE_PLUGIN_NOT_FOUND: {
+        code: 'A220',
+        message: 'Node plugin not found',
+        httpCode: 404,
+    },
+    GET_NODE_PLUGIN_BY_UUID_ERROR: {
+        code: 'A221',
+        message: 'Get node plugin by UUID error',
+        httpCode: 500,
+    },
+    INVALID_NODE_PLUGIN_CONFIG: {
+        code: 'A222',
+        message: 'Invalid node plugin config',
+        httpCode: 400,
+    },
+    NODE_PLUGIN_NAME_ALREADY_EXISTS: {
+        code: 'A223',
+        message: 'Node plugin name already exists',
+        httpCode: 400,
+    },
+    UPDATE_NODE_PLUGIN_ERROR: {
+        code: 'A224',
+        message: 'Update node plugin error',
+        httpCode: 500,
+    },
+    CREATE_NODE_PLUGIN_ERROR: {
+        code: 'A225',
+        message: 'Create node plugin error',
+        httpCode: 500,
+    },
+    METADATA_NOT_FOUND: {
+        code: 'A226',
+        message: 'Metadata not found',
+        httpCode: 404,
+    },
+    GET_TORRENT_BLOCKER_REPORTS_ERROR: {
+        code: 'A227',
+        message: 'Get torrent blocker reports error',
+        httpCode: 500,
+    },
+    UPDATE_HOSTS_ERROR: {
+        code: 'A228',
+        message: 'Update hosts error',
+        httpCode: 500,
+    },
+    INVALID_API_TOKEN_SCOPE: {
+        code: 'A229',
+        message: 'One or more provided API token scopes are invalid',
+        httpCode: 400,
+    },
+    CREATE_INFRA_BILLING_NODE_MISSING_TARGET: {
+        code: 'A230',
+        message: 'Either nodeUuid or name must be provided',
+        httpCode: 400,
     },
 };

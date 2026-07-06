@@ -1,15 +1,4 @@
 import {
-    TbArrowBackUp,
-    TbCheck,
-    TbCloudDownload,
-    TbDeviceFloppy,
-    TbDownload,
-    TbFile,
-    TbFileImport,
-    TbPalette,
-    TbUpload
-} from 'react-icons/tb'
-import {
     ActionIcon,
     Button,
     CopyButton,
@@ -20,20 +9,14 @@ import {
     ThemeIcon,
     Tooltip
 } from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import { GetSubscriptionPageConfigCommand } from '@exodus/backend-contract'
 import {
     SubscriptionPageRawConfigSchema,
     TSubscriptionPageRawConfig
 } from '@exodus/subscription-page-types'
-import { GetSubscriptionPageConfigCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
-import { notifications } from '@mantine/notifications'
-import { PiCheck, PiCopy } from 'react-icons/pi'
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { modals } from '@mantine/modals'
-import { useForm } from '@mantine/form'
-import { useRef } from 'react'
-
 import {
     BaseSettingsBlockComponent,
     BaseTranslationsBlockComponent,
@@ -46,14 +29,32 @@ import {
 import {
     ImportConfigSectionsModalContent,
     ImportMode,
+    showSubpageConfigSavedModal,
     showValidationErrorsModal
 } from '@widgets/dashboard/subpage-configs/subpage-config-editor/modals'
-import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
+import { zodResolver } from 'mantine-form-zod-resolver'
+import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiCheck, PiCopy } from 'react-icons/pi'
+import {
+    TbArrowBackUp,
+    TbCheck,
+    TbCloudDownload,
+    TbDeviceFloppy,
+    TbDownload,
+    TbFile,
+    TbFileImport,
+    TbPalette,
+    TbUpload
+} from 'react-icons/tb'
+import { useNavigate } from 'react-router'
+
 import { QueryKeys, useUpdateSubscriptionPageConfig } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { queryClient } from '@shared/api/query-client'
-import { Page, PageHeaderShared } from '@shared/ui'
 import { ROUTES } from '@shared/constants'
+import { Page, PageHeaderShared } from '@shared/ui'
+import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { sleep } from '@shared/utils/misc'
 
 import styles from './subpage-config-editor-page.module.css'
@@ -85,6 +86,8 @@ export const SubpageConfigEditorPageComponent = (props: Props) => {
                         data
                     )
                     form.resetDirty()
+
+                    showSubpageConfigSavedModal(t)
                 }
             }
         })

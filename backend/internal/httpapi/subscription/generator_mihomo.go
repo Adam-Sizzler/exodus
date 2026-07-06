@@ -22,7 +22,6 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 	config := ensureYAMLDocumentMappingNode(&root)
 	proxiesNode := ensureYAMLMappingSequenceValue(config, "proxies")
 	proxyNames := []string{}
-	leadingSelectorProxyNames := []string{}
 	trailingSelectorProxyNames := []string{}
 	for _, host := range hosts {
 		proxy := buildMihomoProxy(host, user)
@@ -32,11 +31,7 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 		proxiesNode.Content = append(proxiesNode.Content, buildOrderedYAMLValueNode("proxy", proxy))
 		if name, ok := proxy["name"].(string); ok && name != "" {
 			proxyNames = append(proxyNames, name)
-			if host.SelectorNodesFirst {
-				leadingSelectorProxyNames = append(leadingSelectorProxyNames, name)
-			} else {
-				trailingSelectorProxyNames = append(trailingSelectorProxyNames, name)
-			}
+			trailingSelectorProxyNames = append(trailingSelectorProxyNames, name)
 		}
 	}
 	groupsNode := ensureYAMLMappingSequenceValue(config, "proxy-groups")
@@ -85,8 +80,7 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 					middleEntries = append(middleEntries, entry)
 				}
 			}
-			finalEntries := make([]string, 0, len(leadingSelectorProxyNames)+len(middleEntries)+len(trailingSelectorProxyNames))
-			finalEntries = append(finalEntries, leadingSelectorProxyNames...)
+			finalEntries := make([]string, 0, len(middleEntries)+len(trailingSelectorProxyNames))
 			finalEntries = append(finalEntries, middleEntries...)
 			finalEntries = append(finalEntries, trailingSelectorProxyNames...)
 			setYAMLSequenceStrings(groupProxies, finalEntries)
@@ -440,6 +434,9 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 		"server": host.Address,
 		"port":   host.Port,
 		"udp":    true,
+	}
+	if host.MihomoIPVersion != nil && strings.TrimSpace(*host.MihomoIPVersion) != "" {
+		proxy["ip-version"] = strings.TrimSpace(*host.MihomoIPVersion)
 	}
 	network := "tcp"
 	if host.InboundNetwork != nil && *host.InboundNetwork != "" {

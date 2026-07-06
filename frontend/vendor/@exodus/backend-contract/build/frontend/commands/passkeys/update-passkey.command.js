@@ -8,7 +8,7 @@ var UpdatePasskeyCommand;
 (function (UpdatePasskeyCommand) {
     UpdatePasskeyCommand.url = api_1.REST_API.PASSKEYS.UPDATE_PASSKEY;
     UpdatePasskeyCommand.TSQ_url = UpdatePasskeyCommand.url;
-    UpdatePasskeyCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.UPDATE_PASSKEY, 'patch', 'Update passkey');
+    UpdatePasskeyCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.UPDATE_PASSKEY, 'patch', 'Update passkey', { scope: 'update', kind: 'write' });
     UpdatePasskeyCommand.RequestSchema = zod_1.z.object({
         id: zod_1.z.string(),
         name: zod_1.z

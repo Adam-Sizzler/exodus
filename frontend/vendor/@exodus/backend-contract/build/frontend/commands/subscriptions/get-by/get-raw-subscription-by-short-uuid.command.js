@@ -9,7 +9,7 @@ var GetRawSubscriptionByShortUuidCommand;
 (function (GetRawSubscriptionByShortUuidCommand) {
     GetRawSubscriptionByShortUuidCommand.url = api_1.REST_API.SUBSCRIPTIONS.GET_BY.SHORT_UUID_RAW;
     GetRawSubscriptionByShortUuidCommand.TSQ_url = GetRawSubscriptionByShortUuidCommand.url(':shortUuid');
-    GetRawSubscriptionByShortUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET_BY.SHORT_UUID_RAW(':shortUuid'), 'get', 'Get Raw Subscription by Short UUID');
+    GetRawSubscriptionByShortUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET_BY.SHORT_UUID_RAW(':shortUuid'), 'get', 'Get Raw Subscription by Short UUID', { scope: 'raw', kind: 'read' });
     GetRawSubscriptionByShortUuidCommand.RequestSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
@@ -28,67 +28,17 @@ var GetRawSubscriptionByShortUuidCommand;
                 trafficLimit: zod_1.z.string(),
                 trafficUsed: zod_1.z.string(),
                 lifetimeTrafficUsed: zod_1.z.string(),
-                isHwidLimited: zod_1.z.boolean(),
+                hwidCheckup: zod_1.z
+                    .object({
+                    subscriptionAllowed: zod_1.z.boolean(),
+                    maxDeviceReached: zod_1.z.boolean(),
+                    hwidNotSupported: zod_1.z.boolean(),
+                    limitBypassed: zod_1.z.boolean(),
+                })
+                    .nullable(),
             }),
             headers: zod_1.z.record(zod_1.z.string(), zod_1.z.string().optional()),
-            rawHosts: zod_1.z.array(zod_1.z.object({
-                address: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                alpn: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                fingerprint: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                host: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                network: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                password: zod_1.z.object({
-                    ssPassword: zod_1.z.string(),
-                    trojanPassword: zod_1.z.string(),
-                    vlessPassword: zod_1.z.string(),
-                }),
-                path: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                publicKey: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                port: zod_1.z.optional(zod_1.z.nullable(zod_1.z.number())),
-                protocol: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                remark: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                shortId: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                sni: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                spiderX: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                tls: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                rawSettings: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({
-                    headerType: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                    request: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({}))),
-                }))),
-                additionalParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({
-                    mode: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                    heartbeatPeriod: zod_1.z.optional(zod_1.z.nullable(zod_1.z.number())),
-                }))),
-                muxParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({}))),
-                sockoptParams: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({}))),
-                serverDescription: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                flow: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                allowInsecure: zod_1.z.optional(zod_1.z.nullable(zod_1.z.boolean())),
-                shuffleHost: zod_1.z.optional(zod_1.z.nullable(zod_1.z.boolean())),
-                mihomoX25519: zod_1.z.optional(zod_1.z.nullable(zod_1.z.boolean())),
-                mldsa65Verify: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                encryption: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                protocolOptions: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({
-                    ss: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({
-                        method: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                    }))),
-                }))),
-                dbData: zod_1.z.optional(zod_1.z.object({
-                    rawInbound: zod_1.z.nullable(zod_1.z.object({})),
-                    inboundTag: zod_1.z.string(),
-                    uuid: zod_1.z.string(),
-                    configProfileUuid: zod_1.z.nullable(zod_1.z.string()),
-                    configProfileInboundUuid: zod_1.z.nullable(zod_1.z.string()),
-                    isDisabled: zod_1.z.boolean(),
-                    viewPosition: zod_1.z.number(),
-                    remark: zod_1.z.string(),
-                    isHidden: zod_1.z.boolean(),
-                    tag: zod_1.z.nullable(zod_1.z.string()),
-                    overrideProtocolCredential: zod_1.z.optional(zod_1.z.nullable(zod_1.z.boolean())),
-                    protocolCredential: zod_1.z.optional(zod_1.z.nullable(zod_1.z.string())),
-                })),
-                xrayJsonTemplate: zod_1.z.optional(zod_1.z.nullable(zod_1.z.object({}))),
-            })),
+            resolvedProxyConfigs: zod_1.z.array(models_1.ResolvedProxyConfigSchema),
         }),
     });
 })(GetRawSubscriptionByShortUuidCommand || (exports.GetRawSubscriptionByShortUuidCommand = GetRawSubscriptionByShortUuidCommand = {}));

@@ -4,6 +4,7 @@ export declare const USERS_ROUTES: {
     readonly CREATE: "";
     readonly UPDATE: "";
     readonly GET: "";
+    readonly STREAM: "stream";
     readonly DELETE: (uuid: string) => string;
     readonly GET_BY_UUID: (uuid: string) => string;
     readonly ACCESSIBLE_NODES: (uuid: string) => string;
@@ -40,5 +41,6 @@ export declare const USERS_ROUTES: {
     readonly TAGS: {
         readonly GET: "tags";
     };
+    readonly RESOLVE: "resolve";
 };
 //# sourceMappingURL=users.d.ts.map

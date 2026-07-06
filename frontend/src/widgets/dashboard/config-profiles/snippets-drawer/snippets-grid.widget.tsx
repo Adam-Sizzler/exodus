@@ -12,16 +12,16 @@ import {
     Stack,
     Text
 } from '@mantine/core'
-import { GetSnippetsCommand, UpdateSnippetCommand } from '@exodus/backend-contract'
-import { TbBraces, TbCode, TbTrash } from 'react-icons/tb'
-import { PiCheck, PiCopy } from 'react-icons/pi'
 import { modals } from '@mantine/modals'
+import { GetSnippetsCommand, UpdateSnippetCommand } from '@exodus/backend-contract'
 import { t } from 'i18next'
+import { PiCheck, PiCopy } from 'react-icons/pi'
+import { TbBraces, TbCode, TbTrash } from 'react-icons/tb'
 
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { QueryKeys } from '@shared/api/hooks/keys-factory'
-import { useDeleteSnippet } from '@shared/api/hooks'
 import { queryClient } from '@shared/api'
+import { useDeleteSnippet } from '@shared/api/hooks'
+import { QueryKeys } from '@shared/api/hooks/keys-factory'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import { EDIT_SNIPPET_MODAL_ID, EditSnippetModal } from './edit-snippet.modal'
 import classes from './SnippetsDrawer.module.css'

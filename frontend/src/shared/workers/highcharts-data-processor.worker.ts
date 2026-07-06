@@ -96,6 +96,7 @@ function formatDataForHighcharts(
             : topSignificantUsers
 
     const series: HighchartsSeriesData[] = finalUsers.map((userName) => {
+        // oxlint-disable-next-line
         const data = new Array(categories.length)
 
         for (let i = 0; i < categories.length; i++) {
@@ -114,6 +115,7 @@ function formatDataForHighcharts(
 
     const remainingUsers = significantUsers.slice(maxDisplayedUsers)
     if (remainingUsers.length > 0 && selectedUsers.length === 0) {
+        // oxlint-disable-next-line
         const othersData = new Array(categories.length).fill(0)
         let othersTotal = 0
 

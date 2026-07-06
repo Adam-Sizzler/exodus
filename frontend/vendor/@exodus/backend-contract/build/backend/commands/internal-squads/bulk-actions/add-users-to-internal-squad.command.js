@@ -8,7 +8,7 @@ var AddUsersToInternalSquadCommand;
 (function (AddUsersToInternalSquadCommand) {
     AddUsersToInternalSquadCommand.url = api_1.REST_API.INTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS;
     AddUsersToInternalSquadCommand.TSQ_url = AddUsersToInternalSquadCommand.url(':uuid');
-    AddUsersToInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.BULK_ACTIONS.ADD_USERS(':uuid'), 'post', 'Add all users to internal squad');
+    AddUsersToInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.BULK_ACTIONS.ADD_USERS(':uuid'), 'post', 'Add all users to internal squad', { scope: 'add-users', kind: 'write' });
     AddUsersToInternalSquadCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

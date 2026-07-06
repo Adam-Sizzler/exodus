@@ -15,7 +15,7 @@
 
 - `panel.domain.com`
 
-برای پنلی با آدرس `https://data.s-backup.online/panel/auth/login`، مقدار BotFather باید `data.s-backup.online` باشد.
+برای پنلی با آدرس `https://panel.domain.com/panel/auth/login`، مقدار BotFather باید `panel.domain.com` باشد.
 
 ### پیکربندی دسترسی
 
@@ -34,7 +34,7 @@
 
 ###### خطا: BOT_DOMAIN_INVALID
 
-این خطا قبل از backend callback رخ می‌دهد، زمانی که Telegram مقدار `origin` صفحه را با دامنه ربات مقایسه می‌کند. برای `https://data.s-backup.online/panel/auth/login`، Telegram مقدار `https://data.s-backup.online` را بررسی می‌کند؛ بنابراین BotFather باید `data.s-backup.online` را داشته باشد، بدون `/panel/auth/login`.
+این خطا قبل از backend callback رخ می‌دهد، زمانی که Telegram مقدار `origin` صفحه را با دامنه ربات مقایسه می‌کند. برای `https://panel.domain.com/panel/auth/login`، Telegram مقدار `https://panel.domain.com` را بررسی می‌کند؛ بنابراین BotFather باید `panel.domain.com` را داشته باشد، بدون `/panel/auth/login`.
 
 ###### خطا: کد تأیید تلگرام هنگام ورود دریافت نمی‌شود
 

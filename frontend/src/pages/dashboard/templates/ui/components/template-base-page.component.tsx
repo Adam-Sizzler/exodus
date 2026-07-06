@@ -1,15 +1,15 @@
+import { TemplatesHeaderActionButtonsFeature } from '@features/ui/dashboard/templates/header-action-buttons'
 import {
     GetSubscriptionTemplatesCommand,
     TSubscriptionTemplateType
 } from '@exodus/backend-contract'
-import { motion } from 'motion/react'
-
-import { TemplatesHeaderActionButtonsFeature } from '@features/ui/dashboard/templates/header-action-buttons'
 import { TemplatesGridWidget } from '@widgets/dashboard/templates/templates-grid/templates-grid.widget'
 import { TemplatesSpotlightWidget } from '@widgets/dashboard/templates/templates-spotlight'
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
-import { getCoreLogoFromType } from '@shared/ui/get-core-logo-from-type'
+import { motion } from 'motion/react'
+
 import { Page, PageHeaderShared } from '@shared/ui'
+import { getCoreLogoFromType } from '@shared/ui/get-core-logo-from-type'
+import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 
 interface Props {
     templates: GetSubscriptionTemplatesCommand.Response['response']['templates']

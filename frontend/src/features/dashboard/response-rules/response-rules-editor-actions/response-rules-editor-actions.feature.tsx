@@ -1,17 +1,4 @@
 import {
-    TestSrrMatcherCommand,
-    UpdateSubscriptionSettingsCommand
-} from '@exodus/backend-contract'
-import {
-    TbBug,
-    TbClipboardCopy,
-    TbClipboardText,
-    TbCut,
-    TbDownload,
-    TbMenuDeep,
-    TbSelectAll
-} from 'react-icons/tb'
-import {
     ActionIcon,
     Anchor,
     Button,
@@ -22,23 +9,37 @@ import {
     Text,
     Textarea
 } from '@mantine/core'
-import { PiCheck, PiCheckSquareOffset, PiCopy, PiFloppyDisk } from 'react-icons/pi'
-import { useClipboard, useDisclosure, useMediaQuery } from '@mantine/hooks'
-import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'react-i18next'
+import { useClipboard, useDisclosure } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import {
+    EXODUS_CLIENT_TYPE_BROWSER,
+    EXODUS_CLIENT_TYPE_HEADER,
+    TestSrrMatcherCommand,
+    UpdateSubscriptionSettingsCommand
+} from '@exodus/backend-contract'
 import consola from 'consola/browser'
+import { useTranslation } from 'react-i18next'
+import { PiCheck, PiCheckSquareOffset, PiCopy, PiFloppyDisk } from 'react-icons/pi'
+import {
+    TbBug,
+    TbClipboardCopy,
+    TbClipboardText,
+    TbCut,
+    TbDownload,
+    TbMenuDeep,
+    TbSelectAll
+} from 'react-icons/tb'
 
-import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
-import { QueryKeys, useUpdateSubscriptionSettings } from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { useToken } from '@entities/auth/session-store/use-session-store'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useUpdateSubscriptionSettings } from '@shared/api/hooks'
+import { useIsMobile } from '@shared/hooks'
+import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+
+import { useToken } from '@entities/auth/session-store/use-session-store'
 
 import { Props } from './interfaces'
-
-const EXODUS_CLIENT_TYPE_HEADER = 'X-Exodus-Client-Type'
-const EXODUS_CLIENT_TYPE_BROWSER = 'browser'
 
 export function ResponseRulesEditorActionsFeature(props: Props) {
     const {
@@ -55,7 +56,7 @@ export function ResponseRulesEditorActionsFeature(props: Props) {
     const { t } = useTranslation()
     const token = useToken()
 
-    const isMobile = useMediaQuery('(max-width: 48em)')
+    const isMobile = useIsMobile()
     const clipboard = useClipboard({ timeout: 500 })
     const [opened, handlers] = useDisclosure(false)
 

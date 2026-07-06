@@ -1,9 +1,10 @@
-import { createContext, ReactNode, useEffect, useMemo, useState } from 'react'
 import consola from 'consola/browser'
+import { createContext, ReactNode, useEffect, useMemo, useState } from 'react'
 
-import { resetAllStores } from '@shared/hocs/store-wrapper'
-import { removeToken, useToken } from '@entities/auth'
 import { logoutEvents } from '@shared/emitters'
+import { resetAllStores } from '@shared/hocs/store-wrapper'
+
+import { removeToken, useToken } from '@entities/auth'
 
 interface AuthContextValues {
     isAuthenticated: boolean

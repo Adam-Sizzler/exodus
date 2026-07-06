@@ -8,19 +8,20 @@ import {
     TextInput,
     Tooltip
 } from '@mantine/core'
-import { TbBook, TbPackage, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
-import { CreateNodePluginCommand } from '@exodus/backend-contract'
-import { generatePath, useNavigate } from 'react-router-dom'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
 import { useField } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
+import { CreateNodePluginCommand } from '@exodus/backend-contract'
+import { useTranslation } from 'react-i18next'
+import { TbBook, TbPackage, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
+import { generatePath, useNavigate } from 'react-router'
 
-import { QueryKeys, useCreateNodePlugin, useGetNodePlugins } from '@shared/api/hooks'
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { ROUTES } from '@shared/constants'
 import { queryClient } from '@shared/api'
+import { QueryKeys, useCreateNodePlugin, useGetNodePlugins } from '@shared/api/hooks'
+import { ROUTES } from '@shared/constants'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
+
+import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 export const NodePluginsHeaderActionButtonsFeature = () => {
     const { t } = useTranslation()
@@ -68,7 +69,7 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
             <ActionIcon
                 color="lime"
                 component="a"
-                href="https://docs.rw/docs/learn/node-plugins"
+                href="https://docs.exodus.dev/docs/learn/node-plugins"
                 size="input-md"
                 target="_blank"
                 variant="soft"

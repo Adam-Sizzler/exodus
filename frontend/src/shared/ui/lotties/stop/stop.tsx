@@ -1,6 +1,7 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react'
-import { withBasePath } from '@shared/constants/base-path'
 import { FC } from 'react'
+
+import { withBasePath } from '@shared/constants/base-path'
 
 import { IProps } from './interfaces/props.interface'
 

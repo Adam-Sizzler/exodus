@@ -9,7 +9,7 @@ var ReorderInternalSquadCommand;
 (function (ReorderInternalSquadCommand) {
     ReorderInternalSquadCommand.url = api_1.REST_API.INTERNAL_SQUADS.ACTIONS.REORDER;
     ReorderInternalSquadCommand.TSQ_url = ReorderInternalSquadCommand.url;
-    ReorderInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.ACTIONS.REORDER, 'post', 'Reorder internal squads');
+    ReorderInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.ACTIONS.REORDER, 'post', 'Reorder internal squads', { scope: 'reorder', kind: 'write' });
     ReorderInternalSquadCommand.RequestSchema = zod_1.z.object({
         items: zod_1.z.array(models_1.InternalSquadSchema.pick({
             viewPosition: true,

@@ -1,9 +1,9 @@
-import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
 import { Badge, Button, Card, Group } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
+import { useDisclosure } from '@mantine/hooks'
+import { TSubscriptionPageRawConfig } from '@exodus/subscription-page-types'
 import { IconPhoto } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
-import { useDisclosure } from '@mantine/hooks'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 

@@ -29,16 +29,7 @@ events:
   user.first_connected:
     telegram: true
     webhook: true
-  user.expires_in_72_hours:
-    telegram: true
-    webhook: true
-  user.expires_in_48_hours:
-    telegram: true
-    webhook: true
-  user.expires_in_24_hours:
-    telegram: true
-    webhook: true
-  user.expired_24_hours_ago:
+  user.expiration:
     telegram: true
     webhook: true
   user.bandwidth_usage_threshold_reached:

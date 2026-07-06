@@ -8,7 +8,7 @@ var GetTorrentBlockerReportsStatsCommand;
 (function (GetTorrentBlockerReportsStatsCommand) {
     GetTorrentBlockerReportsStatsCommand.url = api_1.REST_API.NODE_PLUGINS.TORRENT_BLOCKER.GET_REPORTS_STATS;
     GetTorrentBlockerReportsStatsCommand.TSQ_url = GetTorrentBlockerReportsStatsCommand.url;
-    GetTorrentBlockerReportsStatsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.TORRENT_BLOCKER.GET_REPORTS_STATS, 'get', 'Get Torrent Blocker Reports Stats');
+    GetTorrentBlockerReportsStatsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.TORRENT_BLOCKER.GET_REPORTS_STATS, 'get', 'Get Torrent Blocker Reports Stats', { scope: 'torrent-blocker-stats', kind: 'read' });
     GetTorrentBlockerReportsStatsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             stats: zod_1.z.object({

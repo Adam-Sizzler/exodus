@@ -1,0 +1,22 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    margin: 0;
+    padding: 1rem;
+    background-color: var(--mantine-color-body);
+}
+
+.fill {
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+    resize: none;
+}
+
+.button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 60;
+}

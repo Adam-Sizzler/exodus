@@ -8,7 +8,7 @@ import {
 import { TFunction } from 'i18next'
 
 import { IMetricCardProps } from '@shared/ui/metrics/metric-card'
-import { prettyBytesToAnyUtil } from '@shared/utils/bytes'
+import { prettifyBytesUtil } from '@shared/utils/bytes'
 
 export type ExodusSummary = {
     startedAt?: string
@@ -63,19 +63,19 @@ export type ExodusMetric = {
 }
 
 export const getFirstExodusMetric = (
-    exodusMetrics?: ExodusMetric[]
+    runtimeMetrics?: ExodusMetric[]
 ): ExodusMetric | undefined => {
-    if (!exodusMetrics || exodusMetrics.length === 0) {
+    if (!runtimeMetrics || runtimeMetrics.length === 0) {
         return undefined
     }
 
-    return exodusMetrics[0]
+    return runtimeMetrics[0]
 }
 
 export const formatMilliseconds = (value?: number): string => `${Number(value ?? 0).toFixed(3)} ms`
 const formatPercent = (value?: number): string => `${Number(value ?? 0).toFixed(1)} %`
 export const formatBytes = (value?: number): string =>
-    prettyBytesToAnyUtil(Number(value ?? 0), true)
+    prettifyBytesUtil(Number(value ?? 0), true)
 
 const getUptimeSeconds = (startedAt?: string, fallbackSeconds?: number): number => {
     if (startedAt) {
@@ -139,10 +139,10 @@ export const getHeapUsedPercent = (metric?: ExodusMetric): number => {
 
 export const getExodusSummaryMetrics = (
     exodusSummary: ExodusSummary | undefined,
-    exodusMetrics: ExodusMetric[] | undefined,
+    runtimeMetrics: ExodusMetric[] | undefined,
     t: TFunction
 ): IMetricCardProps[] => {
-    const metric = getFirstExodusMetric(exodusMetrics)
+    const metric = getFirstExodusMetric(runtimeMetrics)
 
     if (!exodusSummary && !metric) {
         return []
@@ -190,10 +190,10 @@ export const getExodusSummaryMetrics = (
 }
 
 export const getExodusProcessMetrics = (
-    exodusMetrics: ExodusMetric[] | undefined,
+    runtimeMetrics: ExodusMetric[] | undefined,
     t: TFunction
 ): IMetricCardProps[] => {
-    const metric = getFirstExodusMetric(exodusMetrics)
+    const metric = getFirstExodusMetric(runtimeMetrics)
 
     if (!metric) {
         return []

@@ -1,112 +1,28 @@
-/* eslint-disable no-nested-ternary */
-
+import { Card, Center, Group, Loader, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
 import {
     PiCalculatorDuotone,
     PiChartPieDuotone,
     PiDeviceMobileDuotone,
     PiDevicesDuotone
 } from 'react-icons/pi'
-import { Box, Card, Center, Group, Loader, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-import { Chart } from '@highcharts/react'
-import { useMemo } from 'react'
+import { TbChartArcs3 } from 'react-icons/tb'
 
-import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
 import { useGetHwidDevicesStats } from '@shared/api/hooks'
+import { useIsMobile } from '@shared/hooks'
+import { IMetricCardProps, MetricCardShared } from '@shared/ui/metrics/metric-card'
+
+import { buildPlatformData } from './hwid-inspector-metrics.utils'
+import { PlatformRow } from './platform-row'
 
 export function HwidInspectorMetrics() {
     const { t } = useTranslation()
 
     const { data: stats, isLoading } = useGetHwidDevicesStats()
+    const isMobile = useIsMobile()
 
-    const getHighchartsConfig = (chartFor: 'apps' | 'platforms') => {
-        return {
-            chart: {
-                type: 'pie',
-                backgroundColor: 'transparent',
-                height: 300,
-                style: {
-                    fontFamily: 'inherit'
-                }
-            },
-            accessibility: {
-                enabled: false
-            },
-            title: {
-                text: undefined
-            },
-            tooltip: {
-                headerFormat: '',
-                pointFormat: '<b>{point.name}</b> – <b>{point.y}<b>',
-                valueSuffix: ' device(s)',
-                backgroundColor: 'var(--mantine-color-body)',
-                borderColor: 'var(--mantine-color-gray-4)',
-                style: {
-                    color: 'var(--mantine-color-text)'
-                }
-            },
-            plotOptions: {
-                pie: {
-                    innerSize: '60%',
-                    allowPointSelect: true,
-                    cursor: 'pointer',
-                    dataLabels: {
-                        enabled: true,
-                        format: '<b>{point.name}</b>, {point.percentage:.1f}%',
-                        style: {
-                            color: 'var(--mantine-color-text)',
-                            fontSize: '12px'
-                        },
-                        distance: 20
-                    },
-                    showInLegend: false,
-                    borderWidth: 2,
-                    borderColor: 'var(--mantine-color-body)'
-                }
-            },
-            series: [
-                {
-                    type: 'pie',
-                    name:
-                        chartFor === 'apps'
-                            ? t('hwid-inspector-metrics.widget.apps')
-                            : t('hwid-inspector-metrics.widget.platforms'),
-                    colorByPoint: true
-                }
-            ],
-            credits: {
-                enabled: false
-            }
-        }
-    }
-
-    const platformChartOptions = useMemo(() => {
-        if (!stats?.byPlatform || stats.byPlatform.length === 0) return {}
-
-        const data = stats.byPlatform.map((item) => ({
-            name: item.platform || 'Unknown',
-            y: item.count
-        }))
-
-        return {
-            ...getHighchartsConfig('platforms'),
-            series: [{ ...getHighchartsConfig('platforms').series[0], data }]
-        }
-    }, [stats, getHighchartsConfig])
-
-    const appChartOptions = useMemo(() => {
-        if (!stats || !stats.byApp || stats.byApp.length === 0) return {}
-
-        const data = stats.byApp.map((item) => ({
-            name: item.app || 'Unknown',
-            y: item.count
-        }))
-
-        return {
-            ...getHighchartsConfig('apps'),
-            series: [{ ...getHighchartsConfig('apps').series[0], data }]
-        }
-    }, [stats, getHighchartsConfig])
+    const platformData = stats?.byPlatform ? buildPlatformData(stats.byPlatform) : []
+    const total = platformData.reduce((sum, item) => sum + item.value, 0)
 
     const metricCards: IMetricCardProps[] = [
         {
@@ -132,115 +48,60 @@ export function HwidInspectorMetrics() {
         }
     ]
 
-    const loaderCard = (
-        <Center h={300}>
-            <Loader size="lg" />
-        </Center>
-    )
-
     return (
         <Stack gap="md" mb={0}>
-            {/* Metric Cards */}
             <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }}>
                 {metricCards.map((card) => (
                     <MetricCardShared key={card.title} {...card} />
                 ))}
             </SimpleGrid>
 
-            <SimpleGrid cols={{ base: 1, lg: 2 }}>
-                {/* Platform Distribution */}
-                <Card
-                    p="lg"
-                    style={{
-                        background:
-                            'linear-gradient(135deg, var(--mantine-color-dark-6) 0%, var(--mantine-color-dark-7) 100%)'
-                    }}
-                    withBorder
-                >
-                    <Group align="center" gap="sm" mb="lg" wrap="nowrap">
-                        <ThemeIcon color="blue" size="lg" variant="outline">
-                            <PiChartPieDuotone size="20px" />
+            <Card
+                p="lg"
+                radius="md"
+                style={{
+                    border: '1px solid rgb(255, 255, 255, 0.08)',
+                    background: 'rgb(255, 255, 255, 0.02)'
+                }}
+                withBorder
+            >
+                <Group align="center" gap="sm" justify="space-between" mb="lg" wrap="nowrap">
+                    <Group align="center" gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
+                        <ThemeIcon color="cyan" radius="md" size="lg" variant="soft">
+                            <TbChartArcs3 size="20px" />
                         </ThemeIcon>
-                        <Text
-                            fw={600}
-                            size="lg"
-                            style={{
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden'
-                            }}
-                        >
+                        <Text fw={600} lineClamp={1} size="lg">
                             {t('hwid-inspector-metrics.widget.platform-distribution')}
                         </Text>
                     </Group>
+                </Group>
 
-                    {isLoading ? (
-                        loaderCard
-                    ) : stats?.byPlatform && stats.byPlatform.length > 0 ? (
-                        <Box h={300}>
-                            <Chart options={platformChartOptions} />
-                        </Box>
-                    ) : (
-                        <Center h={300}>
-                            <Stack align="center" gap="sm">
-                                <PiChartPieDuotone
-                                    color="var(--mantine-color-gray-4)"
-                                    size="48px"
-                                />
-                                <Text c="dimmed" size="sm">
-                                    {t('hwid-inspector-metrics.widget.no-platform-data')}
-                                </Text>
-                            </Stack>
-                        </Center>
-                    )}
-                </Card>
-
-                {/* App Distribution */}
-                <Card
-                    p="lg"
-                    style={{
-                        background:
-                            'linear-gradient(135deg, var(--mantine-color-dark-6) 0%, var(--mantine-color-dark-7) 100%)'
-                    }}
-                >
-                    <Group align="center" gap="sm" mb="lg" wrap="nowrap">
-                        <ThemeIcon color="teal" size="lg" variant="outline">
-                            <PiChartPieDuotone size="20px" />
-                        </ThemeIcon>
-
-                        <Text
-                            fw={600}
-                            size="lg"
-                            style={{
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden'
-                            }}
-                        >
-                            {t('hwid-inspector-metrics.widget.app-distribution')}
-                        </Text>
-                    </Group>
-                    {isLoading ? (
-                        loaderCard
-                    ) : stats?.byApp && stats.byApp.length > 0 ? (
-                        <Box h={300}>
-                            <Chart options={appChartOptions} />
-                        </Box>
-                    ) : (
-                        <Center h={300}>
-                            <Stack align="center" gap="sm">
-                                <PiChartPieDuotone
-                                    color="var(--mantine-color-gray-4)"
-                                    size="48px"
-                                />
-                                <Text c="dimmed" size="sm">
-                                    {t('hwid-inspector-metrics.widget.no-app-data')}
-                                </Text>
-                            </Stack>
-                        </Center>
-                    )}
-                </Card>
-            </SimpleGrid>
+                {isLoading ? (
+                    <Center mih={280}>
+                        <Loader size="lg" />
+                    </Center>
+                ) : platformData.length === 0 ? (
+                    <Center mih={280}>
+                        <Stack align="center" gap="sm">
+                            <PiChartPieDuotone color="var(--mantine-color-gray-6)" size="48px" />
+                            <Text c="dimmed" size="sm">
+                                {t('hwid-inspector-metrics.widget.no-platform-data')}
+                            </Text>
+                        </Stack>
+                    </Center>
+                ) : (
+                    <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }} spacing="sm">
+                        {platformData.map((platform) => (
+                            <PlatformRow
+                                key={platform.name}
+                                platform={platform}
+                                total={total}
+                                isMobile={isMobile}
+                            />
+                        ))}
+                    </SimpleGrid>
+                )}
+            </Card>
         </Stack>
     )
 }

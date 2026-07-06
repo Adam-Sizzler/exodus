@@ -11,28 +11,32 @@ import {
     TextInput,
     ThemeIcon
 } from '@mantine/core'
-import { GetExodusSettingsCommand, UpdateExodusSettingsCommand } from '@exodus/backend-contract'
-import { TbAlertCircle, TbFingerprint, TbKey, TbPassword, TbServer } from 'react-icons/tb'
-import { BiLogoGithub, BiLogoTelegram } from 'react-icons/bi'
-import { zodResolver } from 'mantine-form-zod-resolver'
-import { PiGlobe, PiKey } from 'react-icons/pi'
-import { useDisclosure } from '@mantine/hooks'
-import { useTranslation } from 'react-i18next'
-import { SiKeycloak } from 'react-icons/si'
-import { modals } from '@mantine/modals'
 import { useForm } from '@mantine/form'
-import { TFunction } from 'i18next'
-
+import { useDisclosure } from '@mantine/hooks'
+import { modals } from '@mantine/modals'
+import {
+    GetExodusSettingsCommand,
+    UpdateExodusSettingsCommand
+} from '@exodus/backend-contract'
 import { PasskeysDrawerComponent } from '@widgets/exodus-settings/passkeys-settings-drawer/passkeys-drawer.component'
+import { TFunction } from 'i18next'
+import { zodResolver } from 'mantine-form-zod-resolver'
+import { useTranslation } from 'react-i18next'
+import { BiLogoGithub, BiLogoTelegram } from 'react-icons/bi'
+import { PiGlobe, PiKey } from 'react-icons/pi'
+import { SiKeycloak } from 'react-icons/si'
+import { TbAlertCircle, TbFingerprint, TbKey, TbPassword, TbServer } from 'react-icons/tb'
+
+import { queryClient } from '@shared/api'
+import { QueryKeys } from '@shared/api/hooks/keys-factory'
 import { useUpdateExodusSettings } from '@shared/api/hooks/exodus-settings/exodus-settings.mutation.hooks'
-import { HelpActionIconShared, THelpDrawerAvailableScreen } from '@shared/ui/help-drawer'
 import { CheckboxCardShared } from '@shared/ui/checkbox-card/checkbox-card.shared'
+import { HelpActionIconShared, THelpDrawerAvailableScreen } from '@shared/ui/help-drawer'
+import { PocketidLogo, YandexLogo } from '@shared/ui/logos'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SettingsCardShared } from '@shared/ui/settings-card'
-import { PocketidLogo, YandexLogo } from '@shared/ui/logos'
-import { QueryKeys } from '@shared/api/hooks/keys-factory'
+import { TagInputPill } from '@shared/ui/tag-input-pill'
 import { handleFormErrors } from '@shared/utils/misc'
-import { queryClient } from '@shared/api'
 
 interface IProps {
     oauth2Settings: NonNullable<GetExodusSettingsCommand.Response['response']['oauth2Settings']>
@@ -334,6 +338,9 @@ export const AuthentificationSettingsCardWidget = (props: IProps) => {
                                         placeholder={fieldConfig.placeholder}
                                         splitChars={[',', ' ', ';']}
                                         {...form.getInputProps(formPath)}
+                                        renderPill={({ value, onRemove }) => (
+                                            <TagInputPill onRemove={onRemove} value={value} />
+                                        )}
                                     />
                                 )
                             }

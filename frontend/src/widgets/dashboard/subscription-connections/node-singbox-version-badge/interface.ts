@@ -1,7 +1,7 @@
-import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 
 export interface IProps {
-    fetchedNode?: GetAllNodesCommand.Response['response'][number] | undefined
-    node: GetAllNodesCommand.Response['response'][number]
+    fetchedNode?: SubscriptionConnectionResponse | undefined
+    node: SubscriptionConnectionResponse
     style?: React.CSSProperties
 }

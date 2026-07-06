@@ -1,16 +1,21 @@
 import type { editor } from 'monaco-editor'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import Editor, { Monaco, useMonaco } from '@monaco-editor/react'
-import { Box, Card, Code, Paper, Text } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
-import { useBlocker } from 'react-router-dom'
-import { modals } from '@mantine/modals'
-
 import { ConfigEditorActionsFeature } from '@features/dashboard/config-profiles/config-editor-actions'
 import { ConfigValidationFeature } from '@features/dashboard/config-profiles/config-validation'
 import { MonacoSetupFeature } from '@features/dashboard/config-profiles/monaco-setup'
+import { Box, Button, Card, Code, Group, Loader, Paper, Stack } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import Editor, { Monaco, useMonaco } from '@monaco-editor/react'
+import clsx from 'clsx'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbAlertTriangle } from 'react-icons/tb'
+import { useBlocker } from 'react-router'
+
 import { monacoTheme } from '@shared/constants/monaco-theme/monaco-theme'
+import { usePseudoFullscreen } from '@shared/hooks'
+import { FullscreenToggleButton, fullscreenClasses } from '@shared/ui/fullscreen-toggle-button'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { preventBackScroll } from '@shared/utils/misc'
 
 import styles from './ConfigEditor.module.css'
@@ -20,7 +25,7 @@ export function ConfigEditorWidget(props: IProps) {
     const { t, i18n } = useTranslation()
     const monaco = useMonaco()
 
-    const { configProfile, snippets } = props
+    const { configProfile, isWasmCrashed, isWasmRestarting, onRestartWasm, snippets } = props
 
     const [result, setResult] = useState('')
     const [isConfigValid, setIsConfigValid] = useState(true)
@@ -30,6 +35,9 @@ export function ConfigEditorWidget(props: IProps) {
     )
 
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+    const wasWasmRestarting = useRef(false)
+
+    const { isFullscreen, toggle: toggleFullscreen } = usePseudoFullscreen()
 
     useEffect(() => {
         if (!monaco) return
@@ -43,6 +51,13 @@ export function ConfigEditorWidget(props: IProps) {
     )
 
     const snippetMap = new Map(snippets.snippets.map((s) => [s.name, s.snippet]))
+
+    useEffect(() => {
+        if (wasWasmRestarting.current && !isWasmRestarting && !isWasmCrashed && editorRef.current) {
+            ConfigValidationFeature.validate(editorRef, setResult, setIsConfigValid, snippetMap)
+        }
+        wasWasmRestarting.current = isWasmRestarting
+    }, [isWasmRestarting, isWasmCrashed])
 
     const handleEditorDidMount = (monaco: Monaco) => {
         monaco.editor.defineTheme('GithubDark', {
@@ -71,13 +86,17 @@ export function ConfigEditorWidget(props: IProps) {
     useEffect(() => {
         if (blocker.state === 'blocked') {
             modals.openConfirmModal({
-                title: t('config-editor.widget.unsaved-changes'),
-                children: (
-                    <Text c="dimmed" size="md">
-                        {t(
-                            'config-editor.widget.your-changes-will-be-lost-if-you-leave-this-page-without-saving'
-                        )}
-                    </Text>
+                title: (
+                    <BaseOverlayHeader
+                        iconColor="red"
+                        IconComponent={TbAlertTriangle}
+                        iconSize={20}
+                        iconVariant="soft"
+                        title={t('config-editor.widget.unsaved-changes')}
+                    />
+                ),
+                children: t(
+                    'config-editor.widget.your-changes-will-be-lost-if-you-leave-this-page-without-saving'
                 ),
                 centered: true,
                 labels: {
@@ -87,7 +106,7 @@ export function ConfigEditorWidget(props: IProps) {
 
                 confirmProps: {
                     color: 'red',
-                    variant: 'light'
+                    variant: 'soft'
                 },
                 cancelProps: {
                     variant: 'light'
@@ -105,52 +124,32 @@ export function ConfigEditorWidget(props: IProps) {
     }, [blocker])
 
     return (
-        <Box className={styles.container}>
-            {result && (
-                <Paper
-                    className={styles.validationMessage}
-                    p="md"
-                    radius="sm"
-                    style={{
-                        backgroundColor: isConfigValid
-                            ? 'rgba(51, 171, 132, 0.1)'
-                            : 'rgba(241, 65, 65, 0.1)',
-                        border: `1px solid ${isConfigValid ? 'rgb(51, 171, 132)' : 'rgb(241, 65, 65)'}`
-                    }}
-                >
-                    <Code
-                        color={isConfigValid ? 'teal' : 'red'}
-                        style={{
-                            backgroundColor: 'transparent',
-                            fontSize: '0.9rem',
-                            padding: 0
-                        }}
-                    >
-                        {result}
-                    </Code>
-                </Paper>
-            )}
-
+        <Box className={clsx(styles.container, isFullscreen && fullscreenClasses.overlay)}>
             <Paper
-                className={styles.editorWrapper}
+                className={clsx(styles.editorWrapper, isFullscreen && fullscreenClasses.fill)}
                 p={0}
+                pos="relative"
                 style={{
                     direction: 'ltr'
                 }}
                 withBorder
             >
+                <FullscreenToggleButton isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
+
                 <Editor
                     beforeMount={handleEditorDidMount}
                     className={styles.monacoEditor}
                     defaultLanguage="json"
                     loading={t('config-editor.widget.loading-editor')}
                     onChange={() => {
-                        ConfigValidationFeature.validate(
-                            editorRef,
-                            setResult,
-                            setIsConfigValid,
-                            snippetMap
-                        )
+                        if (!isWasmCrashed && !isWasmRestarting) {
+                            ConfigValidationFeature.validate(
+                                editorRef,
+                                setResult,
+                                setIsConfigValid,
+                                snippetMap
+                            )
+                        }
                         checkForChanges()
                     }}
                     onMount={(editor) => {
@@ -209,18 +208,91 @@ export function ConfigEditorWidget(props: IProps) {
                 />
             </Paper>
 
-            <Card className={styles.footer} h="auto" m="0" mt="md" pos="sticky">
-                <ConfigEditorActionsFeature
-                    configProfile={configProfile}
-                    editorRef={editorRef}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    isConfigValid={isConfigValid}
-                    originalValue={originalValue}
-                    setHasUnsavedChanges={setHasUnsavedChanges}
-                    setIsConfigValid={setIsConfigValid}
-                    setOriginalValue={setOriginalValue}
-                    setResult={setResult}
-                />
+            <Card className={styles.footer} h="auto" m="0" pos="sticky">
+                <Stack gap="md">
+                    {(result || isWasmRestarting || isWasmCrashed) && (
+                        <Paper
+                            className={styles.validationMessage}
+                            p="md"
+                            radius="sm"
+                            style={{
+                                backgroundColor:
+                                    isWasmCrashed || isWasmRestarting || !isConfigValid
+                                        ? 'rgba(241, 65, 65, 0.1)'
+                                        : 'rgba(51, 171, 132, 0.1)',
+                                border: `1px solid ${
+                                    isWasmCrashed || isWasmRestarting || !isConfigValid
+                                        ? 'rgb(241, 65, 65)'
+                                        : 'rgb(51, 171, 132)'
+                                }`
+                            }}
+                        >
+                            {isWasmRestarting && (
+                                <Group gap="xs">
+                                    <Loader color="orange" size="xs" />
+                                    <Code
+                                        color="orange"
+                                        style={{
+                                            backgroundColor: 'transparent',
+                                            fontSize: '0.9rem',
+                                            padding: 0
+                                        }}
+                                    >
+                                        Singbox Core (WASM) is restarting...
+                                    </Code>
+                                </Group>
+                            )}
+                            {!isWasmRestarting && isWasmCrashed && (
+                                <Group gap="sm">
+                                    <Code
+                                        color="red"
+                                        style={{
+                                            backgroundColor: 'transparent',
+                                            fontSize: '0.9rem',
+                                            padding: 0
+                                        }}
+                                    >
+                                        Singbox Core (WASM) crashed. Validation is unavailable.
+                                    </Code>
+                                    <Button
+                                        color="red"
+                                        onClick={onRestartWasm}
+                                        size="compact-xs"
+                                        variant="light"
+                                    >
+                                        {t('restart-node-button.feature.restart')}
+                                    </Button>
+                                </Group>
+                            )}
+                            {!isWasmRestarting && !isWasmCrashed && (
+                                <Code
+                                    color={isConfigValid ? 'teal' : 'red'}
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                        fontSize: '0.9rem',
+                                        padding: 0
+                                    }}
+                                >
+                                    {result}
+                                </Code>
+                            )}
+                        </Paper>
+                    )}
+
+                    {!isFullscreen && (
+                        <ConfigEditorActionsFeature
+                            configProfile={configProfile}
+                            editorRef={editorRef}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            isConfigValid={isConfigValid}
+                            originalValue={originalValue}
+                            setHasUnsavedChanges={setHasUnsavedChanges}
+                            setIsConfigValid={setIsConfigValid}
+                            setOriginalValue={setOriginalValue}
+                            setResult={setResult}
+                        />
+                    )}
+                </Stack>
             </Card>
         </Box>
     )

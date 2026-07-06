@@ -1,33 +1,17 @@
 import { ActionIcon, Tooltip } from '@mantine/core'
-import { PiChartBarDuotone } from 'react-icons/pi'
-import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PiChartBarDuotone } from 'react-icons/pi'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 import { IProps } from './interfaces'
 
 const GetNodeUsersUsageFeatureComponent = (props: IProps) => {
-    const { nodeUuid, renderAs = 'menu' } = props
+    const { nodeUuid } = props
     const { t } = useTranslation()
 
     const openModalWithData = useModalsStoreOpenWithData()
-    const label = t('get-user-usage.feature.show-usage')
-    const handleOpen = () => {
-        openModalWithData(MODALS.SHOW_NODE_USERS_USAGE_DRAWER, {
-            nodeUuid
-        })
-    }
-
-    if (renderAs === 'action') {
-        return (
-            <Tooltip label={label} withArrow>
-                <ActionIcon color="grape" onClick={handleOpen} size="md" variant="soft">
-                    <PiChartBarDuotone size="16px" />
-                </ActionIcon>
-            </Tooltip>
-        )
-    }
 
     return (
         <Tooltip label={t('get-user-usage.feature.show-usage')}>

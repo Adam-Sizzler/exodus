@@ -1,20 +1,16 @@
-import { ActionIcon, Badge, Box, Center, Drawer, Group, Stack, Text } from '@mantine/core'
-import { PiListChecks, PiProhibit, PiPulse, PiTag } from 'react-icons/pi'
-import { createSearchParams, useNavigate } from 'react-router-dom'
-import { TbAlertCircle, TbEyeOff } from 'react-icons/tb'
+import { Center, Drawer, Stack, Text, ThemeIcon } from '@mantine/core'
+import { HostCardWidget } from '@widgets/dashboard/hosts/host-card/host-card.widget'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ColorHash from 'color-hash'
-import { memo } from 'react'
+import { PiListChecks } from 'react-icons/pi'
+import { TbListCheck } from 'react-icons/tb'
+
+import { useGetConfigProfiles, useGetHosts, useGetNodes } from '@shared/api/hooks'
+import { LoadingScreen } from '@shared/ui'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { SectionCard } from '@shared/ui/section-card'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { useGetConfigProfiles, useGetHosts } from '@shared/api/hooks'
-import { SEARCH_PARAMS } from '@shared/constants/search-params'
-import { SingboxLogo } from '@shared/ui/logos'
-import { ROUTES } from '@shared/constants'
-import { LoadingScreen } from '@shared/ui'
-
-import styles from './LinkedHosts.module.css'
 
 export const LinkedHostsDrawer = memo(() => {
     const { isOpen, internalState: nodeUuid } = useModalState(MODALS.SHOW_NODE_LINKED_HOSTS_DRAWER)
@@ -24,8 +20,12 @@ export const LinkedHostsDrawer = memo(() => {
 
     const { data: hosts } = useGetHosts()
     const { data: configProfiles } = useGetConfigProfiles()
+    const { data: nodes } = useGetNodes()
 
-    const navigate = useNavigate()
+    const nodesByUuid = useMemo(
+        () => new Map((nodes ?? []).map((node) => [node.uuid, node] as const)),
+        [nodes]
+    )
 
     if (!nodeUuid || !hosts || !configProfiles) {
         return (
@@ -61,7 +61,7 @@ export const LinkedHostsDrawer = memo(() => {
             overlayProps={{ backgroundOpacity: 0.6, blur: 0 }}
             padding="lg"
             position="right"
-            size="500px"
+            size="800px"
             title={
                 <BaseOverlayHeader
                     iconColor="teal"
@@ -71,136 +71,40 @@ export const LinkedHostsDrawer = memo(() => {
                 />
             }
         >
-            <Stack gap="md">
+            <Stack gap={0}>
                 {linkedHosts.length === 0 && (
-                    <Center>
-                        <Text c="dimmed">
-                            {t('linked-hosts-drawer.widget.no-hosts-assigned-to-this-node')}
-                        </Text>
-                    </Center>
-                )}
-                {linkedHosts.map((host) => {
-                    const isHostActive = !host.isDisabled
-                    const configProfile = configProfiles?.configProfiles.find(
-                        (profile) => profile.uuid === host.inbound.configProfileUuid
-                    )
+                    <SectionCard.Root p="xl">
+                        <SectionCard.Section>
+                            <Center py="xl">
+                                <Stack align="center" gap="lg">
+                                    <ThemeIcon color="gray" radius="xl" size={64} variant="soft">
+                                        <TbListCheck size={32} />
+                                    </ThemeIcon>
 
-                    const ch = new ColorHash({ lightness: [0.65, 0.65, 0.65] })
-
-                    return (
-                        <Box
-                            className={styles.item}
-                            key={host.uuid}
-                            onClick={() => {
-                                close()
-
-                                navigate({
-                                    pathname: ROUTES.DASHBOARD.MANAGEMENT.HOSTS,
-                                    search: createSearchParams({
-                                        [SEARCH_PARAMS.HOST]: host.uuid
-                                    }).toString()
-                                })
-                            }}
-                        >
-                            <Stack>
-                                <Group
-                                    flex={1}
-                                    gap="sm"
-                                    miw={0}
-                                    style={{ overflow: 'hidden' }}
-                                    wrap="nowrap"
-                                >
-                                    {!isHostActive && (
-                                        <ActionIcon
-                                            color="gray"
-                                            size="md"
-                                            style={{ flexShrink: 0 }}
-                                            variant="soft"
-                                        >
-                                            <PiProhibit size={16} />
-                                        </ActionIcon>
-                                    )}
-
-                                    {isHostActive && host.isHidden && (
-                                        <ActionIcon
-                                            color="violet"
-                                            size="md"
-                                            style={{ flexShrink: 0 }}
-                                            variant="soft"
-                                        >
-                                            <TbEyeOff size={16} />
-                                        </ActionIcon>
-                                    )}
-
-                                    {isHostActive && !host.isHidden && (
-                                        <ActionIcon
-                                            color="teal"
-                                            size="md"
-                                            style={{ flexShrink: 0 }}
-                                            variant="soft"
-                                        >
-                                            <PiPulse size={16} />
-                                        </ActionIcon>
-                                    )}
-
-                                    <Group
-                                        gap="md"
-                                        style={{ flexShrink: 1, minWidth: 0 }}
-                                        wrap="nowrap"
-                                    >
-                                        <Text fw={600} style={{ flexShrink: 0 }} truncate>
-                                            {host.remark}
+                                    <Stack align="center" gap="xs">
+                                        <Text c="dimmed" fw={600} size="md" ta="center">
+                                            {t(
+                                                'linked-hosts-drawer.widget.no-hosts-assigned-to-this-node'
+                                            )}
                                         </Text>
-                                    </Group>
-                                </Group>
-                                <Group gap="md" style={{ flexShrink: 0 }} wrap="nowrap">
-                                    <Text
-                                        c="dimmed"
-                                        className={styles.hostAddress}
-                                        style={{ flexShrink: 1, minWidth: 0 }}
-                                        truncate
-                                    >
-                                        {host.address}
-                                        {host.port ? `:${host.port}` : ''}
-                                    </Text>
-                                </Group>
-                                <Group gap="md" style={{ flexShrink: 0 }} wrap="nowrap">
-                                    {host.inbound.configProfileInboundUuid && (
-                                        <Badge
-                                            autoContrast
-                                            color={ch.hex(host.inbound.configProfileInboundUuid)}
-                                            leftSection={<PiTag size={12} />}
-                                            size="md"
-                                            variant="outline"
-                                        >
-                                            {configProfile?.inbounds.find(
-                                                (inbound) =>
-                                                    inbound.uuid ===
-                                                    host.inbound.configProfileInboundUuid
-                                            )?.tag || 'UNKNOWN'}
-                                        </Badge>
-                                    )}
+                                    </Stack>
+                                </Stack>
+                            </Center>
+                        </SectionCard.Section>
+                    </SectionCard.Root>
+                )}
 
-                                    <Badge
-                                        autoContrast
-                                        color={
-                                            configProfile?.uuid ? ch.hex(configProfile.uuid) : 'red'
-                                        }
-                                        leftSection={
-                                            configProfile?.uuid ? (
-                                                <SingboxLogo size={12} />
-                                            ) : (
-                                                <TbAlertCircle size={12} />
-                                            )
-                                        }
-                                        size="md"
-                                        variant="light"
-                                    >
-                                        {configProfile?.name || 'DANGLING'}
-                                    </Badge>
-                                </Group>
-                            </Stack>
-                        </Box>
+                {linkedHosts.map((host) => {
+                    return (
+                        <HostCardWidget
+                            configProfiles={configProfiles.configProfiles}
+                            item={host}
+                            nodesByUuid={nodesByUuid}
+                            onSelect={() => {}}
+                            openExternal
+                            viewOnly
+                            key={host.uuid}
+                        />
                     )
                 })}
             </Stack>

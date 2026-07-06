@@ -1,16 +1,17 @@
 import { ActionIcon, Drawer, Group, Select, SimpleGrid, Stack } from '@mantine/core'
-import { TbCalendar, TbChartPie, TbRefresh, TbServer2 } from 'react-icons/tb'
 import { DatePickerInput, DatesRangeValue } from '@mantine/dates'
-import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
-import dayjs from 'dayjs'
-
-import { UserUsageSparklineCardWidget } from '@widgets/dashboard/users/user-usage-statistic/usage-sparkline-card'
 import { UserUsageBarchartWidget } from '@widgets/dashboard/users/user-usage-statistic/usage-barchart'
+import { UserUsageSparklineCardWidget } from '@widgets/dashboard/users/user-usage-statistic/usage-sparkline-card'
+import dayjs from 'dayjs'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbCalendar, TbChartPie, TbRefresh, TbServer2 } from 'react-icons/tb'
+
+import { useGetStatsUserUsage } from '@shared/api/hooks'
+import { CountryFlag } from '@shared/ui/get-country-flag'
 import { TopLeaderboardCardShared } from '@shared/ui/leaderboard-item-card'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { CountryFlag } from '@shared/ui/get-country-flag'
-import { useGetStatsUserUsage } from '@shared/api/hooks'
+import { getDefaultDateRange } from '@shared/utils/time-utils'
 
 import { IProps } from './interfaces'
 
@@ -30,27 +31,23 @@ const TOP_NODES_LIMIT_OPTIONS = [
 
 const DEFAULT_TOP_NODES_LIMIT = 20
 
-const DEFAULT_DATE_RANGE = {
-    start: dayjs().subtract(6, 'day').format('YYYY-MM-DD'),
-    end: dayjs().format('YYYY-MM-DD')
-}
-
 export const UserUsageModalWidget = (props: IProps) => {
     const { userUuid, opened, onClose } = props
     const { t, i18n } = useTranslation()
+    const defaultRange = getDefaultDateRange()
 
     const [rawRange, setRawRange] = useState<[null | string, null | string]>([
-        DEFAULT_DATE_RANGE.start,
-        DEFAULT_DATE_RANGE.end
+        defaultRange.start,
+        defaultRange.end
     ])
 
-    const [queryRange, setQueryRange] = useState<{ end: string; start: string }>(DEFAULT_DATE_RANGE)
+    const [queryRange, setQueryRange] = useState<{ end: string; start: string }>(defaultRange)
     const [topNodesLimit, setTopNodesLimit] = useState<number>(DEFAULT_TOP_NODES_LIMIT)
 
     const handleDateRangeChange = (value: DatesRangeValue<string>) => {
         if (value[0] === null && value[1] === null) {
-            setRawRange([DEFAULT_DATE_RANGE.start, DEFAULT_DATE_RANGE.end])
-            setQueryRange(DEFAULT_DATE_RANGE)
+            setRawRange([defaultRange.start, defaultRange.end])
+            setQueryRange(defaultRange)
             return
         }
 
@@ -88,8 +85,8 @@ export const UserUsageModalWidget = (props: IProps) => {
     })
 
     const handleClose = () => {
-        setRawRange([DEFAULT_DATE_RANGE.start, DEFAULT_DATE_RANGE.end])
-        setQueryRange(DEFAULT_DATE_RANGE)
+        setRawRange([defaultRange.start, defaultRange.end])
+        setQueryRange(defaultRange)
         setTopNodesLimit(DEFAULT_TOP_NODES_LIMIT)
         onClose()
     }

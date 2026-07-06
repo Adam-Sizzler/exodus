@@ -1,8 +1,8 @@
 import { ActionIcon, ActionIconProps, Tooltip } from '@mantine/core'
-import { TbQuestionMark } from 'react-icons/tb'
-import { IconBaseProps } from 'react-icons/lib'
-import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconBaseProps } from 'react-icons/lib'
+import { TbQuestionMark } from 'react-icons/tb'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 

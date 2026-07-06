@@ -1,0 +1,55 @@
+.card {
+    background: linear-gradient(
+        135deg,
+        var(--mantine-color-dark-6) 0%,
+        var(--mantine-color-dark-7) 100%
+    );
+    border: 1px solid var(--mantine-color-dark-4);
+    position: relative;
+    overflow: hidden;
+}
+
+.topAccent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--accent-color) 50%, transparent 100%);
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.memorySection,
+.perfSection {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--mantine-color-dark-4);
+    border-radius: var(--mantine-radius-sm);
+    padding: var(--mantine-spacing-sm);
+    height: 100%;
+}
+
+.statLabel {
+    color: var(--mantine-color-dimmed);
+    font-size: var(--mantine-font-size-xs);
+    line-height: 1.2;
+}
+
+.statValue {
+    color: var(--mantine-color-white);
+    font-family: var(--mantine-font-family-monospace);
+    font-size: var(--mantine-font-size-sm);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.heapValues {
+    color: var(--mantine-color-white);
+    font-family: var(--mantine-font-family-monospace);
+    font-size: var(--mantine-font-size-xs);
+    font-weight: 700;
+}
+
+.heapPercent {
+    color: var(--mantine-color-dimmed);
+    font-weight: 500;
+}

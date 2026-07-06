@@ -1,7 +1,7 @@
-import { GetAllHostsCommand } from '@exodus/backend-contract'
-import { configureMonacoYaml } from 'monaco-yaml'
 import { Monaco } from '@monaco-editor/react'
+import { GetAllHostsCommand } from '@exodus/backend-contract'
 import consola from 'consola'
+import { configureMonacoYaml } from 'monaco-yaml'
 
 type Host = GetAllHostsCommand.Response['response'][number]
 
@@ -26,7 +26,7 @@ function buildMarkdownDescription(host: Host): string {
         `| **Status** | ${icon} ${label} |`
     ]
 
-    if (host.tag) rows.push(`| **Tag** | \`${host.tag}\` |`)
+    if (host.tags.length > 0) rows.push(`| **Tags** | \`${host.tags.join(', ')}\` |`)
     if (host.sni) rows.push(`| **SNI** | \`${host.sni}\` |`)
     if (host.serverDescription) rows.push(`| **Description** | ${host.serverDescription} |`)
     if (host.inbound.configProfileUuid) {
@@ -51,7 +51,9 @@ export const configureMonaco = (
                 enableSchemaRequest: true,
                 hover: true,
                 completion: true,
-                format: true
+                format: {
+                    enable: true
+                }
             })
         }
 
@@ -92,6 +94,7 @@ export const configureMonaco = (
                                                         },
                                                         required: ['type']
                                                     },
+                                                    // oxlint-disable-next-line
                                                     then: {
                                                         properties: {
                                                             type: true,
@@ -120,6 +123,7 @@ export const configureMonaco = (
                                                         },
                                                         required: ['type']
                                                     },
+                                                    // oxlint-disable-next-line
                                                     then: {
                                                         properties: {
                                                             type: true,
@@ -139,6 +143,7 @@ export const configureMonaco = (
                                                         },
                                                         required: ['type']
                                                     },
+                                                    // oxlint-disable-next-line
                                                     then: {
                                                         properties: {
                                                             type: true,
@@ -160,6 +165,7 @@ export const configureMonaco = (
                                                         },
                                                         required: ['type']
                                                     },
+                                                    // oxlint-disable-next-line
                                                     then: {
                                                         properties: { type: true },
                                                         additionalProperties: false

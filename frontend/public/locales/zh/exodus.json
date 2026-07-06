@@ -12,7 +12,6 @@
         "overview": "概述",
         "management": "管理",
         "subscription-settings": "订阅设置",
-        "subscription-connections": "节点",
         "utils": "实用工具",
         "happ-routing-builder": "Happ 路由编辑器",
         "templates": "模板",
@@ -21,14 +20,17 @@
         "config-profiles": "配置文件",
         "internal-squads": "内部分组",
         "external-squads": "外部分组",
-        "srs-lists": "SRS Lists",
         "infra-billing": "网络供应商计费",
         "hwid-inspector": "HWID 视图",
         "tools": "工具",
         "srh-inspector": "SRH 检查",
         "response-rules": "请求订阅的应用",
         "exodus-settings": "Exodus 设置",
-        "node-plugins": "插件"
+        "node-plugins": "插件",
+        "tb-reports": "Torrent 屏蔽报告",
+        "sessions-explorer": "会话管理器",
+        "subscription-connections": "节点",
+        "srs-lists": "SRS Lists"
     },
     "common": {
         "delete": "删除",
@@ -36,6 +38,7 @@
         "cancel": "取消",
         "copied": "复制成功",
         "copy": "复制",
+        "paste": "粘贴",
         "refresh": "刷新",
         "save": "保存",
         "update": "更新",
@@ -60,7 +63,13 @@
         "nothing-found": "未找到",
         "name": "名称",
         "clone": "克隆",
-        "event-sent": "发送事件"
+        "event-sent": "发送事件",
+        "open": "打开",
+        "view": "查看",
+        "clear": "清除",
+        "color": "颜色",
+        "all": "全部",
+        "without-tags": "无标签"
     },
     "bandwidth-metrics": {
         "current-year": "今年",
@@ -153,7 +162,8 @@
         "internal-squads": "内部分组",
         "first-connected-at": "首次连接于",
         "sub-last-opened-at": "上次订阅时间",
-        "tag": "Tag"
+        "tag": "Tag",
+        "used-traffic": "已使用的流量(%)"
     },
     "header-buttons": {
         "feature": {}
@@ -297,8 +307,6 @@
             "pick-value": "选择值",
             "traffic-reset-strategy": "流量重置策略",
             "traffic-reset-strategy-description": "用户流量使用统计应多久重置一次",
-            "data-limit": "流量限制",
-            "data-limit-description": "输入流量限制 GB（0 表示无限制）",
             "username-cannot-be-changed-later": "用户名之后无法更改",
             "loading-user-creation": "正在加载创建用户窗口..",
             "create-user": "创建用户",
@@ -313,7 +321,9 @@
             "hwid-device-limit": "HWID 设备限制",
             "expire-at-description": "用户的订阅服务将于该时间结束。",
             "internal-squads": "内部分组",
-            "internal-squads-description": "指定用户所属内部分组。"
+            "internal-squads-description": "指定用户所属内部分组。",
+            "data-limit": "流量限制",
+            "data-limit-description": "输入流量限制 GB（0 表示无限制）"
         }
     },
     "login-form-feature": {
@@ -371,8 +381,6 @@
         "path-e-g-ws": "路径 (例如 /ws)",
         "security-layer": "安全层",
         "tls-transport-layer-security": "TLS (传输层安全)",
-        "uuid-override-placeholder": "UUID（例如 00000000-0000-0000-0000-000000000000）",
-        "password-override-placeholder": "密码（例如 my-secret-password）",
         "none": "None",
         "inbounds-default": "入站默认值",
         "here-you-can-override-security-settings-from-xtls-config": "您可以在此处覆盖 XTLS 配置中的安全设置。",
@@ -392,10 +400,8 @@
         "select-one-inbound-to-apply-to-the-host": "请选择一个入站连接应用到该主机",
         "server-description-header": "服务器描述",
         "server-description-placeholder": "最多 30 个字符",
-        "this-will-only-be-used-for-xray-json-output": "这将仅用于 Xray JSON 输出。",
-        "this-will-only-be-used-for-selected-core-output": "这将仅用于 {{core}} 输出。",
+        "this-will-only-be-used-for-xray-json-output": "这将仅用于 Singbox JSON 输出。",
         "please-ensure-you-provide-a-valid-json-mux-object": "请确保您提供一个有效的 JSON MUX 对象。",
-        "please-ensure-you-provide-a-valid-yaml-mux-object": "请确保您提供有效的 YAML MUX 配置。",
         "for-more-information-refer-to": "欲了解更多信息，请参阅",
         "xtls-documentation": "XTLS 文档",
         "final-mask-description": "The finalMask override allows you to fine-tune the finalMask in cases where the server-side and client-side finalMask configurations need to differ.<br/><br/>FinalMask will only be applied to Xray-JSON and Base64 client output formats.<br/><br/>Make sure to review the <anchor>Xray documentation</anchor>.",
@@ -406,7 +412,6 @@
         "advanced": "高级",
         "connection-overrides": "连接覆盖",
         "xray-json-and-raw": "Config & Raw",
-        "mux-core": "MUX Core",
         "hide-host": "隐藏主机",
         "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "隐藏用户的主机。Exodus 将仅发送RAW 订阅。",
         "apps-specific": "特定的应用程序",
@@ -419,21 +424,10 @@
         "override-sni-from-address": "从地址覆盖SNI地址",
         "override-sni-from-address-description": "此选项用指定的地址字段值替换SNI值。这对于多域配置或通配符域配置特别有用。",
         "legacy-options": "传统选项",
-        "allow-insecure": "允许不安全的连接",
         "shuffled-hosts-hover-card": "随机排序的主机将放置在列表的顶端。",
-        "override-protocol-credential": "覆盖协议凭据",
-        "override-protocol-credential-select-inbound": "请先在 Basic 选项卡选择入站",
-        "override-protocol-credential-unsupported": "所选入站协议不受支持",
-        "uuid-for-all-users": "所有用户使用同一个 UUID",
-        "password-for-all-users": "所有用户使用同一个密码",
-        "uuid-override": "UUID 覆盖",
-        "password-override": "密码覆盖",
-        "generate-protocol-credential": "生成凭据",
-        "replaces-user-credential": "生成配置时替换用户的协议凭据。",
+        "vless-route-description": "从 1 到 65535，0 或留空以禁用",
         "misc-settings": "杂项设置",
         "shuffle-host": "随机主机",
-        "selector-nodes-first": "节点置于选择器开头",
-        "selector-nodes-first-description": "用于 Sing-box 和 Mihomo 的 select 组。开启后：该节点放在模板项（如 auto）之前。关闭后：放在其后。",
         "mihomo-specific": "Mihomo 特定设置",
         "enable-x25519mlkem768": "启用 x25519mlkem768 ",
         "pick-nodes-which-resolved-from-this-host-only-visual-assignment": "从主机中选择解析的节点。仅可视化。",
@@ -451,7 +445,24 @@
         "hidden-host-description": "默认情况下，Exodus 将不会在订阅中包含隐藏主机。隐藏主机可以在 Mihomo 和 Xray-Json Advant, Raw 中使用",
         "server-description-1": "在支持的客户端中，协议名称(例如无)将被此处指定的描述所取代。",
         "server-description-2": "并非所有客户端应用程序都支持此功能。欲了解更多详情，请参阅下面列出的应用程序的文档。",
-        "supported-clients": "支持的客户端"
+        "supported-clients": "支持的客户端",
+        "uuid-override-placeholder": "UUID（例如 00000000-0000-0000-0000-000000000000）",
+        "password-override-placeholder": "密码（例如 my-secret-password）",
+        "this-will-only-be-used-for-selected-core-output": "这将仅用于 {{core}} 输出。",
+        "please-ensure-you-provide-a-valid-yaml-mux-object": "请确保您提供有效的 YAML MUX 配置。",
+        "mux-core": "MUX Core",
+        "allow-insecure": "允许不安全的连接",
+        "override-protocol-credential": "覆盖协议凭据",
+        "override-protocol-credential-select-inbound": "请先在 Basic 选项卡选择入站",
+        "override-protocol-credential-unsupported": "所选入站协议不受支持",
+        "uuid-for-all-users": "所有用户使用同一个 UUID",
+        "password-for-all-users": "所有用户使用同一个密码",
+        "uuid-override": "UUID 覆盖",
+        "password-override": "密码覆盖",
+        "generate-protocol-credential": "生成凭据",
+        "replaces-user-credential": "生成配置时替换用户的协议凭据。",
+        "selector-nodes-first": "节点置于选择器开头",
+        "selector-nodes-first-description": "用于 Sing-box 和 Mihomo 的 select 组。开启后：该节点放在模板项（如 auto）之前。关闭后：放在其后。"
     },
     "base-node-form": {
         "country": "国家",
@@ -460,7 +471,6 @@
         "internal-name-placeholder": "例如：US-NY-Node-01 ",
         "address": "地址",
         "e-g-example-com": "例如 example.com",
-        "consumption-multiplier": "流量倍率",
         "traffic-tracking": "跟踪流量使用",
         "limit": "限制",
         "reset-day": "重置日期",
@@ -476,7 +486,8 @@
         "more-actions": "更多操作",
         "quick-actions": "快捷操作",
         "copy-node-uuid": "复制节点 UUID",
-        "management": "管理"
+        "management": "管理",
+        "consumption-multiplier": "流量倍率"
     },
     "home": {
         "page": {
@@ -487,6 +498,26 @@
             "exodus-usage": "Exodus 使用情况",
             "process-details": "进程详情",
             "runtime": "Runtime"
+        },
+        "runtime-info": {
+            "title": "Exodus 运行时指标指南",
+            "subtitle": "运行时卡片上每个数值的实际含义",
+            "intro": "每张卡片都展示了一个 <highlight>Exodus Go 进程</highlight> 的实时状态快照。可通过本说明了解每项指标的含义，以及在什么情况下需要关注或排查问题。",
+            "instance-types-title": "进程",
+            "instance-types-description": "Exodus currently reports one Go runtime process. This card describes the API process that serves the panel, subscriptions, and node coordination.",
+            "api-description": "负责处理仪表盘 API 请求、订阅端点以及与节点的协调。这是系统中<highlight>主要面向用户的进程</highlight>。",
+            "scheduler-description": "运行周期性维护和通知检查，避免这些任务阻塞请求处理。",
+            "processor-description": "执行后台任务，例如 <highlight>节点健康检查</highlight>、<highlight>流量聚合</highlight> 以及其他长时间运行的操作。",
+            "memory-description": "Go runtime 和操作系统报告的 Exodus 进程内存。",
+            "heap-description": "Go heap 显示为 <highlight>heap alloc / heap sys</highlight>。Alloc 是正在使用的 heap；sys 是 Go 从操作系统预留的 heap。",
+            "rss-description": "<highlight>驻留集大小 </highlight> —— 操作系统实际分配给该进程的总物理内存，包括堆内存、本地代码以及共享库。它是判断<highlight>该进程实际占用了多少 RAM 内存</highlight>的最佳单一指标。",
+            "external-description": "<highlight>Go Sys</highlight> 是 Go runtime 从操作系统获取的总内存，包括 heap、stack、metadata 和 runtime 结构。",
+            "array-buffers-description": "<highlight>Stack</highlight> 是 goroutine stack 当前使用的内存，通常会随 goroutine 数量变化。",
+            "event-loop-description": "Go scheduler 健康状态。这些值显示 goroutine 是否等待过久才获得运行机会。",
+            "delay-description": "平均 scheduler 延迟。数值越低越好；持续升高可能表示 CPU 压力或阻塞任务。",
+            "p99-description": "<highlight>99 百分位</highlight> scheduler 延迟，可显示平均值隐藏的延迟峰值。",
+            "active-handles-description": "<highlight>Goroutines</highlight> 是 Go 的轻量级任务。稳定数量是正常的；无限增长通常表示泄漏或卡住的任务。",
+            "threads-description": "Go 进程使用的操作系统线程数。"
         }
     },
     "login-form": {
@@ -633,35 +664,15 @@
             "set-port": "设置端口",
             "port": "端口",
             "clear-selection": "清除选择",
-            "select-all": "全选"
+            "select-all": "全选",
+            "dangling-hosts-skipped": "已跳过 {{count}} 个未关联的主机，未执行克隆。"
         }
     },
-    "srs-lists": {
-        "feature": {
-            "available": "Available",
-            "unavailable": "Unavailable",
-            "add-links": "Add links",
-            "optional-for-single-url": "Optional for one URL",
-            "multiple-urls-hint": "One or multiple URLs separated by spaces, commas or new lines",
-            "selected": "Selected",
-            "selected-count": "Selected",
-            "delete-selected-title": "Delete selected SRS lists",
-            "set-update-interval": "Set update interval",
-            "update-interval": "Update interval",
-            "search-by-name": "Search by name",
-            "search-by-address": "Search by address",
-            "last-error": "Error",
-            "search-by-url": "Search by URL",
-            "filters": "Filters",
-            "filter-by-tags": "Filter by tags",
-            "all-tags": "All tags",
-            "enabled": "Enabled",
-            "disabled": "Disabled",
-            "urls": "URLs",
-            "edit-list": "Edit SRS list",
-            "url": "URL",
-            "status": "Status"
-        }
+    "edit-many-hosts-drawer": {
+        "confirm-title": "确认批量更新",
+        "confirm-description": "以下字段将应用于 {{count}} 个主机:",
+        "no-changes-title": "无需更新",
+        "no-changes-description": "您尚未修改任何字段。"
     },
     "bulk-user-actions-drawer": {
         "widget": {
@@ -733,15 +744,15 @@
                     "perform-action-on-users": "对 {{usersCount}} 位选定用户执行操作",
                     "resets-the-traffic-usage-to-zero-for-all-selected-users": "将所有选定用户的流量使用重置为0",
                     "revokes-subscription-for-all-selected-users": "撤销所有选定用户的订阅",
-                    "change-active-internal-squads": "更改激活的内部分组",
                     "specify-internal-squads-that-will-be-assigned-to-the-user": "指定将分配给用户的内部小组",
                     "internal-squads": "内部分组",
-                    "changes-the-active-internal-squads-for-all-selected-users": "更改所有选中用户的活跃内部分组",
                     "extend-expiration-date": "延长日期",
                     "enter-the-number-of-days-to-extend-the-expiration-date": "输入延长到期日的天数",
                     "extend-days": "延长天数",
                     "extend": "延长",
-                    "extend-expiration-date-description": "将天数添加到选定用户的到期日期。天数将添加到当前每个用户的到期日期。"
+                    "extend-expiration-date-description": "将天数添加到选定用户的到期日期。天数将添加到当前每个用户的到期日期。",
+                    "change-active-internal-squads": "更改激活的内部分组",
+                    "changes-the-active-internal-squads-for-all-selected-users": "更改所有选中用户的活跃内部分组"
                 }
             }
         },
@@ -864,7 +875,6 @@
             "revoked-at": "撤销于",
             "connection-information": "连接信息",
             "trojan-password": "Trojan 密码",
-            "vless-uuid": "VLESS UUID",
             "ss-password": "SS 密码",
             "last-online": "最后在线",
             "last-connected-node": "最后连接节点",
@@ -873,7 +883,8 @@
             "updated-at": "更新于",
             "tag": "标签",
             "first-connected-at": "首次连接于",
-            "active-internal-squads": "激活的的内部分组"
+            "active-internal-squads": "激活的的内部分组",
+            "vless-uuid": "VLESS UUID"
         }
     },
     "subscription-tabs": {
@@ -1030,6 +1041,8 @@
             "nodes": "节点",
             "download": "下载",
             "quick-view": "快速查看",
+            "edit-xray-config": "Singbox 配置",
+            "xray-config": "Singbox 配置",
             "edit-singbox-config": "Singbox 配置"
         }
     },
@@ -1139,7 +1152,10 @@
                 "please-select-a-provider-and-billing-node": "请选择一个网络提供商和计费节点",
                 "billing-node": "计费节点",
                 "next-billing-at": "下次计费时间",
-                "next-billing-at-description": "计费节点将被计费的日期和时间。Exodus 将会通知你即将到来的账单。"
+                "next-billing-at-description": "计费节点将被计费的日期和时间。Exodus 将会通知你即将到来的账单。",
+                "existing-node": "已存在节点",
+                "custom-name": "自定义名称",
+                "custom-name-description": "当节点不由 Exodus 管理时使用自定义名称。"
             }
         }
     },
@@ -1240,9 +1256,9 @@
     "show-config-profiles-with-inbounds": {
         "feature": {
             "config-profile": "配置文件",
-            "select-the-config-profile-that-will-be-applied-to-this-node": "选择将应用于此节点的配置文件",
             "no-config-profile-selected": "未选择配置文件",
-            "choose-a-profile-to-configure-inbounds-for-this-node": "选择一个配置文件以为该节点配置入站"
+            "choose-a-profile-to-configure-inbounds-for-this-node": "选择一个配置文件以为该节点配置入站",
+            "select-the-config-profile-that-will-be-applied-to-this-node": "选择将应用于此节点的配置文件"
         }
     },
     "access-settings-card": {
@@ -1264,11 +1280,12 @@
                 "unknown-inbound": "未知的入站",
                 "selected": "已选择",
                 "no-inbound-selected": "未选择入站",
-                "choose-an-inbound-to-apply-to-the-host": "选择一个入站以应用到主机。",
-                "apply-changes": "应用更改",
                 "search-profiles-or-inbounds": "搜索配置文件或入站...",
                 "no-profiles-or-inbounds-found": "未找到配置文件或入站",
-                "no-config-profiles-available": "没有可用的配置文件"
+                "no-config-profiles-available": "没有可用的配置文件",
+                "assign-an-inbound-to-the-host": "指定一个入站到主机",
+                "choose-an-inbound-to-apply-to-the-host": "选择一个入站以应用到主机。",
+                "apply-changes": "应用更改"
             }
         }
     },
@@ -1280,7 +1297,12 @@
             "payments-in": "{{month}} 的付款",
             "total-payments-made": "已完成付款总数",
             "total-spent": "总支出",
-            "lifetime-spending": "累计支出"
+            "lifetime-spending": "累计支出",
+            "overdue": "已过期",
+            "payment-overdue": "付款已过期",
+            "all-up-to-date": "全部已更新",
+            "next-payment": "下次付款日期",
+            "no-upcoming-payments": "没有即将进行的付款"
         }
     },
     "edit-node-by-uuid-modal": {
@@ -1299,6 +1321,16 @@
             "address": "地址",
             "filter-by-tags": "按标签进行筛选"
         }
+    },
+    "disclaimer-overlay": {
+        "title": "免责声明",
+        "subtitle": "请在您继续之前阅读此消息。",
+        "intro": "Exodus 是一款<highlight>开源、自托管</highlight>的代理和用户管理工具。其提供方式为<warning>“按现状提供（As Is）”，不附带任何形式的保证，无论是明示还是默示保证</warning>。",
+        "responsibility": "您需对本软件的部署和使用方式承担全部责任。",
+        "compliance": "您必须遵守所在司法管辖区适用的所有法律法规。",
+        "liability": "开发者和贡献者对任何误用、损害或数据丢失均不承担任何责任。",
+        "license-acknowledgement": "继续操作即表示您已阅读并同意<anchor>许可协议条款</anchor>。",
+        "accept-button": "我已了解并接受"
     },
     "mobile-warning-overlay": {
         "mobile-device-detected": "检测到移动设备",
@@ -1332,7 +1364,9 @@
     },
     "restart-node-button": {
         "feature": {
-            "restart": "重新启动"
+            "restart": "重新启动",
+            "restart-description-line-1": "确保节点完全重启Xra核心。建议选中。",
+            "restart-description-line-2": "将向所有节点发送请求以重启 Xray。 但如果节点哈希与当前的哈希相同，则请求可能无法实现。 这是默认的选项。"
         }
     },
     "node-details-card": {
@@ -1345,22 +1379,9 @@
             "enable-node": "启用节点",
             "disable-node": "禁用节点",
             "config-profile-or-inbounds-is-missing": "缺少配置文件或者入站配置",
-            "singbox-core-version": "Singbox 核心版本",
-            "exodus-node-version": "节点版本，@exodus/节点"
-        }
-    },
-    "node-system-card": {
-        "widget": {
-            "system-info": "系统信息",
-            "memory": "内存",
-            "used": "已使用",
-            "free": "可用",
-            "total": "总计",
-            "system": "系统",
-            "system-uptime": "系统运行时间",
-            "network": "网络",
-            "kernel": "内核",
-            "interface": "接口"
+            "xray-core-version": "Singbox 核心版本",
+            "exodus-node-version": "节点版本，@exodus/节点",
+            "singbox-core-version": "Singbox 核心版本"
         }
     },
     "config-profiles": {
@@ -1369,11 +1390,11 @@
                 "config-profiles": "配置文件",
                 "no-profile-selected": "未选择配置文件",
                 "no-inbounds-selected": "未选择入站配置",
-                "choose-config-profile-to-apply-to-the-node": "选择要应用到节点的配置文件。",
-                "apply-changes": "应用更改",
                 "search-profiles-or-inbounds": "搜索配置文件或入站配置...",
                 "no-profiles-or-inbounds-found": "未找到配置文件或入站配置",
-                "no-config-profiles-available": "暂无可用配置文件"
+                "no-config-profiles-available": "暂无可用配置文件",
+                "choose-config-profile-to-apply-to-the-node": "选择要应用到节点的配置文件。",
+                "apply-changes": "应用更改"
             }
         }
     },
@@ -1406,6 +1427,7 @@
         "card": {
             "stats": "统计信息",
             "traffic-refill-in-days": "流量重置(天)：",
+            "represents-the-uptime-of-the-xray-core": "表示 Singbox 核心的运行时间",
             "represents-the-uptime-of-the-singbox-core": "表示Singbox 核心的运行时间",
             "represents-the-uptime-of-the-subscription-node-container": "表示订阅节点容器的运行时间"
         }
@@ -1528,7 +1550,7 @@
                 "snippets-help-line-2": "代码块必须包含一个出站或规则对象数组，而且至少需要一个项目。",
                 "snippets-help-line-3": "自动完成是可用的代码块名称。此外，您可以快速预览代码块，在编辑器的名称上悬停。",
                 "snippets-help-line-4": "在出站内[]，你可以引用的代码块名称。",
-                "snippets-help-line-5": "在路由规则[]中，你可以引用的代码块名称。"
+                "snippets-help-line-5": "在 route.rules[] 中可以按名称引用代码块。"
             }
         }
     },
@@ -1552,14 +1574,16 @@
         "copy-the": "复制",
         "content-for-the-exodus-node-below": "以下是 Exodus 节点的内容。",
         "learn-more": "了解更多。",
-        "domain-or-ip": "域名或IP"
+        "domain-or-ip": "域名或IP",
+        "additional-options": "附加参数"
     },
     "create-node-step-3-status": {
         "establishing-mtls-connection": "正在建立mTLS连接...",
-        "singbox-core-is-up-and-running": "Singbox 核心正在运行！",
+        "xray-core-is-up-and-running": "Singbox 核心正在运行！",
         "exodus-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接...",
         "no-errros-so-far": "到目前为止没有错误",
-        "last-error-message": "最后一个错误消息"
+        "last-error-message": "最后一个错误消息",
+        "singbox-core-is-up-and-running": "Singbox 核心正在运行！"
     },
     "external-squad-card": {
         "widget": {
@@ -1710,12 +1734,29 @@
             "color-format-note": "💡 颜色仅适用于标记后面的单词。没有标记，文本将为白色。"
         }
     },
+    "visual-settings-card": {
+        "widget": {
+            "layout-style": "布局样式",
+            "choose-how-the-desktop-navigation-is-displayed": "选择桌面导航的显示方式",
+            "compact": "紧凑",
+            "sidebar": "侧边栏"
+        }
+    },
     "api-tokens-card": {
         "widget": {
             "api-tokens-description": "管理您的 API Token用于程序访问。",
             "api-tokens": "API Tokens",
             "no-api-tokens-found": "未找到 API Tokens",
-            "token-name": "API Tokens 名称"
+            "token-name": "API Tokens 名称",
+            "create-api-token": "创建新 API 密钥",
+            "full-access": "完全访问权限",
+            "col-scopes": "范围",
+            "col-created": "创建日期",
+            "col-expires": "过期",
+            "expired": "已过期",
+            "expires-in-days": "过期时间 (天)",
+            "expires-in": "过期",
+            "one-time-notice": "出于安全原因，令牌会在创建后立即显示 <emphasis>仅此一次</emphasis>。请务必复制并将其妥善保存在安全的地方——之后你将无法再次查看它。"
         }
     },
     "external-squads-hosts": {
@@ -1807,12 +1848,13 @@
         "traffic-used": "流量使用",
         "config-profile": "配置文件",
         "inbounds": "入站",
-        "singbox-v": "Singbox V.",
+        "xray-v": "Xray V.",
         "node-v": "节点 V.",
         "provider": "服务商",
         "tags": "标签",
         "total-ram": "内存总数",
-        "cpu-model": "CPU 型号"
+        "cpu-model": "CPU 型号",
+        "singbox-v": "Singbox V."
     },
     "subpage-config-visual-editor": {
         "widget": {
@@ -2031,7 +2073,9 @@
         "contact-information": "连接信息"
     },
     "traffic-limits-card": {
-        "traffic-and-limits": "流量限制"
+        "traffic-and-limits": "流量限制",
+        "traffic-limit-description": "0 表示无限制",
+        "traffic-limit": "流量限制"
     },
     "node-plugin-editor-page": {
         "component": {
@@ -2043,7 +2087,9 @@
             "plugin": "插件",
             "review-documentation-for-more-information": "查看文件以获取更多信息。",
             "nothing-found": "未找到任何信息…",
-            "select-plugin": "选择插件"
+            "select-plugin": "选择插件",
+            "proxy-url": "代理 URL",
+            "proxy-url-description": "可选。如果填写此项，面板与节点之间的内部 API 连接将通过该代理转发。"
         }
     },
     "node-plugin-card": {
@@ -2174,7 +2220,9 @@
             "billing-nodes": "计费节点",
             "upcoming": "即将到来",
             "per-month": "每月",
-            "total-spent": "合计花费"
+            "total-spent": "合计花费",
+            "overdue": "已过期",
+            "no-upcoming": "没有即将到来的"
         }
     },
     "mobile-providers-list": {
@@ -2186,6 +2234,79 @@
         "widget": {
             "history": "历史",
             "providers": "服务商"
+        }
+    },
+    "prime-modal": {
+        "shared": {
+            "description": "支持项目并成为核心成员——更贴近团队、产品路线以及实际工作",
+            "priority-support-title": "优先支持",
+            "priority-support-description": "跳过排队——你的问题将优先得到团队的直接解答",
+            "private-community-title": "私密社群",
+            "private-community-description": "仅限 Prime 会员参与的专属社群",
+            "shape-the-roadmap-title": "参与路线规划",
+            "shape-the-roadmap-description": "投票决定下一个开发的内容，并帮助引导项目的发展方向。",
+            "direct-developer-access-title": "开发者直接访问",
+            "direct-developer-access-description": "直接联系开发者-没有工单，没有中间人。",
+            "join-button": "加入最棒的RW"
+        }
+    },
+    "hosts-datatable": {
+        "widget": {
+            "reset-sort": "重置排序"
+        }
+    },
+    "columns-visibility-popover": {
+        "show-all": "显示全部",
+        "hide-all": "隐藏全部"
+    },
+    "use-hosts-table-widget": {
+        "disabled": "已禁用",
+        "enabled": "已启用",
+        "hidden": "已隐藏"
+    },
+    "node-tracking-and-billing": {
+        "card": {
+            "note": "备注"
+        }
+    },
+    "node-consumption": {
+        "card": {
+            "node-consumption-multiplier-1": "将所选倍率应用于节点流量（1.0 = 正常，0.5 = 一半，2.0 = 双倍）。",
+            "node-consumption-multiplier-2": "主要用于在启用流量统计时准确显示流量配额。节点流量倍率不会影响详细统计数据（图表）的显示。",
+            "node-consumption-multiplier": "节点流量倍率",
+            "user-consumption-multiplier": "用户流量倍率"
+        }
+    },
+    "keypair-generator": {
+        "widget": {
+            "generate": "生成"
+        }
+    },
+    "srs-lists": {
+        "feature": {
+            "available": "Available",
+            "unavailable": "Unavailable",
+            "add-links": "Add links",
+            "optional-for-single-url": "Optional for one URL",
+            "multiple-urls-hint": "One or multiple URLs separated by spaces, commas or new lines",
+            "selected": "Selected",
+            "selected-count": "Selected",
+            "delete-selected-title": "Delete selected SRS lists",
+            "set-update-interval": "Set update interval",
+            "update-interval": "Update interval",
+            "search-by-name": "Search by name",
+            "search-by-address": "Search by address",
+            "last-error": "Error",
+            "search-by-url": "Search by URL",
+            "filters": "Filters",
+            "filter-by-tags": "Filter by tags",
+            "all-tags": "All tags",
+            "enabled": "Enabled",
+            "disabled": "Disabled",
+            "urls": "URLs",
+            "edit-list": "Edit SRS list",
+            "url": "URL",
+            "status": "Status"
         }
     }
 }

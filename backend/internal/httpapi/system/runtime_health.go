@@ -20,10 +20,10 @@ var (
 )
 
 type goHealthResponse struct {
-	PM2Stats       []pm2ProcessStat  `json:"pm2Stats"`
-	ExodusMetrics  []goRuntimeMetric `json:"exodusMetrics"`
-	RuntimeSummary goRuntimeSummary  `json:"runtimeSummary"`
-	RuntimeNotes   []string          `json:"runtimeNotes"`
+	PM2Stats       []pm2ProcessStat `json:"pm2Stats"`
+	RuntimeMetrics []runtimeMetric  `json:"runtimeMetrics"`
+	RuntimeSummary goRuntimeSummary `json:"runtimeSummary"`
+	RuntimeNotes   []string         `json:"runtimeNotes"`
 }
 
 type pm2ProcessStat struct {
@@ -38,6 +38,7 @@ type goRuntimeMetric struct {
 	InstanceID      int             `json:"instanceId"`
 	PID             int             `json:"pid"`
 	StartedAt       string          `json:"startedAt"`
+	UptimeSeconds   int64           `json:"uptimeSeconds"`
 	Runtime         goRuntimeInfo   `json:"runtime"`
 	CPU             goCPUInfo       `json:"cpu"`
 	Memory          goMemoryInfo    `json:"memory"`
@@ -46,6 +47,33 @@ type goRuntimeMetric struct {
 	Process         goProcessInfo   `json:"process"`
 	CollectedAt     string          `json:"collectedAt"`
 	CollectedAtUnix int64           `json:"collectedAtUnix"`
+}
+
+type runtimeMetric struct {
+	RSS              float64         `json:"rss"`
+	HeapUsed         float64         `json:"heapUsed"`
+	HeapTotal        float64         `json:"heapTotal"`
+	External         float64         `json:"external"`
+	ArrayBuffers     float64         `json:"arrayBuffers"`
+	EventLoopDelayMs float64         `json:"eventLoopDelayMs"`
+	EventLoopP99Ms   float64         `json:"eventLoopP99Ms"`
+	ActiveHandles    float64         `json:"activeHandles"`
+	Uptime           float64         `json:"uptime"`
+	PID              float64         `json:"pid"`
+	Timestamp        float64         `json:"timestamp"`
+	InstanceID       string          `json:"instanceId"`
+	InstanceType     string          `json:"instanceType"`
+	Name             string          `json:"name"`
+	StartedAt        string          `json:"startedAt"`
+	UptimeSeconds    int64           `json:"uptimeSeconds"`
+	Runtime          goRuntimeInfo   `json:"runtime"`
+	CPU              goCPUInfo       `json:"cpu"`
+	Memory           goMemoryInfo    `json:"memory"`
+	GC               goGCInfo        `json:"gc"`
+	Scheduler        goSchedulerInfo `json:"scheduler"`
+	Process          goProcessInfo   `json:"process"`
+	CollectedAt      string          `json:"collectedAt"`
+	CollectedAtUnix  int64           `json:"collectedAtUnix"`
 }
 
 type goRuntimeInfo struct {
@@ -105,6 +133,7 @@ type goProcessInfo struct {
 type goRuntimeSummary struct {
 	TotalProcesses          int     `json:"totalProcesses"`
 	StartedAt               string  `json:"startedAt"`
+	UptimeSeconds           int64   `json:"uptimeSeconds"`
 	TotalRSSBytes           uint64  `json:"totalRssBytes"`
 	HeapAllocBytes          uint64  `json:"heapAllocBytes"`
 	AverageCPUPercent       float64 `json:"averageCpuPercent"`
@@ -122,6 +151,7 @@ type processCPUState struct {
 func buildGoHealthResponse() goHealthResponse {
 	now := time.Now()
 	startedAt := goProcessStartedAt.UTC().Format(time.RFC3339)
+	uptimeSeconds := int64(now.Sub(goProcessStartedAt).Seconds())
 
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
@@ -138,11 +168,12 @@ func buildGoHealthResponse() goHealthResponse {
 	threads := readProcessThreads()
 
 	metric := goRuntimeMetric{
-		Name:         "Exodus REST API-0",
-		InstanceType: "api",
-		InstanceID:   0,
-		PID:          os.Getpid(),
-		StartedAt:    startedAt,
+		Name:          "Exodus REST API-0",
+		InstanceType:  "api",
+		InstanceID:    0,
+		PID:           os.Getpid(),
+		StartedAt:     startedAt,
+		UptimeSeconds: uptimeSeconds,
 		Runtime: goRuntimeInfo{
 			Language: "go",
 			Version:  runtime.Version(),
@@ -194,23 +225,52 @@ func buildGoHealthResponse() goHealthResponse {
 		CollectedAt:     now.UTC().Format(time.RFC3339),
 		CollectedAtUnix: now.UnixMilli(),
 	}
+	frontendRuntimeMetric := runtimeMetric{
+		RSS:              float64(metric.Memory.RSSBytes),
+		HeapUsed:         float64(metric.Memory.HeapAllocBytes),
+		HeapTotal:        float64(metric.Memory.HeapSysBytes),
+		External:         float64(metric.Memory.OtherSysBytes),
+		ArrayBuffers:     float64(metric.Memory.StackInuseBytes),
+		EventLoopDelayMs: metric.Scheduler.SchedulerDelayMs,
+		EventLoopP99Ms:   metric.Scheduler.SchedulerP99Ms,
+		ActiveHandles:    float64(metric.Process.OpenFileDescriptors),
+		Uptime:           float64(uptimeSeconds),
+		PID:              float64(metric.PID),
+		Timestamp:        float64(metric.CollectedAtUnix),
+		InstanceID:       strconv.Itoa(metric.InstanceID),
+		InstanceType:     metric.InstanceType,
+		Name:             metric.Name,
+		StartedAt:        metric.StartedAt,
+		UptimeSeconds:    metric.UptimeSeconds,
+		Runtime:          metric.Runtime,
+		CPU:              metric.CPU,
+		Memory:           metric.Memory,
+		GC:               metric.GC,
+		Scheduler:        metric.Scheduler,
+		Process:          metric.Process,
+		CollectedAt:      metric.CollectedAt,
+		CollectedAtUnix:  metric.CollectedAtUnix,
+	}
+
+	summary := goRuntimeSummary{
+		TotalProcesses:          1,
+		StartedAt:               startedAt,
+		UptimeSeconds:           uptimeSeconds,
+		TotalRSSBytes:           metric.Memory.RSSBytes,
+		HeapAllocBytes:          metric.Memory.HeapAllocBytes,
+		AverageCPUPercent:       metric.CPU.ProcessPercent,
+		AverageGoroutines:       metric.Scheduler.Goroutines,
+		AverageSchedulerDelayMs: metric.Scheduler.SchedulerDelayMs,
+		AverageSchedulerP99Ms:   metric.Scheduler.SchedulerP99Ms,
+	}
 
 	return goHealthResponse{
 		PM2Stats:       []pm2ProcessStat{},
-		ExodusMetrics:  []goRuntimeMetric{metric},
-		RuntimeSummary: goRuntimeSummary{
-			TotalProcesses:          1,
-			StartedAt:               startedAt,
-			TotalRSSBytes:           metric.Memory.RSSBytes,
-			HeapAllocBytes:          metric.Memory.HeapAllocBytes,
-			AverageCPUPercent:       metric.CPU.ProcessPercent,
-			AverageGoroutines:       metric.Scheduler.Goroutines,
-			AverageSchedulerDelayMs: metric.Scheduler.SchedulerDelayMs,
-			AverageSchedulerP99Ms:   metric.Scheduler.SchedulerP99Ms,
-		},
+		RuntimeMetrics: []runtimeMetric{frontendRuntimeMetric},
+		RuntimeSummary: summary,
 		RuntimeNotes: []string{
-			"pm2Stats is kept empty for frontend compatibility; exodusMetrics/runtimeSummary contain the Go runtime data.",
-			"Go has no Node.js event loop delay; schedulerP99Ms is read from runtime/metrics /sched/latencies when available.",
+			"pm2Stats is kept empty for frontend compatibility; runtimeMetrics/runtimeSummary contain the Go runtime data.",
+			"schedulerP99Ms is read from Go runtime/metrics /sched/latencies when available.",
 			"RSS and CPU are read from /proc on Linux; fallback values are used when /proc is unavailable.",
 		},
 	}

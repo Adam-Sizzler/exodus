@@ -1,6 +1,6 @@
+import { MRT_TableInstance } from '@kastov/mantine-react-table-open'
 /* eslint-disable camelcase */
 import { GetAllUsersCommand } from '@exodus/backend-contract'
-import { MRT_TableInstance } from 'mantine-react-table'
 
 export interface IProps {
     isLoading: boolean

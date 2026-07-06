@@ -72,7 +72,7 @@ type userAPI struct {
 
 type userSubscriptionRequestHistoryRecord struct {
 	ID        int64   `json:"id"`
-	UserUUID  string  `json:"userUuid"`
+	UserID    int64   `json:"userId"`
 	RequestIP *string `json:"requestIp"`
 	UserAgent *string `json:"userAgent"`
 	RequestAt string  `json:"requestAt"`

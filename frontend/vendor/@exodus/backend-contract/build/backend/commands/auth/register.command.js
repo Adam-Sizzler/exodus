@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RegisterCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 var RegisterCommand;
 (function (RegisterCommand) {
     RegisterCommand.url = api_1.REST_API.AUTH.REGISTER;
     RegisterCommand.TSQ_url = RegisterCommand.url;
-    RegisterCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.AUTH_ROUTES.REGISTER, 'post', 'Register as superadmin');
+    RegisterCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.AUTH_ROUTES.REGISTER, 'post', 'Register as superadmin', { scope: 'register', kind: 'write' });
     RegisterCommand.RequestSchema = zod_1.z.object({
         username: zod_1.z.string(),
         password: zod_1.z

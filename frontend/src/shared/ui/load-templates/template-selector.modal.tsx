@@ -1,7 +1,7 @@
 import { Button, Center, Group, LoadingOverlay, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { useFetch } from '@mantine/hooks'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import {
     IDownloadableSubscriptionTemplate,
@@ -31,8 +31,6 @@ export const TemplateDownloadModal = (props: TemplateSelectorModalProps) => {
         templatesUrl = XRAY_CORE_TEMPLATE_LIST_LINK
     } else if (editorType === 'SUBPAGE_CONFIG') {
         templatesUrl = SUBPAGE_CONFIG_TEMPLATE_LIST_LINK
-    } else if (editorType === 'NODE_PLUGIN') {
-        templatesUrl = NODE_PLUGIN_TEMPLATE_LIST_LINK
     }
 
     const {

@@ -1,5 +1,4 @@
 import { Center, Group, Stack, Text } from '@mantine/core'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { PiEmptyDuotone } from 'react-icons/pi'
 import { TbServer, TbServer2 } from 'react-icons/tb'
 import ReactCountryFlag from 'react-country-flag'
@@ -7,11 +6,12 @@ import { Spotlight } from '@mantine/spotlight'
 import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 
 import { NodeStatusBadgeWidget } from '../node-status-badge'
 
 interface IProps {
-    nodes: GetAllNodesCommand.Response['response']
+    nodes: SubscriptionConnectionResponse[]
 }
 
 export const NodesSpotlightSearchWidget = ({ nodes }: IProps) => {

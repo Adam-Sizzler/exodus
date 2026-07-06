@@ -1,14 +1,23 @@
+import type { ExodusMetric, ExodusSummary } from './metrics'
+
 import { ActionIcon, Box, Group, SimpleGrid, Stack, Title } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { useTranslation } from 'react-i18next'
-import { TbCamera } from 'react-icons/tb'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TbCamera, TbInfoCircle } from 'react-icons/tb'
 
-import { MetricCardShared, MetricCardWithTrendShared } from '@shared/ui/metrics/metric-card'
-import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
+import { useIsMobile } from '@shared/hooks'
 import { LoadingScreen } from '@shared/ui'
+import { DisclaimerOverlay } from '@shared/ui/disclaimer-overlay'
+import { MetricCardShared, MetricCardWithTrendShared } from '@shared/ui/metrics/metric-card'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { Page } from '@shared/ui/page'
+import { copyScreenshotToClipboard } from '@shared/utils/copy-screenshot.util'
 
+import { ExodusRuntimeDetailCard } from './exodus-runtime-detail-card'
+import classes from './home.module.css'
+import { IProps } from './interfaces'
 import {
     getBandwidthMetrics,
     getExodusProcessMetrics,
@@ -17,9 +26,7 @@ import {
     getSimpleMetrics,
     getUsersMetrics
 } from './metrics'
-import { RuntimeDetailCard } from './runtime-detail-card'
-import classes from './home.module.css'
-import { IProps } from './interfaces'
+import { RuntimeInfoModalContent } from './runtime-info-modal/runtime-info-modal'
 
 interface IAnimatedCardProps {
     children: React.ReactNode
@@ -34,6 +41,7 @@ const AnimatedCard = ({ children, index }: IAnimatedCardProps) => (
 
 export const HomePage = (props: IProps) => {
     const { t } = useTranslation()
+    const isMobile = useIsMobile()
 
     const runtimeRef = useRef<HTMLDivElement>(null)
     const [copying, setCopying] = useState(false)
@@ -67,23 +75,23 @@ export const HomePage = (props: IProps) => {
     const simpleMetrics = getSimpleMetrics(systemInfo, t)
     const usersMetrics = getUsersMetrics(systemInfo.users, t)
     const onlineMetrics = getOnlineMetrics(systemInfo.onlineStats, t)
-    const exodusRuntimeHealth = exodusHealth as typeof exodusHealth & {
-        exodusMetrics?: Parameters<typeof getExodusProcessMetrics>[0]
-        exodusSummary?: Parameters<typeof getExodusSummaryMetrics>[0]
-    }
-    const runtimeSummaryMetrics = getExodusSummaryMetrics(
-        exodusRuntimeHealth.exodusSummary,
-        exodusRuntimeHealth.exodusMetrics,
-        t
-    )
-    const runtimeProcessMetrics = getExodusProcessMetrics(exodusRuntimeHealth.exodusMetrics, t)
+    const runtimeMetrics = (exodusHealth.runtimeMetrics ?? []) as unknown as ExodusMetric[]
+    const runtimeSummary = (
+        exodusHealth as typeof exodusHealth & {
+            runtimeSummary?: ExodusSummary
+        }
+    ).runtimeSummary
+    const runtimeSummaryMetrics = getExodusSummaryMetrics(runtimeSummary, runtimeMetrics, t)
+    const runtimeProcessMetrics = getExodusProcessMetrics(runtimeMetrics, t)
+    const hasRuntimeMetrics = runtimeMetrics.length > 0
+
     return (
         <Page title={t('constants.home')}>
             <Stack gap="sm">
                 {runtimeSummaryMetrics.length > 0 && (
                     <div className={classes.section}>
                         <Title className={classes.title} m="xs" ml={0} order={4}>
-                            {t('home.page.exodus-usage')}
+                            {t('home.page.runtime')}
                         </Title>
 
                         <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="xs">
@@ -184,7 +192,7 @@ export const HomePage = (props: IProps) => {
                     </SimpleGrid>
                 </div>
 
-                {exodusRuntimeHealth.exodusMetrics && exodusRuntimeHealth.exodusMetrics.length > 0 && (
+                {hasRuntimeMetrics && (
                     <div className={classes.section}>
                         <Group align="center" gap="xs" m="xs" ml={0}>
                             <Title className={classes.title} order={4}>
@@ -201,17 +209,45 @@ export const HomePage = (props: IProps) => {
                             >
                                 <TbCamera size={24} />
                             </ActionIcon>
+
+                            <ActionIcon
+                                color="gray"
+                                onClick={() => {
+                                    modals.open({
+                                        title: (
+                                            <BaseOverlayHeader
+                                                iconColor="cyan"
+                                                IconComponent={TbInfoCircle}
+                                                iconSize={20}
+                                                iconVariant="soft"
+                                                subtitle={t('home.runtime-info.subtitle')}
+                                                title={t('home.runtime-info.title')}
+                                            />
+                                        ),
+                                        size: 'xl',
+                                        centered: true,
+                                        fullScreen: isMobile,
+                                        children: <RuntimeInfoModalContent />
+                                    })
+                                }}
+                                radius="md"
+                                size="sm"
+                                variant="transparent"
+                            >
+                                <TbInfoCircle size={24} />
+                            </ActionIcon>
                         </Group>
                         <SimpleGrid cols={{ base: 1, sm: 1, xl: 2 }} ref={runtimeRef} spacing="xs">
-                            {exodusRuntimeHealth.exodusMetrics.map((metric, index) => (
+                            {runtimeMetrics.map((metric, index) => (
                                 <AnimatedCard index={index} key={metric.pid ?? index}>
-                                    <RuntimeDetailCard metric={metric} t={t} />
+                                    <ExodusRuntimeDetailCard metric={metric} t={t} />
                                 </AnimatedCard>
                             ))}
                         </SimpleGrid>
                     </div>
                 )}
             </Stack>
+            <DisclaimerOverlay />
         </Page>
     )
 }

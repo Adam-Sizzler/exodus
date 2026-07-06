@@ -58,18 +58,18 @@ export const ConfigValidationFeature = {
                 replaceSnippetsInArray(clonedCurrentValue.outbounds, snippetsMap)
             }
 
-            if (clonedCurrentValue.routing?.rules) {
-                replaceSnippetsInArray(clonedCurrentValue.routing.rules, snippetsMap)
+            if (clonedCurrentValue.route?.rules) {
+                replaceSnippetsInArray(clonedCurrentValue.route.rules, snippetsMap)
             }
 
-            if (clonedCurrentValue.routing?.balancers) {
-                replaceSnippetsInArray(clonedCurrentValue.routing.balancers, snippetsMap)
+            if (clonedCurrentValue.route?.rule_set) {
+                replaceSnippetsInArray(clonedCurrentValue.route.rule_set, snippetsMap)
             }
 
             const validationResult = window.SingboxParseConfig(JSON.stringify(clonedCurrentValue))
 
             setResult(
-                `${dayjs().format('HH:mm:ss')} | ${validationResult || 'Xray config is valid.'}`
+                `${dayjs().format('HH:mm:ss')} | ${validationResult || 'Singbox config is valid.'}`
             )
             setIsConfigValid(!validationResult)
         } catch (err: unknown) {

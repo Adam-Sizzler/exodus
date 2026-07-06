@@ -8,7 +8,7 @@ var AddUsersToExternalSquadCommand;
 (function (AddUsersToExternalSquadCommand) {
     AddUsersToExternalSquadCommand.url = api_1.REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS;
     AddUsersToExternalSquadCommand.TSQ_url = AddUsersToExternalSquadCommand.url(':uuid');
-    AddUsersToExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.BULK_ACTIONS.ADD_USERS(':uuid'), 'post', 'Add all users to external squad');
+    AddUsersToExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.BULK_ACTIONS.ADD_USERS(':uuid'), 'post', 'Add all users to external squad', { scope: 'add-users', kind: 'write' });
     AddUsersToExternalSquadCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

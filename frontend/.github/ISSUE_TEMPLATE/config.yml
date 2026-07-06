@@ -1,7 +1,8 @@
+blank_issues_enabled: false
 contact_links:
-  - name: 🐞 Bug report
-    url: https://github.com/cerberus/panel/issues/new/choose
-    about: Please report any frontend/backend bugs on @cerberus/panel repository.
-  - name: 💡 Feature request
-    url: https://github.com/cerberus/panel/issues/new/choose
-    about: Feel free to request any new features.
+  - name: Bug Tracker Exodus
+    url: https://f.docs.rw/c/bug-reports/13
+    about: Report a bug — here
+  - name: Feature Request Exodus
+    url: https://f.docs.rw/c/fr/7
+    about: Suggest a feature — here

@@ -1,5 +1,5 @@
-import { i18n, TFunction } from 'i18next'
 import dayjs from 'dayjs'
+import { i18n, TFunction } from 'i18next'
 
 export function getExpirationTextUtil(
     expireAt: Date | null | string,

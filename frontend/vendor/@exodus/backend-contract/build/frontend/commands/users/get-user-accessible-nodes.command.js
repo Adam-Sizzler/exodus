@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetUserAccessibleNodesCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 var GetUserAccessibleNodesCommand;
 (function (GetUserAccessibleNodesCommand) {
     GetUserAccessibleNodesCommand.url = api_1.REST_API.USERS.ACCESSIBLE_NODES;
     GetUserAccessibleNodesCommand.TSQ_url = GetUserAccessibleNodesCommand.url(':uuid');
-    GetUserAccessibleNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.ACCESSIBLE_NODES(':uuid'), 'get', 'Get user accessible nodes');
+    GetUserAccessibleNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.ACCESSIBLE_NODES(':uuid'), 'get', 'Get user accessible nodes', { scope: 'accessible-nodes', kind: 'read' });
     GetUserAccessibleNodesCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

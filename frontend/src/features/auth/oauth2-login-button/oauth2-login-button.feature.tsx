@@ -1,9 +1,9 @@
-import { TOAuth2ProvidersKeys } from '@exodus/backend-contract'
-import { BiLogoGithub, BiLogoTelegram } from 'react-icons/bi'
 import { Button, Stack } from '@mantine/core'
+import { TOAuth2ProvidersKeys } from '@exodus/backend-contract'
+import { useState } from 'react'
+import { BiLogoGithub, BiLogoTelegram } from 'react-icons/bi'
 import { SiKeycloak } from 'react-icons/si'
 import { TbKey } from 'react-icons/tb'
-import { useState } from 'react'
 
 import { useOAuth2Authorize } from '@shared/api/hooks'
 

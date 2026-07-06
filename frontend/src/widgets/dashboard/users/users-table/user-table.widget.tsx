@@ -1,30 +1,20 @@
-/* eslint-disable camelcase */
+import { UserActionGroupFeature } from '@features/dashboard/users/users-action-group'
+import { useUserTableColumns } from '@features/dashboard/users/users-table/model/use-table-columns'
+import { UsersTableSelectionFeature } from '@features/ui/dashboard/users/users-table-selection/users-table-selection.feature'
 import {
     MantineReactTable,
     MRT_ColumnFilterFnsState,
     MRT_SortingState,
     useMantineReactTable
-} from 'mantine-react-table'
-import { useEffect, useLayoutEffect, useState } from 'react'
-import { TbSearch, TbSearchOff } from 'react-icons/tb'
+} from '@kastov/mantine-react-table-open'
+import { Badge } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { useSearchParams } from 'react-router-dom'
-import { PiUsersDuotone } from 'react-icons/pi'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PiUsersDuotone } from 'react-icons/pi'
+import { TbSearch, TbSearchOff } from 'react-icons/tb'
+import { useSearchParams } from 'react-router'
 
-import {
-    useUsersTableStoreActions,
-    useUsersTableStoreColumnFilter,
-    useUsersTableStoreColumnPinning,
-    useUsersTableStoreColumnSize,
-    useUsersTableStoreColumnVisibility,
-    useUsersTableStorePagination,
-    useUsersTableStoreShowColumnFilters
-} from '@entities/dashboard/users/users-table-store'
-import {
-    useBulkUsersActionsStoreActions,
-    useBulkUsersActionsStoreTableSelection
-} from '@entities/dashboard/users/bulk-users-actions-store'
 import {
     useGetExternalSquads,
     useGetInternalSquads,
@@ -32,16 +22,18 @@ import {
     useGetUsersV2,
     useGetUserTags
 } from '@shared/api/hooks'
-import { UsersTableSelectionFeature } from '@features/ui/dashboard/users/users-table-selection/users-table-selection.feature'
-import { useUserTableColumns } from '@features/dashboard/users/users-table/model/use-table-columns'
-import { UserActionGroupFeature } from '@features/dashboard/users/users-action-group'
-import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
 import { SEARCH_PARAMS } from '@shared/constants/search-params'
-import { preventBackScrollTables } from '@shared/utils/misc'
+import { DEFAULT_PAGINATION_STATE, useMrtTableBinding } from '@shared/lib/mrt-table-store'
 import { DataTableShared } from '@shared/ui/table'
+import { preventBackScrollTables } from '@shared/utils/misc'
 import { sToMs } from '@shared/utils/time-utils'
 
-import { BulkUserActionsDrawerWidget } from '../bulk-user-actions-drawer/bulk-user-actions-drawer.widget'
+import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store'
+import {
+    useBulkUsersActionsStoreActions,
+    useBulkUsersActionsStoreTableSelection
+} from '@entities/dashboard/users/bulk-users-actions-store'
+import { useUsersTableStore } from '@entities/dashboard/users/users-table-store'
 
 export function UserTableWidget() {
     const { t } = useTranslation()
@@ -57,20 +49,15 @@ export function UserTableWidget() {
     const userModalActions = useUserModalStoreActions()
     const [searchParams, setSearchParams] = useSearchParams()
 
-    const actions = useUsersTableStoreActions()
-
-    const columnVisibility = useUsersTableStoreColumnVisibility()
-    const columnPinning = useUsersTableStoreColumnPinning()
-    const showColumnFilters = useUsersTableStoreShowColumnFilters()
-    const columnFilter = useUsersTableStoreColumnFilter()
-    const columnSize = useUsersTableStoreColumnSize()
-    const pagination = useUsersTableStorePagination()
+    const { state: persistedTableState, handlers: persistedTableHandlers } =
+        useMrtTableBinding(useUsersTableStore)
 
     const [sorting, setSorting] = useState<MRT_SortingState>([])
 
     const defaultFilterFns: Record<string, string> = {
         hwidDeviceLimit: 'equals',
-        tag: 'equals'
+        tag: 'equals',
+        trafficLimitBytes: 'between'
     }
 
     const [columnFilterFns, setColumnFilterFns] = useState<MRT_ColumnFilterFnsState>(() =>
@@ -92,9 +79,13 @@ export function UserTableWidget() {
     }, [])
 
     const params = {
-        start: pagination.pageIndex * pagination.pageSize,
-        size: pagination.pageSize,
-        filters: columnFilter,
+        start: persistedTableState.pagination.pageIndex * persistedTableState.pagination.pageSize,
+        size: persistedTableState.pagination.pageSize,
+        filters: persistedTableState.columnFilters.filter(({ value }) =>
+            Array.isArray(value)
+                ? value.some((bound) => bound !== null && bound !== undefined && bound !== '')
+                : value !== null && value !== undefined && value !== ''
+        ),
         filterModes: columnFilterFns,
         sorting
     }
@@ -139,28 +130,44 @@ export function UserTableWidget() {
             return new Map<string, number>()
         },
         columnFilterDisplayMode: 'subheader',
+        mantineFilterSelectProps: ({ column }) => {
+            const value = column.getFilterValue()
+            return {
+                clearable: value !== undefined && value !== null && value !== ''
+            }
+        },
+        mantineFilterMultiSelectProps: ({ column }) => {
+            const value = column.getFilterValue()
+            const count = Array.isArray(value) ? value.length : 0
+            return {
+                clearable: count > 0,
+                renderPill: () => null,
+                ...(count > 0 && {
+                    leftSection: <Badge variant="soft">{count}</Badge>,
+                    placeholder: '',
+                    clearSectionMode: 'clear'
+                })
+            }
+        },
         icons: {
-            /* eslint-disable @typescript-eslint/no-explicit-any */
+            // oxlint-disable-next-line
             IconFilter: (props: any) => <TbSearch size={24} {...props} />,
+            // oxlint-disable-next-line
             IconFilterOff: (props: any) => <TbSearchOff size={24} {...props} />
         },
+        // mantineTableBodyCellProps: { style: { padding: '2px 6px' } },
         enableFullScreenToggle: true,
         enableSortingRemoval: true,
         enableGlobalFilter: false,
         enableClickToCopy: false,
         enableColumnFilterModes: true,
+        enableColumnOrdering: true,
         columnFilterModeOptions: ['contains'],
         initialState: {
-            pagination: {
-                pageIndex: 0,
-                pageSize: 25
-            },
-            showColumnFilters,
-            density: 'xs',
-            columnVisibility,
-            columnPinning,
-            columnSizing: columnSize
+            density: 'xxs',
+            pagination: DEFAULT_PAGINATION_STATE
         },
+        enableDensityToggle: true,
         manualFiltering: true,
         manualPagination: true,
         manualSorting: true,
@@ -177,14 +184,9 @@ export function UserTableWidget() {
             children: t('user-table.widget.error-loading-data')
         } : undefined,
 
+        ...persistedTableHandlers,
         onColumnFilterFnsChange: setColumnFilterFns,
-        onColumnFiltersChange: actions.setColumnFilter,
-        onPaginationChange: actions.setPaginationState,
         onSortingChange: setSorting,
-        onColumnPinningChange: actions.setColumnPinning,
-        onColumnVisibilityChange: actions.setColumnVisibility,
-        onShowColumnFiltersChange: actions.setShowColumnFilters,
-        onColumnSizingChange: actions.setColumnSize,
         mantinePaperProps: {
             style: {
                 '--paper-radius': 'var(--mantine-radius-xs)'
@@ -215,18 +217,13 @@ export function UserTableWidget() {
         },
         selectAllMode: 'page',
         state: {
+            ...persistedTableState,
             columnFilterFns,
-            columnFilters: columnFilter,
             isLoading,
-            pagination,
             showAlertBanner: isError,
             showProgressBars: isFetching,
-            showColumnFilters,
             sorting,
-            columnVisibility,
-            columnPinning,
-            rowSelection: tableSelection,
-            columnSizing: columnSize
+            rowSelection: tableSelection
         },
         mantineTableBodyRowProps: ({ row }) => ({
             onClick: async () => {
@@ -262,8 +259,6 @@ export function UserTableWidget() {
             <DataTableShared.Content>
                 <MantineReactTable table={table} />
             </DataTableShared.Content>
-
-            <BulkUserActionsDrawerWidget resetRowSelection={table.resetRowSelection} />
         </DataTableShared.Container>
     )
 }

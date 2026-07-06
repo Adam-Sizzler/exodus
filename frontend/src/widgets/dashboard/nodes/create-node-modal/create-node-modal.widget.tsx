@@ -1,26 +1,20 @@
-import { em, Group, Modal, Progress, Stack, Transition } from '@mantine/core'
-import { zodResolver } from 'mantine-form-zod-resolver'
-import { useTranslation } from 'react-i18next'
-import { useMediaQuery } from '@mantine/hooks'
-import { useEffect, useState } from 'react'
+import { Group, Modal, Progress, Stack, Transition } from '@mantine/core'
 import { useForm } from '@mantine/form'
+import { CreateNodeCommand } from '@exodus/backend-contract'
+import { zodResolver } from 'mantine-form-zod-resolver'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TbCpu } from 'react-icons/tb'
 
-import { useNodesStoreActions, useNodesStoreCreateModalIsOpen } from '@entities/dashboard/nodes'
-import {
-    configProfilesQueryKeys,
-    CreateNodeRequest,
-    NodeKeygenResponse,
-    createNodeRequestSchema,
-    useCreateNode,
-    useGetPubKey
-} from '@shared/api/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { gbToBytesUtil } from '@shared/utils/bytes'
 import { queryClient } from '@shared/api'
+import { configProfilesQueryKeys, useCreateNode, useGetPubKey } from '@shared/api/hooks'
+import { useIsMobile } from '@shared/hooks'
+import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { CreateNodeStep2ConfigProfiles } from './create-node-steps/create-node-step-2-config-profiles'
+import { useNodesStoreActions, useNodesStoreCreateModalIsOpen } from '@entities/dashboard/nodes'
+
 import { CreateNodeStep1Connection } from './create-node-steps/create-node-step-1-connection'
+import { CreateNodeStep2ConfigProfiles } from './create-node-steps/create-node-step-2-config-profiles'
 import { CreateNodeStep3Status } from './create-node-steps/create-node-step-3-status'
 
 export const CreateNodeModalWidget = () => {
@@ -29,24 +23,18 @@ export const CreateNodeModalWidget = () => {
     const isModalOpen = useNodesStoreCreateModalIsOpen()
     const actions = useNodesStoreActions()
 
-    const [creationCredentials, setCreationCredentials] = useState<NodeKeygenResponse>()
+    const { data: pubKey } = useGetPubKey()
 
-    const { refetch: refetchPubKey } = useGetPubKey({
-        rQueryParams: {
-            enabled: false
-        }
-    })
-
-    const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
+    const isMobile = useIsMobile()
 
     const [activeStep, setActiveStep] = useState(0)
     const [createdNodeUuid, setCreatedNodeUuid] = useState<string>()
     const [selectedPort, setSelectedPort] = useState<number>(2222)
 
-    const form = useForm<CreateNodeRequest>({
+    const form = useForm<CreateNodeCommand.Request>({
         name: 'create-node-form',
         mode: 'uncontrolled',
-        validate: zodResolver(createNodeRequestSchema)
+        validate: zodResolver(CreateNodeCommand.RequestSchema)
     })
 
     const handleClose = () => {
@@ -58,7 +46,6 @@ export const CreateNodeModalWidget = () => {
             form.resetTouched()
             setActiveStep(0)
             setCreatedNodeUuid(undefined)
-            setCreationCredentials(undefined)
         }, 300)
     }
 
@@ -77,20 +64,11 @@ export const CreateNodeModalWidget = () => {
 
     const handleCreateNode = () => {
         const values = form.getValues()
-        const schema = values.apiSchema === 'tls' ? 'tls' : 'mtls'
-        if (!creationCredentials) {
-            return
-        }
-
         createNode({
             variables: {
                 ...values,
                 name: values.name.trim(),
-                address: values.address.trim(),
-                apiSchema: schema,
-                apiPath: values.apiPath?.trim() || '/',
-                grpcAuthToken: schema === 'tls' ? creationCredentials.grpcToken?.trim() : undefined,
-                trafficLimitBytes: gbToBytesUtil(values.trafficLimitBytes)
+                address: values.address.trim()
             }
         })
     }
@@ -99,33 +77,12 @@ export const CreateNodeModalWidget = () => {
     const prevStep = () => setActiveStep((current) => (current > 0 ? current - 1 : current))
 
     useEffect(() => {
-        if (!isModalOpen) {
-            return
-        }
-
-        let isCurrent = true
-        setCreationCredentials(undefined)
-
-        void refetchPubKey().then((result) => {
-            if (isCurrent && result.data) {
-                setCreationCredentials(result.data)
-            }
-        })
-
-        return () => {
-            isCurrent = false
-        }
-    }, [isModalOpen, refetchPubKey])
-
-    useEffect(() => {
         if (form.getValues().port) {
             return
         }
 
         form.setValues({
-            port: 2222,
-            apiSchema: 'mtls',
-            apiPath: '/'
+            port: 2222
         })
     }, [form])
 
@@ -195,7 +152,8 @@ export const CreateNodeModalWidget = () => {
                             <CreateNodeStep1Connection
                                 form={form}
                                 onNext={nextStep}
-                                pubKey={creationCredentials}
+                                port={selectedPort}
+                                pubKey={pubKey?.pubKey}
                             />
                         </div>
                     )}
@@ -216,7 +174,6 @@ export const CreateNodeModalWidget = () => {
                                 onCreateNode={handleCreateNode}
                                 onPrev={prevStep}
                                 port={selectedPort}
-                                pubKey={creationCredentials}
                             />
                         </div>
                     )}
@@ -232,7 +189,6 @@ export const CreateNodeModalWidget = () => {
                     {(styles) => (
                         <div style={styles}>
                             <CreateNodeStep3Status
-                                generatedCredentials={creationCredentials}
                                 nodeUuid={createdNodeUuid}
                                 onClose={handleClose}
                             />

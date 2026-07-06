@@ -1,13 +1,13 @@
+import { useBandwidthTableColumns } from '@features/dashboard/nodes-bandwidth-table/bandwidth-table-columns/model/use-bandwidth-table-columns'
 import { ListViewTable } from '@gfazioli/mantine-list-view-table'
+import { Table } from '@mantine/core'
 import { GetAllNodesCommand } from '@exodus/backend-contract'
+import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { TbChartArcs } from 'react-icons/tb'
-import { Table } from '@mantine/core'
-import dayjs from 'dayjs'
 
-import { useBandwidthTableColumns } from '@features/dashboard/nodes-bandwidth-table/bandwidth-table-columns/model/use-bandwidth-table-columns'
-import { DataTableShared } from '@shared/ui/table'
 import { useGetNodes } from '@shared/api/hooks'
+import { DataTableShared } from '@shared/ui/table'
 
 export function NodesBandwidthTableWidget() {
     const { data: nodes, isLoading } = useGetNodes({

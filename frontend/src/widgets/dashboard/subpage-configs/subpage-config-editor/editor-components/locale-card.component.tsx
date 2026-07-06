@@ -1,5 +1,5 @@
-import { getLanguageInfo, TSubscriptionPageLanguageCode } from '@exodus/subscription-page-types'
 import { Badge, Group, Text, UnstyledButton } from '@mantine/core'
+import { getLanguageInfo, TSubscriptionPageLanguageCode } from '@exodus/subscription-page-types'
 
 import styles from '../subpage-config-visual-editor.module.css'
 

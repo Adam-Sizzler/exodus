@@ -1,8 +1,8 @@
+import { notifications } from '@mantine/notifications'
 import {
     DeleteAllUserHwidDevicesCommand,
     DeleteUserHwidDeviceCommand
 } from '@exodus/backend-contract'
-import { notifications } from '@mantine/notifications'
 
 import { createMutationHook } from '../../tsq-helpers'
 

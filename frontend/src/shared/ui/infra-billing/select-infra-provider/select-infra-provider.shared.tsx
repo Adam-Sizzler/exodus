@@ -1,11 +1,11 @@
+import type { IProps } from './interfaces/props.interface'
+
 import { Avatar, ComboboxItem, Group, Select, Skeleton, Stack, Text } from '@mantine/core'
-import { useTranslation } from 'react-i18next'
 import { forwardRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useGetInfraProviders } from '@shared/api/hooks'
 import { faviconResolver } from '@shared/utils/misc'
-
-import type { IProps } from './interfaces/props.interface'
 
 interface ItemProps extends ComboboxItem {
     faviconLink: null | string
@@ -19,6 +19,7 @@ const SelectItem = forwardRef<HTMLDivElement, ItemProps>(
                 <Avatar
                     alt={name}
                     color="initials"
+                    imageProps={{ decoding: 'async', loading: 'lazy' }}
                     name={name}
                     onLoad={(event) => {
                         const img = event.target as HTMLImageElement

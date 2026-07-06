@@ -1,5 +1,5 @@
-import { GetSnippetsCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
+import { GetSnippetsCommand } from '@exodus/backend-contract'
 
 import { sToMs } from '@shared/utils/time-utils'
 

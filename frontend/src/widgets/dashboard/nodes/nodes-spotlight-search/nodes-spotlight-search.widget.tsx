@@ -1,10 +1,10 @@
 import { Badge, Center, Group, Stack, Text } from '@mantine/core'
+import { Spotlight } from '@mantine/spotlight'
 import { GetAllNodesCommand } from '@exodus/backend-contract'
+import ReactCountryFlag from 'react-country-flag'
+import { useTranslation } from 'react-i18next'
 import { PiEmptyDuotone, PiUsersDuotone } from 'react-icons/pi'
 import { TbServer, TbServer2 } from 'react-icons/tb'
-import ReactCountryFlag from 'react-country-flag'
-import { Spotlight } from '@mantine/spotlight'
-import { useTranslation } from 'react-i18next'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 

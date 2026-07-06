@@ -1,11 +1,13 @@
-import consola from 'consola/browser'
+import {
+    EXODUS_CLIENT_TYPE_BROWSER,
+    EXODUS_CLIENT_TYPE_HEADER
+} from '@exodus/backend-contract'
 import axios from 'axios'
+import consola from 'consola/browser'
 
 import { logoutEvents } from '../emitters/emit-logout'
 
 let authorizationToken = ''
-const EXODUS_CLIENT_TYPE_HEADER = 'X-Exodus-Client-Type'
-const EXODUS_CLIENT_TYPE_BROWSER = 'browser'
 
 let BASE_DOMAIN = __DOMAIN_BACKEND__
 const isDev = __NODE_ENV__ === 'development'

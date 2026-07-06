@@ -360,8 +360,8 @@ func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 			"response": health,
 		}
 
-		if len(health.ExodusMetrics) > 0 {
-			metric := health.ExodusMetrics[0]
+		if len(health.RuntimeMetrics) > 0 {
+			metric := health.RuntimeMetrics[0]
 			cfg.Logger.Debug(
 				"System Go runtime health requested",
 				"remote_addr", r.RemoteAddr,

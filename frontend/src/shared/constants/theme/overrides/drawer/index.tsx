@@ -1,3 +1,4 @@
+// oxlint-disable
 import { Drawer, DrawerOverlay } from '@mantine/core'
 
 import classes from './drawer.module.css'

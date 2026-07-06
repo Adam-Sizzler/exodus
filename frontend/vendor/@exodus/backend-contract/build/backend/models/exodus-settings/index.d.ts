@@ -3,5 +3,4 @@ export * from './oauth2-settings.schema';
 export * from './passkey-settings.schema';
 export * from './password-auth-settings.schema';
 export * from './exodus-settings.schema';
-export * from './tg-auth-settings.schema';
 //# sourceMappingURL=index.d.ts.map

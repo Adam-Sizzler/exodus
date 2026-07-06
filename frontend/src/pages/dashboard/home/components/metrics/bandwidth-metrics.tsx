@@ -1,3 +1,5 @@
+import { GetBandwidthStatsCommand } from '@exodus/backend-contract'
+import { TFunction } from 'i18next'
 import {
     PiCalendarDotDuotone,
     PiCalendarDotsDuotone,
@@ -5,8 +7,6 @@ import {
     PiChartDonutDuotone,
     PiChartPieSliceDuotone
 } from 'react-icons/pi'
-import { GetBandwidthStatsCommand } from '@exodus/backend-contract'
-import { TFunction } from 'i18next'
 
 import { IMetricCardWithTrendProps } from '@shared/ui/metrics/metric-card'
 

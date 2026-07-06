@@ -1,8 +1,8 @@
-import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { Center, Stack, Text, ThemeIcon } from '@mantine/core'
+import { GetAllNodesCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
-import { TbServer } from 'react-icons/tb'
 import { PiCpu } from 'react-icons/pi'
+import { TbServer } from 'react-icons/tb'
 
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'

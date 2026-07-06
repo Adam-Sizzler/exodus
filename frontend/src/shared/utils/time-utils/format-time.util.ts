@@ -1,4 +1,7 @@
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 enum ETemplatePreset {
     FULL_DATE = 'D MMMM YYYY',
@@ -12,6 +15,7 @@ interface FormatTimeUtilProps {
     language?: string
     template: keyof typeof ETemplatePreset
     time: Date | null | number | string | undefined
+    utc?: boolean
 }
 
 /**
@@ -23,11 +27,11 @@ interface FormatTimeUtilProps {
  * formatTimeUtil({ time: date, template: 'TIME_FIRST_DATETIME'})// "14:30:00, 5 March 2026"
  */
 export const formatTimeUtil = (props: FormatTimeUtilProps): string => {
-    const { time, template, language } = props
+    const { time, template, language, utc } = props
 
-    if (!time) return 'Unknown date'
+    if (!time) return '-'
 
-    const date = dayjs(time)
+    const date = utc ? dayjs.utc(time) : dayjs(time)
     if (!date.isValid()) return 'Unknown date'
 
     return (language ? date.locale(language) : date).format(ETemplatePreset[template])

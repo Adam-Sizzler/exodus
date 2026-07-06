@@ -1,14 +1,15 @@
 import { Center, Loader, Stack, Text, Title, Transition } from '@mantine/core'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { TOAuth2ProvidersKeys } from '@exodus/backend-contract'
 import { notifications } from '@mantine/notifications'
-import { CSSProperties, useEffect } from 'react'
+import { TOAuth2ProvidersKeys } from '@exodus/backend-contract'
 import { IconCheck } from '@tabler/icons-react'
+import { CSSProperties, useEffect } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { useOauth2Callback } from '@shared/api/hooks'
-import { useAuth } from '@shared/hooks/use-auth'
 import { ROUTES } from '@shared/constants'
+import { useAuth } from '@shared/hooks/use-auth'
 import { Page } from '@shared/ui/page'
+import { consumeReturnTo } from '@shared/utils/return-to.util'
 
 export const Oauth2CallbackPage = () => {
     const { provider } = useParams()
@@ -25,7 +26,7 @@ export const Oauth2CallbackPage = () => {
             onSuccess: () => {
                 setIsAuthenticated(true)
 
-                navigate(ROUTES.DASHBOARD.HOME)
+                navigate(consumeReturnTo() ?? ROUTES.DASHBOARD.HOME)
             },
             onError: (error) => {
                 notifications.show({
