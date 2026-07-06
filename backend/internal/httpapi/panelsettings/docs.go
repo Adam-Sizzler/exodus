@@ -35,8 +35,7 @@ func buildDocsResponse(cfg *config.BackendConfig) map[string]any {
 }
 
 // DocsScalarHandler serves the Scalar API reference UI.
-// Route: GET /api/docs  (or whatever SCALAR_PATH is set to, registered in router.go)
-// Protected by WithPanelAuth — only authenticated users can access.
+// Route: GET /scalar (or whatever SCALAR_PATH is set to, registered in router.go).
 func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !cfg.Docs.IsEnabled {
@@ -88,8 +87,57 @@ func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// DocsSwaggerHandler serves a Swagger UI page compatible with SWAGGER_PATH.
+// The raw OpenAPI spec remains available at SWAGGER_PATH/openapi.json.
+func DocsSwaggerHandler(cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !cfg.Docs.IsEnabled {
+			shared.WriteJSONError(w, http.StatusNotFound, "docs are not enabled")
+			return
+		}
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
+		specURL := fmt.Sprintf("%s%s/openapi.json", basePath, cfg.Docs.SwaggerPath)
+
+		html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exodus API Schema</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    body { margin: 0; background: #0f1117; }
+    .swagger-ui .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: %q,
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      persistAuthorization: true,
+      layout: 'BaseLayout'
+    })
+  </script>
+</body>
+</html>`, specURL)
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(html))
+	}
+}
+
 // DocsOpenAPIHandler serves the raw OpenAPI JSON spec.
-// Route: GET /api/docs/openapi.json
+// Route: GET /scalar/openapi.json or /docs/openapi.json.
 func DocsOpenAPIHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !cfg.Docs.IsEnabled {

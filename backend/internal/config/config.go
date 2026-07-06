@@ -643,6 +643,8 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
 	}
 	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
+	cfg.Docs.ScalarPath = normalizeBasePath(cfg.Docs.ScalarPath)
+	cfg.Docs.SwaggerPath = normalizeBasePath(cfg.Docs.SwaggerPath)
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
 		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
 	}

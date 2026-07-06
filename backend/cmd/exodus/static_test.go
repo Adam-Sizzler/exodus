@@ -1,0 +1,88 @@
+package exodus
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestRenderPanelIndexPrefixesStaticAssetsWithBasePath(t *testing.T) {
+	input := `<html><head>
+<script src="/assets/index.js"></script>
+<link href="/assets/index.css" rel="stylesheet">
+<link rel="icon" href="/favicons/logo.svg">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-startup-image" href="%BASE_URL%/splash_screens/start.png">
+</head><body></body></html>`
+
+	page := renderPanelIndex(input, "/panel/", "/panel")
+
+	expected := []string{
+		`<base href="/panel/" />`,
+		`basePath:"/panel"`,
+		`src="/panel/assets/index.js"`,
+		`href="/panel/assets/index.css"`,
+		`href="/panel/favicons/logo.svg"`,
+		`href="/panel/site.webmanifest"`,
+		`href="/panel/splash_screens/start.png"`,
+	}
+	for _, value := range expected {
+		if !strings.Contains(page, value) {
+			t.Fatalf("expected rendered index to contain %q, got:\n%s", value, page)
+		}
+	}
+}
+
+func TestRenderPanelIndexKeepsRootStaticAssetsAtRoot(t *testing.T) {
+	input := `<html><head><script src="%BASE_URL%/assets/index.js"></script></head></html>`
+
+	page := renderPanelIndex(input, "/", "/")
+
+	if !strings.Contains(page, `src="/assets/index.js"`) {
+		t.Fatalf("expected root asset path, got:\n%s", page)
+	}
+	if strings.Contains(page, `%BASE_URL%`) {
+		t.Fatalf("expected %%BASE_URL%% placeholder to be removed, got:\n%s", page)
+	}
+}
+
+func TestServePanelStaticFileServesExistingRootAssetFallback(t *testing.T) {
+	uiDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(uiDir, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(uiDir, "assets", "index.js"), []byte("console.log('ok')"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/assets/index.js", nil)
+
+	handled := servePanelStaticFile(recorder, request, http.FileServer(http.Dir(uiDir)), uiDir, request.URL.Path)
+	if !handled {
+		t.Fatal("expected static request to be handled")
+	}
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if body := recorder.Body.String(); body != "console.log('ok')" {
+		t.Fatalf("unexpected static body: %q", body)
+	}
+}
+
+func TestServePanelStaticFileReturnsNotFoundForMissingAsset(t *testing.T) {
+	uiDir := t.TempDir()
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/panel/assets/missing.js", nil)
+
+	handled := servePanelStaticFile(recorder, request, http.FileServer(http.Dir(uiDir)), uiDir, "assets/missing.js")
+	if !handled {
+		t.Fatal("expected missing static request to be handled")
+	}
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", recorder.Code)
+	}
+}

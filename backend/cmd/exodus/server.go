@@ -43,6 +43,10 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		requestPath := r.URL.Path
 
+		if panelBasePath != "/" && servePanelStaticFile(w, r, staticFS, uiDir, requestPath) {
+			return
+		}
+
 		if panelBasePath != "/" && requestPath == panelBasePathNoTrailing {
 			http.Redirect(w, r, panelBasePath, http.StatusPermanentRedirect)
 			return
@@ -72,7 +76,7 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 		docsScalarRel := strings.TrimPrefix(cfg.Docs.ScalarPath, "/")
 		docsSwaggerRel := strings.TrimPrefix(cfg.Docs.SwaggerPath, "/")
 		isDocsPath := (docsScalarRel != "" && (relativePath == docsScalarRel || strings.HasPrefix(relativePath, docsScalarRel+"/"))) ||
-			(docsSwaggerRel != "" && relativePath == docsSwaggerRel)
+			(docsSwaggerRel != "" && (relativePath == docsSwaggerRel || strings.HasPrefix(relativePath, docsSwaggerRel+"/")))
 		if isDocsPath {
 			apiReq := r.Clone(r.Context())
 			apiReq.URL.Path = "/" + relativePath
@@ -83,6 +87,10 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 
 		if relativePath == "app-config.js" {
 			serveAppConfigJS(w, panelBasePathNoTrailing)
+			return
+		}
+
+		if servePanelStaticFile(w, r, staticFS, uiDir, relativePath) {
 			return
 		}
 

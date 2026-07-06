@@ -47,6 +47,12 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 				return
 			}
+			candidateSettings, err := loadPanelSettings(manager)
+			if err != nil {
+				cfg.Logger.Error("Failed to load panel settings before update", "error", err)
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
+				return
+			}
 
 			validKeys := map[string]string{
 				"passkey_settings":  "passkey_settings",
@@ -59,6 +65,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 
 			setClauses := make([]string, 0, len(payload))
 			args := make([]any, 0, len(payload))
+			authSettingsTouched := false
 			for key, raw := range payload {
 				column, ok := validKeys[key]
 				if !ok {
@@ -72,6 +79,15 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 					shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON value for "+key)
 					return
 				}
+				var decoded any
+				if err := json.Unmarshal(raw, &decoded); err != nil {
+					shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON value for "+key)
+					return
+				}
+				candidateSettings[column] = decoded
+				if column == "passkey_settings" || column == "oauth2_settings" || column == "password_settings" {
+					authSettingsTouched = true
+				}
 				setClauses = append(setClauses, column+" = ?")
 				args = append(args, string(raw))
 			}
@@ -80,8 +96,14 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 				shared.WriteJSONError(w, http.StatusBadRequest, "no valid fields provided")
 				return
 			}
+			if authSettingsTouched {
+				if err := validateAuthenticationSettings(candidateSettings); err != nil {
+					shared.WriteJSONError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+			}
 
-			err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+			err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 				if _, execErr := db.Exec(`
 					INSERT INTO exodus_settings (
 						id, passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
@@ -91,7 +113,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 					ON CONFLICT (id) DO NOTHING
 				`,
 					`{"rpId":null,"origin":null,"enabled":false}`,
-					`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]}}`,
+					`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
 					`{"enabled":false,"adminIds":[],"botToken":null}`,
 					`{"enabled":true}`,
 					`{"title":"EXODUS","logoUrl":null}`,
