@@ -232,31 +232,68 @@ func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *db
 }
 
 func emitExternalLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, method, provider, identifier, adminUUID, reason string, r *http.Request) {
-	data := map[string]any{
-		"method":   method,
-		"provider": provider,
-	}
-	if identifier != "" {
-		data["identifier"] = identifier
-		data["username"] = identifier
-	}
-	if adminUUID != "" {
-		data["adminUuid"] = adminUUID
-	}
-	if reason != "" {
-		data["reason"] = reason
-	}
-	if r != nil {
-		data["ip"] = notificationClientIP(r)
-		data["remoteAddr"] = r.RemoteAddr
-		data["userAgent"] = r.UserAgent()
-		data["path"] = r.URL.Path
-	}
 	notifications.Emit(ctx, cfg, notifications.Event{
 		Scope: notifications.ScopeService,
 		Event: event,
-		Data:  data,
+		Data:  externalLoginNotificationData(method, provider, identifier, adminUUID, reason, r),
 	})
+}
+
+func externalLoginNotificationData(method, provider, identifier, adminUUID, reason string, r *http.Request) map[string]any {
+	username := externalLoginNotificationUsername(method, provider, identifier)
+	loginAttempt := map[string]any{
+		"username":    username,
+		"password":    "",
+		"ip":          notificationClientIP(r),
+		"userAgent":   "",
+		"description": reason,
+		"method":      method,
+		"provider":    provider,
+	}
+	data := map[string]any{
+		"method":       method,
+		"provider":     provider,
+		"username":     username,
+		"ip":           loginAttempt["ip"],
+		"description":  reason,
+		"loginAttempt": loginAttempt,
+	}
+	if identifier != "" {
+		data["identifier"] = identifier
+	}
+	if adminUUID != "" {
+		data["adminUuid"] = adminUUID
+		loginAttempt["adminUuid"] = adminUUID
+	}
+	if reason != "" {
+		data["reason"] = reason
+		loginAttempt["reason"] = reason
+	}
+	if r != nil {
+		data["remoteAddr"] = r.RemoteAddr
+		data["userAgent"] = r.UserAgent()
+		data["path"] = r.URL.Path
+		loginAttempt["remoteAddr"] = r.RemoteAddr
+		loginAttempt["userAgent"] = r.UserAgent()
+		loginAttempt["path"] = r.URL.Path
+	}
+	return data
+}
+
+func externalLoginNotificationUsername(method, provider, identifier string) string {
+	if trimmed := strings.TrimSpace(identifier); trimmed != "" {
+		return trimmed
+	}
+	provider = strings.TrimSpace(provider)
+	method = strings.TrimSpace(method)
+	switch {
+	case method != "" && provider != "":
+		return method + ":" + provider
+	case provider != "":
+		return provider
+	default:
+		return method
+	}
 }
 
 func loadOAuthSettings(manager *dbmanager.DatabaseManager) (oauthSettings, error) {
