@@ -247,6 +247,7 @@ func emitExternalLoginNotification(ctx context.Context, cfg *config.BackendConfi
 		data["reason"] = reason
 	}
 	if r != nil {
+		data["ip"] = notificationClientIP(r)
 		data["remoteAddr"] = r.RemoteAddr
 		data["userAgent"] = r.UserAgent()
 		data["path"] = r.URL.Path

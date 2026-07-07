@@ -49,7 +49,7 @@ func TestRenderPanelIndexKeepsRootStaticAssetsAtRoot(t *testing.T) {
 	}
 }
 
-func TestServePanelStaticFileServesExistingRootAssetFallback(t *testing.T) {
+func TestServePanelStaticFileServesExistingAsset(t *testing.T) {
 	uiDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(uiDir, "assets"), 0o755); err != nil {
 		t.Fatal(err)
@@ -70,6 +70,31 @@ func TestServePanelStaticFileServesExistingRootAssetFallback(t *testing.T) {
 	}
 	if body := recorder.Body.String(); body != "console.log('ok')" {
 		t.Fatalf("unexpected static body: %q", body)
+	}
+}
+
+func TestPanelHandlerDoesNotServeRootAssetsWhenBasePathIsConfigured(t *testing.T) {
+	uiDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(uiDir, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(uiDir, "index.html"), []byte(`<html><head></head><body></body></html>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(uiDir, "assets", "index.js"), []byte("console.log('ok')"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	staticFS := http.FileServer(http.Dir(uiDir))
+	handler := panelRequestHandler("/panel/", uiDir, staticFS, http.NotFoundHandler(), http.NotFoundHandler(), "/docs", "/scalar")
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/assets/index.js", nil)
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected root asset request to be rejected when base path is configured, got %d", recorder.Code)
 	}
 }
 

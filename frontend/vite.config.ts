@@ -8,6 +8,7 @@ import webfontDownload from 'vite-plugin-webfont-dl'
 import 'dotenv/config'
 
 export default defineConfig({
+    base: './',
     assetsInclude: ['**/*.lottie'],
     plugins: [
         react(),

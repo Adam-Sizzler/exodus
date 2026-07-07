@@ -40,12 +40,40 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 		cfg.Logger.Warn("Panel UI index not found; static UI disabled", "path", indexPath, "error", err)
 	}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		requestPath := r.URL.Path
+	mux.Handle("/", panelRequestHandler(panelBasePath, uiDir, staticFS, apiHandler, metricsHandler, cfg.Docs.SwaggerPath, cfg.Docs.ScalarPath))
 
-		if panelBasePath != "/" && servePanelStaticFile(w, r, staticFS, uiDir, requestPath) {
-			return
+	server := &http.Server{
+		Addr:    addr,
+		Handler: middleware.WithCORS(cfg, middleware.WithRequestLogging(cfg, "web", mux)),
+	}
+
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Info("HTTP server listening", "address", server.Addr)
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Fatal("Failed to start web server", "error", err)
 		}
+	}()
+
+	<-ctx.Done()
+
+	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Debug("Shutting down HTTP server")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Error("Error shutting down HTTP server", "error", err)
+	}
+}
+
+func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metricsHandler http.Handler, docsSwaggerPath, docsScalarPath string) http.Handler {
+	indexPath := filepath.Join(uiDir, "index.html")
+	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
+	if panelBasePathNoTrailing == "" {
+		panelBasePathNoTrailing = "/"
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestPath := r.URL.Path
 
 		if panelBasePath != "/" && requestPath == panelBasePathNoTrailing {
 			http.Redirect(w, r, panelBasePath, http.StatusPermanentRedirect)
@@ -73,8 +101,8 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 		// Route docs paths (Scalar UI, Swagger JSON) through the API handler.
 		// These paths don't carry the /api/ prefix but are served by Go handlers,
 		// not the React SPA. Both paths are read from env (SCALAR_PATH, SWAGGER_PATH).
-		docsScalarRel := strings.TrimPrefix(cfg.Docs.ScalarPath, "/")
-		docsSwaggerRel := strings.TrimPrefix(cfg.Docs.SwaggerPath, "/")
+		docsScalarRel := strings.TrimPrefix(docsScalarPath, "/")
+		docsSwaggerRel := strings.TrimPrefix(docsSwaggerPath, "/")
 		isDocsPath := (docsScalarRel != "" && (relativePath == docsScalarRel || strings.HasPrefix(relativePath, docsScalarRel+"/"))) ||
 			(docsSwaggerRel != "" && (relativePath == docsSwaggerRel || strings.HasPrefix(relativePath, docsSwaggerRel+"/")))
 		if isDocsPath {
@@ -118,26 +146,4 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 
 		servePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
 	})
-
-	server := &http.Server{
-		Addr:    addr,
-		Handler: middleware.WithCORS(cfg, middleware.WithRequestLogging(cfg, "web", mux)),
-	}
-
-	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Info("HTTP server listening", "address", server.Addr)
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Fatal("Failed to start web server", "error", err)
-		}
-	}()
-
-	<-ctx.Done()
-
-	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Debug("Shutting down HTTP server")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Error("Error shutting down HTTP server", "error", err)
-	}
 }
