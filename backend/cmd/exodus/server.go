@@ -44,7 +44,7 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: middleware.WithCORS(cfg, middleware.WithRequestLogging(cfg, "web", mux)),
+		Handler: middleware.WithCORS(cfg, middleware.WithClientIP(cfg, middleware.WithRequestLogging(cfg, "web", mux))),
 	}
 
 	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Info("HTTP server listening", "address", server.Addr)

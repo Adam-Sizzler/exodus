@@ -391,7 +391,7 @@ func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event
 	loginAttempt := map[string]any{
 		"username":    username,
 		"password":    password,
-		"ip":          notificationClientIP(r),
+		"ip":          notificationClientIP(cfg, r),
 		"userAgent":   "",
 		"description": reason,
 	}
@@ -410,7 +410,6 @@ func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event
 		data["remoteAddr"] = r.RemoteAddr
 		data["userAgent"] = r.UserAgent()
 		data["path"] = r.URL.Path
-		loginAttempt["remoteAddr"] = r.RemoteAddr
 		loginAttempt["userAgent"] = r.UserAgent()
 		loginAttempt["path"] = r.URL.Path
 	}
@@ -421,27 +420,8 @@ func emitLoginNotification(ctx context.Context, cfg *config.BackendConfig, event
 	})
 }
 
-func notificationClientIP(r *http.Request) string {
-	if r == nil {
-		return ""
-	}
-	for _, header := range []string{"CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For"} {
-		value := strings.TrimSpace(r.Header.Get(header))
-		if value == "" {
-			continue
-		}
-		if comma := strings.Index(value, ","); comma >= 0 {
-			value = strings.TrimSpace(value[:comma])
-		}
-		if value != "" {
-			return value
-		}
-	}
-	remoteAddr := strings.TrimSpace(r.RemoteAddr)
-	if colon := strings.LastIndex(remoteAddr, ":"); colon > 0 && !strings.Contains(remoteAddr[colon+1:], "]") {
-		return strings.Trim(remoteAddr[:colon], "[]")
-	}
-	return strings.Trim(remoteAddr, "[]")
+func notificationClientIP(cfg *config.BackendConfig, r *http.Request) string {
+	return middleware.GetClientIP(r, cfg)
 }
 
 func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, next http.Handler) http.Handler {

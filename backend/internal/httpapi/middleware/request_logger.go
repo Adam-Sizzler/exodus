@@ -77,8 +77,10 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 			"bytes", lrw.bytes,
 			"duration_ms", durationMs,
 			"duration_us", duration.Microseconds(),
+			"client_ip", GetClientIP(r, cfg),
 			"remote_addr", r.RemoteAddr,
 			"user_agent", r.UserAgent(),
+			"x_exodus_real_ip", r.Header.Get(ExodusRealIPHeader),
 			"x_forwarded_for", r.Header.Get("X-Forwarded-For"),
 			"x_forwarded_proto", r.Header.Get("X-Forwarded-Proto"),
 		)

@@ -5,13 +5,14 @@ import (
 	"testing"
 )
 
-func TestExternalLoginNotificationDataUsesForwardedIP(t *testing.T) {
+func TestExternalLoginNotificationDataUsesResolvedClientIP(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/oauth2/callback", nil)
 	req.RemoteAddr = "172.18.0.8:47242"
-	req.Header.Set("X-Real-IP", "144.31.119.150")
+	req.Header.Set("X-Forwarded-For", "144.31.119.150, 172.18.0.1")
+	req.Header.Set("X-Real-IP", "172.18.0.1")
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 
-	data := externalLoginNotificationData("oauth2", "telegram", "306100972", "admin-uuid", "", req)
+	data := externalLoginNotificationData(nil, "oauth2", "telegram", "306100972", "admin-uuid", "", req)
 
 	if got := data["ip"]; got != "144.31.119.150" {
 		t.Fatalf("data ip got %v, want %q", got, "144.31.119.150")
@@ -23,8 +24,8 @@ func TestExternalLoginNotificationDataUsesForwardedIP(t *testing.T) {
 	if got := loginAttempt["ip"]; got != "144.31.119.150" {
 		t.Fatalf("loginAttempt ip got %v, want %q", got, "144.31.119.150")
 	}
-	if got := loginAttempt["remoteAddr"]; got != "172.18.0.8:47242" {
-		t.Fatalf("loginAttempt remoteAddr got %v, want %q", got, "172.18.0.8:47242")
+	if _, ok := loginAttempt["remoteAddr"]; ok {
+		t.Fatalf("loginAttempt must not expose remoteAddr: %v", loginAttempt["remoteAddr"])
 	}
 	if got := loginAttempt["username"]; got != "306100972" {
 		t.Fatalf("loginAttempt username got %v, want %q", got, "306100972")

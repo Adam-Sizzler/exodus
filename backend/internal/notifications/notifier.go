@@ -554,7 +554,7 @@ func formatServiceMessage(event Event) string {
 			telegramSeparator,
 			html.EscapeString(stringValue(loginAttempt, "username")),
 			html.EscapeString(stringValue(loginAttempt, "password")),
-			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "ip"), stringValue(loginAttempt, "remoteAddr"))),
+			html.EscapeString(stringValue(loginAttempt, "ip")),
 			html.EscapeString(stringValue(loginAttempt, "userAgent")),
 			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "description"), stringValue(loginAttempt, "reason"), "–")),
 		)
@@ -564,7 +564,7 @@ func formatServiceMessage(event Event) string {
 			"<tg-emoji emoji-id='5330115548900501467'>🔑</tg-emoji> <tg-emoji emoji-id='5461117441612462242'>✅</tg-emoji> <b>#login_attempt_success</b>\n%s\n<tg-emoji emoji-id='5256143829672672750'>👥</tg-emoji> <code>%s</code>\n<tg-emoji emoji-id='5447410659077661506'>🌐</tg-emoji> <b>IP:</b> <code>%s</code>\n<tg-emoji emoji-id='5460756166143405924'>💻</tg-emoji> <b>User agent:</b> <code>%s</code>\n<tg-emoji emoji-id='5443038326535759644'>💬</tg-emoji> <b>Description:</b> <code>%s</code>",
 			telegramSeparator,
 			html.EscapeString(stringValue(loginAttempt, "username")),
-			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "ip"), stringValue(loginAttempt, "remoteAddr"))),
+			html.EscapeString(stringValue(loginAttempt, "ip")),
 			html.EscapeString(stringValue(loginAttempt, "userAgent")),
 			html.EscapeString(firstNonEmptyString(stringValue(loginAttempt, "description"), stringValue(loginAttempt, "reason"), "–")),
 		)

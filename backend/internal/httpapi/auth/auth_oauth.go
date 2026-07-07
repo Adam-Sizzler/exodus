@@ -235,31 +235,31 @@ func emitExternalLoginNotification(ctx context.Context, cfg *config.BackendConfi
 	notifications.Emit(ctx, cfg, notifications.Event{
 		Scope: notifications.ScopeService,
 		Event: event,
-		Data:  externalLoginNotificationData(method, provider, identifier, adminUUID, reason, r),
+		Data:  externalLoginNotificationData(cfg, method, provider, identifier, adminUUID, reason, r),
 	})
 }
 
-func externalLoginNotificationData(method, provider, identifier, adminUUID, reason string, r *http.Request) map[string]any {
+func externalLoginNotificationData(cfg *config.BackendConfig, method, provider, identifier, adminUUID, reason string, r *http.Request) map[string]any {
 	username := externalLoginNotificationUsername(method, provider, identifier)
 	loginAttempt := map[string]any{
 		"username":    username,
 		"password":    "",
-		"ip":          notificationClientIP(r),
+		"ip":          notificationClientIP(cfg, r),
 		"userAgent":   "",
 		"description": reason,
-		"method":      method,
-		"provider":    provider,
+		"method":      strings.TrimSpace(method),
+		"provider":    strings.TrimSpace(provider),
 	}
 	data := map[string]any{
-		"method":       method,
-		"provider":     provider,
+		"method":       strings.TrimSpace(method),
+		"provider":     strings.TrimSpace(provider),
 		"username":     username,
 		"ip":           loginAttempt["ip"],
 		"description":  reason,
 		"loginAttempt": loginAttempt,
 	}
 	if identifier != "" {
-		data["identifier"] = identifier
+		data["identifier"] = strings.TrimSpace(identifier)
 	}
 	if adminUUID != "" {
 		data["adminUuid"] = adminUUID
@@ -273,7 +273,6 @@ func externalLoginNotificationData(method, provider, identifier, adminUUID, reas
 		data["remoteAddr"] = r.RemoteAddr
 		data["userAgent"] = r.UserAgent()
 		data["path"] = r.URL.Path
-		loginAttempt["remoteAddr"] = r.RemoteAddr
 		loginAttempt["userAgent"] = r.UserAgent()
 		loginAttempt["path"] = r.URL.Path
 	}
