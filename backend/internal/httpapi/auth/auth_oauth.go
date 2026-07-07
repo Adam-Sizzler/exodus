@@ -412,7 +412,7 @@ func makeOAuthURL(rawURL string, values url.Values) (string, error) {
 	return u.String(), nil
 }
 
-func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProviderSettings, code, codeVerifier string) (string, bool, error) {
+func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProviderSettings, basePath, code, codeVerifier string) (string, bool, error) {
 	switch provider {
 	case "github":
 		token, err := requestOAuthToken(ctx, "https://github.com/login/oauth/access_token", url.Values{
