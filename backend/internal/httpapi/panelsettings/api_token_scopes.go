@@ -28,7 +28,7 @@ func buildAPITokenScopes(_ *config.BackendConfig) []apiTokenResourceScopes {
 			readScope("system:stats", "GET", "/api/system/stats", "Read system statistics"),
 			readScope("system:metadata", "GET", "/api/system/metadata", "Read build metadata"),
 			readScope("system:health", "GET", "/api/system/health", "Read runtime health"),
-			readScope("system:recap", "GET", "/api/system/recap", "Read recap information"),
+			readScope("system:recap", "GET", "/api/system/stats/recap", "Read recap information"),
 		}),
 		scopeResource("users", []apiTokenEndpointScope{
 			readScope("users:list", "GET", "/api/users", "List users"),

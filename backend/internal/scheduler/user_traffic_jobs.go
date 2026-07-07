@@ -9,13 +9,13 @@ import (
 )
 
 // trafficResetDay resets traffic for users with strategy=DAY.
-// Runs at 00:05 every day — mirrors remnawave cron "0 5 * * *".
+// Runs at 00:05 every day — mirrors exodus cron "0 5 * * *".
 func (s *Scheduler) trafficResetDay(ctx context.Context) error {
 	return s.trafficResetByStrategy(ctx, "DAY")
 }
 
 // trafficResetWeek resets traffic for users with strategy=WEEK.
-// Runs at 00:15 every Monday — mirrors remnawave cron "15 0 * * 1".
+// Runs at 00:15 every Monday — mirrors exodus cron "15 0 * * 1".
 func (s *Scheduler) trafficResetWeek(ctx context.Context) error {
 	return s.trafficResetByStrategy(ctx, "WEEK")
 }
@@ -27,7 +27,7 @@ func (s *Scheduler) trafficResetMonthRolling(ctx context.Context) error {
 }
 
 // trafficResetMonth resets traffic for users with strategy=MONTH.
-// Runs at 00:20 on 1st of each month — mirrors remnawave cron "20 0 1 * *".
+// Runs at 00:20 on 1st of each month — mirrors exodus cron "20 0 1 * *".
 func (s *Scheduler) trafficResetMonth(ctx context.Context) error {
 	return s.trafficResetByStrategy(ctx, "MONTH")
 }

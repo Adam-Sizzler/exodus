@@ -2,6 +2,7 @@ package bandwidthstats
 
 import (
 	"database/sql"
+	"encoding/json"
 	"hash/fnv"
 	"net/http"
 	"strconv"
@@ -71,14 +72,25 @@ type legacyUserUsage struct {
 
 func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/nodes")
+		path = strings.Trim(path, "/")
+
+		if path == "users" {
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleGetNodesUsersUsage(w, r, manager, cfg)
+			return
+		}
+
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/nodes")
-		path = strings.Trim(path, "/")
 		switch {
 		case path == "":
 			handleGetNodesUsage(w, r, manager, cfg)
@@ -363,6 +375,127 @@ GROUP BY u.uuid, u.username
 ORDER BY total DESC
 LIMIT ?
 		`, nodeID, startDate, endDate, topLimit)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var userUUID, username string
+			var total int64
+			if scanErr := rows.Scan(&userUUID, &username, &total); scanErr != nil {
+				return scanErr
+			}
+			topUsers = append(topUsers, topUser{
+				Color:    colorFromUUID(userUUID),
+				Username: username,
+				Total:    total,
+			})
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"categories":    dates,
+			"sparklineData": sparkline,
+			"topUsers":      topUsers,
+		},
+	})
+}
+
+type getNodesUsersUsageRequest struct {
+	NodesUUIDs []string `json:"nodesUuids"`
+}
+
+func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+	startDate, endDate, dates, ok := parseDateRange(w, r)
+	if !ok {
+		return
+	}
+	topLimit := parsePositiveIntWithDefault(r.URL.Query().Get("topUsersLimit"), 100)
+
+	var req getNodesUsersUsageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.WriteJSONError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if len(req.NodesUUIDs) == 0 {
+		shared.WriteJSONError(w, http.StatusBadRequest, "nodesUuids: must be at least 1 node UUID")
+		return
+	}
+
+	var nodeIDs []int64
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(r.Context(), `SELECT id FROM nodes WHERE uuid = ANY(?)`, req.NodesUUIDs)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id int64
+			if scanErr := rows.Scan(&id); scanErr != nil {
+				return scanErr
+			}
+			nodeIDs = append(nodeIDs, id)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		return
+	}
+	if len(nodeIDs) == 0 {
+		shared.WriteJSONError(w, http.StatusNotFound, "nodes not found")
+		return
+	}
+
+	sparkline := make([]int64, 0, len(dates))
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(r.Context(), `
+WITH daily_traffic AS (
+	SELECT created_at::date AS date, SUM(total_bytes) AS bytes
+	FROM nodes_user_usage_history
+	WHERE node_id = ANY(?) AND created_at >= ?::date AND created_at <= ?::date
+	GROUP BY created_at
+)
+SELECT COALESCE(dt.bytes, 0) AS value
+FROM unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+LEFT JOIN daily_traffic dt ON dt.date = d.date::date
+ORDER BY d.ord
+		`, nodeIDs, startDate, endDate, pgDateArrayLiteral(dates))
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var v int64
+			if scanErr := rows.Scan(&v); scanErr != nil {
+				return scanErr
+			}
+			sparkline = append(sparkline, v)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes users sparkline", err, cfg)
+		return
+	}
+
+	topUsers := make([]topUser, 0)
+	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		rows, err := db.QueryContext(r.Context(), `
+SELECT u.uuid, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total
+FROM users u
+INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.t_id
+WHERE nuh.node_id = ANY(?) AND nuh.created_at >= ? AND nuh.created_at <= ?
+GROUP BY u.uuid, u.username
+ORDER BY total DESC
+LIMIT ?
+		`, nodeIDs, startDate, endDate, topLimit)
 		if err != nil {
 			return err
 		}

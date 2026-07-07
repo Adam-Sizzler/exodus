@@ -39,6 +39,7 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.Name = record.Name
 		item.Address = record.Address
 		item.Port = record.Port
+		item.ProxyURL = record.ProxyURL
 		item.APISchema = normalizeAPISchema(&record.APISchema)
 		item.APIPath = normalizeAPIPath(&record.APIPath)
 		item.GRPCAuthToken = record.GRPCAuthToken
@@ -63,7 +64,9 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		item.ViewPosition = record.ViewPosition
 		item.CountryCode = record.CountryCode
 		item.ConsumptionMultiplier = fromNanoMultiplier(record.ConsumptionMultiplier)
+		item.NodeConsumptionMultiplier = fromNanoMultiplier(record.NodeConsumptionMultiplier)
 		item.Tags = ensureStringSlice(record.Tags)
+		item.Note = record.Note
 		item.System = buildNodeSystemFromCache(hot.System)
 		item.Versions = buildNodeVersions(item.SingboxVersion, item.NodeVersion)
 		if item.System != nil {

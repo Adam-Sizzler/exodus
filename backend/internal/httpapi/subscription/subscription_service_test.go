@@ -586,7 +586,7 @@ func TestHysteria2CredentialDoesNotFallbackToOtherProtocols(t *testing.T) {
 	}
 }
 
-func TestExtractHwidHeadersRemnawaveCompatibleHeaders(t *testing.T) {
+func TestExtractHwidHeadersExodusCompatibleHeaders(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("X-HWID", "device-123")
 	req.Header.Set("X-Device-OS", "Android")

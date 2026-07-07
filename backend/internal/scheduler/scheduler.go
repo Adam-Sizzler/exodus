@@ -99,12 +99,12 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	}
 
 	// Every day at 01:00: reset accumulated node traffic counters.
-	// Mirrors remnawave EVERY_DAY_AT_1AM (cron: 0 1 * * *).
+	// Mirrors exodus EVERY_DAY_AT_1AM (cron: 0 1 * * *).
 	if local.Hour() == 1 && local.Minute() == 0 && s.shouldRun("resetNodeTraffic", local.Format("2006-01-02")) {
 		s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
 	}
 
-	// Traffic reset schedules — mirrors remnawave cron jobs:
+	// Traffic reset schedules — mirrors exodus cron jobs:
 	//   DAY:           0 5 * * *   (every day at 00:05)
 	//   MONTH_ROLLING: 10 0 * * *  (every day at 00:10)
 	//   WEEK:          15 0 * * 1  (Monday at 00:15)

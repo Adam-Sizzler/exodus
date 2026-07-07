@@ -10,6 +10,8 @@ import (
 	"io"
 	"math"
 	"math/rand/v2"
+	"net"
+	neturl "net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +24,7 @@ import (
 	"exodus/internal/notifications"
 	"exodus/internal/proto"
 
+	"golang.org/x/net/proxy"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -95,6 +98,7 @@ type nodeState struct {
 	nodeName      string
 	address       string
 	port          int
+	proxyURL      string
 	apiSchema     string
 	apiPath       string
 	grpcAuthToken string
@@ -240,6 +244,7 @@ func (nm *NodeMonitor) syncNodes() {
 				"node", name,
 				"old_address", state.address, "new_address", desiredNode.Address,
 				"old_port", state.port, "new_port", desiredNode.Port,
+				"old_proxy_url", state.proxyURL, "new_proxy_url", desiredNode.ProxyURL,
 				"old_schema", state.apiSchema, "new_schema", desiredNode.APISchema,
 				"old_path", state.apiPath, "new_path", desiredNode.APIPath,
 			)
@@ -317,6 +322,7 @@ func (nm *NodeMonitor) startNode(dbNode db.DBNode) {
 		nodeName:      dbNode.Name,
 		address:       dbNode.Address,
 		port:          dbNode.Port,
+		proxyURL:      dbNode.ProxyURL,
 		apiSchema:     dbNode.APISchema,
 		apiPath:       dbNode.APIPath,
 		grpcAuthToken: dbNode.GRPCAuthToken,
@@ -383,7 +389,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	state.mutex.Unlock()
 
 	// Create gRPC connection
-	url := fmt.Sprintf("%s:%d", state.address, state.port)
+	targetAddr := fmt.Sprintf("%s:%d", state.address, state.port)
 	opts := []grpc.DialOption{}
 
 	if state.address == "127.0.0.1" || strings.EqualFold(state.address, "localhost") {
@@ -431,10 +437,21 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	if cleanPath != "" {
 		nm.cfg.Logger.Debug("Using gRPC path prefix", "node", state.nodeName, "prefix", cleanPath)
 	}
+	if dialer, dialerErr := buildNodeProxyDialer(strings.TrimSpace(state.proxyURL)); dialerErr != nil {
+		nm.cfg.Logger.Warn("Failed to build node SOCKS5 proxy dialer", "node", state.nodeName, "proxy_url", state.proxyURL, "error", dialerErr)
+		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Proxy config failed: %v", dialerErr))
+		state.mutex.Lock()
+		state.isConnecting = false
+		state.mutex.Unlock()
+		return
+	} else if dialer != nil {
+		opts = append(opts, grpc.WithContextDialer(dialer))
+		nm.cfg.Logger.Debug("Using SOCKS5 proxy for node gRPC", "node", state.nodeName)
+	}
 
-	conn, err := grpc.NewClient(url, opts...)
+	conn, err := grpc.NewClient(targetAddr, opts...)
 	if err != nil {
-		nm.cfg.Logger.Warn("Failed to connect to node", "node", state.nodeName, "address", url, "error", err)
+		nm.cfg.Logger.Warn("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", err)
 		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Connection failed: %v", err))
 		state.mutex.Lock()
 		state.isConnecting = false
@@ -485,7 +502,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 
 	// The gRPC control-plane stream is connected, but the managed sing-box core may
 	// still be stopped (autostart=false) or failed. Keep the in-memory transport
-	// state ready for deploy tasks, while DB is_connected follows Remnawave-style
+	// state ready for deploy tasks, while DB is_connected follows Exodus-style
 	// core readiness and will be finalized by deploy result / stats.
 	nm.updateConnectionStatus(state.nodeName, false, true, "")
 
@@ -643,11 +660,12 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	firstConnectedEvents := make([]notifications.Event, 0)
 	err := nm.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
 		var (
-			nodeUUID              string
-			nodeID                int64
-			consumptionMultiplier int64
+			nodeUUID                  string
+			nodeID                    int64
+			consumptionMultiplier     int64
+			nodeConsumptionMultiplier int64
 		)
-		if err := db.QueryRow(`SELECT uuid, id, consumption_multiplier FROM nodes WHERE name = ?`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier); err != nil {
+		if err := db.QueryRow(`SELECT uuid, id, consumption_multiplier, node_consumption_multiplier FROM nodes WHERE name = ?`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier, &nodeConsumptionMultiplier); err != nil {
 			return err
 		}
 		persistedNodeUUID = nodeUUID
@@ -661,6 +679,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 
 		if trafficDelta.TotalUploadBytes > 0 || trafficDelta.TotalDownloadBytes > 0 {
 			totalBytes := trafficDelta.TotalUploadBytes + trafficDelta.TotalDownloadBytes
+			nodeUsageBytes := applyConsumptionMultiplier(totalBytes, nodeConsumptionMultiplier)
 			if _, execErr := db.Exec(`
 				INSERT INTO nodes_usage_history (node_uuid, download_bytes, upload_bytes, total_bytes)
 				VALUES (?, ?, ?, ?)
@@ -678,7 +697,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				UPDATE nodes
 				SET traffic_used_bytes = COALESCE(traffic_used_bytes, 0) + ?, updated_at = CURRENT_TIMESTAMP
 				WHERE uuid = ?
-			`, totalBytes, nodeUUID); execErr != nil {
+			`, nodeUsageBytes, nodeUUID); execErr != nil {
 				return execErr
 			}
 		}
@@ -1346,6 +1365,53 @@ func normalizeNodePath(value string) string {
 	return "/" + strings.Trim(trimmed, "/")
 }
 
+func buildNodeProxyDialer(rawProxyURL string) (func(context.Context, string) (net.Conn, error), error) {
+	rawProxyURL = strings.TrimSpace(rawProxyURL)
+	if rawProxyURL == "" {
+		return nil, nil
+	}
+
+	parsed, err := neturl.Parse(rawProxyURL)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(parsed.Scheme, "socks5") {
+		return nil, fmt.Errorf("unsupported proxy scheme %q", parsed.Scheme)
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return nil, fmt.Errorf("proxy host is required")
+	}
+
+	dialer, err := proxy.FromURL(parsed, proxy.Direct)
+	if err != nil {
+		return nil, err
+	}
+	if contextDialer, ok := dialer.(proxy.ContextDialer); ok {
+		return func(ctx context.Context, address string) (net.Conn, error) {
+			return contextDialer.DialContext(ctx, "tcp", address)
+		}, nil
+	}
+
+	return func(ctx context.Context, address string) (net.Conn, error) {
+		type dialResult struct {
+			conn net.Conn
+			err  error
+		}
+		resultCh := make(chan dialResult, 1)
+		go func() {
+			conn, dialErr := dialer.Dial("tcp", address)
+			resultCh <- dialResult{conn: conn, err: dialErr}
+		}()
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case result := <-resultCh:
+			return result.conn, result.err
+		}
+	}, nil
+}
+
 func nodeConfigChanged(state *nodeState, desired db.DBNode) bool {
 	if state == nil {
 		return true
@@ -1354,6 +1420,9 @@ func nodeConfigChanged(state *nodeState, desired db.DBNode) bool {
 		return true
 	}
 	if state.port != desired.Port {
+		return true
+	}
+	if strings.TrimSpace(state.proxyURL) != strings.TrimSpace(desired.ProxyURL) {
 		return true
 	}
 	if normalizeNodeSchema(state.apiSchema) != normalizeNodeSchema(desired.APISchema) {

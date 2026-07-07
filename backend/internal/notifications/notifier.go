@@ -98,7 +98,7 @@ func New(cfg *config.BackendConfig) *Notifier {
 
 // newTelegramHTTPClient builds an HTTP client for Telegram Bot API requests,
 // optionally routed through a proxy. Supports http(s) and socks5/socks5h
-// proxy URLs, mirroring remnawave's TELEGRAM_BOT_PROXY behavior (ProxyAgent).
+// proxy URLs, mirroring exodus's TELEGRAM_BOT_PROXY behavior (ProxyAgent).
 // Format: protocol://user:password@host:port, e.g. socks5://proxy:1080
 func newTelegramHTTPClient(proxyURL string) *http.Client {
 	proxyURL = strings.TrimSpace(proxyURL)

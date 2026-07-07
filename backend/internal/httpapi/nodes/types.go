@@ -9,7 +9,10 @@ import (
 	"exodus/internal/httpapi/shared"
 )
 
-var nodeTagRegex = regexp.MustCompile(`^[A-Z0-9_:]+$`)
+var (
+	nodeTagRegex      = regexp.MustCompile(`^[A-Z0-9_:]+$`)
+	nodeProxyURLRegex = regexp.MustCompile(`^socks5://(?:[^:@/\s]+(?::[^@/\s]*)?@)?[^:@/\s]+:\d{1,5}$`)
+)
 
 var (
 	errConfigProfileNotFound       = errors.New("config profile not found")
@@ -79,40 +82,43 @@ type nodeVersionsResponse struct {
 }
 
 type nodeAPI struct {
-	UUID                    string                `json:"uuid"`
-	Name                    string                `json:"name"`
-	Address                 string                `json:"address"`
-	Port                    *int                  `json:"port"`
-	APISchema               string                `json:"apiSchema"`
-	APIPath                 string                `json:"apiPath"`
-	GRPCAuthToken           string                `json:"grpcAuthToken"`
-	ActivePluginUUID        *string               `json:"activePluginUuid"`
-	IsConnected             bool                  `json:"isConnected"`
-	IsDisabled              bool                  `json:"isDisabled"`
-	IsConnecting            bool                  `json:"isConnecting"`
-	LastStatusChange        *time.Time            `json:"lastStatusChange"`
-	LastStatusMessage       *string               `json:"lastStatusMessage"`
-	SingboxVersion          *string               `json:"singboxVersion"`
-	NodeVersion             *string               `json:"nodeVersion"`
-	SingboxUptime           int64                 `json:"singboxUptime"`
-	IsTrafficTrackingActive bool                  `json:"isTrafficTrackingActive"`
-	TrafficResetDay         *int                  `json:"trafficResetDay"`
-	TrafficLimitBytes       *int64                `json:"trafficLimitBytes"`
-	TrafficUsedBytes        *int64                `json:"trafficUsedBytes"`
-	NotifyPercent           *int                  `json:"notifyPercent"`
-	UsersOnline             *int                  `json:"usersOnline"`
-	ViewPosition            int                   `json:"viewPosition"`
-	CountryCode             string                `json:"countryCode"`
-	ConsumptionMultiplier   float64               `json:"consumptionMultiplier"`
-	Tags                    []string              `json:"tags"`
-	CPUCount                *int                  `json:"cpuCount"`
-	CPUModel                *string               `json:"cpuModel"`
-	TotalRAM                *string               `json:"totalRam"`
-	System                  *nodeSystemResponse   `json:"system"`
-	Versions                *nodeVersionsResponse `json:"versions"`
-	CreatedAt               time.Time             `json:"createdAt"`
-	UpdatedAt               time.Time             `json:"updatedAt"`
-	ConfigProfile           struct {
+	UUID                      string                `json:"uuid"`
+	Name                      string                `json:"name"`
+	Address                   string                `json:"address"`
+	Port                      *int                  `json:"port"`
+	ProxyURL                  *string               `json:"proxyUrl"`
+	APISchema                 string                `json:"apiSchema"`
+	APIPath                   string                `json:"apiPath"`
+	GRPCAuthToken             string                `json:"grpcAuthToken"`
+	ActivePluginUUID          *string               `json:"activePluginUuid"`
+	IsConnected               bool                  `json:"isConnected"`
+	IsDisabled                bool                  `json:"isDisabled"`
+	IsConnecting              bool                  `json:"isConnecting"`
+	LastStatusChange          *time.Time            `json:"lastStatusChange"`
+	LastStatusMessage         *string               `json:"lastStatusMessage"`
+	SingboxVersion            *string               `json:"singboxVersion"`
+	NodeVersion               *string               `json:"nodeVersion"`
+	SingboxUptime             int64                 `json:"singboxUptime"`
+	IsTrafficTrackingActive   bool                  `json:"isTrafficTrackingActive"`
+	TrafficResetDay           *int                  `json:"trafficResetDay"`
+	TrafficLimitBytes         *int64                `json:"trafficLimitBytes"`
+	TrafficUsedBytes          *int64                `json:"trafficUsedBytes"`
+	NotifyPercent             *int                  `json:"notifyPercent"`
+	UsersOnline               *int                  `json:"usersOnline"`
+	ViewPosition              int                   `json:"viewPosition"`
+	CountryCode               string                `json:"countryCode"`
+	ConsumptionMultiplier     float64               `json:"consumptionMultiplier"`
+	NodeConsumptionMultiplier float64               `json:"nodeConsumptionMultiplier"`
+	Tags                      []string              `json:"tags"`
+	Note                      *string               `json:"note"`
+	CPUCount                  *int                  `json:"cpuCount"`
+	CPUModel                  *string               `json:"cpuModel"`
+	TotalRAM                  *string               `json:"totalRam"`
+	System                    *nodeSystemResponse   `json:"system"`
+	Versions                  *nodeVersionsResponse `json:"versions"`
+	CreatedAt                 time.Time             `json:"createdAt"`
+	UpdatedAt                 time.Time             `json:"updatedAt"`
+	ConfigProfile             struct {
 		ActiveConfigProfileUUID *string                        `json:"activeConfigProfileUuid"`
 		ActiveInbounds          []configProfileInboundResponse `json:"activeInbounds"`
 	} `json:"configProfile"`
@@ -121,33 +127,36 @@ type nodeAPI struct {
 }
 
 type nodeRecord struct {
-	ID                      *int64
-	UUID                    string
-	Name                    string
-	Address                 string
-	Port                    *int
-	APISchema               string
-	APIPath                 string
-	GRPCAuthToken           string
-	ActiveConfigProfileUUID *string
-	ActivePluginUUID        *string
-	IsConnected             bool
-	IsConnecting            bool
-	IsDisabled              bool
-	LastStatusChange        *time.Time
-	LastStatusMessage       *string
-	ConsumptionMultiplier   int64
-	IsTrafficTrackingActive bool
-	TrafficResetDay         *int
-	TrafficLimitBytes       *int64
-	TrafficUsedBytes        *int64
-	NotifyPercent           *int
-	ProviderUUID            *string
-	ViewPosition            int
-	CountryCode             string
-	Tags                    []string
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
+	ID                        *int64
+	UUID                      string
+	Name                      string
+	Address                   string
+	Port                      *int
+	ProxyURL                  *string
+	APISchema                 string
+	APIPath                   string
+	GRPCAuthToken             string
+	ActiveConfigProfileUUID   *string
+	ActivePluginUUID          *string
+	IsConnected               bool
+	IsConnecting              bool
+	IsDisabled                bool
+	LastStatusChange          *time.Time
+	LastStatusMessage         *string
+	ConsumptionMultiplier     int64
+	NodeConsumptionMultiplier int64
+	IsTrafficTrackingActive   bool
+	TrafficResetDay           *int
+	TrafficLimitBytes         *int64
+	TrafficUsedBytes          *int64
+	NotifyPercent             *int
+	ProviderUUID              *string
+	ViewPosition              int
+	CountryCode               string
+	Tags                      []string
+	Note                      *string
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 type configProfileRefRequest struct {
@@ -156,42 +165,48 @@ type configProfileRefRequest struct {
 }
 
 type createNodeRequest struct {
-	Name                    string                  `json:"name"`
-	Address                 string                  `json:"address"`
-	Port                    *int                    `json:"port,omitempty"`
-	APISchema               *string                 `json:"apiSchema,omitempty"`
-	APIPath                 *string                 `json:"apiPath,omitempty"`
-	GRPCAuthToken           *string                 `json:"grpcAuthToken,omitempty"`
-	ActivePluginUUID        *string                 `json:"activePluginUuid,omitempty"`
-	IsTrafficTrackingActive *bool                   `json:"isTrafficTrackingActive,omitempty"`
-	TrafficLimitBytes       *int64                  `json:"trafficLimitBytes,omitempty"`
-	NotifyPercent           *int                    `json:"notifyPercent,omitempty"`
-	TrafficResetDay         *int                    `json:"trafficResetDay,omitempty"`
-	CountryCode             *string                 `json:"countryCode,omitempty"`
-	ConsumptionMultiplier   *float64                `json:"consumptionMultiplier,omitempty"`
-	ConfigProfile           configProfileRefRequest `json:"configProfile"`
-	ProviderUUID            *string                 `json:"providerUuid,omitempty"`
-	Tags                    []string                `json:"tags,omitempty"`
+	Name                      string                  `json:"name"`
+	Address                   string                  `json:"address"`
+	Port                      *int                    `json:"port,omitempty"`
+	ProxyURL                  *string                 `json:"proxyUrl,omitempty"`
+	APISchema                 *string                 `json:"apiSchema,omitempty"`
+	APIPath                   *string                 `json:"apiPath,omitempty"`
+	GRPCAuthToken             *string                 `json:"grpcAuthToken,omitempty"`
+	ActivePluginUUID          *string                 `json:"activePluginUuid,omitempty"`
+	IsTrafficTrackingActive   *bool                   `json:"isTrafficTrackingActive,omitempty"`
+	TrafficLimitBytes         *int64                  `json:"trafficLimitBytes,omitempty"`
+	NotifyPercent             *int                    `json:"notifyPercent,omitempty"`
+	TrafficResetDay           *int                    `json:"trafficResetDay,omitempty"`
+	CountryCode               *string                 `json:"countryCode,omitempty"`
+	ConsumptionMultiplier     *float64                `json:"consumptionMultiplier,omitempty"`
+	NodeConsumptionMultiplier *float64                `json:"nodeConsumptionMultiplier,omitempty"`
+	ConfigProfile             configProfileRefRequest `json:"configProfile"`
+	ProviderUUID              *string                 `json:"providerUuid,omitempty"`
+	Tags                      []string                `json:"tags,omitempty"`
+	Note                      *string                 `json:"note,omitempty"`
 }
 
 type updateNodeRequest struct {
-	UUID                    string                   `json:"uuid"`
-	Name                    *string                  `json:"name,omitempty"`
-	Address                 *string                  `json:"address,omitempty"`
-	Port                    *int                     `json:"port,omitempty"`
-	APISchema               *string                  `json:"apiSchema,omitempty"`
-	APIPath                 *string                  `json:"apiPath,omitempty"`
-	GRPCAuthToken           *string                  `json:"grpcAuthToken,omitempty"`
-	ActivePluginUUID        OptionalString           `json:"activePluginUuid,omitempty"`
-	IsTrafficTrackingActive *bool                    `json:"isTrafficTrackingActive,omitempty"`
-	TrafficLimitBytes       *int64                   `json:"trafficLimitBytes,omitempty"`
-	NotifyPercent           *int                     `json:"notifyPercent,omitempty"`
-	TrafficResetDay         *int                     `json:"trafficResetDay,omitempty"`
-	CountryCode             *string                  `json:"countryCode,omitempty"`
-	ConsumptionMultiplier   *float64                 `json:"consumptionMultiplier,omitempty"`
-	ConfigProfile           *configProfileRefRequest `json:"configProfile,omitempty"`
-	ProviderUUID            OptionalString           `json:"providerUuid,omitempty"`
-	Tags                    *[]string                `json:"tags,omitempty"`
+	UUID                      string                   `json:"uuid"`
+	Name                      *string                  `json:"name,omitempty"`
+	Address                   *string                  `json:"address,omitempty"`
+	Port                      *int                     `json:"port,omitempty"`
+	ProxyURL                  OptionalString           `json:"proxyUrl,omitempty"`
+	APISchema                 *string                  `json:"apiSchema,omitempty"`
+	APIPath                   *string                  `json:"apiPath,omitempty"`
+	GRPCAuthToken             *string                  `json:"grpcAuthToken,omitempty"`
+	ActivePluginUUID          OptionalString           `json:"activePluginUuid,omitempty"`
+	IsTrafficTrackingActive   *bool                    `json:"isTrafficTrackingActive,omitempty"`
+	TrafficLimitBytes         *int64                   `json:"trafficLimitBytes,omitempty"`
+	NotifyPercent             *int                     `json:"notifyPercent,omitempty"`
+	TrafficResetDay           *int                     `json:"trafficResetDay,omitempty"`
+	CountryCode               *string                  `json:"countryCode,omitempty"`
+	ConsumptionMultiplier     *float64                 `json:"consumptionMultiplier,omitempty"`
+	NodeConsumptionMultiplier *float64                 `json:"nodeConsumptionMultiplier,omitempty"`
+	ConfigProfile             *configProfileRefRequest `json:"configProfile,omitempty"`
+	ProviderUUID              OptionalString           `json:"providerUuid,omitempty"`
+	Tags                      *[]string                `json:"tags,omitempty"`
+	Note                      OptionalString           `json:"note,omitempty"`
 }
 
 type reorderNodesRequest struct {
@@ -211,11 +226,13 @@ type bulkNodesActionsRequest struct {
 }
 
 type bulkUpdateNodeFieldsRequest struct {
-	CountryCode           *string        `json:"countryCode,omitempty"`
-	ConsumptionMultiplier *float64       `json:"consumptionMultiplier,omitempty"`
-	ProviderUUID          OptionalString `json:"providerUuid,omitempty"`
-	Tags                  *[]string      `json:"tags,omitempty"`
-	ActivePluginUUID      OptionalString `json:"activePluginUuid,omitempty"`
+	CountryCode               *string        `json:"countryCode,omitempty"`
+	ConsumptionMultiplier     *float64       `json:"consumptionMultiplier,omitempty"`
+	NodeConsumptionMultiplier *float64       `json:"nodeConsumptionMultiplier,omitempty"`
+	ProviderUUID              OptionalString `json:"providerUuid,omitempty"`
+	Tags                      *[]string      `json:"tags,omitempty"`
+	ActivePluginUUID          OptionalString `json:"activePluginUuid,omitempty"`
+	Note                      OptionalString `json:"note,omitempty"`
 }
 
 type bulkUpdateNodesRequest struct {

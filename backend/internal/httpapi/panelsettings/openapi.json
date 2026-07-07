@@ -1,17 +1,17 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/api/remnawave-settings": {
+    "/api/exodus-settings": {
       "get": {
-        "operationId": "RemnawaveSettingsController_getSettings",
+        "operationId": "ExodusSettingsController_getSettings",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Remnawave settings retrieved successfully",
+            "description": "Exodus settings retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetRemnawaveSettingsResponseDto"
+                  "$ref": "#/components/schemas/GetExodusSettingsResponseDto"
                 }
               }
             }
@@ -110,20 +110,20 @@
             "Authorization": []
           }
         ],
-        "summary": "Get Remnawave settings",
+        "summary": "Get Exodus settings",
         "tags": [
-          "Remnawave Settings Controller"
+          "Exodus Settings Controller"
         ]
       },
       "patch": {
-        "operationId": "RemnawaveSettingsController_updateSettings",
+        "operationId": "ExodusSettingsController_updateSettings",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateRemnawaveSettingsRequestDto"
+                "$ref": "#/components/schemas/UpdateExodusSettingsRequestDto"
               }
             }
           }
@@ -134,7 +134,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UpdateRemnawaveSettingsResponseDto"
+                  "$ref": "#/components/schemas/UpdateExodusSettingsResponseDto"
                 }
               }
             }
@@ -233,9 +233,9 @@
             "Authorization": []
           }
         ],
-        "summary": "Update Remnawave settings",
+        "summary": "Update Exodus settings",
         "tags": [
-          "Remnawave Settings Controller"
+          "Exodus Settings Controller"
         ]
       }
     },
@@ -12232,7 +12232,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Get SECRET_KEY for Remnawave Node",
+            "description": "Get SECRET_KEY for Exodus Node",
             "content": {
               "application/json": {
                 "schema": {
@@ -12335,7 +12335,7 @@
             "Authorization": []
           }
         ],
-        "summary": "Get SECRET_KEY for Remnawave Node",
+        "summary": "Get SECRET_KEY for Exodus Node",
         "tags": [
           "Keygen Controller"
         ]
@@ -20475,7 +20475,7 @@
             "Authorization": []
           }
         ],
-        "summary": "Get Remnawave Information",
+        "summary": "Get Exodus Information",
         "tags": [
           "System Controller"
         ]
@@ -20828,15 +20828,15 @@
     },
     "/api/system/health": {
       "get": {
-        "operationId": "SystemController_getRemnawaveHealth",
+        "operationId": "SystemController_getExodusHealth",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Returns Remnawave health",
+            "description": "Returns Exodus health",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetRemnawaveHealthResponseDto"
+                  "$ref": "#/components/schemas/GetExodusHealthResponseDto"
                 }
               }
             }
@@ -20935,7 +20935,7 @@
             "Authorization": []
           }
         ],
-        "summary": "Get Remnawave Health",
+        "summary": "Get Exodus Health",
         "tags": [
           "System Controller"
         ]
@@ -23118,13 +23118,13 @@
     }
   },
   "info": {
-    "title": "Remnawave API v2.7.4",
-    "description": "\nRemnawave is a powerful proxy managment tool, built on top of Xray-core, with a focus on simplicity and ease of use.\n\n## Resources\n* https://t.me/remnawave\n* https://github.com/remnawave\n* https://docs.rw\n",
+    "title": "Exodus API v2.7.4",
+    "description": "\nExodus is a powerful proxy managment tool, built on top of Xray-core, with a focus on simplicity and ease of use.\n\n## Resources\n* https://t.me/exodus\n* https://github.com/exodus\n* https://docs.rw\n",
     "version": "2.7.4",
     "contact": {},
     "license": {
       "name": "AGPL-3.0",
-      "url": "https://github.com/remnawave/panel?tab=AGPL-3.0-1-ov-file"
+      "url": "https://github.com/exodus/panel?tab=AGPL-3.0-1-ov-file"
     }
   },
   "tags": [
@@ -23214,7 +23214,7 @@
     },
     {
       "name": "Keygen Controller",
-      "description": "Generation of SECRET_KEY for Remnawave Node."
+      "description": "Generation of SECRET_KEY for Exodus Node."
     },
     {
       "name": "Subscription Request History Controller",
@@ -23225,7 +23225,7 @@
       "description": ""
     },
     {
-      "name": "Remnawave Settings Controller",
+      "name": "Exodus Settings Controller",
       "description": ""
     },
     {
@@ -23255,7 +23255,7 @@
       }
     },
     "schemas": {
-      "GetRemnawaveSettingsResponseDto": {
+      "GetExodusSettingsResponseDto": {
         "type": "object",
         "properties": {
           "response": {
@@ -23576,7 +23576,7 @@
           "response"
         ]
       },
-      "UpdateRemnawaveSettingsRequestDto": {
+      "UpdateExodusSettingsRequestDto": {
         "type": "object",
         "properties": {
           "passkeySettings": {
@@ -23879,7 +23879,7 @@
           }
         }
       },
-      "UpdateRemnawaveSettingsResponseDto": {
+      "UpdateExodusSettingsResponseDto": {
         "type": "object",
         "properties": {
           "response": {
@@ -27492,7 +27492,7 @@
             "default": false
           },
           "shortUuid": {
-            "description": "Optional. If not provided, a new short UUID will be generated by Remnawave. Please note that it is strongly recommended to allow Remnawave to generate the short UUID.",
+            "description": "Optional. If not provided, a new short UUID will be generated by Exodus. Please note that it is strongly recommended to allow Exodus to generate the short UUID.",
             "type": "string",
             "minLength": 6,
             "maxLength": 48
@@ -43403,7 +43403,7 @@
           "response"
         ]
       },
-      "GetRemnawaveHealthResponseDto": {
+      "GetExodusHealthResponseDto": {
         "type": "object",
         "properties": {
           "response": {
@@ -45731,7 +45731,7 @@
           "response"
         ]
       },
-      "RemnawaveWebhookUserEventsDto": {
+      "ExodusWebhookUserEventsDto": {
         "type": "object",
         "properties": {
           "scope": {
@@ -45978,7 +45978,7 @@
           "meta"
         ]
       },
-      "RemnawaveWebhookUserHwidDevicesEventsDto": {
+      "ExodusWebhookUserHwidDevicesEventsDto": {
         "type": "object",
         "properties": {
           "scope": {
@@ -46258,7 +46258,7 @@
           "data"
         ]
       },
-      "RemnawaveWebhookNodeEventsDto": {
+      "ExodusWebhookNodeEventsDto": {
         "type": "object",
         "properties": {
           "scope": {
@@ -46646,7 +46646,7 @@
           "data"
         ]
       },
-      "RemnawaveWebhookServiceEventsDto": {
+      "ExodusWebhookServiceEventsDto": {
         "type": "object",
         "properties": {
           "scope": {
@@ -46730,7 +46730,7 @@
           "data"
         ]
       },
-      "RemnawaveWebhookErrorsEventsDto": {
+      "ExodusWebhookErrorsEventsDto": {
         "type": "object",
         "properties": {
           "scope": {
@@ -46768,7 +46768,7 @@
           "data"
         ]
       },
-      "RemnawaveWebhookCrmEventsDto": {
+      "ExodusWebhookCrmEventsDto": {
         "type": "object",
         "properties": {
           "scope": {
@@ -46825,7 +46825,7 @@
           "data"
         ]
       },
-      "RemnawaveWebhookTorrentBlockerEventsDto": {
+      "ExodusWebhookTorrentBlockerEventsDto": {
         "type": "object",
         "properties": {
           "scope": {

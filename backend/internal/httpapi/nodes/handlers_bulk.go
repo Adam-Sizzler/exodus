@@ -83,6 +83,9 @@ func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, manager *dbma
 	if fields.ConsumptionMultiplier != nil {
 		add("consumption_multiplier", toNanoMultiplier(*fields.ConsumptionMultiplier))
 	}
+	if fields.NodeConsumptionMultiplier != nil {
+		add("node_consumption_multiplier", toNanoMultiplier(*fields.NodeConsumptionMultiplier))
+	}
 	if fields.ProviderUUID.Set {
 		if fields.ProviderUUID.Value == nil || strings.TrimSpace(*fields.ProviderUUID.Value) == "" {
 			clauses = append(clauses, "provider_uuid = NULL")
@@ -92,6 +95,13 @@ func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, manager *dbma
 	}
 	if fields.Tags != nil {
 		add("tags", normalizeTags(*fields.Tags))
+	}
+	if fields.Note.Set {
+		if fields.Note.Value == nil || strings.TrimSpace(*fields.Note.Value) == "" {
+			clauses = append(clauses, "note = NULL")
+		} else {
+			add("note", strings.TrimSpace(*fields.Note.Value))
+		}
 	}
 	if fields.ActivePluginUUID.Set {
 		if fields.ActivePluginUUID.Value == nil || strings.TrimSpace(*fields.ActivePluginUUID.Value) == "" {

@@ -2,16 +2,25 @@ package panelsettings
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"exodus/internal/config"
+	"exodus/internal/constant"
 	"exodus/internal/httpapi/shared"
 )
 
 //go:embed openapi.json
 var openapiJSON []byte
+
+var (
+	exodusOpenAPIOnce  sync.Once
+	exodusOpenAPIBytes []byte
+	exodusOpenAPIErr   error
+)
 
 // buildDocsResponse builds the "docs" field for GET /api/tokens response.
 // When IS_DOCS_ENABLED=false all paths are null — the frontend hides the buttons.
@@ -150,7 +159,93 @@ func DocsOpenAPIHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		spec, err := exodusOpenAPISpec()
+		if err != nil {
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to prepare openapi spec")
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(openapiJSON)
+		_, _ = w.Write(spec)
 	}
+}
+
+func exodusOpenAPISpec() ([]byte, error) {
+	exodusOpenAPIOnce.Do(func() {
+		exodusOpenAPIBytes, exodusOpenAPIErr = buildExodusOpenAPISpec()
+	})
+	return exodusOpenAPIBytes, exodusOpenAPIErr
+}
+
+func buildExodusOpenAPISpec() ([]byte, error) {
+	var doc map[string]any
+	if err := json.Unmarshal(openapiJSON, &doc); err != nil {
+		return nil, err
+	}
+
+	if paths, ok := doc["paths"].(map[string]any); ok {
+		if settings, ok := paths["/api/remnawave-settings"]; ok {
+			paths["/api/exodus-settings"] = settings
+			delete(paths, "/api/remnawave-settings")
+		}
+		for path := range paths {
+			if strings.HasPrefix(path, "/api/ip-control/") || strings.HasPrefix(path, "/api/node-plugins/torrent-blocker") {
+				delete(paths, path)
+			}
+		}
+	}
+
+	if info, ok := doc["info"].(map[string]any); ok {
+		info["title"] = "Exodus API"
+		info["description"] = "Exodus dashboard and node-management API."
+		info["version"] = constant.Version
+		info["license"] = map[string]any{"name": "AGPL-3.0"}
+	}
+
+	if tags, ok := doc["tags"].([]any); ok {
+		cleanTags := make([]any, 0, len(tags))
+		for _, rawTag := range tags {
+			tag, ok := rawTag.(map[string]any)
+			if !ok {
+				cleanTags = append(cleanTags, rawTag)
+				continue
+			}
+			name := strings.ToLower(fmt.Sprint(tag["name"]))
+			if strings.Contains(name, "ip control") || strings.Contains(name, "torrent blocker") {
+				continue
+			}
+			cleanTags = append(cleanTags, rawTag)
+		}
+		doc["tags"] = cleanTags
+	}
+
+	if components, ok := doc["components"].(map[string]any); ok {
+		if schemas, ok := components["schemas"].(map[string]any); ok {
+			for name := range schemas {
+				lower := strings.ToLower(name)
+				if strings.Contains(lower, "torrentblocker") || strings.Contains(lower, "ipcontrol") {
+					delete(schemas, name)
+				}
+			}
+		}
+	}
+
+	spec, err := json.Marshal(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	replacer := strings.NewReplacer(
+		"exodusSettings", "ExodusSettings",
+		"Getexodus", "GetExodus",
+		"Updateexodus", "UpdateExodus",
+		"exodus Settings Controller", "Exodus Settings Controller",
+		"exodus settings", "Exodus settings",
+		"exodus Node", "Exodus Node",
+		"exodus Information", "Exodus Information",
+		"exodus Health", "Exodus Health",
+		"exodus health", "Exodus health",
+		"exodus API", "Exodus API",
+	)
+
+	return []byte(replacer.Replace(string(spec))), nil
 }

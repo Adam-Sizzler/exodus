@@ -11,22 +11,24 @@ import (
 
 // DBNode represents a node loaded from database.
 type DBNode struct {
-	UUID                    string
-	Name                    string
-	Address                 string
-	Port                    int
-	APISchema               string
-	APIPath                 string
-	GRPCAuthToken           string
-	IsDisabled              bool
-	ConsumptionMultiplier   int64
-	IsTrafficTrackingActive bool
-	TrafficResetDay         int
-	TrafficLimitBytes       int64
-	NotifyPercent           int
-	ViewPosition            int
-	CountryCode             string
-	Tags                    []string
+	UUID                      string
+	Name                      string
+	Address                   string
+	Port                      int
+	ProxyURL                  string
+	APISchema                 string
+	APIPath                   string
+	GRPCAuthToken             string
+	IsDisabled                bool
+	ConsumptionMultiplier     int64
+	NodeConsumptionMultiplier int64
+	IsTrafficTrackingActive   bool
+	TrafficResetDay           int
+	TrafficLimitBytes         int64
+	NotifyPercent             int
+	ViewPosition              int
+	CountryCode               string
+	Tags                      []string
 }
 
 // LoadNodesFromDB loads all active nodes from the database.
@@ -35,8 +37,8 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		query := `
-			SELECT uuid, name, address, port, api_schema, api_path, grpc_auth_token,
-			       is_disabled, consumption_multiplier, is_traffic_tracking_active,
+			SELECT uuid, name, address, port, proxy_url, api_schema, api_path, grpc_auth_token,
+			       is_disabled, consumption_multiplier, node_consumption_multiplier, is_traffic_tracking_active,
 			       traffic_reset_day, traffic_limit_bytes, notify_percent,
 			       view_position, country_code, tags
 			FROM nodes
@@ -52,14 +54,14 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 		for rows.Next() {
 			var n DBNode
 			var port sql.NullInt64
-			var apiSchema, apiPath, grpcAuthToken, countryCode sql.NullString
+			var proxyURL, apiSchema, apiPath, grpcAuthToken, countryCode sql.NullString
 			var tags dbutil.StringArray
-			var consumptionMultiplier, trafficLimitBytes, trafficResetDay, notifyPercent, viewPosition sql.NullInt64
+			var consumptionMultiplier, nodeConsumptionMultiplier, trafficLimitBytes, trafficResetDay, notifyPercent, viewPosition sql.NullInt64
 			var isTrafficTrackingActive sql.NullBool
 
 			err := rows.Scan(
-				&n.UUID, &n.Name, &n.Address, &port, &apiSchema, &apiPath, &grpcAuthToken,
-				&n.IsDisabled, &consumptionMultiplier, &isTrafficTrackingActive,
+				&n.UUID, &n.Name, &n.Address, &port, &proxyURL, &apiSchema, &apiPath, &grpcAuthToken,
+				&n.IsDisabled, &consumptionMultiplier, &nodeConsumptionMultiplier, &isTrafficTrackingActive,
 				&trafficResetDay, &trafficLimitBytes, &notifyPercent, &viewPosition,
 				&countryCode, &tags,
 			)
@@ -71,6 +73,9 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 				n.Port = int(port.Int64)
 			} else {
 				n.Port = 9253
+			}
+			if proxyURL.Valid {
+				n.ProxyURL = proxyURL.String
 			}
 			if apiSchema.Valid {
 				n.APISchema = apiSchema.String
@@ -88,7 +93,12 @@ func LoadNodesFromDB(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 			if consumptionMultiplier.Valid {
 				n.ConsumptionMultiplier = consumptionMultiplier.Int64
 			} else {
-				n.ConsumptionMultiplier = 100
+				n.ConsumptionMultiplier = 1_000_000_000
+			}
+			if nodeConsumptionMultiplier.Valid {
+				n.NodeConsumptionMultiplier = nodeConsumptionMultiplier.Int64
+			} else {
+				n.NodeConsumptionMultiplier = 1_000_000_000
 			}
 			if isTrafficTrackingActive.Valid {
 				n.IsTrafficTrackingActive = isTrafficTrackingActive.Bool

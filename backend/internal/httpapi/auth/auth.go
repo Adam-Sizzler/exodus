@@ -169,7 +169,7 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 
 // RequireAdminRole wraps a handler so that only an interactive ADMIN session
 // (browser login) may proceed; API tokens (Role == "API") are rejected with
-// 403. This mirrors upstream Remnawave's @Roles(ROLE.ADMIN) restriction on
+// 403. This mirrors upstream Exodus's @Roles(ROLE.ADMIN) restriction on
 // its API-tokens controller: a leaked or scripted API token must not be able
 // to mint, list, or delete other API tokens (which would otherwise grant it
 // the ability to create a fresh, never-expiring credential for itself).
@@ -177,7 +177,7 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 // In addition to the role check, it requires the X-Exodus-Client-Type: browser
 // header that the frontend axios instance sends on every request. This means
 // a stolen ADMIN JWT used directly via curl/script without the header is
-// rejected, matching Remnawave's X-Remnawave-Client-Type: browser guard.
+// rejected, matching Exodus's X-Exodus-Client-Type: browser guard.
 //
 // WithPanelAuth must run before this handler so that CurrentAuthPrincipal is
 // populated; routes wrapped with RequireAdminRole still pass through the

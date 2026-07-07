@@ -95,17 +95,18 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 
 		_, err = tx.ExecContext(r.Context(), `
 			INSERT INTO nodes (
-				uuid, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
+				uuid, name, address, port, proxy_url, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				consumption_multiplier,
+				consumption_multiplier, node_consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-				notify_percent, provider_uuid, country_code, tags, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				notify_percent, provider_uuid, country_code, tags, note, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`,
 			nodeUUID,
 			strings.TrimSpace(req.Name),
 			strings.TrimSpace(req.Address),
 			req.Port,
+			normalizeNullableString(req.ProxyURL),
 			normalizeAPISchema(req.APISchema),
 			normalizeAPIPath(req.APIPath),
 			grpcAuthToken,
@@ -117,6 +118,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			nil,
 			nil,
 			toNanoMultiplier(coalesceFloat(req.ConsumptionMultiplier, 1)),
+			toNanoMultiplier(coalesceFloat(req.NodeConsumptionMultiplier, 1)),
 			coalesceBool(req.IsTrafficTrackingActive, false),
 			coalesceInt(req.TrafficResetDay, 1),
 			coalesceInt64(req.TrafficLimitBytes, 0),
@@ -125,6 +127,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			normalizeNullableString(req.ProviderUUID),
 			normalizeCountryCode(req.CountryCode),
 			normalizeTags(req.Tags),
+			normalizeNullableString(req.Note),
 			now,
 			now,
 		)
@@ -219,6 +222,13 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		if req.Port != nil {
 			add("port", *req.Port)
 		}
+		if req.ProxyURL.Set {
+			if req.ProxyURL.Value == nil || strings.TrimSpace(*req.ProxyURL.Value) == "" {
+				clauses = append(clauses, "proxy_url = NULL")
+			} else {
+				add("proxy_url", strings.TrimSpace(*req.ProxyURL.Value))
+			}
+		}
 		if req.APISchema != nil {
 			add("api_schema", normalizeAPISchema(req.APISchema))
 		}
@@ -246,8 +256,18 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		if req.ConsumptionMultiplier != nil {
 			add("consumption_multiplier", toNanoMultiplier(*req.ConsumptionMultiplier))
 		}
+		if req.NodeConsumptionMultiplier != nil {
+			add("node_consumption_multiplier", toNanoMultiplier(*req.NodeConsumptionMultiplier))
+		}
 		if req.Tags != nil {
 			add("tags", normalizeTags(*req.Tags))
+		}
+		if req.Note.Set {
+			if req.Note.Value == nil || strings.TrimSpace(*req.Note.Value) == "" {
+				clauses = append(clauses, "note = NULL")
+			} else {
+				add("note", strings.TrimSpace(*req.Note.Value))
+			}
 		}
 		if req.ProviderUUID.Set {
 			if req.ProviderUUID.Value == nil || strings.TrimSpace(*req.ProviderUUID.Value) == "" {

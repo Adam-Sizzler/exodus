@@ -108,6 +108,60 @@ func TestNodeMultiplierRoundTrip(t *testing.T) {
 	}
 }
 
+func TestValidateProxyURLMatchesFrontendContract(t *testing.T) {
+	valid := []string{
+		"socks5://127.0.0.1:1080",
+		"socks5://user:pass@example.com:1080",
+		"socks5://user@example.com:1080",
+	}
+	for _, value := range valid {
+		t.Run(value, func(t *testing.T) {
+			if err := validateProxyURL(&value); err != nil {
+				t.Fatalf("expected valid proxyUrl, got %v", err)
+			}
+		})
+	}
+
+	invalid := []string{
+		"http://127.0.0.1:1080",
+		"socks5://127.0.0.1",
+		"socks5://user:pass@example.com",
+	}
+	for _, value := range invalid {
+		t.Run(value, func(t *testing.T) {
+			if err := validateProxyURL(&value); err == nil {
+				t.Fatal("expected invalid proxyUrl")
+			}
+		})
+	}
+}
+
+func TestValidateNode28Fields(t *testing.T) {
+	note := strings.Repeat("a", 255)
+	if err := validateNote(&note); err != nil {
+		t.Fatalf("expected note at 255 chars to be valid, got %v", err)
+	}
+
+	tooLongNote := strings.Repeat("a", 256)
+	if err := validateNote(&tooLongNote); err == nil {
+		t.Fatal("expected note over 255 chars to be invalid")
+	}
+
+	multiplier := 100.1
+	err := validateCreateRequest(createNodeRequest{
+		Name:                      "node-a",
+		Address:                   "127.0.0.1",
+		NodeConsumptionMultiplier: &multiplier,
+		ConfigProfile: configProfileRefRequest{
+			ActiveConfigProfileUUID: "00000000-0000-4000-8000-000000000000",
+			ActiveInbounds:          []string{"00000000-0000-4000-8000-000000000001"},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected nodeConsumptionMultiplier over 100 to be invalid")
+	}
+}
+
 func TestBuildNodeVersions(t *testing.T) {
 	if got := buildNodeVersions(nil, nil); got != nil {
 		t.Fatalf("buildNodeVersions(nil, nil) = %#v, want nil", got)

@@ -208,6 +208,7 @@ model Nodes {
   name    String @unique @map("name")
   address String @unique @map("address")
   port    Int?   @map("port")
+  proxyUrl String? @map("proxy_url")
   apiSchema String @default("grpc") @map("api_schema")
   apiPath   String @default("") @map("api_path")
   grpcAuthToken String @default(dbgenerated("encode(gen_random_bytes(32), 'hex'::text)")) @map("grpc_auth_token")
@@ -223,6 +224,7 @@ model Nodes {
   lastStatusMessage String?   @map("last_status_message")
 
   consumptionMultiplier BigInt @default(1000000000) @map("consumption_multiplier")
+  nodeConsumptionMultiplier BigInt @default(1000000000) @map("node_consumption_multiplier")
 
   isTrafficTrackingActive Boolean @default(false) @map("is_traffic_tracking_active")
   trafficResetDay         Int?    @default(1) @map("traffic_reset_day")
@@ -235,6 +237,7 @@ model Nodes {
   viewPosition Int      @default(autoincrement()) @map("view_position")
   countryCode  String   @default("XX") @map("country_code")
   tags         String[] @default([]) @map("tags")
+  note         String?  @map("note") @db.VarChar(255)
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")

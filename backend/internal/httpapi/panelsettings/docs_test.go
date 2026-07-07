@@ -1,6 +1,7 @@
 package panelsettings
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -46,5 +47,40 @@ func TestDocsOpenAPIHandlerDisabled(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status got %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
+	cfg := &config.BackendConfig{}
+	cfg.Docs.IsEnabled = true
+
+	req := httptest.NewRequest(http.MethodGet, "/docs/openapi.json", nil)
+	rec := httptest.NewRecorder()
+
+	DocsOpenAPIHandler(cfg)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status got %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var spec struct {
+		Info struct {
+			Title string `json:"title"`
+		} `json:"info"`
+		Paths map[string]any `json:"paths"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &spec); err != nil {
+		t.Fatalf("openapi response is invalid JSON: %v", err)
+	}
+	if spec.Info.Title != "Exodus API" {
+		t.Fatalf("title got %q, want Exodus API", spec.Info.Title)
+	}
+	if _, exists := spec.Paths["/api/exodus-settings"]; !exists {
+		t.Fatal("expected /api/exodus-settings path")
+	}
+	for path := range spec.Paths {
+		if strings.Contains(path, "remnawave-settings") || strings.Contains(path, "ip-control") || strings.Contains(path, "torrent-blocker") {
+			t.Fatalf("unexpected unsupported path in openapi spec: %s", path)
+		}
 	}
 }

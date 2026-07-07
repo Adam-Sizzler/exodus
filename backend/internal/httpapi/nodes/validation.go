@@ -25,6 +25,9 @@ func validateCreateRequest(req createNodeRequest) error {
 	if req.Port != nil && (*req.Port < 1 || *req.Port > 65535) {
 		return fmt.Errorf("invalid port")
 	}
+	if err := validateProxyURL(req.ProxyURL); err != nil {
+		return err
+	}
 	if req.APISchema != nil && strings.TrimSpace(*req.APISchema) == "" {
 		return fmt.Errorf("apiSchema cannot be empty")
 	}
@@ -42,6 +45,9 @@ func validateCreateRequest(req createNodeRequest) error {
 	}
 	if req.ConsumptionMultiplier != nil && (*req.ConsumptionMultiplier < 0 || *req.ConsumptionMultiplier > 100) {
 		return fmt.Errorf("consumptionMultiplier must be between 0 and 100")
+	}
+	if req.NodeConsumptionMultiplier != nil && (*req.NodeConsumptionMultiplier < 0 || *req.NodeConsumptionMultiplier > 100) {
+		return fmt.Errorf("nodeConsumptionMultiplier must be between 0 and 100")
 	}
 	if req.ActivePluginUUID != nil && strings.TrimSpace(*req.ActivePluginUUID) != "" {
 		if _, err := uuid.Parse(strings.TrimSpace(*req.ActivePluginUUID)); err != nil {
@@ -63,6 +69,9 @@ func validateCreateRequest(req createNodeRequest) error {
 			return fmt.Errorf("countryCode must be 2 characters")
 		}
 	}
+	if err := validateNote(req.Note); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -78,6 +87,11 @@ func validateUpdateRequest(req updateNodeRequest) error {
 	}
 	if req.Port != nil && (*req.Port < 1 || *req.Port > 65535) {
 		return fmt.Errorf("invalid port")
+	}
+	if req.ProxyURL.Set {
+		if err := validateProxyURL(req.ProxyURL.Value); err != nil {
+			return err
+		}
 	}
 	if req.APISchema != nil && strings.TrimSpace(*req.APISchema) == "" {
 		return fmt.Errorf("apiSchema cannot be empty")
@@ -96,6 +110,9 @@ func validateUpdateRequest(req updateNodeRequest) error {
 	}
 	if req.ConsumptionMultiplier != nil && (*req.ConsumptionMultiplier < 0 || *req.ConsumptionMultiplier > 100) {
 		return fmt.Errorf("consumptionMultiplier must be between 0 and 100")
+	}
+	if req.NodeConsumptionMultiplier != nil && (*req.NodeConsumptionMultiplier < 0 || *req.NodeConsumptionMultiplier > 100) {
+		return fmt.Errorf("nodeConsumptionMultiplier must be between 0 and 100")
 	}
 	if req.ActivePluginUUID.Set && req.ActivePluginUUID.Value != nil && strings.TrimSpace(*req.ActivePluginUUID.Value) != "" {
 		if _, err := uuid.Parse(strings.TrimSpace(*req.ActivePluginUUID.Value)); err != nil {
@@ -121,6 +138,11 @@ func validateUpdateRequest(req updateNodeRequest) error {
 			return fmt.Errorf("countryCode must be 2 characters")
 		}
 	}
+	if req.Note.Set {
+		if err := validateNote(req.Note.Value); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -131,6 +153,9 @@ func validateBulkUpdateRequest(req bulkUpdateNodesRequest) error {
 	fields := req.Fields
 	if fields.ConsumptionMultiplier != nil && (*fields.ConsumptionMultiplier < 0 || *fields.ConsumptionMultiplier > 100) {
 		return fmt.Errorf("consumptionMultiplier must be between 0 and 100")
+	}
+	if fields.NodeConsumptionMultiplier != nil && (*fields.NodeConsumptionMultiplier < 0 || *fields.NodeConsumptionMultiplier > 100) {
+		return fmt.Errorf("nodeConsumptionMultiplier must be between 0 and 100")
 	}
 	if fields.CountryCode != nil {
 		code := strings.TrimSpace(*fields.CountryCode)
@@ -152,6 +177,31 @@ func validateBulkUpdateRequest(req bulkUpdateNodesRequest) error {
 		if err := validateTags(*fields.Tags); err != nil {
 			return err
 		}
+	}
+	if fields.Note.Set {
+		if err := validateNote(fields.Note.Value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateProxyURL(value *string) error {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return nil
+	}
+	if !nodeProxyURLRegex.MatchString(strings.TrimSpace(*value)) {
+		return fmt.Errorf("proxyUrl must match socks5://[user:pass@]host:port")
+	}
+	return nil
+}
+
+func validateNote(value *string) error {
+	if value == nil {
+		return nil
+	}
+	if len(strings.TrimSpace(*value)) > 255 {
+		return fmt.Errorf("note must be less than 255 characters")
 	}
 	return nil
 }

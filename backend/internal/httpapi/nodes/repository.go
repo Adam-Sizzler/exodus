@@ -17,11 +17,11 @@ func getAllNodeRecords(ctx context.Context, manager *dbmanager.DatabaseManager) 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
 			SELECT
-					uuid, id, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
+				uuid, id, name, address, port, proxy_url, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				consumption_multiplier,
+				consumption_multiplier, node_consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-				notify_percent, provider_uuid, view_position, country_code, tags,
+				notify_percent, provider_uuid, view_position, country_code, tags, note,
 				created_at, updated_at
 			FROM nodes
 			ORDER BY view_position ASC
@@ -47,11 +47,11 @@ func getNodeByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, node
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
 			SELECT
-					uuid, id, name, address, port, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
+				uuid, id, name, address, port, proxy_url, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 				is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
-				consumption_multiplier,
+				consumption_multiplier, node_consumption_multiplier,
 				is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-				notify_percent, provider_uuid, view_position, country_code, tags,
+				notify_percent, provider_uuid, view_position, country_code, tags, note,
 				created_at, updated_at
 			FROM nodes
 			WHERE uuid = ?
@@ -67,6 +67,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var node nodeRecord
 	var id sql.NullInt64
 	var port sql.NullInt64
+	var proxyURL sql.NullString
 	var activeConfigProfileUUID sql.NullString
 	var activePluginUUID sql.NullString
 	var lastStatusChange sql.NullTime
@@ -77,6 +78,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var notifyPercent sql.NullInt64
 	var providerUUID sql.NullString
 	var tags dbutil.StringArray
+	var note sql.NullString
 
 	err := scanner.Scan(
 		&node.UUID,
@@ -84,6 +86,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.Name,
 		&node.Address,
 		&port,
+		&proxyURL,
 		&node.APISchema,
 		&node.APIPath,
 		&node.GRPCAuthToken,
@@ -95,6 +98,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&lastStatusChange,
 		&lastStatusMessage,
 		&node.ConsumptionMultiplier,
+		&node.NodeConsumptionMultiplier,
 		&node.IsTrafficTrackingActive,
 		&trafficResetDay,
 		&trafficLimitBytes,
@@ -104,6 +108,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.ViewPosition,
 		&node.CountryCode,
 		&tags,
+		&note,
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
@@ -117,6 +122,9 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	if port.Valid {
 		value := int(port.Int64)
 		node.Port = &value
+	}
+	if proxyURL.Valid {
+		node.ProxyURL = &proxyURL.String
 	}
 	if activeConfigProfileUUID.Valid {
 		node.ActiveConfigProfileUUID = &activeConfigProfileUUID.String
@@ -148,6 +156,9 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		node.ProviderUUID = &providerUUID.String
 	}
 	node.Tags = tags.Slice()
+	if note.Valid {
+		node.Note = &note.String
+	}
 
 	return node, nil
 }

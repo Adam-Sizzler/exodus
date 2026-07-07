@@ -40,13 +40,13 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 			continue
 		}
 		groupProxies := ensureYAMLMappingSequenceValue(group, "proxies")
-		remnawaveNode := yamlMappingNode(group, "exodus")
+		exodusNode := yamlMappingNode(group, "exodus")
 		deleteYAMLMappingKey(group, "exodus")
-		if remnawaveNode != nil {
-			if v, ok := yamlMappingBool(remnawaveNode, "include-proxies"); ok && !v {
+		if exodusNode != nil {
+			if v, ok := yamlMappingBool(exodusNode, "include-proxies"); ok && !v {
 				continue
 			}
-			if v, ok := yamlMappingBool(remnawaveNode, "select-random-proxy"); ok && v {
+			if v, ok := yamlMappingBool(exodusNode, "select-random-proxy"); ok && v {
 				if len(proxyNames) > 0 {
 					picked := proxyNames[rand.Intn(len(proxyNames))]
 					existing := yamlSequenceStrings(groupProxies)
@@ -54,7 +54,7 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 				}
 				continue
 			}
-			if v, ok := yamlMappingBool(remnawaveNode, "shuffle-proxies-order"); ok && v {
+			if v, ok := yamlMappingBool(exodusNode, "shuffle-proxies-order"); ok && v {
 				shuffled := make([]string, len(proxyNames))
 				copy(shuffled, proxyNames)
 				rand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
@@ -98,12 +98,12 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 			if providerNode == nil || providerNode.Kind != yaml.MappingNode {
 				continue
 			}
-			remnawaveNode := yamlMappingNode(providerNode, "remnawave")
-			if remnawaveNode == nil {
+			exodusNode := yamlMappingNode(providerNode, "exodus")
+			if exodusNode == nil {
 				continue
 			}
-			deleteYAMLMappingKey(providerNode, "remnawave")
-			v, ok := yamlMappingBool(remnawaveNode, "include-proxies")
+			deleteYAMLMappingKey(providerNode, "exodus")
+			v, ok := yamlMappingBool(exodusNode, "include-proxies")
 			if !ok || !v {
 				continue
 			}
