@@ -119,7 +119,7 @@ func OAuth2AuthorizeHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 		codeVerifier := ""
-		authURL, err := buildAuthorizationURL(provider, providerSettings, state, &codeVerifier)
+		authURL, err := buildAuthorizationURL(provider, providerSettings, cfg.Panel.BasePath, state, &codeVerifier)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "OAuth2 authorize error", err, cfg)
 			return
@@ -170,7 +170,7 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
 			return
 		}
-		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
+		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, cfg.Panel.BasePath, strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
 		if err != nil {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "callback_error", r)
 			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
@@ -304,7 +304,7 @@ func getOAuthProviderSettings(settings oauthSettings, provider string) oauthProv
 	}
 }
 
-func buildAuthorizationURL(provider string, settings oauthProviderSettings, state string, codeVerifier *string) (string, error) {
+func buildAuthorizationURL(provider string, settings oauthProviderSettings, basePath, state string, codeVerifier *string) (string, error) {
 	switch provider {
 	case "github":
 		if settings.ClientID == "" || settings.ClientSecret == "" {
@@ -347,7 +347,7 @@ func buildAuthorizationURL(provider string, settings oauthProviderSettings, stat
 		return makeOAuthURL(fmt.Sprintf("https://%s/realms/%s/protocol/openid-connect/auth", settings.KeycloakDomain, settings.Realm), url.Values{
 			"response_type":         {"code"},
 			"client_id":             {settings.ClientID},
-			"redirect_uri":          {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"redirect_uri":          {oauthRedirectURI(settings.FrontendDomain, basePath, provider)},
 			"state":                 {state},
 			"scope":                 {oauthScope},
 			"code_challenge_method": {"S256"},
@@ -360,7 +360,7 @@ func buildAuthorizationURL(provider string, settings oauthProviderSettings, stat
 		values := url.Values{
 			"response_type": {"code"},
 			"client_id":     {settings.ClientID},
-			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, basePath, provider)},
 			"state":         {state},
 			"scope":         {oauthScope},
 		}
@@ -386,7 +386,7 @@ func buildAuthorizationURL(provider string, settings oauthProviderSettings, stat
 		return makeOAuthURL("https://oauth.telegram.org/auth", url.Values{
 			"response_type":         {"code"},
 			"client_id":             {settings.ClientID},
-			"redirect_uri":          {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"redirect_uri":          {oauthRedirectURI(settings.FrontendDomain, basePath, provider)},
 			"state":                 {state},
 			"scope":                 {"openid profile telegram:bot_access"},
 			"code_challenge_method": {"S256"},
@@ -453,7 +453,7 @@ func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProvi
 			"client_id":     {settings.ClientID},
 			"client_secret": {settings.ClientSecret},
 			"code":          {code},
-			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, basePath, provider)},
 			"code_verifier": {codeVerifier},
 		})
 		if err != nil {
@@ -466,7 +466,7 @@ func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProvi
 			"client_id":     {settings.ClientID},
 			"client_secret": {settings.ClientSecret},
 			"code":          {code},
-			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, basePath, provider)},
 		}
 		if settings.WithPKCE {
 			values.Set("code_verifier", codeVerifier)
@@ -482,7 +482,7 @@ func exchangeOAuthCode(ctx context.Context, provider string, settings oauthProvi
 			"client_id":     {settings.ClientID},
 			"client_secret": {settings.ClientSecret},
 			"code":          {code},
-			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, provider)},
+			"redirect_uri":  {oauthRedirectURI(settings.FrontendDomain, basePath, provider)},
 			"code_verifier": {codeVerifier},
 		})
 		if err != nil {
@@ -663,8 +663,9 @@ func generatePKCEPair() (string, string, error) {
 	return verifier, base64.RawURLEncoding.EncodeToString(sum[:]), nil
 }
 
-func oauthRedirectURI(frontendDomain, provider string) string {
-	return "https://" + strings.TrimRight(frontendDomain, "/") + "/oauth2/callback/" + provider
+func oauthRedirectURI(frontendDomain, basePath, provider string) string {
+	base := strings.TrimRight(strings.TrimSpace(basePath), "/")
+	return "https://" + strings.TrimRight(frontendDomain, "/") + base + "/oauth2/callback/" + provider
 }
 
 func isEmailAllowed(email string, allowed []string) bool {
