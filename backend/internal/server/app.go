@@ -19,6 +19,7 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/proto"
 	"github.com/exodus/subscription-page/backend/internal/security"
+	"github.com/exodus/subscription-page/backend/internal/srslists"
 )
 
 const sessionCookieName = "session"
@@ -236,6 +237,11 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	routePath, ok := a.applyCustomPrefix(requestPath)
 	if !ok {
 		closeConnection(w)
+		return
+	}
+
+	if srslists.IsRulesetRoute(routePath) {
+		srslists.ServeHTTP(w, r, routePath)
 		return
 	}
 
@@ -681,5 +687,3 @@ func protoHeadersToHTTPHeader(headers []*proto.Header) http.Header {
 	}
 	return result
 }
-
-

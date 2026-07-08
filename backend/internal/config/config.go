@@ -103,7 +103,7 @@ Please fix your .env file and restart the application.`, err.Error())
 }
 
 func Load() (Config, error) {
-	pathPrefix := normalizePathPrefix(os.Getenv("SUB_PATH"))
+	pathPrefix := normalizePathPrefix(firstEnv("SUB_GRPC_PATH", "SUB_PATH"))
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
 	cfg := Config{

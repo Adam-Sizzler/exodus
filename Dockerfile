@@ -21,7 +21,7 @@ RUN set -eu; \
 FROM alpine:3.23
 WORKDIR /opt/app
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates && mkdir -p /opt/app/ruleset
 
 COPY --from=backend-build /opt/app/subscription-page ./subscription-page
 COPY frontend/dist/ ./frontend/

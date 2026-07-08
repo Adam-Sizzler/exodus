@@ -17,6 +17,7 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/grpcserver"
 	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/server"
+	"github.com/exodus/subscription-page/backend/internal/srslists"
 )
 
 var buildVersion = "unknown"
@@ -53,6 +54,7 @@ func main() {
 
 	resolvedVersion := resolveNodeVersion(cfg.AppVersion)
 	nodeService := grpcapi.NewNodeServer(resolvedVersion)
+	srslists.StartAutoUpdater(ctx)
 
 	application, appErr := server.New(cfg, nodeService)
 	if appErr != nil {

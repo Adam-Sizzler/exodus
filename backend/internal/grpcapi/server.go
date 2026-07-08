@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/proto"
+	"github.com/exodus/subscription-page/backend/internal/srslists"
 
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
@@ -265,12 +267,44 @@ func (s *NodeServer) SetUserEnabled(context.Context, *proto.SetUserEnabledReques
 	return &proto.OperationResponse{Status: okStatus("user status updated")}, nil
 }
 
-func (s *NodeServer) SubmitTask(_ context.Context, task *proto.NodeTask) (*statuspb.Status, error) {
-	message := "task accepted"
-	if task != nil && strings.TrimSpace(task.Operation) != "" {
-		message = fmt.Sprintf("task accepted: %s", strings.TrimSpace(task.Operation))
+func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*statuspb.Status, error) {
+	if task == nil {
+		return &statuspb.Status{Code: int32(codes.InvalidArgument), Message: "task is nil"}, nil
 	}
-	return okStatus(message), nil
+
+	operation := strings.TrimSpace(task.Operation)
+	switch operation {
+	case "sync_srs_lists":
+		var payload struct {
+			SRSLists []srslists.ListItem `json:"srs_lists"`
+		}
+		if err := json.Unmarshal(task.Payload, &payload); err != nil {
+			logger.WithContext("SRSService").Warn("Invalid sync_srs_lists payload", logger.String("task_id", task.TaskId), logger.String("error", err.Error()))
+			return &statuspb.Status{
+				Code:    int32(codes.InvalidArgument),
+				Message: fmt.Sprintf("invalid sync_srs_lists payload: %v", err),
+			}, nil
+		}
+
+		summary, err := srslists.SyncLists(ctx, payload.SRSLists)
+		if err != nil {
+			return &statuspb.Status{Code: int32(codes.FailedPrecondition), Message: err.Error()}, nil
+		}
+		return &statuspb.Status{
+			Code: int32(codes.OK),
+			Message: fmt.Sprintf(
+				"success: total=%d configured=%d downloaded=%d failed=%d",
+				summary.Total,
+				summary.Configured,
+				summary.Downloaded,
+				summary.Failed,
+			),
+		}, nil
+	case "":
+		return okStatus("task accepted"), nil
+	default:
+		return okStatus(fmt.Sprintf("task accepted: %s", operation)), nil
+	}
 }
 
 func (s *NodeServer) GetTaskStatus(context.Context, *proto.TaskStatusRequest) (*proto.TaskStatusResponse, error) {

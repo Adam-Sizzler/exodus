@@ -9,6 +9,8 @@ services:
       - SUB_GRPC_ADDRESS=${SUB_GRPC_ADDRESS:-0.0.0.0}
       - SUB_GRPC_PORT=${SUB_GRPC_PORT:-2222}
       - SUB_PATH=${SUB_PATH:-/}
+      - SUB_GRPC_PATH=${SUB_GRPC_PATH:-}
+      - SUB_SRS_DIR=${SUB_SRS_DIR:-/opt/app/ruleset}
       - SUB_GRPC_TOKEN=${SUB_GRPC_TOKEN:-}
       - SUB_SECRET_KEY=${SUB_SECRET_KEY:-}
     ports:
