@@ -26,6 +26,7 @@ import { copyScreenshotToClipboard, downloadScreenshot } from '@shared/utils/cop
 import {
     BG_STYLES,
     CARD_SECTIONS,
+    DEFAULT_ACCENT,
     DEFAULT_SECTIONS,
     MASKABLE_FIELDS,
     SWATCHES
@@ -38,7 +39,7 @@ export function RecapContent() {
 
     const [cardKey, setCardKey] = useState(0)
     const [sections, setSections] = useState<string[]>(DEFAULT_SECTIONS)
-    const [accent, setAccent] = useState(SWATCHES[0])
+    const [accent, setAccent] = useState(DEFAULT_ACCENT)
     const [copying, setCopying] = useState(false)
     const [downloading, setDownloading] = useState(false)
     const [maskedFields, setMaskedFields] = useState<string[]>([])
@@ -231,7 +232,7 @@ export function RecapContent() {
                     <div className={classes.brand}>
                         <Logo size={24} style={{ color: accent }} />
                         <span className={classes.brandName}>
-                            <span style={{ color: accent }}>EXO</span>DUS
+                            EXO<span style={{ color: accent }}>DUS</span>
                         </span>
                     </div>
 
@@ -381,7 +382,7 @@ export function RecapContent() {
                         <TextInput
                             maxLength={40}
                             onChange={(e) => setCustomNote(e.currentTarget.value)}
-                            placeholder="RW <3"
+                            placeholder="EX <3"
                             size="xs"
                             value={customNote}
                         />

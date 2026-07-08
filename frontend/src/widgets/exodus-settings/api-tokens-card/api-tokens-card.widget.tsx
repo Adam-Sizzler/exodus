@@ -15,10 +15,10 @@ import { useTranslation } from 'react-i18next'
 import { PiBookOpenTextDuotone, PiEmpty } from 'react-icons/pi'
 import { SiSwagger } from 'react-icons/si'
 import { TbCookie, TbPlus, TbRefresh } from 'react-icons/tb'
-import { Link } from 'react-router'
 
 import { useGetApiTokens } from '@shared/api/hooks'
 import { useIsMobile } from '@shared/hooks'
+import { withBasePath } from '@shared/constants/base-path'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SettingsCardShared } from '@shared/ui/settings-card'
 
@@ -112,11 +112,11 @@ export const ApiTokensCardWidget = (props: IProps) => {
                                 {apiTokensData.docs.swaggerPath && (
                                     <ActionIcon
                                         color="cyan"
-                                        component={Link}
+                                        component="a"
+                                        href={withBasePath(apiTokensData.docs.swaggerPath!)}
                                         rel="noopener noreferrer"
                                         size="input-md"
                                         target="_blank"
-                                        to={apiTokensData.docs.swaggerPath!}
                                         variant="soft"
                                     >
                                         <SiSwagger size={24} />
@@ -125,11 +125,11 @@ export const ApiTokensCardWidget = (props: IProps) => {
                                 {apiTokensData.docs.scalarPath && (
                                     <ActionIcon
                                         color="cyan"
-                                        component={Link}
+                                        component="a"
+                                        href={withBasePath(apiTokensData.docs.scalarPath!)}
                                         rel="noopener noreferrer"
                                         size="input-md"
                                         target="_blank"
-                                        to={apiTokensData.docs.scalarPath!}
                                         variant="soft"
                                     >
                                         <PiBookOpenTextDuotone size={24} />

@@ -643,8 +643,12 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
 	}
 	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
-	cfg.Docs.ScalarPath = normalizeBasePath(cfg.Docs.ScalarPath)
-	cfg.Docs.SwaggerPath = normalizeBasePath(cfg.Docs.SwaggerPath)
+	// Docs paths are endpoint mount paths, not application base paths. They must
+	// stay without a trailing slash; otherwise net/http treats e.g. "/docs/" as a
+	// subtree route and emits a root-relative redirect to "/docs/" for requests
+	// to "/docs", which drops APP_PATH behind a reverse proxy.
+	cfg.Docs.ScalarPath = normalizeRoutePath(cfg.Docs.ScalarPath)
+	cfg.Docs.SwaggerPath = normalizeRoutePath(cfg.Docs.SwaggerPath)
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
 		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
 	}
@@ -854,6 +858,22 @@ func normalizeBasePath(input string) string {
 	}
 
 	return "/" + cleaned + "/"
+}
+
+// normalizeRoutePath normalizes a single endpoint mount path (e.g. docs paths)
+// without a trailing slash, unlike normalizeBasePath.
+func normalizeRoutePath(input string) string {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" || trimmed == "/" {
+		return "/"
+	}
+
+	cleaned := strings.Trim(trimmed, "/")
+	if cleaned == "" {
+		return "/"
+	}
+
+	return "/" + cleaned
 }
 
 func envFirst(keys ...string) string {

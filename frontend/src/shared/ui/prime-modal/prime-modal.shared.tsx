@@ -46,7 +46,7 @@ export function PrimeModalContent() {
                 </div>
 
                 <Title className={classes.title} mt={4} order={2}>
-                    RW Prime
+                    Exodus Prime
                 </Title>
                 <Text c="dimmed" maw={380} mt={8} size="sm">
                     {t('prime-modal.shared.description')}

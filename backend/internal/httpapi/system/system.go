@@ -195,11 +195,9 @@ func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 					"physicalCores": physicalCores,
 				},
 				"memory": map[string]int64{
-					"total":     mem.total,
-					"free":      mem.free,
-					"used":      mem.used,
-					"active":    mem.active,
-					"available": mem.available,
+					"total": mem.total,
+					"free":  mem.free,
+					"used":  mem.used,
 				},
 				"uptime":    uptime,
 				"timestamp": timestamp,
@@ -970,9 +968,24 @@ func readMemStats() memStats {
 	result.free = values["MemFree"]
 	result.available = values["MemAvailable"]
 	result.active = values["Active"]
-	result.used = result.total - result.free
+
+	// "used" is reported as the actively-used working set (Active from
+	// /proc/meminfo) rather than the naive total-minus-free calculation.
+	// total-free counts reclaimable page cache/buffers as "used", which
+	// makes RAM usage look almost full on any Linux host even when the
+	// system is barely loaded. Active reflects memory the kernel considers
+	// recently/actually in use by processes, which is a much more honest
+	// number to show on the dashboard.
+	result.used = result.active
+	if result.used <= 0 {
+		// Fallback for kernels/environments without an "Active" line.
+		result.used = result.total - result.free
+	}
 	if result.used < 0 {
 		result.used = 0
+	}
+	if result.used > result.total {
+		result.used = result.total
 	}
 
 	return result

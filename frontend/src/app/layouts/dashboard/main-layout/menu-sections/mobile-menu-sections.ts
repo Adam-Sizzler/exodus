@@ -75,12 +75,6 @@ export const useMobileMenuSections = (): MenuItem[] => {
                     id: 'external-squads'
                 },
                 {
-                    name: t('constants.srs-lists', { defaultValue: 'SRS Lists' }),
-                    href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
-                    icon: TbListDetails,
-                    id: 'srs-lists'
-                },
-                {
                     name: t('constants.config-profiles'),
                     href: ROUTES.DASHBOARD.MANAGEMENT.CONFIG_PROFILES,
                     icon: SingboxLogo,
@@ -103,6 +97,12 @@ export const useMobileMenuSections = (): MenuItem[] => {
                             href: ROUTES.DASHBOARD.MANAGEMENT.NODES,
                             icon: HiServer,
                             id: 'management'
+                        },
+                        {
+                            name: t('constants.srs-lists', { defaultValue: 'SRS Lists' }),
+                            href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
+                            icon: TbListDetails,
+                            id: 'srs-lists'
                         },
                         {
                             name: `${t('constants.node-plugins')} β`,

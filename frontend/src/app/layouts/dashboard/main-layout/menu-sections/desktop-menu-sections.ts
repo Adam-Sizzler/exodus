@@ -77,12 +77,6 @@ export const useDesktopMenuSections = (): MenuItem[] => {
                     icon: TbWebhook,
                     id: 'external-squads'
                 },
-                {
-                    name: t('constants.srs-lists', { defaultValue: 'SRS Lists' }),
-                    href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
-                    icon: TbListDetails,
-                    id: 'srs-lists'
-                }
             ]
         },
         {
@@ -95,6 +89,12 @@ export const useDesktopMenuSections = (): MenuItem[] => {
                     href: ROUTES.DASHBOARD.MANAGEMENT.NODES,
                     icon: HiServer,
                     id: 'nodes-management'
+                },
+                {
+                    name: t('constants.srs-lists', { defaultValue: 'SRS Lists' }),
+                    href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
+                    icon: TbListDetails,
+                    id: 'srs-lists'
                 },
                 {
                     name: `${t('constants.node-plugins')} β`,

@@ -89,3 +89,18 @@ func TestDatabaseURLFallsBackToPostgresEnvWhenSocketDisabled(t *testing.T) {
 		t.Fatalf("unexpected database path: %s", parsed.Path)
 	}
 }
+
+func TestNormalizePanelConfigKeepsDocsPathsWithoutTrailingSlash(t *testing.T) {
+	cfg := defaultConfig
+	cfg.Docs.SwaggerPath = "/docs/"
+	cfg.Docs.ScalarPath = "scalar/"
+
+	normalizePanelConfig(&cfg)
+
+	if cfg.Docs.SwaggerPath != "/docs" {
+		t.Fatalf("swagger path got %q, want /docs", cfg.Docs.SwaggerPath)
+	}
+	if cfg.Docs.ScalarPath != "/scalar" {
+		t.Fatalf("scalar path got %q, want /scalar", cfg.Docs.ScalarPath)
+	}
+}

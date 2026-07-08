@@ -183,10 +183,6 @@ func buildExodusOpenAPISpec() ([]byte, error) {
 	}
 
 	if paths, ok := doc["paths"].(map[string]any); ok {
-		if settings, ok := paths["/api/remnawave-settings"]; ok {
-			paths["/api/exodus-settings"] = settings
-			delete(paths, "/api/remnawave-settings")
-		}
 		for path := range paths {
 			if strings.HasPrefix(path, "/api/ip-control/") || strings.HasPrefix(path, "/api/node-plugins/torrent-blocker") {
 				delete(paths, path)

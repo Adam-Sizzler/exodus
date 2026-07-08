@@ -111,3 +111,57 @@ func TestServePanelStaticFileReturnsNotFoundForMissingAsset(t *testing.T) {
 		t.Fatalf("expected status 404, got %d", recorder.Code)
 	}
 }
+
+func TestPanelHandlerRoutesDocsWithTrailingSlashToAPIWithoutRedirect(t *testing.T) {
+	uiDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(uiDir, "index.html"), []byte(`<html><head></head><body>spa</body></html>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	apiHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/docs" {
+			t.Fatalf("API path got %q, want /docs", r.URL.Path)
+		}
+		_, _ = w.Write([]byte("docs api"))
+	})
+
+	handler := panelRequestHandler("/panel/", uiDir, http.FileServer(http.Dir(uiDir)), apiHandler, http.NotFoundHandler(), "/docs", "/scalar")
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/panel/docs/", nil)
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status got %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if location := recorder.Header().Get("Location"); location != "" {
+		t.Fatalf("expected no redirect Location header, got %q", location)
+	}
+	if recorder.Body.String() != "docs api" {
+		t.Fatalf("expected API docs response, got %q", recorder.Body.String())
+	}
+}
+
+func TestDocsAPIRequestPathMatchesWithAndWithoutTrailingSlash(t *testing.T) {
+	tests := map[string]string{
+		"docs":              "/docs",
+		"docs/":             "/docs",
+		"docs/openapi.json": "/docs/openapi.json",
+		"scalar":            "/scalar",
+		"scalar/":           "/scalar",
+	}
+
+	for input, expected := range tests {
+		actual, ok := docsAPIRequestPath(input, "/docs", "/scalar")
+		if !ok {
+			t.Fatalf("expected %q to be recognized as docs path", input)
+		}
+		if actual != expected {
+			t.Fatalf("for %q got %q, want %q", input, actual, expected)
+		}
+	}
+
+	if actual, ok := docsAPIRequestPath("dashboard", "/docs", "/scalar"); ok {
+		t.Fatalf("expected dashboard to stay in SPA, got %q", actual)
+	}
+}

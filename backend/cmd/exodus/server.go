@@ -98,16 +98,13 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 			return
 		}
 
-		// Route docs paths (Scalar UI, Swagger JSON) through the API handler.
-		// These paths don't carry the /api/ prefix but are served by Go handlers,
-		// not the React SPA. Both paths are read from env (SCALAR_PATH, SWAGGER_PATH).
-		docsScalarRel := strings.TrimPrefix(docsScalarPath, "/")
-		docsSwaggerRel := strings.TrimPrefix(docsSwaggerPath, "/")
-		isDocsPath := (docsScalarRel != "" && (relativePath == docsScalarRel || strings.HasPrefix(relativePath, docsScalarRel+"/"))) ||
-			(docsSwaggerRel != "" && (relativePath == docsSwaggerRel || strings.HasPrefix(relativePath, docsSwaggerRel+"/")))
-		if isDocsPath {
+		// Route docs paths (Scalar UI, Swagger UI, raw OpenAPI JSON) through the
+		// API handler. These paths don't carry the /api/ prefix but are served by
+		// Go handlers, not the React SPA. The forwarded path is normalized without
+		// a trailing slash so it matches the exact-match routes in router.go.
+		if docsAPIPath, ok := docsAPIRequestPath(relativePath, docsSwaggerPath, docsScalarPath); ok {
 			apiReq := r.Clone(r.Context())
-			apiReq.URL.Path = "/" + relativePath
+			apiReq.URL.Path = docsAPIPath
 			apiReq.URL.RawPath = ""
 			apiHandler.ServeHTTP(w, apiReq)
 			return
@@ -146,4 +143,29 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 
 		servePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
 	})
+}
+
+// docsAPIRequestPath reports whether relativePath (already stripped of
+// panelBasePath) targets the docs UI or its OpenAPI spec, matching with or
+// without a trailing slash, and returns the exact-match path to forward to
+// apiHandler.
+func docsAPIRequestPath(relativePath, docsSwaggerPath, docsScalarPath string) (string, bool) {
+	relativePath = strings.Trim(relativePath, "/")
+
+	for _, docsPath := range []string{docsScalarPath, docsSwaggerPath} {
+		docsRel := strings.Trim(docsPath, "/")
+		if docsRel == "" {
+			continue
+		}
+
+		if relativePath == docsRel {
+			return "/" + docsRel, true
+		}
+
+		if openAPIPath := docsRel + "/openapi.json"; relativePath == openAPIPath {
+			return "/" + openAPIPath, true
+		}
+	}
+
+	return "", false
 }
