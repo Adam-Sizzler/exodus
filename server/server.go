@@ -44,7 +44,6 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 	cfg.LoggerFor("NftService").Info("[PLUGIN] Egress Filter: available")
 	cfg.LoggerFor("HAProxyService").Info("[PLUGIN] HAProxy Runtime API: available")
 	logNftablesAvailability(cfg.LoggerFor("HandlerService"))
-	nodeServer.startSRSAutoUpdater()
 
 	return nodeServer, nil
 }

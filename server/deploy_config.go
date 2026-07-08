@@ -26,7 +26,6 @@ type DeployConfigTaskPayload struct {
 	ForceRestart      *bool                 `json:"force_restart"`
 	ForceRestartCamel *bool                 `json:"forceRestart"`
 	Stats             DeployConfigTaskStats `json:"stats"`
-	SRSLists          []SRSListItem         `json:"srs_lists"`
 	Modules           DeployModulesPayload  `json:"modules"`
 }
 
@@ -51,20 +50,19 @@ type HaproxyUserEntry struct {
 }
 
 type DeploySummary struct {
-	ConfigPath            string
-	Listen                string
-	Inbounds              int
-	Outbounds             int
-	Users                 int
-	Restarted             bool
-	ForceRestart          bool
-	ConfigChanged         bool
-	HaproxyUsersChanged   bool
-	SRSDownloadedOnDeploy bool
-	ReloadError           string
-	CoreProcessBefore     string
-	CoreProcessAfter      string
-	CoreReady             bool
+	ConfigPath          string
+	Listen              string
+	Inbounds            int
+	Outbounds           int
+	Users               int
+	Restarted           bool
+	ForceRestart        bool
+	ConfigChanged       bool
+	HaproxyUsersChanged bool
+	ReloadError         string
+	CoreProcessBefore   string
+	CoreProcessAfter    string
+	CoreReady           bool
 }
 
 // DeployConfig applies sing-box config, injects experimental.v2ray_api stats block and starts/restarts the managed core if requested.
@@ -94,10 +92,6 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	if task.Stats.Enabled != nil {
 		enabled = *task.Stats.Enabled
 	}
-
-	// SRS files are not synced as part of deploy_config.
-	// They are refreshed only on node startup and via explicit sync_srs_lists task.
-	srsDownloadedOnDeploy := false
 
 	finalConfig, summary, err := BuildSingboxConfigWithV2RayAPI(rawConfig, BuildOptions{
 		Listen:          listen,
@@ -190,20 +184,19 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	}
 
 	return DeploySummary{
-		ConfigPath:            configPath,
-		Listen:                listen,
-		Inbounds:              len(summary.Inbounds),
-		Outbounds:             len(summary.Outbounds),
-		Users:                 len(summary.Users),
-		Restarted:             restarted,
-		ForceRestart:          forceRestart,
-		ConfigChanged:         configChanged,
-		HaproxyUsersChanged:   haproxyUsersChanged,
-		SRSDownloadedOnDeploy: srsDownloadedOnDeploy,
-		ReloadError:           reloadError,
-		CoreProcessBefore:     coreProcessBefore,
-		CoreProcessAfter:      coreProcessAfter,
-		CoreReady:             coreReady,
+		ConfigPath:          configPath,
+		Listen:              listen,
+		Inbounds:            len(summary.Inbounds),
+		Outbounds:           len(summary.Outbounds),
+		Users:               len(summary.Users),
+		Restarted:           restarted,
+		ForceRestart:        forceRestart,
+		ConfigChanged:       configChanged,
+		HaproxyUsersChanged: haproxyUsersChanged,
+		ReloadError:         reloadError,
+		CoreProcessBefore:   coreProcessBefore,
+		CoreProcessAfter:    coreProcessAfter,
+		CoreReady:           coreReady,
 	}, nil
 }
 

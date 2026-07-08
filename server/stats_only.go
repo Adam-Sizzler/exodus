@@ -16,7 +16,6 @@ const statsOnlyMessage = "stats-only node: user management and task APIs are dis
 
 const (
 	taskOperationDeployConfig       = "deploy_config"
-	taskOperationSyncSRSLists       = "sync_srs_lists"
 	taskOperationNodePluginExecutor = "node_plugin_executor"
 )
 
@@ -78,7 +77,7 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 		}
 
 		message := fmt.Sprintf(
-			"success: config_path=%s listen=%s inbounds=%d outbounds=%d users=%d restarted=%t force_restart=%t config_changed=%t haproxy_users_changed=%t srs_downloaded_on_deploy=%t core_ready=%t core_process_before=%s core_process_after=%s",
+			"success: config_path=%s listen=%s inbounds=%d outbounds=%d users=%d restarted=%t force_restart=%t config_changed=%t haproxy_users_changed=%t core_ready=%t core_process_before=%s core_process_after=%s",
 			summary.ConfigPath,
 			summary.Listen,
 			summary.Inbounds,
@@ -88,7 +87,6 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 			summary.ForceRestart,
 			summary.ConfigChanged,
 			summary.HaproxyUsersChanged,
-			summary.SRSDownloadedOnDeploy,
 			summary.CoreReady,
 			summary.CoreProcessBefore,
 			summary.CoreProcessAfter,
@@ -100,34 +98,6 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 		return &rpcstatus.Status{
 			Code:    int32(codes.OK),
 			Message: message,
-		}, nil
-	case taskOperationSyncSRSLists:
-		var payload struct {
-			SRSLists []SRSListItem `json:"srs_lists"`
-		}
-		if err := json.Unmarshal(task.Payload, &payload); err != nil {
-			s.Cfg.LoggerFor("SRSService").Warn("Invalid sync_srs_lists payload", "task_id", task.TaskId, "error", err)
-			return &rpcstatus.Status{
-				Code:    int32(codes.InvalidArgument),
-				Message: fmt.Sprintf("invalid sync_srs_lists payload: %v", err),
-			}, nil
-		}
-		summary, err := s.SyncSRSLists(payload.SRSLists)
-		if err != nil {
-			return &rpcstatus.Status{
-				Code:    int32(codes.FailedPrecondition),
-				Message: err.Error(),
-			}, nil
-		}
-		return &rpcstatus.Status{
-			Code: int32(codes.OK),
-			Message: fmt.Sprintf(
-				"success: total=%d configured=%d downloaded=%d failed=%d",
-				summary.Total,
-				summary.Configured,
-				summary.Downloaded,
-				summary.Failed,
-			),
 		}, nil
 	case taskOperationNodePluginExecutor:
 		accepted, err := ExecuteNodePluginCommand(task.Payload)

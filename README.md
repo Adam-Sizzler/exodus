@@ -1,6 +1,6 @@
 # Exodus Node
 
-`exodus-node` - легкая gRPC-нода для панели Exodus. Она запускает sing-box под `supervisord`, отдает панели статистику через gRPC, принимает задачи деплоя sing-box config, синхронизирует SRS rule-set файлы и обновляет runtime cache HAProxy users при включенном модуле.
+`exodus-node` - легкая gRPC-нода для панели Exodus. Она запускает sing-box под `supervisord`, отдает панели статистику через gRPC, принимает задачи деплоя sing-box config, обновляет runtime cache HAProxy users при включенном модуле.
 
 Это не старый HTTP `v2ray-stat` API. Управление пользователями внутри ядра отключено: пользователи и конфиги собираются на стороне панели, а нода применяет готовый sing-box JSON.
 
@@ -13,7 +13,6 @@
 - добавляет/обновляет `experimental.v2ray_api` в полученном sing-box config;
 - пишет config в `/app/singbox/config.json`;
 - перезагружает sing-box через `supervisorctl signal HUP`;
-- скачивает SRS файлы в `/app/singbox`;
 - обновляет `/app/haproxy/data/users.csv` и reload users через HAProxy runtime socket.
 
 ## Структура
@@ -22,7 +21,7 @@
 main.go                    точка входа
 config/                    env config, SECRET_KEY payload, token auth
 grpcserver/                gRPC HTTP2 сервер, mTLS/token interceptors
-server/                    NodeService handlers, deploy, stream, SRS, HAProxy
+server/                    NodeService handlers, deploy, stream, HAProxy
 api/                       facade над sing-box stats API
 sdk/                       sing-box v2ray_api gRPC client
 proto/                     Exodus node gRPC contract
@@ -105,6 +104,5 @@ go run . --version
 - `GetApiStats` - разовый сбор stats из sing-box;
 - `StreamNodeData` - streaming stats с дефолтным интервалом 20 секунд;
 - `SubmitTask(operation=deploy_config)` - применить sing-box config;
-- `SubmitTask(operation=sync_srs_lists)` - скачать/обновить SRS файлы.
 
 Операции управления пользователями (`AddUsers`, `DeleteUsers`, `SetUserEnabled`, `ListUsers`) намеренно возвращают `Unimplemented`, потому что нода работает в stats/deploy режиме.
