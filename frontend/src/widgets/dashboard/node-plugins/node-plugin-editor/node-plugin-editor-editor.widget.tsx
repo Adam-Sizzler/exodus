@@ -16,9 +16,10 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { preventBackScroll } from '@shared/utils/misc'
 
 import styles from './NodePluginEditor.module.css'
-
-
-const HAPROXY_AUTH_SUPPORTED_INBOUND_TYPES = new Set(['vless', 'trojan', 'naive', 'anytls'])
+import {
+    buildNodePluginEditorSchema,
+    getNodePluginHaproxyInboundTagOptions
+} from './node-plugin-editor-schema'
 
 interface IProps {
     nodePlugin: GetNodePluginCommand.Response['response']['pluginConfig']
@@ -31,36 +32,14 @@ export function NodePluginEditorWidget(props: IProps) {
     const { nodePlugin, pluginUuid } = props
     const { data: nodes } = useGetNodes()
 
-    const haproxyAuthInboundTagOptions = useMemo(() => {
-        const tags = new Map<string, { nodeNames: Set<string>; tag: string; type: string | null }>()
-
-        nodes
-            ?.filter((node) => node.activePluginUuid === pluginUuid)
-            .forEach((node) => {
-                node.configProfile.activeInbounds.forEach((inbound) => {
-                    const type = inbound.type.trim().toLowerCase()
-                    const tag = inbound.tag.trim()
-
-                    if (!tag || !HAPROXY_AUTH_SUPPORTED_INBOUND_TYPES.has(type)) return
-
-                    const existing = tags.get(tag) ?? {
-                        nodeNames: new Set<string>(),
-                        tag,
-                        type
-                    }
-                    existing.nodeNames.add(node.name)
-                    tags.set(tag, existing)
-                })
-            })
-
-        return Array.from(tags.values())
-            .map((item) => ({
-                nodeNames: Array.from(item.nodeNames).sort((a, b) => a.localeCompare(b)),
-                tag: item.tag,
-                type: item.type
-            }))
-            .sort((a, b) => a.tag.localeCompare(b.tag))
-    }, [nodes, pluginUuid])
+    const haproxyAuthInboundTagOptions = useMemo(
+        () => getNodePluginHaproxyInboundTagOptions(nodes, pluginUuid),
+        [nodes, pluginUuid]
+    )
+    const nodePluginEditorSchema = useMemo(
+        () => buildNodePluginEditorSchema(haproxyAuthInboundTagOptions),
+        [haproxyAuthInboundTagOptions]
+    )
 
     const [result, setResult] = useState('')
     const [isConfigValid, setIsConfigValid] = useState(false)
@@ -118,14 +97,14 @@ export function NodePluginEditorWidget(props: IProps) {
     }, [blocker])
 
     const handleEditorDidMount = (monaco: Monaco) => {
-        MonacoSetupNodePluginEditorFeature.setup(monaco, haproxyAuthInboundTagOptions)
+        MonacoSetupNodePluginEditorFeature.setup(monaco, nodePluginEditorSchema)
     }
 
     useEffect(() => {
         if (!monacoRef.current) return
 
-        MonacoSetupNodePluginEditorFeature.setup(monacoRef.current, haproxyAuthInboundTagOptions)
-    }, [haproxyAuthInboundTagOptions])
+        MonacoSetupNodePluginEditorFeature.setup(monacoRef.current, nodePluginEditorSchema)
+    }, [nodePluginEditorSchema])
 
     const checkForChanges = () => {
         if (!editorRef.current) return

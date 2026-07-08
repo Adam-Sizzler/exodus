@@ -59,16 +59,6 @@ func RequestNodePluginExecutor(command json.RawMessage, nodeUUIDs ...string) err
 	return nm.ExecuteNodePluginCommand(nil, command, nodeUUIDs)
 }
 
-// RequestSRSDeploy triggers SRS lists sync to connected nodes.
-func RequestSRSDeploy() {
-	globalMonitorMu.RLock()
-	nm := globalMonitor
-	globalMonitorMu.RUnlock()
-	if nm != nil {
-		nm.RequestSRSDeploy()
-	}
-}
-
 // GetNodeMetricsSnapshot returns current per-node traffic metrics snapshots.
 func GetNodeMetricsSnapshot() map[string]NodeMetricsSnapshot {
 	globalMonitorMu.RLock()

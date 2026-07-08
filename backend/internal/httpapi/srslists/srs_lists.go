@@ -12,8 +12,8 @@ import (
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
-	monitor "exodus/internal/nodes"
 	srscore "exodus/internal/srslists"
+	monitor "exodus/internal/subscriptionnodes"
 
 	"github.com/google/uuid"
 )
@@ -131,7 +131,7 @@ func SRSListsActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		case "check":
 			handleCheckSRSLists(w, r, manager, cfg)
 		case "sync":
-			monitor.RequestSRSDeploy()
+			monitor.RequestSubNodeSRSDeploy()
 			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"queued": true}})
 		default:
 			http.NotFound(w, r)

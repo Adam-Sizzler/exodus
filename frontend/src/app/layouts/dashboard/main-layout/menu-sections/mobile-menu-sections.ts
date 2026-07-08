@@ -99,12 +99,6 @@ export const useMobileMenuSections = (): MenuItem[] => {
                             id: 'management'
                         },
                         {
-                            name: t('constants.srs-lists', { defaultValue: 'SRS Lists' }),
-                            href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
-                            icon: TbListDetails,
-                            id: 'srs-lists'
-                        },
-                        {
                             name: `${t('constants.node-plugins')} β`,
                             href: ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.ROOT,
                             icon: TbPackage,
@@ -220,6 +214,12 @@ export const useMobileMenuSections = (): MenuItem[] => {
                     href: ROUTES.DASHBOARD.MANAGEMENT.RESPONSE_RULES,
                     icon: TbRoute,
                     id: 'response-rules'
+                },
+                {
+                    name: t('constants.srs-lists'),
+                    href: ROUTES.DASHBOARD.MANAGEMENT.SRS_LISTS,
+                    icon: TbListDetails,
+                    id: 'srs-lists'
                 },
                 {
                     name: 'Subscription Page',

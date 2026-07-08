@@ -31,6 +31,15 @@ func RequestSubNodeDeploy(nodeUUIDs ...string) {
 	}
 }
 
+func RequestSubNodeSRSDeploy(nodeUUIDs ...string) {
+	globalSubMonitorMu.RLock()
+	monitor := globalSubMonitor
+	globalSubMonitorMu.RUnlock()
+	if monitor != nil {
+		monitor.RequestSRSDeploy(nodeUUIDs...)
+	}
+}
+
 func RequestSubNodeSubpageConfigPush(uuid string, config []byte, nodeUUIDs ...string) {
 	globalSubMonitorMu.RLock()
 	monitor := globalSubMonitor

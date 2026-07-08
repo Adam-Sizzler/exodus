@@ -12,7 +12,6 @@ import (
 
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/proto"
-	srscore "exodus/internal/srslists"
 
 	"github.com/iancoleman/orderedmap"
 	"google.golang.org/grpc/codes"
@@ -24,7 +23,6 @@ type deployTaskPayload struct {
 	Config       json.RawMessage         `json:"config"`
 	Restart      *bool                   `json:"restart,omitempty"`
 	ForceRestart *bool                   `json:"force_restart,omitempty"`
-	SRSLists     []srscore.NodeSyncItem  `json:"srs_lists,omitempty"`
 	Modules      *deployModulesTaskBlock `json:"modules,omitempty"`
 }
 
@@ -186,10 +184,6 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 		return
 	}
 
-	srsLists, srsErr := srscore.LoadNodeSyncItems(context.Background(), nm.manager)
-	if srsErr != nil {
-		nm.cfg.Logger.Warn("Failed to load SRS lists for deploy payload", "error", srsErr)
-	}
 	for _, target := range targets {
 		nm.cfg.Logger.Debug("Building deploy config for node", "node", target.name, "node_uuid", target.uuid)
 		configJSON, err := nm.buildNodeConfigForDeploy(nm.globalCtx, target.uuid)
@@ -231,7 +225,6 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			Config:       configJSON,
 			Restart:      &restartFlag,
 			ForceRestart: &forceRestartFlag,
-			SRSLists:     srsLists,
 			Modules:      modules,
 		})
 		if err != nil {
@@ -874,70 +867,4 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 		return []any{}
 	}
 	return result
-}
-
-func (nm *NodeMonitor) syncSRSListsToConnectedNodes() {
-	if nm == nil {
-		return
-	}
-
-	srsLists, err := srscore.LoadNodeSyncItems(context.Background(), nm.manager)
-	if err != nil {
-		nm.cfg.Logger.Warn("Failed to load SRS lists for node sync", "error", err)
-		return
-	}
-
-	payload, err := json.Marshal(map[string]any{
-		"srs_lists": srsLists,
-	})
-	if err != nil {
-		nm.cfg.Logger.Warn("Failed to marshal SRS sync payload", "error", err)
-		return
-	}
-
-	nm.nodesLock.RLock()
-	targets := make([]deployTarget, 0, len(nm.nodes))
-	for nodeName, state := range nm.nodes {
-		if state == nil {
-			continue
-		}
-		state.mutex.RLock()
-		isReady := state.isConnected && state.client != nil
-		client := state.client
-		state.mutex.RUnlock()
-		if !isReady {
-			continue
-		}
-		targets = append(targets, deployTarget{name: nodeName, client: client})
-	}
-	nm.nodesLock.RUnlock()
-
-	for _, target := range targets {
-		ctxBase := nm.globalCtx
-		if ctxBase == nil {
-			ctxBase = context.Background()
-		}
-		ctx, cancel := context.WithTimeout(ctxBase, 30*time.Second)
-		resp, submitErr := target.client.SubmitTask(ctx, &proto.NodeTask{
-			TaskId:    fmt.Sprintf("sync-srs-%d", time.Now().UnixNano()),
-			Operation: "sync_srs_lists",
-			Payload:   payload,
-		})
-		cancel()
-
-		if submitErr != nil {
-			nm.cfg.Logger.Warn("SRS sync task failed", "node", target.name, "error", submitErr)
-			continue
-		}
-		if resp == nil || resp.Code != int32(codes.OK) {
-			if resp == nil {
-				nm.cfg.Logger.Warn("SRS sync returned nil status", "node", target.name)
-			} else {
-				nm.cfg.Logger.Warn("SRS sync rejected", "node", target.name, "code", resp.Code, "message", resp.Message)
-			}
-			continue
-		}
-
-		nm.cfg.Logger.Info("SRS lists synced to node", "node", target.name, "lists", len(srsLists))
-	}
 }

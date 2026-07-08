@@ -25,6 +25,7 @@ import (
 	subscriptionapi "exodus/internal/httpapi/subscription"
 	systemapi "exodus/internal/httpapi/system"
 	"exodus/internal/proto"
+	srscore "exodus/internal/srslists"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -75,6 +76,7 @@ type SubNodeMonitor struct {
 	syncNow        chan struct{}
 	deployNow      chan []string
 	subpagePushNow chan subpageConfigPushCommand
+	srsSyncNow     chan []string
 }
 
 type subpageConfigPushCommand struct {
@@ -137,6 +139,7 @@ func NewSubNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		syncNow:           make(chan struct{}, 1),
 		deployNow:         make(chan []string, 1),
 		subpagePushNow:    make(chan subpageConfigPushCommand, 1),
+		srsSyncNow:        make(chan []string, 1),
 	}
 }
 
@@ -171,6 +174,9 @@ func (sm *SubNodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 			sm.deployToConnectedNodes(targets)
 		case push := <-sm.subpagePushNow:
 			sm.pushSubpageConfigToConnectedNodes(push)
+		case targets := <-sm.srsSyncNow:
+			sm.cfg.Logger.Info("Subscription node SRS sync requested", "node_targets", len(targets))
+			sm.syncSRSListsToConnectedNodes(targets)
 		case <-syncTicker.C:
 			sm.syncNodes()
 		}
@@ -961,6 +967,104 @@ func (sm *SubNodeMonitor) updateConnectionStatus(nodeName string, isConnected, i
 	}
 }
 
+func (sm *SubNodeMonitor) syncSRSListsToConnectedNodes(requestedNodeUUIDs []string) {
+	if sm == nil {
+		return
+	}
+
+	srsLists, err := srscore.LoadNodeSyncItems(context.Background(), sm.manager)
+	if err != nil {
+		sm.cfg.Logger.Warn("Failed to load SRS lists for subscription node sync", "error", err)
+		return
+	}
+
+	payload, err := json.Marshal(map[string]any{
+		"srs_lists": srsLists,
+	})
+	if err != nil {
+		sm.cfg.Logger.Warn("Failed to marshal SRS sync payload for subscription nodes", "error", err)
+		return
+	}
+
+	targetFilter := make(map[string]struct{}, len(requestedNodeUUIDs))
+	for _, item := range requestedNodeUUIDs {
+		uuid := strings.TrimSpace(item)
+		if uuid == "" {
+			continue
+		}
+		targetFilter[uuid] = struct{}{}
+	}
+
+	sm.nodesLock.RLock()
+	states := make([]*subNodeState, 0, len(sm.nodes))
+	for _, state := range sm.nodes {
+		if state != nil {
+			states = append(states, state)
+		}
+	}
+	sm.nodesLock.RUnlock()
+
+	matchedTargets := 0
+	readyTargets := 0
+	sentTargets := 0
+
+	for _, state := range states {
+		state.mutex.RLock()
+		nodeUUID := state.nodeUUID
+		nodeName := state.nodeName
+		ready := state.isConnected && state.client != nil
+		client := state.client
+		state.mutex.RUnlock()
+		if len(targetFilter) > 0 {
+			if _, ok := targetFilter[nodeUUID]; !ok {
+				continue
+			}
+		}
+		matchedTargets++
+		if !ready {
+			continue
+		}
+		readyTargets++
+
+		ctxBase := sm.globalCtx
+		if ctxBase == nil {
+			ctxBase = context.Background()
+		}
+		ctx, cancel := context.WithTimeout(ctxBase, 30*time.Second)
+		resp, submitErr := client.SubmitTask(ctx, &proto.NodeTask{
+			TaskId:    fmt.Sprintf("sync-srs-%d", time.Now().UnixNano()),
+			Operation: "sync_srs_lists",
+			Payload:   payload,
+		})
+		cancel()
+
+		if submitErr != nil {
+			sm.cfg.Logger.Warn("SRS sync task failed on subscription node", "node", nodeName, "error", submitErr)
+			continue
+		}
+		if resp == nil || resp.Code != int32(codes.OK) {
+			if resp == nil {
+				sm.cfg.Logger.Warn("SRS sync returned nil status from subscription node", "node", nodeName)
+			} else {
+				sm.cfg.Logger.Warn("SRS sync rejected by subscription node", "node", nodeName, "code", resp.Code, "message", resp.Message)
+			}
+			continue
+		}
+
+		sentTargets++
+		sm.cfg.Logger.Info("SRS lists synced to subscription node", "node", nodeName, "lists", len(srsLists), "message", resp.Message)
+	}
+
+	sm.cfg.Logger.Debug(
+		"SRS subscription node sync processed",
+		"target_filter_count", len(targetFilter),
+		"matched_targets", matchedTargets,
+		"ready_targets", readyTargets,
+		"sent_targets", sentTargets,
+		"lists", len(srsLists),
+	)
+}
+
 func (sm *SubNodeMonitor) deployToConnectedNodes(requestedNodeUUIDs []string) {
 	targetFilter := make(map[string]struct{}, len(requestedNodeUUIDs))
 	for _, item := range requestedNodeUUIDs {
@@ -1206,6 +1310,22 @@ func (sm *SubNodeMonitor) RequestDeploy(nodeUUIDs ...string) {
 		default:
 		}
 		sm.deployNow <- normalized
+	}
+}
+
+func (sm *SubNodeMonitor) RequestSRSDeploy(nodeUUIDs ...string) {
+	if sm == nil {
+		return
+	}
+	normalized := normalizeSubNodeUUIDTargets(nodeUUIDs)
+	select {
+	case sm.srsSyncNow <- normalized:
+	default:
+		select {
+		case <-sm.srsSyncNow:
+		default:
+		}
+		sm.srsSyncNow <- normalized
 	}
 }
 

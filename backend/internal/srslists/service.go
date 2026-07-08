@@ -150,7 +150,7 @@ func LoadNodeSyncItems(ctx context.Context, manager *dbmanager.DatabaseManager) 
 		if !item.IsEnabled {
 			continue
 		}
-		// Node receives the full SRS registry and decides what is reachable from its own network.
+		// Subscription node receives the full SRS registry and downloads the files from its own network.
 		tag := item.Tag
 		if strings.TrimSpace(tag) == "" {
 			tag = DeriveTagFromFileName(item.FileName)

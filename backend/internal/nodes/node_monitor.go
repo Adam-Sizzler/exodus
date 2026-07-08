@@ -52,9 +52,6 @@ type NodeMonitor struct {
 	syncNow chan struct{}
 	// Manual deploy trigger
 	deployNow chan deployRequest
-	// Manual SRS sync trigger
-	srsSyncNow chan struct{}
-
 	// Runtime traffic metrics snapshots by node UUID.
 	metricsByNodeUUID map[string]*NodeMetricsSnapshot
 	metricsLock       sync.RWMutex
@@ -141,7 +138,6 @@ func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 		nodes:             make(map[string]*nodeState),
 		syncNow:           make(chan struct{}, 1),
 		deployNow:         make(chan deployRequest, 1),
-		srsSyncNow:        make(chan struct{}, 1),
 		metricsByNodeUUID: make(map[string]*NodeMetricsSnapshot),
 		hotCache:          nodehotcache.Default(cfg),
 	}
@@ -193,9 +189,6 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 				"node_targets", len(deployReq.NodeUUIDs),
 			)
 			nm.deployToConnectedNodes(deployReq.Restart, deployReq.ForceRestart, deployReq.NodeUUIDs)
-		case <-nm.srsSyncNow:
-			nm.cfg.Logger.Info("Node monitor SRS sync requested")
-			nm.syncSRSListsToConnectedNodes()
 		case <-syncTicker.C:
 			nm.syncNodes()
 		}
@@ -1328,20 +1321,6 @@ func (nm *NodeMonitor) RequestDeployWithForce(restart bool, forceRestart bool, n
 		if nm.cfg != nil && nm.cfg.Logger != nil {
 			nm.cfg.Logger.Debug("Node deploy queue replaced previous pending request", "restart", restart, "force_restart", forceRestart, "node_targets", len(normalizedTargets))
 		}
-	}
-}
-
-// RequestSRSDeploy triggers SRS list sync to connected nodes (non-blocking).
-func (nm *NodeMonitor) RequestSRSDeploy() {
-	if nm == nil {
-		return
-	}
-	if nm.cfg != nil && nm.cfg.Logger != nil {
-		nm.cfg.Logger.Debug("Node SRS sync requested")
-	}
-	select {
-	case nm.srsSyncNow <- struct{}{}:
-	default:
 	}
 }
 
