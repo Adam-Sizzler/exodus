@@ -28,8 +28,12 @@ func TestNormalizePluginConfigDefaults(t *testing.T) {
 	if !ok {
 		t.Fatal("default config is missing haproxyAuth object")
 	}
-	if enabled, ok := haproxyAuth["enabled"].(bool); !ok || enabled {
-		t.Fatalf("expected haproxyAuth.enabled=false, got %#v", haproxyAuth["enabled"])
+	inboundTags, ok := haproxyAuth["inboundTags"].([]any)
+	if !ok {
+		t.Fatalf("expected haproxyAuth.inboundTags array, got %#v", haproxyAuth["inboundTags"])
+	}
+	if len(inboundTags) != 0 {
+		t.Fatalf("expected haproxyAuth.inboundTags=[], got %#v", inboundTags)
 	}
 }
 
@@ -45,8 +49,12 @@ func TestNormalizePluginConfigPreservesPartialConfig(t *testing.T) {
 	if err := json.Unmarshal(normalized, &config); err != nil {
 		t.Fatalf("normalized config is not valid JSON: %v", err)
 	}
-	if _, ok := config["haproxyAuth"]; ok {
-		t.Fatal("normalized config should not add missing haproxyAuth")
+	haproxyAuth, ok := config["haproxyAuth"].(map[string]any)
+	if !ok {
+		t.Fatal("normalized config is missing haproxyAuth object")
+	}
+	if inboundTags, ok := haproxyAuth["inboundTags"].([]any); !ok || len(inboundTags) != 0 {
+		t.Fatalf("expected haproxyAuth.inboundTags=[], got %#v", haproxyAuth["inboundTags"])
 	}
 }
 
@@ -65,6 +73,13 @@ func TestNormalizePluginConfigAddsOnlySharedListsToHaproxyConfig(t *testing.T) {
 	if _, ok := config["haproxyAuth"]; !ok {
 		t.Fatal("normalized config is missing haproxyAuth")
 	}
+	haproxyAuth := config["haproxyAuth"].(map[string]any)
+	if inboundTags, ok := haproxyAuth["inboundTags"].([]any); !ok || len(inboundTags) != 0 {
+		t.Fatalf("expected legacy enabled=false to normalize to inboundTags=[], got %#v", haproxyAuth["inboundTags"])
+	}
+	if _, ok := haproxyAuth["enabled"]; ok {
+		t.Fatal("normalized haproxyAuth should not preserve legacy enabled flag")
+	}
 	if _, ok := config["sharedLists"]; !ok {
 		t.Fatal("normalized config is missing sharedLists")
 	}
@@ -73,6 +88,28 @@ func TestNormalizePluginConfigAddsOnlySharedListsToHaproxyConfig(t *testing.T) {
 	}
 	if _, ok := config["egressFilter"]; ok {
 		t.Fatal("normalized config should not add egressFilter")
+	}
+}
+
+func TestNormalizePluginConfigConvertsLegacyHaproxyEnabled(t *testing.T) {
+	raw := json.RawMessage(`{"haproxyAuth":{"enabled":true}}`)
+
+	normalized, err := normalizePluginConfig(raw)
+	if err != nil {
+		t.Fatalf("normalizePluginConfig returned error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(normalized, &config); err != nil {
+		t.Fatalf("normalized config is not valid JSON: %v", err)
+	}
+	haproxyAuth := config["haproxyAuth"].(map[string]any)
+	inboundTags, ok := haproxyAuth["inboundTags"].([]any)
+	if !ok || len(inboundTags) != 1 || inboundTags[0] != "*" {
+		t.Fatalf("expected legacy enabled=true to normalize to inboundTags=[*], got %#v", haproxyAuth["inboundTags"])
+	}
+	if _, ok := haproxyAuth["enabled"]; ok {
+		t.Fatal("normalized haproxyAuth should not preserve legacy enabled flag")
 	}
 }
 

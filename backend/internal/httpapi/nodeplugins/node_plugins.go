@@ -83,7 +83,9 @@ func (c *executorCommand) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"blockedIps":[]},"egressFilter":{"enabled":false,"blockedIps":[],"blockedPorts":[]},"haproxyAuth":{"enabled":false},"sharedLists":[]}`)
+var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"blockedIps":[]},"egressFilter":{"enabled":false,"blockedIps":[],"blockedPorts":[]},"haproxyAuth":{"inboundTags":[]},"sharedLists":[]}`)
+
+const haproxyAllInboundTags = "*"
 
 func Handler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -371,11 +373,72 @@ func normalizePluginConfig(raw json.RawMessage) (json.RawMessage, error) {
 		obj["sharedLists"] = []any{}
 	}
 
+	haproxyAuth, err := normalizeHaproxyAuthConfig(obj["haproxyAuth"])
+	if err != nil {
+		return nil, err
+	}
+	obj["haproxyAuth"] = haproxyAuth
+
 	normalized, err := json.Marshal(obj)
 	if err != nil {
 		return nil, fmt.Errorf("pluginConfig cannot be encoded")
 	}
 	return normalized, nil
+}
+
+func normalizeHaproxyAuthConfig(raw any) (map[string]any, error) {
+	result := map[string]any{"inboundTags": []string{}}
+	if raw == nil {
+		return result, nil
+	}
+
+	obj, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("haproxyAuth must be a JSON object")
+	}
+
+	if rawTags, ok := obj["inboundTags"]; ok {
+		values, ok := rawTags.([]any)
+		if !ok {
+			return nil, fmt.Errorf("haproxyAuth.inboundTags must be an array")
+		}
+
+		tags := make([]string, 0, len(values))
+		for _, item := range values {
+			value, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("haproxyAuth.inboundTags items must be strings")
+			}
+			tags = append(tags, value)
+		}
+		result["inboundTags"] = normalizeHaproxyInboundTags(tags)
+		return result, nil
+	}
+
+	if enabled, ok := obj["enabled"].(bool); ok && enabled {
+		result["inboundTags"] = []string{"*"}
+	}
+	return result, nil
+}
+
+func normalizeHaproxyInboundTags(raw []string) []string {
+	seen := make(map[string]struct{}, len(raw))
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		value := strings.TrimSpace(item)
+		if value == "" {
+			continue
+		}
+		if value == haproxyAllInboundTags {
+			return []string{haproxyAllInboundTags}
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
 }
 
 func loadPlugins(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nodePlugin, error) {

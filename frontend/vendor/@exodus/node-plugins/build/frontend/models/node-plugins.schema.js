@@ -55,8 +55,12 @@ exports.EgressFilterPluginSchema = zod_1.z.object({
     })),
 });
 exports.HaproxyAuthPluginSchema = zod_1.z.object({
-    enabled: zod_1.z.boolean().describe(JSON.stringify({
-        markdownDescription: `If this plugin is enabled, HAProxy authentication users will be included in the node deploy payload.${DOCS_LINK}`,
+    inboundTags: zod_1.z
+        .array(zod_1.z.string())
+        .optional()
+        .default([])
+        .describe(JSON.stringify({
+        markdownDescription: `List of inbound tags that participate in HAProxy authentication. Use an empty array to disable HAProxy authentication for all inbounds. Use "*" to include every supported inbound assigned to the node.${DOCS_LINK}`,
     })),
 });
 exports.NodePluginSchema = zod_1.z.object({

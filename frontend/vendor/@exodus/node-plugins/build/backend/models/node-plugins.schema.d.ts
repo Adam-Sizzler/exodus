@@ -48,11 +48,11 @@ export declare const EgressFilterPluginSchema: z.ZodObject<{
     blockedPorts?: number[] | undefined;
 }>;
 export declare const HaproxyAuthPluginSchema: z.ZodObject<{
-    enabled: z.ZodBoolean;
+    inboundTags: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString, "many">>>;
 }, "strip", z.ZodTypeAny, {
-    enabled: boolean;
+    inboundTags: string[];
 }, {
-    enabled: boolean;
+    inboundTags?: string[] | undefined;
 }>;
 export declare const NodePluginSchema: z.ZodObject<{
     sharedLists: z.ZodDefault<z.ZodOptional<z.ZodArray<typeof SharedListSchema, "many">>>;
@@ -68,7 +68,7 @@ export declare const NodePluginSchema: z.ZodObject<{
     sharedLists?: z.infer<typeof SharedListSchema>[] | undefined;
     ingressFilter?: z.infer<typeof IngressFilterPluginSchema> | undefined;
     egressFilter?: z.infer<typeof EgressFilterPluginSchema> | undefined;
-    haproxyAuth?: z.infer<typeof HaproxyAuthPluginSchema> | undefined;
+    haproxyAuth?: z.input<typeof HaproxyAuthPluginSchema> | undefined;
 }>;
 export type TNodePlugin = z.infer<typeof NodePluginSchema>;
 //# sourceMappingURL=node-plugins.schema.d.ts.map

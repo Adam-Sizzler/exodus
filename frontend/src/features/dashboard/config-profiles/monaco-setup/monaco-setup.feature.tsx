@@ -12,6 +12,99 @@ import zodToJsonSchema, { jsonDescription } from 'zod-to-json-schema'
 
 import { monacoTheme } from '@shared/constants/monaco-theme'
 
+
+type NodePluginHaproxyInboundTagOption = {
+    nodeNames: string[]
+    tag: string
+    type: string | null
+}
+
+type JsonSchemaNode = Record<string, unknown>
+
+const HAPROXY_AUTH_ALL_INBOUNDS_TAG = '*'
+
+const getNodePluginHaproxyAuthSchema = (
+    inboundTagOptions: NodePluginHaproxyInboundTagOption[]
+) => {
+    const tags = Array.from(
+        new Set(
+            inboundTagOptions
+                .map((option) => option.tag.trim())
+                .filter((tag) => tag.length > 0)
+        )
+    ).sort((a, b) => a.localeCompare(b))
+
+    const descriptionsByTag = inboundTagOptions.reduce<Record<string, string>>((acc, option) => {
+        const tag = option.tag.trim()
+        if (!tag) return acc
+
+        const nodeNames = option.nodeNames.filter(Boolean).join(', ')
+        const metadata = [option.type ? `type: ${option.type}` : null, nodeNames ? `nodes: ${nodeNames}` : null]
+            .filter(Boolean)
+            .join('; ')
+
+        acc[tag] = metadata ? `Inbound tag \`${tag}\` (${metadata}).` : `Inbound tag \`${tag}\`.`
+        return acc
+    }, {})
+
+    const enumValues = [HAPROXY_AUTH_ALL_INBOUNDS_TAG, ...tags]
+
+    return {
+        type: 'object',
+        additionalProperties: false,
+        markdownDescription:
+            'HAProxy Auth Plugin configuration. Optional. Use inboundTags to explicitly select which inbound tags participate in HAProxy authentication.',
+        properties: {
+            inboundTags: {
+                type: 'array',
+                default: [],
+                uniqueItems: true,
+                markdownDescription:
+                    'List of inbound tags that participate in HAProxy authentication. Empty array disables HAProxy authentication. Use "*" to include every supported inbound assigned to the node.',
+                items: {
+                    type: 'string',
+                    enum: enumValues,
+                    markdownEnumDescriptions: [
+                        'All supported inbounds assigned to the node.',
+                        ...tags.map((tag) => descriptionsByTag[tag] ?? `Inbound tag \`${tag}\`.`)
+                    ]
+                }
+            }
+        }
+    }
+}
+
+const patchNodePluginHaproxyAuthSchema = (
+    schema: JsonSchemaNode,
+    inboundTagOptions: NodePluginHaproxyInboundTagOption[]
+) => {
+    const haproxyAuthSchema = getNodePluginHaproxyAuthSchema(inboundTagOptions)
+
+    const patchNode = (node: unknown, visited = new WeakSet<object>()) => {
+        if (!node || typeof node !== 'object') return
+        if (visited.has(node)) return
+        visited.add(node)
+
+        const current = node as JsonSchemaNode
+        const properties = current.properties
+
+        if (properties && typeof properties === 'object') {
+            const typedProperties = properties as Record<string, unknown>
+            if (Object.prototype.hasOwnProperty.call(typedProperties, 'haproxyAuth')) {
+                typedProperties.haproxyAuth = haproxyAuthSchema
+            }
+        }
+
+        for (const value of Object.values(current)) {
+            if (value && typeof value === 'object') {
+                patchNode(value, visited)
+            }
+        }
+    }
+
+    patchNode(schema)
+}
+
 export const MonacoSetupFeature = {
     setup: async (
         monaco: Monaco,
@@ -317,7 +410,10 @@ export const MonacoSetupResponseRulesFeature = {
 }
 
 export const MonacoSetupNodePluginEditorFeature = {
-    setup: async (monaco: Monaco) => {
+    setup: async (
+        monaco: Monaco,
+        inboundTagOptions: NodePluginHaproxyInboundTagOption[] = []
+    ) => {
         try {
             const schema = zodToJsonSchema(NodePluginSchema, {
                 name: 'Node Plugin Schema',
@@ -325,6 +421,8 @@ export const MonacoSetupNodePluginEditorFeature = {
                 errorMessages: true,
                 postProcess: jsonDescription
             })
+
+            patchNodePluginHaproxyAuthSchema(schema as JsonSchemaNode, inboundTagOptions)
 
             monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                 schemaValidation: 'error',

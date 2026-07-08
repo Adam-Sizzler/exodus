@@ -18,6 +18,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+const haproxyAllInboundTags = "*"
+
 type deployTaskPayload struct {
 	Config       json.RawMessage         `json:"config"`
 	Restart      *bool                   `json:"restart,omitempty"`
@@ -68,7 +70,7 @@ type activeNodePluginRuntimeConfig struct {
 		BlockedPorts []int    `json:"blockedPorts"`
 	} `json:"egressFilter"`
 	HaproxyAuth struct {
-		Enabled bool `json:"enabled"`
+		InboundTags []string `json:"inboundTags"`
 	} `json:"haproxyAuth"`
 }
 
@@ -96,6 +98,30 @@ type inboundUserCredentials struct {
 
 func normalizeTagValue(tag string) string {
 	return strings.TrimSpace(tag)
+}
+
+func normalizeHaproxyInboundTags(raw []string) []string {
+	seen := make(map[string]struct{}, len(raw))
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		value := strings.TrimSpace(item)
+		if value == "" {
+			continue
+		}
+		if value == haproxyAllInboundTags {
+			return []string{haproxyAllInboundTags}
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+func haproxyUsesAllInboundTags(tags []string) bool {
+	return len(tags) == 1 && tags[0] == haproxyAllInboundTags
 }
 
 func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, requestedNodeUUIDs []string) {
@@ -177,8 +203,8 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			nm.cfg.Logger.Warn("Failed to load node plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
 		}
 		sharedLists := pluginConfig.sharedIPLists()
+		haproxyInboundTags := normalizeHaproxyInboundTags(pluginConfig.HaproxyAuth.InboundTags)
 		modules := &deployModulesTaskBlock{
-			HaproxyEnabled: pluginConfig.HaproxyAuth.Enabled,
 			IngressFilter: deployIngressFilterBlock{
 				Enabled:    pluginConfig.IngressFilter.Enabled,
 				BlockedIPs: normalizeStringSlice(resolvePluginIPRefs(pluginConfig.IngressFilter.BlockedIPs, sharedLists)),
@@ -189,11 +215,12 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 				BlockedPorts: normalizePortSlice(pluginConfig.EgressFilter.BlockedPorts),
 			},
 		}
-		if modules.HaproxyEnabled {
-			haproxyUsers, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid)
+		if len(haproxyInboundTags) > 0 {
+			haproxyUsers, haproxyEnabled, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid, haproxyInboundTags)
 			if usersErr != nil {
 				nm.cfg.Logger.Warn("Failed to load node users for HAPROXY payload", "node", target.name, "node_uuid", target.uuid, "error", usersErr)
 			} else {
+				modules.HaproxyEnabled = haproxyEnabled
 				modules.HaproxyUsers = haproxyUsers
 			}
 		}
@@ -418,17 +445,48 @@ func normalizePortSlice(raw []int) []int {
 	return result
 }
 
-func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string) ([]deployHaproxyUserItem, error) {
+func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string, inboundTags []string) ([]deployHaproxyUserItem, bool, error) {
 	if strings.TrimSpace(nodeUUID) == "" {
-		return nil, fmt.Errorf("node uuid is empty")
+		return nil, false, fmt.Errorf("node uuid is empty")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
+	inboundTags = normalizeHaproxyInboundTags(inboundTags)
+	if len(inboundTags) == 0 {
+		return nil, false, nil
+	}
+
+	matchAll := haproxyUsesAllInboundTags(inboundTags)
+	tagFilterSQL := ""
+	matchArgs := []any{nodeUUID}
+	usersArgs := []any{nodeUUID}
+	if !matchAll {
+		tagFilterSQL = " AND cpi.tag = ANY(?)"
+		matchArgs = append(matchArgs, inboundTags)
+		usersArgs = append(usersArgs, inboundTags)
+	}
+
 	items := make([]deployHaproxyUserItem, 0)
+	matched := false
 	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
+		matchQuery := fmt.Sprintf(`
+			SELECT EXISTS (
+				SELECT 1
+				FROM config_profile_inbounds_to_nodes cpitn
+				JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+				WHERE cpitn.node_uuid::text = ?
+					AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
+			)`, tagFilterSQL)
+		if err := db.QueryRowContext(ctx, matchQuery, matchArgs...).Scan(&matched); err != nil {
+			return err
+		}
+		if !matched {
+			return nil
+		}
+
+		usersQuery := fmt.Sprintf(`
 					SELECT
 						u.username,
 						CASE
@@ -452,11 +510,13 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 					JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
 					JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
 					JOIN users u ON u.t_id = ism.user_id
-				WHERE cpitn.node_uuid::text = ? AND u.status = 'ACTIVE'
+				WHERE cpitn.node_uuid::text = ?
+					AND u.status = 'ACTIVE'
+					AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
 					GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
-					HAVING bool_or(lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls'))
 					ORDER BY u.t_id ASC
-			`, nodeUUID)
+			`, tagFilterSQL)
+		rows, err := db.QueryContext(ctx, usersQuery, usersArgs...)
 		if err != nil {
 			return err
 		}
@@ -476,7 +536,7 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 		return rows.Err()
 	})
 
-	return items, err
+	return items, matched, err
 }
 
 func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID string) (json.RawMessage, error) {
