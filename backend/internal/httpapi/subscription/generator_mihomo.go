@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -479,11 +480,30 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 			security = "none"
 		}
 	}
+
+	var mihomoSNI string
+	if host.KeepSNIBlank {
+		mihomoSNI = ""
+	} else if host.OverrideSNIFromAddress {
+		if host.SNI != nil && *host.SNI != "" {
+			mihomoSNI = *host.SNI
+		} else {
+			mihomoSNI = host.Address
+		}
+	} else {
+		nativeSNI := extractMihomoNativeSNI(host.InboundRaw)
+		if nativeSNI != "" {
+			mihomoSNI = nativeSNI
+		} else {
+			mihomoSNI = host.Address
+		}
+	}
+
 	if security == "tls" {
 		proxy["tls"] = true
 		proxy["skip-cert-verify"] = host.AllowInsecure
-		if host.SNI != nil && *host.SNI != "" {
-			proxy["servername"] = *host.SNI
+		if mihomoSNI != "" {
+			proxy["servername"] = mihomoSNI
 		}
 	}
 	if host.Fingerprint != nil && *host.Fingerprint != "" {
@@ -520,8 +540,71 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 			proxy["grpc-opts"] = grpcOpts
 		}
 	}
-	if mux := parseJSONMapString(host.ClashMuxParams); mux != nil {
-		proxy["smux"] = mux
+	if host.ClashMuxParams != nil {
+		if mux := parseMihomoMuxParams(*host.ClashMuxParams); mux != nil {
+			proxy["smux"] = mux
+		}
 	}
 	return proxy
+}
+
+func extractMihomoNativeSNI(inboundRaw []byte) string {
+	if len(inboundRaw) == 0 {
+		return ""
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(inboundRaw, &raw); err != nil {
+		return ""
+	}
+	streamSettings, _ := raw["streamSettings"].(map[string]interface{})
+	if streamSettings == nil {
+		return ""
+	}
+	security, _ := streamSettings["security"].(string)
+	switch strings.ToLower(strings.TrimSpace(security)) {
+	case "tls":
+		tlsSettings, _ := streamSettings["tlsSettings"].(map[string]interface{})
+		if tlsSettings != nil {
+			if sn, ok := tlsSettings["serverName"].(string); ok {
+				return strings.TrimSpace(sn)
+			}
+		}
+	case "reality":
+		realitySettings, _ := streamSettings["realitySettings"].(map[string]interface{})
+		if realitySettings != nil {
+			if sns, ok := realitySettings["serverNames"].([]interface{}); ok && len(sns) > 0 {
+				if sn, ok := sns[0].(string); ok {
+					return strings.TrimSpace(sn)
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func parseMihomoMuxParams(rawStr string) map[string]interface{} {
+	rawStr = strings.TrimSpace(rawStr)
+	if rawStr == "" {
+		return nil
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
+		return normalizeMihomoMuxKeys(result)
+	}
+	if err := yaml.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
+		return normalizeMihomoMuxKeys(result)
+	}
+	return nil
+}
+
+func normalizeMihomoMuxKeys(mux map[string]interface{}) map[string]interface{} {
+	if mux == nil {
+		return nil
+	}
+	normalized := make(map[string]interface{})
+	for k, v := range mux {
+		nk := strings.ReplaceAll(k, "_", "-")
+		normalized[nk] = v
+	}
+	return normalized
 }

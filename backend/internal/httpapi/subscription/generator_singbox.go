@@ -13,6 +13,7 @@ import (
 
 	"github.com/iancoleman/orderedmap"
 	"golang.org/x/crypto/curve25519"
+	"gopkg.in/yaml.v3"
 )
 
 func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
@@ -180,7 +181,7 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 	if protocol == "" {
 		return nil
 	}
-	if protocol != "vless" && protocol != "vmess" && protocol != "trojan" && protocol != "shadowsocks" && protocol != "anytls" && protocol != "naive" && protocol != "shadowtls" && protocol != "hysteria" && protocol != "hysteria2" && protocol != "tuic" {
+	if protocol != "vless" && protocol != "vmess" && protocol != "trojan" && protocol != "anytls" && protocol != "naive" && protocol != "shadowtls" && protocol != "hysteria" && protocol != "hysteria2" && protocol != "tuic" {
 		return nil
 	}
 	credential := effectiveProtocolCredential(host, user)
@@ -235,12 +236,6 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		tlsCfg := orderedmap.New()
 		tlsCfg.Set("enabled", true)
 		sni := defaults.sni
-		if host.OverrideSNIFromAddress {
-			sni = host.Address
-		}
-		if host.KeepSNIBlank {
-			sni = ""
-		}
 		if sni != "" {
 			tlsCfg.Set("server_name", sni)
 		}
@@ -311,14 +306,16 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		}
 		outbound.Set("transport", transport)
 	}
-	if mux := parseJSONMapString(host.SingboxMuxParams); mux != nil {
-		outbound.Set("multiplex", orderedMapFromMapWithPreferredOrder(mux, []string{
-			"enabled",
-			"protocol",
-			"max_connections",
-			"min_streams",
-			"padding",
-		}))
+	if host.SingboxMuxParams != nil {
+		if mux := parseSingboxMuxParams(*host.SingboxMuxParams); mux != nil {
+			outbound.Set("multiplex", orderedMapFromMapWithPreferredOrder(mux, []string{
+				"enabled",
+				"protocol",
+				"max_connections",
+				"min_streams",
+				"padding",
+			}))
+		}
 	}
 	return outbound
 }
@@ -329,7 +326,7 @@ func isSupportedSingboxTransport(protocol, network string) bool {
 		return true
 	}
 	switch network {
-	case "", "tcp", "raw", "ws", "httpupgrade":
+	case "", "tcp", "raw", "ws", "httpupgrade", "grpc":
 		return true
 	default:
 		return false
@@ -387,10 +384,12 @@ func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults
 		defaults.path = derefString(host.Path)
 		defaults.hostHeader = derefString(host.Host)
 	}
+
+	var nativeSNI string
 	switch defaults.security {
 	case "tls":
 		tlsSettings := readMap(streamSettings, "tlsSettings")
-		defaults.sni = firstNonEmpty(derefString(host.SNI), readString(tlsSettings, "serverName"))
+		nativeSNI = readString(tlsSettings, "serverName")
 		defaults.fingerprint = firstNonEmpty(
 			derefString(host.Fingerprint),
 			readString(tlsSettings, "fingerprint"),
@@ -401,10 +400,7 @@ func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults
 		)
 	case "reality":
 		realitySettings := readMap(streamSettings, "realitySettings")
-		defaults.sni = firstNonEmpty(
-			derefString(host.SNI),
-			readFirstString(readStringSlice(realitySettings, "serverNames")),
-		)
+		nativeSNI = readFirstString(readStringSlice(realitySettings, "serverNames"))
 		defaults.fingerprint = firstNonEmpty(
 			derefString(host.Fingerprint),
 			readString(realitySettings, "fingerprint"),
@@ -417,12 +413,23 @@ func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults
 		}
 	}
 	defaults.flow = resolveVlessFlow(host, defaults)
-	if defaults.sni == "" && host.OverrideSNIFromAddress {
-		defaults.sni = host.Address
-	}
+
 	if host.KeepSNIBlank {
 		defaults.sni = ""
+	} else if host.OverrideSNIFromAddress {
+		if val := derefString(host.SNI); val != "" {
+			defaults.sni = val
+		} else {
+			defaults.sni = host.Address
+		}
+	} else {
+		if nativeSNI != "" {
+			defaults.sni = nativeSNI
+		} else {
+			defaults.sni = host.Address
+		}
 	}
+
 	return defaults
 }
 
@@ -795,4 +802,31 @@ func appendUniqueStrings(base []string, extra ...string) []string {
 		result = append(result, value)
 	}
 	return result
+}
+
+func parseSingboxMuxParams(rawStr string) map[string]interface{} {
+	rawStr = strings.TrimSpace(rawStr)
+	if rawStr == "" {
+		return nil
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
+		return normalizeSingboxMuxKeys(result)
+	}
+	if err := yaml.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
+		return normalizeSingboxMuxKeys(result)
+	}
+	return nil
+}
+
+func normalizeSingboxMuxKeys(mux map[string]interface{}) map[string]interface{} {
+	if mux == nil {
+		return nil
+	}
+	normalized := make(map[string]interface{})
+	for k, v := range mux {
+		nk := strings.ReplaceAll(k, "-", "_")
+		normalized[nk] = v
+	}
+	return normalized
 }
