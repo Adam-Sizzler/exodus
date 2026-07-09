@@ -744,6 +744,58 @@ func mapConfigProfileWriteError(err error) error {
 	return err
 }
 
+// extractInboundNetwork resolves the transport/network kind of an inbound.
+//
+// sing-box (what Exodus actually runs) never puts "network" as a flat key on
+// the inbound itself - the transport kind lives nested under
+// `"transport": {"type": "grpc" | "ws" | "httpupgrade" | "xhttp", ...}`.
+// A flat "network" key is only ever seen on legacy/xray-style inbound JSON.
+// We check the sing-box shape first and fall back to the flat key so any
+// old-style config profiles keep working unchanged.
+func extractInboundNetwork(inboundMap map[string]any) string {
+	if transport, ok := inboundMap["transport"].(map[string]any); ok {
+		if transportType, ok := transport["type"].(string); ok && transportType != "" {
+			return transportType
+		}
+	}
+	if networkValue, ok := inboundMap["network"].(string); ok && networkValue != "" {
+		return networkValue
+	}
+	return ""
+}
+
+// extractInboundSecurity resolves the TLS security kind of an inbound.
+//
+// sing-box nests this under `"tls": {"enabled": bool, ...}` rather than a
+// flat "security" string. We only report a definitive value ("tls") when
+// the inbound genuinely declares TLS enabled. When it doesn't (no "tls" key,
+// or "enabled": false), we deliberately return "" rather than "none" - this
+// keeps host.SecurityLayer (the admin's manual TLS/NONE/DEFAULT choice on
+// the Host) as the deciding fallback, exactly like before this fix, for
+// setups such as an external TLS-terminating reverse proxy in front of a
+// plaintext sing-box inbound. Only auto-detect the case we're sure about;
+// don't override the admin's explicit choice for everything else.
+//
+// Note: Reality inbounds (`tls.reality.enabled`) are intentionally reported
+// as plain "tls" here, not a distinct "reality" value. host.SecurityLayer
+// only has TLS/NONE/DEFAULT options (no REALITY), and the xray/mihomo
+// generators only branch on `security == "tls"` - collapsing Reality into
+// "tls" keeps their existing behavior unchanged. Distinguishing Reality
+// properly (for its dedicated public_key/short_id handling) would require
+// broader changes to those generators and is out of scope here.
+func extractInboundSecurity(inboundMap map[string]any) string {
+	if tls, ok := inboundMap["tls"].(map[string]any); ok {
+		if enabled, _ := tls["enabled"].(bool); enabled {
+			return "tls"
+		}
+		return ""
+	}
+	if securityValue, ok := inboundMap["security"].(string); ok && securityValue != "" {
+		return securityValue
+	}
+	return ""
+}
+
 func parseConfigInbounds(profileUUID string, configJSON json.RawMessage) ([]ConfigProfileInbound, error) {
 	var configData map[string]any
 	if err := json.Unmarshal(configJSON, &configData); err != nil {
@@ -788,10 +840,10 @@ func parseConfigInbounds(profileUUID string, configJSON json.RawMessage) ([]Conf
 		} else if protocolValue, ok := inboundMap["protocol"].(string); ok {
 			item.Type = protocolValue
 		}
-		if networkValue, ok := inboundMap["network"].(string); ok && networkValue != "" {
+		if networkValue := extractInboundNetwork(inboundMap); networkValue != "" {
 			item.Network = &networkValue
 		}
-		if securityValue, ok := inboundMap["security"].(string); ok && securityValue != "" {
+		if securityValue := extractInboundSecurity(inboundMap); securityValue != "" {
 			item.Security = &securityValue
 		}
 		if portValue, ok := inboundMap["listen_port"].(float64); ok {

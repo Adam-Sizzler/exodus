@@ -969,6 +969,10 @@ func readMemStats() memStats {
 	result.available = values["MemAvailable"]
 	result.active = values["Active"]
 
+	if err := scanner.Err(); err != nil {
+		return result
+	}
+
 	// "used" is reported as the actively-used working set (Active from
 	// /proc/meminfo) rather than the naive total-minus-free calculation.
 	// total-free counts reclaimable page cache/buffers as "used", which
@@ -1046,6 +1050,10 @@ func detectPhysicalCores(fallback int) int {
 		}
 	}
 	flush()
+
+	if err := scanner.Err(); err != nil {
+		return fallback
+	}
 
 	if len(physicalCoresByPackage) == 0 {
 		return fallback

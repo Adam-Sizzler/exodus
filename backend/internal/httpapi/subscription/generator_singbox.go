@@ -303,6 +303,14 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		}
 		outbound.Set("transport", transport)
 	}
+	if defaults.network == "grpc" {
+		transport := orderedmap.New()
+		transport.Set("type", "grpc")
+		if defaults.path != "" {
+			transport.Set("service_name", defaults.path)
+		}
+		outbound.Set("transport", transport)
+	}
 	if mux := parseJSONMapString(host.SingboxMuxParams); mux != nil {
 		outbound.Set("multiplex", orderedMapFromMapWithPreferredOrder(mux, []string{
 			"enabled",
