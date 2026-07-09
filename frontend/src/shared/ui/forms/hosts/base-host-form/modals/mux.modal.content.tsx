@@ -1,4 +1,4 @@
-import { Anchor, Button, JsonInput, px, Select, Stack, Text } from '@mantine/core'
+import { Anchor, Button, JsonInput, px, Select, Stack, Text, Textarea } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import {
@@ -50,27 +50,65 @@ const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
     XRAY: 'https://xtls.github.io/ru/config/outbound.html#muxobject'
 }
 
+// Clash/Mihomo's "smux" block is native YAML (see BASIC_CLASH_MUX_PARAMS),
+// unlike Xray/Singbox whose mux params are genuinely JSON. The backend
+// (generator_mihomo.go's parseJSONMapString) already accepts this: it first
+// tries to parse the stored value as a JSON object, and if that fails,
+// falls back to treating it as a JSON-encoded *string* containing YAML text
+// (i.e. the raw YAML wrapped/escaped via JSON.stringify). These two helpers
+// keep that wrapping entirely on the frontend so the admin only ever sees
+// and edits plain, human-readable YAML - the backend contract is untouched.
+const wrapClashYamlForStorage = (yamlText: string): string => {
+    if (yamlText.trim() === '') {
+        return ''
+    }
+    return JSON.stringify(yamlText)
+}
+
+const unwrapClashYamlFromStorage = (stored: string): string => {
+    if (stored.trim() === '') {
+        return ''
+    }
+    try {
+        const parsed = JSON.parse(stored)
+        if (typeof parsed === 'string') {
+            return parsed
+        }
+    } catch {
+        // Not a JSON-string-wrapped payload (e.g. legacy/hand-edited value) -
+        // fall through and show it as-is, as plain YAML.
+    }
+    return stored
+}
+
 export const MuxModalContent = ({ form }: IProps) => {
     const { t } = useTranslation()
 
     const [activeCore, setActiveCore] = useState<MuxCore>('SINGBOX')
     const activeField = MUX_FIELD_BY_CORE[activeCore]
     const activePlaceholder = MUX_PLACEHOLDER_BY_CORE[activeCore]
+    const isYamlCore = activeCore === 'CLASH'
     const inputProps = form.getInputProps(activeField as never)
 
-    const [value, setValue] = useState<string>(
-        ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ?? ''
-    )
+    const [value, setValue] = useState<string>(() => {
+        const stored =
+            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ??
+            ''
+        return isYamlCore ? unwrapClashYamlFromStorage(stored) : stored
+    })
 
     useEffect(() => {
-        setValue(
-            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ?? ''
-        )
+        const stored =
+            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ??
+            ''
+        setValue(isYamlCore ? unwrapClashYamlFromStorage(stored) : stored)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeField])
 
     const handleChange = (next: string) => {
         setValue(next)
-        form.setFieldValue(activeField as never, next as never)
+        const toStore = isYamlCore ? wrapClashYamlForStorage(next) : next
+        form.setFieldValue(activeField as never, toStore as never)
     }
 
     return (
@@ -95,7 +133,9 @@ export const MuxModalContent = ({ form }: IProps) => {
                     })}
                 </Text>
                 <Text c="dimmed" size="sm">
-                    {t('base-host-form.please-ensure-you-provide-a-valid-json-mux-object')}
+                    {isYamlCore
+                        ? t('base-host-form.please-ensure-you-provide-a-valid-yaml-mux-object')
+                        : t('base-host-form.please-ensure-you-provide-a-valid-json-mux-object')}
                 </Text>
                 <Text c="dimmed" size="sm">
                     {t('base-host-form.for-more-information-refer-to')}{' '}
@@ -124,17 +164,30 @@ export const MuxModalContent = ({ form }: IProps) => {
                 {t('common.close')}
             </Button>
 
-            <JsonInput
-                autosize
-                error={inputProps.error}
-                formatOnBlur
-                minRows={15}
-                onBlur={inputProps.onBlur}
-                onChange={handleChange}
-                placeholder={activePlaceholder}
-                validationError={t('base-host-form.invalid-json')}
-                value={value}
-            />
+            {isYamlCore ? (
+                <Textarea
+                    autosize
+                    error={inputProps.error}
+                    minRows={15}
+                    onBlur={inputProps.onBlur}
+                    onChange={(event) => handleChange(event.currentTarget.value)}
+                    placeholder={activePlaceholder}
+                    styles={{ input: { fontFamily: 'monospace' } }}
+                    value={value}
+                />
+            ) : (
+                <JsonInput
+                    autosize
+                    error={inputProps.error}
+                    formatOnBlur
+                    minRows={15}
+                    onBlur={inputProps.onBlur}
+                    onChange={handleChange}
+                    placeholder={activePlaceholder}
+                    validationError={t('base-host-form.invalid-json')}
+                    value={value}
+                />
+            )}
         </Stack>
     )
 }

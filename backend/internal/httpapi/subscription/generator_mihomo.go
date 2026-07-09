@@ -594,6 +594,23 @@ func parseMihomoMuxParams(rawStr string) map[string]interface{} {
 	if err := yaml.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
 		return normalizeMihomoMuxKeys(result)
 	}
+	// The value may be a YAML document wrapped/escaped as a single JSON
+	// string, e.g. `"enabled: true
+	//protocol: h2mux
+	//..."` (this is what
+	// the host form's Clash/Mihomo YAML editor actually stores). Neither
+	// branch above matches that shape: it's not a JSON object, and parsed
+	// as YAML on its own it's just one double-quoted scalar, not a mapping.
+	// Unwrap that one JSON-string layer and parse the inner text as YAML.
+	var unwrapped string
+	if err := json.Unmarshal([]byte(rawStr), &unwrapped); err == nil {
+		unwrapped = strings.TrimSpace(unwrapped)
+		if unwrapped != "" {
+			if err := yaml.Unmarshal([]byte(unwrapped), &result); err == nil && result != nil {
+				return normalizeMihomoMuxKeys(result)
+			}
+		}
+	}
 	return nil
 }
 
