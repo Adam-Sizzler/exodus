@@ -62,7 +62,7 @@ export const BASIC_SINGBOX_MUX_PARAMS = `{
   "max_streams": 0
 }`
 
-export const BASIC_CLASH_MUX_PARAMS = `{
+export const BASIC_CLASH_MUX_PARAMS = `
 enabled: true
 protocol: h2mux
 max-connections: 6
