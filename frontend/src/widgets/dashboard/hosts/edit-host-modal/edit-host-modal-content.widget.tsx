@@ -84,7 +84,7 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
                 xhttpExtraParams: stringifyJsonField(host.xhttpExtraParams),
                 muxParams: stringifyJsonField(host.muxParams),
                 singboxMuxParams: stringifyJsonField(hostAny.singboxMuxParams),
-                clashMuxParams: stringifyJsonField(hostAny.clashMuxParams),
+                clashMuxParams: (hostAny.clashMuxParams as string | undefined) ?? '',
                 sockoptParams: stringifyJsonField(host.sockoptParams),
                 finalMask: stringifyJsonField(host.finalMask),
                 tags: host.tags ?? undefined,

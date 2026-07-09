@@ -59,14 +59,12 @@ export const BASIC_SINGBOX_MUX_PARAMS = `{
   "padding": true
 }`
 
-export const BASIC_CLASH_MUX_PARAMS = `
-enabled: true
+export const BASIC_CLASH_MUX_PARAMS = `enabled: true
 protocol: h2mux
 max-connections: 6
 padding: true
 min-streams: 4
-max-streams: 0
-`
+max-streams: 0`
 
 export const BASIC_SOCKOPT_PARAMS = `{
   "mark": 0,

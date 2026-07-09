@@ -16,10 +16,7 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { preventBackScroll } from '@shared/utils/misc'
 
 import styles from './NodePluginEditor.module.css'
-import {
-    buildNodePluginEditorSchema,
-    getNodePluginHaproxyInboundTagOptions
-} from './node-plugin-editor-schema'
+import { getNodePluginHaproxyInboundTagOptions } from './node-plugin-editor-schema'
 
 interface IProps {
     nodePlugin: GetNodePluginCommand.Response['response']['pluginConfig']
@@ -35,10 +32,6 @@ export function NodePluginEditorWidget(props: IProps) {
     const haproxyAuthInboundTagOptions = useMemo(
         () => getNodePluginHaproxyInboundTagOptions(nodes, pluginUuid),
         [nodes, pluginUuid]
-    )
-    const nodePluginEditorSchema = useMemo(
-        () => buildNodePluginEditorSchema(haproxyAuthInboundTagOptions),
-        [haproxyAuthInboundTagOptions]
     )
 
     const [result, setResult] = useState('')
@@ -97,14 +90,14 @@ export function NodePluginEditorWidget(props: IProps) {
     }, [blocker])
 
     const handleEditorDidMount = (monaco: Monaco) => {
-        MonacoSetupNodePluginEditorFeature.setup(monaco, nodePluginEditorSchema)
+        MonacoSetupNodePluginEditorFeature.setup(monaco, haproxyAuthInboundTagOptions)
     }
 
     useEffect(() => {
         if (!monacoRef.current) return
 
-        MonacoSetupNodePluginEditorFeature.setup(monacoRef.current, nodePluginEditorSchema)
-    }, [nodePluginEditorSchema])
+        MonacoSetupNodePluginEditorFeature.setup(monacoRef.current, haproxyAuthInboundTagOptions)
+    }, [haproxyAuthInboundTagOptions])
 
     const checkForChanges = () => {
         if (!editorRef.current) return
