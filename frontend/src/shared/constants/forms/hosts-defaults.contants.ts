@@ -55,11 +55,8 @@ export const BASIC_MUX_PARAMS = BASIC_XRAY_MUX_PARAMS
 
 export const BASIC_SINGBOX_MUX_PARAMS = `{
   "enabled": true,
-  "protocol": "h2mux",
   "max_connections": 6,
-  "padding": true,
-  "min_streams": 4,
-  "max_streams": 0
+  "padding": true
 }`
 
 export const BASIC_CLASH_MUX_PARAMS = `

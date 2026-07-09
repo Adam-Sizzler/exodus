@@ -347,7 +347,7 @@ export function RecapContent() {
                                 color: alpha(accent, 0.7)
                             }}
                         >
-                            v{recap.version}
+                            {recap.version}
                         </span>
                     </div>
                 </div>
