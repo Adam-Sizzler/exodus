@@ -9,7 +9,8 @@ import {
     Loader,
     Stack,
     Switch,
-    TextInput
+    TextInput,
+    useMantineTheme
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import dayjs from 'dayjs'
@@ -26,7 +27,6 @@ import { copyScreenshotToClipboard, downloadScreenshot } from '@shared/utils/cop
 import {
     BG_STYLES,
     CARD_SECTIONS,
-    DEFAULT_ACCENT,
     DEFAULT_SECTIONS,
     MASKABLE_FIELDS,
     SWATCHES
@@ -36,10 +36,13 @@ import classes from './recap.content.module.css'
 export function RecapContent() {
     const { data: recap, isLoading } = useGetRecap()
     const { t } = useTranslation()
+    const theme = useMantineTheme()
+
+    const defaultAccent = theme.colors['exodus-logo-dus'][6]
 
     const [cardKey, setCardKey] = useState(0)
     const [sections, setSections] = useState<string[]>(DEFAULT_SECTIONS)
-    const [accent, setAccent] = useState(DEFAULT_ACCENT)
+    const [accent, setAccent] = useState(defaultAccent)
     const [copying, setCopying] = useState(false)
     const [downloading, setDownloading] = useState(false)
     const [maskedFields, setMaskedFields] = useState<string[]>([])

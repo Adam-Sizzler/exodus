@@ -2,7 +2,6 @@
 // This is the default Recap accent before the user picks a custom color
 // from the ColorPicker below; it intentionally is NOT part of SWATCHES so
 // the swatch list and manual color selection stay untouched.
-export const DEFAULT_ACCENT = '#90a2ae)'
 
 export const SWATCHES = [
     'rgb(21, 170, 191)',

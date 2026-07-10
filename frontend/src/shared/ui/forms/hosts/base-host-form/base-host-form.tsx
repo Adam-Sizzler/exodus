@@ -235,7 +235,7 @@ export const BaseHostForm = <
         } as Partial<T>)
         setActiveCredentialInbound(nextInbound)
 
-        if (!nextProtocol || nextProtocol !== currentProtocol) {
+        if (!removeRequiredFields && (!nextProtocol || nextProtocol !== currentProtocol)) {
             form.setFieldValue('overrideProtocolCredential' as never, false as never)
             form.setFieldValue('protocolCredential' as never, null as never)
         }
@@ -271,8 +271,10 @@ export const BaseHostForm = <
         setActiveCredentialInbound(inbound)
 
         if (!protocol) {
-            form.setFieldValue('overrideProtocolCredential' as never, false as never)
-            form.setFieldValue('protocolCredential' as never, null as never)
+            if (!removeRequiredFields) {
+                form.setFieldValue('overrideProtocolCredential' as never, false as never)
+                form.setFieldValue('protocolCredential' as never, null as never)
+            }
             return
         }
     }

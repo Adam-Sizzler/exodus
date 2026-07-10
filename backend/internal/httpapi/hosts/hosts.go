@@ -77,24 +77,51 @@ func HostsActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 
 func HostsBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-
 		path := strings.TrimPrefix(r.URL.Path, "/api/hosts/bulk/")
 		path = strings.Trim(path, "/")
+
+		requireMethod := func(method string) bool {
+			if r.Method != method {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return false
+			}
+			return true
+		}
+
 		switch path {
 		case "enable":
+			if !requireMethod(http.MethodPost) {
+				return
+			}
 			handleBulkEnableHosts(w, r, manager, cfg)
 		case "disable":
+			if !requireMethod(http.MethodPost) {
+				return
+			}
 			handleBulkDisableHosts(w, r, manager, cfg)
 		case "delete":
+			if !requireMethod(http.MethodPost) {
+				return
+			}
 			handleBulkDeleteHosts(w, r, manager, cfg)
 		case "set-inbound":
+			if !requireMethod(http.MethodPost) {
+				return
+			}
 			handleBulkSetInbound(w, r, manager, cfg)
 		case "set-port":
+			if !requireMethod(http.MethodPost) {
+				return
+			}
 			handleBulkSetPort(w, r, manager, cfg)
+		case "update":
+			// UpdateManyHostsCommand in the contract declares this route as
+			// PATCH (matches the single-host update endpoint's verb), unlike
+			// the other bulk actions above which are POST.
+			if !requireMethod(http.MethodPatch) {
+				return
+			}
+			handleBulkUpdateHosts(w, r, manager, cfg)
 		default:
 			http.NotFound(w, r)
 		}

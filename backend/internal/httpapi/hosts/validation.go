@@ -82,7 +82,7 @@ func validateCreateRequest(req HostCreateRequestAPI) error {
 	return nil
 }
 
-func validateUpdateRequest(req HostUpdateRequestAPI) error {
+func validateUpdateRequest(req hostUpdateFields) error {
 	if req.Remark.Set {
 		if req.Remark.Value == nil {
 			return fmt.Errorf("remark cannot be null")

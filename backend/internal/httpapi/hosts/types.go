@@ -183,8 +183,12 @@ type HostCreateRequestAPI struct {
 	ExcludeFromSubscription    []string         `json:"excludeFromSubscriptionTypes,omitempty"`
 }
 
-type HostUpdateRequestAPI struct {
-	UUID                       string         `json:"uuid"`
+// hostUpdateFields holds every updatable host field shared between a
+// single-host update (HostUpdateRequestAPI) and a bulk update applied to
+// several hosts at once (HostBulkUpdateRequestAPI). Keeping this as one
+// embedded struct means both request shapes and the clause-building logic
+// that reads them can never drift apart from each other.
+type hostUpdateFields struct {
 	Inbound                    *HostInbound   `json:"inbound,omitempty"`
 	Remark                     OptionalString `json:"remark,omitempty"`
 	Address                    OptionalString `json:"address,omitempty"`
@@ -220,6 +224,19 @@ type HostUpdateRequestAPI struct {
 	XrayJSONTemplateUUID       OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
 	ExcludedInternalSquads     []string       `json:"excludedInternalSquads,omitempty"`
 	ExcludeFromSubscription    []string       `json:"excludeFromSubscriptionTypes,omitempty"`
+}
+
+type HostUpdateRequestAPI struct {
+	UUID string `json:"uuid"`
+	hostUpdateFields
+}
+
+// HostBulkUpdateRequestAPI is the request body for PATCH /api/hosts/bulk/update
+// (UpdateManyHostsCommand in the contract): the same updatable fields as a
+// single host update, applied identically to every host in Uuids.
+type HostBulkUpdateRequestAPI struct {
+	Uuids []string `json:"uuids"`
+	hostUpdateFields
 }
 
 type reorderHostsRequest struct {

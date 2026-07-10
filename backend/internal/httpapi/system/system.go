@@ -973,16 +973,22 @@ func readMemStats() memStats {
 		return result
 	}
 
-	// "used" is reported as the actively-used working set (Active from
-	// /proc/meminfo) rather than the naive total-minus-free calculation.
+	// "used" is reported as total-minus-available rather than the naive
+	// total-minus-free calculation, and rather than total-minus-active.
 	// total-free counts reclaimable page cache/buffers as "used", which
 	// makes RAM usage look almost full on any Linux host even when the
-	// system is barely loaded. Active reflects memory the kernel considers
-	// recently/actually in use by processes, which is a much more honest
-	// number to show on the dashboard.
-	result.used = result.active
+	// system is barely loaded. Active is closer, but it still includes
+	// recently-touched file cache pages that are trivially reclaimable -
+	// it is not a clean "genuinely unavailable" number. MemAvailable is
+	// the kernel's own estimate of memory it could hand to a new process
+	// right now without swapping, so total-available is the most honest
+	// number to show on the dashboard. This also mirrors exactly how
+	// exodus-node computes memoryUsed for proxy nodes
+	// (detectAvailableRAMBytes), so the panel's own host stats now use the
+	// same formula as node stats do.
+	result.used = result.total - result.available
 	if result.used <= 0 {
-		// Fallback for kernels/environments without an "Active" line.
+		// Fallback for kernels/environments without a "MemAvailable" line.
 		result.used = result.total - result.free
 	}
 	if result.used < 0 {
