@@ -18,7 +18,7 @@ RUN apk add --no-cache curl \
 
 RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache npm run cb
 
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.12-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata

@@ -2,6 +2,8 @@ module exodus
 
 go 1.25.9
 
+toolchain go1.25.12
+
 require (
 	github.com/go-webauthn/webauthn v0.17.2
 	github.com/google/uuid v1.6.0
@@ -10,8 +12,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.12.1
 	github.com/rs/zerolog v1.34.0
-	golang.org/x/crypto v0.50.0
-	golang.org/x/term v0.43.0
+	golang.org/x/crypto v0.54.0
+	golang.org/x/term v0.45.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
@@ -36,8 +38,8 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/net v0.56.0
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 )

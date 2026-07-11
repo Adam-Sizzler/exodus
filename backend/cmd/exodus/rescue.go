@@ -118,12 +118,14 @@ func runRescueCLI() error {
 		return resetCerts(resources, reader)
 	case "get-secret-key-for-node":
 		return getSecretKeyForNode(resources)
-	case "fix-postgres-collation":
-		return fixPostgresCollation(resources, reader)
 	case "truncate-hwid-user-devices":
 		return truncateHwidUserDevices(resources, reader)
 	case "truncate-srh-table":
 		return truncateSRHTable(resources, reader)
+	case "truncate-users-usage-table":
+		return truncateUsersUsageTable(resources, reader)
+	case "delete-users-usage-by-date-range":
+		return deleteUsersUsageByDateRange(resources, reader)
 	case "exit":
 		printStatus("ℹ", "👋 Exiting...")
 		return nil
@@ -240,11 +242,22 @@ func promptAction() (string, error) {
 		return "", errors.New("no rescue actions configured")
 	}
 
-	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
-		return promptActionPlain(actions)
+	return promptSelect(actions, len(actions)-1)
+}
+
+func promptSelect(actions []cliAction, initialIndex int) (string, error) {
+	if len(actions) == 0 {
+		return "", errors.New("no options configured")
 	}
 
-	selected := len(actions) - 1
+	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
+		return promptSelectPlain(actions, initialIndex)
+	}
+
+	selected := initialIndex
+	if selected < 0 || selected >= len(actions) {
+		selected = len(actions) - 1
+	}
 
 	fmt.Println()
 
@@ -326,11 +339,6 @@ func rescueActions() []cliAction {
 			Hint:  "Get SECRET_KEY in cases, where you can not get from Panel",
 		},
 		{
-			Value: "fix-postgres-collation",
-			Label: "Fix Collation",
-			Hint:  "Fix Collation issues for current database",
-		},
-		{
 			Value: "truncate-hwid-user-devices",
 			Label: "Clean up HWID Devices",
 			Hint:  "Remove all HWID Devices from the database",
@@ -341,13 +349,27 @@ func rescueActions() []cliAction {
 			Hint:  "Remove all SRH data from the database",
 		},
 		{
+			Value: "truncate-users-usage-table",
+			Label: "Clean up Users Usage Table",
+			Hint:  "Remove all users traffic statistics data from the database",
+		},
+		{
+			Value: "delete-users-usage-by-date-range",
+			Label: "Delete Users Usage by date range",
+			Hint:  "Remove traffic statistics for a period (day-month-year); choose single or batched",
+		},
+		{
 			Value: "exit",
 			Label: "Exit",
 		},
 	}
 }
 
-func promptActionPlain(actions []cliAction) (string, error) {
+func promptSelectPlain(actions []cliAction, initialIndex int) (string, error) {
+	if initialIndex < 0 || initialIndex >= len(actions) {
+		initialIndex = len(actions) - 1
+	}
+
 	fmt.Println()
 	fmt.Println("Select an action:")
 	for index, action := range actions {
@@ -359,7 +381,7 @@ func promptActionPlain(actions []cliAction) (string, error) {
 		fmt.Printf("%d) %s\n", index+1, action.Label)
 	}
 
-	fmt.Printf("Enter number [%d]: ", len(actions))
+	fmt.Printf("Enter number [%d]: ", initialIndex+1)
 
 	reader := bufio.NewReader(os.Stdin)
 	text, err := reader.ReadString('\n')
@@ -369,7 +391,7 @@ func promptActionPlain(actions []cliAction) (string, error) {
 
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return actions[len(actions)-1].Value, nil
+		return actions[initialIndex].Value, nil
 	}
 
 	selected, err := strconv.Atoi(text)
@@ -601,34 +623,6 @@ func getSecretKeyForNode(resources *rescueResources) error {
 	return nil
 }
 
-func fixPostgresCollation(resources *rescueResources, reader *bufio.Reader) error {
-	printStatus("◐", "🔄 Fixing Collation...")
-
-	answer, err := promptConfirm(reader, "Are you sure you want to fix Collation?")
-	if err != nil {
-		return err
-	}
-	if !answer {
-		return errors.New("aborted")
-	}
-
-	var dbName string
-	if err := resources.db.QueryRow(`SELECT current_database()`).Scan(&dbName); err != nil {
-		return fmt.Errorf("read current database name: %w", err)
-	}
-
-	printStatus("◐", fmt.Sprintf("🔄 Refreshing Collation for database: %s", dbName))
-
-	escapedName := strings.ReplaceAll(dbName, `"`, `""`)
-	if _, err := resources.db.Exec(fmt.Sprintf(`ALTER DATABASE "%s" REFRESH COLLATION VERSION`, escapedName)); err != nil {
-		return fmt.Errorf("refresh collation version: %w", err)
-	}
-
-	printStatus("✔", "✅ Collation fixed successfully.")
-
-	return nil
-}
-
 func truncateHwidUserDevices(resources *rescueResources, reader *bufio.Reader) error {
 	printStatus("◐", "🔄 Cleaning up HWID Devices...")
 
@@ -667,6 +661,378 @@ func truncateSRHTable(resources *rescueResources, reader *bufio.Reader) error {
 	printStatus("✔", "✅ SRH Table cleaned up successfully.")
 
 	return nil
+}
+
+func truncateUsersUsageTable(resources *rescueResources, reader *bufio.Reader) error {
+	printStatus("◐", "🔄 Cleaning up Users Usage Table...")
+
+	answer, err := promptConfirm(reader, "Are you sure you want to clean up Users Usage Table?")
+	if err != nil {
+		return err
+	}
+	if !answer {
+		return errors.New("aborted")
+	}
+
+	if _, err := resources.db.Exec(`TRUNCATE nodes_user_usage_history RESTART IDENTITY`); err != nil {
+		return fmt.Errorf("clean up Users Usage Table: %w", err)
+	}
+	if _, err := resources.db.Exec(`VACUUM nodes_user_usage_history`); err != nil {
+		return fmt.Errorf("vacuum Users Usage Table: %w", err)
+	}
+	if _, err := resources.db.Exec(`REINDEX TABLE nodes_user_usage_history`); err != nil {
+		return fmt.Errorf("reindex Users Usage Table: %w", err)
+	}
+
+	printStatus("✔", "✅ Users Usage Table cleaned up successfully.")
+
+	return nil
+}
+
+const dateInputLayout = "02-01-2006" // strict DD-MM-YYYY
+
+func promptStrictDate(reader *bufio.Reader, label string, example string) (time.Time, error) {
+	fmt.Printf(
+		"Enter the %s date in strict format day-month-year (DD-MM-YYYY), e.g. %s: ",
+		label, example,
+	)
+
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		return time.Time{}, fmt.Errorf("read %s date: %w", label, err)
+	}
+
+	parsed, err := time.Parse(dateInputLayout, strings.TrimSpace(text))
+	if err != nil {
+		return time.Time{}, fmt.Errorf(
+			"invalid %s date: expected strict format DD-MM-YYYY, e.g. %s", label, example,
+		)
+	}
+
+	return parsed, nil
+}
+
+func promptBatchSize(reader *bufio.Reader) (int, error) {
+	fmt.Print("Batch size (rows per DELETE) [50000]: ")
+
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		return 0, fmt.Errorf("read batch size: %w", err)
+	}
+
+	text = strings.TrimSpace(text)
+	if text == "" {
+		text = "50000"
+	}
+
+	batchSize, err := strconv.Atoi(text)
+	if err != nil || batchSize <= 0 {
+		return 0, fmt.Errorf("invalid batch size: expected a positive integer")
+	}
+
+	return batchSize, nil
+}
+
+func formatThousands(n int64) string {
+	s := strconv.FormatInt(n, 10)
+
+	neg := strings.HasPrefix(s, "-")
+	if neg {
+		s = s[1:]
+	}
+
+	var out []byte
+	for i, c := range []byte(s) {
+		if i != 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ',')
+		}
+		out = append(out, c)
+	}
+
+	if neg {
+		return "-" + string(out)
+	}
+
+	return string(out)
+}
+
+func renderDeleteProgress(current, total int64, startedAt time.Time, lastBatchMs int64) {
+	ratio := 1.0
+	if total > 0 {
+		ratio = float64(current) / float64(total)
+		if ratio > 1 {
+			ratio = 1
+		}
+	}
+
+	const width = 28
+	filled := int(ratio*width + 0.5)
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
+	pct := fmt.Sprintf("%5.1f%%", ratio*100)
+
+	elapsedSec := time.Since(startedAt).Seconds()
+	etaStr := "—"
+	if current > 0 && total > current {
+		etaStr = fmt.Sprintf("%.1f", (elapsedSec/float64(current))*float64(total-current))
+	}
+
+	line := fmt.Sprintf(
+		"  [%s] %s  %s/%s  | %.1fs elapsed | ETA %ss | last %dms | do NOT close",
+		bar, pct, formatThousands(current), formatThousands(total), elapsedSec, etaStr, lastBatchMs,
+	)
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		fmt.Print("\r\x1b[K")
+		fmt.Print(line)
+	} else {
+		fmt.Println(strings.TrimSpace(line))
+	}
+}
+
+func runSingleUsageDelete(resources *rescueResources, startStr, endStr string) (int64, error) {
+	printStatus("◐", "🔄 Deleting records... (do NOT close this window)")
+
+	result, err := resources.db.Exec(dbutil.Rebind(`
+		DELETE FROM nodes_user_usage_history
+		WHERE created_at >= ?::date
+		  AND created_at <= ?::date
+	`), startStr, endStr)
+	if err != nil {
+		return 0, fmt.Errorf("delete records: %w", err)
+	}
+
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("read rows affected: %w", err)
+	}
+
+	printStatus("✔", fmt.Sprintf("✅ Deleted %s record(s).", formatThousands(deleted)))
+
+	return deleted, nil
+}
+
+func runBatchedUsageDelete(
+	resources *rescueResources,
+	startStr, endStr string,
+	batchSize int,
+	totalToDelete int64,
+	startedAt time.Time,
+) (int64, error) {
+	var totalDeleted int64
+	var timings []int64
+
+	printStatus("◐", "🔄 Deleting records in batches... (do NOT close this window)")
+
+	for {
+		batchStart := time.Now()
+
+		result, err := resources.db.Exec(dbutil.Rebind(`
+			DELETE FROM nodes_user_usage_history
+			WHERE ctid IN (
+				SELECT ctid
+				FROM nodes_user_usage_history
+				WHERE created_at >= ?::date
+				  AND created_at <= ?::date
+				LIMIT ?
+			)
+		`), startStr, endStr, batchSize)
+		if err != nil {
+			if term.IsTerminal(int(os.Stdout.Fd())) {
+				fmt.Println()
+			}
+			return totalDeleted, fmt.Errorf("delete records: %w", err)
+		}
+
+		batchMs := time.Since(batchStart).Milliseconds()
+
+		deleted, err := result.RowsAffected()
+		if err != nil {
+			if term.IsTerminal(int(os.Stdout.Fd())) {
+				fmt.Println()
+			}
+			return totalDeleted, fmt.Errorf("read rows affected: %w", err)
+		}
+
+		if deleted == 0 {
+			break
+		}
+
+		totalDeleted += deleted
+		timings = append(timings, batchMs)
+
+		renderDeleteProgress(totalDeleted, totalToDelete, startedAt, batchMs)
+	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		fmt.Println()
+	}
+
+	if len(timings) > 0 {
+		first := timings[0]
+		last := timings[len(timings)-1]
+		min, max, sum := timings[0], timings[0], int64(0)
+		for _, t := range timings {
+			if t < min {
+				min = t
+			}
+			if t > max {
+				max = t
+			}
+			sum += t
+		}
+		avg := sum / int64(len(timings))
+
+		printInfoBox([]string{
+			"Batched delete summary",
+			fmt.Sprintf("batches:            %d", len(timings)),
+			fmt.Sprintf("batch size:         %s", formatThousands(int64(batchSize))),
+			fmt.Sprintf("deleted total:      %s", formatThousands(totalDeleted)),
+			fmt.Sprintf("first / avg / last: %dms / %dms / %dms", first, avg, last),
+			fmt.Sprintf("min / max:          %dms / %dms", min, max),
+		})
+	}
+
+	return totalDeleted, nil
+}
+
+func deleteUsersUsageByDateRange(resources *rescueResources, reader *bufio.Reader) error {
+	fmt.Println(
+		"This will permanently delete users traffic statistics " +
+			"(nodes_user_usage_history) for the selected date range.",
+	)
+
+	method, err := promptSelect([]cliAction{
+		{
+			Value: "single",
+			Label: "Single query (fast)",
+			Hint:  "One DELETE — fastest overall, but holds one longer lock",
+		},
+		{
+			Value: "batched",
+			Label: "Batched (low-lock + progress bar)",
+			Hint:  "Many small DELETEs — shorter locks, live progress, slower overall",
+		},
+	}, 0)
+	if err != nil {
+		return err
+	}
+
+	startDate, err := promptStrictDate(reader, "START", "01-01-2024")
+	if err != nil {
+		return err
+	}
+
+	endDate, err := promptStrictDate(reader, "END", "31-12-2024")
+	if err != nil {
+		return err
+	}
+
+	if endDate.Before(startDate) {
+		return fmt.Errorf("END date can not be earlier than START date")
+	}
+
+	batchSize := 0
+	if method == "batched" {
+		batchSize, err = promptBatchSize(reader)
+		if err != nil {
+			return err
+		}
+	}
+
+	startStr := startDate.Format("2006-01-02")
+	endStr := endDate.Format("2006-01-02")
+
+	printStatus("◐", "🔍 Counting affected rows...")
+
+	var rowsToDelete int64
+	if err := resources.db.QueryRow(dbutil.Rebind(`
+		SELECT COUNT(*)
+		FROM nodes_user_usage_history
+		WHERE created_at >= ?::date
+		  AND created_at <= ?::date
+	`), startStr, endStr).Scan(&rowsToDelete); err != nil {
+		return fmt.Errorf("count rows: %w", err)
+	}
+
+	if rowsToDelete == 0 {
+		printStatus("ℹ", fmt.Sprintf(
+			"ℹ️ No records found between %s and %s (inclusive). Nothing to delete.", startStr, endStr,
+		))
+		return nil
+	}
+
+	methodLine := "in a single query."
+	if method == "batched" {
+		methodLine = fmt.Sprintf("in batches of %s.", formatThousands(int64(batchSize)))
+	}
+
+	printInfoBox([]string{
+		fmt.Sprintf("About to delete %s record(s)", formatThousands(rowsToDelete)),
+		fmt.Sprintf("from %s to %s (inclusive)", startStr, endStr),
+		"from table \"nodes_user_usage_history\" " + methodLine,
+	})
+
+	fmt.Println(
+		"⚠ Do NOT close this window until the operation is finished.\n" +
+			"⚠ A final VACUUM runs at the end to reclaim space.\n" +
+			"⚠ Interrupting the operation may leave the table bloated.",
+	)
+
+	answer, err := promptConfirm(reader, fmt.Sprintf(
+		"Are you sure you want to permanently delete these %s record(s)?", formatThousands(rowsToDelete),
+	))
+	if err != nil {
+		return err
+	}
+	if !answer {
+		return errors.New("aborted")
+	}
+
+	startedAt := time.Now()
+
+	var totalDeleted int64
+	if method == "batched" {
+		totalDeleted, err = runBatchedUsageDelete(resources, startStr, endStr, batchSize, rowsToDelete, startedAt)
+	} else {
+		totalDeleted, err = runSingleUsageDelete(resources, startStr, endStr)
+	}
+	if err != nil {
+		return err
+	}
+
+	printStatus("◐", "🧹 Reclaiming space (VACUUM)... (do NOT close this window)")
+	if _, err := resources.db.Exec(`VACUUM nodes_user_usage_history`); err != nil {
+		printStatus("⚠", fmt.Sprintf("⚠️ Final VACUUM failed (table left as-is): %v", err))
+	}
+
+	elapsedSec := time.Since(startedAt).Seconds()
+	printStatus("✔", fmt.Sprintf(
+		"✅ Done in %.1fs. Removed %s record(s) from %s to %s.",
+		elapsedSec, formatThousands(totalDeleted), startStr, endStr,
+	))
+
+	return nil
+}
+
+func printInfoBox(lines []string) {
+	width := 0
+	for _, line := range lines {
+		if l := len([]rune(line)); l > width {
+			width = l
+		}
+	}
+	width += 4
+
+	border := strings.Repeat("─", width)
+
+	fmt.Println()
+	fmt.Printf(" ╭%s╮\n", border)
+	for _, line := range lines {
+		padding := strings.Repeat(" ", width-2-len([]rune(line)))
+		fmt.Printf(" │  %s%s │\n", line, padding)
+	}
+	fmt.Printf(" ╰%s╯\n", border)
+	fmt.Println()
 }
 
 func promptConfirm(reader *bufio.Reader, label string) (bool, error) {
