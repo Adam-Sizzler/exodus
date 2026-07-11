@@ -151,6 +151,7 @@ export const CreateNodeModalWidget = () => {
                         <div style={styles}>
                             <CreateNodeStep1Connection
                                 form={form}
+                                grpcToken={pubKey?.grpcToken}
                                 onNext={nextStep}
                                 port={selectedPort}
                                 pubKey={pubKey?.pubKey}

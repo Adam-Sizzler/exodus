@@ -8,6 +8,9 @@ export declare namespace CreateNodeCommand {
         address: z.ZodString;
         port: z.ZodOptional<z.ZodNumber>;
         proxyUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        apiSchema: z.ZodDefault<z.ZodOptional<z.ZodEnum<["mtls", "tls"]>>>;
+        apiPath: z.ZodOptional<z.ZodString>;
+        grpcAuthToken: z.ZodOptional<z.ZodString>;
         isTrafficTrackingActive: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         trafficLimitBytes: z.ZodOptional<z.ZodNumber>;
         notifyPercent: z.ZodOptional<z.ZodNumber>;
@@ -33,6 +36,7 @@ export declare namespace CreateNodeCommand {
         name: string;
         countryCode: string;
         address: string;
+        apiSchema: "mtls" | "tls";
         isTrafficTrackingActive: boolean;
         configProfile: {
             activeConfigProfileUuid: string;
@@ -42,6 +46,8 @@ export declare namespace CreateNodeCommand {
         port?: number | undefined;
         trafficLimitBytes?: number | undefined;
         proxyUrl?: string | null | undefined;
+        apiPath?: string | undefined;
+        grpcAuthToken?: string | undefined;
         trafficResetDay?: number | undefined;
         notifyPercent?: number | undefined;
         consumptionMultiplier?: number | undefined;
@@ -61,6 +67,9 @@ export declare namespace CreateNodeCommand {
         port?: number | undefined;
         trafficLimitBytes?: number | undefined;
         proxyUrl?: string | null | undefined;
+        apiSchema?: "mtls" | "tls" | undefined;
+        apiPath?: string | undefined;
+        grpcAuthToken?: string | undefined;
         isTrafficTrackingActive?: boolean | undefined;
         trafficResetDay?: number | undefined;
         notifyPercent?: number | undefined;

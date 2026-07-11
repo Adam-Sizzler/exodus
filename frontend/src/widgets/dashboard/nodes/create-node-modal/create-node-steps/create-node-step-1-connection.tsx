@@ -24,6 +24,8 @@ import {
     TbId,
     TbMapPin,
     TbPackage,
+    TbPlugConnected,
+    TbRoute2,
     TbSettings,
     TbWorld
 } from 'react-icons/tb'
@@ -39,12 +41,13 @@ import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     form: UseFormReturnType<CreateNodeCommand.Request, any>
+    grpcToken: string | undefined
     onNext: () => void
     port: number
     pubKey: string | undefined
 }
 
-export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps) => {
+export const CreateNodeStep1Connection = ({ form, onNext, pubKey, grpcToken, port }: IProps) => {
     const { t } = useTranslation()
 
     const { data: nodePlugins } = useGetNodePlugins()
@@ -52,17 +55,32 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
 
     const [additionalOpened, setAdditionalOpened] = useState(false)
 
+    const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
+    const apiSchemaInputProps = form.getInputProps('apiSchema')
+    const credentialLabel =
+        apiSchema === 'tls'
+            ? t('base-node-form.grpc-token-grpc-auth-token', {
+                  defaultValue: 'gRPC Token (GRPC_AUTH_TOKEN)'
+              })
+            : t('base-node-form.secret-key-secret-key', { defaultValue: 'Secret Key (SECRET_KEY)' })
+    const credentialValue =
+        apiSchema === 'tls'
+            ? (grpcToken?.trim() ?? 'Error loading...')
+            : (pubKey?.trimEnd() ?? 'Error loading...')
+
     const handleNext = async () => {
         const nameErrors = form.validateField('name')
         const countryCodeErrors = form.validateField('countryCode')
         const addressErrors = form.validateField('address')
         const portErrors = form.validateField('port')
+        const apiSchemaErrors = form.validateField('apiSchema')
 
         if (
             nameErrors.hasError ||
             countryCodeErrors.hasError ||
             addressErrors.hasError ||
-            portErrors.hasError
+            portErrors.hasError ||
+            apiSchemaErrors.hasError
         ) {
             return
         }
@@ -99,10 +117,10 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                 <Divider />
                 <Stack gap="xs">
                     <CopyableFieldShared
-                        label="Secret Key (SECRET_KEY)"
+                        label={credentialLabel}
                         leftSection={<TbCertificate size={16} />}
                         size="sm"
-                        value={`${pubKey?.trimEnd()}`}
+                        value={credentialValue}
                     />
 
                     <TextInput
@@ -166,6 +184,55 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps
                             w="25%"
                         />
                     </Group>
+
+                    <Select
+                        key={form.key('apiSchema')}
+                        data={[
+                            {
+                                label: t('base-node-form.api-schema-mtls', {
+                                    defaultValue: 'mTLS (SECRET_KEY)'
+                                }),
+                                value: 'mtls'
+                            },
+                            {
+                                label: t('base-node-form.api-schema-tls-token', {
+                                    defaultValue: 'TLS + gRPC Token'
+                                }),
+                                value: 'tls'
+                            }
+                        ]}
+                        description={t('base-node-form.api-schema-description', {
+                            defaultValue: 'How the panel authenticates to this node over gRPC'
+                        })}
+                        label={t('base-node-form.api-schema', { defaultValue: 'API Schema' })}
+                        leftSection={<TbPlugConnected size={16} />}
+                        required
+                        size="sm"
+                        styles={{
+                            label: { fontWeight: 500 }
+                        }}
+                        {...apiSchemaInputProps}
+                        onChange={(value) => {
+                            apiSchemaInputProps.onChange(value)
+                        }}
+                    />
+
+                    {apiSchema === 'tls' && (
+                        <TextInput
+                            key={form.key('apiPath')}
+                            description={t('base-node-form.api-path-description', {
+                                defaultValue: 'Path prefix the node listens on (PATH_PREFIX)'
+                            })}
+                            label={t('base-node-form.api-path', { defaultValue: 'API Path' })}
+                            leftSection={<TbRoute2 size={16} />}
+                            placeholder="/"
+                            size="sm"
+                            styles={{
+                                label: { fontWeight: 500 }
+                            }}
+                            {...form.getInputProps('apiPath')}
+                        />
+                    )}
 
                     <Popover
                         closeOnClickOutside={false}

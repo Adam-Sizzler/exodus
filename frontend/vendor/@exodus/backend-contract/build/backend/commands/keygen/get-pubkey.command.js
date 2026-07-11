@@ -12,6 +12,7 @@ var GetPubKeyCommand;
     GetPubKeyCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             pubKey: zod_1.z.string(),
+            grpcToken: zod_1.z.string().optional(),
         }),
     });
 })(GetPubKeyCommand || (exports.GetPubKeyCommand = GetPubKeyCommand = {}));
