@@ -61,7 +61,7 @@ import { Link } from 'react-router'
 import { useIsMobile } from '@shared/hooks'
 import { ChipMultiSelect } from '@shared/ui/chip-multi-select'
 import { DrawerFooter } from '@shared/ui/drawer-footer'
-import { MihomoLogo, SingboxLogo, StashLogo } from '@shared/ui/logos'
+import { MihomoLogo, SingboxLogo, StashLogo, XrayLogo } from '@shared/ui/logos'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { TemplateInfoPopoverShared } from '@shared/ui/popovers'
 import { PopoverWithInfoShared } from '@shared/ui/popovers/popover-with-info'
@@ -79,12 +79,12 @@ import { XHTTP_MODAL_ID, XhttpModalContent } from './modals/xhttp.modal.content'
 
 const SUBSCRIPTION_TYPES = {
     [SUBSCRIPTION_TEMPLATE_TYPE.XRAY_JSON]: {
-        label: 'Singbox JSON',
-        icon: <SingboxLogo size={16} />
+        label: 'Xray JSON',
+        icon: <XrayLogo size={16} />
     },
     [SUBSCRIPTION_TEMPLATE_TYPE.XRAY_BASE64]: {
-        label: 'Singbox Base64',
-        icon: <SingboxLogo size={16} />
+        label: 'Xray Base64',
+        icon: <XrayLogo size={16} />
     },
     [SUBSCRIPTION_TEMPLATE_TYPE.MIHOMO]: {
         label: 'Mihomo',

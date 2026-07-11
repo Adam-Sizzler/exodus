@@ -80,7 +80,8 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
 	var vlessRouteID sql.NullInt64
 	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
-	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams, finalMask []byte
+	var xhttpExtraParams, muxParams, singboxMuxParams, sockoptParams, finalMask []byte
+	var clashMuxParams sql.NullString
 	var tags, excludeTypes dbutil.StringArray
 
 	err := scanner.Scan(
@@ -157,8 +158,8 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	if len(singboxMuxParams) > 0 {
 		rec.SingboxMuxParams = json.RawMessage(singboxMuxParams)
 	}
-	if len(clashMuxParams) > 0 {
-		rec.ClashMuxParams = json.RawMessage(clashMuxParams)
+	if clashMuxParams.Valid && clashMuxParams.String != "" {
+		rec.ClashMuxParams = &clashMuxParams.String
 	}
 	if len(sockoptParams) > 0 {
 		rec.SockoptParams = json.RawMessage(sockoptParams)

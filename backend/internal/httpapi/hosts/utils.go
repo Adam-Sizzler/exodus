@@ -4,7 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
+
+func normalizeClashMuxYAML(raw *string) (*string, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
+		return nil, nil
+	}
+	var probe map[string]any
+	if err := yaml.Unmarshal([]byte(trimmed), &probe); err != nil || probe == nil {
+		return nil, fmt.Errorf("invalid YAML payload")
+	}
+	return &trimmed, nil
+}
+
+func normalizeOptionalClashMuxYAML(raw OptionalString) (bool, *string, error) {
+	if !raw.Set {
+		return false, nil, nil
+	}
+	value, err := normalizeClashMuxYAML(raw.Value)
+	return true, value, err
+}
 
 func normalizeOptionalStringAllowEmpty(value *string) interface{} {
 	if value == nil {

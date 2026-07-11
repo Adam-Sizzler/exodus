@@ -133,7 +133,7 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			_ = tx.Rollback()
 			return err
 		}
-		clashMux, err := normalizeJSONValue(req.ClashMuxParams, true)
+		clashMux, err := normalizeClashMuxYAML(req.ClashMuxParams)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
@@ -325,7 +325,7 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 			add("singbox_mux_params", val)
 		}
 	}
-	if set, val, err := normalizeOptionalJSONField(fields.ClashMuxParams, true); err != nil {
+	if set, val, err := normalizeOptionalClashMuxYAML(fields.ClashMuxParams); err != nil {
 		return nil, nil, err
 	} else if set {
 		if val == nil {

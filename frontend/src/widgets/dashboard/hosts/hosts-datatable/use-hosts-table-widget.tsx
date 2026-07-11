@@ -269,7 +269,13 @@ export const HOST_BOOLEAN_FIELDS: HostBooleanFieldConfig[] = [
     },
     {
         accessor: 'muxParams',
-        getValue: (host) => Boolean(host.muxParams),
+        getValue: (host) => {
+            const hostAny = host as typeof host & {
+                clashMuxParams?: unknown
+                singboxMuxParams?: unknown
+            }
+            return Boolean(host.muxParams) || Boolean(hostAny.singboxMuxParams) || Boolean(hostAny.clashMuxParams)
+        },
         hiddenByDefault: true,
         key: 'muxParams',
         label: () => 'Mux Params'

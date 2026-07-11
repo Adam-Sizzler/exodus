@@ -17,7 +17,7 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 		XHTTPExtraParams:           parseJSONAny(rec.XHTTPExtraParams),
 		MuxParams:                  parseJSONAny(rec.MuxParams),
 		SingboxMuxParams:           parseJSONAny(rec.SingboxMuxParams),
-		ClashMuxParams:             parseJSONAny(rec.ClashMuxParams),
+		ClashMuxParams:             rec.ClashMuxParams,
 		SockoptParams:              parseJSONAny(rec.SockoptParams),
 		FinalMask:                  parseJSONAny(rec.FinalMask),
 		Inbound:                    HostInbound{ConfigProfileUUID: rec.ConfigProfileUUID, ConfigProfileInboundUUID: rec.ConfigProfileInboundUUID},

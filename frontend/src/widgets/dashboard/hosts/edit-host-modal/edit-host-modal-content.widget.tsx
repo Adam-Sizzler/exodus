@@ -14,7 +14,7 @@ import {
     useUpdateHost
 } from '@shared/api/hooks'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
-import { parseJsonField, stringifyJsonField } from '@shared/utils/misc'
+import { parseJsonField, parseYamlField, stringifyJsonField, stringifyYamlField } from '@shared/utils/misc'
 
 type HostType = UpdateHostCommand.Response['response']
 
@@ -84,7 +84,7 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
                 xhttpExtraParams: stringifyJsonField(host.xhttpExtraParams),
                 muxParams: stringifyJsonField(host.muxParams),
                 singboxMuxParams: stringifyJsonField(hostAny.singboxMuxParams),
-                clashMuxParams: (hostAny.clashMuxParams as string | undefined) ?? '',
+                clashMuxParams: stringifyYamlField(hostAny.clashMuxParams),
                 sockoptParams: stringifyJsonField(host.sockoptParams),
                 finalMask: stringifyJsonField(host.finalMask),
                 tags: host.tags ?? undefined,
@@ -141,7 +141,7 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
             xhttpExtraParams: parseJsonField(values.xhttpExtraParams),
             muxParams: parseJsonField(values.muxParams),
             singboxMuxParams: parseJsonField(valuesAny.singboxMuxParams),
-            clashMuxParams: parseJsonField(valuesAny.clashMuxParams),
+            clashMuxParams: parseYamlField(valuesAny.clashMuxParams),
             sockoptParams: parseJsonField(values.sockoptParams),
             finalMask: parseJsonField(values.finalMask),
             overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),

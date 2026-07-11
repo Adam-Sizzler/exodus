@@ -18,3 +18,16 @@ export const stringifyJsonField = (value: unknown): string => {
 
     return ''
 }
+
+export const parseYamlField = (value: unknown): null | string => {
+    if (typeof value !== 'string') return null
+
+    const trimmed = value.trim()
+    return trimmed === '' ? null : trimmed
+}
+
+export const stringifyYamlField = (value: unknown): string => {
+    if (typeof value === 'string') return value
+
+    return ''
+}

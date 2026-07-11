@@ -132,7 +132,14 @@ export function HostCardWidget(props: IProps) {
     }
 
     const hasFinalMask = isParamSet(item.finalMask)
-    const hasMuxParams = isParamSet(item.muxParams)
+    const itemWithMuxParams = item as typeof item & {
+        clashMuxParams?: unknown
+        singboxMuxParams?: unknown
+    }
+    const hasMuxParams =
+        isParamSet(item.muxParams) ||
+        isParamSet(itemWithMuxParams.singboxMuxParams) ||
+        isParamSet(itemWithMuxParams.clashMuxParams)
     const hasSockoptParams = isParamSet(item.sockoptParams)
     const hasXrayJsonTemplate = !!item.xrayJsonTemplateUuid
     const serverDescription = item.serverDescription?.trim() || ''

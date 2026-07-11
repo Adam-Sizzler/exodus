@@ -6,7 +6,7 @@ import {
     UpdateHostCommand,
     UpdateManyHostsCommand
 } from '@exodus/backend-contract'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TbArrowUp } from 'react-icons/tb'
 
@@ -50,37 +50,6 @@ const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
     XRAY: 'https://xtls.github.io/ru/config/outbound.html#muxobject'
 }
 
-// Clash/Mihomo's "smux" block is native YAML (see BASIC_CLASH_MUX_PARAMS),
-// unlike Xray/Singbox whose mux params are genuinely JSON. The backend
-// (generator_mihomo.go's parseJSONMapString) already accepts this: it first
-// tries to parse the stored value as a JSON object, and if that fails,
-// falls back to treating it as a JSON-encoded *string* containing YAML text
-// (i.e. the raw YAML wrapped/escaped via JSON.stringify). These two helpers
-// keep that wrapping entirely on the frontend so the admin only ever sees
-// and edits plain, human-readable YAML - the backend contract is untouched.
-const wrapClashYamlForStorage = (yamlText: string): string => {
-    if (yamlText.trim() === '') {
-        return ''
-    }
-    return JSON.stringify(yamlText)
-}
-
-const unwrapClashYamlFromStorage = (stored: string): string => {
-    if (stored.trim() === '') {
-        return ''
-    }
-    try {
-        const parsed = JSON.parse(stored)
-        if (typeof parsed === 'string') {
-            return parsed
-        }
-    } catch {
-        // Not a JSON-string-wrapped payload (e.g. legacy/hand-edited value) -
-        // fall through and show it as-is, as plain YAML.
-    }
-    return stored
-}
-
 export const MuxModalContent = ({ form }: IProps) => {
     const { t } = useTranslation()
 
@@ -90,25 +59,33 @@ export const MuxModalContent = ({ form }: IProps) => {
     const isYamlCore = activeCore === 'CLASH'
     const inputProps = form.getInputProps(activeField as never)
 
-    const [value, setValue] = useState<string>(() => {
-        const stored =
-            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ??
-            ''
-        return isYamlCore ? unwrapClashYamlFromStorage(stored) : stored
-    })
+    const [value, setValue] = useState<string>(
+        () =>
+            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ?? ''
+    )
 
-    useEffect(() => {
-        const stored =
-            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ??
-            ''
-        setValue(isYamlCore ? unwrapClashYamlFromStorage(stored) : stored)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeField])
+    // Reset `value` synchronously, during render, whenever the active core
+    // (and therefore the underlying form field) changes - not in a
+    // useEffect. useEffect runs *after* the DOM has already been painted
+    // with the previous core's raw value, and Mantine's JsonInput only
+    // re-validates on its own onChange, not when its `value` prop changes
+    // from outside - so for one visible frame it would show "Invalid JSON"
+    // for the old core's text (e.g. Clash's YAML) rendered inside the new
+    // core's JSON validator, only clearing once the user typed or clicked.
+    // Adjusting state directly during render (React's documented pattern
+    // for "resetting state when a prop changes") re-renders before the
+    // browser paints anything, so that stale frame never appears.
+    const [trackedField, setTrackedField] = useState(activeField)
+    if (activeField !== trackedField) {
+        setTrackedField(activeField)
+        setValue(
+            ((form.getValues() as Record<string, unknown>)[activeField] as string | undefined) ?? ''
+        )
+    }
 
     const handleChange = (next: string) => {
         setValue(next)
-        const toStore = isYamlCore ? wrapClashYamlForStorage(next) : next
-        form.setFieldValue(activeField as never, toStore as never)
+        form.setFieldValue(activeField as never, next as never)
     }
 
     return (

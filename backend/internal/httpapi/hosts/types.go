@@ -70,7 +70,7 @@ type hostRecord struct {
 	XHTTPExtraParams           json.RawMessage
 	MuxParams                  json.RawMessage
 	SingboxMuxParams           json.RawMessage
-	ClashMuxParams             json.RawMessage
+	ClashMuxParams             *string
 	SockoptParams              json.RawMessage
 	FinalMask                  json.RawMessage
 	IsDisabled                 bool
@@ -121,7 +121,7 @@ type HostAPI struct {
 	XHTTPExtraParams           interface{} `json:"xHttpExtraParams"`
 	MuxParams                  interface{} `json:"muxParams"`
 	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
-	ClashMuxParams             interface{} `json:"clashMuxParams"`
+	ClashMuxParams             *string     `json:"clashMuxParams"`
 	SockoptParams              interface{} `json:"sockoptParams"`
 	FinalMask                  interface{} `json:"finalMask"`
 	Inbound                    HostInbound `json:"inbound"`
@@ -160,7 +160,7 @@ type HostCreateRequestAPI struct {
 	XHTTPExtraParams           *json.RawMessage `json:"xHttpExtraParams,omitempty"`
 	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
 	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
-	ClashMuxParams             *json.RawMessage `json:"clashMuxParams,omitempty"`
+	ClashMuxParams             *string          `json:"clashMuxParams,omitempty"`
 	SockoptParams              *json.RawMessage `json:"sockoptParams,omitempty"`
 	FinalMask                  *json.RawMessage `json:"finalMask,omitempty"`
 	ServerDescription          *string          `json:"serverDescription,omitempty"`
@@ -203,7 +203,7 @@ type hostUpdateFields struct {
 	XHTTPExtraParams           OptionalJSON   `json:"xHttpExtraParams,omitempty"`
 	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
 	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
-	ClashMuxParams             OptionalJSON   `json:"clashMuxParams,omitempty"`
+	ClashMuxParams             OptionalString `json:"clashMuxParams,omitempty"`
 	SockoptParams              OptionalJSON   `json:"sockoptParams,omitempty"`
 	FinalMask                  OptionalJSON   `json:"finalMask,omitempty"`
 	ServerDescription          OptionalString `json:"serverDescription,omitempty"`
@@ -231,9 +231,6 @@ type HostUpdateRequestAPI struct {
 	hostUpdateFields
 }
 
-// HostBulkUpdateRequestAPI is the request body for PATCH /api/hosts/bulk/update
-// (UpdateManyHostsCommand in the contract): the same updatable fields as a
-// single host update, applied identically to every host in Uuids.
 type HostBulkUpdateRequestAPI struct {
 	Uuids []string `json:"uuids"`
 	hostUpdateFields

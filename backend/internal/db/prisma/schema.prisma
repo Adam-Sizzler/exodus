@@ -316,7 +316,7 @@ model Hosts {
   xHttpExtraParams             Json?    @map("xhttp_extra_params")
   muxParams                    Json?    @map("mux_params")
   singboxMuxParams             Json?    @map("singbox_mux_params")
-  clashMuxParams               Json?    @map("clash_mux_params")
+  clashMuxParams               String?  @map("clash_mux_params")
   sockoptParams                Json?    @map("sockopt_params")
   finalMask                    Json?    @map("final_mask")
   isDisabled                   Boolean  @default(false) @map("is_disabled")

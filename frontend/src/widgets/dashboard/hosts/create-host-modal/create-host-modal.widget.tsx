@@ -19,7 +19,7 @@ import {
 } from '@shared/api/hooks'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { parseJsonField } from '@shared/utils/misc'
+import { parseJsonField, parseYamlField } from '@shared/utils/misc'
 
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 
@@ -133,7 +133,7 @@ export const CreateHostModalWidget = () => {
         }
 
         singboxMuxParams = parseJsonField(valuesAny.singboxMuxParams)
-        clashMuxParams = parseJsonField(valuesAny.clashMuxParams)
+        clashMuxParams = parseYamlField(valuesAny.clashMuxParams)
 
         try {
             if (values.sockoptParams === '') {
