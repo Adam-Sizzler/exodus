@@ -870,8 +870,9 @@ func syncConfigProfileInbounds(ctx context.Context, db dbmanager.TxExecutor, pro
 		return 0, err
 	}
 
-	if _, err := db.ExecContext(ctx, `DELETE FROM config_profile_inbounds WHERE profile_uuid = ?`, profileUUID); err != nil {
-		return 0, err
+	currentTags := make([]string, 0, len(inbounds))
+	for _, inbound := range inbounds {
+		currentTags = append(currentTags, inbound.Tag)
 	}
 
 	for _, inbound := range inbounds {
@@ -886,13 +887,44 @@ func syncConfigProfileInbounds(ctx context.Context, db dbmanager.TxExecutor, pro
 			portVal = *inbound.Port
 		}
 
+		// Upsert keyed on "tag" (globally unique - see schema.prisma's
+		// @@unique([tag]) on ConfigProfileInbounds): an inbound that still
+		// exists after the edit keeps its uuid instead of getting a fresh
+		// random one. config_profile_inbounds_to_nodes and
+		// internal_squad_inbounds both reference this uuid with
+		// onDelete: Cascade, so regenerating it on every save was silently
+		// wiping every node's and squad's inbound selection on every config
+		// profile edit - not just for changed inbounds, for all of them.
+		// Only a genuinely new tag gets the fresh uuid generated above in
+		// parseConfigInbounds.
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO config_profile_inbounds (
 				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (tag) DO UPDATE SET
+				profile_uuid = EXCLUDED.profile_uuid,
+				type         = EXCLUDED.type,
+				network      = EXCLUDED.network,
+				security     = EXCLUDED.security,
+				port         = EXCLUDED.port,
+				raw_inbound  = EXCLUDED.raw_inbound
 		`, inbound.UUID, inbound.ProfileUUID, inbound.Tag, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound); err != nil {
 			return 0, err
 		}
+	}
+
+	// Only inbounds actually removed from the saved config should lose their
+	// row (and, via cascade, their node/squad bindings) - everything still
+	// present was already preserved in place by the upsert above.
+	if len(currentTags) > 0 {
+		if _, err := db.ExecContext(ctx, `
+			DELETE FROM config_profile_inbounds
+			WHERE profile_uuid = ? AND NOT (tag = ANY(?))
+		`, profileUUID, currentTags); err != nil {
+			return 0, err
+		}
+	} else if _, err := db.ExecContext(ctx, `DELETE FROM config_profile_inbounds WHERE profile_uuid = ?`, profileUUID); err != nil {
+		return 0, err
 	}
 
 	if cfg != nil && cfg.Logger != nil {
