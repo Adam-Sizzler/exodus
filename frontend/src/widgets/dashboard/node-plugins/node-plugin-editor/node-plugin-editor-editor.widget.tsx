@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { TbAlertTriangle } from 'react-icons/tb'
 import { useBlocker } from 'react-router'
 
-import { useGetNodes } from '@shared/api/hooks'
+import { useGetConfigProfiles } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { preventBackScroll } from '@shared/utils/misc'
 
@@ -27,11 +27,11 @@ export function NodePluginEditorWidget(props: IProps) {
     const { t } = useTranslation()
 
     const { nodePlugin, pluginUuid } = props
-    const { data: nodes } = useGetNodes()
+    const { data: configProfilesData } = useGetConfigProfiles()
 
     const haproxyAuthInboundTagOptions = useMemo(
-        () => getNodePluginHaproxyInboundTagOptions(nodes, pluginUuid),
-        [nodes, pluginUuid]
+        () => getNodePluginHaproxyInboundTagOptions(configProfilesData?.configProfiles),
+        [configProfilesData]
     )
 
     const [result, setResult] = useState('')

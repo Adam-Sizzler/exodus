@@ -1,13 +1,4 @@
-type NodePluginEditorNode = {
-    activePluginUuid: string | null
-    name: string
-    configProfile?: {
-        activeInbounds?: ReadonlyArray<{
-            tag: string
-            type: string
-        }>
-    }
-}
+import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 
 export type NodePluginHaproxyInboundTagOption = {
     nodeNames: string[]
@@ -19,31 +10,32 @@ export const HAPROXY_AUTH_ALL_INBOUNDS_TAG = '*'
 export const HAPROXY_AUTH_SUPPORTED_INBOUND_TYPES = new Set(['vless', 'trojan', 'naive', 'anytls'])
  
 export const getNodePluginHaproxyInboundTagOptions = (
-    nodes: ReadonlyArray<NodePluginEditorNode> | undefined,
-    pluginUuid: string
+    configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles'] | undefined
 ): NodePluginHaproxyInboundTagOption[] | undefined => {
-    if (!nodes) return undefined
+    if (!configProfiles) return undefined
 
     const tags = new Map<string, { nodeNames: Set<string>; tag: string; type: string | null }>()
 
-    nodes
-        .filter((node) => node.activePluginUuid === pluginUuid)
-        .forEach((node) => {
-            node.configProfile?.activeInbounds?.forEach((inbound) => {
-                const type = inbound.type.trim().toLowerCase()
-                const tag = inbound.tag.trim()
+    configProfiles.forEach((profile) => {
+        profile.inbounds.forEach((inbound) => {
+            const type = inbound.type.trim().toLowerCase()
+            const tag = inbound.tag.trim()
 
-                if (!tag || !HAPROXY_AUTH_SUPPORTED_INBOUND_TYPES.has(type)) return
+            if (!tag || !HAPROXY_AUTH_SUPPORTED_INBOUND_TYPES.has(type)) return
 
-                const existing = tags.get(tag) ?? {
-                    nodeNames: new Set<string>(),
-                    tag,
-                    type
-                }
-                existing.nodeNames.add(node.name)
-                tags.set(tag, existing)
-            })
+            const existing = tags.get(tag) ?? {
+                nodeNames: new Set<string>(),
+                tag,
+                type
+            }
+            if (profile.nodes && profile.nodes.length > 0) {
+                profile.nodes.forEach((node) => {
+                    existing.nodeNames.add(node.name)
+                })
+            }
+            tags.set(tag, existing)
         })
+    })
 
     return Array.from(tags.values())
         .map((item) => ({

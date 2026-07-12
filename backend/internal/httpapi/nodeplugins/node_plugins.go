@@ -42,6 +42,7 @@ type createRequest struct {
 }
 
 type updateRequest struct {
+	UUID         *string          `json:"uuid,omitempty"`
 	Name         *string          `json:"name,omitempty"`
 	PluginConfig *json.RawMessage `json:"pluginConfig,omitempty"`
 	ViewPosition *int             `json:"viewPosition,omitempty"`
@@ -99,6 +100,8 @@ func Handler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http
 				handleList(w, r, manager, cfg)
 			case http.MethodPost:
 				handleCreate(w, r, manager, cfg)
+			case http.MethodPatch:
+				handleUpdate(w, r, manager, cfg, "")
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
@@ -189,10 +192,24 @@ func handleByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 	}
 }
 
-func handleUpdate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, pluginUUID string) {
+func handleUpdate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, urlUUID string) {
 	var req updateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	pluginUUID := urlUUID
+	if pluginUUID == "" {
+		if req.UUID == nil || *req.UUID == "" {
+			shared.WriteJSONError(w, http.StatusBadRequest, "uuid is required")
+			return
+		}
+		pluginUUID = *req.UUID
+	}
+
+	if _, err := uuid.Parse(pluginUUID); err != nil {
+		shared.WriteJSONError(w, http.StatusBadRequest, "invalid uuid")
 		return
 	}
 
