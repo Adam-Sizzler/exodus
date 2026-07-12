@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,6 +105,19 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	if err != nil {
 		return DeploySummary{}, fmt.Errorf("build sing-box config: %w", err)
 	}
+
+	// Update the target listen address if overridden by the config
+	listen = summary.Listen
+
+	// Update the core API client connection to use the new listen address/port
+	if host, portStr, err := net.SplitHostPort(listen); err == nil {
+		if port, err := strconv.Atoi(portStr); err == nil {
+			if err := s.apiService.UpdateAPIClient(host, port); err != nil {
+				log.Error("Failed to update core API client", "listen", listen, "error", err)
+			}
+		}
+	}
+
 	log.Debug("Built sing-box config with v2ray_api", "listen", listen, "inbounds", len(summary.Inbounds), "outbounds", len(summary.Outbounds), "users", len(summary.Users))
 
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
@@ -261,6 +276,7 @@ type BuildOptions struct {
 }
 
 type buildSummary struct {
+	Listen    string
 	Inbounds  []string
 	Outbounds []string
 	Users     []string

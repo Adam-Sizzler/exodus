@@ -36,6 +36,9 @@ type Service struct {
 	logger *config.Logger
 	api    *sdk.API
 
+	apiAddress    string
+	apiPort       int
+
 	coreStateMu   sync.RWMutex
 	coreOnline    bool
 	lifecycleErr  string // root-cause error from last managed start attempt (SPAWN_ERROR etc.)
@@ -115,6 +118,8 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 		cfg:                  cfg,
 		logger:               log,
 		api:                  coreAPI,
+		apiAddress:           config.FixedCoreAPIAddress,
+		apiPort:              config.FixedCoreAPIGRPCPort,
 		singboxVersion:       detectSingboxVersion(),
 		nodeVersion:          constant.Version,
 		cpuCount:             runtime.NumCPU(),
@@ -126,10 +131,18 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 }
 
 func (s *Service) Close() error {
-	if s == nil || s.api == nil {
+	if s == nil {
 		return nil
 	}
-	return s.api.Close()
+	s.coreStateMu.Lock()
+	api := s.api
+	s.api = nil
+	s.coreStateMu.Unlock()
+
+	if api == nil {
+		return nil
+	}
+	return api.Close()
 }
 
 func (s *Service) IsCoreOnline() bool {
@@ -203,10 +216,6 @@ func (s *Service) logCoreStatsFailure(message string, err error) {
 	}
 }
 
-// GetApiResponse retrieves statistics from the configured core Stats API.
-// Core errors are returned as runtime stats, not as handler errors. This mirrors
-// the exodus control-plane model: node app is allowed to stay reachable while
-// the managed core process is stopped, crashed, or waiting for a corrected config.
 func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 	result := &ApiResponse{Stat: make([]Stat, 0, 32)}
 	if s == nil {
@@ -217,12 +226,13 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 	coreError := ""
 	singboxUptimeSeconds := int64(0)
 
-	if s.api == nil || s.api.Stats == nil {
+	api := s.getAPI()
+	if api == nil || api.Stats == nil {
 		coreStatus = "error"
 		coreError = "core SDK is not initialized"
 		s.logger.Warn("Core stats are unavailable", "error", coreError)
 	} else {
-		stats, err := s.api.Stats.QueryStats(ctx, sdk.QueryOptions{
+		stats, err := api.Stats.QueryStats(ctx, sdk.QueryOptions{
 			Patterns: []string{
 				`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
 				`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
@@ -257,7 +267,7 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 		}
 
 		if coreStatus == "running" {
-			sysStats, sysErr := s.api.Stats.GetSysStats(ctx)
+			sysStats, sysErr := api.Stats.GetSysStats(ctx)
 			if sysErr != nil {
 				coreStatus = "error"
 				s.coreStateMu.RLock()
@@ -302,10 +312,14 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 }
 
 func (s *Service) CheckCoreReady(ctx context.Context) error {
-	if s == nil || s.api == nil || s.api.Stats == nil {
+	if s == nil {
+		return fmt.Errorf("api service is nil")
+	}
+	api := s.getAPI()
+	if api == nil || api.Stats == nil {
 		return fmt.Errorf("core SDK is not initialized")
 	}
-	_, err := s.api.Stats.GetSysStats(ctx)
+	_, err := api.Stats.GetSysStats(ctx)
 	if err != nil {
 		return fmt.Errorf("query core sys stats: %w", err)
 	}
@@ -661,4 +675,50 @@ func formatIECBytes(bytes uint64) string {
 	}
 	value := math.Round(size*100) / 100
 	return fmt.Sprintf("%.2f %s", value, units[idx])
+}
+
+func (s *Service) getAPI() *sdk.API {
+	if s == nil {
+		return nil
+	}
+	s.coreStateMu.RLock()
+	defer s.coreStateMu.RUnlock()
+	return s.api
+}
+
+func (s *Service) UpdateAPIClient(address string, port int) error {
+	if s == nil {
+		return nil
+	}
+	s.coreStateMu.RLock()
+	currentAddress := s.apiAddress
+	currentPort := s.apiPort
+	s.coreStateMu.RUnlock()
+
+	// If already initialized and configuration matches, skip recreation
+	if currentAddress == address && currentPort == port {
+		return nil
+	}
+
+	s.logger.Info("Updating core API client config", "address", address, "port", port)
+	coreAPI, err := sdk.New(sdk.Config{
+		CoreType: config.FixedCoreType,
+		Address:  address,
+		Port:     port,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create core SDK: %w", err)
+	}
+
+	s.coreStateMu.Lock()
+	oldAPI := s.api
+	s.api = coreAPI
+	s.apiAddress = address
+	s.apiPort = port
+	s.coreStateMu.Unlock()
+
+	if oldAPI != nil {
+		_ = oldAPI.Close()
+	}
+	return nil
 }
