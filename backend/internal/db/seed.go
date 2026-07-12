@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"exodus/internal/config"
 	"exodus/internal/dbutil"
@@ -238,13 +237,9 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 		}
 
 		query := dbutil.Rebind(`
-			INSERT INTO keygen (uuid, priv_key, pub_key, ca_cert, ca_key, client_cert, client_key, grpc_auth_token)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO keygen (uuid, priv_key, pub_key, ca_cert, ca_key, client_cert, client_key)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
 		`)
-		grpcAuthToken, err := security.GenerateGRPCAuthToken()
-		if err != nil {
-			return fmt.Errorf("generate grpc auth token: %w", err)
-		}
 		if _, err := tx.ExecContext(
 			ctx,
 			query,
@@ -255,7 +250,6 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 			masterCerts.CAKeyPEM,
 			masterCerts.ClientCertPEM,
 			masterCerts.ClientKeyPEM,
-			grpcAuthToken,
 		); err != nil {
 			return fmt.Errorf("insert keygen row: %w", err)
 		}
@@ -270,19 +264,17 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 		caKey      sql.NullString
 		clientCert sql.NullString
 		clientKey  sql.NullString
-		grpcToken  sql.NullString
 	)
 	if err := tx.QueryRowContext(
 		ctx,
-		`SELECT uuid, pub_key, priv_key, ca_cert, ca_key, client_cert, client_key, grpc_auth_token FROM keygen ORDER BY created_at ASC LIMIT 1`,
-	).Scan(&id, &pubKey, &privKey, &caCert, &caKey, &clientCert, &clientKey, &grpcToken); err != nil {
+		`SELECT uuid, pub_key, priv_key, ca_cert, ca_key, client_cert, client_key FROM keygen ORDER BY created_at ASC LIMIT 1`,
+	).Scan(&id, &pubKey, &privKey, &caCert, &caKey, &clientCert, &clientKey); err != nil {
 		return fmt.Errorf("read keygen row: %w", err)
 	}
 
 	needJWT := !pubKey.Valid || pubKey.String == "" || !privKey.Valid || privKey.String == ""
 	needMTLS := !caCert.Valid || caCert.String == "" || !caKey.Valid || caKey.String == "" || !clientCert.Valid || clientCert.String == "" || !clientKey.Valid || clientKey.String == ""
-	needGRPCToken := !grpcToken.Valid || strings.TrimSpace(grpcToken.String) == ""
-	if !needJWT && !needMTLS && !needGRPCToken {
+	if !needJWT && !needMTLS {
 		return nil
 	}
 
@@ -303,14 +295,6 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 		}
 		updateParts = append(updateParts, "ca_cert = ?", "ca_key = ?", "client_cert = ?", "client_key = ?")
 		args = append(args, masterCerts.CACertPEM, masterCerts.CAKeyPEM, masterCerts.ClientCertPEM, masterCerts.ClientKeyPEM)
-	}
-	if needGRPCToken {
-		token, err := security.GenerateGRPCAuthToken()
-		if err != nil {
-			return fmt.Errorf("regenerate grpc auth token: %w", err)
-		}
-		updateParts = append(updateParts, "grpc_auth_token = ?")
-		args = append(args, token)
 	}
 
 	query := dbutil.Rebind(fmt.Sprintf("UPDATE keygen SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", joinWithComma(updateParts)))

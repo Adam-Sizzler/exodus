@@ -133,6 +133,13 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		)
 		if err != nil {
 			_ = tx.Rollback()
+			errStr := err.Error()
+			if strings.Contains(errStr, "nodes_name_key") {
+				return fmt.Errorf("node with this name already exists")
+			}
+			if strings.Contains(errStr, "nodes_address_key") {
+				return fmt.Errorf("node with this address already exists")
+			}
 			return err
 		}
 
@@ -144,7 +151,12 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 		return tx.Commit()
 	})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to create node", err, cfg)
+		errStr := err.Error()
+		if strings.Contains(errStr, "already exists") {
+			shared.SendError(w, http.StatusBadRequest, errStr, err, cfg)
+		} else {
+			shared.SendError(w, http.StatusInternalServerError, "failed to create node", err, cfg)
+		}
 		return
 	}
 
@@ -293,6 +305,13 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			result, err := tx.ExecContext(r.Context(), query, args...)
 			if err != nil {
 				_ = tx.Rollback()
+				errStr := err.Error()
+				if strings.Contains(errStr, "nodes_name_key") {
+					return fmt.Errorf("node with this name already exists")
+				}
+				if strings.Contains(errStr, "nodes_address_key") {
+					return fmt.Errorf("node with this address already exists")
+				}
 				return err
 			}
 			rows, err := result.RowsAffected()
@@ -320,7 +339,12 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, manager *dbmanager
 			shared.SendError(w, http.StatusNotFound, "node not found", nil, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to update node", err, cfg)
+		errStr := err.Error()
+		if strings.Contains(errStr, "already exists") {
+			shared.SendError(w, http.StatusBadRequest, errStr, err, cfg)
+		} else {
+			shared.SendError(w, http.StatusInternalServerError, "failed to update node", err, cfg)
+		}
 		return
 	}
 

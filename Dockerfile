@@ -10,13 +10,22 @@ RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps --no-audit --
 
 COPY frontend/ ./
 
-RUN apk add --no-cache curl \
-    && mkdir -p public/assets \
-    && curl -L ${SINGBOX_ASSETS_URL}/wasm_exec.js -o public/assets/wasm_exec.js \
-    && curl -L ${SINGBOX_ASSETS_URL}/singbox.schema.json -o public/assets/singbox.schema.json \
-    && curl -L ${SINGBOX_ASSETS_URL}/main.wasm -o public/assets/main.wasm
+RUN if [ ! -f public/assets/main.wasm ] || [ ! -f public/assets/wasm_exec.js ] || [ ! -f public/assets/singbox.schema.json ]; then \
+      apk add --no-cache curl \
+      && mkdir -p public/assets \
+      && curl -L ${SINGBOX_ASSETS_URL}/wasm_exec.js -o public/assets/wasm_exec.js \
+      && curl -L ${SINGBOX_ASSETS_URL}/singbox.schema.json -o public/assets/singbox.schema.json \
+      && curl -L ${SINGBOX_ASSETS_URL}/main.wasm -o public/assets/main.wasm; \
+    else \
+      echo "Assets already present locally, skipping download"; \
+    fi
 
-RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache npm run cb
+RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache \
+    if [ -d dist ]; then \
+      echo "Using existing dist directory from host"; \
+    else \
+      npm run cb; \
+    fi
 
 FROM golang:1.25.12-alpine AS builder
 

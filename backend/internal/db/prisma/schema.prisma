@@ -147,23 +147,8 @@ model Admin {
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
 
   passkeys Passkeys[]
-  sessions AdminSessions[]
 
   @@map("admin")
-}
-
-model AdminSessions {
-  sessionToken String @id @map("session_token")
-  adminUuid    String @map("admin_uuid") @db.Uuid
-  expiresAt    BigInt @map("expires_at")
-
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-
-  admin Admin @relation(fields: [adminUuid], references: [uuid], onDelete: Cascade)
-
-  @@index([adminUuid])
-  @@index([expiresAt])
-  @@map("admin_sessions")
 }
 
 model Passkeys {
@@ -194,7 +179,6 @@ model Keygen {
   caKey      String? @map("ca_key")
   clientCert String? @map("client_cert")
   clientKey  String? @map("client_key")
-  grpcAuthToken String @default(dbgenerated("encode(gen_random_bytes(32), 'hex'::text)")) @map("grpc_auth_token")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")

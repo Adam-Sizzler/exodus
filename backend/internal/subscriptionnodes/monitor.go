@@ -248,11 +248,7 @@ func (sm *SubNodeMonitor) syncNodes() {
 
 func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 	nodes := make([]dbSubNode, 0)
-	globalGRPCToken, err := sm.loadControlPlaneGRPCToken()
-	if err != nil {
-		return nil, err
-	}
-	err = sm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := sm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.Query(`
 			SELECT n.uuid, n.name, n.address, n.port, n.api_schema, n.api_path, n.grpc_auth_token,
 			       sns.subpage_config_uuid
@@ -282,14 +278,7 @@ func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 				n.Port = 2222
 			}
 			n.APISchema = normalizeSubSchema(n.APISchema)
-			if n.APISchema == "tls" {
-				n.GRPCAuthToken = strings.TrimSpace(grpcAuthToken.String)
-				if n.GRPCAuthToken == "" {
-					n.GRPCAuthToken = globalGRPCToken
-				}
-			} else {
-				n.GRPCAuthToken = ""
-			}
+			n.GRPCAuthToken = strings.TrimSpace(grpcAuthToken.String)
 			if subpageConfig.Valid {
 				n.SubpageConfigUUID = normalizeAssignedSubpageConfigUUID(subpageConfig.String)
 			}
@@ -298,25 +287,6 @@ func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 		return rows.Err()
 	})
 	return nodes, err
-}
-
-func (sm *SubNodeMonitor) loadControlPlaneGRPCToken() (string, error) {
-	var token sql.NullString
-	err := sm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRow(`
-			SELECT grpc_auth_token
-			FROM keygen
-			ORDER BY created_at ASC
-			LIMIT 1
-		`).Scan(&token)
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", nil
-		}
-		return "", fmt.Errorf("query keygen grpc_auth_token: %w", err)
-	}
-	return strings.TrimSpace(token.String), nil
 }
 
 func (sm *SubNodeMonitor) startNode(dbNode dbSubNode) {

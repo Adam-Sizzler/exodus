@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -269,41 +268,11 @@ func (nm *NodeMonitor) loadActiveNodes() ([]db.DBNode, error) {
 		return nil, err
 	}
 
-	grpcToken, err := nm.loadControlPlaneGRPCToken()
-	if err != nil {
-		return nil, err
-	}
 	for i := range nodes {
 		nodes[i].APISchema = normalizeNodeSchema(nodes[i].APISchema)
 		nodes[i].APIPath = normalizeNodePath(nodes[i].APIPath)
-		if nodes[i].APISchema == "tls" {
-			if strings.TrimSpace(nodes[i].GRPCAuthToken) == "" {
-				nodes[i].GRPCAuthToken = grpcToken
-			}
-		} else {
-			nodes[i].GRPCAuthToken = ""
-		}
 	}
 	return nodes, nil
-}
-
-func (nm *NodeMonitor) loadControlPlaneGRPCToken() (string, error) {
-	var token sql.NullString
-	err := nm.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRow(`
-			SELECT grpc_auth_token
-			FROM keygen
-			ORDER BY created_at ASC
-			LIMIT 1
-		`).Scan(&token)
-	})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", nil
-		}
-		return "", fmt.Errorf("query keygen grpc_auth_token: %w", err)
-	}
-	return strings.TrimSpace(token.String), nil
 }
 
 // startNode starts monitoring a single node.
@@ -444,7 +413,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 
 	conn, err := grpc.NewClient(targetAddr, opts...)
 	if err != nil {
-		nm.cfg.Logger.Warn("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", err)
+		nm.cfg.Logger.Error("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", err)
 		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Connection failed: %v", err))
 		state.mutex.Lock()
 		state.isConnecting = false
@@ -457,7 +426,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 	// Create stream
 	stream, err := client.StreamNodeData(state.ctx)
 	if err != nil {
-		nm.cfg.Logger.Warn("Failed to create stream", "node", state.nodeName, "error", err)
+		nm.cfg.Logger.Error("Failed to create stream", "node", state.nodeName, "error", err)
 		conn.Close()
 		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Stream failed: %v", err))
 		state.mutex.Lock()
@@ -536,7 +505,7 @@ func (nm *NodeMonitor) receiveStream(state *nodeState) {
 					return
 				}
 			}
-			nm.cfg.Logger.Warn("Stream error", "node", state.nodeName, "error", err)
+			nm.cfg.Logger.Error("Stream error", "node", state.nodeName, "error", err)
 			nm.handleDisconnect(state, fmt.Sprintf("Stream error: %v", err))
 			return
 		}
