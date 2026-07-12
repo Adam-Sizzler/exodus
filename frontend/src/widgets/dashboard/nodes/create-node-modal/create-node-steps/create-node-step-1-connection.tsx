@@ -38,16 +38,17 @@ import { TagInputPill } from '@shared/ui/tag-input-pill'
 
 import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
+import { generateGrpcAuthToken } from '@shared/utils/misc'
+
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     form: UseFormReturnType<CreateNodeCommand.Request, any>
-    grpcToken: string | undefined
     onNext: () => void
     port: number
     pubKey: string | undefined
 }
 
-export const CreateNodeStep1Connection = ({ form, onNext, pubKey, grpcToken, port }: IProps) => {
+export const CreateNodeStep1Connection = ({ form, onNext, pubKey, port }: IProps) => {
     const { t } = useTranslation()
 
     const { data: nodePlugins } = useGetNodePlugins()
@@ -55,7 +56,9 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, grpcToken, por
 
     const [additionalOpened, setAdditionalOpened] = useState(false)
 
-    const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
+    const apiSchema = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
+    const grpcAuthToken = form.values.grpcAuthToken || ''
+
     const apiSchemaInputProps = form.getInputProps('apiSchema')
     const credentialLabel =
         apiSchema === 'tls'
@@ -65,7 +68,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, grpcToken, por
             : t('base-node-form.secret-key-secret-key', { defaultValue: 'Secret Key (SECRET_KEY)' })
     const credentialValue =
         apiSchema === 'tls'
-            ? (grpcToken?.trim() ?? 'Error loading...')
+            ? (grpcAuthToken.trim() || 'Error loading...')
             : (pubKey?.trimEnd() ?? 'Error loading...')
 
     const handleNext = async () => {
@@ -122,6 +125,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, grpcToken, por
                         size="sm"
                         value={credentialValue}
                     />
+
 
                     <TextInput
                         key={form.key('name')}
@@ -213,7 +217,8 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey, grpcToken, por
                         }}
                         {...apiSchemaInputProps}
                         onChange={(value) => {
-                            apiSchemaInputProps.onChange(value)
+                            const val = value === 'tls' ? 'tls' : 'mtls'
+                            apiSchemaInputProps.onChange(val)
                         }}
                     />
 

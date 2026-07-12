@@ -1,4 +1,4 @@
-import { Group, NumberInput, Select, Stack, TextInput } from '@mantine/core'
+import { ActionIcon, Button, Group, NumberInput, Select, Stack, TextInput, Tooltip } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import {
     CreateNodeCommand,
@@ -7,10 +7,22 @@ import {
     UpdateNodeCommand
 } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HiOutlineServer } from 'react-icons/hi'
-import { TbCertificate, TbMapPin, TbNetwork, TbPackage, TbUserCheck, TbWorld } from 'react-icons/tb'
+import {
+    TbCertificate,
+    TbFingerprint,
+    TbMapPin,
+    TbNetwork,
+    TbPackage,
+    TbPlugConnected,
+    TbRoute2,
+    TbUserCheck,
+    TbWorld
+} from 'react-icons/tb'
 
+import { generateGrpcAuthToken } from '@shared/utils/misc'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
@@ -33,6 +45,27 @@ export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeC
     const { cardVariants, form, motionWrapper, nodePlugins, pubKey, nodeUuid } = props
 
     const MotionWrapper = motionWrapper
+
+    const apiSchema: 'mtls' | 'tls' = (form.values as any).apiSchema === 'tls' ? 'tls' : 'mtls'
+    const grpcAuthToken: string = (form.values as any).grpcAuthToken || ''
+
+    const apiSchemaInputProps = form.getInputProps('apiSchema')
+    const credentialLabel =
+        apiSchema === 'tls'
+            ? t('base-node-form.grpc-token-grpc-auth-token', {
+                defaultValue: 'gRPC Token (GRPC_AUTH_TOKEN)'
+            })
+            : t('base-node-form.secret-key-secret-key', { defaultValue: 'Secret Key (SECRET_KEY)' })
+    const credentialValue =
+        apiSchema === 'tls'
+            ? (grpcAuthToken.trim() || 'Error loading...')
+            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
+
+    const regenerateGrpcAuthToken = () => {
+        const newToken = generateGrpcAuthToken()
+        form.setFieldValue('grpcAuthToken' as never, newToken as never)
+        form.setDirty({ grpcAuthToken: true } as never)
+    }
 
     return (
         <MotionWrapper variants={cardVariants}>
@@ -108,12 +141,88 @@ export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeC
                             />
                         </Group>
 
-                        <CopyableFieldShared
-                            label="Secret Key (SECRET_KEY)"
-                            leftSection={<TbCertificate size={16} />}
-                            size="sm"
-                            value={`${pubKey?.pubKey.trimEnd() ?? 'Error loading...'}`}
-                        />
+                        <Stack gap="xs">
+                            <Select
+                                data={[
+                                    {
+                                        label: t('base-node-form.api-schema-mtls', {
+                                            defaultValue: 'mTLS (SECRET_KEY)'
+                                        }),
+                                        value: 'mtls'
+                                    },
+                                    {
+                                        label: t('base-node-form.api-schema-tls-token', {
+                                            defaultValue: 'TLS + gRPC Token'
+                                        }),
+                                        value: 'tls'
+                                    }
+                                ]}
+                                description={t('base-node-form.api-schema-description', {
+                                    defaultValue: 'How the panel authenticates to this node over gRPC'
+                                })}
+                                key={form.key('apiSchema')}
+                                label={t('base-node-form.api-schema', { defaultValue: 'API Schema' })}
+                                leftSection={<TbPlugConnected size={16} />}
+                                required
+                                size="sm"
+                                styles={{
+                                    label: { fontWeight: 500 }
+                                }}
+                                {...apiSchemaInputProps}
+                                onChange={(value) => {
+                                    const val = value === 'tls' ? 'tls' : 'mtls'
+                                    apiSchemaInputProps.onChange(val)
+                                }}
+                            />
+
+                            {apiSchema === 'tls' && (
+                                <TextInput
+                                    description={t('base-node-form.api-path-description', {
+                                        defaultValue: 'Path prefix the node listens on (PATH_PREFIX)'
+                                    })}
+                                    key={form.key('apiPath')}
+                                    label={t('base-node-form.api-path', { defaultValue: 'API Path' })}
+                                    leftSection={<TbRoute2 size={16} />}
+                                    placeholder="/"
+                                    required
+                                    size="sm"
+                                    styles={{
+                                        label: { fontWeight: 500 }
+                                    }}
+                                    {...form.getInputProps('apiPath')}
+                                />
+                            )}
+                        </Stack>
+
+                        <Group align="flex-end" gap="xs">
+                            <div style={{ flexGrow: 1 }}>
+                                <CopyableFieldShared
+                                    label={credentialLabel}
+                                    leftSection={<TbCertificate size={16} />}
+                                    size="sm"
+                                    value={credentialValue}
+                                />
+                            </div>
+                            {apiSchema === 'tls' && (
+                                <Tooltip
+                                    label={t('base-node-form.generate-credential', {
+                                        defaultValue: 'Generate credential'
+                                    })}
+                                    withArrow
+                                >
+                                    <ActionIcon
+                                        color="teal"
+                                        h={36}
+                                        onClick={regenerateGrpcAuthToken}
+                                        style={{ flexShrink: 0 }}
+                                        variant="soft"
+                                        w={36}
+                                    >
+                                        <TbFingerprint size={18} />
+                                    </ActionIcon>
+                                </Tooltip>
+                            )}
+                        </Group>
 
                         <Select
                             key={form.key('activePluginUuid')}

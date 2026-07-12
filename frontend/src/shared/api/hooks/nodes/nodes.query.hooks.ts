@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
     GetAllNodesCommand,
@@ -43,7 +44,13 @@ export const useGetNodes = createGetQueryHook({
 
 export const useGetNode = createGetQueryHook({
     endpoint: GetOneNodeCommand.TSQ_url,
-    responseSchema: GetOneNodeCommand.ResponseSchema,
+    responseSchema: GetOneNodeCommand.ResponseSchema.extend({
+        response: GetOneNodeCommand.ResponseSchema.shape.response.extend({
+            apiSchema: z.enum(['mtls', 'tls']).optional(),
+            apiPath: z.string().optional(),
+            grpcAuthToken: z.string().optional()
+        })
+    }),
     routeParamsSchema: GetOneNodeCommand.RequestSchema,
     getQueryKey: ({ route }) => nodesQueryKeys.getNode(route!).queryKey,
     rQueryParams: {

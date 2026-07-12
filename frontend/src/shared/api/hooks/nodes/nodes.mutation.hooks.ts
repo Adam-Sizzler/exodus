@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { notifications } from '@mantine/notifications'
 import {
     BulkNodesActionsCommand,
@@ -42,7 +43,11 @@ export const useCreateNode = createMutationHook({
 
 export const useUpdateNode = createMutationHook({
     endpoint: UpdateNodeCommand.TSQ_url,
-    bodySchema: UpdateNodeCommand.RequestSchema,
+    bodySchema: UpdateNodeCommand.RequestSchema.extend({
+        apiSchema: z.enum(['mtls', 'tls']).optional(),
+        apiPath: z.string().optional(),
+        grpcAuthToken: z.string().optional()
+    }),
     responseSchema: UpdateNodeCommand.ResponseSchema,
     requestMethod: UpdateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

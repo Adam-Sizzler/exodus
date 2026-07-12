@@ -94,7 +94,10 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
 
                 providerUuid: fetchedNode.providerUuid ?? undefined,
                 activePluginUuid: fetchedNode.activePluginUuid ?? undefined,
-                note: fetchedNode.note ?? undefined
+                note: fetchedNode.note ?? undefined,
+                apiSchema: fetchedNode.apiSchema ?? 'mtls',
+                apiPath: fetchedNode.apiPath ?? undefined,
+                grpcAuthToken: fetchedNode.grpcAuthToken ?? undefined
             })
         }
     }, [fetchedNode])

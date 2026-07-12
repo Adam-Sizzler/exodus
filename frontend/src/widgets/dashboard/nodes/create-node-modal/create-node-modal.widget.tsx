@@ -9,6 +9,7 @@ import { TbCpu } from 'react-icons/tb'
 import { queryClient } from '@shared/api'
 import { configProfilesQueryKeys, useCreateNode, useGetPubKey } from '@shared/api/hooks'
 import { useIsMobile } from '@shared/hooks'
+import { generateGrpcAuthToken } from '@shared/utils/misc'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
 import { useNodesStoreActions, useNodesStoreCreateModalIsOpen } from '@entities/dashboard/nodes'
@@ -34,6 +35,9 @@ export const CreateNodeModalWidget = () => {
     const form = useForm<CreateNodeCommand.Request>({
         name: 'create-node-form',
         mode: 'uncontrolled',
+        initialValues: {
+            apiSchema: 'mtls'
+        } as any,
         validate: zodResolver(CreateNodeCommand.RequestSchema)
     })
 
@@ -77,13 +81,14 @@ export const CreateNodeModalWidget = () => {
     const prevStep = () => setActiveStep((current) => (current > 0 ? current - 1 : current))
 
     useEffect(() => {
-        if (form.getValues().port) {
-            return
+        if (!form.getValues().port) {
+            form.setValues({
+                port: 2222
+            })
         }
-
-        form.setValues({
-            port: 2222
-        })
+        if (!form.getValues().grpcAuthToken) {
+            form.setFieldValue('grpcAuthToken', generateGrpcAuthToken())
+        }
     }, [form])
 
     form.watch('port', ({ value }) => {
@@ -151,7 +156,6 @@ export const CreateNodeModalWidget = () => {
                         <div style={styles}>
                             <CreateNodeStep1Connection
                                 form={form}
-                                grpcToken={pubKey?.grpcToken}
                                 onNext={nextStep}
                                 port={selectedPort}
                                 pubKey={pubKey?.pubKey}

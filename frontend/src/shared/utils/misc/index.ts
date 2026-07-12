@@ -14,3 +14,5 @@ export * from './run-on-delay'
 export * from './sleep'
 export * from './text'
 export * from './uid'
+export * from './generate-grpc-auth-token'
+
