@@ -292,18 +292,104 @@ func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions)
 	}
 
 	experimental, _ := orderedMapByKey(cfg, "experimental")
-	cacheFile, _ := orderedMapByKey(&experimental, "cache_file")
-	cacheFile.Set("enabled", true)
+
+	// 1. Process cache_file config options
+	cacheFile, hasCacheFile := orderedMapByKey(&experimental, "cache_file")
+	if !hasCacheFile {
+		cacheFile.Set("enabled", true)
+	} else {
+		if _, hasEnabled := cacheFile.Get("enabled"); !hasEnabled {
+			cacheFile.Set("enabled", true)
+		}
+	}
 	experimental.Set("cache_file", cacheFile)
 
-	stats := orderedmap.New()
-	stats.Set("enabled", opt.Enabled)
-	stats.Set("inbounds", nonNilSlice(inboundTags))
-	stats.Set("outbounds", nonNilSlice(outboundTags))
-	stats.Set("users", nonNilSlice(users))
+	// 2. Process v2ray_api config options
+	v2rayAPI, hasV2rayAPI := orderedMapByKey(&experimental, "v2ray_api")
 
-	v2rayAPI := orderedmap.New()
-	v2rayAPI.Set("listen", opt.Listen)
+	listen := opt.Listen
+	if hasV2rayAPI {
+		if lRaw, ok := v2rayAPI.Get("listen"); ok {
+			if lStr, ok := lRaw.(string); ok && lStr != "" {
+				listen = lStr
+			}
+		}
+	}
+
+	stats, hasStats := orderedMapByKey(&v2rayAPI, "stats")
+
+	statsEnabled := opt.Enabled
+	if hasStats {
+		if eRaw, ok := stats.Get("enabled"); ok {
+			if eBool, ok := eRaw.(bool); ok {
+				statsEnabled = eBool
+			}
+		}
+	}
+
+	var statsInbounds []string
+	hasExplicitInbounds := false
+	if hasStats {
+		if rawIn, ok := stats.Get("inbounds"); ok {
+			if arr, ok := rawIn.([]any); ok && len(arr) > 0 {
+				hasExplicitInbounds = true
+				statsInbounds = make([]string, 0, len(arr))
+				for _, item := range arr {
+					if str, ok := item.(string); ok && str != "" {
+						statsInbounds = append(statsInbounds, str)
+					}
+				}
+			}
+		}
+	}
+	if !hasExplicitInbounds {
+		statsInbounds = inboundTags
+	}
+
+	var statsOutbounds []string
+	hasExplicitOutbounds := false
+	if hasStats {
+		if rawOut, ok := stats.Get("outbounds"); ok {
+			if arr, ok := rawOut.([]any); ok && len(arr) > 0 {
+				hasExplicitOutbounds = true
+				statsOutbounds = make([]string, 0, len(arr))
+				for _, item := range arr {
+					if str, ok := item.(string); ok && str != "" {
+						statsOutbounds = append(statsOutbounds, str)
+					}
+				}
+			}
+		}
+	}
+	if !hasExplicitOutbounds {
+		statsOutbounds = outboundTags
+	}
+
+	var statsUsers []string
+	hasExplicitUsers := false
+	if hasStats {
+		if rawUsers, ok := stats.Get("users"); ok {
+			if arr, ok := rawUsers.([]any); ok && len(arr) > 0 {
+				hasExplicitUsers = true
+				statsUsers = make([]string, 0, len(arr))
+				for _, item := range arr {
+					if str, ok := item.(string); ok && str != "" {
+						statsUsers = append(statsUsers, str)
+					}
+				}
+			}
+		}
+	}
+	if !hasExplicitUsers {
+		statsUsers = users
+	}
+
+	stats.Set("enabled", statsEnabled)
+	stats.Set("inbounds", nonNilSlice(statsInbounds))
+	stats.Set("outbounds", nonNilSlice(statsOutbounds))
+	stats.Set("users", nonNilSlice(statsUsers))
+
+	v2rayAPI.Set("listen", listen)
 	v2rayAPI.Set("stats", stats)
 
 	experimental.Set("v2ray_api", v2rayAPI)
@@ -314,9 +400,9 @@ func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions)
 		return nil, buildSummary{}, fmt.Errorf("marshal sing-box JSON: %w", err)
 	}
 	return data, buildSummary{
-		Inbounds:  inboundTags,
-		Outbounds: outboundTags,
-		Users:     users,
+		Inbounds:  statsInbounds,
+		Outbounds: statsOutbounds,
+		Users:     statsUsers,
 	}, nil
 }
 

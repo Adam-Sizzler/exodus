@@ -160,3 +160,74 @@ func mustArray(t *testing.T, v any) []any {
 	}
 	return arr
 }
+
+func TestBuildSingboxConfigWithV2RayAPIOptionOverrides(t *testing.T) {
+	raw := []byte(`{
+  "log": {"level":"debug"},
+  "inbounds": [{"tag":"trojan-in","type":"trojan","users":[{"name":"u1"}]}],
+  "outbounds": [{"tag":"direct","type":"direct"}],
+  "experimental": {
+    "cache_file": {
+      "enabled": false,
+      "path": "custom.db",
+      "store_fakeip": true
+    },
+    "v2ray_api": {
+      "listen": "127.0.0.1:10086",
+      "stats": {
+        "enabled": true,
+        "inbounds": ["trojan-in"],
+        "outbounds": ["direct"],
+        "users": ["u1"]
+      }
+    }
+  }
+}`)
+
+	out, summary, err := BuildSingboxConfigWithV2RayAPI(raw, BuildOptions{
+		Listen:  "127.0.0.1:10085",
+		Enabled: false,
+	})
+	if err != nil {
+		t.Fatalf("BuildSingboxConfigWithV2RayAPI failed: %v", err)
+	}
+
+	var cfg orderedmap.OrderedMap
+	if err := json.Unmarshal(out, &cfg); err != nil {
+		t.Fatalf("unmarshal built config: %v", err)
+	}
+
+	experimental := mustOrderedMap(t, mustGet(t, cfg, "experimental"))
+	cacheFile := mustOrderedMap(t, mustGet(t, experimental, "cache_file"))
+
+	// Should preserve the explicitly defined cache_file options, including enabled=false
+	if val, ok := cacheFile.Get("enabled"); !ok || val != false {
+		t.Fatalf("expected cache_file.enabled=false, got %v", val)
+	}
+	if val, ok := cacheFile.Get("path"); !ok || val != "custom.db" {
+		t.Fatalf("expected cache_file.path='custom.db', got %v", val)
+	}
+
+	v2rayAPI := mustOrderedMap(t, mustGet(t, experimental, "v2ray_api"))
+	// Should use listen address from raw config, not BuildOptions
+	if val, ok := v2rayAPI.Get("listen"); !ok || val != "127.0.0.1:10086" {
+		t.Fatalf("expected v2ray_api.listen='127.0.0.1:10086', got %v", val)
+	}
+
+	stats := mustOrderedMap(t, mustGet(t, v2rayAPI, "stats"))
+	// Should preserve stats options because they were not empty
+	if val, ok := stats.Get("enabled"); !ok || val != true {
+		t.Fatalf("expected stats.enabled=true, got %v", val)
+	}
+
+	// Assert summary also has the overridden options
+	if !reflect.DeepEqual(summary.Inbounds, []string{"trojan-in"}) {
+		t.Fatalf("unexpected summary.Inbounds: %v", summary.Inbounds)
+	}
+	if !reflect.DeepEqual(summary.Outbounds, []string{"direct"}) {
+		t.Fatalf("unexpected summary.Outbounds: %v", summary.Outbounds)
+	}
+	if !reflect.DeepEqual(summary.Users, []string{"u1"}) {
+		t.Fatalf("unexpected summary.Users: %v", summary.Users)
+	}
+}

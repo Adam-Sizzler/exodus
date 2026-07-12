@@ -401,20 +401,29 @@ func detectAvailableRAMBytes() uint64 {
 	if err != nil {
 		return 0
 	}
+	var available, free uint64
 	for _, line := range strings.Split(string(content), "\n") {
 		if strings.HasPrefix(line, "MemAvailable:") {
 			fields := strings.Fields(line)
-			if len(fields) < 2 {
-				break
+			if len(fields) >= 2 {
+				if kib, parseErr := strconv.ParseUint(fields[1], 10, 64); parseErr == nil {
+					available = kib * 1024
+				}
 			}
-			kib, parseErr := strconv.ParseUint(fields[1], 10, 64)
-			if parseErr != nil {
-				break
+		}
+		if strings.HasPrefix(line, "MemFree:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				if kib, parseErr := strconv.ParseUint(fields[1], 10, 64); parseErr == nil {
+					free = kib * 1024
+				}
 			}
-			return kib * 1024
 		}
 	}
-	return 0
+	if available == 0 {
+		return free
+	}
+	return available
 }
 
 func detectHostname() string {
