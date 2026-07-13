@@ -80,19 +80,6 @@ func handleStatusUpdateResult(cfg *config.BackendConfig, statusName string, resu
 	}
 }
 
-func runScheduledTrafficReset(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, now time.Time) {
-	// Traffic resets are now scheduled precisely in the scheduler package:
-	//   DAY           → 00:05 every day
-	//   MONTH_ROLLING → 00:10 every day
-	//   WEEK          → 00:15 every Monday
-	//   MONTH         → 00:20 on 1st of each month
-	// This function is kept as a no-op to avoid breaking call sites during startup.
-	_ = ctx
-	_ = manager
-	_ = cfg
-	_ = now
-}
-
 func UpdateExpiredUsers(ctx context.Context, manager *dbmanager.DatabaseManager) (StatusUpdateResult, error) {
 	return updateUsersAndCollectNodes(ctx, manager, `
 		WITH affected_users AS (

@@ -19,7 +19,6 @@ import (
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
-	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
 	"exodus/internal/security"
 )
@@ -33,170 +32,19 @@ const (
 var oauthStateCache = struct {
 	sync.Mutex
 	items map[string]oauthStateEntry
-}{items: map[string]oauthStateEntry{}}
-
-type oauthStateEntry struct {
-	State        string
-	CodeVerifier string
-	ExpiresAt    time.Time
-}
-
-type oauthAuthorizeRequest struct {
-	Provider string `json:"provider"`
-}
-
-type oauthCallbackRequest struct {
-	Provider string `json:"provider"`
-	Code     string `json:"code"`
-	State    string `json:"state"`
-}
-
-type oauthSettings struct {
-	Github   oauthProviderSettings `json:"github"`
-	PocketID oauthProviderSettings `json:"pocketid"`
-	Yandex   oauthProviderSettings `json:"yandex"`
-	Keycloak oauthProviderSettings `json:"keycloak"`
-	Generic  oauthProviderSettings `json:"generic"`
-	Telegram oauthProviderSettings `json:"telegram"`
-}
-
-type oauthProviderSettings struct {
-	Enabled          bool     `json:"enabled"`
-	ClientID         string   `json:"clientId"`
-	ClientSecret     string   `json:"clientSecret"`
-	PlainDomain      string   `json:"plainDomain"`
-	Realm            string   `json:"realm"`
-	FrontendDomain   string   `json:"frontendDomain"`
-	KeycloakDomain   string   `json:"keycloakDomain"`
-	WithPKCE         bool     `json:"withPkce"`
-	AuthorizationURL string   `json:"authorizationUrl"`
-	TokenURL         string   `json:"tokenUrl"`
-	AllowedEmails    []string `json:"allowedEmails"`
-	AllowedIDs       []string `json:"allowedIds"`
-}
-
-type oauthTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	IDToken     string `json:"id_token"`
-	Error       string `json:"error"`
-	Description string `json:"error_description"`
-}
-
-func OAuth2AuthorizeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		var req oauthAuthorizeRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-			return
-		}
-		provider := strings.ToLower(strings.TrimSpace(req.Provider))
-		if !isSupportedOAuthProvider(provider) {
-			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
-			return
-		}
-		if !isLoginAllowed(manager) {
-			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
-			return
-		}
-		settings, err := loadOAuthSettings(manager)
-		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
-			return
-		}
-		providerSettings := getOAuthProviderSettings(settings, provider)
-		if !providerSettings.Enabled {
-			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
-			return
-		}
-
-		state, err := security.GenerateRandomToken(32)
-		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to generate OAuth2 state", err, cfg)
-			return
-		}
-		codeVerifier := ""
-		authURL, err := buildAuthorizationURL(provider, providerSettings, cfg.Panel.BasePath, state, &codeVerifier)
-		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "OAuth2 authorize error", err, cfg)
-			return
-		}
-		storeOAuthState(provider, state, codeVerifier)
-		shared.WriteJSON(w, http.StatusOK, map[string]any{
-			"response": map[string]any{"authorizationUrl": authURL},
-		})
-	}
-}
-
-func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		var req oauthCallbackRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-			return
-		}
-		provider := strings.ToLower(strings.TrimSpace(req.Provider))
-		if !isSupportedOAuthProvider(provider) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "unsupported_provider", r)
-			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
-			return
-		}
-		stateEntry, ok := takeOAuthState(provider)
-		if !ok || stateEntry.State != strings.TrimSpace(req.State) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "state_mismatch", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 state mismatch", nil, cfg)
-			return
-		}
-		if !isLoginAllowed(manager) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "login_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
-			return
-		}
-		settings, err := loadOAuthSettings(manager)
-		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
-			return
-		}
-		providerSettings := getOAuthProviderSettings(settings, provider)
-		if !providerSettings.Enabled {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "provider_disabled", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
-			return
-		}
-		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, cfg.Panel.BasePath, strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
-		if err != nil {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "callback_error", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
-			return
-		}
-		if email == "" || !isOAuthPrincipalAllowed(provider, email, hasCustomClaim, providerSettings) {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "email_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 principal is not allowed", nil, cfg)
-			return
-		}
-		token, adminUUID, err := createFirstAdminSession(w, r, manager, cfg)
-		if err != nil {
-			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "session_create_failed", r)
-			shared.SendError(w, http.StatusForbidden, "failed to create OAuth2 session", err, cfg)
-			return
-		}
-		emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, "oauth2", provider, email, adminUUID, "", r)
-		shared.WriteJSON(w, http.StatusOK, map[string]any{
-			"response": map[string]any{"accessToken": token},
-		})
-	}
+}{
+	items: make(map[string]oauthStateEntry),
 }
 
 func isLoginAllowed(manager *dbmanager.DatabaseManager) bool {
-	_, _, _, hasAdmin, err := getBootstrapData(manager)
-	return err == nil && hasAdmin
+	var count int
+	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		return db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&count)
+	})
+	if err != nil {
+		return false
+	}
+	return count > 0
 }
 
 func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, string, error) {
@@ -232,10 +80,11 @@ func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *db
 }
 
 func emitExternalLoginNotification(ctx context.Context, cfg *config.BackendConfig, event, method, provider, identifier, adminUUID, reason string, r *http.Request) {
+	data := externalLoginNotificationData(cfg, method, provider, identifier, adminUUID, reason, r)
 	notifications.Emit(ctx, cfg, notifications.Event{
 		Scope: notifications.ScopeService,
 		Event: event,
-		Data:  externalLoginNotificationData(cfg, method, provider, identifier, adminUUID, reason, r),
+		Data:  data,
 	})
 }
 
@@ -350,7 +199,7 @@ func buildAuthorizationURL(provider string, settings oauthProviderSettings, base
 		return makeOAuthURL("https://github.com/login/oauth/authorize", url.Values{
 			"client_id": {settings.ClientID},
 			"state":     {state},
-			"scope":     {"user:email"},
+			"scope":     {"read:user user:email"},
 		})
 	case "yandex":
 		if settings.ClientID == "" || settings.ClientSecret == "" {

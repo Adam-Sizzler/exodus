@@ -15,6 +15,7 @@ import (
 
 // SubscriptionsHandler handles GET /api/subscriptions
 func SubscriptionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	renderService := NewRenderService(manager, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -50,7 +51,7 @@ func SubscriptionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			if err != nil {
 				continue
 			}
-			subscriptions = append(subscriptions, buildSubscriptionInfoResponse(user, settings, hosts))
+			subscriptions = append(subscriptions, renderService.buildSubscriptionInfoResponse(user, settings, hosts))
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -122,6 +123,7 @@ func SubscriptionsByPathHandler(manager *dbmanager.DatabaseManager, cfg *config.
 }
 
 func handleSubscriptionByUsername(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, username string) {
+	renderService := NewRenderService(manager, cfg)
 	ctx := r.Context()
 	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
 	if err != nil {
@@ -138,12 +140,13 @@ func handleSubscriptionByUsername(w http.ResponseWriter, r *http.Request, manage
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
-	response := buildSubscriptionInfoResponse(user, settings, hosts)
+	response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{"response": response})
 }
 
 func handleSubscriptionByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, uuid string) {
+	renderService := NewRenderService(manager, cfg)
 	ctx := r.Context()
 	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
 	if err != nil {
@@ -160,12 +163,13 @@ func handleSubscriptionByUUID(w http.ResponseWriter, r *http.Request, manager *d
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
-	response := buildSubscriptionInfoResponse(user, settings, hosts)
+	response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{"response": response})
 }
 
 func handleSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string) {
+	renderService := NewRenderService(manager, cfg)
 	ctx := r.Context()
 	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
 	if err != nil {
@@ -182,12 +186,13 @@ func handleSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, manag
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
-	response := buildSubscriptionInfoResponse(user, settings, hosts)
+	response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{"response": response})
 }
 
 func handleRawSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string) {
+	renderService := NewRenderService(manager, cfg)
 	ctx := r.Context()
 	withDisabledHosts := strings.EqualFold(r.URL.Query().Get("withDisabledHosts"), "true")
 	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
@@ -216,7 +221,7 @@ func handleRawSubscriptionByShortUUID(w http.ResponseWriter, r *http.Request, ma
 		hwidHeaders.RequestIP = stringPtrIfNotEmpty(requestIP)
 	}
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
-	headers := buildSubscriptionHeaders(user, settings, isHapp)
+	headers := renderService.buildSubscriptionHeaders(user, settings, isHapp)
 
 	isHwidLimited := false
 	if settings.HwidSettings.Enabled {

@@ -249,13 +249,6 @@ func coalesceShortUUID(value *string) string {
 	return generateSubscriptionShortUUID()
 }
 
-func coalesceRandomString(value *string, length int) string {
-	if value != nil && strings.TrimSpace(*value) != "" {
-		return strings.TrimSpace(*value)
-	}
-	return generateRandomString(length)
-}
-
 func generateRandomString(length int) string {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {

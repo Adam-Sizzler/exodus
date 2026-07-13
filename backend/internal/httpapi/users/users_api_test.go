@@ -182,3 +182,28 @@ func TestUserConfigPresenceChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestUserStatusChangedNotification(t *testing.T) {
+	cases := []struct {
+		name string
+		prev string
+		next string
+		want string
+	}{
+		{name: "unchanged active", prev: "ACTIVE", next: "ACTIVE", want: ""},
+		{name: "unchanged case insensitive", prev: "active", next: "ACTIVE", want: ""},
+		{name: "to active", prev: "DISABLED", next: "ACTIVE", want: "user.enabled"},
+		{name: "to disabled", prev: "ACTIVE", next: "DISABLED", want: "user.disabled"},
+		{name: "to limited", prev: "ACTIVE", next: "LIMITED", want: "user.limited"},
+		{name: "to expired", prev: "ACTIVE", next: "EXPIRED", want: "user.expired"},
+		{name: "unknown status", prev: "ACTIVE", next: "UNKNOWN", want: ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := userStatusChangedNotification(tc.prev, tc.next); got != tc.want {
+				t.Fatalf("userStatusChangedNotification(%q, %q) = %q, want %q", tc.prev, tc.next, got, tc.want)
+			}
+		})
+	}
+}

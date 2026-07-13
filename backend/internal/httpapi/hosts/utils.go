@@ -170,7 +170,6 @@ func parseJSONAny(raw json.RawMessage) interface{} {
 	}
 	return value
 }
-
 func dedupeStrings(values []string) []string {
 	if len(values) < 2 {
 		return values
@@ -185,4 +184,217 @@ func dedupeStrings(values []string) []string {
 		out = append(out, value)
 	}
 	return out
+}
+
+func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
+	clauses := make([]string, 0)
+	args := make([]any, 0)
+	add := func(column string, value any) {
+		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
+		args = append(args, value)
+	}
+	addOptionalString := func(column string, value *string) {
+		if value == nil {
+			return
+		}
+		add(column, strings.TrimSpace(*value))
+	}
+
+	if fields.Remark.Set {
+		if fields.Remark.Value == nil {
+			return nil, nil, fmt.Errorf("remark cannot be null")
+		}
+		add("remark", strings.TrimSpace(*fields.Remark.Value))
+	}
+	if fields.Address.Set {
+		if fields.Address.Value == nil {
+			return nil, nil, fmt.Errorf("address cannot be null")
+		}
+		add("address", strings.TrimSpace(*fields.Address.Value))
+	}
+	if fields.Port != nil {
+		add("port", *fields.Port)
+	}
+	if fields.Path.Set {
+		if fields.Path.Value == nil {
+			return nil, nil, fmt.Errorf("path cannot be null")
+		}
+		add("path", strings.TrimSpace(*fields.Path.Value))
+	}
+	if fields.SNI.Set {
+		if fields.SNI.Value == nil {
+			return nil, nil, fmt.Errorf("sni cannot be null")
+		}
+		add("sni", strings.TrimSpace(*fields.SNI.Value))
+	}
+	if fields.Host.Set {
+		if fields.Host.Value == nil {
+			return nil, nil, fmt.Errorf("host cannot be null")
+		}
+		add("host", strings.TrimSpace(*fields.Host.Value))
+	}
+	if fields.ALPN.Set {
+		if fields.ALPN.Value == nil {
+			clauses = append(clauses, "alpn = NULL")
+		} else {
+			add("alpn", strings.TrimSpace(*fields.ALPN.Value))
+		}
+	}
+	if fields.Fingerprint.Set {
+		if fields.Fingerprint.Value == nil {
+			clauses = append(clauses, "fingerprint = NULL")
+		} else {
+			add("fingerprint", strings.TrimSpace(*fields.Fingerprint.Value))
+		}
+	}
+	if fields.SecurityLayer != nil {
+		add("security_layer", normalizeSecurityLayer(fields.SecurityLayer))
+	}
+
+	if set, val, err := normalizeOptionalJSONField(fields.XHTTPExtraParams, true); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "xhttp_extra_params = NULL")
+		} else {
+			add("xhttp_extra_params", val)
+		}
+	}
+	if set, val, err := normalizeOptionalJSONField(fields.MuxParams, true); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "mux_params = NULL")
+		} else {
+			add("mux_params", val)
+		}
+	}
+	if set, val, err := normalizeOptionalJSONField(fields.SingboxMuxParams, true); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "singbox_mux_params = NULL")
+		} else {
+			add("singbox_mux_params", val)
+		}
+	}
+	if set, val, err := normalizeOptionalClashMuxYAML(fields.ClashMuxParams); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "clash_mux_params = NULL")
+		} else {
+			add("clash_mux_params", val)
+		}
+	}
+	if set, val, err := normalizeOptionalJSONField(fields.SockoptParams, true); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "sockopt_params = NULL")
+		} else {
+			add("sockopt_params", val)
+		}
+	}
+	if set, val, err := normalizeOptionalJSONField(fields.FinalMask, true); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "final_mask = NULL")
+		} else {
+			add("final_mask", val)
+		}
+	}
+
+	if fields.IsDisabled != nil {
+		add("is_disabled", *fields.IsDisabled)
+	}
+	if fields.ServerDescription.Set {
+		if fields.ServerDescription.Value == nil {
+			clauses = append(clauses, "server_description = NULL")
+		} else {
+			add("server_description", strings.TrimSpace(*fields.ServerDescription.Value))
+		}
+	}
+	protocolCredentialCleared := false
+	if fields.OverrideProtocolCredential != nil {
+		add("override_protocol_credential", *fields.OverrideProtocolCredential)
+		if !*fields.OverrideProtocolCredential {
+			clauses = append(clauses, "protocol_credential = NULL")
+			protocolCredentialCleared = true
+		}
+	}
+	if fields.ProtocolCredential.Set && !protocolCredentialCleared {
+		normalizedCredential := normalizeProtocolCredentialPointer(fields.ProtocolCredential.Value)
+		if normalizedCredential == nil {
+			clauses = append(clauses, "protocol_credential = NULL")
+		} else {
+			add("protocol_credential", *normalizedCredential)
+		}
+	}
+	if fields.VlessRouteID.Set {
+		if fields.VlessRouteID.Value == nil {
+			clauses = append(clauses, "vless_route_id = NULL")
+		} else {
+			add("vless_route_id", *fields.VlessRouteID.Value)
+		}
+	}
+	if fields.PinnedPeerCertSha256.Set {
+		if fields.PinnedPeerCertSha256.Value == nil {
+			clauses = append(clauses, "pinned_peer_cert_sha256 = NULL")
+		} else {
+			add("pinned_peer_cert_sha256", strings.TrimSpace(*fields.PinnedPeerCertSha256.Value))
+		}
+	}
+	if fields.VerifyPeerCertByName.Set {
+		if fields.VerifyPeerCertByName.Value == nil {
+			clauses = append(clauses, "verify_peer_cert_by_name = NULL")
+		} else {
+			add("verify_peer_cert_by_name", strings.TrimSpace(*fields.VerifyPeerCertByName.Value))
+		}
+	}
+	if fields.AllowInsecure != nil {
+		add("allow_insecure", *fields.AllowInsecure)
+	}
+	if fields.ShuffleHost != nil {
+		add("shuffle_host", *fields.ShuffleHost)
+	}
+	if fields.MihomoX25519 != nil {
+		add("mihomo_x25519", *fields.MihomoX25519)
+	}
+	if fields.MihomoIPVersion.Set {
+		if fields.MihomoIPVersion.Value == nil {
+			clauses = append(clauses, "mihomo_ip_version = NULL")
+		} else {
+			add("mihomo_ip_version", normalizeMihomoIPVersion(fields.MihomoIPVersion.Value))
+		}
+	}
+	if fields.XrayJSONTemplateUUID.Set {
+		if fields.XrayJSONTemplateUUID.Value == nil {
+			clauses = append(clauses, "xray_json_template_uuid = NULL")
+		} else {
+			add("xray_json_template_uuid", strings.TrimSpace(*fields.XrayJSONTemplateUUID.Value))
+		}
+	}
+	if fields.KeepSNIBlank != nil {
+		add("keep_sni_blank", *fields.KeepSNIBlank)
+	}
+	if fields.Tags != nil {
+		add("tags", normalizeTags(fields.Tags))
+	}
+	if fields.IsHidden != nil {
+		add("is_hidden", *fields.IsHidden)
+	}
+	if fields.OverrideSNIFromAddress != nil {
+		add("override_sni_from_address", *fields.OverrideSNIFromAddress)
+	}
+	if fields.Inbound != nil {
+		addOptionalString("config_profile_uuid", fields.Inbound.ConfigProfileUUID)
+		addOptionalString("config_profile_inbound_uuid", fields.Inbound.ConfigProfileInboundUUID)
+	}
+	if fields.ExcludeFromSubscription != nil {
+		add("exclude_from_subscription_types", fields.ExcludeFromSubscription)
+	}
+
+	return clauses, args, nil
 }

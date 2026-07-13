@@ -46,6 +46,12 @@ exports.NodesSchema = zod_1.z.object({
     providerUuid: zod_1.z.nullable(zod_1.z.string().uuid()),
     provider: zod_1.z.nullable(infra_provider_schema_1.PartialInfraProviderSchema),
     activePluginUuid: zod_1.z.nullable(zod_1.z.string().uuid()),
+    apiSchema: zod_1.z.string(),
+    apiPath: zod_1.z.string(),
+    grpcAuthToken: zod_1.z.string(),
+    cpuCount: zod_1.z.nullable(zod_1.z.number().int()),
+    cpuModel: zod_1.z.nullable(zod_1.z.string()),
+    totalRam: zod_1.z.nullable(zod_1.z.string()),
     system: zod_1.z.nullable(node_system_schema_1.NodeSystemSchema),
     versions: zod_1.z.nullable(zod_1.z.object({
         singbox: zod_1.z.string(),

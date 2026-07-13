@@ -2,17 +2,15 @@ package users
 
 import (
 	"context"
-
-	dbmanager "exodus/internal/db/manager"
 )
 
-func buildUserResponses(ctx context.Context, manager *dbmanager.DatabaseManager, records []userRecord, subscriptionBase string) ([]userAPI, error) {
+func buildUserResponses(ctx context.Context, repo *UserRepository, records []userRecord, subscriptionBase string) ([]userAPI, error) {
 	userUUIDs := make([]string, 0, len(records))
 	for _, record := range records {
 		userUUIDs = append(userUUIDs, record.UUID)
 	}
 
-	activeSquadsMap, err := getUsersActiveInternalSquads(ctx, manager, userUUIDs)
+	activeSquadsMap, err := repo.getUsersActiveInternalSquads(ctx, userUUIDs)
 	if err != nil {
 		return nil, err
 	}

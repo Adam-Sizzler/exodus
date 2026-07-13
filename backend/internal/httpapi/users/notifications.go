@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/notifications"
 )
 
-func emitUserNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, record userRecord, meta map[string]any) {
+func emitUserNotification(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, record userRecord, meta map[string]any) {
 	data := userRecordNotificationData(record)
 	if userNotificationNeedsInternalSquads(event) {
-		enrichUserNotificationInternalSquads(ctx, manager, record.UUID, data)
+		enrichUserNotificationInternalSquads(ctx, repo, record.UUID, data)
 	}
 
 	notifications.Emit(ctx, cfg, notifications.Event{
@@ -33,12 +32,12 @@ func userNotificationNeedsInternalSquads(event string) bool {
 	}
 }
 
-func enrichUserNotificationInternalSquads(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, data map[string]any) {
-	if manager == nil || strings.TrimSpace(userUUID) == "" || data == nil {
+func enrichUserNotificationInternalSquads(ctx context.Context, repo *UserRepository, userUUID string, data map[string]any) {
+	if repo == nil || strings.TrimSpace(userUUID) == "" || data == nil {
 		return
 	}
 
-	squadsByUser, err := getUsersActiveInternalSquads(ctx, manager, []string{userUUID})
+	squadsByUser, err := repo.getUsersActiveInternalSquads(ctx, []string{userUUID})
 	if err != nil {
 		return
 	}
@@ -56,20 +55,20 @@ func enrichUserNotificationInternalSquads(ctx context.Context, manager *dbmanage
 	data["internalSquads"] = names
 }
 
-func emitUsersByUUIDsNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, userUUIDs []string) {
+func emitUsersByUUIDsNotification(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, userUUIDs []string) {
 	clean := dedupeStrings(userUUIDs)
 	if len(clean) == 0 {
 		return
 	}
-	records, err := getUserRecordsByUUIDs(ctx, manager, clean)
+	records, err := repo.getUserRecordsByUUIDs(ctx, clean)
 	if err != nil {
-		emitUsersNotificationFromRecords(ctx, manager, cfg, event, clean, nil)
+		emitUsersNotificationFromRecords(ctx, repo, cfg, event, clean, nil)
 		return
 	}
-	emitUsersNotificationFromRecords(ctx, manager, cfg, event, clean, records)
+	emitUsersNotificationFromRecords(ctx, repo, cfg, event, clean, records)
 }
 
-func emitUsersNotificationFromRecords(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
+func emitUsersNotificationFromRecords(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
 	clean := dedupeStrings(userUUIDs)
 	if len(clean) == 0 {
 		return
@@ -81,7 +80,7 @@ func emitUsersNotificationFromRecords(ctx context.Context, manager *dbmanager.Da
 			meta["skipTelegramNotification"] = true
 		}
 		if record, ok := records[userUUID]; ok {
-			emitUserNotification(ctx, manager, cfg, event, record, meta)
+			emitUserNotification(ctx, repo, cfg, event, record, meta)
 			continue
 		}
 		notifications.Emit(ctx, cfg, notifications.Event{

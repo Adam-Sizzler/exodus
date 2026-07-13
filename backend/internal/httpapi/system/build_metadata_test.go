@@ -24,7 +24,7 @@ func TestMetadataHandlerUsesBuildMetadataEnvironment(t *testing.T) {
 	t.Setenv("EXODUS_BUILD_NUMBER", "456")
 	t.Setenv("EXODUS_REPOSITORY_URL", repositoryURL)
 
-	testLogger, err := logger.NewLogger("none", "inclusive", "UTC", io.Discard)
+	testLogger, err := logger.NewLogger("none", "UTC", io.Discard)
 	if err != nil {
 		t.Fatalf("failed to create logger: %v", err)
 	}

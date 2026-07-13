@@ -23,7 +23,8 @@ export declare const HostsSchema: z.ZodObject<{
         readonly TLS: "TLS";
         readonly NONE: "NONE";
     }>>;
-    xhttpExtraParams: z.ZodNullable<z.ZodUnknown>;
+    xHttpExtraParams: z.ZodNullable<z.ZodUnknown>;
+    allowInsecure: z.ZodBoolean;
     muxParams: z.ZodNullable<z.ZodUnknown>;
     sockoptParams: z.ZodNullable<z.ZodUnknown>;
     finalMask: z.ZodNullable<z.ZodUnknown>;
@@ -97,7 +98,8 @@ export declare const HostsSchema: z.ZodObject<{
     xrayJsonTemplateUuid: string | null;
     excludedInternalSquads: string[];
     excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
-    xhttpExtraParams?: unknown;
+    xHttpExtraParams?: unknown;
+    allowInsecure: boolean;
     muxParams?: unknown;
     sockoptParams?: unknown;
     finalMask?: unknown;
@@ -130,7 +132,8 @@ export declare const HostsSchema: z.ZodObject<{
     excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
     tags?: string[] | undefined;
     securityLayer?: "DEFAULT" | "TLS" | "NONE" | undefined;
-    xhttpExtraParams?: unknown;
+    xHttpExtraParams?: unknown;
+    allowInsecure: boolean;
     muxParams?: unknown;
     sockoptParams?: unknown;
     finalMask?: unknown;

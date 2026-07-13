@@ -7,31 +7,29 @@ import (
 	"net/http"
 	"strings"
 
-	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
 )
 
-func handleResolveUser(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleResolveUser(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req resolveUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
 	if err := validateResolveUserRequest(req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
 	}
 
-	user, err := resolveUser(r.Context(), manager, req)
+	user, err := service.repo.resolveUser(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to resolve user", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to resolve user", err, service.cfg)
 		return
 	}
 

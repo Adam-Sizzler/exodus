@@ -5,17 +5,27 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
+	"strings"
 
 	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/dbutil"
 	"exodus/internal/httpapi/shared"
 )
 
-func getHosts(ctx context.Context, manager *dbmanager.DatabaseManager) ([]hostRecord, error) {
+type HostRepository struct {
+	manager *dbmanager.DatabaseManager
+}
+
+func NewHostRepository(manager *dbmanager.DatabaseManager) *HostRepository {
+	return &HostRepository{manager: manager}
+}
+
+func (r *HostRepository) getHosts(ctx context.Context) ([]hostRecord, error) {
 	var hosts []hostRecord
 	var err error
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
             SELECT
                 uuid, view_position, remark, address, port,
@@ -47,9 +57,9 @@ func getHosts(ctx context.Context, manager *dbmanager.DatabaseManager) ([]hostRe
 	return hosts, err
 }
 
-func getHostByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, hostUUID string) (hostRecord, error) {
+func (r *HostRepository) getHostByUUID(ctx context.Context, hostUUID string) (hostRecord, error) {
 	var host hostRecord
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
             SELECT
                 uuid, view_position, remark, address, port,
@@ -229,13 +239,13 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	return rec, nil
 }
 
-func getHostNodes(ctx context.Context, manager *dbmanager.DatabaseManager, hostUUIDs []string) (map[string][]string, error) {
+func (r *HostRepository) getHostNodes(ctx context.Context, hostUUIDs []string) (map[string][]string, error) {
 	result := make(map[string][]string)
 	if len(hostUUIDs) == 0 {
 		return result, nil
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `SELECT host_uuid, node_uuid FROM hosts_to_nodes WHERE host_uuid = ANY(?)`, hostUUIDs)
 		if err != nil {
 			return err
@@ -256,13 +266,13 @@ func getHostNodes(ctx context.Context, manager *dbmanager.DatabaseManager, hostU
 	return result, nil
 }
 
-func getHostExcludedSquads(ctx context.Context, manager *dbmanager.DatabaseManager, hostUUIDs []string) (map[string][]string, error) {
+func (r *HostRepository) getHostExcludedSquads(ctx context.Context, hostUUIDs []string) (map[string][]string, error) {
 	result := make(map[string][]string)
 	if len(hostUUIDs) == 0 {
 		return result, nil
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `SELECT host_uuid, squad_uuid FROM internal_squad_host_exclusions WHERE host_uuid = ANY(?)`, hostUUIDs)
 		if err != nil {
 			return err
@@ -283,7 +293,7 @@ func getHostExcludedSquads(ctx context.Context, manager *dbmanager.DatabaseManag
 	return result, nil
 }
 
-func replaceHostNodesTx(ctx context.Context, tx dbmanager.TxExecutor, hostUUID string, nodes []string) error {
+func (r *HostRepository) replaceHostNodesTx(ctx context.Context, tx dbmanager.TxExecutor, hostUUID string, nodes []string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts_to_nodes WHERE host_uuid = ?`, hostUUID); err != nil {
 		return err
 	}
@@ -298,7 +308,7 @@ func replaceHostNodesTx(ctx context.Context, tx dbmanager.TxExecutor, hostUUID s
 	return nil
 }
 
-func replaceHostExcludedSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, hostUUID string, squads []string) error {
+func (r *HostRepository) replaceHostExcludedSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, hostUUID string, squads []string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_host_exclusions WHERE host_uuid = ?`, hostUUID); err != nil {
 		return err
 	}
@@ -313,10 +323,10 @@ func replaceHostExcludedSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, h
 	return nil
 }
 
-func getHostTags(ctx context.Context, manager *dbmanager.DatabaseManager) ([]string, error) {
+func (r *HostRepository) getHostTags(ctx context.Context) ([]string, error) {
 	tags := make([]string, 0)
 	var err error
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err = r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `SELECT DISTINCT unnest(tags) AS tag FROM hosts ORDER BY tag ASC`)
 		if err != nil {
 			return err
@@ -338,8 +348,8 @@ func getHostTags(ctx context.Context, manager *dbmanager.DatabaseManager) ([]str
 	return tags, nil
 }
 
-func ensureConfigProfileInbound(ctx context.Context, manager *dbmanager.DatabaseManager, profileUUID string, inboundUUID string) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+func (r *HostRepository) ensureConfigProfileInbound(ctx context.Context, profileUUID string, inboundUUID string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var exists int
 		if err := db.QueryRowContext(ctx, `SELECT 1 FROM config_profiles WHERE uuid = ?`, profileUUID).Scan(&exists); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -357,8 +367,8 @@ func ensureConfigProfileInbound(ctx context.Context, manager *dbmanager.Database
 	})
 }
 
-func ensureXrayJSONTemplate(ctx context.Context, manager *dbmanager.DatabaseManager, templateUUID string) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+func (r *HostRepository) ensureXrayJSONTemplate(ctx context.Context, templateUUID string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		var templateType string
 		if err := db.QueryRowContext(ctx, `SELECT template_type FROM subscription_templates WHERE uuid = ?`, templateUUID).Scan(&templateType); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -370,5 +380,228 @@ func ensureXrayJSONTemplate(ctx context.Context, manager *dbmanager.DatabaseMana
 			return errTemplateTypeNotAllowed
 		}
 		return nil
+	})
+}
+
+func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req HostCreateRequestAPI, xhttpExtra, mux, singboxMux []byte, clashMux *string, sockopt, finalMask []byte) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx, `
+            INSERT INTO hosts (
+                uuid, remark, address, port,
+                path, sni, host, alpn, fingerprint, security_layer,
+                xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params, final_mask,
+                is_disabled, server_description, override_protocol_credential, protocol_credential,
+                vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
+                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
+                xray_json_template_uuid, keep_sni_blank,
+                exclude_from_subscription_types, tags, is_hidden,
+                override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+			hostUUID,
+			req.Remark,
+			strings.TrimSpace(req.Address),
+			req.Port,
+			normalizeOptionalStringAllowEmpty(req.Path),
+			normalizeOptionalStringAllowEmpty(req.SNI),
+			normalizeOptionalStringAllowEmpty(req.Host),
+			normalizeOptionalStringAllowEmpty(req.ALPN),
+			normalizeOptionalStringAllowEmpty(req.Fingerprint),
+			normalizeSecurityLayer(req.SecurityLayer),
+			xhttpExtra,
+			mux,
+			singboxMux,
+			clashMux,
+			sockopt,
+			finalMask,
+			coalesceBool(req.IsDisabled, false),
+			normalizeOptionalStringAllowEmpty(req.ServerDescription),
+			coalesceBool(req.OverrideProtocolCredential, false),
+			normalizeProtocolCredentialForCreate(req.OverrideProtocolCredential, req.ProtocolCredential),
+			normalizeNullableInt(req.VlessRouteID),
+			normalizeNullableString(req.PinnedPeerCertSha256),
+			normalizeNullableString(req.VerifyPeerCertByName),
+			coalesceBool(req.AllowInsecure, false),
+			coalesceBool(req.ShuffleHost, false),
+			coalesceBool(req.MihomoX25519, false),
+			normalizeMihomoIPVersion(req.MihomoIPVersion),
+			normalizeOptionalStringAllowEmpty(req.XrayJSONTemplateUUID),
+			coalesceBool(req.KeepSNIBlank, false),
+			ensureStringSlice(req.ExcludeFromSubscription),
+			normalizeTags(req.Tags),
+			coalesceBool(req.IsHidden, false),
+			coalesceBool(req.OverrideSNIFromAddress, false),
+			normalizeOptionalStringAllowEmpty(req.Inbound.ConfigProfileUUID),
+			normalizeOptionalStringAllowEmpty(req.Inbound.ConfigProfileInboundUUID),
+		)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		if err := r.replaceHostNodesTx(ctx, tx, hostUUID, req.Nodes); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if err := r.replaceHostExcludedSquadsTx(ctx, tx, hostUUID, req.ExcludedInternalSquads); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		return tx.Commit()
+	})
+}
+
+func (r *HostRepository) updateHost(ctx context.Context, hostUUID string, clauses []string, args []any, nodes []string, excludedInternalSquads []string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		if len(clauses) > 0 {
+			args = append(args, hostUUID)
+			query := fmt.Sprintf("UPDATE hosts SET %s WHERE uuid = ?", strings.Join(clauses, ", "))
+			result, err := tx.ExecContext(ctx, query, args...)
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+			rows, err := result.RowsAffected()
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+			if rows == 0 {
+				_ = tx.Rollback()
+				return sql.ErrNoRows
+			}
+		}
+
+		if nodes != nil {
+			if err := r.replaceHostNodesTx(ctx, tx, hostUUID, nodes); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+		if excludedInternalSquads != nil {
+			if err := r.replaceHostExcludedSquadsTx(ctx, tx, hostUUID, excludedInternalSquads); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+
+		return tx.Commit()
+	})
+}
+
+func (r *HostRepository) deleteHost(ctx context.Context, hostUUID string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		result, err := db.ExecContext(ctx, `DELETE FROM hosts WHERE uuid = ?`, hostUUID)
+		if err != nil {
+			return err
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			return sql.ErrNoRows
+		}
+		return nil
+	})
+}
+
+func (r *HostRepository) reorderHosts(ctx context.Context, items []reorderHostItem) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			if _, err := tx.ExecContext(ctx, `UPDATE hosts SET view_position = ? WHERE uuid = ?`, item.ViewPosition, item.UUID); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `SELECT setval('hosts_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM hosts) + 1)`); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		return tx.Commit()
+	})
+}
+
+func (r *HostRepository) bulkUpdateHostsEnabled(ctx context.Context, uuids []string, enabled bool) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		_, err := db.ExecContext(ctx, `UPDATE hosts SET is_disabled = ? WHERE uuid = ANY(?)`, !enabled, uuids)
+		return err
+	})
+}
+
+func (r *HostRepository) bulkDeleteHosts(ctx context.Context, uuids []string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		_, err := db.ExecContext(ctx, `DELETE FROM hosts WHERE uuid = ANY(?)`, uuids)
+		return err
+	})
+}
+
+func (r *HostRepository) bulkSetInbound(ctx context.Context, uuids []string, configProfileUUID, configProfileInboundUUID string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		_, err := db.ExecContext(ctx, `
+            UPDATE hosts
+            SET config_profile_uuid = ?, config_profile_inbound_uuid = ?
+            WHERE uuid = ANY(?)
+        `, configProfileUUID, configProfileInboundUUID, uuids)
+		return err
+	})
+}
+
+func (r *HostRepository) bulkSetPort(ctx context.Context, uuids []string, port int) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		_, err := db.ExecContext(ctx, `UPDATE hosts SET port = ? WHERE uuid = ANY(?)`, port, uuids)
+		return err
+	})
+}
+
+func (r *HostRepository) bulkUpdateHosts(ctx context.Context, uuids []string, clauses []string, args []any, nodes []string, excludedInternalSquads []string) error {
+	return r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		if len(clauses) > 0 {
+			args = append(args, uuids)
+			query := fmt.Sprintf("UPDATE hosts SET %s WHERE uuid = ANY(?)", strings.Join(clauses, ", "))
+			if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
+
+		if nodes != nil {
+			for _, hostUUID := range uuids {
+				if err := r.replaceHostNodesTx(ctx, tx, hostUUID, nodes); err != nil {
+					_ = tx.Rollback()
+					return err
+				}
+			}
+		}
+		if excludedInternalSquads != nil {
+			for _, hostUUID := range uuids {
+				if err := r.replaceHostExcludedSquadsTx(ctx, tx, hostUUID, excludedInternalSquads); err != nil {
+					_ = tx.Rollback()
+					return err
+				}
+			}
+		}
+
+		return tx.Commit()
 	})
 }

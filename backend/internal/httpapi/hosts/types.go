@@ -1,6 +1,7 @@
 package hosts
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -53,6 +54,7 @@ var (
 	errConfigProfileInboundNotFound = errors.New("config profile inbound not found")
 	errTemplateNotFound             = errors.New("subscription template not found")
 	errTemplateTypeNotAllowed       = errors.New("template type not allowed")
+	errHostNotFound                 = sql.ErrNoRows
 )
 
 type hostRecord struct {
@@ -236,11 +238,13 @@ type HostBulkUpdateRequestAPI struct {
 	hostUpdateFields
 }
 
+type reorderHostItem struct {
+	UUID         string `json:"uuid"`
+	ViewPosition int    `json:"viewPosition"`
+}
+
 type reorderHostsRequest struct {
-	Hosts []struct {
-		UUID         string `json:"uuid"`
-		ViewPosition int    `json:"viewPosition"`
-	} `json:"hosts"`
+	Hosts []reorderHostItem `json:"hosts"`
 }
 
 type bulkUUIDsRequest struct {

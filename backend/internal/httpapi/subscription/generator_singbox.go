@@ -1,5 +1,14 @@
 package subscription
 
+/*
+CROSS-CUTTING RULES / НЕЯВНЫЕ ЗАВИСИМОСТИ:
+1. Использование host.Path:
+   Значение `host.Path` используется как для WebSocket (`ws.path`), так и для gRPC (`grpc.service_name`).
+   В билдерах (Mihomo, Xray, Singbox) при проверке пути gRPC нужно использовать `host.Path`.
+2. Обработка Reality:
+   Для совместимости с xray/mihomo билдерами, Reality принудительно схлопывается в `"tls"`.
+*/
+
 import (
 	"bytes"
 	"database/sql"

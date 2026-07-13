@@ -7,7 +7,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 )
 
-func getUserInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, tID int64) ([]string, error) {
+func (r *UserRepository) getUserInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, tID int64) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `SELECT internal_squad_uuid FROM internal_squad_members WHERE user_id = ?`, tID)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func internalSquadSetsDiffer(current []string, requested []string) bool {
 	return false
 }
 
-func resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, squadUUIDs []string) ([]string, error) {
+func (r *UserRepository) resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, squadUUIDs []string) ([]string, error) {
 	cleanSquadUUIDs := dedupeStrings(squadUUIDs)
 	if len(cleanSquadUUIDs) == 0 {
 		return []string{}, nil
@@ -76,7 +76,7 @@ func resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx dbmanager.TxExe
 	return dedupeStrings(nodeUUIDs), nil
 }
 
-func resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
+func (r *UserRepository) resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
 	cleanUserUUIDs := dedupeStrings(userUUIDs)
 	if len(cleanUserUUIDs) == 0 {
 		return []string{}, nil

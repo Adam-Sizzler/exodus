@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/nodehotcache"
 	"exodus/internal/notifications"
 )
@@ -19,7 +18,7 @@ func emitNodeNotification(ctx context.Context, cfg *config.BackendConfig, event 
 	})
 }
 
-func emitNodesByUUIDsNotification(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, event string, nodeUUIDs []string) {
+func emitNodesByUUIDsNotification(ctx context.Context, repo *NodeRepository, cfg *config.BackendConfig, event string, nodeUUIDs []string) {
 	clean := dedupeStrings(nodeUUIDs)
 	if len(clean) == 0 {
 		return
@@ -30,7 +29,7 @@ func emitNodesByUUIDsNotification(ctx context.Context, manager *dbmanager.Databa
 		if skipTelegram {
 			meta["skipTelegramNotification"] = true
 		}
-		record, err := getNodeByUUID(ctx, manager, nodeUUID)
+		record, err := repo.getNodeByUUID(ctx, nodeUUID)
 		if err == nil {
 			emitNodeNotification(ctx, cfg, event, record, meta)
 			continue

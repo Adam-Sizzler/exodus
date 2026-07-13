@@ -12,11 +12,10 @@ var (
 	userUsernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	userTagRegex      = regexp.MustCompile(`^[A-Z0-9_]+$`)
 
-	errUserNotFound        = errors.New("user not found")
-	errUsernameExists      = errors.New("username already exists")
-	errShortUUIDExists     = errors.New("short uuid already exists")
-	errVLESSUUIDExists     = errors.New("vless uuid already exists")
-	errExternalSquadAbsent = errors.New("external squad not found")
+	errUserNotFound    = errors.New("user not found")
+	errUsernameExists  = errors.New("username already exists")
+	errShortUUIDExists = errors.New("short uuid already exists")
+	errVLESSUUIDExists = errors.New("vless uuid already exists")
 )
 
 type OptionalString = shared.OptionalString

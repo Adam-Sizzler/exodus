@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDecodeOptionalRestartNodesRequest(t *testing.T) {
@@ -175,5 +176,21 @@ func TestBuildNodeVersions(t *testing.T) {
 	}
 	if got.Singbox != "1.13.5" || got.Node != "unknown" {
 		t.Fatalf("versions = %#v", got)
+	}
+}
+
+func TestOptionalTimeString(t *testing.T) {
+	if got := optionalTimeString(nil); got != nil {
+		t.Fatalf("optionalTimeString(nil) = %v, want nil", got)
+	}
+
+	now := time.Date(2026, 7, 12, 13, 0, 0, 0, time.UTC)
+	got := optionalTimeString(&now)
+	if got == nil {
+		t.Fatal("expected time string")
+	}
+	want := "2026-07-12T13:00:00Z"
+	if *got != want {
+		t.Fatalf("optionalTimeString = %q, want %q", *got, want)
 	}
 }

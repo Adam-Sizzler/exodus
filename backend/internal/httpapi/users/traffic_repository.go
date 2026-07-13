@@ -8,7 +8,7 @@ import (
 	dbmanager "exodus/internal/db/manager"
 )
 
-func queryLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
+func (r *UserRepository) queryLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
@@ -25,7 +25,7 @@ func queryLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, u
 	return scanNodeUUIDRows(rows)
 }
 
-func queryAllLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor) ([]string, error) {
+func (r *UserRepository) queryAllLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
@@ -42,7 +42,7 @@ func queryAllLimitedUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor
 	return scanNodeUUIDRows(rows)
 }
 
-func queryReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string, extendDays int) ([]string, error) {
+func (r *UserRepository) queryReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string, extendDays int) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
@@ -61,7 +61,7 @@ func queryReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.Tx
 	return scanNodeUUIDRows(rows)
 }
 
-func queryAllReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, extendDays int) ([]string, error) {
+func (r *UserRepository) queryAllReactivatedExpiredUserNodeUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, extendDays int) ([]string, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
@@ -94,17 +94,17 @@ func scanNodeUUIDRows(rows *sql.Rows) ([]string, error) {
 	return dedupeStrings(nodeUUIDs), nil
 }
 
-func resetUsersTrafficByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManager, userUUIDs []string) (int64, []string, error) {
+func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs []string) (int64, []string, error) {
 	var affectedRows int64
 	nodeUUIDs := make([]string, 0)
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
 
-		targets, nodeTargetsErr := queryLimitedUserNodeUUIDsTx(ctx, tx, userUUIDs)
+		targets, nodeTargetsErr := r.queryLimitedUserNodeUUIDsTx(ctx, tx, userUUIDs)
 		if nodeTargetsErr != nil {
 			_ = tx.Rollback()
 			return nodeTargetsErr
@@ -140,17 +140,17 @@ func resetUsersTrafficByUUIDs(ctx context.Context, manager *dbmanager.DatabaseMa
 	return affectedRows, nodeUUIDs, err
 }
 
-func resetAllUsersTraffic(ctx context.Context, manager *dbmanager.DatabaseManager) (int64, []string, error) {
+func (r *UserRepository) resetAllUsersTraffic(ctx context.Context) (int64, []string, error) {
 	var affectedRows int64
 	nodeUUIDs := make([]string, 0)
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
 
-		targets, nodeTargetsErr := queryAllLimitedUserNodeUUIDsTx(ctx, tx)
+		targets, nodeTargetsErr := r.queryAllLimitedUserNodeUUIDsTx(ctx, tx)
 		if nodeTargetsErr != nil {
 			_ = tx.Rollback()
 			return nodeTargetsErr
@@ -181,17 +181,17 @@ func resetAllUsersTraffic(ctx context.Context, manager *dbmanager.DatabaseManage
 	return affectedRows, nodeUUIDs, err
 }
 
-func extendUsersExpirationByUUIDs(ctx context.Context, manager *dbmanager.DatabaseManager, userUUIDs []string, extendDays int) (int64, []string, error) {
+func (r *UserRepository) extendUsersExpirationByUUIDs(ctx context.Context, userUUIDs []string, extendDays int) (int64, []string, error) {
 	var affectedRows int64
 	nodeUUIDs := make([]string, 0)
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
 
-		targets, nodeTargetsErr := queryReactivatedExpiredUserNodeUUIDsTx(ctx, tx, userUUIDs, extendDays)
+		targets, nodeTargetsErr := r.queryReactivatedExpiredUserNodeUUIDsTx(ctx, tx, userUUIDs, extendDays)
 		if nodeTargetsErr != nil {
 			_ = tx.Rollback()
 			return nodeTargetsErr
@@ -220,17 +220,17 @@ func extendUsersExpirationByUUIDs(ctx context.Context, manager *dbmanager.Databa
 	return affectedRows, nodeUUIDs, err
 }
 
-func extendAllUsersExpiration(ctx context.Context, manager *dbmanager.DatabaseManager, extendDays int) (int64, []string, error) {
+func (r *UserRepository) extendAllUsersExpiration(ctx context.Context, extendDays int) (int64, []string, error) {
 	var affectedRows int64
 	nodeUUIDs := make([]string, 0)
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
+	err := r.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
 
-		targets, nodeTargetsErr := queryAllReactivatedExpiredUserNodeUUIDsTx(ctx, tx, extendDays)
+		targets, nodeTargetsErr := r.queryAllReactivatedExpiredUserNodeUUIDsTx(ctx, tx, extendDays)
 		if nodeTargetsErr != nil {
 			_ = tx.Rollback()
 			return nodeTargetsErr

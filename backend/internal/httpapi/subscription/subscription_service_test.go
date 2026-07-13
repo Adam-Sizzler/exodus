@@ -305,7 +305,8 @@ func TestGenerateSingboxConfigPreservesNestedTemplateOrderAndSelectorNodePlaceme
       "server_port": 443,
       "password": "secret",
       "tls": {
-        "enabled": true
+        "enabled": true,
+        "server_name": "one.example.com"
       }
     }`) {
 		t.Fatalf("expected first generated outbound order to be stable, got:\n%s", rendered)
@@ -318,7 +319,8 @@ func TestGenerateSingboxConfigPreservesNestedTemplateOrderAndSelectorNodePlaceme
       "server_port": 443,
       "password": "secret",
       "tls": {
-        "enabled": true
+        "enabled": true,
+        "server_name": "two.example.com"
       }
     }`) {
 		t.Fatalf("expected second generated outbound order to be stable, got:\n%s", rendered)
@@ -331,7 +333,8 @@ func TestGenerateSingboxConfigPreservesNestedTemplateOrderAndSelectorNodePlaceme
       "server_port": 443,
       "password": "secret",
       "tls": {
-        "enabled": true
+        "enabled": true,
+        "server_name": "three.example.com"
       }
     }`) {
 		t.Fatalf("expected third generated outbound order to be stable, got:\n%s", rendered)

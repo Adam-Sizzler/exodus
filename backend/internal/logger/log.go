@@ -80,17 +80,6 @@ var levelMap = map[string]Level{
 	"none":    LevelNone,
 }
 
-var levelNames = map[Level]string{
-	LevelTrace: "TRACE",
-	LevelDebug: "DEBUG",
-	LevelInfo:  "INFO",
-	LevelWarn:  "WARN",
-	LevelError: "ERROR",
-	LevelFatal: "FATAL",
-	LevelPanic: "PANIC",
-	LevelNone:  "NONE",
-}
-
 // Logger is the single backend logger. It preserves the old Exodus
 // key/value logging API while using zerolog under the hood.
 type Logger struct {
@@ -124,11 +113,11 @@ func ParseLevel(level string) (Level, error) {
 	return LevelNone, fmt.Errorf("unknown log level: %s", level)
 }
 
-func NewLogger(level, logMode, timezone string, writer io.Writer) (*Logger, error) {
+func NewLogger(level, timezone string, writer io.Writer) (*Logger, error) {
 	return newLogger(level, normalizeLogFormat(os.Getenv("LOG_FORMAT")), timezone, writer, RoleAPI, ServiceBootstrap)
 }
 
-func NewLoggerWithValidation(level, mode, timezone string, writer io.Writer) (*Logger, error) {
+func NewLoggerWithValidation(level, timezone string, writer io.Writer) (*Logger, error) {
 	validatedLevel := normalizeLogLevel(level)
 	validatedFormat := normalizeLogFormat(os.Getenv("LOG_FORMAT"))
 	return newLogger(validatedLevel, validatedFormat, timezone, writer, RoleAPI, ServiceBootstrap)

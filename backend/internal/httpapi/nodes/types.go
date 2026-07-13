@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -18,6 +19,9 @@ var (
 	errConfigProfileNotFound       = errors.New("config profile not found")
 	errConfigProfileInboundInvalid = errors.New("config profile inbound not found in specified profile")
 	errNoEnabledNodes              = errors.New("enabled nodes not found")
+	errNodeNotFound                = sql.ErrNoRows
+	errNodeNameExists              = errors.New("node with this name already exists")
+	errNodeAddressExists           = errors.New("node with this address already exists")
 )
 
 type OptionalString = shared.OptionalString
@@ -209,11 +213,13 @@ type updateNodeRequest struct {
 	Note                      OptionalString           `json:"note,omitempty"`
 }
 
+type reorderNodeItem struct {
+	UUID         string `json:"uuid"`
+	ViewPosition int    `json:"viewPosition"`
+}
+
 type reorderNodesRequest struct {
-	Nodes []struct {
-		UUID         string `json:"uuid"`
-		ViewPosition int    `json:"viewPosition"`
-	} `json:"nodes"`
+	Nodes []reorderNodeItem `json:"nodes"`
 }
 
 type restartAllNodesRequest struct {

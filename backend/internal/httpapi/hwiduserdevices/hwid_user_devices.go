@@ -26,7 +26,6 @@ var (
 var (
 	errHWIDDeviceNotFound = errors.New("hwid device not found")
 	errHWIDDeviceExists   = errors.New("hwid device already exists")
-	errHWIDLimitReached   = errors.New("hwid device limit reached")
 	errInvalidHWIDFormat  = errors.New("invalid hwid format")
 )
 
@@ -150,35 +149,6 @@ func handleGetHWIDDevices(w http.ResponseWriter, r *http.Request, manager *dbman
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": result})
 }
 
-func handleGetHWIDDeviceByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, deviceUUID string) {
-	record, err := getHWIDDeviceByUUID(r.Context(), manager, deviceUUID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
-			return
-		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid device", err, cfg)
-		return
-	}
-
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": convertHWIDRecordToAPI(record)})
-}
-
-func handleGetHWIDDevicesByUserUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
-	records, err := getHWIDDevicesByUserUUID(r.Context(), manager, userUUID)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
-		return
-	}
-
-	result := make([]HWIDUserDeviceAPI, 0, len(records))
-	for _, rec := range records {
-		result = append(result, convertHWIDRecordToAPI(rec))
-	}
-
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": result})
-}
-
 func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
 	var req CreateHWIDDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -251,43 +221,6 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 
 	emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceAdded, hwidRecordNotificationData(created), nil)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": convertHWIDRecordToAPI(created)})
-}
-
-func handleDeleteHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, deviceUUID string) {
-	deletedRecord, recordErr := getHWIDDeviceByUUID(r.Context(), manager, deviceUUID)
-	if recordErr != nil && !errors.Is(recordErr, sql.ErrNoRows) {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid device", recordErr, cfg)
-		return
-	}
-
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE uuid = ?`, deviceUUID)
-		if err != nil {
-			return err
-		}
-		rows, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rows == 0 {
-			return sql.ErrNoRows
-		}
-		return nil
-	})
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
-			return
-		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete hwid device", err, cfg)
-		return
-	}
-
-	if recordErr == nil {
-		emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceDeleted, hwidRecordNotificationData(deletedRecord), nil)
-	}
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
 func handleCheckHWID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID, hwid string) {
@@ -391,37 +324,6 @@ func getHWIDDeviceByUUID(ctx context.Context, manager *dbmanager.DatabaseManager
 	})
 
 	return record, err
-}
-
-func getHWIDDevicesByUserUUID(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string) ([]HWIDUserDeviceRecord, error) {
-	records := make([]HWIDUserDeviceRecord, 0)
-
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT h.uuid, h.user_t_id, h.hwid, h.device_name,
-				h.first_seen_at, h.last_seen_at, h.created_at, h.updated_at
-			FROM hwid_user_devices h
-			JOIN users u ON h.user_t_id = u.t_id
-			WHERE u.uuid = ?
-			ORDER BY h.created_at DESC
-		`, userUUID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			rec, err := scanHWIDDevice(rows)
-			if err != nil {
-				return err
-			}
-			records = append(records, rec)
-		}
-
-		return rows.Err()
-	})
-
-	return records, err
 }
 
 func getUserHWIDLimit(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string) (int64, *int, error) {

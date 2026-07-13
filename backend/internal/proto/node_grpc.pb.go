@@ -8,6 +8,7 @@ package proto
 
 import (
 	context "context"
+
 	status "google.golang.org/genproto/googleapis/rpc/status"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"

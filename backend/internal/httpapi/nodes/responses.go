@@ -6,12 +6,11 @@ import (
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/nodehotcache"
 )
 
-func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, records []nodeRecord) ([]nodeAPI, error) {
+func buildNodeResponses(ctx context.Context, repo *NodeRepository, cfg *config.BackendConfig, records []nodeRecord) ([]nodeAPI, error) {
 	nodeUUIDs := make([]string, 0, len(records))
 	providerUUIDs := make([]string, 0, len(records))
 	for _, record := range records {
@@ -21,11 +20,11 @@ func buildNodeResponses(ctx context.Context, manager *dbmanager.DatabaseManager,
 		}
 	}
 
-	inboundsMap, err := getNodeInbounds(ctx, manager, nodeUUIDs)
+	inboundsMap, err := repo.getNodeInbounds(ctx, nodeUUIDs)
 	if err != nil {
 		return nil, err
 	}
-	providersMap, err := getProviders(ctx, manager, dedupeStrings(providerUUIDs))
+	providersMap, err := repo.getProviders(ctx, dedupeStrings(providerUUIDs))
 	if err != nil {
 		return nil, err
 	}

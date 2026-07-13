@@ -101,7 +101,6 @@ type NotificationEventChannelConfig struct {
 
 type LogConfig struct {
 	LogLevel        string
-	LogMode         string
 	LogFormat       string
 	EnableDebugLogs bool
 	NodeEnv         string
@@ -137,7 +136,6 @@ type RedisConfig struct {
 var defaultConfig = BackendConfig{
 	Log: LogConfig{
 		LogLevel:  "info",
-		LogMode:   "inclusive",
 		LogFormat: "console",
 		NodeEnv:   "production",
 	},
@@ -205,7 +203,7 @@ var defaultConfig = BackendConfig{
 func LoadConfig() (BackendConfig, error) {
 	cfg := defaultConfig
 
-	fallbackLogger, _ := logger.NewLoggerWithValidation(defaultConfig.Log.LogLevel, defaultConfig.Log.LogMode, "UTC", os.Stderr)
+	fallbackLogger, _ := logger.NewLoggerWithValidation(defaultConfig.Log.LogLevel, "UTC", os.Stderr)
 	cfg.Logger = fallbackLogger
 
 	if err := loadDotEnv(); err != nil {
@@ -285,9 +283,6 @@ func applyEnvOverrides(cfg *BackendConfig) {
 
 	if value := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
 		cfg.Log.LogLevel = resolveConfiguredLogLevel(value)
-	}
-	if value := envFirst("LOG_MODE", "EXODUS_LOG_MODE"); value != "" {
-		cfg.Log.LogMode = value
 	}
 	if value := envFirst("LOG_FORMAT", "EXODUS_LOG_FORMAT"); value != "" {
 		cfg.Log.LogFormat = value

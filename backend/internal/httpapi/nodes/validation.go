@@ -1,15 +1,12 @@
 package nodes
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
@@ -236,49 +233,10 @@ func validateTags(tags []string) error {
 func handleConfigProfileValidationError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {
 	switch {
 	case errors.Is(err, errConfigProfileNotFound):
-		shared.SendError(w, http.StatusBadRequest, "config profile not found", nil, cfg)
+		shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
 	case errors.Is(err, errConfigProfileInboundInvalid):
 		shared.SendError(w, http.StatusBadRequest, "config profile inbound not found in specified profile", nil, cfg)
 	default:
 		shared.SendError(w, http.StatusInternalServerError, "failed to validate config profile inbounds", err, cfg)
 	}
-}
-
-func ensureConfigProfileInbounds(ctx context.Context, manager *dbmanager.DatabaseManager, profileUUID string, inboundUUIDs []string) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var exists int
-		if err := db.QueryRowContext(ctx, `SELECT 1 FROM config_profiles WHERE uuid = ?`, profileUUID).Scan(&exists); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return errConfigProfileNotFound
-			}
-			return err
-		}
-
-		found := make(map[string]struct{}, len(inboundUUIDs))
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid
-			FROM config_profile_inbounds
-			WHERE profile_uuid = ? AND uuid = ANY(?)
-		`, profileUUID, inboundUUIDs)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var inboundUUID string
-			if err := rows.Scan(&inboundUUID); err != nil {
-				return err
-			}
-			found[inboundUUID] = struct{}{}
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		for _, inboundUUID := range inboundUUIDs {
-			if _, ok := found[inboundUUID]; !ok {
-				return errConfigProfileInboundInvalid
-			}
-		}
-		return nil
-	})
 }

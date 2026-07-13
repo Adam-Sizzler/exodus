@@ -1,5 +1,3 @@
-name: exodus
-
 x-common: &common
   ulimits:
     nofile:
@@ -17,9 +15,7 @@ x-logging: &logging
       max-file: 5
 
 x-env: &env
-  env_file:
-    - path: .env
-      required: false
+  env_file: .env
 
 services:
   exodus:

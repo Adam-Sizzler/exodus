@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -233,15 +232,4 @@ func nullableStringFromSQL(value sql.NullString) string {
 		return ""
 	}
 	return strings.TrimSpace(value.String)
-}
-
-func scanCount(rows *sql.Rows) (int, error) {
-	count := 0
-	for rows.Next() {
-		count++
-	}
-	if err := rows.Err(); err != nil {
-		return count, fmt.Errorf("scan rows: %w", err)
-	}
-	return count, nil
 }

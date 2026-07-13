@@ -12,14 +12,16 @@ import (
 )
 
 func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(manager)
+	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetUsers(w, r, manager, cfg)
+			handleGetUsers(w, r, service)
 		case http.MethodPost:
-			handleCreateUser(w, r, manager, cfg)
+			handleCreateUser(w, r, service)
 		case http.MethodPatch:
-			handleUpdateUser(w, r, manager, cfg)
+			handleUpdateUser(w, r, service)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -27,16 +29,18 @@ func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 }
 
 func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(manager)
+	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := trimUsersPath(r.URL.Path, "/")
 		if path == "" {
 			switch r.Method {
 			case http.MethodGet:
-				handleGetUsers(w, r, manager, cfg)
+				handleGetUsers(w, r, service)
 			case http.MethodPost:
-				handleCreateUser(w, r, manager, cfg)
+				handleCreateUser(w, r, service)
 			case http.MethodPatch:
-				handleUpdateUser(w, r, manager, cfg)
+				handleUpdateUser(w, r, service)
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
@@ -49,7 +53,7 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
 			}
-			handleResolveUser(w, r, manager, cfg)
+			handleResolveUser(w, r, service)
 			return
 		}
 
@@ -62,13 +66,13 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		if len(parts) >= 3 && parts[1] == "actions" && r.Method == http.MethodPost {
 			switch parts[2] {
 			case "enable":
-				handleEnableUser(w, r, manager, cfg, userUUID)
+				handleEnableUser(w, r, service, userUUID)
 			case "disable":
-				handleDisableUser(w, r, manager, cfg, userUUID)
+				handleDisableUser(w, r, service, userUUID)
 			case "reset-traffic":
-				handleResetUserTraffic(w, r, manager, cfg, userUUID)
+				handleResetUserTraffic(w, r, service, userUUID)
 			case "revoke":
-				handleRevokeUserSubscription(w, r, manager, cfg, userUUID)
+				handleRevokeUserSubscription(w, r, service, userUUID)
 			default:
 				http.NotFound(w, r)
 			}
@@ -80,7 +84,7 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
 			}
-			handleGetUserSubscriptionRequestHistory(w, r, manager, cfg, userUUID)
+			handleGetUserSubscriptionRequestHistory(w, r, service, userUUID)
 			return
 		}
 
@@ -89,7 +93,7 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
 			}
-			handleGetUserAccessibleNodes(w, r, manager, cfg, userUUID)
+			handleGetUserAccessibleNodes(w, r, service, userUUID)
 			return
 		}
 
@@ -100,9 +104,9 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 
 		switch r.Method {
 		case http.MethodGet:
-			handleGetUser(w, r, manager, cfg, userUUID)
+			handleGetUser(w, r, service, userUUID)
 		case http.MethodDelete:
-			handleDeleteUser(w, r, manager, cfg, userUUID)
+			handleDeleteUser(w, r, service, userUUID)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -110,6 +114,8 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 }
 
 func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(manager)
+	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -118,23 +124,23 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		path := trimUsersPath(r.URL.Path, "/bulk/")
 		switch path {
 		case "delete":
-			handleBulkDeleteUsers(w, r, manager, cfg)
+			handleBulkDeleteUsers(w, r, service)
 		case "delete-by-status":
-			handleBulkDeleteUsersByStatus(w, r, manager, cfg)
+			handleBulkDeleteUsersByStatus(w, r, service)
 		case "reset-traffic":
-			handleBulkResetUsersTraffic(w, r, manager, cfg)
+			handleBulkResetUsersTraffic(w, r, service)
 		case "update":
-			handleBulkUpdateUsers(w, r, manager, cfg)
+			handleBulkUpdateUsers(w, r, service)
 		case "update-squads":
-			handleBulkUpdateUsersSquads(w, r, manager, cfg)
+			handleBulkUpdateUsersSquads(w, r, service)
 		case "extend-expiration-date":
-			handleBulkExtendUsersExpirationDate(w, r, manager, cfg)
+			handleBulkExtendUsersExpirationDate(w, r, service)
 		case "all/reset-traffic":
-			handleBulkAllResetUsersTraffic(w, r, manager, cfg)
+			handleBulkAllResetUsersTraffic(w, r, service)
 		case "all/extend-expiration-date":
-			handleBulkAllExtendUsersExpirationDate(w, r, manager, cfg)
+			handleBulkAllExtendUsersExpirationDate(w, r, service)
 		case "all/update":
-			handleBulkAllUpdateUsers(w, r, manager, cfg)
+			handleBulkAllUpdateUsers(w, r, service)
 		default:
 			http.NotFound(w, r)
 		}
@@ -142,15 +148,17 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 }
 
 func UsersTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(manager)
+	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		tags, err := getAllUserTags(r.Context(), manager)
+		tags, err := service.repo.getAllUserTags(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user tags", err, cfg)
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user tags", err, service.cfg)
 			return
 		}
 

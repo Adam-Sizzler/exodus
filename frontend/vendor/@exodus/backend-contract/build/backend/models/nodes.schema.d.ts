@@ -105,6 +105,12 @@ export declare const NodesSchema: z.ZodObject<{
         loginUrl: string | null;
     }>>;
     activePluginUuid: z.ZodNullable<z.ZodString>;
+    apiSchema: z.ZodString;
+    apiPath: z.ZodString;
+    grpcAuthToken: z.ZodString;
+    cpuCount: z.ZodNullable<z.ZodNumber>;
+    cpuModel: z.ZodNullable<z.ZodString>;
+    totalRam: z.ZodNullable<z.ZodString>;
     system: z.ZodNullable<z.ZodObject<{
         info: z.ZodObject<{
             arch: z.ZodString;
@@ -332,6 +338,12 @@ export declare const NodesSchema: z.ZodObject<{
     };
     providerUuid: string | null;
     activePluginUuid: string | null;
+    apiSchema: string;
+    apiPath: string;
+    grpcAuthToken: string;
+    cpuCount: number | null;
+    cpuModel: string | null;
+    totalRam: string | null;
     versions: {
         node: string;
         singbox: string;
@@ -416,6 +428,12 @@ export declare const NodesSchema: z.ZodObject<{
     };
     providerUuid: string | null;
     activePluginUuid: string | null;
+    apiSchema: string;
+    apiPath: string;
+    grpcAuthToken: string;
+    cpuCount: number | null;
+    cpuModel: string | null;
+    totalRam: string | null;
     versions: {
         node: string;
         singbox: string;

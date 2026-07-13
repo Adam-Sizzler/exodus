@@ -64,6 +64,7 @@ func SubscriptionPublicHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 }
 
 func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string) {
+	renderService := NewRenderService(manager, cfg)
 	ctx := r.Context()
 
 	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
@@ -84,7 +85,7 @@ func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, manage
 		return
 	}
 
-	response := buildSubscriptionInfoResponse(user, settings, hosts)
+	response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{"response": response})
@@ -109,6 +110,7 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, man
 }
 
 func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID, clientType string) {
+	renderService := NewRenderService(manager, cfg)
 	ctx := r.Context()
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 
@@ -237,7 +239,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 			return
 		}
-		response := buildSubscriptionInfoResponse(user, settings, hosts)
+		response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
 		for key, value := range extraHeaders {
 			w.Header().Set(key, value)
 		}
@@ -260,7 +262,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		log.Debug("Applied host overrides to subscription hosts")
 	}
 
-	shuffleHostsIfNeeded(hosts, settings)
+	renderService.shuffleHostsIfNeeded(hosts, settings)
 
 	log.Debug("Extracting HWID headers")
 	hwidHeaders := extractHwidHeaders(r)
@@ -277,7 +279,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 	log.Debug("HWID headers extracted", "hwid_headers", hwidHeaders)
 
 	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
-	headers := buildSubscriptionHeaders(user, settings, isHapp)
+	headers := renderService.buildSubscriptionHeaders(user, settings, isHapp)
 	maps.Copy(headers, extraHeaders)
 
 	if settings.HwidSettings.Enabled {
@@ -318,7 +320,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		}
 	}
 
-	filteredHosts := filterHostsForResponseType(hosts, responseType, false)
+	filteredHosts := renderService.filterHostsForResponseType(hosts, responseType, false)
 
 	if settings.Raw.IsShowCustomRemarks {
 		statusRemarks := buildStatusRemarks(settings.CustomRemarks, user.Status)
@@ -382,7 +384,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *d
 		}
 	}
 
-	subscription, err := generateSubscriptionContent(responseType, templateData, filteredHosts, user)
+	subscription, err := renderService.generateSubscriptionContent(responseType, templateData, filteredHosts, user)
 	if err != nil {
 		log.Warn("Failed to generate subscription content", "error", err)
 		shared.SendError(w, http.StatusInternalServerError, "failed to generate subscription", err, cfg)

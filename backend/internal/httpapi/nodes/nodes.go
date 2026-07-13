@@ -12,14 +12,16 @@ import (
 )
 
 func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(manager)
+	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetNodes(w, r, manager, cfg)
+			handleGetNodes(w, r, service)
 		case http.MethodPost:
-			handleCreateNode(w, r, manager, cfg)
+			handleCreateNode(w, r, service)
 		case http.MethodPatch:
-			handleUpdateNode(w, r, manager, cfg)
+			handleUpdateNode(w, r, service)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -27,16 +29,18 @@ func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 }
 
 func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(manager)
+	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := trimNodesPath(r.URL.Path, "/")
 		if path == "" {
 			switch r.Method {
 			case http.MethodGet:
-				handleGetNodes(w, r, manager, cfg)
+				handleGetNodes(w, r, service)
 			case http.MethodPost:
-				handleCreateNode(w, r, manager, cfg)
+				handleCreateNode(w, r, service)
 			case http.MethodPatch:
-				handleUpdateNode(w, r, manager, cfg)
+				handleUpdateNode(w, r, service)
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
@@ -57,13 +61,13 @@ func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		if len(parts) >= 3 && parts[1] == "actions" && r.Method == http.MethodPost {
 			switch parts[2] {
 			case "enable":
-				handleEnableNode(w, r, manager, cfg, nodeUUID)
+				handleEnableNode(w, r, service, nodeUUID)
 			case "disable":
-				handleDisableNode(w, r, manager, cfg, nodeUUID)
+				handleDisableNode(w, r, service, nodeUUID)
 			case "restart":
-				handleRestartNode(w, r, manager, cfg, nodeUUID)
+				handleRestartNode(w, r, service, nodeUUID)
 			case "reset-traffic":
-				handleResetNodeTraffic(w, r, manager, cfg, nodeUUID)
+				handleResetNodeTraffic(w, r, service, nodeUUID)
 			default:
 				http.NotFound(w, r)
 			}
@@ -77,9 +81,9 @@ func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 
 		switch r.Method {
 		case http.MethodGet:
-			handleGetNode(w, r, manager, cfg, nodeUUID)
+			handleGetNode(w, r, service, nodeUUID)
 		case http.MethodDelete:
-			handleDeleteNode(w, r, manager, cfg, nodeUUID)
+			handleDeleteNode(w, r, service, nodeUUID)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -87,6 +91,8 @@ func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 }
 
 func NodesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(manager)
+	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -95,9 +101,9 @@ func NodesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 		path := trimNodesPath(r.URL.Path, "/actions/")
 		switch path {
 		case "restart-all":
-			handleRestartAllNodes(w, r, manager, cfg)
+			handleRestartAllNodes(w, r, service)
 		case "reorder":
-			handleReorderNodes(w, r, manager, cfg)
+			handleReorderNodes(w, r, service)
 		default:
 			http.NotFound(w, r)
 		}
@@ -105,6 +111,8 @@ func NodesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 }
 
 func NodesBulkActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(manager)
+	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -114,11 +122,11 @@ func NodesBulkActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 		path := trimNodesPath(r.URL.Path, "/bulk-actions")
 		switch path {
 		case "":
-			handleBulkNodesActions(w, r, manager, cfg)
+			handleBulkNodesActions(w, r, service)
 		case "update":
-			handleBulkNodesUpdate(w, r, manager, cfg)
+			handleBulkNodesUpdate(w, r, service)
 		case "profile-modification":
-			handleBulkProfileModification(w, r, manager, cfg)
+			handleBulkProfileModification(w, r, service)
 		default:
 			http.NotFound(w, r)
 		}
@@ -126,12 +134,14 @@ func NodesBulkActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 }
 
 func NodesTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(manager)
+	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		tags, err := getNodeTags(r.Context(), manager)
+		tags, err := service.repo.getNodeTags(r.Context())
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch node tags", err, cfg)
 			return
