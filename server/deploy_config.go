@@ -88,7 +88,7 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 
 	listen := task.Listen
 	if listen == "" {
-		listen = fmt.Sprintf("%s:%d", config.FixedCoreAPIAddress, config.FixedCoreAPIGRPCPort)
+		listen = fmt.Sprintf("%s:%d", config.FixedCoreAPIAddress, s.Cfg.CoreAPIGRPCPort)
 	}
 
 	enabled := true

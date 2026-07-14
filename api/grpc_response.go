@@ -99,11 +99,11 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 	}
 
 	log := cfg.LoggerFor("StatsService")
-	log.Debug("Initializing core API facade", "address", config.FixedCoreAPIAddress, "port", config.FixedCoreAPIGRPCPort)
+	log.Debug("Initializing core API facade", "address", config.FixedCoreAPIAddress, "port", cfg.CoreAPIGRPCPort)
 	coreAPI, err := sdk.New(sdk.Config{
 		CoreType: config.FixedCoreType,
 		Address:  config.FixedCoreAPIAddress,
-		Port:     config.FixedCoreAPIGRPCPort,
+		Port:     cfg.CoreAPIGRPCPort,
 	})
 	if err != nil {
 		// The node process is the control plane and must remain available even when
@@ -119,7 +119,7 @@ func NewService(cfg *config.NodeConfig) (*Service, error) {
 		logger:               log,
 		api:                  coreAPI,
 		apiAddress:           config.FixedCoreAPIAddress,
-		apiPort:              config.FixedCoreAPIGRPCPort,
+		apiPort:              cfg.CoreAPIGRPCPort,
 		singboxVersion:       detectSingboxVersion(),
 		nodeVersion:          constant.Version,
 		cpuCount:             runtime.NumCPU(),

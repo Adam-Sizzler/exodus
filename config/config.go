@@ -1,8 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -10,9 +12,10 @@ import (
 
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
-	Log    LogConfig
-	Exodus ExodusConfig
-	Logger *Logger
+	Log             LogConfig
+	Exodus          ExodusConfig
+	CoreAPIGRPCPort int
+	Logger          *Logger
 }
 
 type LogConfig struct {
@@ -56,6 +59,7 @@ var defaultConfig = NodeConfig{
 		GrpcPort:    DefaultNodeGRPCPort,
 		GrpcPath:    DefaultNodeGRPCPath,
 	},
+	CoreAPIGRPCPort: FixedCoreAPIGRPCPort,
 }
 
 // LoadNodeConfig loads node configuration from environment variables only.
@@ -63,6 +67,11 @@ func LoadNodeConfig() (NodeConfig, error) {
 	cfg := defaultConfig
 
 	cfg.Log.LogLevel = ResolveExodusLogLevel(cfg.Log.LogLevel)
+
+	// Dynamic detection: override with the actual port configured in the sing-box config.json if it exists
+	if port, ok := parsePortFromSingboxConfig(FixedSingboxConfigPath); ok {
+		cfg.CoreAPIGRPCPort = port
+	}
 
 	if value := firstEnv("NODE_GRPC_ADDRESS", "LISTEN_GRPC_ADDRESS"); value != "" {
 		cfg.Exodus.GrpcAddress = value
@@ -146,4 +155,36 @@ func lookupEnvTrimmed(key string) (string, bool) {
 		return "", false
 	}
 	return trimmed, true
+}
+
+func parsePortFromSingboxConfig(path string) (int, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, false
+	}
+	var configMap map[string]interface{}
+	if err := json.Unmarshal(data, &configMap); err != nil {
+		return 0, false
+	}
+	experimental, ok := configMap["experimental"].(map[string]interface{})
+	if !ok {
+		return 0, false
+	}
+	v2rayAPI, ok := experimental["v2ray_api"].(map[string]interface{})
+	if !ok {
+		return 0, false
+	}
+	listen, ok := v2rayAPI["listen"].(string)
+	if !ok {
+		return 0, false
+	}
+	_, portStr, err := net.SplitHostPort(listen)
+	if err != nil {
+		return 0, false
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return 0, false
+	}
+	return port, true
 }

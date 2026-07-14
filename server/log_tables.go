@@ -31,7 +31,7 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 			},
 			{
 				"API Port → " + strconv.Itoa(port),
-				"Internal Ports → " + strconv.Itoa(config.FixedCoreAPIGRPCPort),
+				"Internal Ports → " + strconv.Itoa(cfg.CoreAPIGRPCPort),
 				"Path Prefix → " + pathPrefix,
 			},
 			{
