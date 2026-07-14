@@ -49,6 +49,7 @@ type HaproxyUserEntry struct {
 	Username       string `json:"username"`
 	VLESSUUID      string `json:"vless_uuid"`
 	TrojanPassword string `json:"trojan_password"`
+	AnytlsPassword string `json:"anytls_password"`
 }
 
 type DeploySummary struct {

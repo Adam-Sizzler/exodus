@@ -9,6 +9,7 @@ import (
 	"exodus-node/proto"
 
 	"google.golang.org/grpc/codes"
+	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/status"
 )
 

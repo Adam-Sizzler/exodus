@@ -25,7 +25,7 @@ func applyHaproxyModule(modules DeployModulesPayload) (bool, error) {
 		}
 	}
 
-	lines := make([]string, 0, len(modules.HaproxyUsers)*2)
+	lines := make([]string, 0, len(modules.HaproxyUsers)*3)
 	for _, user := range modules.HaproxyUsers {
 		username := strings.TrimSpace(user.Username)
 		if username == "" {
@@ -36,6 +36,9 @@ func applyHaproxyModule(modules DeployModulesPayload) (bool, error) {
 		}
 		if trojan := normalizeTrojanHash(user.TrojanPassword); trojan != "" {
 			lines = append(lines, fmt.Sprintf("1,%s,%s", username, trojan))
+		}
+		if anytls := normalizeAnytlsHash(user.AnytlsPassword); anytls != "" {
+			lines = append(lines, fmt.Sprintf("1,%s,%s", username, anytls))
 		}
 	}
 
@@ -67,5 +70,14 @@ func normalizeTrojanHash(secret string) string {
 		return ""
 	}
 	sum := sha256.Sum224([]byte(secret))
+	return hex.EncodeToString(sum[:])
+}
+
+func normalizeAnytlsHash(secret string) string {
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(secret))
 	return hex.EncodeToString(sum[:])
 }
