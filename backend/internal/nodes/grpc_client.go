@@ -12,6 +12,7 @@ import (
 	"exodus/internal/proto"
 
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 type nodeState struct {
@@ -128,6 +129,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		return
 	}
 
+	opts = append(opts, grpc.WithDefaultCallOptions(grpc.UseCompressor("gzip")))
 	conn, err := grpc.NewClient(targetAddr, opts...)
 	if err != nil {
 		nm.cfg.Logger.Error("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", err)
