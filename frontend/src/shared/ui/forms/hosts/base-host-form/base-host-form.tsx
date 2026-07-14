@@ -74,6 +74,7 @@ import classes from './HostTabs.module.css'
 import { IProps } from './interfaces'
 import { FINAL_MASK_MODAL_ID, FinalMaskModalContent } from './modals/final-mask.modal.content'
 import { MUX_MODAL_ID, MuxModalContent } from './modals/mux.modal.content'
+import { CUSTOM_PARAMS_MODAL_ID, CustomParamsModalContent } from './modals/custom-params.modal.content'
 import { SOCKOPT_MODAL_ID, SockoptModalContent } from './modals/sockopt.modal.content'
 import { XHTTP_MODAL_ID, XhttpModalContent } from './modals/xhttp.modal.content'
 
@@ -1240,6 +1241,32 @@ export const BaseHostForm = <
                                                 variant="soft"
                                             >
                                                 Mux
+                                            </Button>
+
+                                            <Button
+                                                color="gray"
+                                                leftSection={<PiGearSixDuotone />}
+                                                onClick={() => {
+                                                    modals.open({
+                                                        modalId: CUSTOM_PARAMS_MODAL_ID,
+                                                        fullScreen: isMobile,
+                                                        title: (
+                                                            <BaseOverlayHeader
+                                                                iconColor="teal"
+                                                                IconComponent={PiGearSixDuotone}
+                                                                iconVariant="soft"
+                                                                title="Custom"
+                                                            />
+                                                        ),
+                                                        centered: true,
+                                                        size: 'lg',
+                                                        withCloseButton: true,
+                                                        children: <CustomParamsModalContent form={form} />
+                                                    })
+                                                }}
+                                                variant="soft"
+                                            >
+                                                Custom
                                             </Button>
 
                                             <Button

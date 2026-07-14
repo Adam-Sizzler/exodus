@@ -65,4 +65,74 @@ _你还可以在地址栏中输入多个域名，例如: `node-1.com,node-2.com,
 
 默认情况下，Exodus 会取入站中 `serverNames` 数组的第一个值，作为客户端的 SNI。 若启用此选项，系统将使用你在“**基础设置**”中指定的地址作为 SNI 传递给客户端。
 
+#### 自定义参数 (Singbox / Mihomo)
+
+您可以为使用 Singbox 或 Mihomo 核心的客户端指定额外的连接参数。根据核心类型，您可以使用 JSON 格式（用于 Singbox）或 YAML 格式（用于 Mihomo）编写配置。
+
+**自定义参数示例：**
+
+**VLESS + gRPC (Singbox - JSON):**
+```json
+{
+  "packet_encoding": "xudp",
+  "transport": {
+    "idle_timeout": "15s",
+    "ping_timeout": "15s",
+    "permit_without_stream": true
+  }
+}
+```
+
+**VLESS + gRPC (Mihomo - YAML):**
+```yaml
+packet-encoding: xudp
+grpc-opts:
+  ping-interval: 0
+  max-connections: 1
+  min-streams: 0
+  max-streams: 0
+```
+
+**AnyTLS (Singbox - JSON):**
+```json
+{
+  "idle_session_check_interval": "30s",
+  "idle_session_timeout": "30s",
+  "min_idle_session": 4
+}
+```
+
+**AnyTLS (Mihomo - YAML):**
+```yaml
+idle-session-check-interval: 30
+idle-session-timeout: 30
+min-idle-session: 4
+```
+
+**Hysteria2 (Singbox - JSON):**
+```json
+{
+  "up_mbps": 100,
+  "down_mbps": 100,
+  "server_ports": ["443", "8443"],
+  "hop_interval": "30s",
+  "obfs": {
+    "type": "salamander",
+    "password": "example_password"
+  }
+}
+```
+
+**Naive (Singbox - JSON):**
+```json
+{
+  "quic": true,
+  "quic_congestion_control": "bbr",
+  "insecure_concurrency": 2,
+  "extra_headers": {
+    "User-Agent": "Mozilla/5.0"
+  }
+}
+```
+
 ---

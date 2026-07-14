@@ -62,4 +62,74 @@ _В адрес можно так же вписать несколько доме
 
 По умолчанию, Exodus берет первый объект из массива `serverNames` (инбаунда) чтобы добавить SNI в клиентский хост. Если вы включите этот параметр – Exodus возьмет адрес (который вы указали в разделе **Основные**) и передаст его клиенту.
 
+#### Кастомные параметры (Singbox / Mihomo)
+
+Вы можете указать дополнительные параметры соединения для клиентов, использующих ядро Singbox или Mihomo. В зависимости от типа ядра, конфигурация указывается либо в формате JSON (для Singbox), либо в формате YAML (для Mihomo).
+
+**Примеры кастомных параметров:**
+
+**VLESS + gRPC (Singbox - JSON):**
+```json
+{
+  "packet_encoding": "xudp",
+  "transport": {
+    "idle_timeout": "15s",
+    "ping_timeout": "15s",
+    "permit_without_stream": true
+  }
+}
+```
+
+**VLESS + gRPC (Mihomo - YAML):**
+```yaml
+packet-encoding: xudp
+grpc-opts:
+  ping-interval: 0
+  max-connections: 1
+  min-streams: 0
+  max-streams: 0
+```
+
+**AnyTLS (Singbox - JSON):**
+```json
+{
+  "idle_session_check_interval": "30s",
+  "idle_session_timeout": "30s",
+  "min_idle_session": 4
+}
+```
+
+**AnyTLS (Mihomo - YAML):**
+```yaml
+idle-session-check-interval: 30
+idle-session-timeout: 30
+min-idle-session: 4
+```
+
+**Hysteria2 (Singbox - JSON):**
+```json
+{
+  "up_mbps": 100,
+  "down_mbps": 100,
+  "server_ports": ["443", "8443"],
+  "hop_interval": "30s",
+  "obfs": {
+    "type": "salamander",
+    "password": "example_password"
+  }
+}
+```
+
+**Naive (Singbox - JSON):**
+```json
+{
+  "quic": true,
+  "quic_congestion_control": "bbr",
+  "insecure_concurrency": 2,
+  "extra_headers": {
+    "User-Agent": "Mozilla/5.0"
+  }
+}
+```
+
 ---

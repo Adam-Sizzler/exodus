@@ -264,7 +264,7 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
 		rows, err := db.QueryContext(ctx, `
                 SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.sockopt_params, h.is_disabled,
+                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.is_disabled,
                        h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
                        h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
@@ -305,7 +305,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, sockoptParams, serverDescription, protocolCredential sql.NullString
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, singboxCustomParams, mihomoCustomParams, sockoptParams, serverDescription, protocolCredential sql.NullString
 	var xrayJSONTemplateUUID, mihomoIPVersion, configProfileUUID, configProfileInboundUUID sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
@@ -329,6 +329,8 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&muxParams,
 		&singboxMuxParams,
 		&clashMuxParams,
+		&singboxCustomParams,
+		&mihomoCustomParams,
 		&sockoptParams,
 		&isDisabled,
 		&serverDescription,
@@ -391,6 +393,13 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	}
 	if clashMuxParams.Valid {
 		h.ClashMuxParams = &clashMuxParams.String
+	}
+	if singboxCustomParams.Valid {
+		b := json.RawMessage(singboxCustomParams.String)
+		h.SingboxCustomParams = &b
+	}
+	if mihomoCustomParams.Valid {
+		h.MihomoCustomParams = &mihomoCustomParams.String
 	}
 	if sockoptParams.Valid {
 		h.SockoptParams = &sockoptParams.String

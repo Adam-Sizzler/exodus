@@ -62,6 +62,8 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
                 overrideProtocolCredential?: boolean
                 protocolCredential?: string | null
                 singboxMuxParams?: unknown
+                singboxCustomParams?: unknown
+                mihomoCustomParams?: string | null
             }
 
             form.initialize({
@@ -85,6 +87,8 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
                 muxParams: stringifyJsonField(host.muxParams),
                 singboxMuxParams: stringifyJsonField(hostAny.singboxMuxParams),
                 clashMuxParams: stringifyYamlField(hostAny.clashMuxParams),
+                singboxCustomParams: stringifyJsonField(hostAny.singboxCustomParams),
+                mihomoCustomParams: hostAny.mihomoCustomParams ?? '',
                 sockoptParams: stringifyJsonField(host.sockoptParams),
                 finalMask: stringifyJsonField(host.finalMask),
                 tags: host.tags ?? undefined,
@@ -132,6 +136,8 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
             overrideProtocolCredential?: boolean
             protocolCredential?: string | null
             singboxMuxParams?: unknown
+            singboxCustomParams?: unknown
+            mihomoCustomParams?: string | null
         }
 
         const variables = {
@@ -142,6 +148,8 @@ export const EditHostModalContentWidget = memo(({ host, onClose }: Props) => {
             muxParams: parseJsonField(values.muxParams),
             singboxMuxParams: parseJsonField(valuesAny.singboxMuxParams),
             clashMuxParams: parseYamlField(valuesAny.clashMuxParams),
+            singboxCustomParams: parseJsonField(valuesAny.singboxCustomParams),
+            mihomoCustomParams: valuesAny.mihomoCustomParams || null,
             sockoptParams: parseJsonField(values.sockoptParams),
             finalMask: parseJsonField(values.finalMask),
             overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),

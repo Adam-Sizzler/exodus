@@ -44,6 +44,8 @@ var CreateHostCommand;
         muxParams: zod_1.z.unknown().nullish(),
         singboxMuxParams: zod_1.z.unknown().nullish(),
         clashMuxParams: zod_1.z.unknown().nullish(),
+        singboxCustomParams: zod_1.z.unknown().nullish(),
+        mihomoCustomParams: zod_1.z.string().nullish(),
         sockoptParams: zod_1.z.unknown().nullish(),
         finalMask: zod_1.z.unknown().nullish(),
         serverDescription: zod_1.z

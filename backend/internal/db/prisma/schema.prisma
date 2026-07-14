@@ -301,6 +301,8 @@ model Hosts {
   muxParams                    Json?    @map("mux_params")
   singboxMuxParams             Json?    @map("singbox_mux_params")
   clashMuxParams               String?  @map("clash_mux_params")
+  singboxCustomParams          Json?    @map("singbox_custom_params")
+  mihomoCustomParams           String?  @map("mihomo_custom_params")
   sockoptParams                Json?    @map("sockopt_params")
   finalMask                    Json?    @map("final_mask")
   isDisabled                   Boolean  @default(false) @map("is_disabled")

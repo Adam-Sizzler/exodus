@@ -98,6 +98,9 @@ func requireAPITokenScope(principal *AuthPrincipal, r *http.Request) bool {
 	if principal == nil {
 		return false
 	}
+	if principal.TokenType != "jwt_api_token" {
+		return true // UI sessions bypass API scope validation
+	}
 	if len(principal.Scopes) == 0 {
 		return false
 	}
@@ -161,6 +164,14 @@ func apiTokenScopeForRequest(method, requestPath string) (resource, endpointScop
 	trimmed := clean[len("/api/"):]
 
 	switch {
+	case strings.HasPrefix(trimmed, "hosts/") || trimmed == "hosts":
+		return genericCRUDScope("hosts", method, clean, "/api/hosts", "hosts")
+	case strings.HasPrefix(trimmed, "internal-squads/") || trimmed == "internal-squads":
+		return genericCRUDScope("internal_squads", method, clean, "/api/internal-squads", "internalsquads")
+	case strings.HasPrefix(trimmed, "subscription-templates/") || trimmed == "subscription-templates":
+		return genericCRUDScope("subscription_templates", method, clean, "/api/subscription-templates", "subscriptiontemplates")
+	case strings.HasPrefix(trimmed, "system/metadata") || trimmed == "system/metadata":
+		return genericCRUDScope("system_metadata", method, clean, "/api/system/metadata", "systemmetadata")
 	case strings.HasPrefix(trimmed, "nodes/") || trimmed == "nodes":
 		return genericCRUDScope("nodes", method, clean, "/api/nodes", "nodes")
 	case strings.HasPrefix(trimmed, "config-profiles/") || trimmed == "config-profiles":

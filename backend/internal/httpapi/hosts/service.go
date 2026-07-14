@@ -2,6 +2,7 @@ package hosts
 
 import (
 	"context"
+	"fmt"
 
 	"exodus/internal/config"
 	monitor "exodus/internal/nodes"
@@ -28,6 +29,21 @@ func (s *HostService) CreateHost(ctx context.Context, req HostCreateRequestAPI) 
 	if req.XrayJSONTemplateUUID != nil && *req.XrayJSONTemplateUUID != "" {
 		if err := s.repo.ensureXrayJSONTemplate(ctx, *req.XrayJSONTemplateUUID); err != nil {
 			return hostRecord{}, err
+		}
+	}
+
+	protocol, network, err := s.repo.getInboundProtocolAndNetwork(ctx, *req.Inbound.ConfigProfileInboundUUID)
+	if err != nil {
+		return hostRecord{}, err
+	}
+	if req.SingboxCustomParams != nil {
+		if err := ValidateSingboxCustomParams(protocol, network, *req.SingboxCustomParams); err != nil {
+			return hostRecord{}, fmt.Errorf("invalid singboxCustomParams: %w", err)
+		}
+	}
+	if req.MihomoCustomParams != nil {
+		if err := ValidateMihomoCustomParams(protocol, []byte(*req.MihomoCustomParams)); err != nil {
+			return hostRecord{}, fmt.Errorf("invalid mihomoCustomParams: %w", err)
 		}
 	}
 
@@ -78,6 +94,32 @@ func (s *HostService) UpdateHost(ctx context.Context, req HostUpdateRequestAPI) 
 	if req.XrayJSONTemplateUUID.Set && req.XrayJSONTemplateUUID.Value != nil && *req.XrayJSONTemplateUUID.Value != "" {
 		if err := s.repo.ensureXrayJSONTemplate(ctx, *req.XrayJSONTemplateUUID.Value); err != nil {
 			return hostRecord{}, err
+		}
+	}
+
+	if req.SingboxCustomParams.Set || req.MihomoCustomParams.Set {
+		currentHost, err := s.repo.getHostByUUID(ctx, req.UUID)
+		if err != nil {
+			return hostRecord{}, err
+		}
+		inboundUUID := currentHost.ConfigProfileInboundUUID
+		if req.Inbound != nil && req.Inbound.ConfigProfileInboundUUID != nil {
+			inboundUUID = req.Inbound.ConfigProfileInboundUUID
+		}
+		if inboundUUID != nil {
+			protocol, network, err := s.repo.getInboundProtocolAndNetwork(ctx, *inboundUUID)
+			if err == nil {
+				if req.SingboxCustomParams.Set && len(req.SingboxCustomParams.Raw) > 0 {
+					if err := ValidateSingboxCustomParams(protocol, network, req.SingboxCustomParams.Raw); err != nil {
+						return hostRecord{}, fmt.Errorf("invalid singboxCustomParams: %w", err)
+					}
+				}
+				if req.MihomoCustomParams.Set && req.MihomoCustomParams.Value != nil {
+					if err := ValidateMihomoCustomParams(protocol, []byte(*req.MihomoCustomParams.Value)); err != nil {
+						return hostRecord{}, fmt.Errorf("invalid mihomoCustomParams: %w", err)
+					}
+				}
+			}
 		}
 	}
 
@@ -237,6 +279,34 @@ func (s *HostService) BulkUpdateHosts(ctx context.Context, req HostBulkUpdateReq
 	if req.XrayJSONTemplateUUID.Set && req.XrayJSONTemplateUUID.Value != nil && *req.XrayJSONTemplateUUID.Value != "" {
 		if err := s.repo.ensureXrayJSONTemplate(ctx, *req.XrayJSONTemplateUUID.Value); err != nil {
 			return err
+		}
+	}
+
+	if req.SingboxCustomParams.Set || req.MihomoCustomParams.Set {
+		for _, hostUUID := range req.Uuids {
+			currentHost, err := s.repo.getHostByUUID(ctx, hostUUID)
+			if err != nil {
+				continue
+			}
+			inboundUUID := currentHost.ConfigProfileInboundUUID
+			if req.Inbound != nil && req.Inbound.ConfigProfileInboundUUID != nil {
+				inboundUUID = req.Inbound.ConfigProfileInboundUUID
+			}
+			if inboundUUID != nil {
+				protocol, network, err := s.repo.getInboundProtocolAndNetwork(ctx, *inboundUUID)
+				if err == nil {
+					if req.SingboxCustomParams.Set && len(req.SingboxCustomParams.Raw) > 0 {
+						if err := ValidateSingboxCustomParams(protocol, network, req.SingboxCustomParams.Raw); err != nil {
+							return fmt.Errorf("invalid singboxCustomParams for host %s: %w", hostUUID, err)
+						}
+					}
+					if req.MihomoCustomParams.Set && req.MihomoCustomParams.Value != nil {
+						if err := ValidateMihomoCustomParams(protocol, []byte(*req.MihomoCustomParams.Value)); err != nil {
+							return fmt.Errorf("invalid mihomoCustomParams for host %s: %w", hostUUID, err)
+						}
+					}
+				}
+			}
 		}
 	}
 

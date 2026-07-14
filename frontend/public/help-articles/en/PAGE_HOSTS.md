@@ -51,9 +51,9 @@ Keep in mind, `serverNames` in simple terms is the _password_ by which, for exam
 
 ```json
 "serverNames": [
-    "example1.com",
-    "example2.com"
-    ]
+  "example1.com",
+  "example2.com"
+]
 ```
 
 Such a connection will not work, as `example.com` is not in the list of allowed `SNI`.
@@ -61,5 +61,75 @@ Such a connection will not work, as `example.com` is not in the list of allowed 
 #### Override SNI from Address
 
 By default, Exodus takes the first object from the `serverNames` array (of the inbound) to add SNI to the client host. If you enable this parameter - Exodus will take the address (which you specified in the **Basic** section) and pass it to the client.
+
+#### Custom Parameters (Singbox / Mihomo)
+
+You can specify additional connection parameters for clients that use the Singbox or Mihomo core. Depending on the core type, you write the configuration either in JSON (for Singbox) or YAML (for Mihomo) format.
+
+**Examples of Custom Params:**
+
+**VLESS + gRPC (Singbox - JSON):**
+```json
+{
+  "packet_encoding": "xudp",
+  "transport": {
+    "idle_timeout": "15s",
+    "ping_timeout": "15s",
+    "permit_without_stream": true
+  }
+}
+```
+
+**VLESS + gRPC (Mihomo - YAML):**
+```yaml
+packet-encoding: xudp
+grpc-opts:
+  ping-interval: 0
+  max-connections: 1
+  min-streams: 0
+  max-streams: 0
+```
+
+**AnyTLS (Singbox - JSON):**
+```json
+{
+  "idle_session_check_interval": "30s",
+  "idle_session_timeout": "30s",
+  "min_idle_session": 4
+}
+```
+
+**AnyTLS (Mihomo - YAML):**
+```yaml
+idle-session-check-interval: 30
+idle-session-timeout: 30
+min-idle-session: 4
+```
+
+**Hysteria2 (Singbox - JSON):**
+```json
+{
+  "up_mbps": 100,
+  "down_mbps": 100,
+  "server_ports": ["443", "8443"],
+  "hop_interval": "30s",
+  "obfs": {
+    "type": "salamander",
+    "password": "example_password"
+  }
+}
+```
+
+**Naive (Singbox - JSON):**
+```json
+{
+  "quic": true,
+  "quic_congestion_control": "bbr",
+  "insecure_concurrency": 2,
+  "extra_headers": {
+    "User-Agent": "Mozilla/5.0"
+  }
+}
+```
 
 ---

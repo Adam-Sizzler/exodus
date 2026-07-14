@@ -287,6 +287,22 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 			add("clash_mux_params", val)
 		}
 	}
+	if set, val, err := normalizeOptionalJSONField(fields.SingboxCustomParams, true); err != nil {
+		return nil, nil, err
+	} else if set {
+		if val == nil {
+			clauses = append(clauses, "singbox_custom_params = NULL")
+		} else {
+			add("singbox_custom_params", val)
+		}
+	}
+	if fields.MihomoCustomParams.Set {
+		if fields.MihomoCustomParams.Value == nil {
+			clauses = append(clauses, "mihomo_custom_params = NULL")
+		} else {
+			add("mihomo_custom_params", strings.TrimSpace(*fields.MihomoCustomParams.Value))
+		}
+	}
 	if set, val, err := normalizeOptionalJSONField(fields.SockoptParams, true); err != nil {
 		return nil, nil, err
 	} else if set {

@@ -554,6 +554,14 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 			proxy["smux"] = mux
 		}
 	}
+	if host.MihomoCustomParams != nil && strings.TrimSpace(*host.MihomoCustomParams) != "" {
+		var custom map[string]interface{}
+		if err := yaml.Unmarshal([]byte(*host.MihomoCustomParams), &custom); err == nil {
+			for k, v := range custom {
+				proxy[k] = v
+			}
+		}
+	}
 	return proxy
 }
 

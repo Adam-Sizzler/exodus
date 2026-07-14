@@ -21,6 +21,8 @@ exports.HostsSchema = zod_1.z.object({
     muxParams: zod_1.z.nullable(zod_1.z.unknown()),
     singboxMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
     clashMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
+    singboxCustomParams: zod_1.z.nullable(zod_1.z.unknown()),
+    mihomoCustomParams: zod_1.z.nullable(zod_1.z.string()),
     sockoptParams: zod_1.z.nullable(zod_1.z.unknown()),
     finalMask: zod_1.z.nullable(zod_1.z.unknown()),
     inbound: zod_1.z.object({

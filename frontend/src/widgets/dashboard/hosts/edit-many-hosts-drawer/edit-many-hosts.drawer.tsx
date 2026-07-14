@@ -114,6 +114,14 @@ export const EditManyHostsDrawer = memo(() => {
         if (form.isDirty('finalMask')) {
             dirtyValues.finalMask = parseJsonField(values.finalMask)
         }
+        const valuesAny = values as any
+        const dirtyValuesAny = dirtyValues as any
+        if (form.isDirty('singboxCustomParams' as never)) {
+            dirtyValuesAny.singboxCustomParams = parseJsonField(valuesAny.singboxCustomParams)
+        }
+        if (form.isDirty('mihomoCustomParams' as never)) {
+            dirtyValuesAny.mihomoCustomParams = valuesAny.mihomoCustomParams || null
+        }
 
         const changedKeys = Object.keys(dirtyValues)
 

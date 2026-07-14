@@ -119,6 +119,8 @@ type SubscriptionHost struct {
 	MuxParams                    *string
 	SingboxMuxParams             *string
 	ClashMuxParams               *string
+	SingboxCustomParams          *json.RawMessage
+	MihomoCustomParams           *string
 	SockoptParams                *string
 	IsDisabled                   bool
 	ServerDescription            *string

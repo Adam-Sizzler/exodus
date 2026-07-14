@@ -18,6 +18,8 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 		MuxParams:                  parseJSONAny(rec.MuxParams),
 		SingboxMuxParams:           parseJSONAny(rec.SingboxMuxParams),
 		ClashMuxParams:             rec.ClashMuxParams,
+		SingboxCustomParams:        parseJSONAny(rec.SingboxCustomParams),
+		MihomoCustomParams:         rec.MihomoCustomParams,
 		SockoptParams:              parseJSONAny(rec.SockoptParams),
 		FinalMask:                  parseJSONAny(rec.FinalMask),
 		Inbound:                    HostInbound{ConfigProfileUUID: rec.ConfigProfileUUID, ConfigProfileInboundUUID: rec.ConfigProfileInboundUUID},

@@ -55,9 +55,6 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 			    last_status_change = CURRENT_TIMESTAMP`
 		args := []any{isConnected, isConnecting, messageDBValue}
 
-		if isConnected {
-			query += `, last_connected_at = CURRENT_TIMESTAMP`
-		}
 		query += ` WHERE name = ?`
 		args = append(args, nodeName)
 

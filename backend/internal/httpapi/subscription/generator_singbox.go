@@ -326,6 +326,32 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 			}))
 		}
 	}
+	if host.SingboxCustomParams != nil && string(*host.SingboxCustomParams) != "{}" && string(*host.SingboxCustomParams) != "null" {
+		var custom map[string]interface{}
+		if err := json.Unmarshal(*host.SingboxCustomParams, &custom); err == nil {
+			if transportRaw, ok := custom["transport"]; ok {
+				if transportMap, ok := transportRaw.(map[string]interface{}); ok {
+					delete(custom, "transport")
+					var currentTransport *orderedmap.OrderedMap
+					if ct, has := outbound.Get("transport"); has {
+						if ctm, ok := ct.(*orderedmap.OrderedMap); ok {
+							currentTransport = ctm
+						}
+					}
+					if currentTransport == nil {
+						currentTransport = orderedmap.New()
+						outbound.Set("transport", currentTransport)
+					}
+					for k, v := range transportMap {
+						currentTransport.Set(k, v)
+					}
+				}
+			}
+			for k, v := range custom {
+				outbound.Set(k, v)
+			}
+		}
+	}
 	return outbound
 }
 

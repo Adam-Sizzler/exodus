@@ -108,6 +108,8 @@ export const CreateHostModalWidget = () => {
             overrideProtocolCredential?: boolean
             protocolCredential?: string | null
             singboxMuxParams?: unknown
+            singboxCustomParams?: unknown
+            mihomoCustomParams?: string | null
         }
 
         try {
@@ -134,6 +136,8 @@ export const CreateHostModalWidget = () => {
 
         singboxMuxParams = parseJsonField(valuesAny.singboxMuxParams)
         clashMuxParams = parseYamlField(valuesAny.clashMuxParams)
+        const singboxCustomParams = parseJsonField(valuesAny.singboxCustomParams)
+        const mihomoCustomParams = valuesAny.mihomoCustomParams || null
 
         try {
             if (values.sockoptParams === '') {
@@ -164,6 +168,8 @@ export const CreateHostModalWidget = () => {
             muxParams,
             singboxMuxParams,
             clashMuxParams,
+            singboxCustomParams,
+            mihomoCustomParams,
             xhttpExtraParams,
             finalMask,
             overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),

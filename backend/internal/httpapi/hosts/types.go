@@ -73,6 +73,8 @@ type hostRecord struct {
 	MuxParams                  json.RawMessage
 	SingboxMuxParams           json.RawMessage
 	ClashMuxParams             *string
+	SingboxCustomParams        json.RawMessage
+	MihomoCustomParams         *string
 	SockoptParams              json.RawMessage
 	FinalMask                  json.RawMessage
 	IsDisabled                 bool
@@ -124,6 +126,8 @@ type HostAPI struct {
 	MuxParams                  interface{} `json:"muxParams"`
 	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
 	ClashMuxParams             *string     `json:"clashMuxParams"`
+	SingboxCustomParams        interface{} `json:"singboxCustomParams"`
+	MihomoCustomParams         *string     `json:"mihomoCustomParams"`
 	SockoptParams              interface{} `json:"sockoptParams"`
 	FinalMask                  interface{} `json:"finalMask"`
 	Inbound                    HostInbound `json:"inbound"`
@@ -163,6 +167,8 @@ type HostCreateRequestAPI struct {
 	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
 	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             *string          `json:"clashMuxParams,omitempty"`
+	SingboxCustomParams        *json.RawMessage `json:"singboxCustomParams,omitempty"`
+	MihomoCustomParams         *string          `json:"mihomoCustomParams,omitempty"`
 	SockoptParams              *json.RawMessage `json:"sockoptParams,omitempty"`
 	FinalMask                  *json.RawMessage `json:"finalMask,omitempty"`
 	ServerDescription          *string          `json:"serverDescription,omitempty"`
@@ -206,6 +212,8 @@ type hostUpdateFields struct {
 	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
 	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             OptionalString `json:"clashMuxParams,omitempty"`
+	SingboxCustomParams        OptionalJSON   `json:"singboxCustomParams,omitempty"`
+	MihomoCustomParams         OptionalString `json:"mihomoCustomParams,omitempty"`
 	SockoptParams              OptionalJSON   `json:"sockoptParams,omitempty"`
 	FinalMask                  OptionalJSON   `json:"finalMask,omitempty"`
 	ServerDescription          OptionalString `json:"serverDescription,omitempty"`
