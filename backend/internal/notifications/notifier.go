@@ -763,9 +763,41 @@ func stringValue(data map[string]any, key string) string {
 }
 
 func intValue(data map[string]any, key string) int {
-	value := int64Value(data, key)
-	if value < int64(math.MinInt) || value > int64(math.MaxInt) {
+	if data == nil {
 		return 0
+	}
+
+	switch value := data[key].(type) {
+	case int:
+		return value
+	case string:
+		parsed, err := strconv.ParseInt(strings.TrimSpace(value), 10, strconv.IntSize)
+		if err != nil {
+			return 0
+		}
+		return int(parsed)
+	case *string:
+		if value == nil {
+			return 0
+		}
+		parsed, err := strconv.ParseInt(strings.TrimSpace(*value), 10, strconv.IntSize)
+		if err != nil {
+			return 0
+		}
+		return int(parsed)
+	case json.Number:
+		parsed, err := strconv.ParseInt(strings.TrimSpace(value.String()), 10, strconv.IntSize)
+		if err != nil {
+			return 0
+		}
+		return int(parsed)
+	}
+
+	value := int64Value(data, key)
+	if strconv.IntSize == 32 {
+		if value < math.MinInt32 || value > math.MaxInt32 {
+			return 0
+		}
 	}
 	return int(value)
 }
