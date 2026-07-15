@@ -42,7 +42,7 @@ func (s *HostService) CreateHost(ctx context.Context, req HostCreateRequestAPI) 
 		}
 	}
 	if req.MihomoCustomParams != nil {
-		if err := ValidateMihomoCustomParams(protocol, []byte(*req.MihomoCustomParams)); err != nil {
+		if err := ValidateMihomoCustomParams(protocol, network, []byte(*req.MihomoCustomParams)); err != nil {
 			return hostRecord{}, fmt.Errorf("invalid mihomoCustomParams: %w", err)
 		}
 	}
@@ -115,7 +115,7 @@ func (s *HostService) UpdateHost(ctx context.Context, req HostUpdateRequestAPI) 
 					}
 				}
 				if req.MihomoCustomParams.Set && req.MihomoCustomParams.Value != nil {
-					if err := ValidateMihomoCustomParams(protocol, []byte(*req.MihomoCustomParams.Value)); err != nil {
+					if err := ValidateMihomoCustomParams(protocol, network, []byte(*req.MihomoCustomParams.Value)); err != nil {
 						return hostRecord{}, fmt.Errorf("invalid mihomoCustomParams: %w", err)
 					}
 				}
@@ -301,7 +301,7 @@ func (s *HostService) BulkUpdateHosts(ctx context.Context, req HostBulkUpdateReq
 						}
 					}
 					if req.MihomoCustomParams.Set && req.MihomoCustomParams.Value != nil {
-						if err := ValidateMihomoCustomParams(protocol, []byte(*req.MihomoCustomParams.Value)); err != nil {
+						if err := ValidateMihomoCustomParams(protocol, network, []byte(*req.MihomoCustomParams.Value)); err != nil {
 							return fmt.Errorf("invalid mihomoCustomParams for host %s: %w", hostUUID, err)
 						}
 					}

@@ -167,7 +167,14 @@ type MihomoHysteria2CustomParams struct {
 	ObfsPassword *string `yaml:"obfs-password,omitempty"`
 }
 
-func ValidateMihomoCustomParams(protocol string, rawYAML []byte) error {
+type MihomoGRPCTransportCustomParams struct {
+	PingInterval   *int `yaml:"ping-interval,omitempty"`
+	MaxConnections *int `yaml:"max-connections,omitempty"`
+	MinStreams     *int `yaml:"min-streams,omitempty"`
+	MaxStreams     *int `yaml:"max-streams,omitempty"`
+}
+
+func ValidateMihomoCustomParams(protocol string, network string, rawYAML []byte) error {
 	rawYAMLStr := strings.TrimSpace(string(rawYAML))
 	if rawYAMLStr == "" || rawYAMLStr == "{}" || rawYAMLStr == "null" {
 		return nil
@@ -187,6 +194,8 @@ func ValidateMihomoCustomParams(protocol string, rawYAML []byte) error {
 		HopInterval  *int    `yaml:"hop-interval,omitempty"`
 		Obfs         *string `yaml:"obfs,omitempty"`
 		ObfsPassword *string `yaml:"obfs-password,omitempty"`
+		// GRPC Transport
+		GrpcOpts *MihomoGRPCTransportCustomParams `yaml:"grpc-opts,omitempty"`
 	}
 
 	var parsed map[string]interface{}
@@ -212,9 +221,13 @@ func ValidateMihomoCustomParams(protocol string, rawYAML []byte) error {
 		allowedKeys["obfs-password"] = true
 	}
 
+	if network == "grpc" {
+		allowedKeys["grpc-opts"] = true
+	}
+
 	for k := range parsed {
 		if !allowedKeys[k] {
-			return fmt.Errorf("поле '%s' не относится к протоколу %s", k, protocol)
+			return fmt.Errorf("поле '%s' не относится к протоколу %s (транспорт %s)", k, protocol, network)
 		}
 	}
 

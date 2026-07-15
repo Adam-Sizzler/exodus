@@ -465,6 +465,12 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 			return nil
 		}
 		proxy["password"] = credential
+	case "anytls":
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
+		proxy["password"] = credential
 	case "shadowsocks":
 		credential := effectiveProtocolCredential(host, user)
 		if credential == "" {
