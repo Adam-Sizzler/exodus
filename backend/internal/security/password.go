@@ -1,7 +1,6 @@
 package security
 
 import (
-	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -141,39 +140,6 @@ func verifyLegacySaltHash(password, stored string) bool {
 		if subtle.ConstantTimeCompare(derived, expected) == 1 {
 			return true
 		}
-	}
-
-	// 2) Common legacy one-shot variants.
-	sha512SaltPwd := sha512.Sum512(append(append([]byte{}, salt...), []byte(password)...))
-	if subtle.ConstantTimeCompare(sha512SaltPwd[:], expected) == 1 {
-		return true
-	}
-
-	sha512PwdSalt := sha512.Sum512(append(append([]byte{}, []byte(password)...), salt...))
-	if subtle.ConstantTimeCompare(sha512PwdSalt[:], expected) == 1 {
-		return true
-	}
-
-	sha256SaltPwd := sha256.Sum256(append(append([]byte{}, salt...), []byte(password)...))
-	if subtle.ConstantTimeCompare(sha256SaltPwd[:], expected) == 1 {
-		return true
-	}
-
-	sha256PwdSalt := sha256.Sum256(append(append([]byte{}, []byte(password)...), salt...))
-	if subtle.ConstantTimeCompare(sha256PwdSalt[:], expected) == 1 {
-		return true
-	}
-
-	hmac512 := hmac.New(sha512.New, salt)
-	_, _ = hmac512.Write([]byte(password))
-	if subtle.ConstantTimeCompare(hmac512.Sum(nil), expected) == 1 {
-		return true
-	}
-
-	hmac256 := hmac.New(sha256.New, salt)
-	_, _ = hmac256.Write([]byte(password))
-	if subtle.ConstantTimeCompare(hmac256.Sum(nil), expected) == 1 {
-		return true
 	}
 
 	return false
