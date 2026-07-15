@@ -1,10 +1,8 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -68,27 +66,29 @@ func LoadNodeConfig() (NodeConfig, error) {
 
 	cfg.Log.LogLevel = ResolveExodusLogLevel(cfg.Log.LogLevel)
 
-	// Dynamic detection: override with the actual port configured in the sing-box config.json if it exists
-	if port, ok := parsePortFromSingboxConfig(FixedSingboxConfigPath); ok {
-		cfg.CoreAPIGRPCPort = port
+	if value := os.Getenv("SINGBOX_API_PORT"); value != "" {
+		port, err := strconv.Atoi(strings.TrimSpace(value))
+		if err == nil && port >= 1 && port <= 65535 {
+			cfg.CoreAPIGRPCPort = port
+		}
 	}
 
-	if value := firstEnv("NODE_GRPC_ADDRESS", "LISTEN_GRPC_ADDRESS"); value != "" {
+	if value := firstEnv("NODE_ADDRESS"); value != "" {
 		cfg.Exodus.GrpcAddress = value
 	}
 
-	if value := firstEnv("NODE_GRPC_PORT", "LISTEN_GRPC_PORT", "NODE_PORT"); value != "" {
+	if value := firstEnv("NODE_PORT"); value != "" {
 		port, err := strconv.Atoi(value)
 		if err != nil || port < 1 || port > 65535 {
-			return cfg, fmt.Errorf("invalid NODE_GRPC_PORT/NODE_PORT value: %q", value)
+			return cfg, fmt.Errorf("invalid NODE_PORT value: %q", value)
 		}
 		cfg.Exodus.GrpcPort = port
 	}
 
-	if value := firstEnv("NODE_GRPC_PATH", "GRPC_PATH"); value != "" {
+	if value := firstEnv("NODE_PATH"); value != "" {
 		cfg.Exodus.GrpcPath = strings.Trim(value, "/")
 	}
-	if value := firstEnv("NODE_GRPC_TOKEN", "GRPC_TOKEN"); value != "" {
+	if value := firstEnv("NODE_TOKEN"); value != "" {
 		cfg.Exodus.GRPCToken = value
 	}
 
@@ -106,14 +106,14 @@ func LoadNodeConfig() (NodeConfig, error) {
 	cfg.Exodus.RequireGRPCToken = cfg.Exodus.MTLSConfig == nil
 	if cfg.Exodus.GRPCToken != "" {
 		if len(cfg.Exodus.GRPCToken) < 16 {
-			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be at least 16 characters")
+			return cfg, fmt.Errorf("NODE_TOKEN must be at least 16 characters")
 		}
 		if len(cfg.Exodus.GRPCToken) > 512 {
-			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be less than 512 characters")
+			return cfg, fmt.Errorf("NODE_TOKEN must be less than 512 characters")
 		}
 	}
 	if cfg.Exodus.RequireGRPCToken && cfg.Exodus.GRPCToken == "" {
-		return cfg, fmt.Errorf("NODE_GRPC_TOKEN is required when SECRET_KEY is not provided")
+		return cfg, fmt.Errorf("NODE_TOKEN is required when SECRET_KEY is not provided")
 	}
 
 	cfg.Logger = NewExodusLogger(os.Stderr, cfg.Log.LogLevel)
@@ -155,36 +155,4 @@ func lookupEnvTrimmed(key string) (string, bool) {
 		return "", false
 	}
 	return trimmed, true
-}
-
-func parsePortFromSingboxConfig(path string) (int, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return 0, false
-	}
-	var configMap map[string]interface{}
-	if err := json.Unmarshal(data, &configMap); err != nil {
-		return 0, false
-	}
-	experimental, ok := configMap["experimental"].(map[string]interface{})
-	if !ok {
-		return 0, false
-	}
-	v2rayAPI, ok := experimental["v2ray_api"].(map[string]interface{})
-	if !ok {
-		return 0, false
-	}
-	listen, ok := v2rayAPI["listen"].(string)
-	if !ok {
-		return 0, false
-	}
-	_, portStr, err := net.SplitHostPort(listen)
-	if err != nil {
-		return 0, false
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return 0, false
-	}
-	return port, true
 }
