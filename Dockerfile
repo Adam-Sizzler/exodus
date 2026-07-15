@@ -50,7 +50,7 @@ RUN set -eu; \
 
 FROM alpine:3.23
 
-ARG SINGBOX_VERSION=v1.13.5
+ARG SINGBOX_VERSION=v1.13.13
 ENV SINGBOX_VERSION=${SINGBOX_VERSION}
 
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor

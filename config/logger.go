@@ -180,7 +180,14 @@ func (l *Logger) write(level LogLevel, message string, args ...any) {
 			i--
 			continue
 		}
-		event = event.Interface(strings.TrimSpace(key), args[i+1])
+		trimmedKey := strings.TrimSpace(key)
+		if trimmedKey == "error" {
+			if e, ok := args[i+1].(error); ok {
+				event = event.Err(e)
+				continue
+			}
+		}
+		event = event.Interface(trimmedKey, args[i+1])
 	}
 	event.Msg(message)
 }
