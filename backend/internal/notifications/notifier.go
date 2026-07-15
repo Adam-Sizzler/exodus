@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -762,7 +763,11 @@ func stringValue(data map[string]any, key string) string {
 }
 
 func intValue(data map[string]any, key string) int {
-	return int(int64Value(data, key))
+	value := int64Value(data, key)
+	if value < int64(math.MinInt) || value > int64(math.MaxInt) {
+		return 0
+	}
+	return int(value)
 }
 
 func int64Value(data map[string]any, key string) int64 {
