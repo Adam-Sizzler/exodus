@@ -73,22 +73,22 @@ func LoadNodeConfig() (NodeConfig, error) {
 		}
 	}
 
-	if value := firstEnv("NODE_ADDRESS"); value != "" {
+	if value := firstEnv("NODE_GRPC_ADDRESS", "LISTEN_GRPC_ADDRESS"); value != "" {
 		cfg.Exodus.GrpcAddress = value
 	}
 
-	if value := firstEnv("NODE_PORT"); value != "" {
+	if value := firstEnv("NODE_GRPC_PORT", "LISTEN_GRPC_PORT", "NODE_PORT"); value != "" {
 		port, err := strconv.Atoi(value)
 		if err != nil || port < 1 || port > 65535 {
-			return cfg, fmt.Errorf("invalid NODE_PORT value: %q", value)
+			return cfg, fmt.Errorf("invalid NODE_GRPC_PORT/NODE_PORT value: %q", value)
 		}
 		cfg.Exodus.GrpcPort = port
 	}
 
-	if value := firstEnv("NODE_PATH"); value != "" {
+	if value := firstEnv("NODE_GRPC_PATH", "GRPC_PATH"); value != "" {
 		cfg.Exodus.GrpcPath = strings.Trim(value, "/")
 	}
-	if value := firstEnv("NODE_TOKEN"); value != "" {
+	if value := firstEnv("NODE_GRPC_TOKEN", "GRPC_TOKEN"); value != "" {
 		cfg.Exodus.GRPCToken = value
 	}
 
@@ -106,14 +106,14 @@ func LoadNodeConfig() (NodeConfig, error) {
 	cfg.Exodus.RequireGRPCToken = cfg.Exodus.MTLSConfig == nil
 	if cfg.Exodus.GRPCToken != "" {
 		if len(cfg.Exodus.GRPCToken) < 16 {
-			return cfg, fmt.Errorf("NODE_TOKEN must be at least 16 characters")
+			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be at least 16 characters")
 		}
 		if len(cfg.Exodus.GRPCToken) > 512 {
-			return cfg, fmt.Errorf("NODE_TOKEN must be less than 512 characters")
+			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be less than 512 characters")
 		}
 	}
 	if cfg.Exodus.RequireGRPCToken && cfg.Exodus.GRPCToken == "" {
-		return cfg, fmt.Errorf("NODE_TOKEN is required when SECRET_KEY is not provided")
+		return cfg, fmt.Errorf("NODE_GRPC_TOKEN is required when SECRET_KEY is not provided")
 	}
 
 	cfg.Logger = NewExodusLogger(os.Stderr, cfg.Log.LogLevel)
