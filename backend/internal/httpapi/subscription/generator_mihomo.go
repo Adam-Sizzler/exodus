@@ -563,12 +563,24 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 	if host.MihomoCustomParams != nil && strings.TrimSpace(*host.MihomoCustomParams) != "" {
 		var custom map[string]interface{}
 		if err := yaml.Unmarshal([]byte(*host.MihomoCustomParams), &custom); err == nil {
-			for k, v := range custom {
-				proxy[k] = v
-			}
+			deepMergeMihomo(proxy, custom)
 		}
 	}
 	return proxy
+}
+
+func deepMergeMihomo(dst, src map[string]interface{}) {
+	for k, v := range src {
+		if srcMap, ok := v.(map[string]interface{}); ok {
+			if dstVal, exists := dst[k]; exists {
+				if dstMap, ok := dstVal.(map[string]interface{}); ok {
+					deepMergeMihomo(dstMap, srcMap)
+					continue
+				}
+			}
+		}
+		dst[k] = v
+	}
 }
 
 func extractMihomoNativeSNI(inboundRaw []byte) string {

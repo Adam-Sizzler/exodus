@@ -329,30 +329,36 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 	if host.SingboxCustomParams != nil && string(*host.SingboxCustomParams) != "{}" && string(*host.SingboxCustomParams) != "null" {
 		var custom map[string]interface{}
 		if err := json.Unmarshal(*host.SingboxCustomParams, &custom); err == nil {
-			if transportRaw, ok := custom["transport"]; ok {
-				if transportMap, ok := transportRaw.(map[string]interface{}); ok {
-					delete(custom, "transport")
-					var currentTransport *orderedmap.OrderedMap
-					if ct, has := outbound.Get("transport"); has {
-						if ctm, ok := ct.(*orderedmap.OrderedMap); ok {
-							currentTransport = ctm
-						}
-					}
-					if currentTransport == nil {
-						currentTransport = orderedmap.New()
-						outbound.Set("transport", currentTransport)
-					}
-					for k, v := range transportMap {
-						currentTransport.Set(k, v)
-					}
-				}
-			}
-			for k, v := range custom {
-				outbound.Set(k, v)
-			}
+			deepMergeSingbox(outbound, custom)
 		}
 	}
 	return outbound
+}
+
+func deepMergeSingbox(dst *orderedmap.OrderedMap, src map[string]interface{}) {
+	for k, v := range src {
+		if srcMap, ok := v.(map[string]interface{}); ok {
+			if dstVal, exists := dst.Get(k); exists {
+				if dstOM, ok := dstVal.(*orderedmap.OrderedMap); ok {
+					deepMergeSingbox(dstOM, srcMap)
+					continue
+				} else if dstMap, ok := dstVal.(map[string]interface{}); ok {
+					dstOM := orderedmap.New()
+					for dk, dv := range dstMap {
+						dstOM.Set(dk, dv)
+					}
+					deepMergeSingbox(dstOM, srcMap)
+					dst.Set(k, dstOM)
+					continue
+				}
+			}
+			srcOM := orderedmap.New()
+			deepMergeSingbox(srcOM, srcMap)
+			dst.Set(k, srcOM)
+			continue
+		}
+		dst.Set(k, v)
+	}
 }
 
 func isSupportedSingboxTransport(protocol, network string) bool {
