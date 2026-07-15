@@ -394,7 +394,6 @@ func VerifyAuthenticationHandler(manager *dbmanager.DatabaseManager, cfg *config
 			return
 		}
 
-		secureCookie := middleware.IsSecureRequest(r, cfg)
 		http.SetCookie(w, &http.Cookie{
 			Name:     passkeySessionCookieName,
 			Value:    sessionToken,
@@ -402,7 +401,7 @@ func VerifyAuthenticationHandler(manager *dbmanager.DatabaseManager, cfg *config
 			Expires:  time.Unix(expiresAt, 0).UTC(),
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
-			Secure:   secureCookie,
+			Secure:   true,
 		})
 
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
