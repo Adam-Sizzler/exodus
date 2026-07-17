@@ -19,9 +19,9 @@ export const CopyDockerComposeWidget = ({ port }: IProps) => {
 
     const generateDockerCompose = (port?: number) => {
         return `services:
-  remnanode:
-    container_name: remnanode
-    hostname: remnanode
+  exodus-node:
+    container_name: exodus-node
+    hostname: exodus-node
     image: exodus/node:latest
     network_mode: host
     restart: always

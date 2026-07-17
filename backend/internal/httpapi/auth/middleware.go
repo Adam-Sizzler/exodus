@@ -83,7 +83,7 @@ func isPublicAPIPath(p string) bool {
 	trimmed := p[len("/api/"):]
 
 	publicSuffixes := []string{
-		"auth/bootstrap", "auth/status", "auth/setup", "auth/login",
+		"auth/bootstrap", "auth/status", "auth/setup", "auth/login", "auth/register",
 		"auth/passkey/authentication/options", "auth/passkey/authentication/verify",
 		"auth/oauth2/authorize", "auth/oauth2/callback",
 	}

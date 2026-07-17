@@ -66,13 +66,23 @@ func loginRateLimitKey(r *http.Request) string {
 }
 
 // --- Timing Safety -------------------------------------------------------
-var dummyPasswordHash = mustDummyPasswordHash()
+var (
+	dummyPasswordHashOnce sync.Once
+	dummyPasswordHashVal  string
+)
 
-func mustDummyPasswordHash() string {
-	hash, err := security.HashPassword("exodus-timing-safety-placeholder-do-not-use")
+func getDummyPasswordHash(secret string) string {
+	dummyPasswordHashOnce.Do(func() {
+		dummyPasswordHashVal = mustDummyPasswordHash(secret)
+	})
+	return dummyPasswordHashVal
+}
+
+func mustDummyPasswordHash(secret string) string {
+	hash, err := security.HashPassword("exodus-timing-safety-placeholder-do-not-use", secret)
 	if err != nil {
-		return "0000000000000000000000000000000000000000000000000000000000000000:" +
-			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+		return "00000000000000000000000000000000:" +
+			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 	}
 	return hash
 }

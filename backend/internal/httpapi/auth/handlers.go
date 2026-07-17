@@ -129,7 +129,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := strings.TrimSpace(req.Password)
+		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
@@ -193,9 +193,9 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		}
 		hashToVerify := storedPasswordHash
 		if adminUUID == "" {
-			hashToVerify = dummyPasswordHash
+			hashToVerify = getDummyPasswordHash(cfg.JWT.AuthSecret)
 		}
-		if adminUUID == "" || !security.VerifyPassword(password, hashToVerify) {
+		if adminUUID == "" || !security.VerifyPassword(password, cfg.JWT.AuthSecret, hashToVerify) {
 			cfg.Logger.Warn("Auth login failed: invalid credentials", "username", username, "remote_addr", r.RemoteAddr)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "invalid username or password")
@@ -237,14 +237,14 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := strings.TrimSpace(req.Password)
+		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
 		}
 		cfg.Logger.Trace("Auth register attempt", "username", username, "remote_addr", r.RemoteAddr)
 
-		passwordHash, err := security.HashPassword(password)
+		passwordHash, err := security.HashPassword(password, cfg.JWT.AuthSecret)
 		if err != nil {
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin account")
 			return
@@ -308,13 +308,13 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := strings.TrimSpace(req.Password)
+		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
 		}
 
-		passwordHash, err := security.HashPassword(password)
+		passwordHash, err := security.HashPassword(password, cfg.JWT.AuthSecret)
 		if err != nil {
 			cfg.Logger.Error("Failed to hash setup password", "error", err)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin account")
@@ -391,7 +391,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := strings.TrimSpace(req.Password)
+		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
@@ -424,7 +424,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
-		if adminUUID == "" || !security.VerifyPassword(password, storedPasswordHash) {
+		if adminUUID == "" || !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusUnauthorized, "invalid username or password")
 			return

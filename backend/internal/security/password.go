@@ -4,177 +4,115 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/crypto/scrypt"
 )
+
+// This mirrors upstream Remnawave's own password scheme (see
+// src/modules/auth/auth.service.ts: applySecretHmac + scrypt), ported
+// idiomatically to Go:
+//
+//  1. Pepper: HMAC-SHA256(password, secret) where secret is the panel's
+//     JWT auth secret (cfg.JWT.AuthSecret) - a value that lives only in
+//     server config/env, never in the database. A full DB dump (salts +
+//     hashes) alone is not enough to attempt an offline dictionary attack;
+//     the secret has to be known too.
+//  2. scrypt (memory-hard, resists GPU/ASIC-accelerated offline
+//     cracking far better than a CPU-only KDF like PBKDF2) over the
+//     peppered value, with a random per-password salt.
+//
+// There is deliberately no support for any other stored hash format and
+// no migration path from the project's previous PBKDF2-based scheme -
+// this project only ever has one admin password in practice, reset by
+// hand via CLI after this change ships (see release notes/commit
+// message), rather than carrying legacy-format verification code
+// indefinitely for a single account.
 
 const (
 	passwordSaltBytes = 16
 	passwordKeyBytes  = 64
-	// Keep a strong default and preserve the legacy "salt:hash" layout.
-	passwordPBKDF2Iterations = 210_000
+
+	// scrypt cost parameters. N=16384, r=8, p=1 match Node's
+	// crypto.scrypt() defaults, which is what upstream Remnawave uses
+	// (it never overrides them), so this preserves the same effective
+	// work factor as upstream rather than an arbitrary Go-side choice.
+	scryptN = 16384
+	scryptR = 8
+	scryptP = 1
 )
 
-var legacyPBKDF2Iterations = []int{
-	passwordPBKDF2Iterations,
-	1_000, 5_000, 10_000, 20_000, 50_000, 100_000,
-	150_000, 200_000, 250_000, 300_000, 310_000, 400_000, 500_000, 600_000, 750_000, 1_000_000,
+// pepperPassword applies the HMAC-SHA256 pepper step, matching upstream's
+// applySecretHmac(password, jwtSecret). Upstream then hex-encodes the HMAC
+// digest before feeding it to scrypt (hmacResult.toString('hex')) rather
+// than using the raw bytes directly - preserved here for parity, though it
+// has no security effect either way.
+func pepperPassword(password, secret string) []byte {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(password))
+	return []byte(hex.EncodeToString(mac.Sum(nil)))
 }
 
-// HashPassword returns a legacy-compatible "salt_hex:hash_hex" value.
-func HashPassword(password string) (string, error) {
-	password = strings.TrimSpace(password)
+// HashPassword returns a "salt_hex:hash_hex" value. secret must be the
+// panel's JWT auth secret (cfg.JWT.AuthSecret) - the exact same secret
+// must be supplied to VerifyPassword later, or the password will never
+// verify again (this is the whole point of a pepper: it is not stored
+// anywhere alongside the hash).
+func HashPassword(password, secret string) (string, error) {
 	if password == "" {
 		return "", fmt.Errorf("password cannot be empty")
 	}
+	if strings.TrimSpace(secret) == "" {
+		return "", fmt.Errorf("secret cannot be empty")
+	}
 
-	salt := make([]byte, passwordSaltBytes)
-	if _, err := rand.Read(salt); err != nil {
+	saltBytes := make([]byte, passwordSaltBytes)
+	if _, err := rand.Read(saltBytes); err != nil {
 		return "", fmt.Errorf("generate salt: %w", err)
 	}
+	// Upstream passes the salt to Node's scrypt() as a *string*
+	// (randomBytes(16).toString('hex')) with no explicit encoding, so Node
+	// treats it as UTF-8 - meaning the actual bytes scrypt uses as salt
+	// are the ASCII bytes of the hex string itself (32 bytes), not the 16
+	// raw random bytes it represents. Matched here deliberately, not a
+	// mistake: hex-encode first, then use *those* bytes as the scrypt salt.
+	saltHex := hex.EncodeToString(saltBytes)
 
-	derived := pbkdf2.Key([]byte(password), salt, passwordPBKDF2Iterations, passwordKeyBytes, sha512.New)
-	return fmt.Sprintf("%s:%s", hex.EncodeToString(salt), hex.EncodeToString(derived)), nil
-}
-
-// HashPasswordBcrypt exists for future migrations and compatibility.
-func HashPasswordBcrypt(password string) (string, error) {
-	password = strings.TrimSpace(password)
-	if password == "" {
-		return "", fmt.Errorf("password cannot be empty")
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	derived, err := scrypt.Key(pepperPassword(password, secret), []byte(saltHex), scryptN, scryptR, scryptP, passwordKeyBytes)
 	if err != nil {
-		return "", fmt.Errorf("bcrypt hash failed: %w", err)
+		return "", fmt.Errorf("derive key: %w", err)
 	}
-	return string(hash), nil
+
+	return fmt.Sprintf("%s:%s", saltHex, hex.EncodeToString(derived)), nil
 }
 
-// VerifyPassword validates password against supported stored formats.
-// Supported formats:
-// 1) "salt_hex:hash_hex" (legacy)
-// 2) "pbkdf2$<iterations>$<salt_hex>$<hash_hex>"
-// 3) bcrypt hash ($2a/$2b/$2y)
-func VerifyPassword(password, stored string) bool {
-	password = strings.TrimSpace(password)
+// VerifyPassword checks password (peppered with secret, the panel's JWT
+// auth secret) against a hash produced by HashPassword.
+func VerifyPassword(password, secret, stored string) bool {
 	stored = strings.TrimSpace(stored)
-	if password == "" || stored == "" {
+	if password == "" || strings.TrimSpace(secret) == "" || stored == "" {
 		return false
 	}
 
-	if strings.HasPrefix(stored, "$2a$") || strings.HasPrefix(stored, "$2b$") || strings.HasPrefix(stored, "$2y$") {
-		return bcrypt.CompareHashAndPassword([]byte(stored), []byte(password)) == nil
-	}
-
-	if strings.HasPrefix(stored, "pbkdf2$") {
-		return verifyPBKDF2Tagged(password, stored)
-	}
-
-	if strings.Contains(stored, ":") {
-		return verifyLegacySaltHash(password, stored)
-	}
-
-	return false
-}
-
-func verifyPBKDF2Tagged(password, stored string) bool {
-	parts := strings.Split(stored, "$")
-	if len(parts) != 4 {
-		return false
-	}
-	if parts[0] != "pbkdf2" {
-		return false
-	}
-
-	iterations := 0
-	if _, err := fmt.Sscanf(parts[1], "%d", &iterations); err != nil || iterations <= 0 {
-		return false
-	}
-
-	salt, err := hex.DecodeString(parts[2])
-	if err != nil {
-		return false
-	}
-	expected, err := hex.DecodeString(parts[3])
-	if err != nil {
-		return false
-	}
-
-	derived := pbkdf2.Key([]byte(password), salt, iterations, len(expected), sha512.New)
-	return subtle.ConstantTimeCompare(derived, expected) == 1
-}
-
-func verifyLegacySaltHash(password, stored string) bool {
 	parts := strings.SplitN(stored, ":", 2)
 	if len(parts) != 2 {
 		return false
 	}
 
 	saltHex := strings.TrimSpace(parts[0])
-	hashHex := strings.TrimSpace(parts[1])
-	if saltHex == "" || hashHex == "" {
-		return false
-	}
-
-	salt, err := hex.DecodeString(saltHex)
-	if err != nil {
-		return false
-	}
-	expected, err := hex.DecodeString(hashHex)
+	expected, err := hex.DecodeString(strings.TrimSpace(parts[1]))
 	if err != nil {
 		return false
 	}
 
-	// 1) Legacy PBKDF2 candidates.
-	for _, it := range legacyPBKDF2Iterations {
-		derived := pbkdf2.Key([]byte(password), salt, it, len(expected), sha512.New)
-		if subtle.ConstantTimeCompare(derived, expected) == 1 {
-			return true
-		}
-		derived = pbkdf2.Key([]byte(password), salt, it, len(expected), sha256.New)
-		if subtle.ConstantTimeCompare(derived, expected) == 1 {
-			return true
-		}
+	// Upstream uses the UTF-8 bytes of the salt's hex representation as the actual scrypt salt
+	derived, err := scrypt.Key(pepperPassword(password, secret), []byte(saltHex), scryptN, scryptR, scryptP, len(expected))
+	if err != nil {
+		return false
 	}
 
-	// 2) Common legacy one-shot variants.
-	sha512SaltPwd := sha512.Sum512(append(append([]byte{}, salt...), []byte(password)...))
-	if subtle.ConstantTimeCompare(sha512SaltPwd[:], expected) == 1 {
-		return true
-	}
-
-	sha512PwdSalt := sha512.Sum512(append(append([]byte{}, []byte(password)...), salt...))
-	if subtle.ConstantTimeCompare(sha512PwdSalt[:], expected) == 1 {
-		return true
-	}
-
-	sha256SaltPwd := sha256.Sum256(append(append([]byte{}, salt...), []byte(password)...))
-	if subtle.ConstantTimeCompare(sha256SaltPwd[:], expected) == 1 {
-		return true
-	}
-
-	sha256PwdSalt := sha256.Sum256(append(append([]byte{}, []byte(password)...), salt...))
-	if subtle.ConstantTimeCompare(sha256PwdSalt[:], expected) == 1 {
-		return true
-	}
-
-	hmac512 := hmac.New(sha512.New, salt)
-	_, _ = hmac512.Write([]byte(password))
-	if subtle.ConstantTimeCompare(hmac512.Sum(nil), expected) == 1 {
-		return true
-	}
-
-	hmac256 := hmac.New(sha256.New, salt)
-	_, _ = hmac256.Write([]byte(password))
-	if subtle.ConstantTimeCompare(hmac256.Sum(nil), expected) == 1 {
-		return true
-	}
-
-	return false
+	return subtle.ConstantTimeCompare(derived, expected) == 1
 }
