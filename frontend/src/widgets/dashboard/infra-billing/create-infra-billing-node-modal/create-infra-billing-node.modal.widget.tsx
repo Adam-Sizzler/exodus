@@ -144,9 +144,7 @@ export function CreateInfraBillingNodeModalWidget() {
                                     <Center style={{ gap: 10 }}>
                                         <TbServer size={16} />
                                         <span>
-                                            {t(
-                                                'create-infra-billing-node.modal.widget.existing-node'
-                                            )}
+                                            {t('create-infra-billing-node.modal.widget.existing')}
                                         </span>
                                     </Center>
                                 ),
@@ -157,16 +155,13 @@ export function CreateInfraBillingNodeModalWidget() {
                                     <Center style={{ gap: 10 }}>
                                         <TbCursorText size={16} />
                                         <span>
-                                            {t(
-                                                'create-infra-billing-node.modal.widget.custom-name'
-                                            )}
+                                            {t('create-infra-billing-node.modal.widget.custom')}
                                         </span>
                                     </Center>
                                 ),
                                 value: 'name'
                             }
                         ]}
-                        fullWidth
                         onChange={handleModeChange}
                         transitionDuration={150}
                         value={mode}
@@ -194,7 +189,7 @@ export function CreateInfraBillingNodeModalWidget() {
                                 'create-infra-billing-node.modal.widget.custom-name-description'
                             )}
                             key={form.key('name')}
-                            label={t('create-infra-billing-node.modal.widget.custom-name')}
+                            label={t('create-infra-billing-node.modal.widget.custom')}
                             leftSection={<TbCursorText size="16px" />}
                             placeholder="Management Server"
                             {...form.getInputProps('name')}

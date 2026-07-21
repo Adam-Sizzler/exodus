@@ -28,7 +28,8 @@ interface IProps {
 export const NodeConsumptionCard = (props: IProps) => {
     const { t } = useTranslation()
     const { cardVariants, form, motionWrapper } = props
-    const handlersRef = useRef<NumberInputHandlers>(null)
+    const consumptionMultiplierRef = useRef<NumberInputHandlers>(null)
+    const nodeConsumptionRef = useRef<NumberInputHandlers>(null)
 
     const MotionWrapper = motionWrapper
 
@@ -53,13 +54,13 @@ export const NodeConsumptionCard = (props: IProps) => {
                             clampBehavior="strict"
                             decimalScale={1}
                             fixedDecimalScale
-                            handlersRef={handlersRef}
+                            handlersRef={consumptionMultiplierRef}
                             hideControls
                             key={form.key('consumptionMultiplier')}
                             leftSection={
                                 <ActionIcon
                                     color="red"
-                                    onClick={() => handlersRef.current?.decrement()}
+                                    onClick={() => consumptionMultiplierRef.current?.decrement()}
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"
@@ -79,7 +80,7 @@ export const NodeConsumptionCard = (props: IProps) => {
                             rightSection={
                                 <ActionIcon
                                     color="teal"
-                                    onClick={() => handlersRef.current?.increment()}
+                                    onClick={() => consumptionMultiplierRef.current?.increment()}
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"
@@ -135,13 +136,13 @@ export const NodeConsumptionCard = (props: IProps) => {
                             clampBehavior="strict"
                             decimalScale={1}
                             fixedDecimalScale
-                            handlersRef={handlersRef}
+                            handlersRef={nodeConsumptionRef}
                             hideControls
                             key={form.key('nodeConsumptionMultiplier')}
                             leftSection={
                                 <ActionIcon
                                     color="red"
-                                    onClick={() => handlersRef.current?.decrement()}
+                                    onClick={() => nodeConsumptionRef.current?.decrement()}
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"
@@ -161,7 +162,7 @@ export const NodeConsumptionCard = (props: IProps) => {
                             rightSection={
                                 <ActionIcon
                                     color="teal"
-                                    onClick={() => handlersRef.current?.increment()}
+                                    onClick={() => nodeConsumptionRef.current?.increment()}
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"

@@ -11,6 +11,13 @@ body {
         border-radius: 0;
         border: none;
     }
+
+    .mrt-table-head-cell-content {
+        align-items: flex-start !important;
+    }
+    .mrt-table-head-cell-content-actions {
+        align-self: flex-start !important;
+    }
 }
 
 .root {

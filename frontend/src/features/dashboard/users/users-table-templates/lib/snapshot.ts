@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 import { MRT_TableInstance } from '@kastov/mantine-react-table-open'
 import { GetAllUsersCommand } from '@exodus/backend-contract'
 
@@ -25,7 +24,6 @@ export const captureSnapshot = (table: UsersTable): UsersTableTemplateSnapshot =
 }
 
 export const applySnapshot = (table: UsersTable, snapshot: UsersTableTemplateSnapshot) => {
-    table.setShowColumnFilters(snapshot.showColumnFilters)
     table.setColumnVisibility(snapshot.columnVisibility)
     table.setColumnOrder(snapshot.columnOrder)
     table.setColumnPinning(snapshot.columnPinning)

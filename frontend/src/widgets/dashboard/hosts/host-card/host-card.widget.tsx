@@ -6,7 +6,6 @@ import {
     Box,
     Checkbox,
     Group,
-    OverflowList,
     px,
     Stack,
     Text,
@@ -39,6 +38,7 @@ import { ROUTES } from '@shared/constants'
 import { SEARCH_PARAMS } from '@shared/constants/search-params'
 import { useIsMobile } from '@shared/hooks'
 import { SingboxLogo } from '@shared/ui/logos'
+import { SingleRowOverflowList } from '@shared/ui/single-row-overflow-list'
 import { resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
 import { openOrNavigate } from '@shared/utils/open-or-navigate'
 
@@ -274,10 +274,9 @@ export function HostCardWidget(props: IProps) {
                                     )}
                                 </Badge>
 
-                                <OverflowList
+                                <SingleRowOverflowList
                                     data={item.tags.sort((a, b) => a.localeCompare(b))}
                                     gap={0}
-                                    maxRows={1}
                                     maxVisibleItems={2}
                                     renderItem={(tag) => (
                                         <Badge
@@ -526,10 +525,9 @@ export function HostCardWidget(props: IProps) {
                                 )}
                             </Badge>
 
-                            <OverflowList
+                            <SingleRowOverflowList
                                 data={item.tags.sort((a, b) => a.localeCompare(b))}
                                 gap={0}
-                                maxRows={1}
                                 maxVisibleItems={2}
                                 renderItem={(tag) => (
                                     <Badge
@@ -589,12 +587,11 @@ export function HostCardWidget(props: IProps) {
                         </Group>
 
                         <Group gap="xs" style={{ flexShrink: 0 }} wrap="nowrap">
-                            <OverflowList
+                            <SingleRowOverflowList
                                 data={item.nodes
                                     .map((nodeId) => nodesByUuid.get(nodeId))
                                     .filter((n): n is NonNullable<typeof n> => Boolean(n))}
                                 gap={4}
-                                maxRows={1}
                                 maxVisibleItems={3}
                                 renderItem={(node) => (
                                     <Badge

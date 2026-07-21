@@ -49,7 +49,9 @@ export const BulkUpdateNodesModalContent = (props: IProps) => {
     const { mutateAsync: bulkUpdate, isPending } = useBulkNodesUpdate()
     const { data: nodePlugins, isLoading: isNodePluginsLoading } = useGetNodePlugins()
     const { data: tags, isLoading: isTagsLoading } = useGetNodesTags()
-    const handlersRef = useRef<NumberInputHandlers>(null)
+
+    const consumptionMultiplierRef = useRef<NumberInputHandlers>(null)
+    const nodeConsumptionMultiplierRef = useRef<NumberInputHandlers>(null)
 
     const uuids = selectedRecords.map((node) => node.uuid)
 
@@ -192,13 +194,13 @@ export const BulkUpdateNodesModalContent = (props: IProps) => {
                             clampBehavior="strict"
                             decimalScale={1}
                             fixedDecimalScale
-                            handlersRef={handlersRef}
+                            handlersRef={consumptionMultiplierRef}
                             hideControls
                             key={form.key('fields.consumptionMultiplier')}
                             leftSection={
                                 <ActionIcon
                                     color="red"
-                                    onClick={() => handlersRef.current?.decrement()}
+                                    onClick={() => consumptionMultiplierRef.current?.decrement()}
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"
@@ -218,7 +220,7 @@ export const BulkUpdateNodesModalContent = (props: IProps) => {
                             rightSection={
                                 <ActionIcon
                                     color="teal"
-                                    onClick={() => handlersRef.current?.increment()}
+                                    onClick={() => consumptionMultiplierRef.current?.increment()}
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"
@@ -274,13 +276,15 @@ export const BulkUpdateNodesModalContent = (props: IProps) => {
                             clampBehavior="strict"
                             decimalScale={1}
                             fixedDecimalScale
-                            handlersRef={handlersRef}
+                            handlersRef={nodeConsumptionMultiplierRef}
                             hideControls
                             key={form.key('fields.nodeConsumptionMultiplier')}
                             leftSection={
                                 <ActionIcon
                                     color="red"
-                                    onClick={() => handlersRef.current?.decrement()}
+                                    onClick={() =>
+                                        nodeConsumptionMultiplierRef.current?.decrement()
+                                    }
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"
@@ -300,7 +304,9 @@ export const BulkUpdateNodesModalContent = (props: IProps) => {
                             rightSection={
                                 <ActionIcon
                                     color="teal"
-                                    onClick={() => handlersRef.current?.increment()}
+                                    onClick={() =>
+                                        nodeConsumptionMultiplierRef.current?.increment()
+                                    }
                                     radius="md"
                                     size={rem(44)}
                                     variant="light"

@@ -229,7 +229,7 @@ export const CreateApiTokenContentWidget = ({ isMobile }: IProps) => {
                     allowNegative={false}
                     clampBehavior="strict"
                     label={t('api-tokens-card.widget.expires-in-days')}
-                    max={9999}
+                    max={999999}
                     min={1}
                     onChange={setExpiresInDays}
                     required

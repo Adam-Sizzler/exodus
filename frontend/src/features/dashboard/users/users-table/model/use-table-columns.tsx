@@ -1,17 +1,5 @@
-/* eslint-disable camelcase */
-/* eslint-disable @stylistic/indent */
-
 import { MRT_ColumnDef } from '@kastov/mantine-react-table-open'
-import {
-    Badge,
-    ComboboxItem,
-    Group,
-    OverflowList,
-    SelectProps,
-    Stack,
-    Text,
-    Tooltip
-} from '@mantine/core'
+import { Badge, ComboboxItem, Group, SelectProps, Stack, Text, Tooltip } from '@mantine/core'
 import {
     GetAllNodesCommand,
     GetAllUsersCommand,
@@ -280,30 +268,23 @@ export const useUserTableColumns = (
                         return <Text c="dimmed">–</Text>
                     }
 
+                    const visibleSquads = squads.slice(0, 1)
+                    const hiddenSquads = squads.slice(1)
+
                     return (
-                        <OverflowList
-                            data={squads}
-                            gap={4}
-                            maxRows={1}
-                            maxVisibleItems={2}
-                            renderItem={(squad) => (
-                                <Badge
-                                    key={`${squad.uuid}|${cell.row.original.uuid}`}
-                                    variant="soft"
-                                >
+                        <Group gap="xs" wrap="nowrap">
+                            {visibleSquads.map((squad) => (
+                                <Badge key={squad.uuid} variant="soft">
                                     {squad.name}
                                 </Badge>
-                            )}
-                            renderOverflow={(items) => (
+                            ))}
+
+                            {hiddenSquads.length > 0 && (
                                 <Tooltip
                                     label={
                                         <Stack gap="xs">
-                                            {squads.map((squad) => (
-                                                <Badge
-                                                    fullWidth
-                                                    key={`${squad.uuid}|${cell.row.original.uuid}`}
-                                                    variant="soft"
-                                                >
+                                            {hiddenSquads.map((squad) => (
+                                                <Badge fullWidth key={squad.uuid} variant="soft">
                                                     {squad.name}
                                                 </Badge>
                                             ))}
@@ -312,12 +293,12 @@ export const useUserTableColumns = (
                                     multiline
                                     position="top"
                                 >
-                                    <Badge color="violet" variant="soft">
-                                        +{items.length}
+                                    <Badge color="violet" style={{ cursor: 'help' }} variant="soft">
+                                        +{hiddenSquads.length}
                                     </Badge>
                                 </Tooltip>
                             )}
-                        />
+                        </Group>
                     )
                 }
             },
@@ -393,7 +374,7 @@ export const useUserTableColumns = (
                 accessorFn: (originalRow) =>
                     originalRow.lastTrafficResetAt
                         ? formatTimeUtil({
-                              time: originalRow.userTraffic.firstConnectedAt,
+                              time: originalRow.lastTrafficResetAt,
                               template: 'TIME_FIRST_DATETIME',
                               language: i18n.language
                           })

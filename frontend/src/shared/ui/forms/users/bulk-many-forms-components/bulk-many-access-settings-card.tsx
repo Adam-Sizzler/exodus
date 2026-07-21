@@ -69,16 +69,13 @@ export const BulkAccessSettingsCard = (props: IProps) => {
                         />
 
                         <DateTimePicker
-                            dropdownType="modal"
+                            dropdownType="popover"
                             headerControlsOrder={['previous', 'next', 'level']}
                             highlightToday
                             key={form.key('fields.expireAt')}
                             label={t('create-user-modal.widget.expiry-date')}
                             locale={i18n.language}
                             minDate={new Date()}
-                            modalProps={{
-                                centered: true
-                            }}
                             styles={{
                                 calendarHeaderLevel: {
                                     justifyContent: 'flex-start',

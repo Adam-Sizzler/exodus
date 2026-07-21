@@ -1,5 +1,5 @@
 import { Badge, Button, Group, Scroller } from '@mantine/core'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TbStack2, TbTag, TbTagOff } from 'react-icons/tb'
 
@@ -72,6 +72,14 @@ export function TagFilterBar(props: IProps) {
             untaggedCount: untagged
         }
     }, [items])
+
+    useEffect(() => {
+        if (activeTag === null) return
+        const isStale = activeTag === NO_TAG ? untaggedCount === 0 : !tagCounts.has(activeTag)
+        if (isStale) {
+            onChange(null)
+        }
+    }, [activeTag, tagCounts, untaggedCount, onChange])
 
     if (tags.length === 0) {
         return null
