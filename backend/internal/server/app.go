@@ -303,21 +303,27 @@ func (a *App) handleAppConfig(w http.ResponseWriter, r *http.Request) {
 	claims, err := a.verifySessionCookie(r)
 	if err != nil {
 		logger.WithContext("CheckAssetsCookieMiddleware").Debugf("%v", err)
-		closeConnection(w)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
 		return
 	}
 
 	subpageConfigUUID, _ := claims["subpageConfigUuid"].(string)
 	subpageConfigUUID = strings.TrimSpace(subpageConfigUUID)
 	if subpageConfigUUID == "" {
-		closeConnection(w)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "subpage_config_not_found"})
 		return
 	}
 
 	subpageConfigRaw, err := a.getSubpageConfigByUUID(r.Context(), subpageConfigUUID)
 	if err != nil {
 		logger.WithContext("RootService").Errorf("%v", err)
-		closeConnection(w)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed_to_fetch_subpage_config"})
 		return
 	}
 
