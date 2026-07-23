@@ -33,7 +33,7 @@ const (
 
 var (
 	appConfigPaths = map[string]struct{}{
-		"/assets/.app-config-v2.json": {},
+		"/assets/.app-config.json": {},
 	}
 
 	allowedClientTypes = map[string]struct{}{
@@ -355,8 +355,8 @@ func (a *App) serveStatic(w http.ResponseWriter, r *http.Request, requestPath st
 			prefix := a.cfg.SubPath
 			rewritten := strings.ReplaceAll(
 				string(content),
-				`"/assets/.app-config-v2.json"`,
-				fmt.Sprintf("%q", prefix+"/assets/.app-config-v2.json"),
+				`"/assets/.app-config.json"`,
+				fmt.Sprintf("%q", prefix+"/assets/.app-config.json"),
 			)
 			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 			if r.Method != http.MethodHead {
