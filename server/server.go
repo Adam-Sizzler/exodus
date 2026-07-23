@@ -18,6 +18,7 @@ type NodeServer struct {
 	proto.UnimplementedNodeServiceServer
 	Cfg        *config.NodeConfig
 	apiService *api.Service
+	asnService *AsnLmdbService
 }
 
 // NewNodeServer creates a new NodeServer instance.
@@ -35,9 +36,12 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 		return nil, fmt.Errorf("initialize core API service: %w", err)
 	}
 
+	asnService := NewAsnLmdbService(cfg)
+
 	nodeServer := &NodeServer{
 		Cfg:        cfg,
 		apiService: apiService,
+		asnService: asnService,
 	}
 	cfg.LoggerFor("Supervisor").Info("[OK] Supervisord initialized")
 	cfg.LoggerFor("NetworkStatsService").Info("Network stats polling started (interval: 1000ms, default: " + detectDefaultNetworkInterfaceForLogs() + ")")
@@ -50,10 +54,16 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 }
 
 func (s *NodeServer) Close() error {
-	if s == nil || s.apiService == nil {
+	if s == nil {
 		return nil
 	}
-	return s.apiService.Close()
+	if s.asnService != nil {
+		_ = s.asnService.Close()
+	}
+	if s.apiService != nil {
+		return s.apiService.Close()
+	}
+	return nil
 }
 
 // GetApiStats retrieves API statistics from the node.

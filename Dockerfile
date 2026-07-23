@@ -1,4 +1,4 @@
-# Multistage build for exodus-node (Go) + sing-box core (with v2ray_api) + supervisord.
+# Multistage build for exodus-node (Go) + sing-box core (with v2ray_api) + s6-overlay.
 FROM golang:1.25-alpine AS builder
 
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
@@ -10,10 +10,12 @@ ARG CGO_ENABLED_STATUS=enabled
 
 WORKDIR /build
 
-COPY go.mod go.sum ./
+COPY lmdb-go ./lmdb-go
+COPY exodus-node/go.mod exodus-node/go.sum ./exodus-node/
+WORKDIR /build/exodus-node
 RUN go mod download
 
-COPY . .
+COPY exodus-node/ ./
 
 RUN set -eu; \
     version="${VERSION}"; \
@@ -45,15 +47,25 @@ RUN set -eu; \
                 -X exodus-node/constant.Revision=${revision} \
                 -X exodus-node/constant.BuildTags=${BUILD_TAGS} \
                 -X exodus-node/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
-        -o /build/exodus-node \
+        -o /build/exodus-node-app \
         .
 
 FROM alpine:3.23
 
 ARG SINGBOX_VERSION=v1.13.13
+ARG S6_OVERLAY_VERSION=3.2.0.2
+
 ENV SINGBOX_VERSION=${SINGBOX_VERSION}
 
-RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl supervisor
+RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl xz
+
+# Install s6-overlay
+RUN S6_ARCH="$(uname -m)" && \
+    curl -sSL -o /tmp/s6-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" && \
+    curl -sSL -o /tmp/s6-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" && \
+    xz -dc /tmp/s6-noarch.tar.xz | tar -C / -xpf - && \
+    xz -dc /tmp/s6-arch.tar.xz | tar -C / -xpf - && \
+    rm -f /tmp/s6-noarch.tar.xz /tmp/s6-arch.tar.xz
 
 RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
       -o /usr/local/bin/sing-box && \
@@ -61,13 +73,13 @@ RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/downlo
 
 WORKDIR /app
 
-COPY --from=builder /build/exodus-node /app/exodus-node
-COPY deploy/supervisord.conf /etc/supervisord.conf
-COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY deploy/singbox-default.json /app/singbox/config.default.json
+COPY --from=builder /build/exodus-node-app /app/exodus-node
+COPY exodus-node/deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
-    mkdir -p /run /var/log/supervisor /app/singbox /app/logs /app/certs
+RUN chmod -R +x /etc/s6-overlay && \
+    chmod +x /app/exodus-node && \
+    mkdir -p /run /app/singbox /app/logs
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["/app/exodus-node"]
+ENTRYPOINT ["/init"]
+
+CMD ["/command/with-contenv", "/app/exodus-node"]

@@ -147,7 +147,7 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	if err != nil {
 		return DeploySummary{}, err
 	}
-	if err := applyNftablesModule(task.Modules); err != nil {
+	if err := applyNftablesModule(task.Modules, s.asnService); err != nil {
 		return DeploySummary{}, err
 	}
 

@@ -1,0 +1,2 @@
+#!/command/with-contenv sh
+exec /usr/local/bin/sing-box run -c /app/singbox/config.json

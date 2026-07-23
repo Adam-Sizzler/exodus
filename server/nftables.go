@@ -30,14 +30,16 @@ const (
 )
 
 type NftIngressFilterPayload struct {
-	Enabled    bool     `json:"enabled"`
-	BlockedIPs []string `json:"blocked_ips"`
+	Enabled     bool     `json:"enabled"`
+	BlockedIPs  []string `json:"blocked_ips"`
+	BlockedASNs []int    `json:"blocked_asns"`
 }
 
 type NftEgressFilterPayload struct {
 	Enabled      bool     `json:"enabled"`
 	BlockedIPs   []string `json:"blocked_ips"`
 	BlockedPorts []int    `json:"blocked_ports"`
+	BlockedASNs  []int    `json:"blocked_asns"`
 }
 
 type nftExecutorCommand struct {
@@ -93,7 +95,7 @@ var nftTableSpecs = []nftTableSpec{
 	},
 }
 
-func applyNftablesModule(modules DeployModulesPayload) error {
+func applyNftablesModule(modules DeployModulesPayload, asnService *AsnLmdbService) error {
 	if !modules.IngressFilter.Enabled && !modules.EgressFilter.Enabled {
 		return nil
 	}
@@ -109,13 +111,25 @@ func applyNftablesModule(modules DeployModulesPayload) error {
 	}
 
 	if modules.IngressFilter.Enabled {
-		if err := syncNftIPSet(nftIngressIPSet, modules.IngressFilter.BlockedIPs, 0); err != nil {
+		blockedIPs := modules.IngressFilter.BlockedIPs
+		if asnService != nil && len(modules.IngressFilter.BlockedASNs) > 0 {
+			asnV4, asnV6 := asnService.ResolveASNs(modules.IngressFilter.BlockedASNs)
+			blockedIPs = append(append([]string(nil), blockedIPs...), asnV4...)
+			blockedIPs = append(blockedIPs, asnV6...)
+		}
+		if err := syncNftIPSet(nftIngressIPSet, blockedIPs, 0); err != nil {
 			return fmt.Errorf("sync ingress filter: %w", err)
 		}
 	}
 
 	if modules.EgressFilter.Enabled {
-		if err := syncNftIPSet(nftEgressIPSet, modules.EgressFilter.BlockedIPs, 0); err != nil {
+		blockedIPs := modules.EgressFilter.BlockedIPs
+		if asnService != nil && len(modules.EgressFilter.BlockedASNs) > 0 {
+			asnV4, asnV6 := asnService.ResolveASNs(modules.EgressFilter.BlockedASNs)
+			blockedIPs = append(append([]string(nil), blockedIPs...), asnV4...)
+			blockedIPs = append(blockedIPs, asnV6...)
+		}
+		if err := syncNftIPSet(nftEgressIPSet, blockedIPs, 0); err != nil {
 			return fmt.Errorf("sync egress filter IPs: %w", err)
 		}
 		if err := syncNftPortSet(nftEgressPortSet, modules.EgressFilter.BlockedPorts); err != nil {

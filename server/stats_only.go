@@ -1,9 +1,12 @@
 package server
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
@@ -53,10 +56,19 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 	}
 	s.Cfg.LoggerFor("NodeService").Debug("SubmitTask received", "task_id", task.TaskId, "operation", task.Operation, "payload_bytes", len(task.Payload))
 
+	taskPayload, err := decompressGzipIfNeeded(task.Payload)
+	if err != nil {
+		s.Cfg.LoggerFor("NodeService").Warn("Failed to decompress task payload", "task_id", task.TaskId, "error", err)
+		return &rpcstatus.Status{
+			Code:    int32(codes.InvalidArgument),
+			Message: fmt.Sprintf("decompress task payload: %v", err),
+		}, nil
+	}
+
 	switch task.Operation {
 	case taskOperationDeployConfig:
 		var payload DeployConfigTaskPayload
-		if err := json.Unmarshal(task.Payload, &payload); err != nil {
+		if err := json.Unmarshal(taskPayload, &payload); err != nil {
 			s.Cfg.LoggerFor("SingboxService").Warn("Invalid deploy_config payload", "task_id", task.TaskId, "error", err)
 			return &rpcstatus.Status{
 				Code:    int32(codes.InvalidArgument),
@@ -133,4 +145,16 @@ func (s *NodeServer) GetTaskStatus(ctx context.Context, req *proto.TaskStatusReq
 		Status:       "unsupported",
 		ErrorMessage: statsOnlyMessage,
 	}, nil
+}
+
+func decompressGzipIfNeeded(payload []byte) ([]byte, error) {
+	if len(payload) >= 2 && payload[0] == 0x1f && payload[1] == 0x8b {
+		gr, err := gzip.NewReader(bytes.NewReader(payload))
+		if err != nil {
+			return nil, err
+		}
+		defer gr.Close()
+		return io.ReadAll(gr)
+	}
+	return payload, nil
 }

@@ -1,0 +1,2 @@
+#!/bin/sh
+mkdir -p /run /app/singbox /app/logs
