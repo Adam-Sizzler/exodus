@@ -1,6 +1,9 @@
-import { SubscriptionPageRawConfigSchema } from '@exodus/subscription-page-types'
+import {
+    APP_CONFIG_ROUTE_LEADING_PATH,
+    SubscriptionPageRawConfigSchema
+} from '@exodus/subscription-page-types'
 import { GetSubscriptionInfoByShortUuidCommand } from '@exodus/backend-contract'
-import { Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router'
 import { useLayoutEffect } from 'react'
 import consola from 'consola/browser'
 import { ofetch } from 'ofetch'
@@ -22,9 +25,6 @@ export function RootLayout() {
     const isConfigLoaded = useIsConfigLoaded()
 
     useLayoutEffect(() => {
-        const appConfigUrl = new URL('./.app-config-v2.json', import.meta.url)
-        appConfigUrl.searchParams.set('v', String(Date.now()))
-
         const subPageDiv = document.getElementById('sbpg')
 
         if (subPageDiv) {
@@ -50,7 +50,7 @@ export function RootLayout() {
         const fetchConfig = async () => {
             try {
                 const tempConfig = await ofetch<unknown>(
-                    appConfigUrl.toString(),
+                    `${APP_CONFIG_ROUTE_LEADING_PATH}?v=${Date.now()}`,
                     {
                         parseResponse: (response) => JSON.parse(response)
                     }

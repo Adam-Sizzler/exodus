@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SubscriptionSettingsSchema = void 0;
 const zod_1 = require("zod");
+const response_rules_1 = require("./response-rules");
 const custom_remarks_schema_1 = require("./subscription-settings/custom-remarks.schema");
 const hwid_settings_schema_1 = require("./subscription-settings/hwid-settings.schema");
-const response_rules_1 = require("./response-rules");
 exports.SubscriptionSettingsSchema = zod_1.z.object({
     uuid: zod_1.z.string().uuid(),
     profileTitle: zod_1.z.string(),

@@ -15,6 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./cache-keys"), exports);
+__exportStar(require("./crud-actions"), exports);
 __exportStar(require("./endpoint-details"), exports);
 __exportStar(require("./errors"), exports);
 __exportStar(require("./events"), exports);
@@ -25,6 +26,7 @@ __exportStar(require("./nodes"), exports);
 __exportStar(require("./oauth2"), exports);
 __exportStar(require("./response-rules"), exports);
 __exportStar(require("./roles"), exports);
+__exportStar(require("./scopes"), exports);
 __exportStar(require("./subscription-template"), exports);
 __exportStar(require("./templates"), exports);
 __exportStar(require("./users"), exports);

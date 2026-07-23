@@ -13,4 +13,5 @@ exports.SUBSCRIPTIONS_ROUTES = {
     SUBPAGE: {
         GET_CONFIG: (shortUuid) => `subpage-config/${shortUuid}`,
     },
+    GET_CONNECTION_KEYS_BY_UUID: (uuid) => `connection-keys/${uuid}`,
 };

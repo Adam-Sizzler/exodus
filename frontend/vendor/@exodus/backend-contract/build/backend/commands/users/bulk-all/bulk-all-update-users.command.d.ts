@@ -16,6 +16,7 @@ export declare namespace BulkAllUpdateUsersCommand {
             readonly DAY: "DAY";
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
+            readonly MONTH_ROLLING: "MONTH_ROLLING";
         }>>;
         expireAt: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, Date, string>, Date, string>>;
         description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -25,21 +26,21 @@ export declare namespace BulkAllUpdateUsersCommand {
         hwidDeviceLimit: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     }, "strip", z.ZodTypeAny, {
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+        expireAt?: Date | undefined;
+        description?: string | null | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: Date | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;
     }, {
         status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+        expireAt?: string | undefined;
+        description?: string | null | undefined;
         tag?: string | null | undefined;
         trafficLimitBytes?: number | undefined;
-        description?: string | null | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-        expireAt?: string | undefined;
+        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
         telegramId?: number | null | undefined;
         email?: string | null | undefined;
         hwidDeviceLimit?: number | null | undefined;

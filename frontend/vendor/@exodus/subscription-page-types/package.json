@@ -14,7 +14,7 @@
     "url": "https://github.com/exodus/backend/issues"
   },
   "main": "build/backend/index.js",
-  "browser": "build/frontend/index.mjs",
+  "browser": "build/frontend/index.js",
   "types": "build/backend/index.d.ts",
   "files": [
     "build/**/*"
@@ -29,6 +29,5 @@
   "keywords": [],
   "dependencies": {
     "zod": "3.25.76"
-  },
-  "module": "build/frontend/index.mjs"
+  }
 }

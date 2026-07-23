@@ -288,9 +288,9 @@ export declare namespace UpdateExternalSquadCommand {
             updatedAt: z.ZodEffects<z.ZodString, Date, string>;
         }, "strip", z.ZodTypeAny, {
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];
@@ -331,9 +331,9 @@ export declare namespace UpdateExternalSquadCommand {
             subpageConfigUuid: string | null;
         }, {
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];
@@ -376,9 +376,9 @@ export declare namespace UpdateExternalSquadCommand {
     }, "strip", z.ZodTypeAny, {
         response: {
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];
@@ -421,9 +421,9 @@ export declare namespace UpdateExternalSquadCommand {
     }, {
         response: {
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];

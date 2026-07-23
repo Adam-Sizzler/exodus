@@ -18,6 +18,8 @@ exports.BANDWIDTH_STATS_ROUTES = {
         GET_REALTIME: 'realtime',
         // GET /bandwidth-stats/nodes/:nodeUuid/users –– Nodes -> Management -> Show usage
         GET_USERS: (uuid) => `${uuid}/users`,
+        // POST /bandwidth-stats/nodes/users –– Nodes -> Custom Graphs
+        GET_USERS_BY_NODES: 'users',
     },
     USERS: {
         // GET /bandwidth-stats/users/:userUuid –– Users -> User -> Show Usage

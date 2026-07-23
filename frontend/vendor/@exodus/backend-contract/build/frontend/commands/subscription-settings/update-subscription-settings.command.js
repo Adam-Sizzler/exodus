@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateSubscriptionSettingsCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var UpdateSubscriptionSettingsCommand;
 (function (UpdateSubscriptionSettingsCommand) {
     UpdateSubscriptionSettingsCommand.url = api_1.REST_API.SUBSCRIPTION_SETTINGS.UPDATE;
     UpdateSubscriptionSettingsCommand.TSQ_url = UpdateSubscriptionSettingsCommand.url;
-    UpdateSubscriptionSettingsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_SETTINGS_ROUTES.UPDATE, 'patch', 'Update subscription settings');
+    UpdateSubscriptionSettingsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_SETTINGS_ROUTES.UPDATE, 'patch', 'Update subscription settings', { scope: 'update', kind: 'write' });
     UpdateSubscriptionSettingsCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
         profileTitle: zod_1.z.optional(zod_1.z.string()),

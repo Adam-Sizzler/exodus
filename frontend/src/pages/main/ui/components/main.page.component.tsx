@@ -14,8 +14,8 @@ import {
     TimelineBlockRenderer
 } from '@widgets/main'
 import { useAppConfig, useAppConfigStoreActions, useCurrentLang } from '@entities/app-config-store'
+import { ExodusLogo, Page } from '@shared/ui'
 import { LanguagePicker } from '@shared/ui/language-picker/language-picker.shared'
-import { Page, ExodusLogo } from '@shared/ui'
 
 interface IMainPageComponentProps {
     isMobile: boolean
@@ -83,7 +83,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
                                     }}
                                 />
                             ) : (
-                                <ExodusLogo c="cyan" size={32} />
+                                <ExodusLogo size={32} />
                             )}
                             <Title
                                 c={hasCustomLogo ? 'white' : 'cyan'}

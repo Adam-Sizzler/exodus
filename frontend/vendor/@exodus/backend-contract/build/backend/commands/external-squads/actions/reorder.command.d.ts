@@ -244,9 +244,9 @@ export declare namespace ReorderExternalSquadCommand {
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -287,9 +287,9 @@ export declare namespace ReorderExternalSquadCommand {
                 subpageConfigUuid: string | null;
             }, {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -333,9 +333,9 @@ export declare namespace ReorderExternalSquadCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -379,9 +379,9 @@ export declare namespace ReorderExternalSquadCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -427,9 +427,9 @@ export declare namespace ReorderExternalSquadCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];
@@ -475,9 +475,9 @@ export declare namespace ReorderExternalSquadCommand {
             total: number;
             externalSquads: {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 customRemarks: {
                     expiredUsers: string[];

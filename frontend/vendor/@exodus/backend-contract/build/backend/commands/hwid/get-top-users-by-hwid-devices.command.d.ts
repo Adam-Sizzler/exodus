@@ -23,29 +23,29 @@ export declare namespace GetTopUsersByHwidDevicesCommand {
                 devicesCount: z.ZodNumber;
             }, "strip", z.ZodTypeAny, {
                 username: string;
-                id: number;
                 userUuid: string;
+                id: number;
                 devicesCount: number;
             }, {
                 username: string;
-                id: number;
                 userUuid: string;
+                id: number;
                 devicesCount: number;
             }>, "many">;
             total: z.ZodNumber;
         }, "strip", z.ZodTypeAny, {
             users: {
                 username: string;
-                id: number;
                 userUuid: string;
+                id: number;
                 devicesCount: number;
             }[];
             total: number;
         }, {
             users: {
                 username: string;
-                id: number;
                 userUuid: string;
+                id: number;
                 devicesCount: number;
             }[];
             total: number;
@@ -54,8 +54,8 @@ export declare namespace GetTopUsersByHwidDevicesCommand {
         response: {
             users: {
                 username: string;
-                id: number;
                 userUuid: string;
+                id: number;
                 devicesCount: number;
             }[];
             total: number;
@@ -64,8 +64,8 @@ export declare namespace GetTopUsersByHwidDevicesCommand {
         response: {
             users: {
                 username: string;
-                id: number;
                 userUuid: string;
+                id: number;
                 devicesCount: number;
             }[];
             total: number;

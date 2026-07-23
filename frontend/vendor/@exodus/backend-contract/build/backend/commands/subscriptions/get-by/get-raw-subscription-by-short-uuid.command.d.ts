@@ -38,6 +38,7 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     readonly DAY: "DAY";
                     readonly WEEK: "WEEK";
                     readonly MONTH: "MONTH";
+                    readonly MONTH_ROLLING: "MONTH_ROLLING";
                 }>>;
                 expireAt: z.ZodEffects<z.ZodString, Date, string>;
                 telegramId: z.ZodNullable<z.ZodNumber>;
@@ -51,8 +52,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 ssPassword: z.ZodString;
                 lastTriggeredThreshold: z.ZodDefault<z.ZodNumber>;
                 subRevokedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                subLastUserAgent: z.ZodNullable<z.ZodString>;
-                subLastOpenedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
                 lastTrafficResetAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
                 createdAt: z.ZodEffects<z.ZodString, Date, string>;
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
@@ -90,16 +89,16 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
             }, "strip", z.ZodTypeAny, {
                 status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
                 uuid: string;
+                expireAt: Date;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string | null;
                 username: string;
-                id: number;
                 tag: string | null;
+                id: number;
                 shortUuid: string;
                 trafficLimitBytes: number;
-                description: string | null;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
-                expireAt: Date;
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 telegramId: number | null;
                 email: string | null;
                 hwidDeviceLimit: number | null;
@@ -109,8 +108,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 ssPassword: string;
                 lastTriggeredThreshold: number;
                 subRevokedAt: Date | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: Date | null;
                 lastTrafficResetAt: Date | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -126,14 +123,14 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 };
             }, {
                 uuid: string;
+                expireAt: string;
                 createdAt: string;
                 updatedAt: string;
-                username: string;
-                id: number;
-                tag: string | null;
-                shortUuid: string;
                 description: string | null;
-                expireAt: string;
+                username: string;
+                tag: string | null;
+                id: number;
+                shortUuid: string;
                 telegramId: number | null;
                 email: string | null;
                 hwidDeviceLimit: number | null;
@@ -142,8 +139,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 vlessUuid: string;
                 ssPassword: string;
                 subRevokedAt: string | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: string | null;
                 lastTrafficResetAt: string | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -159,7 +154,7 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 };
                 status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
                 trafficLimitBytes?: number | undefined;
-                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
                 lastTriggeredThreshold?: number | undefined;
             }>;
             convertedUserInfo: z.ZodObject<{
@@ -167,112 +162,383 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 trafficLimit: z.ZodString;
                 trafficUsed: z.ZodString;
                 lifetimeTrafficUsed: z.ZodString;
-                isHwidLimited: z.ZodBoolean;
+                hwidCheckup: z.ZodNullable<z.ZodObject<{
+                    subscriptionAllowed: z.ZodBoolean;
+                    maxDeviceReached: z.ZodBoolean;
+                    hwidNotSupported: z.ZodBoolean;
+                    limitBypassed: z.ZodBoolean;
+                }, "strip", z.ZodTypeAny, {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                }, {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                }>>;
             }, "strip", z.ZodTypeAny, {
                 daysLeft: number;
                 trafficUsed: string;
                 trafficLimit: string;
                 lifetimeTrafficUsed: string;
-                isHwidLimited: boolean;
+                hwidCheckup: {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                } | null;
             }, {
                 daysLeft: number;
                 trafficUsed: string;
                 trafficLimit: string;
                 lifetimeTrafficUsed: string;
-                isHwidLimited: boolean;
+                hwidCheckup: {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                } | null;
             }>;
             headers: z.ZodRecord<z.ZodString, z.ZodOptional<z.ZodString>>;
-            rawHosts: z.ZodArray<z.ZodObject<{
-                address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                alpn: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                fingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                host: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                network: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                password: z.ZodObject<{
-                    ssPassword: z.ZodString;
-                    trojanPassword: z.ZodString;
-                    vlessPassword: z.ZodString;
+            resolvedProxyConfigs: z.ZodArray<z.ZodObject<{
+                finalRemark: z.ZodString;
+                address: z.ZodString;
+                port: z.ZodNumber;
+                protocol: z.ZodEnum<["vless", "trojan", "shadowsocks", "hysteria"]>;
+                protocolOptions: z.ZodUnion<[z.ZodObject<{
+                    encryption: z.ZodString;
+                    id: z.ZodString;
+                    flow: z.ZodEnum<["", "xtls-rprx-vision", "xtls-rprx-vision-udp443"]>;
                 }, "strip", z.ZodTypeAny, {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
                 }, {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                }>;
-                path: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                publicKey: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                port: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-                protocol: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                remark: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                shortId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                sni: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                spiderX: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                tls: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                rawSettings: z.ZodOptional<z.ZodNullable<z.ZodObject<{
-                    headerType: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                    request: z.ZodOptional<z.ZodNullable<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>>;
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                }>, z.ZodObject<{
+                    password: z.ZodString;
                 }, "strip", z.ZodTypeAny, {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
+                    password: string;
                 }, {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                }>>>;
-                additionalParams: z.ZodOptional<z.ZodNullable<z.ZodObject<{
-                    mode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                    heartbeatPeriod: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+                    password: string;
+                }>, z.ZodObject<{
+                    method: z.ZodString;
+                    password: z.ZodString;
+                    uot: z.ZodBoolean;
+                    uotVersion: z.ZodNumber;
                 }, "strip", z.ZodTypeAny, {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
                 }, {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                }>>>;
-                xHttpExtraParams: z.ZodOptional<z.ZodNullable<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>>;
-                muxParams: z.ZodOptional<z.ZodNullable<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>>;
-                sockoptParams: z.ZodOptional<z.ZodNullable<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>>;
-                serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                flow: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                allowInsecure: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-                shuffleHost: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-                mihomoX25519: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-                mldsa65Verify: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                encryption: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-                protocolOptions: z.ZodOptional<z.ZodNullable<z.ZodObject<{
-                    ss: z.ZodOptional<z.ZodNullable<z.ZodObject<{
-                        method: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                }>, z.ZodObject<{
+                    version: z.ZodNumber;
+                }, "strip", z.ZodTypeAny, {
+                    version: number;
+                }, {
+                    version: number;
+                }>]>;
+                transport: z.ZodEnum<["tcp", "xhttp", "ws", "httpupgrade", "grpc", "kcp", "hysteria"]>;
+                transportOptions: z.ZodUnion<[z.ZodObject<{
+                    header: z.ZodNullable<z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
+                        type: z.ZodLiteral<"none">;
                     }, "strip", z.ZodTypeAny, {
-                        method?: string | null | undefined;
+                        type: "none";
                     }, {
-                        method?: string | null | undefined;
-                    }>>>;
+                        type: "none";
+                    }>, z.ZodObject<{
+                        type: z.ZodLiteral<"http">;
+                        request: z.ZodOptional<z.ZodObject<{
+                            version: z.ZodOptional<z.ZodString>;
+                            method: z.ZodOptional<z.ZodString>;
+                            path: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+                            headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+                        }, "strip", z.ZodTypeAny, {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        }, {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        }>>;
+                        response: z.ZodOptional<z.ZodObject<{
+                            version: z.ZodOptional<z.ZodString>;
+                            status: z.ZodOptional<z.ZodString>;
+                            reason: z.ZodOptional<z.ZodString>;
+                            headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+                        }, "strip", z.ZodTypeAny, {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        }, {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        }>>;
+                    }, "strip", z.ZodTypeAny, {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    }, {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    }>]>>;
                 }, "strip", z.ZodTypeAny, {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
                 }, {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                }>>>;
-                dbData: z.ZodOptional<z.ZodObject<{
-                    rawInbound: z.ZodNullable<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>;
-                    inboundTag: z.ZodString;
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                }>, z.ZodObject<{
+                    path: z.ZodNullable<z.ZodString>;
+                    host: z.ZodNullable<z.ZodString>;
+                    mode: z.ZodEnum<["auto", "packet-up", "stream-up", "stream-one"]>;
+                    extra: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+                }, "strip", z.ZodTypeAny, {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                }, {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                }>, z.ZodObject<{
+                    path: z.ZodNullable<z.ZodString>;
+                    host: z.ZodNullable<z.ZodString>;
+                    headers: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>;
+                    heartbeatPeriod: z.ZodNullable<z.ZodNumber>;
+                }, "strip", z.ZodTypeAny, {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                }, {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                }>, z.ZodObject<{
+                    path: z.ZodNullable<z.ZodString>;
+                    host: z.ZodNullable<z.ZodString>;
+                    headers: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>;
+                }, "strip", z.ZodTypeAny, {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                }, {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                }>, z.ZodObject<{
+                    authority: z.ZodNullable<z.ZodString>;
+                    serviceName: z.ZodNullable<z.ZodString>;
+                    multiMode: z.ZodBoolean;
+                }, "strip", z.ZodTypeAny, {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                }, {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                }>, z.ZodObject<{
+                    clientMtu: z.ZodNumber;
+                    clientTti: z.ZodNumber;
+                    congestion: z.ZodBoolean;
+                }, "strip", z.ZodTypeAny, {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                }, {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                }>, z.ZodObject<{
+                    version: z.ZodNumber;
+                    auth: z.ZodString;
+                }, "strip", z.ZodTypeAny, {
+                    auth: string;
+                    version: number;
+                }, {
+                    auth: string;
+                    version: number;
+                }>]>;
+                security: z.ZodEnum<["tls", "reality", "none"]>;
+                securityOptions: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+                    pinnedPeerCertSha256: z.ZodNullable<z.ZodString>;
+                    verifyPeerCertByName: z.ZodNullable<z.ZodString>;
+                    alpn: z.ZodNullable<z.ZodString>;
+                    enableSessionResumption: z.ZodBoolean;
+                    fingerprint: z.ZodNullable<z.ZodString>;
+                    serverName: z.ZodNullable<z.ZodString>;
+                    echConfigList: z.ZodNullable<z.ZodString>;
+                    echForceQuery: z.ZodNullable<z.ZodString>;
+                }, "strip", z.ZodTypeAny, {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                }, {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                }>, z.ZodObject<{
+                    fingerprint: z.ZodString;
+                    publicKey: z.ZodString;
+                    shortId: z.ZodNullable<z.ZodString>;
+                    serverName: z.ZodString;
+                    spiderX: z.ZodNullable<z.ZodString>;
+                    mldsa65Verify: z.ZodNullable<z.ZodString>;
+                }, "strip", z.ZodTypeAny, {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
+                }, {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
+                }>]>>;
+                streamOverrides: z.ZodObject<{
+                    finalMask: z.ZodNullable<z.ZodUnknown>;
+                    sockopt: z.ZodNullable<z.ZodUnknown>;
+                }, "strip", z.ZodTypeAny, {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                }, {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                }>;
+                mux: z.ZodNullable<z.ZodUnknown>;
+                clientOverrides: z.ZodObject<{
+                    shuffleHost: z.ZodBoolean;
+                    mihomoX25519: z.ZodBoolean;
+                    mihomoIpVersion: z.ZodNullable<z.ZodNativeEnum<{
+                        readonly DUAL: "dual";
+                        readonly IPV4: "ipv4";
+                        readonly IPV6: "ipv6";
+                        readonly IPV4_PREFER: "ipv4-prefer";
+                        readonly IPV6_PREFER: "ipv6-prefer";
+                    }>>;
+                    serverDescription: z.ZodNullable<z.ZodString>;
+                    xrayJsonTemplate: z.ZodNullable<z.ZodUnknown>;
+                }, "strip", z.ZodTypeAny, {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                }, {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                }>;
+                metadata: z.ZodObject<{
                     uuid: z.ZodString;
+                    tags: z.ZodArray<z.ZodString, "many">;
+                    excludeFromSubscriptionTypes: z.ZodArray<z.ZodNativeEnum<{
+                        readonly XRAY_JSON: "XRAY_JSON";
+                        readonly XRAY_BASE64: "XRAY_BASE64";
+                        readonly MIHOMO: "MIHOMO";
+                        readonly STASH: "STASH";
+                        readonly CLASH: "CLASH";
+                        readonly SINGBOX: "SINGBOX";
+                    }>, "many">;
+                    inboundTag: z.ZodString;
                     configProfileUuid: z.ZodNullable<z.ZodString>;
                     configProfileInboundUuid: z.ZodNullable<z.ZodString>;
                     isDisabled: z.ZodBoolean;
+                    isHidden: z.ZodBoolean;
                     viewPosition: z.ZodNumber;
                     remark: z.ZodString;
-                    isHidden: z.ZodBoolean;
-                    tag: z.ZodNullable<z.ZodString>;
                     vlessRouteId: z.ZodNullable<z.ZodNumber>;
+                    rawInbound: z.ZodNullable<z.ZodUnknown>;
                 }, "strip", z.ZodTypeAny, {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -280,11 +546,12 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
                 }, {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -292,56 +559,14 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
-                }>>;
-                xrayJsonTemplate: z.ZodOptional<z.ZodNullable<z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>>>;
+                    rawInbound?: unknown;
+                }>;
             }, "strip", z.ZodTypeAny, {
-                password: {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                };
-                path?: string | null | undefined;
-                network?: string | null | undefined;
-                port?: number | null | undefined;
-                remark?: string | null | undefined;
-                address?: string | null | undefined;
-                sni?: string | null | undefined;
-                host?: string | null | undefined;
-                alpn?: string | null | undefined;
-                fingerprint?: string | null | undefined;
-                xHttpExtraParams?: {} | null | undefined;
-                muxParams?: {} | null | undefined;
-                sockoptParams?: {} | null | undefined;
-                serverDescription?: string | null | undefined;
-                allowInsecure?: boolean | null | undefined;
-                shuffleHost?: boolean | null | undefined;
-                mihomoX25519?: boolean | null | undefined;
-                publicKey?: string | null | undefined;
-                protocol?: string | null | undefined;
-                shortId?: string | null | undefined;
-                spiderX?: string | null | undefined;
-                tls?: string | null | undefined;
-                rawSettings?: {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                } | null | undefined;
-                additionalParams?: {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                } | null | undefined;
-                flow?: string | null | undefined;
-                mldsa65Verify?: string | null | undefined;
-                encryption?: string | null | undefined;
-                protocolOptions?: {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                } | null | undefined;
-                dbData?: {
+                metadata: {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -349,56 +574,107 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
+                };
+                security: "none" | "tls" | "reality";
+                port: number;
+                address: string;
+                protocol: "vless" | "trojan" | "shadowsocks" | "hysteria";
+                protocolOptions: {
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                } | {
+                    password: string;
+                } | {
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                } | {
+                    version: number;
+                };
+                transport: "hysteria" | "tcp" | "xhttp" | "ws" | "httpupgrade" | "grpc" | "kcp";
+                transportOptions: {
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                } | {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                } | {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                } | {
+                    auth: string;
+                    version: number;
+                };
+                finalRemark: string;
+                streamOverrides: {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                };
+                clientOverrides: {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                };
+                securityOptions?: {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                } | {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
                 } | undefined;
-                xrayJsonTemplate?: {} | null | undefined;
+                mux?: unknown;
             }, {
-                password: {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                };
-                path?: string | null | undefined;
-                network?: string | null | undefined;
-                port?: number | null | undefined;
-                remark?: string | null | undefined;
-                address?: string | null | undefined;
-                sni?: string | null | undefined;
-                host?: string | null | undefined;
-                alpn?: string | null | undefined;
-                fingerprint?: string | null | undefined;
-                xHttpExtraParams?: {} | null | undefined;
-                muxParams?: {} | null | undefined;
-                sockoptParams?: {} | null | undefined;
-                serverDescription?: string | null | undefined;
-                allowInsecure?: boolean | null | undefined;
-                shuffleHost?: boolean | null | undefined;
-                mihomoX25519?: boolean | null | undefined;
-                publicKey?: string | null | undefined;
-                protocol?: string | null | undefined;
-                shortId?: string | null | undefined;
-                spiderX?: string | null | undefined;
-                tls?: string | null | undefined;
-                rawSettings?: {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                } | null | undefined;
-                additionalParams?: {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                } | null | undefined;
-                flow?: string | null | undefined;
-                mldsa65Verify?: string | null | undefined;
-                encryption?: string | null | undefined;
-                protocolOptions?: {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                } | null | undefined;
-                dbData?: {
+                metadata: {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -406,24 +682,118 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
+                };
+                security: "none" | "tls" | "reality";
+                port: number;
+                address: string;
+                protocol: "vless" | "trojan" | "shadowsocks" | "hysteria";
+                protocolOptions: {
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                } | {
+                    password: string;
+                } | {
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                } | {
+                    version: number;
+                };
+                transport: "hysteria" | "tcp" | "xhttp" | "ws" | "httpupgrade" | "grpc" | "kcp";
+                transportOptions: {
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                } | {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                } | {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                } | {
+                    auth: string;
+                    version: number;
+                };
+                finalRemark: string;
+                streamOverrides: {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                };
+                clientOverrides: {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                };
+                securityOptions?: {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                } | {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
                 } | undefined;
-                xrayJsonTemplate?: {} | null | undefined;
+                mux?: unknown;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             user: {
                 status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
                 uuid: string;
+                expireAt: Date;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string | null;
                 username: string;
-                id: number;
                 tag: string | null;
+                id: number;
                 shortUuid: string;
                 trafficLimitBytes: number;
-                description: string | null;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
-                expireAt: Date;
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 telegramId: number | null;
                 email: string | null;
                 hwidDeviceLimit: number | null;
@@ -433,8 +803,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 ssPassword: string;
                 lastTriggeredThreshold: number;
                 subRevokedAt: Date | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: Date | null;
                 lastTrafficResetAt: Date | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -455,55 +823,17 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 trafficUsed: string;
                 trafficLimit: string;
                 lifetimeTrafficUsed: string;
-                isHwidLimited: boolean;
+                hwidCheckup: {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                } | null;
             };
-            rawHosts: {
-                password: {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                };
-                path?: string | null | undefined;
-                network?: string | null | undefined;
-                port?: number | null | undefined;
-                remark?: string | null | undefined;
-                address?: string | null | undefined;
-                sni?: string | null | undefined;
-                host?: string | null | undefined;
-                alpn?: string | null | undefined;
-                fingerprint?: string | null | undefined;
-                xHttpExtraParams?: {} | null | undefined;
-                muxParams?: {} | null | undefined;
-                sockoptParams?: {} | null | undefined;
-                serverDescription?: string | null | undefined;
-                allowInsecure?: boolean | null | undefined;
-                shuffleHost?: boolean | null | undefined;
-                mihomoX25519?: boolean | null | undefined;
-                publicKey?: string | null | undefined;
-                protocol?: string | null | undefined;
-                shortId?: string | null | undefined;
-                spiderX?: string | null | undefined;
-                tls?: string | null | undefined;
-                rawSettings?: {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                } | null | undefined;
-                additionalParams?: {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                } | null | undefined;
-                flow?: string | null | undefined;
-                mldsa65Verify?: string | null | undefined;
-                encryption?: string | null | undefined;
-                protocolOptions?: {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                } | null | undefined;
-                dbData?: {
+            resolvedProxyConfigs: {
+                metadata: {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -511,21 +841,115 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
+                };
+                security: "none" | "tls" | "reality";
+                port: number;
+                address: string;
+                protocol: "vless" | "trojan" | "shadowsocks" | "hysteria";
+                protocolOptions: {
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                } | {
+                    password: string;
+                } | {
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                } | {
+                    version: number;
+                };
+                transport: "hysteria" | "tcp" | "xhttp" | "ws" | "httpupgrade" | "grpc" | "kcp";
+                transportOptions: {
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                } | {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                } | {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                } | {
+                    auth: string;
+                    version: number;
+                };
+                finalRemark: string;
+                streamOverrides: {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                };
+                clientOverrides: {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                };
+                securityOptions?: {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                } | {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
                 } | undefined;
-                xrayJsonTemplate?: {} | null | undefined;
+                mux?: unknown;
             }[];
         }, {
             user: {
                 uuid: string;
+                expireAt: string;
                 createdAt: string;
                 updatedAt: string;
-                username: string;
-                id: number;
-                tag: string | null;
-                shortUuid: string;
                 description: string | null;
-                expireAt: string;
+                username: string;
+                tag: string | null;
+                id: number;
+                shortUuid: string;
                 telegramId: number | null;
                 email: string | null;
                 hwidDeviceLimit: number | null;
@@ -534,8 +958,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 vlessUuid: string;
                 ssPassword: string;
                 subRevokedAt: string | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: string | null;
                 lastTrafficResetAt: string | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -551,7 +973,7 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 };
                 status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
                 trafficLimitBytes?: number | undefined;
-                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
                 lastTriggeredThreshold?: number | undefined;
             };
             headers: Record<string, string | undefined>;
@@ -560,55 +982,17 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 trafficUsed: string;
                 trafficLimit: string;
                 lifetimeTrafficUsed: string;
-                isHwidLimited: boolean;
+                hwidCheckup: {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                } | null;
             };
-            rawHosts: {
-                password: {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                };
-                path?: string | null | undefined;
-                network?: string | null | undefined;
-                port?: number | null | undefined;
-                remark?: string | null | undefined;
-                address?: string | null | undefined;
-                sni?: string | null | undefined;
-                host?: string | null | undefined;
-                alpn?: string | null | undefined;
-                fingerprint?: string | null | undefined;
-                xHttpExtraParams?: {} | null | undefined;
-                muxParams?: {} | null | undefined;
-                sockoptParams?: {} | null | undefined;
-                serverDescription?: string | null | undefined;
-                allowInsecure?: boolean | null | undefined;
-                shuffleHost?: boolean | null | undefined;
-                mihomoX25519?: boolean | null | undefined;
-                publicKey?: string | null | undefined;
-                protocol?: string | null | undefined;
-                shortId?: string | null | undefined;
-                spiderX?: string | null | undefined;
-                tls?: string | null | undefined;
-                rawSettings?: {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                } | null | undefined;
-                additionalParams?: {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                } | null | undefined;
-                flow?: string | null | undefined;
-                mldsa65Verify?: string | null | undefined;
-                encryption?: string | null | undefined;
-                protocolOptions?: {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                } | null | undefined;
-                dbData?: {
+            resolvedProxyConfigs: {
+                metadata: {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -616,9 +1000,103 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
+                };
+                security: "none" | "tls" | "reality";
+                port: number;
+                address: string;
+                protocol: "vless" | "trojan" | "shadowsocks" | "hysteria";
+                protocolOptions: {
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                } | {
+                    password: string;
+                } | {
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                } | {
+                    version: number;
+                };
+                transport: "hysteria" | "tcp" | "xhttp" | "ws" | "httpupgrade" | "grpc" | "kcp";
+                transportOptions: {
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                } | {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                } | {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                } | {
+                    auth: string;
+                    version: number;
+                };
+                finalRemark: string;
+                streamOverrides: {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                };
+                clientOverrides: {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                };
+                securityOptions?: {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                } | {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
                 } | undefined;
-                xrayJsonTemplate?: {} | null | undefined;
+                mux?: unknown;
             }[];
         }>;
     }, "strip", z.ZodTypeAny, {
@@ -626,16 +1104,16 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
             user: {
                 status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
                 uuid: string;
+                expireAt: Date;
                 createdAt: Date;
                 updatedAt: Date;
+                description: string | null;
                 username: string;
-                id: number;
                 tag: string | null;
+                id: number;
                 shortUuid: string;
                 trafficLimitBytes: number;
-                description: string | null;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
-                expireAt: Date;
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 telegramId: number | null;
                 email: string | null;
                 hwidDeviceLimit: number | null;
@@ -645,8 +1123,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 ssPassword: string;
                 lastTriggeredThreshold: number;
                 subRevokedAt: Date | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: Date | null;
                 lastTrafficResetAt: Date | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -667,55 +1143,17 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 trafficUsed: string;
                 trafficLimit: string;
                 lifetimeTrafficUsed: string;
-                isHwidLimited: boolean;
+                hwidCheckup: {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                } | null;
             };
-            rawHosts: {
-                password: {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                };
-                path?: string | null | undefined;
-                network?: string | null | undefined;
-                port?: number | null | undefined;
-                remark?: string | null | undefined;
-                address?: string | null | undefined;
-                sni?: string | null | undefined;
-                host?: string | null | undefined;
-                alpn?: string | null | undefined;
-                fingerprint?: string | null | undefined;
-                xHttpExtraParams?: {} | null | undefined;
-                muxParams?: {} | null | undefined;
-                sockoptParams?: {} | null | undefined;
-                serverDescription?: string | null | undefined;
-                allowInsecure?: boolean | null | undefined;
-                shuffleHost?: boolean | null | undefined;
-                mihomoX25519?: boolean | null | undefined;
-                publicKey?: string | null | undefined;
-                protocol?: string | null | undefined;
-                shortId?: string | null | undefined;
-                spiderX?: string | null | undefined;
-                tls?: string | null | undefined;
-                rawSettings?: {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                } | null | undefined;
-                additionalParams?: {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                } | null | undefined;
-                flow?: string | null | undefined;
-                mldsa65Verify?: string | null | undefined;
-                encryption?: string | null | undefined;
-                protocolOptions?: {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                } | null | undefined;
-                dbData?: {
+            resolvedProxyConfigs: {
+                metadata: {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -723,23 +1161,117 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
+                };
+                security: "none" | "tls" | "reality";
+                port: number;
+                address: string;
+                protocol: "vless" | "trojan" | "shadowsocks" | "hysteria";
+                protocolOptions: {
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                } | {
+                    password: string;
+                } | {
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                } | {
+                    version: number;
+                };
+                transport: "hysteria" | "tcp" | "xhttp" | "ws" | "httpupgrade" | "grpc" | "kcp";
+                transportOptions: {
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                } | {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                } | {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                } | {
+                    auth: string;
+                    version: number;
+                };
+                finalRemark: string;
+                streamOverrides: {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                };
+                clientOverrides: {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                };
+                securityOptions?: {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                } | {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
                 } | undefined;
-                xrayJsonTemplate?: {} | null | undefined;
+                mux?: unknown;
             }[];
         };
     }, {
         response: {
             user: {
                 uuid: string;
+                expireAt: string;
                 createdAt: string;
                 updatedAt: string;
-                username: string;
-                id: number;
-                tag: string | null;
-                shortUuid: string;
                 description: string | null;
-                expireAt: string;
+                username: string;
+                tag: string | null;
+                id: number;
+                shortUuid: string;
                 telegramId: number | null;
                 email: string | null;
                 hwidDeviceLimit: number | null;
@@ -748,8 +1280,6 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 vlessUuid: string;
                 ssPassword: string;
                 subRevokedAt: string | null;
-                subLastUserAgent: string | null;
-                subLastOpenedAt: string | null;
                 lastTrafficResetAt: string | null;
                 subscriptionUrl: string;
                 activeInternalSquads: {
@@ -765,7 +1295,7 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 };
                 status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
                 trafficLimitBytes?: number | undefined;
-                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
                 lastTriggeredThreshold?: number | undefined;
             };
             headers: Record<string, string | undefined>;
@@ -774,55 +1304,17 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                 trafficUsed: string;
                 trafficLimit: string;
                 lifetimeTrafficUsed: string;
-                isHwidLimited: boolean;
+                hwidCheckup: {
+                    subscriptionAllowed: boolean;
+                    maxDeviceReached: boolean;
+                    hwidNotSupported: boolean;
+                    limitBypassed: boolean;
+                } | null;
             };
-            rawHosts: {
-                password: {
-                    trojanPassword: string;
-                    ssPassword: string;
-                    vlessPassword: string;
-                };
-                path?: string | null | undefined;
-                network?: string | null | undefined;
-                port?: number | null | undefined;
-                remark?: string | null | undefined;
-                address?: string | null | undefined;
-                sni?: string | null | undefined;
-                host?: string | null | undefined;
-                alpn?: string | null | undefined;
-                fingerprint?: string | null | undefined;
-                xHttpExtraParams?: {} | null | undefined;
-                muxParams?: {} | null | undefined;
-                sockoptParams?: {} | null | undefined;
-                serverDescription?: string | null | undefined;
-                allowInsecure?: boolean | null | undefined;
-                shuffleHost?: boolean | null | undefined;
-                mihomoX25519?: boolean | null | undefined;
-                publicKey?: string | null | undefined;
-                protocol?: string | null | undefined;
-                shortId?: string | null | undefined;
-                spiderX?: string | null | undefined;
-                tls?: string | null | undefined;
-                rawSettings?: {
-                    headerType?: string | null | undefined;
-                    request?: {} | null | undefined;
-                } | null | undefined;
-                additionalParams?: {
-                    mode?: string | null | undefined;
-                    heartbeatPeriod?: number | null | undefined;
-                } | null | undefined;
-                flow?: string | null | undefined;
-                mldsa65Verify?: string | null | undefined;
-                encryption?: string | null | undefined;
-                protocolOptions?: {
-                    ss?: {
-                        method?: string | null | undefined;
-                    } | null | undefined;
-                } | null | undefined;
-                dbData?: {
+            resolvedProxyConfigs: {
+                metadata: {
+                    tags: string[];
                     uuid: string;
-                    tag: string | null;
-                    rawInbound: {} | null;
                     viewPosition: number;
                     remark: string;
                     isDisabled: boolean;
@@ -830,9 +1322,103 @@ export declare namespace GetRawSubscriptionByShortUuidCommand {
                     configProfileInboundUuid: string | null;
                     isHidden: boolean;
                     vlessRouteId: number | null;
+                    excludeFromSubscriptionTypes: ("STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64")[];
                     inboundTag: string;
+                    rawInbound?: unknown;
+                };
+                security: "none" | "tls" | "reality";
+                port: number;
+                address: string;
+                protocol: "vless" | "trojan" | "shadowsocks" | "hysteria";
+                protocolOptions: {
+                    id: string;
+                    encryption: string;
+                    flow: "" | "xtls-rprx-vision" | "xtls-rprx-vision-udp443";
+                } | {
+                    password: string;
+                } | {
+                    method: string;
+                    password: string;
+                    uot: boolean;
+                    uotVersion: number;
+                } | {
+                    version: number;
+                };
+                transport: "hysteria" | "tcp" | "xhttp" | "ws" | "httpupgrade" | "grpc" | "kcp";
+                transportOptions: {
+                    header: {
+                        type: "none";
+                    } | {
+                        type: "http";
+                        response?: {
+                            status?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                            reason?: string | undefined;
+                        } | undefined;
+                        request?: {
+                            path?: string[] | undefined;
+                            method?: string | undefined;
+                            headers?: Record<string, unknown> | undefined;
+                            version?: string | undefined;
+                        } | undefined;
+                    } | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    mode: "auto" | "packet-up" | "stream-up" | "stream-one";
+                    extra: Record<string, unknown> | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                    heartbeatPeriod: number | null;
+                } | {
+                    path: string | null;
+                    host: string | null;
+                    headers: Record<string, string> | null;
+                } | {
+                    authority: string | null;
+                    serviceName: string | null;
+                    multiMode: boolean;
+                } | {
+                    clientMtu: number;
+                    clientTti: number;
+                    congestion: boolean;
+                } | {
+                    auth: string;
+                    version: number;
+                };
+                finalRemark: string;
+                streamOverrides: {
+                    finalMask?: unknown;
+                    sockopt?: unknown;
+                };
+                clientOverrides: {
+                    serverDescription: string | null;
+                    shuffleHost: boolean;
+                    mihomoX25519: boolean;
+                    mihomoIpVersion: "dual" | "ipv4" | "ipv6" | "ipv4-prefer" | "ipv6-prefer" | null;
+                    xrayJsonTemplate?: unknown;
+                };
+                securityOptions?: {
+                    alpn: string | null;
+                    fingerprint: string | null;
+                    pinnedPeerCertSha256: string | null;
+                    verifyPeerCertByName: string | null;
+                    enableSessionResumption: boolean;
+                    serverName: string | null;
+                    echConfigList: string | null;
+                    echForceQuery: string | null;
+                } | {
+                    fingerprint: string;
+                    serverName: string;
+                    publicKey: string;
+                    shortId: string | null;
+                    spiderX: string | null;
+                    mldsa65Verify: string | null;
                 } | undefined;
-                xrayJsonTemplate?: {} | null | undefined;
+                mux?: unknown;
             }[];
         };
     }>;

@@ -7,6 +7,7 @@ exports.USERS_ROUTES = {
     CREATE: '',
     UPDATE: '',
     GET: '',
+    STREAM: 'stream',
     DELETE: (uuid) => `${uuid}`,
     GET_BY_UUID: (uuid) => `${uuid}`,
     ACCESSIBLE_NODES: (uuid) => `${uuid}/accessible-nodes`,
@@ -43,4 +44,5 @@ exports.USERS_ROUTES = {
     TAGS: {
         GET: 'tags',
     },
+    RESOLVE: 'resolve',
 };

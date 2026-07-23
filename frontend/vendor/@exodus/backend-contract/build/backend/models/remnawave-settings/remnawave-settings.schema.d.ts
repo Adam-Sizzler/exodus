@@ -1,0 +1,372 @@
+import { z } from 'zod';
+export declare const RemnawaveSettingsSchema: z.ZodObject<{
+    passkeySettings: z.ZodNullable<z.ZodObject<{
+        enabled: z.ZodBoolean;
+        rpId: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+        origin: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+    }, "strip", z.ZodTypeAny, {
+        enabled: boolean;
+        rpId: string | null;
+        origin: string | null;
+    }, {
+        enabled: boolean;
+        rpId: string | null;
+        origin: string | null;
+    }>>;
+    oauth2Settings: z.ZodNullable<z.ZodObject<{
+        github: z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            allowedEmails: z.ZodArray<z.ZodString, "many">;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        }>;
+        pocketid: z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            plainDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+            allowedEmails: z.ZodArray<z.ZodString, "many">;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            plainDomain: string | null;
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            plainDomain: string | null;
+        }>;
+        yandex: z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            allowedEmails: z.ZodArray<z.ZodString, "many">;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        }>;
+        keycloak: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodBoolean;
+            realm: z.ZodNullable<z.ZodString>;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+            keycloakDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+            allowedEmails: z.ZodArray<z.ZodString, "many">;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            realm: string | null;
+            frontendDomain: string | null;
+            keycloakDomain: string | null;
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            realm: string | null;
+            frontendDomain: string | null;
+            keycloakDomain: string | null;
+        }>>;
+        generic: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            withPkce: z.ZodBoolean;
+            authorizationUrl: z.ZodNullable<z.ZodString>;
+            tokenUrl: z.ZodNullable<z.ZodString>;
+            frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+            allowedEmails: z.ZodArray<z.ZodString, "many">;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        }, {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        }>>;
+        telegram: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            allowedIds: z.ZodArray<z.ZodString, "many">;
+            frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        telegram: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        };
+        github: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        pocketid: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            plainDomain: string | null;
+        };
+        yandex: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        keycloak: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            realm: string | null;
+            frontendDomain: string | null;
+            keycloakDomain: string | null;
+        };
+        generic: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        };
+    }, {
+        github: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        pocketid: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            plainDomain: string | null;
+        };
+        yandex: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        telegram?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        } | undefined;
+        keycloak?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            realm: string | null;
+            frontendDomain: string | null;
+            keycloakDomain: string | null;
+        } | undefined;
+        generic?: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        } | undefined;
+    }>>;
+    passwordSettings: z.ZodNullable<z.ZodObject<{
+        enabled: z.ZodBoolean;
+    }, "strip", z.ZodTypeAny, {
+        enabled: boolean;
+    }, {
+        enabled: boolean;
+    }>>;
+    brandingSettings: z.ZodNullable<z.ZodObject<{
+        title: z.ZodNullable<z.ZodString>;
+        logoUrl: z.ZodNullable<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        title: string | null;
+        logoUrl: string | null;
+    }, {
+        title: string | null;
+        logoUrl: string | null;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    passkeySettings: {
+        enabled: boolean;
+        rpId: string | null;
+        origin: string | null;
+    } | null;
+    oauth2Settings: {
+        telegram: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        };
+        github: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        pocketid: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            plainDomain: string | null;
+        };
+        yandex: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        keycloak: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            realm: string | null;
+            frontendDomain: string | null;
+            keycloakDomain: string | null;
+        };
+        generic: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        };
+    } | null;
+    passwordSettings: {
+        enabled: boolean;
+    } | null;
+    brandingSettings: {
+        title: string | null;
+        logoUrl: string | null;
+    } | null;
+}, {
+    passkeySettings: {
+        enabled: boolean;
+        rpId: string | null;
+        origin: string | null;
+    } | null;
+    oauth2Settings: {
+        github: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        pocketid: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            plainDomain: string | null;
+        };
+        yandex: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+        };
+        telegram?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        } | undefined;
+        keycloak?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            realm: string | null;
+            frontendDomain: string | null;
+            keycloakDomain: string | null;
+        } | undefined;
+        generic?: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        } | undefined;
+    } | null;
+    passwordSettings: {
+        enabled: boolean;
+    } | null;
+    brandingSettings: {
+        title: string | null;
+        logoUrl: string | null;
+    } | null;
+}>;
+export type TRemnawaveSettings = z.infer<typeof RemnawaveSettingsSchema>;
+//# sourceMappingURL=remnawave-settings.schema.d.ts.map

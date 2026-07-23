@@ -426,6 +426,16 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		return
 	}
 
+	if a.cfg.MarzbanLegacyDropRevokedSubscriptions {
+		if respMap, ok := subscriptionData["response"].(map[string]any); ok {
+			if revokedAt, exists := respMap["subRevokedAt"]; exists && revokedAt != nil {
+				logger.WithContext("RootService").Info("Marzban legacy subscription is revoked, dropping connection.")
+				closeConnection(w)
+				return
+			}
+		}
+	}
+
 	var subpageEnvelope subpageConfigByShortEnvelope
 	if err := json.Unmarshal(subpageEnvelopeRaw, &subpageEnvelope); err != nil {
 		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to parse subpage envelope: %v", err)
@@ -664,6 +674,14 @@ func writeSubscriptionResponse(w http.ResponseWriter, r *http.Request, headers h
 	for key, values := range headers {
 		for _, value := range values {
 			w.Header().Add(key, value)
+		}
+	}
+
+	if w.Header().Get("Content-Encoding") == "" && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		if compressed, isCompressed, err := CompressPayloadIfLarge(payload); err == nil && isCompressed {
+			payload = compressed
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Set("Vary", "Accept-Encoding")
 		}
 	}
 

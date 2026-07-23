@@ -36,23 +36,35 @@ export declare namespace CreateInfraProviderCommand {
                 totalBills: number;
             }>;
             billingNodes: z.ZodArray<z.ZodObject<{
-                nodeUuid: z.ZodString;
                 name: z.ZodString;
-                countryCode: z.ZodString;
+                details: z.ZodNullable<z.ZodObject<{
+                    nodeUuid: z.ZodString;
+                    countryCode: z.ZodString;
+                }, "strip", z.ZodTypeAny, {
+                    nodeUuid: string;
+                    countryCode: string;
+                }, {
+                    nodeUuid: string;
+                    countryCode: string;
+                }>>;
             }, "strip", z.ZodTypeAny, {
-                nodeUuid: string;
-                countryCode: string;
                 name: string;
+                details: {
+                    nodeUuid: string;
+                    countryCode: string;
+                } | null;
             }, {
-                nodeUuid: string;
-                countryCode: string;
                 name: string;
+                details: {
+                    nodeUuid: string;
+                    countryCode: string;
+                } | null;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             faviconLink: string | null;
             loginUrl: string | null;
             billingHistory: {
@@ -60,15 +72,17 @@ export declare namespace CreateInfraProviderCommand {
                 totalBills: number;
             };
             billingNodes: {
-                nodeUuid: string;
-                countryCode: string;
                 name: string;
+                details: {
+                    nodeUuid: string;
+                    countryCode: string;
+                } | null;
             }[];
         }, {
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             faviconLink: string | null;
             loginUrl: string | null;
             billingHistory: {
@@ -76,17 +90,19 @@ export declare namespace CreateInfraProviderCommand {
                 totalBills: number;
             };
             billingNodes: {
-                nodeUuid: string;
-                countryCode: string;
                 name: string;
+                details: {
+                    nodeUuid: string;
+                    countryCode: string;
+                } | null;
             }[];
         }>;
     }, "strip", z.ZodTypeAny, {
         response: {
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             faviconLink: string | null;
             loginUrl: string | null;
             billingHistory: {
@@ -94,17 +110,19 @@ export declare namespace CreateInfraProviderCommand {
                 totalBills: number;
             };
             billingNodes: {
-                nodeUuid: string;
-                countryCode: string;
                 name: string;
+                details: {
+                    nodeUuid: string;
+                    countryCode: string;
+                } | null;
             }[];
         };
     }, {
         response: {
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             faviconLink: string | null;
             loginUrl: string | null;
             billingHistory: {
@@ -112,9 +130,11 @@ export declare namespace CreateInfraProviderCommand {
                 totalBills: number;
             };
             billingNodes: {
-                nodeUuid: string;
-                countryCode: string;
                 name: string;
+                details: {
+                    nodeUuid: string;
+                    countryCode: string;
+                } | null;
             }[];
         };
     }>;

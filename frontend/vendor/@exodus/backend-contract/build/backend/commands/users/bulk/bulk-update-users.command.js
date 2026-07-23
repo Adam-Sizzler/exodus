@@ -2,15 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BulkUpdateUsersCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../../constants");
 const api_1 = require("../../../api");
+const constants_1 = require("../../../constants");
 const constants_2 = require("../../../constants");
 const models_1 = require("../../../models");
 var BulkUpdateUsersCommand;
 (function (BulkUpdateUsersCommand) {
     BulkUpdateUsersCommand.url = api_1.REST_API.USERS.BULK.UPDATE;
     BulkUpdateUsersCommand.TSQ_url = BulkUpdateUsersCommand.url;
-    BulkUpdateUsersCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.UPDATE, 'post', 'Bulk update users by UUIDs');
+    BulkUpdateUsersCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.UPDATE, 'post', 'Bulk update users by UUIDs', { scope: 'bulk-update-users', kind: 'write' });
     BulkUpdateUsersCommand.RequestSchema = zod_1.z.object({
         uuids: zod_1.z
             .array(zod_1.z.string().uuid())
@@ -22,7 +22,6 @@ var BulkUpdateUsersCommand;
                 .number({
                 invalid_type_error: 'Traffic limit must be a number',
             })
-                .int('Traffic limit must be an integer')
                 .min(0, 'Traffic limit must be greater than 0')
                 .describe('Traffic limit in bytes. 0 - unlimited')),
             trafficLimitStrategy: zod_1.z.optional(zod_1.z

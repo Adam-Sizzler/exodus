@@ -8,7 +8,7 @@ var GetPasskeyRegistrationOptionsCommand;
 (function (GetPasskeyRegistrationOptionsCommand) {
     GetPasskeyRegistrationOptionsCommand.url = api_1.REST_API.PASSKEYS.GET_REGISTRATION_OPTIONS;
     GetPasskeyRegistrationOptionsCommand.TSQ_url = GetPasskeyRegistrationOptionsCommand.url;
-    GetPasskeyRegistrationOptionsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.GET_REGISTRATION_OPTIONS, 'get', 'Get registration options for passkey');
+    GetPasskeyRegistrationOptionsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.GET_REGISTRATION_OPTIONS, 'get', 'Get registration options for passkey', { scope: 'registration-options', kind: 'read' });
     GetPasskeyRegistrationOptionsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.unknown(),
     });

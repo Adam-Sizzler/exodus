@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetAllSubscriptionsCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../constants");
 const api_1 = require("../../api");
+const constants_1 = require("../../constants");
 var GetAllSubscriptionsCommand;
 (function (GetAllSubscriptionsCommand) {
     GetAllSubscriptionsCommand.url = api_1.REST_API.SUBSCRIPTIONS.GET;
     GetAllSubscriptionsCommand.TSQ_url = GetAllSubscriptionsCommand.url;
-    GetAllSubscriptionsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET, 'get', 'Get all subscriptions');
+    GetAllSubscriptionsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET, 'get', 'Get all subscriptions', { scope: 'list', kind: 'read' });
     GetAllSubscriptionsCommand.RequestQuerySchema = zod_1.z.object({
         start: zod_1.z.coerce
             .number()

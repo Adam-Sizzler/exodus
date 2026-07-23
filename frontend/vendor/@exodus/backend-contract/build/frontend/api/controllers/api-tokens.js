@@ -6,4 +6,5 @@ exports.API_TOKENS_ROUTES = {
     CREATE: '',
     DELETE: (uuid) => `${uuid}`,
     GET: '',
+    GET_SCOPES: 'scopes',
 };

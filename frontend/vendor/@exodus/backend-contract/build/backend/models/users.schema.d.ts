@@ -16,6 +16,7 @@ export declare const UsersSchema: z.ZodObject<{
         readonly DAY: "DAY";
         readonly WEEK: "WEEK";
         readonly MONTH: "MONTH";
+        readonly MONTH_ROLLING: "MONTH_ROLLING";
     }>>;
     expireAt: z.ZodEffects<z.ZodString, Date, string>;
     telegramId: z.ZodNullable<z.ZodNumber>;
@@ -29,24 +30,22 @@ export declare const UsersSchema: z.ZodObject<{
     ssPassword: z.ZodString;
     lastTriggeredThreshold: z.ZodDefault<z.ZodNumber>;
     subRevokedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-    subLastUserAgent: z.ZodNullable<z.ZodString>;
-    subLastOpenedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
     lastTrafficResetAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
     createdAt: z.ZodEffects<z.ZodString, Date, string>;
     updatedAt: z.ZodEffects<z.ZodString, Date, string>;
 }, "strip", z.ZodTypeAny, {
     status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
     uuid: string;
+    expireAt: Date;
     createdAt: Date;
     updatedAt: Date;
+    description: string | null;
     username: string;
-    id: number;
     tag: string | null;
+    id: number;
     shortUuid: string;
     trafficLimitBytes: number;
-    description: string | null;
-    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
-    expireAt: Date;
+    trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
     telegramId: number | null;
     email: string | null;
     hwidDeviceLimit: number | null;
@@ -56,19 +55,17 @@ export declare const UsersSchema: z.ZodObject<{
     ssPassword: string;
     lastTriggeredThreshold: number;
     subRevokedAt: Date | null;
-    subLastUserAgent: string | null;
-    subLastOpenedAt: Date | null;
     lastTrafficResetAt: Date | null;
 }, {
     uuid: string;
+    expireAt: string;
     createdAt: string;
     updatedAt: string;
-    username: string;
-    id: number;
-    tag: string | null;
-    shortUuid: string;
     description: string | null;
-    expireAt: string;
+    username: string;
+    tag: string | null;
+    id: number;
+    shortUuid: string;
     telegramId: number | null;
     email: string | null;
     hwidDeviceLimit: number | null;
@@ -77,12 +74,10 @@ export declare const UsersSchema: z.ZodObject<{
     vlessUuid: string;
     ssPassword: string;
     subRevokedAt: string | null;
-    subLastUserAgent: string | null;
-    subLastOpenedAt: string | null;
     lastTrafficResetAt: string | null;
     status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
     trafficLimitBytes?: number | undefined;
-    trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
+    trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
     lastTriggeredThreshold?: number | undefined;
 }>;
 //# sourceMappingURL=users.schema.d.ts.map

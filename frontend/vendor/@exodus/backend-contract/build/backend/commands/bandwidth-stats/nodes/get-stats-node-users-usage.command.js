@@ -8,7 +8,7 @@ var GetStatsNodeUsersUsageCommand;
 (function (GetStatsNodeUsersUsageCommand) {
     GetStatsNodeUsersUsageCommand.url = api_1.REST_API.BANDWIDTH_STATS.NODES.GET_USERS;
     GetStatsNodeUsersUsageCommand.TSQ_url = GetStatsNodeUsersUsageCommand.url(':uuid');
-    GetStatsNodeUsersUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.NODES.GET_USERS(':uuid'), 'get', 'Get Node Users Usage by Node UUID');
+    GetStatsNodeUsersUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.NODES.GET_USERS(':uuid'), 'get', 'Get Node Users Usage by Node UUID', { scope: 'node-users-usage', kind: 'read' });
     GetStatsNodeUsersUsageCommand.RequestQuerySchema = zod_1.z.object({
         start: zod_1.z.string().date(),
         end: zod_1.z.string().date(),

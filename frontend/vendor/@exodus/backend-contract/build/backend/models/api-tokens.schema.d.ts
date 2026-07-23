@@ -1,20 +1,23 @@
 import { z } from 'zod';
 export declare const ApiTokensSchema: z.ZodObject<{
     uuid: z.ZodString;
-    token: z.ZodString;
-    tokenName: z.ZodString;
+    name: z.ZodString;
+    expireAt: z.ZodEffects<z.ZodString, Date, string>;
+    scopes: z.ZodArray<z.ZodString, "many">;
     createdAt: z.ZodEffects<z.ZodString, Date, string>;
     updatedAt: z.ZodEffects<z.ZodString, Date, string>;
 }, "strip", z.ZodTypeAny, {
-    tokenName: string;
-    token: string;
+    scopes: string[];
     uuid: string;
+    name: string;
+    expireAt: Date;
     createdAt: Date;
     updatedAt: Date;
 }, {
-    tokenName: string;
-    token: string;
+    scopes: string[];
     uuid: string;
+    name: string;
+    expireAt: string;
     createdAt: string;
     updatedAt: string;
 }>;

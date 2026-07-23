@@ -429,16 +429,6 @@ export declare const ERRORS: {
         readonly message: "Bulk disable hosts error";
         readonly httpCode: 500;
     };
-    readonly SET_INBOUND_TO_HOSTS_ERROR: {
-        readonly code: "A082";
-        readonly message: "Set inbound to hosts error";
-        readonly httpCode: 500;
-    };
-    readonly SET_PORT_TO_HOSTS_ERROR: {
-        readonly code: "A083";
-        readonly message: "Set port to hosts error";
-        readonly httpCode: 500;
-    };
     readonly BULK_DELETE_USERS_BY_UUID_ERROR: {
         readonly code: "A084";
         readonly message: "Bulk delete users by UUID error";
@@ -497,11 +487,6 @@ export declare const ERRORS: {
     readonly GET_NODES_USER_USAGE_BY_RANGE_ERROR: {
         readonly code: "A094";
         readonly message: "Get nodes user usage by range error";
-        readonly httpCode: 500;
-    };
-    readonly GET_NODES_REALTIME_USAGE_ERROR: {
-        readonly code: "A095";
-        readonly message: "Get nodes realtime usage error";
         readonly httpCode: 500;
     };
     readonly CREATE_HWID_USER_DEVICE_ERROR: {
@@ -746,12 +731,12 @@ export declare const ERRORS: {
     };
     readonly RESERVED_INTERNAL_SQUAD_NAME: {
         readonly code: "A144";
-        readonly message: "This name is reserved by Exodus. Please use a different name.";
+        readonly message: "This name is reserved by Remnawave. Please use a different name.";
         readonly httpCode: 400;
     };
     readonly RESERVED_CONFIG_PROFILE_NAME: {
         readonly code: "A145";
-        readonly message: "This name is reserved by Exodus. Please use a different name.";
+        readonly message: "This name is reserved by Remnawave. Please use a different name.";
         readonly httpCode: 400;
     };
     readonly UPDATE_CONFIG_PROFILE_ERROR: {
@@ -984,14 +969,14 @@ export declare const ERRORS: {
         readonly message: "Passkey not found";
         readonly httpCode: 404;
     };
-    readonly GET_EXODUS_SETTINGS_ERROR: {
+    readonly GET_REMNAAWAVE_SETTINGS_ERROR: {
         readonly code: "A192";
-        readonly message: "Get Exodus settings error";
+        readonly message: "Get Remnawave settings error";
         readonly httpCode: 500;
     };
-    readonly UPDATE_EXODUS_SETTINGS_ERROR: {
+    readonly UPDATE_REMNAAWAVE_SETTINGS_ERROR: {
         readonly code: "A193";
-        readonly message: "Update Exodus settings error";
+        readonly message: "Update Remnawave settings error";
         readonly httpCode: 500;
     };
     readonly PASSKEYS_NOT_CONFIGURED: {
@@ -1024,9 +1009,9 @@ export declare const ERRORS: {
         readonly message: "Delete passkey error";
         readonly httpCode: 500;
     };
-    readonly VALIDATE_EXODUS_SETTINGS_ERROR: {
+    readonly VALIDATE_REMNAAWAVE_SETTINGS_ERROR: {
         readonly code: "A199";
-        readonly message: "Validate Exodus settings error";
+        readonly message: "Validate Remnawave settings error";
         readonly httpCode: 500;
         readonly withMessage: (message: string) => {
             code: string;
@@ -1112,6 +1097,86 @@ export declare const ERRORS: {
     readonly INVALID_SUBSCRIPTION_PAGE_CONFIG: {
         readonly code: "A215";
         readonly message: "Invalid subscription page config";
+        readonly httpCode: 400;
+    };
+    readonly INVALID_REMNAWAVE_INJECTOR: {
+        readonly code: "A216";
+        readonly message: "Invalid Remnawave injector";
+        readonly httpCode: 400;
+    };
+    readonly JOB_CREATION_FAILED: {
+        readonly code: "A217";
+        readonly message: "Job creation failed";
+        readonly httpCode: 500;
+    };
+    readonly JOB_RESULT_FETCH_FAILED: {
+        readonly code: "A218";
+        readonly message: "Job result fetch failed or job not found";
+        readonly httpCode: 404;
+    };
+    readonly CONNECTED_NODES_NOT_FOUND: {
+        readonly code: "A219";
+        readonly message: "Connected nodes not found";
+        readonly httpCode: 404;
+    };
+    readonly GET_ALL_NODE_PLUGINS_ERROR: {
+        readonly code: "A219";
+        readonly message: "Get all node plugins error";
+        readonly httpCode: 500;
+    };
+    readonly NODE_PLUGIN_NOT_FOUND: {
+        readonly code: "A220";
+        readonly message: "Node plugin not found";
+        readonly httpCode: 404;
+    };
+    readonly GET_NODE_PLUGIN_BY_UUID_ERROR: {
+        readonly code: "A221";
+        readonly message: "Get node plugin by UUID error";
+        readonly httpCode: 500;
+    };
+    readonly INVALID_NODE_PLUGIN_CONFIG: {
+        readonly code: "A222";
+        readonly message: "Invalid node plugin config";
+        readonly httpCode: 400;
+    };
+    readonly NODE_PLUGIN_NAME_ALREADY_EXISTS: {
+        readonly code: "A223";
+        readonly message: "Node plugin name already exists";
+        readonly httpCode: 400;
+    };
+    readonly UPDATE_NODE_PLUGIN_ERROR: {
+        readonly code: "A224";
+        readonly message: "Update node plugin error";
+        readonly httpCode: 500;
+    };
+    readonly CREATE_NODE_PLUGIN_ERROR: {
+        readonly code: "A225";
+        readonly message: "Create node plugin error";
+        readonly httpCode: 500;
+    };
+    readonly METADATA_NOT_FOUND: {
+        readonly code: "A226";
+        readonly message: "Metadata not found";
+        readonly httpCode: 404;
+    };
+    readonly GET_TORRENT_BLOCKER_REPORTS_ERROR: {
+        readonly code: "A227";
+        readonly message: "Get torrent blocker reports error";
+        readonly httpCode: 500;
+    };
+    readonly UPDATE_HOSTS_ERROR: {
+        readonly code: "A228";
+        readonly message: "Update hosts error";
+        readonly httpCode: 500;
+    };
+    readonly INVALID_API_TOKEN_SCOPE: {
+        readonly code: "A229";
+        readonly message: "One or more provided API token scopes are invalid";
+        readonly httpCode: 400;
+    };
+    readonly CREATE_INFRA_BILLING_NODE_MISSING_TARGET: {
+        readonly code: "A230";
+        readonly message: "Either nodeUuid or name must be provided";
         readonly httpCode: 400;
     };
 };

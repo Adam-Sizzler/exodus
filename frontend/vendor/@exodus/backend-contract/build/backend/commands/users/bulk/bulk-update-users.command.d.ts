@@ -18,6 +18,7 @@ export declare namespace BulkUpdateUsersCommand {
                 readonly DAY: "DAY";
                 readonly WEEK: "WEEK";
                 readonly MONTH: "MONTH";
+                readonly MONTH_ROLLING: "MONTH_ROLLING";
             }>>;
             expireAt: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, Date, string>, Date, string>>;
             description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -28,22 +29,22 @@ export declare namespace BulkUpdateUsersCommand {
             externalSquadUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         }, "strip", z.ZodTypeAny, {
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+            expireAt?: Date | undefined;
+            description?: string | null | undefined;
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
-            description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-            expireAt?: Date | undefined;
+            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
             hwidDeviceLimit?: number | null | undefined;
             externalSquadUuid?: string | null | undefined;
         }, {
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+            expireAt?: string | undefined;
+            description?: string | null | undefined;
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
-            description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-            expireAt?: string | undefined;
+            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
             hwidDeviceLimit?: number | null | undefined;
@@ -53,11 +54,11 @@ export declare namespace BulkUpdateUsersCommand {
         uuids: string[];
         fields: {
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+            expireAt?: Date | undefined;
+            description?: string | null | undefined;
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
-            description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-            expireAt?: Date | undefined;
+            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
             hwidDeviceLimit?: number | null | undefined;
@@ -67,11 +68,11 @@ export declare namespace BulkUpdateUsersCommand {
         uuids: string[];
         fields: {
             status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
+            expireAt?: string | undefined;
+            description?: string | null | undefined;
             tag?: string | null | undefined;
             trafficLimitBytes?: number | undefined;
-            description?: string | null | undefined;
-            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | undefined;
-            expireAt?: string | undefined;
+            trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
             telegramId?: number | null | undefined;
             email?: string | null | undefined;
             hwidDeviceLimit?: number | null | undefined;

@@ -400,16 +400,6 @@ exports.ERRORS = {
         message: 'Bulk disable hosts error',
         httpCode: 500,
     },
-    SET_INBOUND_TO_HOSTS_ERROR: {
-        code: 'A082',
-        message: 'Set inbound to hosts error',
-        httpCode: 500,
-    },
-    SET_PORT_TO_HOSTS_ERROR: {
-        code: 'A083',
-        message: 'Set port to hosts error',
-        httpCode: 500,
-    },
     BULK_DELETE_USERS_BY_UUID_ERROR: {
         code: 'A084',
         message: 'Bulk delete users by UUID error',
@@ -468,11 +458,6 @@ exports.ERRORS = {
     GET_NODES_USER_USAGE_BY_RANGE_ERROR: {
         code: 'A094',
         message: 'Get nodes user usage by range error',
-        httpCode: 500,
-    },
-    GET_NODES_REALTIME_USAGE_ERROR: {
-        code: 'A095',
-        message: 'Get nodes realtime usage error',
         httpCode: 500,
     },
     CREATE_HWID_USER_DEVICE_ERROR: {
@@ -717,12 +702,12 @@ exports.ERRORS = {
     },
     RESERVED_INTERNAL_SQUAD_NAME: {
         code: 'A144',
-        message: 'This name is reserved by Exodus. Please use a different name.',
+        message: 'This name is reserved by Remnawave. Please use a different name.',
         httpCode: 400,
     },
     RESERVED_CONFIG_PROFILE_NAME: {
         code: 'A145',
-        message: 'This name is reserved by Exodus. Please use a different name.',
+        message: 'This name is reserved by Remnawave. Please use a different name.',
         httpCode: 400,
     },
     UPDATE_CONFIG_PROFILE_ERROR: {
@@ -955,14 +940,14 @@ exports.ERRORS = {
         message: 'Passkey not found',
         httpCode: 404,
     },
-    GET_EXODUS_SETTINGS_ERROR: {
+    GET_REMNAAWAVE_SETTINGS_ERROR: {
         code: 'A192',
-        message: 'Get Exodus settings error',
+        message: 'Get Remnawave settings error',
         httpCode: 500,
     },
-    UPDATE_EXODUS_SETTINGS_ERROR: {
+    UPDATE_REMNAAWAVE_SETTINGS_ERROR: {
         code: 'A193',
-        message: 'Update Exodus settings error',
+        message: 'Update Remnawave settings error',
         httpCode: 500,
     },
     PASSKEYS_NOT_CONFIGURED: {
@@ -995,9 +980,9 @@ exports.ERRORS = {
         message: 'Delete passkey error',
         httpCode: 500,
     },
-    VALIDATE_EXODUS_SETTINGS_ERROR: {
+    VALIDATE_REMNAAWAVE_SETTINGS_ERROR: {
         code: 'A199',
-        message: 'Validate Exodus settings error',
+        message: 'Validate Remnawave settings error',
         httpCode: 500,
         withMessage: (message) => ({
             code: 'A199',
@@ -1083,6 +1068,86 @@ exports.ERRORS = {
     INVALID_SUBSCRIPTION_PAGE_CONFIG: {
         code: 'A215',
         message: 'Invalid subscription page config',
+        httpCode: 400,
+    },
+    INVALID_REMNAWAVE_INJECTOR: {
+        code: 'A216',
+        message: 'Invalid Remnawave injector',
+        httpCode: 400,
+    },
+    JOB_CREATION_FAILED: {
+        code: 'A217',
+        message: 'Job creation failed',
+        httpCode: 500,
+    },
+    JOB_RESULT_FETCH_FAILED: {
+        code: 'A218',
+        message: 'Job result fetch failed or job not found',
+        httpCode: 404,
+    },
+    CONNECTED_NODES_NOT_FOUND: {
+        code: 'A219',
+        message: 'Connected nodes not found',
+        httpCode: 404,
+    },
+    GET_ALL_NODE_PLUGINS_ERROR: {
+        code: 'A219',
+        message: 'Get all node plugins error',
+        httpCode: 500,
+    },
+    NODE_PLUGIN_NOT_FOUND: {
+        code: 'A220',
+        message: 'Node plugin not found',
+        httpCode: 404,
+    },
+    GET_NODE_PLUGIN_BY_UUID_ERROR: {
+        code: 'A221',
+        message: 'Get node plugin by UUID error',
+        httpCode: 500,
+    },
+    INVALID_NODE_PLUGIN_CONFIG: {
+        code: 'A222',
+        message: 'Invalid node plugin config',
+        httpCode: 400,
+    },
+    NODE_PLUGIN_NAME_ALREADY_EXISTS: {
+        code: 'A223',
+        message: 'Node plugin name already exists',
+        httpCode: 400,
+    },
+    UPDATE_NODE_PLUGIN_ERROR: {
+        code: 'A224',
+        message: 'Update node plugin error',
+        httpCode: 500,
+    },
+    CREATE_NODE_PLUGIN_ERROR: {
+        code: 'A225',
+        message: 'Create node plugin error',
+        httpCode: 500,
+    },
+    METADATA_NOT_FOUND: {
+        code: 'A226',
+        message: 'Metadata not found',
+        httpCode: 404,
+    },
+    GET_TORRENT_BLOCKER_REPORTS_ERROR: {
+        code: 'A227',
+        message: 'Get torrent blocker reports error',
+        httpCode: 500,
+    },
+    UPDATE_HOSTS_ERROR: {
+        code: 'A228',
+        message: 'Update hosts error',
+        httpCode: 500,
+    },
+    INVALID_API_TOKEN_SCOPE: {
+        code: 'A229',
+        message: 'One or more provided API token scopes are invalid',
+        httpCode: 400,
+    },
+    CREATE_INFRA_BILLING_NODE_MISSING_TARGET: {
+        code: 'A230',
+        message: 'Either nodeUuid or name must be provided',
         httpCode: 400,
     },
 };

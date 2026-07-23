@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateInfraBillingHistoryRecordCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var CreateInfraBillingHistoryRecordCommand;
 (function (CreateInfraBillingHistoryRecordCommand) {
     CreateInfraBillingHistoryRecordCommand.url = api_1.REST_API.INFRA_BILLING.CREATE_BILLING_HISTORY;
     CreateInfraBillingHistoryRecordCommand.TSQ_url = CreateInfraBillingHistoryRecordCommand.url;
-    CreateInfraBillingHistoryRecordCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.CREATE_BILLING_HISTORY, 'post', 'Create infra billing history');
+    CreateInfraBillingHistoryRecordCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.CREATE_BILLING_HISTORY, 'post', 'Create infra billing history', { scope: 'create-bill-record', kind: 'write' });
     CreateInfraBillingHistoryRecordCommand.RequestSchema = zod_1.z.object({
         providerUuid: zod_1.z.string().uuid(),
         amount: zod_1.z.number().min(0, 'Amount must be greater than 0'),

@@ -1,4 +1,5 @@
 export * from './cache-keys';
+export * from './crud-actions';
 export * from './endpoint-details';
 export * from './errors';
 export * from './events';
@@ -9,6 +10,7 @@ export * from './nodes';
 export * from './oauth2';
 export * from './response-rules';
 export * from './roles';
+export * from './scopes';
 export * from './subscription-template';
 export * from './templates';
 export * from './users';

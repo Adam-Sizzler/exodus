@@ -9,7 +9,7 @@ var UpdateConfigProfileCommand;
 (function (UpdateConfigProfileCommand) {
     UpdateConfigProfileCommand.url = api_1.REST_API.CONFIG_PROFILES.UPDATE;
     UpdateConfigProfileCommand.TSQ_url = UpdateConfigProfileCommand.url;
-    UpdateConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.UPDATE, 'patch', 'Update Core Config in specific config profile');
+    UpdateConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.UPDATE, 'patch', 'Update Core Config in specific config profile', { scope: 'update', kind: 'write' });
     UpdateConfigProfileCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid('UUID must be a valid UUID'),
         name: zod_1.z

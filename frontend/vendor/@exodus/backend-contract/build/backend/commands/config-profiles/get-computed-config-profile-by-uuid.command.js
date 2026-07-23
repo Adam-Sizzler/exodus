@@ -9,7 +9,7 @@ var GetComputedConfigProfileByUuidCommand;
 (function (GetComputedConfigProfileByUuidCommand) {
     GetComputedConfigProfileByUuidCommand.url = api_1.REST_API.CONFIG_PROFILES.GET_COMPUTED_CONFIG_BY_PROFILE_UUID;
     GetComputedConfigProfileByUuidCommand.TSQ_url = GetComputedConfigProfileByUuidCommand.url(':uuid');
-    GetComputedConfigProfileByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.GET_COMPUTED_CONFIG_BY_PROFILE_UUID(':uuid'), 'get', 'Get computed config profile by uuid');
+    GetComputedConfigProfileByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.GET_COMPUTED_CONFIG_BY_PROFILE_UUID(':uuid'), 'get', 'Get computed config profile by uuid', { scope: 'get-computed', kind: 'read' });
     GetComputedConfigProfileByUuidCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

@@ -7,12 +7,14 @@ export declare namespace CreateNodeCommand {
         name: z.ZodString;
         address: z.ZodString;
         port: z.ZodOptional<z.ZodNumber>;
+        proxyUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         isTrafficTrackingActive: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         trafficLimitBytes: z.ZodOptional<z.ZodNumber>;
         notifyPercent: z.ZodOptional<z.ZodNumber>;
         trafficResetDay: z.ZodOptional<z.ZodNumber>;
         countryCode: z.ZodDefault<z.ZodString>;
         consumptionMultiplier: z.ZodOptional<z.ZodEffects<z.ZodNumber, number, number>>;
+        nodeConsumptionMultiplier: z.ZodOptional<z.ZodEffects<z.ZodNumber, number, number>>;
         configProfile: z.ZodObject<{
             activeConfigProfileUuid: z.ZodString;
             activeInbounds: z.ZodArray<z.ZodString, "many">;
@@ -25,9 +27,11 @@ export declare namespace CreateNodeCommand {
         }>;
         providerUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        activePluginUuid: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        note: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        countryCode: string;
         name: string;
+        countryCode: string;
         address: string;
         isTrafficTrackingActive: boolean;
         configProfile: {
@@ -37,10 +41,14 @@ export declare namespace CreateNodeCommand {
         tags?: string[] | undefined;
         port?: number | undefined;
         trafficLimitBytes?: number | undefined;
+        proxyUrl?: string | null | undefined;
         trafficResetDay?: number | undefined;
         notifyPercent?: number | undefined;
         consumptionMultiplier?: number | undefined;
+        nodeConsumptionMultiplier?: number | undefined;
         providerUuid?: string | null | undefined;
+        activePluginUuid?: string | null | undefined;
+        note?: string | undefined;
     }, {
         name: string;
         address: string;
@@ -52,11 +60,15 @@ export declare namespace CreateNodeCommand {
         countryCode?: string | undefined;
         port?: number | undefined;
         trafficLimitBytes?: number | undefined;
+        proxyUrl?: string | null | undefined;
         isTrafficTrackingActive?: boolean | undefined;
         trafficResetDay?: number | undefined;
         notifyPercent?: number | undefined;
         consumptionMultiplier?: number | undefined;
+        nodeConsumptionMultiplier?: number | undefined;
         providerUuid?: string | null | undefined;
+        activePluginUuid?: string | null | undefined;
+        note?: string | undefined;
     }>;
     type Request = z.infer<typeof RequestSchema>;
     const ResponseSchema: z.ZodObject<{
@@ -65,27 +77,22 @@ export declare namespace CreateNodeCommand {
             name: z.ZodString;
             address: z.ZodString;
             port: z.ZodNullable<z.ZodNumber>;
+            proxyUrl: z.ZodNullable<z.ZodString>;
             isConnected: z.ZodBoolean;
             isDisabled: z.ZodBoolean;
             isConnecting: z.ZodBoolean;
             lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
             lastStatusMessage: z.ZodNullable<z.ZodString>;
-            xrayVersion: z.ZodNullable<z.ZodString>;
-            nodeVersion: z.ZodNullable<z.ZodString>;
-            xrayUptime: z.ZodString;
             isTrafficTrackingActive: z.ZodBoolean;
             trafficResetDay: z.ZodNullable<z.ZodNumber>;
             trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
             trafficUsedBytes: z.ZodNullable<z.ZodNumber>;
             notifyPercent: z.ZodNullable<z.ZodNumber>;
-            usersOnline: z.ZodNullable<z.ZodNumber>;
             viewPosition: z.ZodNumber;
             countryCode: z.ZodString;
             consumptionMultiplier: z.ZodNumber;
+            nodeConsumptionMultiplier: z.ZodNumber;
             tags: z.ZodArray<z.ZodString, "many">;
-            cpuCount: z.ZodNullable<z.ZodNumber>;
-            cpuModel: z.ZodNullable<z.ZodString>;
-            totalRam: z.ZodNullable<z.ZodString>;
             createdAt: z.ZodEffects<z.ZodString, Date, string>;
             updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             configProfile: z.ZodObject<{
@@ -100,8 +107,8 @@ export declare namespace CreateNodeCommand {
                     port: z.ZodNullable<z.ZodNumber>;
                     rawInbound: z.ZodNullable<z.ZodUnknown>;
                 }, "strip", z.ZodTypeAny, {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -109,8 +116,8 @@ export declare namespace CreateNodeCommand {
                     port: number | null;
                     rawInbound?: unknown;
                 }, {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -121,8 +128,8 @@ export declare namespace CreateNodeCommand {
             }, "strip", z.ZodTypeAny, {
                 activeConfigProfileUuid: string | null;
                 activeInbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -133,8 +140,8 @@ export declare namespace CreateNodeCommand {
             }, {
                 activeConfigProfileUuid: string | null;
                 activeInbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -153,60 +160,233 @@ export declare namespace CreateNodeCommand {
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 faviconLink: string | null;
                 loginUrl: string | null;
             }, {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 faviconLink: string | null;
                 loginUrl: string | null;
             }>>;
+            activePluginUuid: z.ZodNullable<z.ZodString>;
+            system: z.ZodNullable<z.ZodObject<{
+                info: z.ZodObject<{
+                    arch: z.ZodString;
+                    cpus: z.ZodNumber;
+                    cpuModel: z.ZodString;
+                    memoryTotal: z.ZodNumber;
+                    hostname: z.ZodString;
+                    platform: z.ZodString;
+                    release: z.ZodString;
+                    type: z.ZodString;
+                    version: z.ZodString;
+                    networkInterfaces: z.ZodArray<z.ZodString, "many">;
+                }, "strip", z.ZodTypeAny, {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                }, {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                }>;
+                stats: z.ZodObject<{
+                    memoryFree: z.ZodNumber;
+                    memoryUsed: z.ZodNumber;
+                    uptime: z.ZodNumber;
+                    loadAvg: z.ZodArray<z.ZodNumber, "many">;
+                    interface: z.ZodNullable<z.ZodObject<{
+                        interface: z.ZodString;
+                        rxBytesPerSec: z.ZodNumber;
+                        txBytesPerSec: z.ZodNumber;
+                        rxTotal: z.ZodNumber;
+                        txTotal: z.ZodNumber;
+                    }, "strip", z.ZodTypeAny, {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    }, {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    }>>;
+                }, "strip", z.ZodTypeAny, {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                }, {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                }>;
+            }, "strip", z.ZodTypeAny, {
+                stats: {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                };
+                info: {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                };
+            }, {
+                stats: {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                };
+                info: {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                };
+            }>>;
+            versions: z.ZodNullable<z.ZodObject<{
+                xray: z.ZodString;
+                node: z.ZodString;
+            }, "strip", z.ZodTypeAny, {
+                node: string;
+                xray: string;
+            }, {
+                node: string;
+                xray: string;
+            }>>;
+            xrayUptime: z.ZodNumber;
+            usersOnline: z.ZodNumber;
+            note: z.ZodNullable<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
             tags: string[];
+            system: {
+                stats: {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                };
+                info: {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                };
+            } | null;
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
             provider: {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 faviconLink: string | null;
                 loginUrl: string | null;
             } | null;
             countryCode: string;
-            name: string;
             port: number | null;
             viewPosition: number;
             trafficLimitBytes: number | null;
             address: string;
             isDisabled: boolean;
+            proxyUrl: string | null;
             isConnected: boolean;
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
-            xrayVersion: string | null;
-            nodeVersion: string | null;
-            xrayUptime: string;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
             notifyPercent: number | null;
-            usersOnline: number | null;
             consumptionMultiplier: number;
-            cpuCount: number | null;
-            cpuModel: string | null;
-            totalRam: string | null;
+            nodeConsumptionMultiplier: number;
             configProfile: {
                 activeConfigProfileUuid: string | null;
                 activeInbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -216,47 +396,77 @@ export declare namespace CreateNodeCommand {
                 }[];
             };
             providerUuid: string | null;
+            activePluginUuid: string | null;
+            versions: {
+                node: string;
+                xray: string;
+            } | null;
+            xrayUptime: number;
+            usersOnline: number;
+            note: string | null;
         }, {
             tags: string[];
+            system: {
+                stats: {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                };
+                info: {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                };
+            } | null;
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
             provider: {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 faviconLink: string | null;
                 loginUrl: string | null;
             } | null;
             countryCode: string;
-            name: string;
             port: number | null;
             viewPosition: number;
             trafficLimitBytes: number | null;
             address: string;
             isDisabled: boolean;
+            proxyUrl: string | null;
             isConnected: boolean;
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
-            xrayVersion: string | null;
-            nodeVersion: string | null;
-            xrayUptime: string;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
             notifyPercent: number | null;
-            usersOnline: number | null;
             consumptionMultiplier: number;
-            cpuCount: number | null;
-            cpuModel: string | null;
-            totalRam: string | null;
+            nodeConsumptionMultiplier: number;
             configProfile: {
                 activeConfigProfileUuid: string | null;
                 activeInbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -266,49 +476,79 @@ export declare namespace CreateNodeCommand {
                 }[];
             };
             providerUuid: string | null;
+            activePluginUuid: string | null;
+            versions: {
+                node: string;
+                xray: string;
+            } | null;
+            xrayUptime: number;
+            usersOnline: number;
+            note: string | null;
         }>;
     }, "strip", z.ZodTypeAny, {
         response: {
             tags: string[];
+            system: {
+                stats: {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                };
+                info: {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                };
+            } | null;
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
             provider: {
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 faviconLink: string | null;
                 loginUrl: string | null;
             } | null;
             countryCode: string;
-            name: string;
             port: number | null;
             viewPosition: number;
             trafficLimitBytes: number | null;
             address: string;
             isDisabled: boolean;
+            proxyUrl: string | null;
             isConnected: boolean;
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
-            xrayVersion: string | null;
-            nodeVersion: string | null;
-            xrayUptime: string;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
             notifyPercent: number | null;
-            usersOnline: number | null;
             consumptionMultiplier: number;
-            cpuCount: number | null;
-            cpuModel: string | null;
-            totalRam: string | null;
+            nodeConsumptionMultiplier: number;
             configProfile: {
                 activeConfigProfileUuid: string | null;
                 activeInbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -318,49 +558,79 @@ export declare namespace CreateNodeCommand {
                 }[];
             };
             providerUuid: string | null;
+            activePluginUuid: string | null;
+            versions: {
+                node: string;
+                xray: string;
+            } | null;
+            xrayUptime: number;
+            usersOnline: number;
+            note: string | null;
         };
     }, {
         response: {
             tags: string[];
+            system: {
+                stats: {
+                    interface: {
+                        interface: string;
+                        rxBytesPerSec: number;
+                        txBytesPerSec: number;
+                        rxTotal: number;
+                        txTotal: number;
+                    } | null;
+                    memoryFree: number;
+                    memoryUsed: number;
+                    uptime: number;
+                    loadAvg: number[];
+                };
+                info: {
+                    type: string;
+                    version: string;
+                    platform: string;
+                    arch: string;
+                    cpus: number;
+                    cpuModel: string;
+                    memoryTotal: number;
+                    hostname: string;
+                    release: string;
+                    networkInterfaces: string[];
+                };
+            } | null;
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
             provider: {
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 faviconLink: string | null;
                 loginUrl: string | null;
             } | null;
             countryCode: string;
-            name: string;
             port: number | null;
             viewPosition: number;
             trafficLimitBytes: number | null;
             address: string;
             isDisabled: boolean;
+            proxyUrl: string | null;
             isConnected: boolean;
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
-            xrayVersion: string | null;
-            nodeVersion: string | null;
-            xrayUptime: string;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
             notifyPercent: number | null;
-            usersOnline: number | null;
             consumptionMultiplier: number;
-            cpuCount: number | null;
-            cpuModel: string | null;
-            totalRam: string | null;
+            nodeConsumptionMultiplier: number;
             configProfile: {
                 activeConfigProfileUuid: string | null;
                 activeInbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -370,6 +640,14 @@ export declare namespace CreateNodeCommand {
                 }[];
             };
             providerUuid: string | null;
+            activePluginUuid: string | null;
+            versions: {
+                node: string;
+                xray: string;
+            } | null;
+            xrayUptime: number;
+            usersOnline: number;
+            note: string | null;
         };
     }>;
     type Response = z.infer<typeof ResponseSchema>;

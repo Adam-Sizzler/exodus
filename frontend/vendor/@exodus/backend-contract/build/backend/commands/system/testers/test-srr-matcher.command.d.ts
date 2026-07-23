@@ -8,6 +8,13 @@ export declare namespace TestSrrMatcherCommand {
             version: z.ZodNativeEnum<{
                 readonly 1: "1";
             }>;
+            settings: z.ZodOptional<z.ZodObject<{
+                disableSubscriptionAccessByPath: z.ZodOptional<z.ZodBoolean>;
+            }, "strip", z.ZodTypeAny, {
+                disableSubscriptionAccessByPath?: boolean | undefined;
+            }, {
+                disableSubscriptionAccessByPath?: boolean | undefined;
+            }>>;
             rules: z.ZodArray<z.ZodObject<{
                 name: z.ZodString;
                 description: z.ZodOptional<z.ZodString>;
@@ -67,23 +74,59 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }>, "many">>;
+                    applyHeadersToEnd: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
                     subscriptionTemplate: z.ZodOptional<z.ZodString>;
+                    ignoreHostXrayJsonTemplate: z.ZodOptional<z.ZodBoolean>;
+                    ignoreServeJsonAtBaseSubscription: z.ZodOptional<z.ZodBoolean>;
+                    additionalExtendedClientsRegex: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+                    disableHwidCheck: z.ZodOptional<z.ZodBoolean>;
+                    encryption: z.ZodOptional<z.ZodObject<{
+                        method: z.ZodEnum<["age1", "age1pq1"]>;
+                        key: z.ZodString;
+                    }, "strip", z.ZodTypeAny, {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    }, {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    }>>;
+                    excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
                 }, "strip", z.ZodTypeAny, {
                     headers?: {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 }, {
                     headers?: {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 }>>;
             }, "strip", z.ZodTypeAny, {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -98,11 +141,21 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }, {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -117,14 +170,24 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             version: "1";
             rules: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -139,14 +202,27 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }[];
+            settings?: {
+                disableSubscriptionAccessByPath?: boolean | undefined;
+            } | undefined;
         }, {
             version: "1";
             rules: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -161,16 +237,29 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }[];
+            settings?: {
+                disableSubscriptionAccessByPath?: boolean | undefined;
+            } | undefined;
         }>;
     }, "strip", z.ZodTypeAny, {
         responseRules: {
             version: "1";
             rules: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -185,16 +274,29 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }[];
+            settings?: {
+                disableSubscriptionAccessByPath?: boolean | undefined;
+            } | undefined;
         };
     }, {
         responseRules: {
             version: "1";
             rules: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -209,9 +311,22 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }[];
+            settings?: {
+                disableSubscriptionAccessByPath?: boolean | undefined;
+            } | undefined;
         };
     }>;
     type Request = z.infer<typeof RequestSchema>;
@@ -290,23 +405,59 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }>, "many">>;
+                    applyHeadersToEnd: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
                     subscriptionTemplate: z.ZodOptional<z.ZodString>;
+                    ignoreHostXrayJsonTemplate: z.ZodOptional<z.ZodBoolean>;
+                    ignoreServeJsonAtBaseSubscription: z.ZodOptional<z.ZodBoolean>;
+                    additionalExtendedClientsRegex: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+                    disableHwidCheck: z.ZodOptional<z.ZodBoolean>;
+                    encryption: z.ZodOptional<z.ZodObject<{
+                        method: z.ZodEnum<["age1", "age1pq1"]>;
+                        key: z.ZodString;
+                    }, "strip", z.ZodTypeAny, {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    }, {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    }>>;
+                    excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
                 }, "strip", z.ZodTypeAny, {
                     headers?: {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 }, {
                     headers?: {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 }>>;
             }, "strip", z.ZodTypeAny, {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -321,11 +472,21 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }, {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -340,7 +501,17 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             }>>;
             inputHeaders: z.ZodRecord<z.ZodString, z.ZodString>;
@@ -349,8 +520,8 @@ export declare namespace TestSrrMatcherCommand {
             responseType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64" | "BROWSER" | "BLOCK" | "STATUS_CODE_404" | "STATUS_CODE_451" | "SOCKET_DROP";
             matched: boolean;
             matchedRule: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -365,7 +536,17 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             } | null;
             inputHeaders: Record<string, string>;
@@ -374,8 +555,8 @@ export declare namespace TestSrrMatcherCommand {
             responseType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64" | "BROWSER" | "BLOCK" | "STATUS_CODE_404" | "STATUS_CODE_451" | "SOCKET_DROP";
             matched: boolean;
             matchedRule: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -390,7 +571,17 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             } | null;
             inputHeaders: Record<string, string>;
@@ -401,8 +592,8 @@ export declare namespace TestSrrMatcherCommand {
             responseType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64" | "BROWSER" | "BLOCK" | "STATUS_CODE_404" | "STATUS_CODE_451" | "SOCKET_DROP";
             matched: boolean;
             matchedRule: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -417,7 +608,17 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             } | null;
             inputHeaders: Record<string, string>;
@@ -428,8 +629,8 @@ export declare namespace TestSrrMatcherCommand {
             responseType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64" | "BROWSER" | "BLOCK" | "STATUS_CODE_404" | "STATUS_CODE_451" | "SOCKET_DROP";
             matched: boolean;
             matchedRule: {
-                enabled: boolean;
                 name: string;
+                enabled: boolean;
                 operator: "AND" | "OR";
                 conditions: {
                     value: string;
@@ -444,7 +645,17 @@ export declare namespace TestSrrMatcherCommand {
                         value: string;
                         key: string;
                     }[] | undefined;
+                    applyHeadersToEnd?: boolean | undefined;
                     subscriptionTemplate?: string | undefined;
+                    ignoreHostXrayJsonTemplate?: boolean | undefined;
+                    ignoreServeJsonAtBaseSubscription?: boolean | undefined;
+                    additionalExtendedClientsRegex?: string[] | undefined;
+                    disableHwidCheck?: boolean | undefined;
+                    encryption?: {
+                        key: string;
+                        method: "age1" | "age1pq1";
+                    } | undefined;
+                    excludeHostsByTags?: string[] | undefined;
                 } | undefined;
             } | null;
             inputHeaders: Record<string, string>;

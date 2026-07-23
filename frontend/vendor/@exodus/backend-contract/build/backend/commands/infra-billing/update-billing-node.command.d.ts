@@ -19,7 +19,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
             totalBillingNodes: z.ZodNumber;
             billingNodes: z.ZodArray<z.ZodObject<{
                 uuid: z.ZodString;
-                nodeUuid: z.ZodString;
+                nodeUuid: z.ZodNullable<z.ZodString>;
+                name: z.ZodNullable<z.ZodString>;
                 providerUuid: z.ZodString;
                 provider: z.ZodObject<Pick<{
                     uuid: z.ZodString;
@@ -39,32 +40,27 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 }>;
-                node: z.ZodObject<Pick<{
+                node: z.ZodNullable<z.ZodObject<Pick<{
                     uuid: z.ZodString;
                     name: z.ZodString;
                     address: z.ZodString;
                     port: z.ZodNullable<z.ZodNumber>;
+                    proxyUrl: z.ZodNullable<z.ZodString>;
                     isConnected: z.ZodBoolean;
                     isDisabled: z.ZodBoolean;
                     isConnecting: z.ZodBoolean;
                     lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
                     lastStatusMessage: z.ZodNullable<z.ZodString>;
-                    xrayVersion: z.ZodNullable<z.ZodString>;
-                    nodeVersion: z.ZodNullable<z.ZodString>;
-                    xrayUptime: z.ZodString;
                     isTrafficTrackingActive: z.ZodBoolean;
                     trafficResetDay: z.ZodNullable<z.ZodNumber>;
                     trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
                     trafficUsedBytes: z.ZodNullable<z.ZodNumber>;
                     notifyPercent: z.ZodNullable<z.ZodNumber>;
-                    usersOnline: z.ZodNullable<z.ZodNumber>;
                     viewPosition: z.ZodNumber;
                     countryCode: z.ZodString;
                     consumptionMultiplier: z.ZodNumber;
+                    nodeConsumptionMultiplier: z.ZodNumber;
                     tags: z.ZodArray<z.ZodString, "many">;
-                    cpuCount: z.ZodNullable<z.ZodNumber>;
-                    cpuModel: z.ZodNullable<z.ZodString>;
-                    totalRam: z.ZodNullable<z.ZodString>;
                     createdAt: z.ZodEffects<z.ZodString, Date, string>;
                     updatedAt: z.ZodEffects<z.ZodString, Date, string>;
                     configProfile: z.ZodObject<{
@@ -79,8 +75,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                             port: z.ZodNullable<z.ZodNumber>;
                             rawInbound: z.ZodNullable<z.ZodUnknown>;
                         }, "strip", z.ZodTypeAny, {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -88,8 +84,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                             port: number | null;
                             rawInbound?: unknown;
                         }, {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -100,8 +96,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     }, "strip", z.ZodTypeAny, {
                         activeConfigProfileUuid: string | null;
                         activeInbounds: {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -112,8 +108,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     }, {
                         activeConfigProfileUuid: string | null;
                         activeInbounds: {
-                            type: string;
                             uuid: string;
+                            type: string;
                             profileUuid: string;
                             tag: string;
                             network: string | null;
@@ -132,38 +128,190 @@ export declare namespace UpdateInfraBillingNodeCommand {
                         updatedAt: z.ZodEffects<z.ZodString, Date, string>;
                     }, "strip", z.ZodTypeAny, {
                         uuid: string;
+                        name: string;
                         createdAt: Date;
                         updatedAt: Date;
-                        name: string;
                         faviconLink: string | null;
                         loginUrl: string | null;
                     }, {
                         uuid: string;
+                        name: string;
                         createdAt: string;
                         updatedAt: string;
-                        name: string;
                         faviconLink: string | null;
                         loginUrl: string | null;
                     }>>;
-                }, "uuid" | "countryCode" | "name">, "strip", z.ZodTypeAny, {
+                    activePluginUuid: z.ZodNullable<z.ZodString>;
+                    system: z.ZodNullable<z.ZodObject<{
+                        info: z.ZodObject<{
+                            arch: z.ZodString;
+                            cpus: z.ZodNumber;
+                            cpuModel: z.ZodString;
+                            memoryTotal: z.ZodNumber;
+                            hostname: z.ZodString;
+                            platform: z.ZodString;
+                            release: z.ZodString;
+                            type: z.ZodString;
+                            version: z.ZodString;
+                            networkInterfaces: z.ZodArray<z.ZodString, "many">;
+                        }, "strip", z.ZodTypeAny, {
+                            type: string;
+                            version: string;
+                            platform: string;
+                            arch: string;
+                            cpus: number;
+                            cpuModel: string;
+                            memoryTotal: number;
+                            hostname: string;
+                            release: string;
+                            networkInterfaces: string[];
+                        }, {
+                            type: string;
+                            version: string;
+                            platform: string;
+                            arch: string;
+                            cpus: number;
+                            cpuModel: string;
+                            memoryTotal: number;
+                            hostname: string;
+                            release: string;
+                            networkInterfaces: string[];
+                        }>;
+                        stats: z.ZodObject<{
+                            memoryFree: z.ZodNumber;
+                            memoryUsed: z.ZodNumber;
+                            uptime: z.ZodNumber;
+                            loadAvg: z.ZodArray<z.ZodNumber, "many">;
+                            interface: z.ZodNullable<z.ZodObject<{
+                                interface: z.ZodString;
+                                rxBytesPerSec: z.ZodNumber;
+                                txBytesPerSec: z.ZodNumber;
+                                rxTotal: z.ZodNumber;
+                                txTotal: z.ZodNumber;
+                            }, "strip", z.ZodTypeAny, {
+                                interface: string;
+                                rxBytesPerSec: number;
+                                txBytesPerSec: number;
+                                rxTotal: number;
+                                txTotal: number;
+                            }, {
+                                interface: string;
+                                rxBytesPerSec: number;
+                                txBytesPerSec: number;
+                                rxTotal: number;
+                                txTotal: number;
+                            }>>;
+                        }, "strip", z.ZodTypeAny, {
+                            interface: {
+                                interface: string;
+                                rxBytesPerSec: number;
+                                txBytesPerSec: number;
+                                rxTotal: number;
+                                txTotal: number;
+                            } | null;
+                            memoryFree: number;
+                            memoryUsed: number;
+                            uptime: number;
+                            loadAvg: number[];
+                        }, {
+                            interface: {
+                                interface: string;
+                                rxBytesPerSec: number;
+                                txBytesPerSec: number;
+                                rxTotal: number;
+                                txTotal: number;
+                            } | null;
+                            memoryFree: number;
+                            memoryUsed: number;
+                            uptime: number;
+                            loadAvg: number[];
+                        }>;
+                    }, "strip", z.ZodTypeAny, {
+                        stats: {
+                            interface: {
+                                interface: string;
+                                rxBytesPerSec: number;
+                                txBytesPerSec: number;
+                                rxTotal: number;
+                                txTotal: number;
+                            } | null;
+                            memoryFree: number;
+                            memoryUsed: number;
+                            uptime: number;
+                            loadAvg: number[];
+                        };
+                        info: {
+                            type: string;
+                            version: string;
+                            platform: string;
+                            arch: string;
+                            cpus: number;
+                            cpuModel: string;
+                            memoryTotal: number;
+                            hostname: string;
+                            release: string;
+                            networkInterfaces: string[];
+                        };
+                    }, {
+                        stats: {
+                            interface: {
+                                interface: string;
+                                rxBytesPerSec: number;
+                                txBytesPerSec: number;
+                                rxTotal: number;
+                                txTotal: number;
+                            } | null;
+                            memoryFree: number;
+                            memoryUsed: number;
+                            uptime: number;
+                            loadAvg: number[];
+                        };
+                        info: {
+                            type: string;
+                            version: string;
+                            platform: string;
+                            arch: string;
+                            cpus: number;
+                            cpuModel: string;
+                            memoryTotal: number;
+                            hostname: string;
+                            release: string;
+                            networkInterfaces: string[];
+                        };
+                    }>>;
+                    versions: z.ZodNullable<z.ZodObject<{
+                        xray: z.ZodString;
+                        node: z.ZodString;
+                    }, "strip", z.ZodTypeAny, {
+                        node: string;
+                        xray: string;
+                    }, {
+                        node: string;
+                        xray: string;
+                    }>>;
+                    xrayUptime: z.ZodNumber;
+                    usersOnline: z.ZodNumber;
+                    note: z.ZodNullable<z.ZodString>;
+                }, "uuid" | "name" | "countryCode">, "strip", z.ZodTypeAny, {
                     uuid: string;
-                    countryCode: string;
                     name: string;
+                    countryCode: string;
                 }, {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                }>;
+                    countryCode: string;
+                }>>;
                 nextBillingAt: z.ZodEffects<z.ZodString, Date, string>;
                 createdAt: z.ZodEffects<z.ZodString, Date, string>;
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                };
+                    countryCode: string;
+                } | null;
                 uuid: string;
+                name: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 provider: {
@@ -172,16 +320,17 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 };
-                nodeUuid: string;
+                nodeUuid: string | null;
                 providerUuid: string;
                 nextBillingAt: Date;
             }, {
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                };
+                    countryCode: string;
+                } | null;
                 uuid: string;
+                name: string | null;
                 createdAt: string;
                 updatedAt: string;
                 provider: {
@@ -190,7 +339,7 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 };
-                nodeUuid: string;
+                nodeUuid: string | null;
                 providerUuid: string;
                 nextBillingAt: string;
             }>, "many">;
@@ -199,27 +348,22 @@ export declare namespace UpdateInfraBillingNodeCommand {
                 name: z.ZodString;
                 address: z.ZodString;
                 port: z.ZodNullable<z.ZodNumber>;
+                proxyUrl: z.ZodNullable<z.ZodString>;
                 isConnected: z.ZodBoolean;
                 isDisabled: z.ZodBoolean;
                 isConnecting: z.ZodBoolean;
                 lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
                 lastStatusMessage: z.ZodNullable<z.ZodString>;
-                xrayVersion: z.ZodNullable<z.ZodString>;
-                nodeVersion: z.ZodNullable<z.ZodString>;
-                xrayUptime: z.ZodString;
                 isTrafficTrackingActive: z.ZodBoolean;
                 trafficResetDay: z.ZodNullable<z.ZodNumber>;
                 trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
                 trafficUsedBytes: z.ZodNullable<z.ZodNumber>;
                 notifyPercent: z.ZodNullable<z.ZodNumber>;
-                usersOnline: z.ZodNullable<z.ZodNumber>;
                 viewPosition: z.ZodNumber;
                 countryCode: z.ZodString;
                 consumptionMultiplier: z.ZodNumber;
+                nodeConsumptionMultiplier: z.ZodNumber;
                 tags: z.ZodArray<z.ZodString, "many">;
-                cpuCount: z.ZodNullable<z.ZodNumber>;
-                cpuModel: z.ZodNullable<z.ZodString>;
-                totalRam: z.ZodNullable<z.ZodString>;
                 createdAt: z.ZodEffects<z.ZodString, Date, string>;
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
                 configProfile: z.ZodObject<{
@@ -234,8 +378,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                         port: z.ZodNullable<z.ZodNumber>;
                         rawInbound: z.ZodNullable<z.ZodUnknown>;
                     }, "strip", z.ZodTypeAny, {
-                        type: string;
                         uuid: string;
+                        type: string;
                         profileUuid: string;
                         tag: string;
                         network: string | null;
@@ -243,8 +387,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                         port: number | null;
                         rawInbound?: unknown;
                     }, {
-                        type: string;
                         uuid: string;
+                        type: string;
                         profileUuid: string;
                         tag: string;
                         network: string | null;
@@ -255,8 +399,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                 }, "strip", z.ZodTypeAny, {
                     activeConfigProfileUuid: string | null;
                     activeInbounds: {
-                        type: string;
                         uuid: string;
+                        type: string;
                         profileUuid: string;
                         tag: string;
                         network: string | null;
@@ -267,8 +411,8 @@ export declare namespace UpdateInfraBillingNodeCommand {
                 }, {
                     activeConfigProfileUuid: string | null;
                     activeInbounds: {
-                        type: string;
                         uuid: string;
+                        type: string;
                         profileUuid: string;
                         tag: string;
                         network: string | null;
@@ -287,27 +431,178 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     updatedAt: z.ZodEffects<z.ZodString, Date, string>;
                 }, "strip", z.ZodTypeAny, {
                     uuid: string;
+                    name: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    name: string;
                     faviconLink: string | null;
                     loginUrl: string | null;
                 }, {
                     uuid: string;
+                    name: string;
                     createdAt: string;
                     updatedAt: string;
-                    name: string;
                     faviconLink: string | null;
                     loginUrl: string | null;
                 }>>;
-            }, "uuid" | "countryCode" | "name">, "strip", z.ZodTypeAny, {
+                activePluginUuid: z.ZodNullable<z.ZodString>;
+                system: z.ZodNullable<z.ZodObject<{
+                    info: z.ZodObject<{
+                        arch: z.ZodString;
+                        cpus: z.ZodNumber;
+                        cpuModel: z.ZodString;
+                        memoryTotal: z.ZodNumber;
+                        hostname: z.ZodString;
+                        platform: z.ZodString;
+                        release: z.ZodString;
+                        type: z.ZodString;
+                        version: z.ZodString;
+                        networkInterfaces: z.ZodArray<z.ZodString, "many">;
+                    }, "strip", z.ZodTypeAny, {
+                        type: string;
+                        version: string;
+                        platform: string;
+                        arch: string;
+                        cpus: number;
+                        cpuModel: string;
+                        memoryTotal: number;
+                        hostname: string;
+                        release: string;
+                        networkInterfaces: string[];
+                    }, {
+                        type: string;
+                        version: string;
+                        platform: string;
+                        arch: string;
+                        cpus: number;
+                        cpuModel: string;
+                        memoryTotal: number;
+                        hostname: string;
+                        release: string;
+                        networkInterfaces: string[];
+                    }>;
+                    stats: z.ZodObject<{
+                        memoryFree: z.ZodNumber;
+                        memoryUsed: z.ZodNumber;
+                        uptime: z.ZodNumber;
+                        loadAvg: z.ZodArray<z.ZodNumber, "many">;
+                        interface: z.ZodNullable<z.ZodObject<{
+                            interface: z.ZodString;
+                            rxBytesPerSec: z.ZodNumber;
+                            txBytesPerSec: z.ZodNumber;
+                            rxTotal: z.ZodNumber;
+                            txTotal: z.ZodNumber;
+                        }, "strip", z.ZodTypeAny, {
+                            interface: string;
+                            rxBytesPerSec: number;
+                            txBytesPerSec: number;
+                            rxTotal: number;
+                            txTotal: number;
+                        }, {
+                            interface: string;
+                            rxBytesPerSec: number;
+                            txBytesPerSec: number;
+                            rxTotal: number;
+                            txTotal: number;
+                        }>>;
+                    }, "strip", z.ZodTypeAny, {
+                        interface: {
+                            interface: string;
+                            rxBytesPerSec: number;
+                            txBytesPerSec: number;
+                            rxTotal: number;
+                            txTotal: number;
+                        } | null;
+                        memoryFree: number;
+                        memoryUsed: number;
+                        uptime: number;
+                        loadAvg: number[];
+                    }, {
+                        interface: {
+                            interface: string;
+                            rxBytesPerSec: number;
+                            txBytesPerSec: number;
+                            rxTotal: number;
+                            txTotal: number;
+                        } | null;
+                        memoryFree: number;
+                        memoryUsed: number;
+                        uptime: number;
+                        loadAvg: number[];
+                    }>;
+                }, "strip", z.ZodTypeAny, {
+                    stats: {
+                        interface: {
+                            interface: string;
+                            rxBytesPerSec: number;
+                            txBytesPerSec: number;
+                            rxTotal: number;
+                            txTotal: number;
+                        } | null;
+                        memoryFree: number;
+                        memoryUsed: number;
+                        uptime: number;
+                        loadAvg: number[];
+                    };
+                    info: {
+                        type: string;
+                        version: string;
+                        platform: string;
+                        arch: string;
+                        cpus: number;
+                        cpuModel: string;
+                        memoryTotal: number;
+                        hostname: string;
+                        release: string;
+                        networkInterfaces: string[];
+                    };
+                }, {
+                    stats: {
+                        interface: {
+                            interface: string;
+                            rxBytesPerSec: number;
+                            txBytesPerSec: number;
+                            rxTotal: number;
+                            txTotal: number;
+                        } | null;
+                        memoryFree: number;
+                        memoryUsed: number;
+                        uptime: number;
+                        loadAvg: number[];
+                    };
+                    info: {
+                        type: string;
+                        version: string;
+                        platform: string;
+                        arch: string;
+                        cpus: number;
+                        cpuModel: string;
+                        memoryTotal: number;
+                        hostname: string;
+                        release: string;
+                        networkInterfaces: string[];
+                    };
+                }>>;
+                versions: z.ZodNullable<z.ZodObject<{
+                    xray: z.ZodString;
+                    node: z.ZodString;
+                }, "strip", z.ZodTypeAny, {
+                    node: string;
+                    xray: string;
+                }, {
+                    node: string;
+                    xray: string;
+                }>>;
+                xrayUptime: z.ZodNumber;
+                usersOnline: z.ZodNumber;
+                note: z.ZodNullable<z.ZodString>;
+            }, "uuid" | "name" | "countryCode">, "strip", z.ZodTypeAny, {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }, {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }>, "many">;
             totalAvailableBillingNodes: z.ZodNumber;
             stats: z.ZodObject<{
@@ -332,10 +627,11 @@ export declare namespace UpdateInfraBillingNodeCommand {
             billingNodes: {
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                };
+                    countryCode: string;
+                } | null;
                 uuid: string;
+                name: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 provider: {
@@ -344,15 +640,15 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 };
-                nodeUuid: string;
+                nodeUuid: string | null;
                 providerUuid: string;
                 nextBillingAt: Date;
             }[];
             totalBillingNodes: number;
             availableBillingNodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             totalAvailableBillingNodes: number;
         }, {
@@ -364,10 +660,11 @@ export declare namespace UpdateInfraBillingNodeCommand {
             billingNodes: {
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                };
+                    countryCode: string;
+                } | null;
                 uuid: string;
+                name: string | null;
                 createdAt: string;
                 updatedAt: string;
                 provider: {
@@ -376,15 +673,15 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 };
-                nodeUuid: string;
+                nodeUuid: string | null;
                 providerUuid: string;
                 nextBillingAt: string;
             }[];
             totalBillingNodes: number;
             availableBillingNodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             totalAvailableBillingNodes: number;
         }>;
@@ -398,10 +695,11 @@ export declare namespace UpdateInfraBillingNodeCommand {
             billingNodes: {
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                };
+                    countryCode: string;
+                } | null;
                 uuid: string;
+                name: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 provider: {
@@ -410,15 +708,15 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 };
-                nodeUuid: string;
+                nodeUuid: string | null;
                 providerUuid: string;
                 nextBillingAt: Date;
             }[];
             totalBillingNodes: number;
             availableBillingNodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             totalAvailableBillingNodes: number;
         };
@@ -432,10 +730,11 @@ export declare namespace UpdateInfraBillingNodeCommand {
             billingNodes: {
                 node: {
                     uuid: string;
-                    countryCode: string;
                     name: string;
-                };
+                    countryCode: string;
+                } | null;
                 uuid: string;
+                name: string | null;
                 createdAt: string;
                 updatedAt: string;
                 provider: {
@@ -444,15 +743,15 @@ export declare namespace UpdateInfraBillingNodeCommand {
                     faviconLink: string | null;
                     loginUrl: string | null;
                 };
-                nodeUuid: string;
+                nodeUuid: string | null;
                 providerUuid: string;
                 nextBillingAt: string;
             }[];
             totalBillingNodes: number;
             availableBillingNodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             totalAvailableBillingNodes: number;
         };

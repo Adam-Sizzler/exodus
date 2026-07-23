@@ -20,9 +20,13 @@ exports.InfraProviderSchema = zod_1.z.object({
         totalBills: zod_1.z.number(),
     }),
     billingNodes: zod_1.z.array(zod_1.z.object({
-        nodeUuid: zod_1.z.string().uuid(),
         name: zod_1.z.string(),
-        countryCode: zod_1.z.string(),
+        details: zod_1.z
+            .object({
+            nodeUuid: zod_1.z.string().uuid(),
+            countryCode: zod_1.z.string(),
+        })
+            .nullable(),
     })),
 });
 exports.PartialInfraProviderSchema = zod_1.z.object({

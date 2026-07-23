@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetInfraBillingNodesCommand = void 0;
 const zod_1 = require("zod");
-const models_1 = require("../../models");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var GetInfraBillingNodesCommand;
 (function (GetInfraBillingNodesCommand) {
     GetInfraBillingNodesCommand.url = api_1.REST_API.INFRA_BILLING.GET_BILLING_NODES;
     GetInfraBillingNodesCommand.TSQ_url = GetInfraBillingNodesCommand.url;
-    GetInfraBillingNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_BILLING_NODES, 'get', 'Get infra billing nodes');
+    GetInfraBillingNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.GET_BILLING_NODES, 'get', 'Get infra billing nodes', { scope: 'list-billing-nodes', kind: 'read' });
     GetInfraBillingNodesCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             totalBillingNodes: zod_1.z.number(),

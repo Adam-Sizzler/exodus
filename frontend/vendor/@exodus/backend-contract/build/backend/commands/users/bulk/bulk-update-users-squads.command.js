@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BulkUpdateUsersSquadsCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../../constants");
 const api_1 = require("../../../api");
+const constants_1 = require("../../../constants");
 var BulkUpdateUsersSquadsCommand;
 (function (BulkUpdateUsersSquadsCommand) {
     BulkUpdateUsersSquadsCommand.url = api_1.REST_API.USERS.BULK.UPDATE_SQUADS;
     BulkUpdateUsersSquadsCommand.TSQ_url = BulkUpdateUsersSquadsCommand.url;
-    BulkUpdateUsersSquadsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.UPDATE_SQUADS, 'post', 'Bulk update users internal squads by UUIDs');
+    BulkUpdateUsersSquadsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.UPDATE_SQUADS, 'post', 'Bulk update users internal squads by UUIDs', { scope: 'bulk-update-squads', kind: 'write' });
     BulkUpdateUsersSquadsCommand.RequestSchema = zod_1.z.object({
         uuids: zod_1.z
             .array(zod_1.z.string().uuid())

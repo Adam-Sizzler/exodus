@@ -37,12 +37,13 @@ export declare namespace GetSubscriptionByUuidCommand {
                     readonly DAY: "DAY";
                     readonly WEEK: "WEEK";
                     readonly MONTH: "MONTH";
+                    readonly MONTH_ROLLING: "MONTH_ROLLING";
                 }>;
             }, "strip", z.ZodTypeAny, {
                 username: string;
                 shortUuid: string;
                 trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 trafficUsedBytes: string;
                 daysLeft: number;
                 trafficUsed: string;
@@ -56,7 +57,7 @@ export declare namespace GetSubscriptionByUuidCommand {
                 username: string;
                 shortUuid: string;
                 trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 trafficUsedBytes: string;
                 daysLeft: number;
                 trafficUsed: string;
@@ -75,7 +76,7 @@ export declare namespace GetSubscriptionByUuidCommand {
                 username: string;
                 shortUuid: string;
                 trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 trafficUsedBytes: string;
                 daysLeft: number;
                 trafficUsed: string;
@@ -95,7 +96,7 @@ export declare namespace GetSubscriptionByUuidCommand {
                 username: string;
                 shortUuid: string;
                 trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 trafficUsedBytes: string;
                 daysLeft: number;
                 trafficUsed: string;
@@ -117,7 +118,7 @@ export declare namespace GetSubscriptionByUuidCommand {
                 username: string;
                 shortUuid: string;
                 trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 trafficUsedBytes: string;
                 daysLeft: number;
                 trafficUsed: string;
@@ -139,7 +140,7 @@ export declare namespace GetSubscriptionByUuidCommand {
                 username: string;
                 shortUuid: string;
                 trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK";
+                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
                 trafficUsedBytes: string;
                 daysLeft: number;
                 trafficUsed: string;

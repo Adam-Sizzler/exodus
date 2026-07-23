@@ -8,7 +8,7 @@ var GetSubscriptionRequestHistoryStatsCommand;
 (function (GetSubscriptionRequestHistoryStatsCommand) {
     GetSubscriptionRequestHistoryStatsCommand.url = api_1.REST_API.SUBSCRIPTION_REQUEST_HISTORY.STATS;
     GetSubscriptionRequestHistoryStatsCommand.TSQ_url = GetSubscriptionRequestHistoryStatsCommand.url;
-    GetSubscriptionRequestHistoryStatsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_REQUEST_HISTORY_ROUTES.STATS, 'get', 'Get subscription request history stats');
+    GetSubscriptionRequestHistoryStatsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_REQUEST_HISTORY_ROUTES.STATS, 'get', 'Get subscription request history stats', { scope: 'stats', kind: 'read' });
     GetSubscriptionRequestHistoryStatsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             byParsedApp: zod_1.z.array(zod_1.z.object({

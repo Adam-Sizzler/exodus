@@ -10,5 +10,6 @@ export declare const SUBSCRIPTIONS_ROUTES: {
     readonly SUBPAGE: {
         readonly GET_CONFIG: (shortUuid: string) => string;
     };
+    readonly GET_CONNECTION_KEYS_BY_UUID: (uuid: string) => string;
 };
 //# sourceMappingURL=subscriptions.d.ts.map

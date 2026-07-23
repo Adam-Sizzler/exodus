@@ -2,13 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BulkNodesProfileModificationCommand = void 0;
 const zod_1 = require("zod");
-const constants_1 = require("../../../constants");
 const api_1 = require("../../../api");
+const constants_1 = require("../../../constants");
 var BulkNodesProfileModificationCommand;
 (function (BulkNodesProfileModificationCommand) {
     BulkNodesProfileModificationCommand.url = api_1.REST_API.NODES.BULK_ACTIONS.PROFILE_MODIFICATION;
     BulkNodesProfileModificationCommand.TSQ_url = BulkNodesProfileModificationCommand.url;
-    BulkNodesProfileModificationCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODES_ROUTES.BULK_ACTIONS.PROFILE_MODIFICATION, 'post', 'Modify Inbounds & Profile for many nodes');
+    BulkNodesProfileModificationCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODES_ROUTES.BULK_ACTIONS.PROFILE_MODIFICATION, 'post', 'Modify Inbounds & Profile for many nodes', { scope: 'bulk-profile-modification', kind: 'write' });
     BulkNodesProfileModificationCommand.RequestSchema = zod_1.z.object({
         uuids: zod_1.z.array(zod_1.z.string().uuid()).min(1, 'Must be at least 1 Node UUID'),
         configProfile: zod_1.z.object({

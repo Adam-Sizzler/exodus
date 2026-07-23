@@ -18,8 +18,8 @@ export declare namespace GetAllInboundsCommand {
             } & {
                 activeSquads: z.ZodArray<z.ZodString, "many">;
             }, "strip", z.ZodTypeAny, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -28,8 +28,8 @@ export declare namespace GetAllInboundsCommand {
                 activeSquads: string[];
                 rawInbound?: unknown;
             }, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -40,8 +40,8 @@ export declare namespace GetAllInboundsCommand {
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -53,8 +53,8 @@ export declare namespace GetAllInboundsCommand {
             total: number;
         }, {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -68,8 +68,8 @@ export declare namespace GetAllInboundsCommand {
     }, "strip", z.ZodTypeAny, {
         response: {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -83,8 +83,8 @@ export declare namespace GetAllInboundsCommand {
     }, {
         response: {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;

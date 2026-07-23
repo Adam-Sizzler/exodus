@@ -8,7 +8,7 @@ var DeleteInfraProviderByUuidCommand;
 (function (DeleteInfraProviderByUuidCommand) {
     DeleteInfraProviderByUuidCommand.url = api_1.REST_API.INFRA_BILLING.DELETE_PROVIDER;
     DeleteInfraProviderByUuidCommand.TSQ_url = DeleteInfraProviderByUuidCommand.url(':uuid');
-    DeleteInfraProviderByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.DELETE_PROVIDER(':uuid'), 'delete', 'Delete infra provider by uuid');
+    DeleteInfraProviderByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.DELETE_PROVIDER(':uuid'), 'delete', 'Delete infra provider by uuid', { scope: 'delete-provider', kind: 'write' });
     DeleteInfraProviderByUuidCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

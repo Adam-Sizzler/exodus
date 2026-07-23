@@ -32,7 +32,8 @@ type Config struct {
 	RequireGRPCToken bool
 	MTLSConfig       *MTLSConfig
 
-	AppVersion string
+	AppVersion                      string
+	MarzbanLegacyDropRevokedSubscriptions bool
 }
 
 type MTLSConfig struct {
@@ -42,7 +43,7 @@ type MTLSConfig struct {
 }
 
 // EnvError is a schema-like validation item rendered in the same style as
-// Remnawave subscription-page Zod validation errors.
+// Exodus subscription-page Zod validation errors.
 type EnvError struct {
 	Key     string
 	Message string
@@ -71,7 +72,7 @@ func NewEnvError(key, message string) EnvErrors {
 	return EnvErrors{{Key: strings.TrimSpace(key), Message: strings.TrimSpace(message)}}
 }
 
-// FormatEnvironmentErrors renders configuration failures like Remnawave
+// FormatEnvironmentErrors renders configuration failures like Exodus
 // subscription-page: a readable block with exact env names and setup hints.
 func FormatEnvironmentErrors(err error) string {
 	if err == nil {
@@ -117,6 +118,7 @@ func Load() (Config, error) {
 		GRPCPath:                        pathPrefix,
 		GRPCToken:                       grpcToken,
 		AppVersion:                      strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
+		MarzbanLegacyDropRevokedSubscriptions: parseBool(os.Getenv("MARZBAN_LEGACY_DROP_REVOKED_SUBSCRIPTIONS"), false),
 	}
 
 	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultGRPCPort)
@@ -221,4 +223,16 @@ func normalizePathPrefix(raw string) string {
 func deriveSessionSecret(apiToken string) string {
 	hash := sha256.Sum256([]byte(strings.TrimSpace(apiToken)))
 	return hex.EncodeToString(hash[:])
+}
+
+func parseBool(raw string, fallback bool) bool {
+	val := strings.TrimSpace(raw)
+	if val == "" {
+		return fallback
+	}
+	b, err := strconv.ParseBool(val)
+	if err != nil {
+		return fallback
+	}
+	return b
 }

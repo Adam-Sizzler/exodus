@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExternalSquadSchema = void 0;
 const zod_1 = require("zod");
+const constants_1 = require("../constants");
 const external_squads_1 = require("./external-squads");
 const subscription_settings_1 = require("./subscription-settings");
-const constants_1 = require("../constants");
 exports.ExternalSquadSchema = zod_1.z.object({
     uuid: zod_1.z.string().uuid(),
     viewPosition: zod_1.z.number().int(),

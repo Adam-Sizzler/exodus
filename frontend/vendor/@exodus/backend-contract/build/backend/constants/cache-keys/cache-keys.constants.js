@@ -7,20 +7,31 @@ exports.CACHE_KEYS = {
     SUBSCRIPTION_TEMPLATE: (name, type) => `subscription_template:${name}:${type}`,
     PASSKEY_REGISTRATION_OPTIONS: (uuid) => `passkey_registration_options:${uuid}`,
     PASSKEY_AUTHENTICATION_OPTIONS: (uuid) => `passkey_authentication_options:${uuid}`,
-    EXODUS_SETTINGS: 'exodus_settings',
-    SHORT_UUID_RANGE: 'short_uuid_range',
+    REMNAWAVE_SETTINGS: 'remnawave_settings',
+    NODE_SYSTEM_INFO: (uuid) => `node_system_info:${uuid}`,
+    NODE_SYSTEM_STATS: (uuid) => `node_system_stats:${uuid}`,
+    NODE_USERS_ONLINE: (uuid) => `node_users_online:${uuid}`,
+    NODE_VERSIONS: (uuid) => `node_versions:${uuid}`,
+    NODE_XRAY_UPTIME: (uuid) => `node_xray_uptime:${uuid}`,
+    RAW_INBOUND: (uuid) => `raw_inbound:${uuid}`,
+    XRAY_JSON_TEMPLATE: (uuid) => `xray_json_template:${uuid}`,
 };
 exports.CACHE_KEYS_TTL = {
-    EXODUS_SETTINGS: 86400000, // 1 day
-    EXTERNAL_SQUAD_SETTINGS: 3600000, // 1 hour
-    SUBSCRIPTION_SETTINGS: 3600000, // 1 hour
-    SHORT_UUID_RANGE: 86400000, // 1 day
+    REMNAWAVE_SETTINGS: 86400, // 1 day
+    EXTERNAL_SQUAD_SETTINGS: 3600, // 1 hour
+    SUBSCRIPTION_SETTINGS: 3600, // 1 hour
+    NODE_SYSTEM_STATS: 30, // 30 seconds
+    NODE_USERS_ONLINE: 16, // 16 seconds
+    NODE_XRAY_UPTIME: 16, // 16 seconds
+    RAW_INBOUND: 3600, // 1 hour
+    XRAY_JSON_TEMPLATE: 3600, // 1 hour
 };
 exports.INTERNAL_CACHE_KEYS = {
     NODE_USER_USAGE_PREFIX: 'node_user_usage:',
     NODE_USER_USAGE: (nodeId) => `${exports.INTERNAL_CACHE_KEYS.NODE_USER_USAGE_PREFIX}${nodeId.toString()}`,
     NODE_USER_USAGE_KEYS: 'node_user_usage_keys',
     PROCESSING_POSTFIX: ':processing',
+    RUNTIME_METRICS: 'runtime_metrics',
 };
 exports.INTERNAL_CACHE_KEYS_TTL = {
     NODE_USER_USAGE: 10800, // 3 hours in seconds

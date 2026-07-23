@@ -11,6 +11,14 @@ export declare namespace RestartNodeCommand {
         uuid: string;
     }>;
     type Request = z.infer<typeof RequestSchema>;
+    const RequestBodySchema: z.ZodObject<{
+        forceRestart: z.ZodBoolean;
+    }, "strip", z.ZodTypeAny, {
+        forceRestart: boolean;
+    }, {
+        forceRestart: boolean;
+    }>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             eventSent: z.ZodBoolean;

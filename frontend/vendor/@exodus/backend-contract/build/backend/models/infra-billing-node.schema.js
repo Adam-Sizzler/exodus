@@ -6,7 +6,8 @@ const infra_provider_schema_1 = require("./infra-provider.schema");
 const nodes_schema_1 = require("./nodes.schema");
 exports.InfraBillingNodeSchema = zod_1.z.object({
     uuid: zod_1.z.string().uuid(),
-    nodeUuid: zod_1.z.string().uuid(),
+    nodeUuid: zod_1.z.string().uuid().nullable(),
+    name: zod_1.z.string().nullable(),
     providerUuid: zod_1.z.string().uuid(),
     provider: infra_provider_schema_1.PartialInfraProviderSchema.pick({
         uuid: true,
@@ -18,7 +19,7 @@ exports.InfraBillingNodeSchema = zod_1.z.object({
         uuid: true,
         name: true,
         countryCode: true,
-    }),
+    }).nullable(),
     nextBillingAt: zod_1.z
         .string()
         .datetime()

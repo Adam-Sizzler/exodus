@@ -8,22 +8,30 @@ export declare namespace GetHwidDevicesStatsCommand {
             byPlatform: z.ZodArray<z.ZodObject<{
                 platform: z.ZodString;
                 count: z.ZodNumber;
+                byApp: z.ZodArray<z.ZodObject<{
+                    app: z.ZodString;
+                    count: z.ZodNumber;
+                }, "strip", z.ZodTypeAny, {
+                    count: number;
+                    app: string;
+                }, {
+                    count: number;
+                    app: string;
+                }>, "many">;
             }, "strip", z.ZodTypeAny, {
                 platform: string;
                 count: number;
+                byApp: {
+                    count: number;
+                    app: string;
+                }[];
             }, {
                 platform: string;
                 count: number;
-            }>, "many">;
-            byApp: z.ZodArray<z.ZodObject<{
-                app: z.ZodString;
-                count: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                count: number;
-                app: string;
-            }, {
-                count: number;
-                app: string;
+                byApp: {
+                    count: number;
+                    app: string;
+                }[];
             }>, "many">;
             stats: z.ZodObject<{
                 totalUniqueDevices: z.ZodNumber;
@@ -47,10 +55,10 @@ export declare namespace GetHwidDevicesStatsCommand {
             byPlatform: {
                 platform: string;
                 count: number;
-            }[];
-            byApp: {
-                count: number;
-                app: string;
+                byApp: {
+                    count: number;
+                    app: string;
+                }[];
             }[];
         }, {
             stats: {
@@ -61,10 +69,10 @@ export declare namespace GetHwidDevicesStatsCommand {
             byPlatform: {
                 platform: string;
                 count: number;
-            }[];
-            byApp: {
-                count: number;
-                app: string;
+                byApp: {
+                    count: number;
+                    app: string;
+                }[];
             }[];
         }>;
     }, "strip", z.ZodTypeAny, {
@@ -77,10 +85,10 @@ export declare namespace GetHwidDevicesStatsCommand {
             byPlatform: {
                 platform: string;
                 count: number;
-            }[];
-            byApp: {
-                count: number;
-                app: string;
+                byApp: {
+                    count: number;
+                    app: string;
+                }[];
             }[];
         };
     }, {
@@ -93,10 +101,10 @@ export declare namespace GetHwidDevicesStatsCommand {
             byPlatform: {
                 platform: string;
                 count: number;
-            }[];
-            byApp: {
-                count: number;
-                app: string;
+                byApp: {
+                    count: number;
+                    app: string;
+                }[];
             }[];
         };
     }>;

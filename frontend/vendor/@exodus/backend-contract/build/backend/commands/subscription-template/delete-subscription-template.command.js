@@ -8,7 +8,7 @@ var DeleteSubscriptionTemplateCommand;
 (function (DeleteSubscriptionTemplateCommand) {
     DeleteSubscriptionTemplateCommand.url = api_1.REST_API.SUBSCRIPTION_TEMPLATE.DELETE;
     DeleteSubscriptionTemplateCommand.TSQ_url = DeleteSubscriptionTemplateCommand.url(':uuid');
-    DeleteSubscriptionTemplateCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_TEMPLATE_ROUTES.DELETE(':uuid'), 'delete', 'Delete subscription template');
+    DeleteSubscriptionTemplateCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_TEMPLATE_ROUTES.DELETE(':uuid'), 'delete', 'Delete subscription template', { scope: 'delete', kind: 'write' });
     DeleteSubscriptionTemplateCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

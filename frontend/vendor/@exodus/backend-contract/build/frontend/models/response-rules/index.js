@@ -15,5 +15,6 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./response-rule-condition.schema"), exports);
+__exportStar(require("./response-rule-modifications.schema"), exports);
 __exportStar(require("./response-rule.schema"), exports);
 __exportStar(require("./response-rules-config.schema"), exports);

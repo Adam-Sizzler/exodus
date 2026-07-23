@@ -15,27 +15,19 @@ export declare namespace GetStatusCommand {
                 }, {
                     enabled: boolean;
                 }>;
-                tgAuth: z.ZodObject<{
-                    enabled: z.ZodBoolean;
-                    botId: z.ZodNullable<z.ZodNumber>;
-                }, "strip", z.ZodTypeAny, {
-                    enabled: boolean;
-                    botId: number | null;
-                }, {
-                    enabled: boolean;
-                    botId: number | null;
-                }>;
                 oauth2: z.ZodObject<{
                     providers: z.ZodRecord<z.ZodNativeEnum<{
+                        readonly TELEGRAM: "telegram";
                         readonly GITHUB: "github";
                         readonly POCKETID: "pocketid";
                         readonly YANDEX: "yandex";
                         readonly KEYCLOAK: "keycloak";
+                        readonly GENERIC: "generic";
                     }>, z.ZodBoolean>;
                 }, "strip", z.ZodTypeAny, {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 }, {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 }>;
                 password: z.ZodObject<{
                     enabled: z.ZodBoolean;
@@ -48,12 +40,8 @@ export declare namespace GetStatusCommand {
                 passkey: {
                     enabled: boolean;
                 };
-                tgAuth: {
-                    enabled: boolean;
-                    botId: number | null;
-                };
                 oauth2: {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 };
                 password: {
                     enabled: boolean;
@@ -62,12 +50,8 @@ export declare namespace GetStatusCommand {
                 passkey: {
                     enabled: boolean;
                 };
-                tgAuth: {
-                    enabled: boolean;
-                    botId: number | null;
-                };
                 oauth2: {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 };
                 password: {
                     enabled: boolean;
@@ -90,12 +74,8 @@ export declare namespace GetStatusCommand {
                 passkey: {
                     enabled: boolean;
                 };
-                tgAuth: {
-                    enabled: boolean;
-                    botId: number | null;
-                };
                 oauth2: {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 };
                 password: {
                     enabled: boolean;
@@ -112,12 +92,8 @@ export declare namespace GetStatusCommand {
                 passkey: {
                     enabled: boolean;
                 };
-                tgAuth: {
-                    enabled: boolean;
-                    botId: number | null;
-                };
                 oauth2: {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 };
                 password: {
                     enabled: boolean;
@@ -136,12 +112,8 @@ export declare namespace GetStatusCommand {
                 passkey: {
                     enabled: boolean;
                 };
-                tgAuth: {
-                    enabled: boolean;
-                    botId: number | null;
-                };
                 oauth2: {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 };
                 password: {
                     enabled: boolean;
@@ -160,12 +132,8 @@ export declare namespace GetStatusCommand {
                 passkey: {
                     enabled: boolean;
                 };
-                tgAuth: {
-                    enabled: boolean;
-                    botId: number | null;
-                };
                 oauth2: {
-                    providers: Partial<Record<"github" | "pocketid" | "yandex" | "keycloak", boolean>>;
+                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
                 };
                 password: {
                     enabled: boolean;

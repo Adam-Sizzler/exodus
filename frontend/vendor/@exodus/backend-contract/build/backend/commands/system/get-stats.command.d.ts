@@ -15,32 +15,23 @@ export declare namespace GetStatsCommand {
         response: z.ZodObject<{
             cpu: z.ZodObject<{
                 cores: z.ZodNumber;
-                physicalCores: z.ZodNumber;
             }, "strip", z.ZodTypeAny, {
                 cores: number;
-                physicalCores: number;
             }, {
                 cores: number;
-                physicalCores: number;
             }>;
             memory: z.ZodObject<{
                 total: z.ZodNumber;
                 free: z.ZodNumber;
                 used: z.ZodNumber;
-                active: z.ZodNumber;
-                available: z.ZodNumber;
             }, "strip", z.ZodTypeAny, {
                 total: number;
                 free: number;
                 used: number;
-                active: number;
-                available: number;
             }, {
                 total: number;
                 free: number;
                 used: number;
-                active: number;
-                available: number;
             }>;
             uptime: z.ZodNumber;
             timestamp: z.ZodNumber;
@@ -89,19 +80,16 @@ export declare namespace GetStatsCommand {
                 statusCounts: Record<string, number>;
                 totalUsers: number;
             };
+            uptime: number;
             timestamp: number;
+            cpu: {
+                cores: number;
+            };
             memory: {
                 total: number;
                 free: number;
                 used: number;
-                active: number;
-                available: number;
             };
-            cpu: {
-                cores: number;
-                physicalCores: number;
-            };
-            uptime: number;
             onlineStats: {
                 lastDay: number;
                 lastWeek: number;
@@ -117,19 +105,16 @@ export declare namespace GetStatsCommand {
                 statusCounts: Record<string, number>;
                 totalUsers: number;
             };
+            uptime: number;
             timestamp: number;
+            cpu: {
+                cores: number;
+            };
             memory: {
                 total: number;
                 free: number;
                 used: number;
-                active: number;
-                available: number;
             };
-            cpu: {
-                cores: number;
-                physicalCores: number;
-            };
-            uptime: number;
             onlineStats: {
                 lastDay: number;
                 lastWeek: number;
@@ -147,19 +132,16 @@ export declare namespace GetStatsCommand {
                 statusCounts: Record<string, number>;
                 totalUsers: number;
             };
+            uptime: number;
             timestamp: number;
+            cpu: {
+                cores: number;
+            };
             memory: {
                 total: number;
                 free: number;
                 used: number;
-                active: number;
-                available: number;
             };
-            cpu: {
-                cores: number;
-                physicalCores: number;
-            };
-            uptime: number;
             onlineStats: {
                 lastDay: number;
                 lastWeek: number;
@@ -177,19 +159,16 @@ export declare namespace GetStatsCommand {
                 statusCounts: Record<string, number>;
                 totalUsers: number;
             };
+            uptime: number;
             timestamp: number;
+            cpu: {
+                cores: number;
+            };
             memory: {
                 total: number;
                 free: number;
                 used: number;
-                active: number;
-                available: number;
             };
-            cpu: {
-                cores: number;
-                physicalCores: number;
-            };
-            uptime: number;
             onlineStats: {
                 lastDay: number;
                 lastWeek: number;

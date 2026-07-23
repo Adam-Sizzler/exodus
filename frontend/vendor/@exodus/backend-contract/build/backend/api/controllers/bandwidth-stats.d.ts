@@ -8,6 +8,7 @@ export declare const BANDWIDTH_STATS_ROUTES: {
         readonly GET: "";
         readonly GET_REALTIME: "realtime";
         readonly GET_USERS: (uuid: string) => string;
+        readonly GET_USERS_BY_NODES: "users";
     };
     readonly USERS: {
         readonly GET_BY_UUID: (uuid: string) => string;

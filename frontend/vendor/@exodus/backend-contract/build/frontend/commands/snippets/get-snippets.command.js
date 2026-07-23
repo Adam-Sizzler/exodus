@@ -9,7 +9,10 @@ var GetSnippetsCommand;
 (function (GetSnippetsCommand) {
     GetSnippetsCommand.url = api_1.REST_API.SNIPPETS.GET;
     GetSnippetsCommand.TSQ_url = GetSnippetsCommand.url;
-    GetSnippetsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.GET, 'get', 'Get snippets');
+    GetSnippetsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.GET, 'get', 'Get snippets', {
+        scope: 'list',
+        kind: 'read',
+    });
     GetSnippetsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             total: zod_1.z.number(),

@@ -8,7 +8,7 @@ var GetStatsNodesUsageCommand;
 (function (GetStatsNodesUsageCommand) {
     GetStatsNodesUsageCommand.url = api_1.REST_API.BANDWIDTH_STATS.NODES.GET;
     GetStatsNodesUsageCommand.TSQ_url = GetStatsNodesUsageCommand.url;
-    GetStatsNodesUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.NODES.GET, 'get', 'Get Nodes Usage by Range');
+    GetStatsNodesUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.NODES.GET, 'get', 'Get Nodes Usage by Range', { scope: 'nodes-usage', kind: 'read' });
     GetStatsNodesUsageCommand.RequestQuerySchema = zod_1.z.object({
         start: zod_1.z.string().date(),
         end: zod_1.z.string().date(),

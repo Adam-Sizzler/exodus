@@ -122,9 +122,9 @@ export declare namespace GetExternalSquadByUuidCommand {
             updatedAt: z.ZodEffects<z.ZodString, Date, string>;
         }, "strip", z.ZodTypeAny, {
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];
@@ -165,9 +165,9 @@ export declare namespace GetExternalSquadByUuidCommand {
             subpageConfigUuid: string | null;
         }, {
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];
@@ -210,9 +210,9 @@ export declare namespace GetExternalSquadByUuidCommand {
     }, "strip", z.ZodTypeAny, {
         response: {
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];
@@ -255,9 +255,9 @@ export declare namespace GetExternalSquadByUuidCommand {
     }, {
         response: {
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             customRemarks: {
                 expiredUsers: string[];

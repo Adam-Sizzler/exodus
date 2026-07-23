@@ -11,46 +11,46 @@ export declare namespace GetAllPasskeysCommand {
                 createdAt: z.ZodEffects<z.ZodString, Date, string>;
                 lastUsedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
+                name: string;
                 createdAt: Date;
                 id: string;
-                name: string;
                 lastUsedAt: Date;
             }, {
+                name: string;
                 createdAt: string;
                 id: string;
-                name: string;
                 lastUsedAt: string;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             passkeys: {
+                name: string;
                 createdAt: Date;
                 id: string;
-                name: string;
                 lastUsedAt: Date;
             }[];
         }, {
             passkeys: {
+                name: string;
                 createdAt: string;
                 id: string;
-                name: string;
                 lastUsedAt: string;
             }[];
         }>;
     }, "strip", z.ZodTypeAny, {
         response: {
             passkeys: {
+                name: string;
                 createdAt: Date;
                 id: string;
-                name: string;
                 lastUsedAt: Date;
             }[];
         };
     }, {
         response: {
             passkeys: {
+                name: string;
                 createdAt: string;
                 id: string;
-                name: string;
                 lastUsedAt: string;
             }[];
         };

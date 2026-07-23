@@ -27,8 +27,8 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 port: z.ZodNullable<z.ZodNumber>;
                 rawInbound: z.ZodNullable<z.ZodUnknown>;
             }, "strip", z.ZodTypeAny, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -36,8 +36,8 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 port: number | null;
                 rawInbound?: unknown;
             }, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -51,24 +51,24 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 countryCode: z.ZodString;
             }, "strip", z.ZodTypeAny, {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }, {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }>, "many">;
             createdAt: z.ZodEffects<z.ZodString, Date, string>;
             updatedAt: z.ZodEffects<z.ZodString, Date, string>;
         }, "strip", z.ZodTypeAny, {
             nodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -77,20 +77,20 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             config?: unknown;
         }, {
             nodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -99,9 +99,9 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             config?: unknown;
         }>;
@@ -109,12 +109,12 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
         response: {
             nodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -123,9 +123,9 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             viewPosition: number;
             config?: unknown;
         };
@@ -133,12 +133,12 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
         response: {
             nodes: {
                 uuid: string;
-                countryCode: string;
                 name: string;
+                countryCode: string;
             }[];
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -147,9 +147,9 @@ export declare namespace GetComputedConfigProfileByUuidCommand {
                 rawInbound?: unknown;
             }[];
             uuid: string;
+            name: string;
             createdAt: string;
             updatedAt: string;
-            name: string;
             viewPosition: number;
             config?: unknown;
         };

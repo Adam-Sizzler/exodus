@@ -9,7 +9,7 @@ exports.UsersSchema = zod_1.z.object({
     shortUuid: zod_1.z.string(),
     username: zod_1.z.string(),
     status: zod_1.z.nativeEnum(constants_1.USERS_STATUS).default(constants_1.USERS_STATUS.ACTIVE),
-    trafficLimitBytes: zod_1.z.number().int().default(0),
+    trafficLimitBytes: zod_1.z.number().default(0),
     trafficLimitStrategy: zod_1.z
         .nativeEnum(constants_1.RESET_PERIODS, {
         description: 'Available reset periods',
@@ -30,11 +30,6 @@ exports.UsersSchema = zod_1.z.object({
     ssPassword: zod_1.z.string(),
     lastTriggeredThreshold: zod_1.z.number().int().default(0),
     subRevokedAt: zod_1.z.nullable(zod_1.z
-        .string()
-        .datetime()
-        .transform((str) => new Date(str))),
-    subLastUserAgent: zod_1.z.nullable(zod_1.z.string()),
-    subLastOpenedAt: zod_1.z.nullable(zod_1.z
         .string()
         .datetime()
         .transform((str) => new Date(str))),

@@ -26,8 +26,8 @@ export declare namespace GetInboundsByProfileUuidCommand {
             } & {
                 activeSquads: z.ZodArray<z.ZodString, "many">;
             }, "strip", z.ZodTypeAny, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -36,8 +36,8 @@ export declare namespace GetInboundsByProfileUuidCommand {
                 activeSquads: string[];
                 rawInbound?: unknown;
             }, {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -48,8 +48,8 @@ export declare namespace GetInboundsByProfileUuidCommand {
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -61,8 +61,8 @@ export declare namespace GetInboundsByProfileUuidCommand {
             total: number;
         }, {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -76,8 +76,8 @@ export declare namespace GetInboundsByProfileUuidCommand {
     }, "strip", z.ZodTypeAny, {
         response: {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;
@@ -91,8 +91,8 @@ export declare namespace GetInboundsByProfileUuidCommand {
     }, {
         response: {
             inbounds: {
-                type: string;
                 uuid: string;
+                type: string;
                 profileUuid: string;
                 tag: string;
                 network: string | null;

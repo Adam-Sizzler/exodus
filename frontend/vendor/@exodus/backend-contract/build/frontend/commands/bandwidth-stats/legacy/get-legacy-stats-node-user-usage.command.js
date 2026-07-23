@@ -8,7 +8,7 @@ var GetLegacyStatsNodeUserUsageCommand;
 (function (GetLegacyStatsNodeUserUsageCommand) {
     GetLegacyStatsNodeUserUsageCommand.url = api_1.REST_API.BANDWIDTH_STATS.LEGACY.NODES.GET_USERS;
     GetLegacyStatsNodeUserUsageCommand.TSQ_url = GetLegacyStatsNodeUserUsageCommand.url(':uuid');
-    GetLegacyStatsNodeUserUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.LEGACY.NODES.GET_USERS(':uuid'), 'get', 'Get Node User Usage by Range and Node UUID (Legacy)');
+    GetLegacyStatsNodeUserUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.LEGACY.NODES.GET_USERS(':uuid'), 'get', 'Get Node User Usage by Range and Node UUID (Legacy)', { scope: 'node-users-usage-legacy', kind: 'read' });
     GetLegacyStatsNodeUserUsageCommand.RequestSchema = zod_1.z.object({
         uuid: zod_1.z.string().uuid(),
     });

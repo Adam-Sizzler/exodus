@@ -30,8 +30,8 @@ export declare namespace GetInternalSquadsCommand {
                     port: z.ZodNullable<z.ZodNumber>;
                     rawInbound: z.ZodNullable<z.ZodUnknown>;
                 }, "strip", z.ZodTypeAny, {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -39,8 +39,8 @@ export declare namespace GetInternalSquadsCommand {
                     port: number | null;
                     rawInbound?: unknown;
                 }, {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -52,8 +52,8 @@ export declare namespace GetInternalSquadsCommand {
                 updatedAt: z.ZodEffects<z.ZodString, Date, string>;
             }, "strip", z.ZodTypeAny, {
                 inbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -62,9 +62,9 @@ export declare namespace GetInternalSquadsCommand {
                     rawInbound?: unknown;
                 }[];
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 info: {
                     membersCount: number;
@@ -72,8 +72,8 @@ export declare namespace GetInternalSquadsCommand {
                 };
             }, {
                 inbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -82,9 +82,9 @@ export declare namespace GetInternalSquadsCommand {
                     rawInbound?: unknown;
                 }[];
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 info: {
                     membersCount: number;
@@ -95,8 +95,8 @@ export declare namespace GetInternalSquadsCommand {
             total: number;
             internalSquads: {
                 inbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -105,9 +105,9 @@ export declare namespace GetInternalSquadsCommand {
                     rawInbound?: unknown;
                 }[];
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 info: {
                     membersCount: number;
@@ -118,8 +118,8 @@ export declare namespace GetInternalSquadsCommand {
             total: number;
             internalSquads: {
                 inbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -128,9 +128,9 @@ export declare namespace GetInternalSquadsCommand {
                     rawInbound?: unknown;
                 }[];
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 info: {
                     membersCount: number;
@@ -143,8 +143,8 @@ export declare namespace GetInternalSquadsCommand {
             total: number;
             internalSquads: {
                 inbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -153,9 +153,9 @@ export declare namespace GetInternalSquadsCommand {
                     rawInbound?: unknown;
                 }[];
                 uuid: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 viewPosition: number;
                 info: {
                     membersCount: number;
@@ -168,8 +168,8 @@ export declare namespace GetInternalSquadsCommand {
             total: number;
             internalSquads: {
                 inbounds: {
-                    type: string;
                     uuid: string;
+                    type: string;
                     profileUuid: string;
                     tag: string;
                     network: string | null;
@@ -178,9 +178,9 @@ export declare namespace GetInternalSquadsCommand {
                     rawInbound?: unknown;
                 }[];
                 uuid: string;
+                name: string;
                 createdAt: string;
                 updatedAt: string;
-                name: string;
                 viewPosition: number;
                 info: {
                     membersCount: number;

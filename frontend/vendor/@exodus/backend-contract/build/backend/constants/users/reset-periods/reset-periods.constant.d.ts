@@ -3,7 +3,8 @@ export declare const RESET_PERIODS: {
     readonly DAY: "DAY";
     readonly WEEK: "WEEK";
     readonly MONTH: "MONTH";
+    readonly MONTH_ROLLING: "MONTH_ROLLING";
 };
 export type TResetPeriods = [keyof typeof RESET_PERIODS][number];
-export declare const RESET_PERIODS_VALUES: ("MONTH" | "NO_RESET" | "DAY" | "WEEK")[];
+export declare const RESET_PERIODS_VALUES: ("MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING")[];
 //# sourceMappingURL=reset-periods.constant.d.ts.map

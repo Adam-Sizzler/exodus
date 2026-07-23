@@ -24,5 +24,7 @@ __exportStar(require("./get-by"), exports);
 __exportStar(require("./get-user-accessible-nodes.command"), exports);
 __exportStar(require("./get-user-by-uuid.command"), exports);
 __exportStar(require("./get-user-subscription-request-history.command"), exports);
+__exportStar(require("./get-users-stream.command"), exports);
+__exportStar(require("./resolve-user.command"), exports);
 __exportStar(require("./tags"), exports);
 __exportStar(require("./update-user.command"), exports);

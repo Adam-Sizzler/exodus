@@ -3,13 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateSubscriptionPageConfigCommand = void 0;
 const zod_1 = require("zod");
 const api_1 = require("../../api");
-const models_1 = require("../../models");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var CreateSubscriptionPageConfigCommand;
 (function (CreateSubscriptionPageConfigCommand) {
     CreateSubscriptionPageConfigCommand.url = api_1.REST_API.SUBSCRIPTION_PAGE_CONFIGS.CREATE;
     CreateSubscriptionPageConfigCommand.TSQ_url = CreateSubscriptionPageConfigCommand.url;
-    CreateSubscriptionPageConfigCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_PAGE_CONFIGS_ROUTES.CREATE, 'post', 'Create subscription page config');
+    CreateSubscriptionPageConfigCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_PAGE_CONFIGS_ROUTES.CREATE, 'post', 'Create subscription page config', { scope: 'create', kind: 'write' });
     CreateSubscriptionPageConfigCommand.RequestSchema = zod_1.z.object({
         name: zod_1.z
             .string()
