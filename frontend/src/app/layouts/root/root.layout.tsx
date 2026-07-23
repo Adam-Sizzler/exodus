@@ -49,12 +49,20 @@ export function RootLayout() {
 
         const fetchConfig = async () => {
             try {
-                const tempConfig = await ofetch<unknown>(
-                    `${APP_CONFIG_ROUTE_LEADING_PATH}?v=${Date.now()}`,
-                    {
-                        parseResponse: (response) => JSON.parse(response)
-                    }
-                )
+                // APP_CONFIG_ROUTE_LEADING_PATH ('/assets/.app-config-v2.json') is an
+                // absolute, domain-root path baked into the vendor package. Passed
+                // directly to fetch, it always resolves against the origin and
+                // ignores whatever sub-path this app is actually deployed under
+                // (e.g. /subscription/). Resolve it instead relative to this
+                // module's own resolved URL, which already lives under the correct
+                // assets/ folder for the current deployment.
+                const configFileName = APP_CONFIG_ROUTE_LEADING_PATH.replace(/^\/assets\//, '')
+                const configUrl = new URL(configFileName, import.meta.url)
+                configUrl.searchParams.set('v', String(Date.now()))
+
+                const tempConfig = await ofetch<unknown>(configUrl.toString(), {
+                    parseResponse: (response) => JSON.parse(response)
+                })
 
                 const parsedConfig =
                     await SubscriptionPageRawConfigSchema.safeParseAsync(tempConfig)
