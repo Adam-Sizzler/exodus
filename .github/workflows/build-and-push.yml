@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
 
 jobs:
   send-start-deploy-telegram-message:
@@ -43,7 +44,7 @@ jobs:
       - name: Build frontend
         run: |
           cd frontend
-          npm ci
+          npm ci --legacy-peer-deps --no-audit --prefer-offline
           npm run start:build
 
       - name: Set up QEMU
