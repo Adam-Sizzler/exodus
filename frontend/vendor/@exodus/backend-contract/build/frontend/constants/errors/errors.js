@@ -702,12 +702,12 @@ exports.ERRORS = {
     },
     RESERVED_INTERNAL_SQUAD_NAME: {
         code: 'A144',
-        message: 'This name is reserved by Remnawave. Please use a different name.',
+        message: 'This name is reserved by Exodus. Please use a different name.',
         httpCode: 400,
     },
     RESERVED_CONFIG_PROFILE_NAME: {
         code: 'A145',
-        message: 'This name is reserved by Remnawave. Please use a different name.',
+        message: 'This name is reserved by Exodus. Please use a different name.',
         httpCode: 400,
     },
     UPDATE_CONFIG_PROFILE_ERROR: {
@@ -940,14 +940,14 @@ exports.ERRORS = {
         message: 'Passkey not found',
         httpCode: 404,
     },
-    GET_REMNAAWAVE_SETTINGS_ERROR: {
+    GET_EXODUS_SETTINGS_ERROR: {
         code: 'A192',
-        message: 'Get Remnawave settings error',
+        message: 'Get Exodus settings error',
         httpCode: 500,
     },
-    UPDATE_REMNAAWAVE_SETTINGS_ERROR: {
+    UPDATE_EXODUS_SETTINGS_ERROR: {
         code: 'A193',
-        message: 'Update Remnawave settings error',
+        message: 'Update Exodus settings error',
         httpCode: 500,
     },
     PASSKEYS_NOT_CONFIGURED: {
@@ -980,9 +980,9 @@ exports.ERRORS = {
         message: 'Delete passkey error',
         httpCode: 500,
     },
-    VALIDATE_REMNAAWAVE_SETTINGS_ERROR: {
+    VALIDATE_EXODUS_SETTINGS_ERROR: {
         code: 'A199',
-        message: 'Validate Remnawave settings error',
+        message: 'Validate Exodus settings error',
         httpCode: 500,
         withMessage: (message) => ({
             code: 'A199',
@@ -1070,9 +1070,9 @@ exports.ERRORS = {
         message: 'Invalid subscription page config',
         httpCode: 400,
     },
-    INVALID_REMNAWAVE_INJECTOR: {
+    INVALID_EXODUS_INJECTOR: {
         code: 'A216',
-        message: 'Invalid Remnawave injector',
+        message: 'Invalid Exodus injector',
         httpCode: 400,
     },
     JOB_CREATION_FAILED: {

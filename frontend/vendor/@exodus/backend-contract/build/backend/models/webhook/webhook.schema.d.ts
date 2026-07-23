@@ -1,5 +1,5 @@
 import z from 'zod';
-export declare const RemnawaveWebhookUserEvents: z.ZodObject<{
+export declare const ExodusWebhookUserEvents: z.ZodObject<{
     scope: z.ZodLiteral<"user">;
     event: z.ZodEnum<["user.created" | "user.modified" | "user.deleted" | "user.revoked" | "user.disabled" | "user.enabled" | "user.limited" | "user.expired" | "user.traffic_reset" | "user.first_connected" | "user.bandwidth_usage_threshold_reached" | "user.not_connected" | "user.expiration", ...("user.created" | "user.modified" | "user.deleted" | "user.revoked" | "user.disabled" | "user.enabled" | "user.limited" | "user.expired" | "user.traffic_reset" | "user.first_connected" | "user.bandwidth_usage_threshold_reached" | "user.not_connected" | "user.expiration")[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -238,7 +238,7 @@ export declare const RemnawaveWebhookUserEvents: z.ZodObject<{
         expiration?: number | null | undefined;
     } | null;
 }>;
-export declare const RemnawaveWebhookUserHwidDevicesEvents: z.ZodObject<{
+export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
     scope: z.ZodLiteral<"user_hwid_devices">;
     event: z.ZodEnum<["user_hwid_devices.added" | "user_hwid_devices.deleted", ...("user_hwid_devices.added" | "user_hwid_devices.deleted")[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -614,7 +614,7 @@ export declare const RemnawaveWebhookUserHwidDevicesEvents: z.ZodObject<{
     event: "user_hwid_devices.added" | "user_hwid_devices.deleted";
     timestamp: string;
 }>;
-export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
+export declare const ExodusWebhookNodeEvents: z.ZodObject<{
     scope: z.ZodLiteral<"node">;
     event: z.ZodEnum<["node.created" | "node.modified" | "node.disabled" | "node.enabled" | "node.deleted" | "node.connection_lost" | "node.connection_restored" | "node.traffic_notify", ...("node.created" | "node.modified" | "node.disabled" | "node.enabled" | "node.deleted" | "node.connection_lost" | "node.connection_restored" | "node.traffic_notify")[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -628,7 +628,11 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         isDisabled: z.ZodBoolean;
         isConnecting: z.ZodBoolean;
         lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-        lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
         isTrafficTrackingActive: z.ZodBoolean;
         trafficResetDay: z.ZodNullable<z.ZodNumber>;
         trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -858,16 +862,16 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
             };
         }>>;
         versions: z.ZodNullable<z.ZodObject<{
-            xray: z.ZodString;
+            singbox: z.ZodString;
             node: z.ZodString;
         }, "strip", z.ZodTypeAny, {
             node: string;
-            xray: string;
+            singbox: string;
         }, {
             node: string;
-            xray: string;
+            singbox: string;
         }>>;
-        xrayUptime: z.ZodNumber;
+        singboxUptime: z.ZodNumber;
         usersOnline: z.ZodNumber;
         note: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
@@ -921,7 +925,11 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: Date | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -945,9 +953,9 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     }, {
@@ -1001,7 +1009,11 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: string | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1025,9 +1037,9 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     }>;
@@ -1083,7 +1095,11 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: Date | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1107,9 +1123,9 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     };
@@ -1168,7 +1184,11 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: string | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -1192,9 +1212,9 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     };
@@ -1202,7 +1222,7 @@ export declare const RemnawaveWebhookNodeEvents: z.ZodObject<{
     event: "node.created" | "node.modified" | "node.disabled" | "node.enabled" | "node.deleted" | "node.connection_lost" | "node.connection_restored" | "node.traffic_notify";
     timestamp: string;
 }>;
-export declare const RemnawaveWebhookServiceEvents: z.ZodObject<{
+export declare const ExodusWebhookServiceEvents: z.ZodObject<{
     scope: z.ZodLiteral<"service">;
     event: z.ZodEnum<["service.panel_started" | "service.login_attempt_failed" | "service.login_attempt_success" | "service.subpage_config_changed" | "service.api_token_created" | "service.api_token_deleted", ...("service.panel_started" | "service.login_attempt_failed" | "service.login_attempt_success" | "service.subpage_config_changed" | "service.api_token_created" | "service.api_token_deleted")[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -1341,7 +1361,7 @@ export declare const RemnawaveWebhookServiceEvents: z.ZodObject<{
     event: "service.panel_started" | "service.login_attempt_failed" | "service.login_attempt_success" | "service.subpage_config_changed" | "service.api_token_created" | "service.api_token_deleted";
     timestamp: string;
 }>;
-export declare const RemnawaveWebhookErrorsEvents: z.ZodObject<{
+export declare const ExodusWebhookErrorsEvents: z.ZodObject<{
     scope: z.ZodLiteral<"errors">;
     event: z.ZodEnum<["errors.bandwidth_usage_threshold_reached_max_notifications", ..."errors.bandwidth_usage_threshold_reached_max_notifications"[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -1367,7 +1387,7 @@ export declare const RemnawaveWebhookErrorsEvents: z.ZodObject<{
     event: "errors.bandwidth_usage_threshold_reached_max_notifications";
     timestamp: string;
 }>;
-export declare const RemnawaveWebhookCrmEvents: z.ZodObject<{
+export declare const ExodusWebhookCrmEvents: z.ZodObject<{
     scope: z.ZodLiteral<"crm">;
     event: z.ZodEnum<["crm.infra_billing_node_payment_in_7_days" | "crm.infra_billing_node_payment_in_48hrs" | "crm.infra_billing_node_payment_in_24hrs" | "crm.infra_billing_node_payment_due_today" | "crm.infra_billing_node_payment_overdue_24hrs" | "crm.infra_billing_node_payment_overdue_48hrs" | "crm.infra_billing_node_payment_overdue_7_days", ...("crm.infra_billing_node_payment_in_7_days" | "crm.infra_billing_node_payment_in_48hrs" | "crm.infra_billing_node_payment_in_24hrs" | "crm.infra_billing_node_payment_due_today" | "crm.infra_billing_node_payment_overdue_24hrs" | "crm.infra_billing_node_payment_overdue_48hrs" | "crm.infra_billing_node_payment_overdue_7_days")[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -1408,7 +1428,7 @@ export declare const RemnawaveWebhookCrmEvents: z.ZodObject<{
     event: "crm.infra_billing_node_payment_in_7_days" | "crm.infra_billing_node_payment_in_48hrs" | "crm.infra_billing_node_payment_in_24hrs" | "crm.infra_billing_node_payment_due_today" | "crm.infra_billing_node_payment_overdue_24hrs" | "crm.infra_billing_node_payment_overdue_48hrs" | "crm.infra_billing_node_payment_overdue_7_days";
     timestamp: string;
 }>;
-export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
+export declare const ExodusWebhookTorrentBlockerEvents: z.ZodObject<{
     scope: z.ZodLiteral<"torrent_blocker">;
     event: z.ZodEnum<["torrent_blocker.report", ..."torrent_blocker.report"[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -1424,6 +1444,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: z.ZodBoolean;
             lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
             lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
             isTrafficTrackingActive: z.ZodBoolean;
             trafficResetDay: z.ZodNullable<z.ZodNumber>;
             trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -1653,16 +1677,16 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
                 };
             }>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, "strip", z.ZodTypeAny, {
                 node: string;
-                xray: string;
+                singbox: string;
             }, {
                 node: string;
-                xray: string;
+                singbox: string;
             }>>;
-            xrayUptime: z.ZodNumber;
+            singboxUptime: z.ZodNumber;
             usersOnline: z.ZodNumber;
             note: z.ZodNullable<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
@@ -1717,6 +1741,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -1740,9 +1768,9 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }, {
@@ -1797,6 +1825,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -1820,9 +1852,9 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }>;
@@ -2166,6 +2198,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -2189,9 +2225,9 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -2309,6 +2345,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -2332,9 +2372,9 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -2454,6 +2494,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -2477,9 +2521,9 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -2602,6 +2646,10 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -2625,9 +2673,9 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -2661,7 +2709,7 @@ export declare const RemnawaveWebhookTorrentBlockerEvents: z.ZodObject<{
     event: "torrent_blocker.report";
     timestamp: string;
 }>;
-export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", [z.ZodObject<{
+export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<"scope", [z.ZodObject<{
     scope: z.ZodLiteral<"user">;
     event: z.ZodEnum<["user.created" | "user.modified" | "user.deleted" | "user.revoked" | "user.disabled" | "user.enabled" | "user.limited" | "user.expired" | "user.traffic_reset" | "user.first_connected" | "user.bandwidth_usage_threshold_reached" | "user.not_connected" | "user.expiration", ...("user.created" | "user.modified" | "user.deleted" | "user.revoked" | "user.disabled" | "user.enabled" | "user.limited" | "user.expired" | "user.traffic_reset" | "user.first_connected" | "user.bandwidth_usage_threshold_reached" | "user.not_connected" | "user.expiration")[]]>;
     timestamp: z.ZodEffects<z.ZodString, Date, string>;
@@ -3288,7 +3336,11 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         isDisabled: z.ZodBoolean;
         isConnecting: z.ZodBoolean;
         lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-        lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
         isTrafficTrackingActive: z.ZodBoolean;
         trafficResetDay: z.ZodNullable<z.ZodNumber>;
         trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -3518,16 +3570,16 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             };
         }>>;
         versions: z.ZodNullable<z.ZodObject<{
-            xray: z.ZodString;
+            singbox: z.ZodString;
             node: z.ZodString;
         }, "strip", z.ZodTypeAny, {
             node: string;
-            xray: string;
+            singbox: string;
         }, {
             node: string;
-            xray: string;
+            singbox: string;
         }>>;
-        xrayUptime: z.ZodNumber;
+        singboxUptime: z.ZodNumber;
         usersOnline: z.ZodNumber;
         note: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
@@ -3581,7 +3633,11 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: Date | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -3605,9 +3661,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     }, {
@@ -3661,7 +3717,11 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: string | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -3685,9 +3745,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     }>;
@@ -3743,7 +3803,11 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: Date | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -3767,9 +3831,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     };
@@ -3828,7 +3892,11 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         isConnected: boolean;
         isConnecting: boolean;
         lastStatusChange: string | null;
-        lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
         isTrafficTrackingActive: boolean;
         trafficResetDay: number | null;
         trafficUsedBytes: number | null;
@@ -3852,9 +3920,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
         activePluginUuid: string | null;
         versions: {
             node: string;
-            xray: string;
+            singbox: string;
         } | null;
-        xrayUptime: number;
+        singboxUptime: number;
         usersOnline: number;
         note: string | null;
     };
@@ -4080,6 +4148,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: z.ZodBoolean;
             lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
             lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
             isTrafficTrackingActive: z.ZodBoolean;
             trafficResetDay: z.ZodNullable<z.ZodNumber>;
             trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -4309,16 +4381,16 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
                 };
             }>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, "strip", z.ZodTypeAny, {
                 node: string;
-                xray: string;
+                singbox: string;
             }, {
                 node: string;
-                xray: string;
+                singbox: string;
             }>>;
-            xrayUptime: z.ZodNumber;
+            singboxUptime: z.ZodNumber;
             usersOnline: z.ZodNumber;
             note: z.ZodNullable<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
@@ -4373,6 +4445,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -4396,9 +4472,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }, {
@@ -4453,6 +4529,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -4476,9 +4556,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }>;
@@ -4822,6 +4902,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -4845,9 +4929,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -4965,6 +5049,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -4988,9 +5076,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -5110,6 +5198,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -5133,9 +5225,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -5258,6 +5350,10 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -5281,9 +5377,9 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -5317,12 +5413,12 @@ export declare const RemnawaveWebhookEventSchema: z.ZodDiscriminatedUnion<"scope
     event: "torrent_blocker.report";
     timestamp: string;
 }>]>;
-export type TRemnawaveWebhookEvent = z.infer<typeof RemnawaveWebhookEventSchema>;
-export type TRemnawaveWebhookUserEvent = z.infer<typeof RemnawaveWebhookUserEvents>;
-export type TRemnawaveWebhookNodeEvent = z.infer<typeof RemnawaveWebhookNodeEvents>;
-export type TRemnawaveWebhookServiceEvent = z.infer<typeof RemnawaveWebhookServiceEvents>;
-export type TRemnawaveWebhookErrorsEvent = z.infer<typeof RemnawaveWebhookErrorsEvents>;
-export type TRemnawaveWebhookCrmEvent = z.infer<typeof RemnawaveWebhookCrmEvents>;
-export type TRemnawaveWebhookUserHwidDevicesEvent = z.infer<typeof RemnawaveWebhookUserHwidDevicesEvents>;
-export type TRemnawaveWebhookTorrentBlockerEvent = z.infer<typeof RemnawaveWebhookTorrentBlockerEvents>;
+export type TExodusWebhookEvent = z.infer<typeof ExodusWebhookEventSchema>;
+export type TExodusWebhookUserEvent = z.infer<typeof ExodusWebhookUserEvents>;
+export type TExodusWebhookNodeEvent = z.infer<typeof ExodusWebhookNodeEvents>;
+export type TExodusWebhookServiceEvent = z.infer<typeof ExodusWebhookServiceEvents>;
+export type TExodusWebhookErrorsEvent = z.infer<typeof ExodusWebhookErrorsEvents>;
+export type TExodusWebhookCrmEvent = z.infer<typeof ExodusWebhookCrmEvents>;
+export type TExodusWebhookUserHwidDevicesEvent = z.infer<typeof ExodusWebhookUserHwidDevicesEvents>;
+export type TExodusWebhookTorrentBlockerEvent = z.infer<typeof ExodusWebhookTorrentBlockerEvents>;
 //# sourceMappingURL=webhook.schema.d.ts.map

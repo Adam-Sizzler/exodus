@@ -109,7 +109,7 @@ exports.CONTROLLERS_INFO = {
     },
     KEYGEN: {
         tag: 'Keygen Controller',
-        description: 'Generation of SECRET_KEY for Remnawave Node.',
+        description: 'Generation of SECRET_KEY for Exodus Node.',
         resource: 'keygen',
     },
     SUBSCRIPTION_REQUEST_HISTORY: {
@@ -122,10 +122,10 @@ exports.CONTROLLERS_INFO = {
         description: '',
         resource: 'snippets',
     },
-    REMNAAWAVE_SETTINGS: {
-        tag: 'Remnawave Settings Controller',
+    EXODUS_SETTINGS: {
+        tag: 'Exodus Settings Controller',
         description: '',
-        resource: 'remnawave-settings',
+        resource: 'exodus-settings',
     },
     SUBSCRIPTION_PAGE_CONFIGS: {
         tag: 'Subscription Page Configs Controller',

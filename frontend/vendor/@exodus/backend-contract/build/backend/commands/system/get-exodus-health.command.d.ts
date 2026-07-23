@@ -5,46 +5,116 @@ export declare namespace GetExodusHealthCommand {
     const endpointDetails: import("../../constants").EndpointDetails;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            pm2Stats: z.ZodArray<z.ZodObject<{
-                name: z.ZodString;
-                memory: z.ZodString;
-                cpu: z.ZodString;
+            runtimeMetrics: z.ZodArray<z.ZodObject<{
+                rss: z.ZodNumber;
+                heapUsed: z.ZodNumber;
+                heapTotal: z.ZodNumber;
+                external: z.ZodNumber;
+                arrayBuffers: z.ZodNumber;
+                eventLoopDelayMs: z.ZodNumber;
+                eventLoopP99Ms: z.ZodNumber;
+                activeHandles: z.ZodNumber;
+                uptime: z.ZodNumber;
+                pid: z.ZodNumber;
+                timestamp: z.ZodNumber;
+                instanceId: z.ZodString;
+                instanceType: z.ZodString;
             }, "strip", z.ZodTypeAny, {
-                name: string;
-                memory: string;
-                cpu: string;
+                uptime: number;
+                timestamp: number;
+                rss: number;
+                heapUsed: number;
+                heapTotal: number;
+                external: number;
+                arrayBuffers: number;
+                eventLoopDelayMs: number;
+                eventLoopP99Ms: number;
+                activeHandles: number;
+                pid: number;
+                instanceId: string;
+                instanceType: string;
             }, {
-                name: string;
-                memory: string;
-                cpu: string;
+                uptime: number;
+                timestamp: number;
+                rss: number;
+                heapUsed: number;
+                heapTotal: number;
+                external: number;
+                arrayBuffers: number;
+                eventLoopDelayMs: number;
+                eventLoopP99Ms: number;
+                activeHandles: number;
+                pid: number;
+                instanceId: string;
+                instanceType: string;
             }>, "many">;
         }, "strip", z.ZodTypeAny, {
-            pm2Stats: {
-                name: string;
-                memory: string;
-                cpu: string;
+            runtimeMetrics: {
+                uptime: number;
+                timestamp: number;
+                rss: number;
+                heapUsed: number;
+                heapTotal: number;
+                external: number;
+                arrayBuffers: number;
+                eventLoopDelayMs: number;
+                eventLoopP99Ms: number;
+                activeHandles: number;
+                pid: number;
+                instanceId: string;
+                instanceType: string;
             }[];
         }, {
-            pm2Stats: {
-                name: string;
-                memory: string;
-                cpu: string;
+            runtimeMetrics: {
+                uptime: number;
+                timestamp: number;
+                rss: number;
+                heapUsed: number;
+                heapTotal: number;
+                external: number;
+                arrayBuffers: number;
+                eventLoopDelayMs: number;
+                eventLoopP99Ms: number;
+                activeHandles: number;
+                pid: number;
+                instanceId: string;
+                instanceType: string;
             }[];
         }>;
     }, "strip", z.ZodTypeAny, {
         response: {
-            pm2Stats: {
-                name: string;
-                memory: string;
-                cpu: string;
+            runtimeMetrics: {
+                uptime: number;
+                timestamp: number;
+                rss: number;
+                heapUsed: number;
+                heapTotal: number;
+                external: number;
+                arrayBuffers: number;
+                eventLoopDelayMs: number;
+                eventLoopP99Ms: number;
+                activeHandles: number;
+                pid: number;
+                instanceId: string;
+                instanceType: string;
             }[];
         };
     }, {
         response: {
-            pm2Stats: {
-                name: string;
-                memory: string;
-                cpu: string;
+            runtimeMetrics: {
+                uptime: number;
+                timestamp: number;
+                rss: number;
+                heapUsed: number;
+                heapTotal: number;
+                external: number;
+                arrayBuffers: number;
+                eventLoopDelayMs: number;
+                eventLoopP99Ms: number;
+                activeHandles: number;
+                pid: number;
+                instanceId: string;
+                instanceType: string;
             }[];
         };
     }>;

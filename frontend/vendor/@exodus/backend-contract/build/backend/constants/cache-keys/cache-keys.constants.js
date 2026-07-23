@@ -7,7 +7,7 @@ exports.CACHE_KEYS = {
     SUBSCRIPTION_TEMPLATE: (name, type) => `subscription_template:${name}:${type}`,
     PASSKEY_REGISTRATION_OPTIONS: (uuid) => `passkey_registration_options:${uuid}`,
     PASSKEY_AUTHENTICATION_OPTIONS: (uuid) => `passkey_authentication_options:${uuid}`,
-    REMNAWAVE_SETTINGS: 'remnawave_settings',
+    EXODUS_SETTINGS: 'exodus_settings',
     NODE_SYSTEM_INFO: (uuid) => `node_system_info:${uuid}`,
     NODE_SYSTEM_STATS: (uuid) => `node_system_stats:${uuid}`,
     NODE_USERS_ONLINE: (uuid) => `node_users_online:${uuid}`,
@@ -17,7 +17,7 @@ exports.CACHE_KEYS = {
     XRAY_JSON_TEMPLATE: (uuid) => `xray_json_template:${uuid}`,
 };
 exports.CACHE_KEYS_TTL = {
-    REMNAWAVE_SETTINGS: 86400, // 1 day
+    EXODUS_SETTINGS: 86400, // 1 day
     EXTERNAL_SQUAD_SETTINGS: 3600, // 1 hour
     SUBSCRIPTION_SETTINGS: 3600, // 1 hour
     NODE_SYSTEM_STATS: 30, // 30 seconds

@@ -94,7 +94,7 @@ exports.ResponseRuleModificationsSchema = zod_1.default
         markdownDescription: 'If you set this flag to **true**, the HWID check will be disabled. **This modification have higher priority than settings from Subscription Settings.**',
     })),
     encryption: exports.ResponseRuleEncryptionSchema.optional().describe(JSON.stringify({
-        markdownDescription: 'Encrypt response body with given parameters. Generate keypairs with Rescue CLI: `docker exec -it remnawave cli`, select "Generate keypairs".',
+        markdownDescription: 'Encrypt response body with given parameters. Generate keypairs with Rescue CLI: `docker exec -it exodus cli`, select "Generate keypairs".',
     })),
     excludeHostsByTags: zod_1.default
         .array(zod_1.default

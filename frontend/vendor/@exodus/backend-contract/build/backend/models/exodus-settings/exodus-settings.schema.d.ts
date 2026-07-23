@@ -90,7 +90,61 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             frontendDomain: string | null;
             keycloakDomain: string | null;
         }>>;
+        generic: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            withPkce: z.ZodBoolean;
+            authorizationUrl: z.ZodNullable<z.ZodString>;
+            tokenUrl: z.ZodNullable<z.ZodString>;
+            frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+            allowedEmails: z.ZodArray<z.ZodString, "many">;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        }, {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        }>>;
+        telegram: z.ZodDefault<z.ZodObject<{
+            enabled: z.ZodBoolean;
+            clientId: z.ZodNullable<z.ZodString>;
+            clientSecret: z.ZodNullable<z.ZodString>;
+            allowedIds: z.ZodArray<z.ZodString, "many">;
+            frontendDomain: z.ZodNullable<z.ZodEffects<z.ZodString, string, string>>;
+        }, "strip", z.ZodTypeAny, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        }, {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        }>>;
     }, "strip", z.ZodTypeAny, {
+        telegram: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        };
         github: {
             enabled: boolean;
             clientId: string | null;
@@ -119,6 +173,16 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             frontendDomain: string | null;
             keycloakDomain: string | null;
         };
+        generic: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        };
     }, {
         github: {
             enabled: boolean;
@@ -139,6 +203,13 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             clientSecret: string | null;
             allowedEmails: string[];
         };
+        telegram?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        } | undefined;
         keycloak?: {
             enabled: boolean;
             clientId: string | null;
@@ -148,19 +219,16 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             frontendDomain: string | null;
             keycloakDomain: string | null;
         } | undefined;
-    }>>;
-    tgAuthSettings: z.ZodNullable<z.ZodObject<{
-        enabled: z.ZodBoolean;
-        botToken: z.ZodNullable<z.ZodString>;
-        adminIds: z.ZodArray<z.ZodString, "many">;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
-    }, {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
+        generic?: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        } | undefined;
     }>>;
     passwordSettings: z.ZodNullable<z.ZodObject<{
         enabled: z.ZodBoolean;
@@ -186,6 +254,13 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
         origin: string | null;
     } | null;
     oauth2Settings: {
+        telegram: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        };
         github: {
             enabled: boolean;
             clientId: string | null;
@@ -214,11 +289,16 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             frontendDomain: string | null;
             keycloakDomain: string | null;
         };
-    } | null;
-    tgAuthSettings: {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
+        generic: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        };
     } | null;
     passwordSettings: {
         enabled: boolean;
@@ -253,6 +333,13 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             clientSecret: string | null;
             allowedEmails: string[];
         };
+        telegram?: {
+            enabled: boolean;
+            clientId: string | null;
+            clientSecret: string | null;
+            frontendDomain: string | null;
+            allowedIds: string[];
+        } | undefined;
         keycloak?: {
             enabled: boolean;
             clientId: string | null;
@@ -262,11 +349,16 @@ export declare const ExodusSettingsSchema: z.ZodObject<{
             frontendDomain: string | null;
             keycloakDomain: string | null;
         } | undefined;
-    } | null;
-    tgAuthSettings: {
-        enabled: boolean;
-        botToken: string | null;
-        adminIds: string[];
+        generic?: {
+            enabled: boolean;
+            authorizationUrl: string | null;
+            clientId: string | null;
+            clientSecret: string | null;
+            allowedEmails: string[];
+            frontendDomain: string | null;
+            withPkce: boolean;
+            tokenUrl: string | null;
+        } | undefined;
     } | null;
     passwordSettings: {
         enabled: boolean;

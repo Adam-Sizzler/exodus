@@ -17,17 +17,17 @@ exports.PasskeySettingsSchema = zod_1.default.object({
         }
         return false;
     }, {
-        message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+        message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
     })),
     origin: zod_1.default.nullable(zod_1.default.string().refine((value) => {
         if (/^http:\/\/localhost:\d+$/.test(value)) {
             return true;
         }
-        if (/^https:\/\/(?=.*\.[a-z]{2,})[^\s\/?#]+$/i.test(value)) {
+        if (/^https:\/\/(?=.*\.[a-z]{2,})[^\s/?#]+$/i.test(value)) {
             return true;
         }
         return false;
     }, {
-        message: 'Must be a valid plain URL, e.g. "https://docs.rw".',
+        message: 'Must be a valid plain URL, e.g. "https://docs.exodus.dev".',
     })),
 });

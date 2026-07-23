@@ -24,6 +24,9 @@ var CreateNodeCommand;
             .regex(/^socks5:\/\/(?:[^:@/\s]+(?::[^@/\s]*)?@)?[^:@/\s]+:\d{1,5}$/, 'Expected socks5://[user:pass@]host:port')
             .nullable()
             .optional(),
+        apiSchema: zod_1.z.enum(['mtls', 'tls']).optional().default('mtls'),
+        apiPath: zod_1.z.optional(zod_1.z.string().max(255, 'API path must be less than 255 characters')),
+        grpcAuthToken: zod_1.z.optional(zod_1.z.string().max(255, 'gRPC auth token must be less than 255 characters')),
         isTrafficTrackingActive: zod_1.z.boolean().optional().default(false),
         trafficLimitBytes: zod_1.z.optional(zod_1.z.number().min(0, 'Traffic limit must be greater than 0')),
         notifyPercent: zod_1.z.optional(zod_1.z

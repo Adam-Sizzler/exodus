@@ -39,7 +39,11 @@ export declare namespace GetInfraBillingNodesCommand {
                     isDisabled: z.ZodBoolean;
                     isConnecting: z.ZodBoolean;
                     lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                    lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
                     isTrafficTrackingActive: z.ZodBoolean;
                     trafficResetDay: z.ZodNullable<z.ZodNumber>;
                     trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -269,16 +273,16 @@ export declare namespace GetInfraBillingNodesCommand {
                         };
                     }>>;
                     versions: z.ZodNullable<z.ZodObject<{
-                        xray: z.ZodString;
+                        singbox: z.ZodString;
                         node: z.ZodString;
                     }, "strip", z.ZodTypeAny, {
                         node: string;
-                        xray: string;
+                        singbox: string;
                     }, {
                         node: string;
-                        xray: string;
+                        singbox: string;
                     }>>;
-                    xrayUptime: z.ZodNumber;
+                    singboxUptime: z.ZodNumber;
                     usersOnline: z.ZodNumber;
                     note: z.ZodNullable<z.ZodString>;
                 }, "uuid" | "name" | "countryCode">, "strip", z.ZodTypeAny, {
@@ -342,7 +346,11 @@ export declare namespace GetInfraBillingNodesCommand {
                 isDisabled: z.ZodBoolean;
                 isConnecting: z.ZodBoolean;
                 lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
                 isTrafficTrackingActive: z.ZodBoolean;
                 trafficResetDay: z.ZodNullable<z.ZodNumber>;
                 trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -572,16 +580,16 @@ export declare namespace GetInfraBillingNodesCommand {
                     };
                 }>>;
                 versions: z.ZodNullable<z.ZodObject<{
-                    xray: z.ZodString;
+                    singbox: z.ZodString;
                     node: z.ZodString;
                 }, "strip", z.ZodTypeAny, {
                     node: string;
-                    xray: string;
+                    singbox: string;
                 }, {
                     node: string;
-                    xray: string;
+                    singbox: string;
                 }>>;
-                xrayUptime: z.ZodNumber;
+                singboxUptime: z.ZodNumber;
                 usersOnline: z.ZodNumber;
                 note: z.ZodNullable<z.ZodString>;
             }, "uuid" | "name" | "countryCode">, "strip", z.ZodTypeAny, {

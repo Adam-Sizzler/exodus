@@ -106,7 +106,7 @@ export declare const CONTROLLERS_INFO: {
     };
     readonly KEYGEN: {
         readonly tag: "Keygen Controller";
-        readonly description: "Generation of SECRET_KEY for Remnawave Node.";
+        readonly description: "Generation of SECRET_KEY for Exodus Node.";
         readonly resource: "keygen";
     };
     readonly SUBSCRIPTION_REQUEST_HISTORY: {
@@ -119,10 +119,10 @@ export declare const CONTROLLERS_INFO: {
         readonly description: "";
         readonly resource: "snippets";
     };
-    readonly REMNAAWAVE_SETTINGS: {
-        readonly tag: "Remnawave Settings Controller";
+    readonly EXODUS_SETTINGS: {
+        readonly tag: "Exodus Settings Controller";
         readonly description: "";
-        readonly resource: "remnawave-settings";
+        readonly resource: "exodus-settings";
     };
     readonly SUBSCRIPTION_PAGE_CONFIGS: {
         readonly tag: "Subscription Page Configs Controller";

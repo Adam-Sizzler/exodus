@@ -8,7 +8,7 @@ var GetMetadataCommand;
 (function (GetMetadataCommand) {
     GetMetadataCommand.url = api_1.REST_API.SYSTEM.METADATA;
     GetMetadataCommand.TSQ_url = GetMetadataCommand.url;
-    GetMetadataCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.METADATA, 'get', 'Get Remnawave Information', { scope: 'metadata', kind: 'read' });
+    GetMetadataCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SYSTEM_ROUTES.METADATA, 'get', 'Get Exodus Information', { scope: 'metadata', kind: 'read' });
     GetMetadataCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             version: zod_1.z.string(),

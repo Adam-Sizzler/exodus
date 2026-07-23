@@ -241,9 +241,9 @@ export declare const REST_API: {
             readonly REORDER: "/api/external-squads/actions/reorder";
         };
     };
-    readonly REMNAAWAVE_SETTINGS: {
-        readonly GET: "/api/remnawave-settings/";
-        readonly UPDATE: "/api/remnawave-settings/";
+    readonly EXODUS_SETTINGS: {
+        readonly GET: "/api/exodus-settings/";
+        readonly UPDATE: "/api/exodus-settings/";
     };
     readonly SUBSCRIPTION_PAGE_CONFIGS: {
         readonly GET: (uuid: string) => string;

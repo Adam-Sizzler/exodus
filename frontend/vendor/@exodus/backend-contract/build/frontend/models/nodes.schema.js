@@ -10,7 +10,7 @@ exports.NodesSchema = zod_1.z.object({
     name: zod_1.z.string(),
     address: zod_1.z.string(),
     port: zod_1.z.nullable(zod_1.z.number().int()),
-    proxyUrl: zod_1.z.nullable(zod_1.z.string()),
+    proxyUrl: zod_1.z.nullable(zod_1.z.string()).optional().default(null),
     isConnected: zod_1.z.boolean(),
     isDisabled: zod_1.z.boolean(),
     isConnecting: zod_1.z.boolean(),
@@ -19,6 +19,8 @@ exports.NodesSchema = zod_1.z.object({
         .datetime()
         .transform((str) => new Date(str))),
     lastStatusMessage: zod_1.z.nullable(zod_1.z.string()),
+    singboxVersion: zod_1.z.nullable(zod_1.z.string()),
+    nodeVersion: zod_1.z.nullable(zod_1.z.string()),
     isTrafficTrackingActive: zod_1.z.boolean(),
     trafficResetDay: zod_1.z.nullable(zod_1.z.number().int()),
     trafficLimitBytes: zod_1.z.nullable(zod_1.z.number()),
@@ -27,7 +29,7 @@ exports.NodesSchema = zod_1.z.object({
     viewPosition: zod_1.z.number().int(),
     countryCode: zod_1.z.string(),
     consumptionMultiplier: zod_1.z.number(),
-    nodeConsumptionMultiplier: zod_1.z.number(),
+    nodeConsumptionMultiplier: zod_1.z.number().optional().default(1),
     tags: zod_1.z.array(zod_1.z.string()),
     createdAt: zod_1.z
         .string()
@@ -44,12 +46,18 @@ exports.NodesSchema = zod_1.z.object({
     providerUuid: zod_1.z.nullable(zod_1.z.string().uuid()),
     provider: zod_1.z.nullable(infra_provider_schema_1.PartialInfraProviderSchema),
     activePluginUuid: zod_1.z.nullable(zod_1.z.string().uuid()),
+    apiSchema: zod_1.z.string(),
+    apiPath: zod_1.z.string(),
+    grpcAuthToken: zod_1.z.string(),
+    cpuCount: zod_1.z.nullable(zod_1.z.number().int()),
+    cpuModel: zod_1.z.nullable(zod_1.z.string()),
+    totalRam: zod_1.z.nullable(zod_1.z.string()),
     system: zod_1.z.nullable(node_system_schema_1.NodeSystemSchema),
     versions: zod_1.z.nullable(zod_1.z.object({
-        xray: zod_1.z.string(),
+        singbox: zod_1.z.string(),
         node: zod_1.z.string(),
     })),
-    xrayUptime: zod_1.z.number(),
+    singboxUptime: zod_1.z.number(),
     usersOnline: zod_1.z.number(),
-    note: zod_1.z.nullable(zod_1.z.string()),
+    note: zod_1.z.nullable(zod_1.z.string()).optional().default(null),
 });

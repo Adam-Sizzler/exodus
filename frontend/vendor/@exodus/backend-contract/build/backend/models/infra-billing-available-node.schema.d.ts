@@ -242,12 +242,12 @@ export declare const InfraBillingAvailableNodeSchema: import("zod").ZodObject<Pi
         node: import("zod").ZodString;
     }, "strip", import("zod").ZodTypeAny, {
         node: string;
-        xray: string;
+        singbox: string;
     }, {
         node: string;
-        xray: string;
+        singbox: string;
     }>>;
-    xrayUptime: import("zod").ZodNumber;
+    singboxUptime: import("zod").ZodNumber;
     usersOnline: import("zod").ZodNumber;
     note: import("zod").ZodNullable<import("zod").ZodString>;
 }, "uuid" | "name" | "countryCode">, "strip", import("zod").ZodTypeAny, {

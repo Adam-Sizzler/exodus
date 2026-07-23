@@ -18,7 +18,7 @@ export * from './last-connected-node.schema';
 export * from './node-plugin.schema';
 export * from './node-system.schema';
 export * from './nodes.schema';
-export * from './remnawave-settings';
+export * from './exodus-settings';
 export * from './resolved-proxy-config.schema';
 export * from './response-rules';
 export * from './snippets.schema';

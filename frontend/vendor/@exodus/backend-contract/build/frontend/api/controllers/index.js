@@ -29,7 +29,7 @@ __exportStar(require("./metadata"), exports);
 __exportStar(require("./node-plugins"), exports);
 __exportStar(require("./nodes"), exports);
 __exportStar(require("./passkeys"), exports);
-__exportStar(require("./remnawave-settings"), exports);
+__exportStar(require("./exodus-settings"), exports);
 __exportStar(require("./snippets"), exports);
 __exportStar(require("./subscription"), exports);
 __exportStar(require("./subscription-page-configs"), exports);

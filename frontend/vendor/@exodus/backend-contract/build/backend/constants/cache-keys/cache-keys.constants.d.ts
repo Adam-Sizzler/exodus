@@ -5,7 +5,7 @@ export declare const CACHE_KEYS: {
     readonly SUBSCRIPTION_TEMPLATE: (name: string, type: TSubscriptionTemplateType) => string;
     readonly PASSKEY_REGISTRATION_OPTIONS: (uuid: string) => string;
     readonly PASSKEY_AUTHENTICATION_OPTIONS: (uuid: string) => string;
-    readonly REMNAWAVE_SETTINGS: "remnawave_settings";
+    readonly EXODUS_SETTINGS: "exodus_settings";
     readonly NODE_SYSTEM_INFO: (uuid: string) => string;
     readonly NODE_SYSTEM_STATS: (uuid: string) => string;
     readonly NODE_USERS_ONLINE: (uuid: string) => string;
@@ -15,7 +15,7 @@ export declare const CACHE_KEYS: {
     readonly XRAY_JSON_TEMPLATE: (uuid: string) => string;
 };
 export declare const CACHE_KEYS_TTL: {
-    readonly REMNAWAVE_SETTINGS: 86400;
+    readonly EXODUS_SETTINGS: 86400;
     readonly EXTERNAL_SQUAD_SETTINGS: 3600;
     readonly SUBSCRIPTION_SETTINGS: 3600;
     readonly NODE_SYSTEM_STATS: 30;

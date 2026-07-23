@@ -731,12 +731,12 @@ export declare const ERRORS: {
     };
     readonly RESERVED_INTERNAL_SQUAD_NAME: {
         readonly code: "A144";
-        readonly message: "This name is reserved by Remnawave. Please use a different name.";
+        readonly message: "This name is reserved by Exodus. Please use a different name.";
         readonly httpCode: 400;
     };
     readonly RESERVED_CONFIG_PROFILE_NAME: {
         readonly code: "A145";
-        readonly message: "This name is reserved by Remnawave. Please use a different name.";
+        readonly message: "This name is reserved by Exodus. Please use a different name.";
         readonly httpCode: 400;
     };
     readonly UPDATE_CONFIG_PROFILE_ERROR: {
@@ -969,14 +969,14 @@ export declare const ERRORS: {
         readonly message: "Passkey not found";
         readonly httpCode: 404;
     };
-    readonly GET_REMNAAWAVE_SETTINGS_ERROR: {
+    readonly GET_EXODUS_SETTINGS_ERROR: {
         readonly code: "A192";
-        readonly message: "Get Remnawave settings error";
+        readonly message: "Get Exodus settings error";
         readonly httpCode: 500;
     };
-    readonly UPDATE_REMNAAWAVE_SETTINGS_ERROR: {
+    readonly UPDATE_EXODUS_SETTINGS_ERROR: {
         readonly code: "A193";
-        readonly message: "Update Remnawave settings error";
+        readonly message: "Update Exodus settings error";
         readonly httpCode: 500;
     };
     readonly PASSKEYS_NOT_CONFIGURED: {
@@ -1009,9 +1009,9 @@ export declare const ERRORS: {
         readonly message: "Delete passkey error";
         readonly httpCode: 500;
     };
-    readonly VALIDATE_REMNAAWAVE_SETTINGS_ERROR: {
+    readonly VALIDATE_EXODUS_SETTINGS_ERROR: {
         readonly code: "A199";
-        readonly message: "Validate Remnawave settings error";
+        readonly message: "Validate Exodus settings error";
         readonly httpCode: 500;
         readonly withMessage: (message: string) => {
             code: string;
@@ -1099,9 +1099,9 @@ export declare const ERRORS: {
         readonly message: "Invalid subscription page config";
         readonly httpCode: 400;
     };
-    readonly INVALID_REMNAWAVE_INJECTOR: {
+    readonly INVALID_EXODUS_INJECTOR: {
         readonly code: "A216";
-        readonly message: "Invalid Remnawave injector";
+        readonly message: "Invalid Exodus injector";
         readonly httpCode: 400;
     };
     readonly JOB_CREATION_FAILED: {

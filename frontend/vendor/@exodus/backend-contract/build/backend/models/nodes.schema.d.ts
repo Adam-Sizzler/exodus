@@ -9,7 +9,11 @@ export declare const NodesSchema: z.ZodObject<{
     isDisabled: z.ZodBoolean;
     isConnecting: z.ZodBoolean;
     lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-    lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
     isTrafficTrackingActive: z.ZodBoolean;
     trafficResetDay: z.ZodNullable<z.ZodNumber>;
     trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -101,6 +105,12 @@ export declare const NodesSchema: z.ZodObject<{
         loginUrl: string | null;
     }>>;
     activePluginUuid: z.ZodNullable<z.ZodString>;
+    apiSchema: z.ZodString;
+    apiPath: z.ZodString;
+    grpcAuthToken: z.ZodString;
+    cpuCount: z.ZodNullable<z.ZodNumber>;
+    cpuModel: z.ZodNullable<z.ZodString>;
+    totalRam: z.ZodNullable<z.ZodString>;
     system: z.ZodNullable<z.ZodObject<{
         info: z.ZodObject<{
             arch: z.ZodString;
@@ -239,16 +249,16 @@ export declare const NodesSchema: z.ZodObject<{
         };
     }>>;
     versions: z.ZodNullable<z.ZodObject<{
-        xray: z.ZodString;
+        singbox: z.ZodString;
         node: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         node: string;
-        xray: string;
+        singbox: string;
     }, {
         node: string;
-        xray: string;
+        singbox: string;
     }>>;
-    xrayUptime: z.ZodNumber;
+    singboxUptime: z.ZodNumber;
     usersOnline: z.ZodNumber;
     note: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
@@ -302,7 +312,11 @@ export declare const NodesSchema: z.ZodObject<{
     isConnected: boolean;
     isConnecting: boolean;
     lastStatusChange: Date | null;
-    lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
     isTrafficTrackingActive: boolean;
     trafficResetDay: number | null;
     trafficUsedBytes: number | null;
@@ -324,11 +338,17 @@ export declare const NodesSchema: z.ZodObject<{
     };
     providerUuid: string | null;
     activePluginUuid: string | null;
+    apiSchema: string;
+    apiPath: string;
+    grpcAuthToken: string;
+    cpuCount: number | null;
+    cpuModel: string | null;
+    totalRam: string | null;
     versions: {
         node: string;
-        xray: string;
+        singbox: string;
     } | null;
-    xrayUptime: number;
+    singboxUptime: number;
     usersOnline: number;
     note: string | null;
 }, {
@@ -382,7 +402,11 @@ export declare const NodesSchema: z.ZodObject<{
     isConnected: boolean;
     isConnecting: boolean;
     lastStatusChange: string | null;
-    lastStatusMessage: string | null;
+            lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
     isTrafficTrackingActive: boolean;
     trafficResetDay: number | null;
     trafficUsedBytes: number | null;
@@ -404,11 +428,17 @@ export declare const NodesSchema: z.ZodObject<{
     };
     providerUuid: string | null;
     activePluginUuid: string | null;
+    apiSchema: string;
+    apiPath: string;
+    grpcAuthToken: string;
+    cpuCount: number | null;
+    cpuModel: string | null;
+    totalRam: string | null;
     versions: {
         node: string;
-        xray: string;
+        singbox: string;
     } | null;
-    xrayUptime: number;
+    singboxUptime: number;
     usersOnline: number;
     note: string | null;
 }>;

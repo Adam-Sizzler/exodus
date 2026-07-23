@@ -13,7 +13,7 @@ export * from './metadata';
 export * from './node-plugins';
 export * from './nodes';
 export * from './passkeys';
-export * from './remnawave-settings';
+export * from './exodus-settings';
 export * from './snippets';
 export * from './subscription';
 export * from './subscription-page-configs';

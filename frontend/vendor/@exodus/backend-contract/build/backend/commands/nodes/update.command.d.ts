@@ -13,7 +13,11 @@ export declare namespace UpdateNodeCommand {
         isDisabled: z.ZodBoolean;
         isConnecting: z.ZodBoolean;
         lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-        lastStatusMessage: z.ZodNullable<z.ZodString>;
+            lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
         isTrafficTrackingActive: z.ZodBoolean;
         trafficResetDay: z.ZodNullable<z.ZodNumber>;
         trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -243,16 +247,16 @@ export declare namespace UpdateNodeCommand {
             };
         }>>;
         versions: z.ZodNullable<z.ZodObject<{
-            xray: z.ZodString;
+            singbox: z.ZodString;
             node: z.ZodString;
         }, "strip", z.ZodTypeAny, {
             node: string;
-            xray: string;
+            singbox: string;
         }, {
             node: string;
-            xray: string;
+            singbox: string;
         }>>;
-        xrayUptime: z.ZodNumber;
+        singboxUptime: z.ZodNumber;
         usersOnline: z.ZodNumber;
         note: z.ZodNullable<z.ZodString>;
     }, "uuid"> & {
@@ -337,6 +341,10 @@ export declare namespace UpdateNodeCommand {
             isConnecting: z.ZodBoolean;
             lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
             lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
             isTrafficTrackingActive: z.ZodBoolean;
             trafficResetDay: z.ZodNullable<z.ZodNumber>;
             trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -566,16 +574,16 @@ export declare namespace UpdateNodeCommand {
                 };
             }>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, "strip", z.ZodTypeAny, {
                 node: string;
-                xray: string;
+                singbox: string;
             }, {
                 node: string;
-                xray: string;
+                singbox: string;
             }>>;
-            xrayUptime: z.ZodNumber;
+            singboxUptime: z.ZodNumber;
             usersOnline: z.ZodNumber;
             note: z.ZodNullable<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
@@ -630,6 +638,10 @@ export declare namespace UpdateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -653,9 +665,9 @@ export declare namespace UpdateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }, {
@@ -710,6 +722,10 @@ export declare namespace UpdateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -733,9 +749,9 @@ export declare namespace UpdateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }>;
@@ -792,6 +808,10 @@ export declare namespace UpdateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -815,9 +835,9 @@ export declare namespace UpdateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -874,6 +894,10 @@ export declare namespace UpdateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -897,9 +921,9 @@ export declare namespace UpdateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };

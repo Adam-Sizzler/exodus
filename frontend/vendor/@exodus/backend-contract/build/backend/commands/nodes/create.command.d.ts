@@ -8,6 +8,9 @@ export declare namespace CreateNodeCommand {
         address: z.ZodString;
         port: z.ZodOptional<z.ZodNumber>;
         proxyUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        apiSchema: z.ZodDefault<z.ZodOptional<z.ZodEnum<["mtls", "tls"]>>>;
+        apiPath: z.ZodOptional<z.ZodString>;
+        grpcAuthToken: z.ZodOptional<z.ZodString>;
         isTrafficTrackingActive: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         trafficLimitBytes: z.ZodOptional<z.ZodNumber>;
         notifyPercent: z.ZodOptional<z.ZodNumber>;
@@ -33,6 +36,7 @@ export declare namespace CreateNodeCommand {
         name: string;
         countryCode: string;
         address: string;
+        apiSchema: "mtls" | "tls";
         isTrafficTrackingActive: boolean;
         configProfile: {
             activeConfigProfileUuid: string;
@@ -42,6 +46,8 @@ export declare namespace CreateNodeCommand {
         port?: number | undefined;
         trafficLimitBytes?: number | undefined;
         proxyUrl?: string | null | undefined;
+        apiPath?: string | undefined;
+        grpcAuthToken?: string | undefined;
         trafficResetDay?: number | undefined;
         notifyPercent?: number | undefined;
         consumptionMultiplier?: number | undefined;
@@ -61,6 +67,9 @@ export declare namespace CreateNodeCommand {
         port?: number | undefined;
         trafficLimitBytes?: number | undefined;
         proxyUrl?: string | null | undefined;
+        apiSchema?: "mtls" | "tls" | undefined;
+        apiPath?: string | undefined;
+        grpcAuthToken?: string | undefined;
         isTrafficTrackingActive?: boolean | undefined;
         trafficResetDay?: number | undefined;
         notifyPercent?: number | undefined;
@@ -83,6 +92,10 @@ export declare namespace CreateNodeCommand {
             isConnecting: z.ZodBoolean;
             lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
             lastStatusMessage: z.ZodNullable<z.ZodString>;
+
+            singboxVersion: z.ZodNullable<z.ZodString>;
+
+            nodeVersion: z.ZodNullable<z.ZodString>;
             isTrafficTrackingActive: z.ZodBoolean;
             trafficResetDay: z.ZodNullable<z.ZodNumber>;
             trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
@@ -312,16 +325,16 @@ export declare namespace CreateNodeCommand {
                 };
             }>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, "strip", z.ZodTypeAny, {
                 node: string;
-                xray: string;
+                singbox: string;
             }, {
                 node: string;
-                xray: string;
+                singbox: string;
             }>>;
-            xrayUptime: z.ZodNumber;
+            singboxUptime: z.ZodNumber;
             usersOnline: z.ZodNumber;
             note: z.ZodNullable<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
@@ -376,6 +389,10 @@ export declare namespace CreateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -399,9 +416,9 @@ export declare namespace CreateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }, {
@@ -456,6 +473,10 @@ export declare namespace CreateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -479,9 +500,9 @@ export declare namespace CreateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         }>;
@@ -538,6 +559,10 @@ export declare namespace CreateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: Date | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -561,9 +586,9 @@ export declare namespace CreateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };
@@ -620,6 +645,10 @@ export declare namespace CreateNodeCommand {
             isConnecting: boolean;
             lastStatusChange: string | null;
             lastStatusMessage: string | null;
+
+            singboxVersion: string | null;
+
+            nodeVersion: string | null;
             isTrafficTrackingActive: boolean;
             trafficResetDay: number | null;
             trafficUsedBytes: number | null;
@@ -643,9 +672,9 @@ export declare namespace CreateNodeCommand {
             activePluginUuid: string | null;
             versions: {
                 node: string;
-                xray: string;
+                singbox: string;
             } | null;
-            xrayUptime: number;
+            singboxUptime: number;
             usersOnline: number;
             note: string | null;
         };

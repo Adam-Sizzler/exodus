@@ -19,4 +19,3 @@ __exportStar(require("./oauth2-settings.schema"), exports);
 __exportStar(require("./passkey-settings.schema"), exports);
 __exportStar(require("./password-auth-settings.schema"), exports);
 __exportStar(require("./exodus-settings.schema"), exports);
-__exportStar(require("./tg-auth-settings.schema"), exports);

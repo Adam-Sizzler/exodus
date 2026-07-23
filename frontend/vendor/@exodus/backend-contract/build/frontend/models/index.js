@@ -34,7 +34,7 @@ __exportStar(require("./last-connected-node.schema"), exports);
 __exportStar(require("./node-plugin.schema"), exports);
 __exportStar(require("./node-system.schema"), exports);
 __exportStar(require("./nodes.schema"), exports);
-__exportStar(require("./remnawave-settings"), exports);
+__exportStar(require("./exodus-settings"), exports);
 __exportStar(require("./resolved-proxy-config.schema"), exports);
 __exportStar(require("./response-rules"), exports);
 __exportStar(require("./snippets.schema"), exports);
