@@ -34,6 +34,7 @@ type Config struct {
 
 	AppVersion                      string
 	MarzbanLegacyDropRevokedSubscriptions bool
+	TrustProxy                      string
 }
 
 type MTLSConfig struct {
@@ -119,6 +120,7 @@ func Load() (Config, error) {
 		GRPCToken:                       grpcToken,
 		AppVersion:                      strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
 		MarzbanLegacyDropRevokedSubscriptions: parseBool(os.Getenv("MARZBAN_LEGACY_DROP_REVOKED_SUBSCRIPTIONS"), false),
+		TrustProxy:                      getEnvOrDefault("TRUST_PROXY", "1"),
 	}
 
 	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultGRPCPort)

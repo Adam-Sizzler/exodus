@@ -1,0 +1,74 @@
+package server
+
+import (
+	"net/http"
+	"testing"
+)
+
+func TestGetRealIP_TrustProxy(t *testing.T) {
+	tests := []struct {
+		name         string
+		trustProxy   string
+		remoteAddr   string
+		forwardedFor string
+		expectedIP   string
+	}{
+		{
+			name:         "Default 1 hop - single proxy",
+			trustProxy:   "1",
+			remoteAddr:   "172.18.0.2:12345",
+			forwardedFor: "203.0.113.195",
+			expectedIP:   "203.0.113.195",
+		},
+		{
+			name:         "Default 1 hop - multiple proxies (client, proxy1, proxy2)",
+			trustProxy:   "1",
+			remoteAddr:   "172.18.0.2:12345",
+			forwardedFor: "203.0.113.195, 198.51.100.1, 10.0.0.1",
+			expectedIP:   "10.0.0.1",
+		},
+		{
+			name:         "2 hops - multiple proxies",
+			trustProxy:   "2",
+			remoteAddr:   "172.18.0.2:12345",
+			forwardedFor: "203.0.113.195, 198.51.100.1, 10.0.0.1",
+			expectedIP:   "198.51.100.1",
+		},
+		{
+			name:         "Trust all (true)",
+			trustProxy:   "true",
+			remoteAddr:   "172.18.0.2:12345",
+			forwardedFor: "203.0.113.195, 198.51.100.1, 10.0.0.1",
+			expectedIP:   "203.0.113.195",
+		},
+		{
+			name:         "Trust none (false)",
+			trustProxy:   "false",
+			remoteAddr:   "198.51.100.5:12345",
+			forwardedFor: "203.0.113.195",
+			expectedIP:   "198.51.100.5",
+		},
+		{
+			name:         "Preset loopback,uniquelocal",
+			trustProxy:   "loopback,uniquelocal",
+			remoteAddr:   "127.0.0.1:12345",
+			forwardedFor: "203.0.113.195, 10.0.0.5, 127.0.0.1",
+			expectedIP:   "203.0.113.195",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", "/", nil)
+			req.RemoteAddr = tt.remoteAddr
+			if tt.forwardedFor != "" {
+				req.Header.Set("X-Forwarded-For", tt.forwardedFor)
+			}
+
+			ip := getRealIP(req, tt.trustProxy)
+			if ip != tt.expectedIP {
+				t.Errorf("expected %s, got %s", tt.expectedIP, ip)
+			}
+		})
+	}
+}

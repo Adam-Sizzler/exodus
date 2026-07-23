@@ -144,7 +144,7 @@ func shouldLogHTTPRequest(r *http.Request) bool {
 }
 
 func formatHTTPAccessLog(r *http.Request, statusCode, bytesWritten int, elapsed time.Duration) string {
-	remoteAddr := getRealIP(r)
+	remoteAddr := getRealIP(r, "1")
 	if remoteAddr == "" {
 		remoteAddr = "-"
 	}
@@ -283,7 +283,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIP := getRealIP(r)
+	clientIP := getRealIP(r, a.cfg.TrustProxy)
 	resolvedShortUUID, err := a.resolveShortUUID(r.Context(), clientIP, shortUUID)
 	if err != nil {
 		logger.WithContext("RootService").Debugf("short uuid resolution failed for %s: %v", shortUUID, err)
