@@ -26,4 +26,3 @@ require (
 	golang.org/x/text v0.36.0 // indirect
 )
 
-replace github.com/Adam-Sizzler/lmdb-go => ../lmdb-go

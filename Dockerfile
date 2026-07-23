@@ -10,12 +10,10 @@ ARG CGO_ENABLED_STATUS=enabled
 
 WORKDIR /build
 
-COPY lmdb-go ./lmdb-go
-COPY exodus-node/go.mod exodus-node/go.sum ./exodus-node/
-WORKDIR /build/exodus-node
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY exodus-node/ ./
+COPY . ./
 
 RUN set -eu; \
     version="${VERSION}"; \
@@ -74,7 +72,7 @@ RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/downlo
 WORKDIR /app
 
 COPY --from=builder /build/exodus-node-app /app/exodus-node
-COPY exodus-node/deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
+COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
 RUN chmod -R +x /etc/s6-overlay && \
     chmod +x /app/exodus-node && \
