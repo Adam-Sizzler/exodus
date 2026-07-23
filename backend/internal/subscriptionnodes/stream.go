@@ -117,7 +117,11 @@ func (sm *SubNodeMonitor) handleSubscriptionBridgeRequest(state *subNodeState, r
 		if shortUUID == "" {
 			return &proto.SubscriptionBridgeResponse{RequestId: requestID, StatusCode: http.StatusBadRequest, Error: "short_uuid is required"}
 		}
+		clientType := strings.TrimSpace(req.GetClientType())
 		path := "/api/sub/" + shortUUID
+		if clientType != "" {
+			path += "/" + clientType
+		}
 		statusCode, payload, headers := sm.performInternalAPIRequest(ctx, http.MethodGet, path, nil, sm.bridgeHeadersWithClientIP(req))
 		return buildBridgeResponse(requestID, statusCode, payload, headers)
 
@@ -126,8 +130,12 @@ func (sm *SubNodeMonitor) handleSubscriptionBridgeRequest(state *subNodeState, r
 		if shortUUID == "" {
 			return &proto.SubscriptionBridgeResponse{RequestId: requestID, StatusCode: http.StatusBadRequest, Error: "short_uuid is required"}
 		}
-		path := "/api/subscriptions/" + shortUUID
-		statusCode, body, headers := sm.performInternalAPIRequest(ctx, http.MethodGet, path, nil, sm.bridgeHeadersWithClientIP(req))
+		path := "/api/subscriptions/subpage-config/" + shortUUID
+		payload := req.GetPayload()
+		if len(payload) == 0 {
+			payload = []byte("{}")
+		}
+		statusCode, body, headers := sm.performInternalAPIRequest(ctx, http.MethodPost, path, payload, sm.bridgeHeadersWithClientIP(req))
 		return buildBridgeResponse(requestID, statusCode, body, headers)
 
 	case bridgeOperationSubpageByUUID:

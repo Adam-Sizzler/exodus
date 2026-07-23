@@ -6,7 +6,7 @@ ENV NODE_OPTIONS=--max-old-space-size=4096
 ARG SINGBOX_ASSETS_URL=https://adam-sizzler.github.io/s-validator
 
 COPY frontend/package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps --no-audit --prefer-offline
+RUN --mount=type=cache,target=/root/.npm npm install --legacy-peer-deps --no-audit --prefer-offline
 
 COPY frontend/ ./
 

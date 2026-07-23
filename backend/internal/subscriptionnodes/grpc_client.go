@@ -12,6 +12,7 @@ import (
 	"exodus/internal/proto"
 
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 type subNodeState struct {

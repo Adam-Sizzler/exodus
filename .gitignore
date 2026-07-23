@@ -1,6 +1,7 @@
 certs/
 scripts/
 frontend/dist/
+frontend_/
 
 *.log
 *.tmp

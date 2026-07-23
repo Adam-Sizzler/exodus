@@ -56,7 +56,7 @@ func (s *Scheduler) srsListsCheck(ctx context.Context) error {
 		return err
 	}
 	if updated > 0 {
-		s.cfg.Logger.Info("SRS lists availability check updated records", "updated", updated)
+		s.cfg.Logger.Debug("SRS lists availability check updated records", "updated", updated)
 	} else {
 		s.cfg.Logger.Debug("SRS lists availability check: no changes")
 	}

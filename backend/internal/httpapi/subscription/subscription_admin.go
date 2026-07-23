@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -331,9 +332,18 @@ func handleSubpageConfigByShortUUID(w http.ResponseWriter, r *http.Request, mana
 	}
 
 	var req subpageConfigRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
 		return
+	}
+
+	if req.RequestHeaders == nil {
+		req.RequestHeaders = make(map[string]string)
+		for k, v := range r.Header {
+			if len(v) > 0 {
+				req.RequestHeaders[k] = v[0]
+			}
+		}
 	}
 
 	ctx := r.Context()
