@@ -3,7 +3,7 @@ module exodus-node
 go 1.25.10
 
 require (
-	github.com/Adam-Sizzler/lmdb-go v1.9.2
+	github.com/Adam-Sizzler/lmdb-go v0.0.0-20260723070745-5519500b8c65
 	github.com/google/nftables v0.3.0
 	github.com/iancoleman/orderedmap v0.3.0
 	github.com/rs/zerolog v1.35.1
@@ -25,4 +25,3 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 )
-
