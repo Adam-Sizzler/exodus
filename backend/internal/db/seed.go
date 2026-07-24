@@ -28,11 +28,7 @@ func SeedDefaults(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig
 		return fmt.Errorf("begin defaults transaction: %w", err)
 	}
 
-	if err := ensureV2rsSettings(ctx, tx); err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-	if err := ensureModulesSettings(ctx, tx); err != nil {
+	if err := ensureExodusSettings(ctx, tx); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
@@ -61,7 +57,7 @@ func SeedDefaults(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig
 	return nil
 }
 
-func ensureV2rsSettings(ctx context.Context, tx *sql.Tx) error {
+func ensureExodusSettings(ctx context.Context, tx *sql.Tx) error {
 	var exists int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM exodus_settings WHERE id = 1`).Scan(&exists); err != nil {
 		return fmt.Errorf("check exodus_settings row: %w", err)
@@ -72,40 +68,18 @@ func ensureV2rsSettings(ctx context.Context, tx *sql.Tx) error {
 
 	passkeySettings := `{"rpId":null,"origin":null,"enabled":false}`
 	oauth2Settings := `{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`
-	tgAuthSettings := `{"enabled":false,"adminIds":[],"botToken":null}`
 	passwordSettings := `{"enabled":true}`
 	brandingSettings := `{"title":"EXODUS","logoUrl":null}`
-	modulesSettings := `{"haproxy":{"enabled":false}}`
 
 	query := dbutil.Rebind(`
 		INSERT INTO exodus_settings (
-			id, passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
-		) VALUES (1, ?, ?, ?, ?, ?, ?)
+			id, passkey_settings, oauth2_settings, password_settings, branding_settings
+		) VALUES (1, ?, ?, ?, ?)
 	`)
-	if _, err := tx.ExecContext(ctx, query, passkeySettings, oauth2Settings, tgAuthSettings, passwordSettings, brandingSettings, modulesSettings); err != nil {
+	if _, err := tx.ExecContext(ctx, query, passkeySettings, oauth2Settings, passwordSettings, brandingSettings); err != nil {
 		return fmt.Errorf("insert default exodus_settings row: %w", err)
 	}
 
-	return nil
-}
-
-func ensureModulesSettings(ctx context.Context, tx *sql.Tx) error {
-	var exists int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM modules_settings WHERE id = 1`).Scan(&exists); err != nil {
-		return fmt.Errorf("check modules_settings row: %w", err)
-	}
-	if exists > 0 {
-		return nil
-	}
-
-	query := dbutil.Rebind(`
-		INSERT INTO modules_settings (
-			id, haproxy_enabled
-		) VALUES (1, ?)
-	`)
-	if _, err := tx.ExecContext(ctx, query, false); err != nil {
-		return fmt.Errorf("insert default modules_settings row: %w", err)
-	}
 	return nil
 }
 

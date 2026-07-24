@@ -1,48 +1,36 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-model V2rsSettings {
+model ExodusSettings {
   id Int @id @default(1)
 
   /// [PasskeySettings]
   passkeySettings  Json? @map("passkey_settings")
   /// [Oauth2Settings]
   oauth2Settings   Json? @map("oauth2_settings")
-  /// [TgAuthSettings]
-  tgAuthSettings   Json? @map("tg_auth_settings")
   /// [PasswordAuthSettings]
   passwordSettings Json? @map("password_settings")
   /// [BrandingSettings]
   brandingSettings Json? @map("branding_settings")
-  /// [ModulesSettings]
-  modulesSettings  Json? @map("modules_settings")
 
   @@map("exodus_settings")
 }
 
-model ModulesSettings {
-  id Int @id @default(1)
-
-  haproxyEnabled Boolean @default(false) @map("haproxy_enabled")
-
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
-
-  @@map("modules_settings")
-}
-
-model NodePlugins {
+model NodePlugin {
   uuid         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String @unique @map("name")
+  name         String @map("name") @db.VarChar(255)
   pluginConfig Json   @map("plugin_config")
   viewPosition Int    @default(autoincrement()) @map("view_position")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
 
-  @@map("node_plugins")
+  nodes Nodes[]
+
+  @@map("node_plugin")
 }
 
 model Users {
@@ -81,11 +69,11 @@ model Users {
   activeInternalSquads           InternalSquadMembers[]
   userSubscriptionRequestHistory UserSubscriptionRequestHistory[]
   traffic                        UserTraffic?
-  metadata                       UserMetadata?
+  userMetas                      UserMeta[]
 
   externalSquad ExternalSquads? @relation(fields: [externalSquadUuid], references: [uuid], onDelete: SetNull)
 
-  @@index([createdAt], map: "users_created_at_idx")
+  @@index([expireAt])
   @@map("users")
 }
 
@@ -118,21 +106,23 @@ model ApiTokens {
   @@map("api_tokens")
 }
 
-model UserMetadata {
-  userId   BigInt @id @map("user_id")
-  metadata Json   @default("{}") @map("metadata")
+model UserMeta {
+  userId   BigInt @map("user_id")
+  metadata Json   @map("metadata")
 
   user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
 
+  @@id([userId])
   @@map("user_meta")
 }
 
-model NodeMetadata {
-  nodeId   BigInt @id @map("node_id")
-  metadata Json   @default("{}") @map("metadata")
+model NodeMeta {
+  nodeId   BigInt @map("node_id")
+  metadata Json   @map("metadata")
 
   node Nodes @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
+  @@id([nodeId])
   @@map("node_meta")
 }
 
@@ -141,7 +131,6 @@ model Admin {
   username     String @unique @map("username")
   passwordHash String @map("password_hash")
   role         String @map("role")
-  sessionTtlMinutes Int @default(60) @map("session_ttl_minutes")
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
@@ -195,7 +184,7 @@ model Nodes {
   proxyUrl String? @map("proxy_url")
   apiSchema String @default("grpc") @map("api_schema")
   apiPath   String @default("") @map("api_path")
-  grpcAuthToken String @default(dbgenerated("encode(gen_random_bytes(32), 'hex'::text)")) @map("grpc_auth_token")
+  grpcAuthToken String @map("grpc_auth_token")
 
   activeConfigProfileUuid String? @map("active_config_profile_uuid") @db.Uuid
   activePluginUuid        String? @map("active_plugin_uuid") @db.Uuid
@@ -233,10 +222,11 @@ model Nodes {
   infraBillingNodes            InfraBillingNodes[]
   hosts                        HostsToNodes[]
   connectedUsers               UserTraffic[]
-  metadata                     NodeMetadata?
+  nodeMetas                    NodeMeta[]
 
   activeConfigProfile ConfigProfiles? @relation(fields: [activeConfigProfileUuid], references: [uuid], onDelete: SetNull)
   provider            InfraProviders? @relation(fields: [providerUuid], references: [uuid], onDelete: SetNull)
+  activePlugin        NodePlugin?     @relation(fields: [activePluginUuid], references: [uuid], onDelete: SetNull)
 
   @@index([id])
   @@map("nodes")
@@ -297,7 +287,7 @@ model Hosts {
   alpn                         String?  @map("alpn") // ENUM: h2, http/1.1, h2,http/1.1 
   fingerprint                  String?  @map("fingerprint") // ENUM: chrome, firefox, safari, ios, android, edge, 360, qq, random, randomized
   securityLayer                String   @default("DEFAULT") @map("security_layer") // ENUM: DEFAULT, TLS, NONE
-  xHttpExtraParams             Json?    @map("xhttp_extra_params")
+  xhttpExtraParams             Json?    @map("xhttp_extra_params")
   muxParams                    Json?    @map("mux_params")
   singboxMuxParams             Json?    @map("singbox_mux_params")
   clashMuxParams               String?  @map("clash_mux_params")
@@ -312,7 +302,6 @@ model Hosts {
   vlessRouteId                 Int?     @map("vless_route_id")
   pinnedPeerCertSha256         String?  @map("pinned_peer_cert_sha256")
   verifyPeerCertByName         String?  @map("verify_peer_cert_by_name")
-  allowInsecure                Boolean  @default(false) @map("allow_insecure")
   shuffleHost                  Boolean  @default(false) @map("shuffle_host")
   mihomoX25519                 Boolean  @default(false) @map("mihomo_x25519")
   mihomoIpVersion              String?  @map("mihomo_ip_version")
@@ -538,12 +527,13 @@ model InfraProviders {
 
 model InfraBillingNodes {
   uuid          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nodeUuid      String   @map("node_uuid") @db.Uuid
+  nodeUuid      String?  @map("node_uuid") @db.Uuid
   providerUuid  String   @map("provider_uuid") @db.Uuid
   nextBillingAt DateTime @map("next_billing_at")
+  name          String?  @map("name")
 
   provider InfraProviders @relation(fields: [providerUuid], references: [uuid], onDelete: Cascade)
-  node     Nodes          @relation(fields: [nodeUuid], references: [uuid], onDelete: Cascade)
+  node     Nodes?         @relation(fields: [nodeUuid], references: [uuid], onDelete: Cascade)
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
@@ -575,7 +565,6 @@ model UserSubscriptionRequestHistory {
   user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
 
   @@index([userId])
-  @@index([requestAt(sort: Asc)])
   @@map("user_subscription_request_history")
 }
 
@@ -646,18 +635,4 @@ model SubscriptionPageConfig {
   externalSquads ExternalSquads[]
 
   @@map("subscription_page_config")
-}
-
-model NotificationDeliveryQueue {
-  id            BigInt    @id @default(autoincrement())
-  event         Json      @map("event")
-  attempts      Int       @default(0)
-  nextAttemptAt DateTime  @default(dbgenerated("now()")) @map("next_attempt_at")
-  lastError     String?   @map("last_error")
-  failedAt      DateTime? @map("failed_at")
-  createdAt     DateTime  @default(dbgenerated("now()")) @map("created_at")
-  updatedAt     DateTime  @default(dbgenerated("now()")) @map("updated_at")
-
-  @@index([failedAt, nextAttemptAt, id], map: "notification_delivery_queue_due_idx")
-  @@map("notification_delivery_queue")
 }

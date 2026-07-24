@@ -88,6 +88,10 @@ func isPublicAPIPath(p string) bool {
 		"auth/oauth2/authorize", "auth/oauth2/callback",
 	}
 
+	if strings.HasPrefix(trimmed, "queues/static") {
+		return true
+	}
+
 	for _, s := range publicSuffixes {
 		if trimmed == s || trimmed == s+"/" {
 			return true

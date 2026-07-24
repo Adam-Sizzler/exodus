@@ -463,7 +463,7 @@ func loadPlugins(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nod
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		rows, err := db.QueryContext(ctx, `
 			SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-			FROM node_plugins
+			FROM node_plugin
 			ORDER BY view_position ASC, created_at ASC
 		`)
 		if err != nil {
@@ -488,7 +488,7 @@ func loadPluginByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, p
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
 			SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-			FROM node_plugins
+			FROM node_plugin
 			WHERE uuid::text = ?
 		`, pluginUUID)
 		return scanPluginRow(row, &plugin)
@@ -500,7 +500,7 @@ func createPlugin(ctx context.Context, manager *dbmanager.DatabaseManager, name 
 	var plugin nodePlugin
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
-			INSERT INTO node_plugins (name, plugin_config)
+			INSERT INTO node_plugin (name, plugin_config)
 			VALUES (?, ?::jsonb)
 			RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
 		`, name, string(configJSON))
@@ -530,7 +530,7 @@ func updatePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, plugi
 	var plugin nodePlugin
 	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRowContext(ctx, `
-			UPDATE node_plugins
+			UPDATE node_plugin
 			SET name = ?, plugin_config = ?::jsonb, view_position = ?, updated_at = CURRENT_TIMESTAMP
 			WHERE uuid::text = ?
 			RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
@@ -550,7 +550,7 @@ func deletePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, plugi
 		if _, err = tx.ExecContext(ctx, `UPDATE nodes SET active_plugin_uuid = NULL WHERE active_plugin_uuid::text = ?`, pluginUUID); err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, `DELETE FROM node_plugins WHERE uuid::text = ?`, pluginUUID); err != nil {
+		if _, err = tx.ExecContext(ctx, `DELETE FROM node_plugin WHERE uuid::text = ?`, pluginUUID); err != nil {
 			return err
 		}
 		return tx.Commit()
@@ -568,7 +568,7 @@ func reorderPlugins(ctx context.Context, manager *dbmanager.DatabaseManager, req
 			if _, err := uuid.Parse(item.UUID); err != nil {
 				return fmt.Errorf("invalid uuid")
 			}
-			if _, err := tx.ExecContext(ctx, `UPDATE node_plugins SET view_position = ?, updated_at = CURRENT_TIMESTAMP WHERE uuid::text = ?`, item.ViewPosition, item.UUID); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE node_plugin SET view_position = ?, updated_at = CURRENT_TIMESTAMP WHERE uuid::text = ?`, item.ViewPosition, item.UUID); err != nil {
 				return err
 			}
 		}

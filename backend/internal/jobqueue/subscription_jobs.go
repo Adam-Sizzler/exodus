@@ -152,7 +152,12 @@ func enqueueSubscriptionJob(ctx context.Context, jobName string, payload any, op
 	if dispatcher == nil || dispatcher.processor == nil {
 		return false, nil
 	}
-	return dispatcher.processor.Enqueue(ctx, subscriptionQueueName, jobName, payload, options)
+	rawPayload, err := json.Marshal(payload)
+	if err != nil {
+		return false, err
+	}
+	err = dispatcher.processor.Enqueue(ctx, subscriptionQueueName, jobName, rawPayload, options)
+	return err == nil, err
 }
 
 func updateUserSubscription(ctx context.Context, manager *dbmanager.DatabaseManager, payload UpdateUserSubscriptionPayload) error {

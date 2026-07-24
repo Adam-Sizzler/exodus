@@ -57,10 +57,8 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			validKeys := map[string]string{
 				"passkey_settings":  "passkey_settings",
 				"oauth2_settings":   "oauth2_settings",
-				"tg_auth_settings":  "tg_auth_settings",
 				"password_settings": "password_settings",
 				"branding_settings": "branding_settings",
-				"modules_settings":  "modules_settings",
 			}
 
 			setClauses := make([]string, 0, len(payload))
@@ -106,18 +104,16 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 				if _, execErr := db.Exec(`
 					INSERT INTO exodus_settings (
-						id, passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
+						id, passkey_settings, oauth2_settings, password_settings, branding_settings
 					) VALUES (
-						1, ?, ?, ?, ?, ?, ?
+						1, ?, ?, ?, ?
 					)
 					ON CONFLICT (id) DO NOTHING
 				`,
 					`{"rpId":null,"origin":null,"enabled":false}`,
 					`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
-					`{"enabled":false,"adminIds":[],"botToken":null}`,
 					`{"enabled":true}`,
 					`{"title":"EXODUS","logoUrl":null}`,
-					`{"haproxy":{"enabled":false}}`,
 				); execErr != nil {
 					return execErr
 				}
@@ -400,7 +396,6 @@ func toExodusSettingsResponse(settings map[string]any) map[string]any {
 		"oauth2Settings":   normalizeOAuth2Settings(settings["oauth2_settings"]),
 		"passwordSettings": settings["password_settings"],
 		"brandingSettings": settings["branding_settings"],
-		"modulesSettings":  settings["modules_settings"],
 	}
 }
 
@@ -431,22 +426,20 @@ func loadPanelSettings(manager *dbmanager.DatabaseManager) (map[string]any, erro
 	settings := map[string]any{
 		"passkey_settings":  map[string]any{"rpId": nil, "origin": nil, "enabled": false},
 		"oauth2_settings":   defaultOAuth2Settings(),
-		"tg_auth_settings":  map[string]any{"enabled": false, "adminIds": []any{}, "botToken": nil},
 		"password_settings": map[string]any{"enabled": true},
 		"branding_settings": map[string]any{"title": "EXODUS", "logoUrl": nil},
-		"modules_settings":  map[string]any{"haproxy": map[string]any{"enabled": false}},
 	}
 
 	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
 		row := db.QueryRow(`
-			SELECT passkey_settings, oauth2_settings, tg_auth_settings, password_settings, branding_settings, modules_settings
+			SELECT passkey_settings, oauth2_settings, password_settings, branding_settings
 			FROM exodus_settings
 			WHERE id = 1
 			LIMIT 1
 		`)
 
-		var passkeyRaw, oauth2Raw, tgAuthRaw, passwordRaw, brandingRaw, modulesRaw sql.NullString
-		if scanErr := row.Scan(&passkeyRaw, &oauth2Raw, &tgAuthRaw, &passwordRaw, &brandingRaw, &modulesRaw); scanErr != nil {
+		var passkeyRaw, oauth2Raw, passwordRaw, brandingRaw sql.NullString
+		if scanErr := row.Scan(&passkeyRaw, &oauth2Raw, &passwordRaw, &brandingRaw); scanErr != nil {
 			if errors.Is(scanErr, sql.ErrNoRows) {
 				return nil
 			}
@@ -455,10 +448,8 @@ func loadPanelSettings(manager *dbmanager.DatabaseManager) (map[string]any, erro
 
 		mergeJSONObject(settings, "passkey_settings", passkeyRaw.String)
 		mergeJSONObject(settings, "oauth2_settings", oauth2Raw.String)
-		mergeJSONObject(settings, "tg_auth_settings", tgAuthRaw.String)
 		mergeJSONObject(settings, "password_settings", passwordRaw.String)
 		mergeJSONObject(settings, "branding_settings", brandingRaw.String)
-		mergeJSONObject(settings, "modules_settings", modulesRaw.String)
 		return nil
 	})
 

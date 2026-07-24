@@ -27,7 +27,7 @@ func (nm *NodeMonitor) loadNodePluginRuntimeConfig(ctx context.Context, nodeUUID
 		row := db.QueryRowContext(ctx, `
 			SELECT np.plugin_config::text
 			FROM nodes n
-			JOIN node_plugins np ON np.uuid = n.active_plugin_uuid
+			JOIN node_plugin np ON np.uuid = n.active_plugin_uuid
 			WHERE n.uuid::text = ?
 			LIMIT 1
 		`, nodeUUID)

@@ -16,7 +16,6 @@ import (
 	"exodus/internal/httpapi/keygen"
 	"exodus/internal/httpapi/metadata"
 	"exodus/internal/httpapi/middleware"
-	"exodus/internal/httpapi/modulessettings"
 	"exodus/internal/httpapi/nodeplugins"
 	"exodus/internal/httpapi/nodes"
 	"exodus/internal/httpapi/panelsettings"
@@ -66,8 +65,6 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 	mux.HandleFunc(cfg.Docs.ScalarPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
 	mux.HandleFunc(cfg.Docs.SwaggerPath, panelsettings.DocsSwaggerHandler(cfg))
 	mux.HandleFunc(cfg.Docs.SwaggerPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
-	mux.HandleFunc("/api/modules-settings", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
-	mux.HandleFunc("/api/modules-settings/", auth.RequireAdminRole(modulessettings.ModulesSettingsHandler(manager, cfg)))
 
 	mux.HandleFunc("/api/nodes", nodes.NodesHandler(manager, cfg))
 	mux.HandleFunc("/api/nodes/", nodes.NodeByUUIDHandler(manager, cfg))
@@ -101,6 +98,12 @@ func RegisterRoutes(mux *http.ServeMux, manager *dbmanager.DatabaseManager, cfg 
 
 	mux.HandleFunc("/api/keygen", keygen.KeygenHandler(manager, cfg))
 	mux.HandleFunc("/api/keygen/", keygen.KeygenHandler(manager, cfg))
+
+	if asynqmonHandler, err := NewAsynqmon(cfg); err == nil {
+		mux.Handle("/api/queues/static/", asynqmonHandler)
+		mux.Handle("/api/queues/", auth.RequireAdminRole(asynqmonHandler.ServeHTTP))
+		mux.Handle("/api/queues", auth.RequireAdminRole(asynqmonHandler.ServeHTTP))
+	}
 	mux.HandleFunc("/api/passkeys/registration/options", passkeys.RegistrationOptionsHandler(manager, cfg))
 	mux.HandleFunc("/api/passkeys/registration/verify", passkeys.VerifyRegistrationHandler(manager, cfg))
 	mux.HandleFunc("/api/passkeys", passkeys.PasskeysHandler(manager, cfg))

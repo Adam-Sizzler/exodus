@@ -156,9 +156,11 @@ func (w *Worker) recordUserUsageDelayed(ctx context.Context, redisKey string) er
 		return nil
 	}
 	jobID := "recordUserUsage:" + redisKey
-	_, err := w.processor.Enqueue(ctx, pushToDBQueueName, recordUserUsageJobName, recordUserUsagePayload{
-		RedisKey: redisKey,
-	}, jobqueue.JobOptions{
+	payload, err := json.Marshal(recordUserUsagePayload{RedisKey: redisKey})
+	if err != nil {
+		return err
+	}
+	err = w.processor.Enqueue(ctx, pushToDBQueueName, recordUserUsageJobName, payload, jobqueue.JobOptions{
 		ID:       jobID,
 		DedupeID: jobID,
 		Delay:    w.delay,
