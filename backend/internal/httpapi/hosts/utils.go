@@ -369,9 +369,6 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 			add("verify_peer_cert_by_name", strings.TrimSpace(*fields.VerifyPeerCertByName.Value))
 		}
 	}
-	if fields.AllowInsecure != nil {
-		add("allow_insecure", *fields.AllowInsecure)
-	}
 	if fields.ShuffleHost != nil {
 		add("shuffle_host", *fields.ShuffleHost)
 	}

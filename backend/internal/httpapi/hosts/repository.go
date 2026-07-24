@@ -33,7 +33,7 @@ func (r *HostRepository) getHosts(ctx context.Context) ([]hostRecord, error) {
                 xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, singbox_custom_params, mihomo_custom_params, sockopt_params, final_mask,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
                 vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
-                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
+                shuffle_host, mihomo_x25519, mihomo_ip_version,
                 xray_json_template_uuid, keep_sni_blank,
                 tags, is_hidden, override_sni_from_address,
                 config_profile_uuid, config_profile_inbound_uuid,
@@ -67,7 +67,7 @@ func (r *HostRepository) getHostByUUID(ctx context.Context, hostUUID string) (ho
                 xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, singbox_custom_params, mihomo_custom_params, sockopt_params, final_mask,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
                 vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
-                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
+                shuffle_host, mihomo_x25519, mihomo_ip_version,
                 xray_json_template_uuid, keep_sni_blank,
                 tags, is_hidden, override_sni_from_address,
                 config_profile_uuid, config_profile_inbound_uuid,
@@ -89,7 +89,7 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var serverDescription, protocolCredential, pinnedPeerCertSha256, verifyPeerCertByName, mihomoIPVersion sql.NullString
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
 	var vlessRouteID sql.NullInt64
-	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var isDisabled, overrideProtocolCredential, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 	var xhttpExtraParams, muxParams, singboxMuxParams, singboxCustomParams, sockoptParams, finalMask []byte
 	var clashMuxParams, mihomoCustomParams sql.NullString
 	var tags, excludeTypes dbutil.StringArray
@@ -121,7 +121,6 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&vlessRouteID,
 		&pinnedPeerCertSha256,
 		&verifyPeerCertByName,
-		&allowInsecure,
 		&shuffleHost,
 		&mihomoX25519,
 		&mihomoIPVersion,
@@ -206,9 +205,6 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	}
 	if verifyPeerCertByName.Valid {
 		rec.VerifyPeerCertByName = &verifyPeerCertByName.String
-	}
-	if allowInsecure.Valid {
-		rec.AllowInsecure = allowInsecure.Bool
 	}
 	if shuffleHost.Valid {
 		rec.ShuffleHost = shuffleHost.Bool
@@ -414,11 +410,11 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
                 xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, sockopt_params, final_mask,
                 is_disabled, server_description, override_protocol_credential, protocol_credential,
                 vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
-                allow_insecure, shuffle_host, mihomo_x25519, mihomo_ip_version,
+                shuffle_host, mihomo_x25519, mihomo_ip_version,
                 xray_json_template_uuid, keep_sni_blank,
                 exclude_from_subscription_types, tags, is_hidden,
                 override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
 			hostUUID,
 			req.Remark,
@@ -443,7 +439,6 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 			normalizeNullableInt(req.VlessRouteID),
 			normalizeNullableString(req.PinnedPeerCertSha256),
 			normalizeNullableString(req.VerifyPeerCertByName),
-			coalesceBool(req.AllowInsecure, false),
 			coalesceBool(req.ShuffleHost, false),
 			coalesceBool(req.MihomoX25519, false),
 			normalizeMihomoIPVersion(req.MihomoIPVersion),

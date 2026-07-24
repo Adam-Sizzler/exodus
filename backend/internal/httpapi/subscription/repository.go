@@ -265,7 +265,7 @@ func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, us
                 SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
                        h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
                        h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.is_disabled,
-                       h.server_description, h.override_protocol_credential, h.protocol_credential, h.allow_insecure, h.shuffle_host,
+                       h.server_description, h.override_protocol_credential, h.protocol_credential, h.shuffle_host,
                        h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
                        h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
                        h.config_profile_uuid, h.config_profile_inbound_uuid,
@@ -311,7 +311,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
 	var excludeTypes, hostTags dbutil.StringArray
-	var isDisabled, overrideProtocolCredential, allowInsecure, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var isDisabled, overrideProtocolCredential, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 
 	err := scanner.Scan(
 		&h.UUID,
@@ -336,7 +336,6 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&serverDescription,
 		&overrideProtocolCredential,
 		&protocolCredential,
-		&allowInsecure,
 		&shuffleHost,
 		&mihomoX25519,
 		&mihomoIPVersion,
@@ -415,9 +414,6 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	}
 	if protocolCredential.Valid {
 		h.ProtocolCredential = &protocolCredential.String
-	}
-	if allowInsecure.Valid {
-		h.AllowInsecure = allowInsecure.Bool
 	}
 	if shuffleHost.Valid {
 		h.ShuffleHost = shuffleHost.Bool

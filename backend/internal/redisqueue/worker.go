@@ -3,6 +3,7 @@ package redisqueue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"exodus/internal/jobqueue"
 	"exodus/internal/logger"
 
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -167,6 +169,9 @@ func (w *Worker) recordUserUsageDelayed(ctx context.Context, redisKey string) er
 		Attempts: 3,
 		Backoff:  time.Second,
 	})
+	if err != nil && (errors.Is(err, asynq.ErrTaskIDConflict) || strings.Contains(err.Error(), "task ID conflicts")) {
+		return nil
+	}
 	return err
 }
 
