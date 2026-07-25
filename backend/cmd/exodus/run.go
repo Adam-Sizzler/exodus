@@ -118,7 +118,6 @@ func Run() {
 		redisWorker.Start(ctx, &wg)
 	}
 
-	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceBootstrap).Info("Exodus application started", "version", constant.Version)
 	notifications.Emit(context.Background(), &cfg, notifications.Event{
 		Scope: notifications.ScopeService,
 		Event: notifications.EventServicePanelStarted,

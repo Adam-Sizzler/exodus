@@ -151,6 +151,9 @@ func (p *Processor) RegisterQueue(options QueueOptions, handlers map[string]Hand
 				Payload:  task.Payload(),
 				Attempts: attempts,
 			}
+			if p.cfg != nil && p.cfg.Logger != nil {
+				p.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Debug("Processing job", "name", jobName, "queue", queueName, "id", taskID)
+			}
 			return h(ctx, job)
 		})
 	}
@@ -251,7 +254,7 @@ func (l *asynqLogger) Debug(args ...interface{}) {
 func (l *asynqLogger) Info(args ...interface{}) {
 	if l.cfg != nil && l.cfg.Logger != nil {
 		msg := fmt.Sprint(args...)
-		if strings.HasPrefix(msg, "Send signal") {
+		if strings.HasPrefix(msg, "Send signal") || strings.HasPrefix(msg, "Starting processing") {
 			l.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Debug(msg)
 			return
 		}
