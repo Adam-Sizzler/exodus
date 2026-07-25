@@ -37,7 +37,6 @@ func buildRawHost(host SubscriptionHost) RawHost {
 		Host:          host.Host,
 		ALPN:          host.ALPN,
 		Fingerprint:   host.Fingerprint,
-		AllowInsecure: host.AllowInsecure,
 		IsDisabled:    host.IsDisabled,
 		IsHidden:      host.IsHidden,
 	}
@@ -216,9 +215,6 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 	if host.Fingerprint != nil && *host.Fingerprint != "" {
 		params.Set("fp", *host.Fingerprint)
 	}
-	if host.AllowInsecure {
-		params.Set("allowInsecure", "1")
-	}
 	if host.Path != nil && *host.Path != "" {
 		params.Set("path", *host.Path)
 	}
@@ -336,9 +332,7 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 		sni = host.Address
 	}
 	if security == "tls" {
-		tlsSettings := map[string]interface{}{
-			"allowInsecure": host.AllowInsecure,
-		}
+		tlsSettings := map[string]interface{}{}
 		if sni != "" {
 			tlsSettings["serverName"] = sni
 		}

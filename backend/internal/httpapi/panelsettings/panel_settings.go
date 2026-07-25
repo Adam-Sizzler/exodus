@@ -319,8 +319,6 @@ func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 					adapted["password_settings"] = value
 				case "brandingSettings":
 					adapted["branding_settings"] = value
-				case "modulesSettings":
-					adapted["modules_settings"] = value
 				}
 			}
 			if len(adapted) == 0 {

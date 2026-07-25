@@ -19,34 +19,21 @@ x-env: &env
 
 services:
   exodus:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VERSION: ${EXODUS_VERSION:-2.7.4}
-        REVISION: ${EXODUS_REVISION:-unknown}
-        FRONTEND_REVISION: ${EXODUS_FRONTEND_COMMIT:-unknown}
-        BUILD_BRANCH: ${EXODUS_GIT_BRANCH:-unknown}
-        BUILD_TIME: ${EXODUS_BUILD_TIME:-unknown}
-        BUILD_NUMBER: ${EXODUS_BUILD_NUMBER:-unknown}
-        REPOSITORY_URL: ${EXODUS_REPOSITORY_URL:-unknown}
-    image: exodus:latest
+    image: ghcr.io/adam-sizzler/exodus:latest
     container_name: exodus
     hostname: exodus
     <<: [*common, *logging, *env]
-    ports:
-      - "127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}"
-      - "127.0.0.1:${METRICS_PORT:-3001}:${METRICS_PORT:-3001}"
-    environment:
-      DATABASE_SOCKET: ${DATABASE_SOCKET-/var/run/postgresql}
-      REDIS_HOST: ${REDIS_HOST-exodus-redis}
-      REDIS_PORT: ${REDIS_PORT-6379}
-      REDIS_SOCKET: ${REDIS_SOCKET-/var/run/valkey/valkey.sock}
-      REDIS_TRANSPORT: ${REDIS_TRANSPORT:-socket}
     volumes:
-      - panel-data:/app/data
-      - postgres-socket:/var/run/postgresql
       - valkey-socket:/var/run/valkey
+    ports:
+      - 127.0.0.1:3000:${APP_PORT:-3000}
+      - 127.0.0.1:3001:${METRICS_PORT:-3001}
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:${METRICS_PORT:-3001}/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       exodus-db:
         condition: service_healthy
@@ -54,55 +41,47 @@ services:
         condition: service_healthy
 
   exodus-db:
-    image: postgres:18
+    image: postgres:18.4
     container_name: exodus-db
     hostname: exodus-db
+    shm_size: 512mb
     <<: [*common, *logging, *env]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - TZ=UTC
     ports:
       - "127.0.0.1:6868:5432"
     volumes:
-      - exodus-data:/var/lib/postgresql
-      - postgres-socket:/var/run/postgresql
+      - exodus-db-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-postgres}\""]
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 3s
       timeout: 10s
-      retries: 10
+      retries: 3
 
   exodus-redis:
     image: valkey/valkey:9-alpine
     container_name: exodus-redis
     hostname: exodus-redis
     <<: [*common, *logging]
-    environment:
-      REDIS_SOCKET: ${REDIS_SOCKET-/var/run/valkey/valkey.sock}
-      REDIS_TRANSPORT: ${REDIS_TRANSPORT:-socket}
     volumes:
       - valkey-socket:/var/run/valkey
-    command:
-      - sh
-      - -ec
-      - |
-        if [ "${REDIS_TRANSPORT:-socket}" = "tcp" ]; then
-          exec valkey-server \
-            --save "" \
-            --appendonly no \
-            --maxmemory-policy noeviction \
-            --loglevel warning;
-        fi;
-        exec valkey-server \
-          --save "" \
-          --appendonly no \
-          --maxmemory-policy noeviction \
-          --loglevel warning \
-          --unixsocket "${REDIS_SOCKET:-/var/run/valkey/valkey.sock}" \
-          --unixsocketperm 777 \
-          --port 0
+    command: >
+      valkey-server
+      --save ""
+      --appendonly no
+      --maxmemory-policy noeviction
+      --loglevel warning
+      --unixsocket /var/run/valkey/valkey.sock
+      --unixsocketperm 777
+      --port 0
     healthcheck:
-      test: ["CMD-SHELL", "if [ \"${REDIS_TRANSPORT:-socket}\" = \"tcp\" ]; then valkey-cli ping; else valkey-cli -s \"${REDIS_SOCKET:-/var/run/valkey/valkey.sock}\" ping; fi"]
+      test: ['CMD', 'valkey-cli', '-s', '/var/run/valkey/valkey.sock', 'ping']
       interval: 3s
       timeout: 3s
-      retries: 10
+      retries: 3
 
 networks:
   exodus-network:
@@ -111,15 +90,8 @@ networks:
     external: false
 
 volumes:
-  panel-data:
-    name: panel-data
-    driver: local
-  exodus-data:
-    name: exodus-data
-    driver: local
-    external: false
-  postgres-socket:
-    name: postgres-socket
+  exodus-db-data:
+    name: exodus-db-data
     driver: local
     external: false
   valkey-socket:

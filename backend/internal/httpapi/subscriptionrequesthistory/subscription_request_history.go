@@ -134,7 +134,7 @@ func SubscriptionRequestHistoryStatsHandler(manager *dbmanager.DatabaseManager, 
 			rows2, err := db.QueryContext(r.Context(), `
 				SELECT date_trunc('hour', request_at) AS date_time, COUNT(*) AS request_count
 				FROM user_subscription_request_history
-				WHERE request_at >= NOW() - INTERVAL '24 hours'
+				WHERE request_at >= NOW() - INTERVAL '48 hours'
 				GROUP BY date_time
 				ORDER BY date_time ASC
 			`)

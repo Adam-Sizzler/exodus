@@ -250,7 +250,12 @@ func (l *asynqLogger) Debug(args ...interface{}) {
 
 func (l *asynqLogger) Info(args ...interface{}) {
 	if l.cfg != nil && l.cfg.Logger != nil {
-		l.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Info(fmt.Sprint(args...))
+		msg := fmt.Sprint(args...)
+		if strings.HasPrefix(msg, "Send signal") {
+			l.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Debug(msg)
+			return
+		}
+		l.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Info(msg)
 	}
 }
 

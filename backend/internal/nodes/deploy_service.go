@@ -75,12 +75,20 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 	}
 
 	for _, target := range targets {
-		nm.cfg.Logger.Debug("Building deploy config for node", "node", target.name, "node_uuid", target.uuid)
+		start := time.Now()
 		configJSON, err := nm.buildNodeConfigForDeploy(nm.globalCtx, target.uuid)
 		if err != nil {
 			nm.cfg.Logger.Warn("Failed to build node deploy config", "node", target.name, "node_uuid", target.uuid, "error", err)
 			continue
 		}
+
+		var parsedConfig struct {
+			Inbounds []any `json:"inbounds"`
+		}
+		_ = json.Unmarshal(configJSON, &parsedConfig)
+		inboundsCount := len(parsedConfig.Inbounds)
+		nm.cfg.Logger.Info(fmt.Sprintf("Node %s (%s) has %d active inbounds.", target.name, target.uuid, inboundsCount))
+		nm.cfg.Logger.Info(fmt.Sprintf("Generated config for node %s in %v", target.name, time.Since(start)))
 
 		pluginConfig, modulesErr := nm.loadNodePluginRuntimeConfig(nm.globalCtx, target.uuid)
 		if modulesErr != nil {

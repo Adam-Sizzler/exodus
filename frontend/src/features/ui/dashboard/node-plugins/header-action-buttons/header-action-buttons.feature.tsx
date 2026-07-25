@@ -20,6 +20,7 @@ import { QueryKeys, useCreateNodePlugin, useGetNodePlugins } from '@shared/api/h
 import { ROUTES } from '@shared/constants'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
+import { HelpActionIconShared } from '@shared/ui/help-drawer'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
@@ -66,16 +67,7 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
 
     return (
         <Group grow preventGrowOverflow={false} wrap="wrap">
-            <ActionIcon
-                color="lime"
-                component="a"
-                href="https://docs.exodus.dev/docs/learn/node-plugins"
-                size="input-md"
-                target="_blank"
-                variant="soft"
-            >
-                <TbBook size={24} />
-            </ActionIcon>
+            <HelpActionIconShared hidden={false} screen="PAGE_NODE_PLUGINS" />
 
             <UniversalSpotlightActionIconShared />
 

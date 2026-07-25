@@ -73,9 +73,9 @@ func (nm *NodeMonitor) handleDisconnect(state *nodeState, reason string) {
 
 	if wasConnected {
 		nm.updateConnectionStatus(state.nodeName, false, false, reason)
-		nm.cfg.Logger.Info("Node disconnected", "node", state.nodeName, "reason", reason)
+		nm.cfg.Logger.Warn(fmt.Sprintf("Lost connection to Node %s (%s:%d), message: %s", state.nodeName, state.address, state.port, reason))
 	} else {
-		nm.cfg.Logger.Warn("Node disconnected before ready", "node", state.nodeName, "reason", reason)
+		nm.cfg.Logger.Warn(fmt.Sprintf("Connection attempt failed for Node %s (%s:%d), message: %s", state.nodeName, state.address, state.port, reason))
 	}
 }
 

@@ -39,7 +39,6 @@ exports.HostsSchema = zod_1.z.object({
     vlessRouteId: zod_1.z.number().int().min(0).max(65535).nullable(),
     pinnedPeerCertSha256: zod_1.z.string().nullable(),
     verifyPeerCertByName: zod_1.z.string().nullable(),
-    allowInsecure: zod_1.z.boolean(),
     shuffleHost: zod_1.z.boolean(),
     mihomoX25519: zod_1.z.boolean(),
     mihomoIpVersion: zod_1.z.nativeEnum(hosts_1.MIHOMO_IP_VERSION).nullable(),

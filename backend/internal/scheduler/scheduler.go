@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -65,9 +66,9 @@ func (s *Scheduler) logJobStates() {
 	log := s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceJobs)
 	for _, job := range jobs {
 		if job.enabled {
-			log.Info("Job enabled", "job", job.name)
+			log.Debug("Job enabled", "job", job.name)
 		} else {
-			log.Info("Job disabled", "job", job.name)
+			log.Info(fmt.Sprintf("%s job disabled.", job.name))
 		}
 	}
 }

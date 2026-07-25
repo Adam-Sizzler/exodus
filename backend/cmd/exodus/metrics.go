@@ -10,6 +10,7 @@ import (
 
 	"exodus/internal/config"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/httpapi/health"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/system"
 	"exodus/internal/logger"
@@ -28,23 +29,32 @@ func startMetricsServer(ctx context.Context, manager *dbmanager.DatabaseManager,
 	}
 	addr := fmt.Sprintf("%s:%d", metricsAddress, cfg.Metrics.Port)
 	metricsHandler := system.MetricsHandler(manager, cfg)
+	healthHandler := health.HealthHandler()
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", metricsHandler)
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/api/health", healthHandler)
 	registered := map[string]struct{}{
-		"/metrics": {},
+		"/metrics":    {},
+		"/health":     {},
+		"/api/health": {},
 	}
 	for _, path := range []string{cfg.Panel.BasePath, strings.TrimSuffix(cfg.Panel.BasePath, "/")} {
 		normalized := strings.TrimSpace(path)
 		if normalized == "" || normalized == "/" {
 			continue
 		}
-		endpoint := strings.TrimSuffix(normalized, "/") + "/metrics"
-		if _, exists := registered[endpoint]; exists {
-			continue
+		endpointMetrics := strings.TrimSuffix(normalized, "/") + "/metrics"
+		if _, exists := registered[endpointMetrics]; !exists {
+			registered[endpointMetrics] = struct{}{}
+			mux.Handle(endpointMetrics, metricsHandler)
 		}
-		registered[endpoint] = struct{}{}
-		mux.Handle(endpoint, metricsHandler)
+		endpointHealth := strings.TrimSuffix(normalized, "/") + "/health"
+		if _, exists := registered[endpointHealth]; !exists {
+			registered[endpointHealth] = struct{}{}
+			mux.HandleFunc(endpointHealth, healthHandler)
+		}
 	}
 
 	server := &http.Server{

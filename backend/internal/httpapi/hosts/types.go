@@ -84,7 +84,6 @@ type hostRecord struct {
 	VlessRouteID               *int
 	PinnedPeerCertSha256       *string
 	VerifyPeerCertByName       *string
-	AllowInsecure              bool
 	ShuffleHost                bool
 	MihomoX25519               bool
 	MihomoIPVersion            *string
@@ -141,7 +140,6 @@ type HostAPI struct {
 	VlessRouteID               *int        `json:"vlessRouteId"`
 	PinnedPeerCertSha256       *string     `json:"pinnedPeerCertSha256"`
 	VerifyPeerCertByName       *string     `json:"verifyPeerCertByName"`
-	AllowInsecure              bool        `json:"allowInsecure"`
 	ShuffleHost                bool        `json:"shuffleHost"`
 	MihomoX25519               bool        `json:"mihomoX25519"`
 	MihomoIPVersion            *string     `json:"mihomoIpVersion"`
@@ -176,7 +174,6 @@ type HostCreateRequestAPI struct {
 	IsHidden                   *bool            `json:"isHidden,omitempty"`
 	OverrideSNIFromAddress     *bool            `json:"overrideSniFromAddress,omitempty"`
 	KeepSNIBlank               *bool            `json:"keepSniBlank,omitempty"`
-	AllowInsecure              *bool            `json:"allowInsecure,omitempty"`
 	OverrideProtocolCredential *bool            `json:"overrideProtocolCredential,omitempty"`
 	ProtocolCredential         *string          `json:"protocolCredential,omitempty"`
 	VlessRouteID               *int             `json:"vlessRouteId,omitempty"`
@@ -221,7 +218,6 @@ type hostUpdateFields struct {
 	IsHidden                   *bool          `json:"isHidden,omitempty"`
 	OverrideSNIFromAddress     *bool          `json:"overrideSniFromAddress,omitempty"`
 	KeepSNIBlank               *bool          `json:"keepSniBlank,omitempty"`
-	AllowInsecure              *bool          `json:"allowInsecure,omitempty"`
 	OverrideProtocolCredential *bool          `json:"overrideProtocolCredential,omitempty"`
 	ProtocolCredential         OptionalString `json:"protocolCredential,omitempty"`
 	VlessRouteID               OptionalInt    `json:"vlessRouteId,omitempty"`

@@ -516,7 +516,6 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 
 	if security == "tls" {
 		proxy["tls"] = true
-		proxy["skip-cert-verify"] = host.AllowInsecure
 		if mihomoSNI != "" {
 			proxy["servername"] = mihomoSNI
 		}

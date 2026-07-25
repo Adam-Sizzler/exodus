@@ -33,7 +33,6 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 		VlessRouteID:               rec.VlessRouteID,
 		PinnedPeerCertSha256:       rec.PinnedPeerCertSha256,
 		VerifyPeerCertByName:       rec.VerifyPeerCertByName,
-		AllowInsecure:              rec.AllowInsecure,
 		ShuffleHost:                rec.ShuffleHost,
 		MihomoX25519:               rec.MihomoX25519,
 		MihomoIPVersion:            rec.MihomoIPVersion,

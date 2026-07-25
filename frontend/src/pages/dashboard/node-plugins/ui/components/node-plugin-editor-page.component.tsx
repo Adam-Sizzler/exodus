@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 
 import { ROUTES } from '@shared/constants'
 import { Page, PageHeaderShared } from '@shared/ui'
+import { HelpActionIconShared } from '@shared/ui/help-drawer'
 
 interface Props {
     plugin: GetNodePluginCommand.Response['response']
@@ -21,21 +22,7 @@ export const NodePluginEditorPageComponent = (props: Props) => {
             <PageHeaderShared
                 actions={
                     <Group>
-                        {/* <HelpActionIconShared
-                            hidden={!isHelpDrawerVisible}
-                            screen="EDITOR_TEMPLATES_XRAY_JSON"
-                        /> */}
-
-                        <ActionIcon
-                            color="lime"
-                            component="a"
-                            href="https://docs.exodus.dev/docs/learn/node-plugins"
-                            size="input-md"
-                            target="_blank"
-                            variant="soft"
-                        >
-                            <TbBook size={24} />
-                        </ActionIcon>
+                        <HelpActionIconShared hidden={false} screen="PAGE_NODE_PLUGINS" />
 
                         <ActionIcon
                             color="gray"

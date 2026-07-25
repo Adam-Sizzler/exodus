@@ -198,3 +198,26 @@ func postgresTextArrayLiteral(items []string) string {
 	}
 	return "{" + strings.Join(quoted, ",") + "}"
 }
+
+func LogScopeCatalog(cfg *config.BackendConfig) {
+	if cfg == nil || cfg.Logger == nil {
+		return
+	}
+	resources := buildAPITokenScopes(cfg)
+	endpointsCount := 0
+	scopeSet := make(map[string]struct{})
+	for _, res := range resources {
+		for _, s := range res.ResourceScopes {
+			scopeSet[s] = struct{}{}
+		}
+		for _, ep := range res.Endpoints {
+			endpointsCount++
+			if ep.Key != "" {
+				scopeSet[ep.Key] = struct{}{}
+			}
+		}
+	}
+	cfg.Logger.RoleService("API", "ScopeCatalog").Info(
+		fmt.Sprintf("Scope catalog built: %d endpoints, %d grantable scopes", endpointsCount, len(scopeSet)),
+	)
+}

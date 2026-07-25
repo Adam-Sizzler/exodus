@@ -13,6 +13,7 @@ import (
 	"exodus/internal/constant"
 	"exodus/internal/db"
 	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/httpapi/panelsettings"
 	"exodus/internal/jobqueue"
 	"exodus/internal/logger"
 	users "exodus/internal/nodes"
@@ -91,6 +92,8 @@ func Run() {
 		RedisStatus:    redisStatus,
 		RescueCLI:      "docker exec -it exodus cli",
 	})
+
+	panelsettings.LogScopeCatalog(&cfg)
 
 	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHealthCheck).Info("Health checks initialized")
 

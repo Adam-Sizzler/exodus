@@ -248,9 +248,6 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		if sni != "" {
 			tlsCfg.Set("server_name", sni)
 		}
-		if host.AllowInsecure {
-			tlsCfg.Set("insecure", true)
-		}
 		if defaults.fingerprint != "" {
 			utlsCfg := orderedmap.New()
 			utlsCfg.Set("enabled", true)

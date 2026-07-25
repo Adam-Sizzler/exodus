@@ -126,7 +126,6 @@ type SubscriptionHost struct {
 	ServerDescription            *string
 	OverrideProtocolCredential   bool
 	ProtocolCredential           *string
-	AllowInsecure                bool
 	ShuffleHost                  bool
 	MihomoX25519                 bool
 	MihomoIPVersion              *string
@@ -148,21 +147,20 @@ type SubscriptionHost struct {
 }
 
 type RawHost struct {
-	UUID          string  `json:"uuid"`
-	Remark        string  `json:"remark"`
-	Address       string  `json:"address"`
-	Port          int     `json:"port"`
-	Protocol      string  `json:"protocol"`
-	Network       *string `json:"network,omitempty"`
-	Security      *string `json:"security,omitempty"`
-	Path          *string `json:"path,omitempty"`
-	SNI           *string `json:"sni,omitempty"`
-	Host          *string `json:"host,omitempty"`
-	ALPN          *string `json:"alpn,omitempty"`
-	Fingerprint   *string `json:"fingerprint,omitempty"`
-	AllowInsecure bool    `json:"allow_insecure"`
-	IsDisabled    bool    `json:"is_disabled"`
-	IsHidden      bool    `json:"is_hidden"`
+	UUID        string  `json:"uuid"`
+	Remark      string  `json:"remark"`
+	Address     string  `json:"address"`
+	Port        int     `json:"port"`
+	Protocol    string  `json:"protocol"`
+	Network     *string `json:"network,omitempty"`
+	Security    *string `json:"security,omitempty"`
+	Path        *string `json:"path,omitempty"`
+	SNI         *string `json:"sni,omitempty"`
+	Host        *string `json:"host,omitempty"`
+	ALPN        *string `json:"alpn,omitempty"`
+	Fingerprint *string `json:"fingerprint,omitempty"`
+	IsDisabled  bool    `json:"is_disabled"`
+	IsHidden    bool    `json:"is_hidden"`
 }
 
 type SubscriptionInfoUser struct {

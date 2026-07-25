@@ -91,10 +91,8 @@ ENV EXODUS_VERSION="${VERSION}" \
     EXODUS_BUILD_NUMBER="${BUILD_NUMBER}" \
     EXODUS_REPOSITORY_URL="${REPOSITORY_URL}"
 
-# Runtime certs/timezone data come from the builder stage to keep the final
-# image independent from Alpine repository availability during local rebuilds.
-COPY --from=builder /etc/ssl/certs /etc/ssl/certs
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+# Install runtime dependencies including curl for healthchecks
+RUN apk add --no-cache curl ca-certificates tzdata
 
 WORKDIR /app
 
