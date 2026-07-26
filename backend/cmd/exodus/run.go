@@ -56,9 +56,9 @@ func Run() {
 	}
 
 	// Create and start node monitor (dynamically manages nodes from DB)
-	nodeMonitor := users.NewNodeMonitor(pools.Interactive, &cfg)
+	nodeMonitor := users.NewNodeMonitor(pools.Background, &cfg)
 	users.RegisterGlobalNodeMonitor(nodeMonitor)
-	subNodeMonitor := subscriptionnodes.NewSubNodeMonitor(pools.Interactive, &cfg)
+	subNodeMonitor := subscriptionnodes.NewSubNodeMonitor(pools.Background, &cfg)
 	subscriptionnodes.RegisterGlobalSubNodeMonitor(subNodeMonitor)
 
 	redisWorker, err := redisqueue.NewWorker(&cfg, pools.Background)

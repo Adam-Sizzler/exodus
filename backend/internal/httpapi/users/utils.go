@@ -200,9 +200,6 @@ func coalesceUniqueRandomString(name string, value *string, length int, used map
 		trimmed := strings.TrimSpace(*value)
 		return trimmed, addUniqueProtocolCredential(used, name, trimmed)
 	}
-	if isOptionalProtocolCredentialName(name) {
-		return "", nil
-	}
 	for i := 0; i < 16; i++ {
 		generated := generateRandomString(length)
 		if err := addUniqueProtocolCredential(used, name, generated); err == nil {

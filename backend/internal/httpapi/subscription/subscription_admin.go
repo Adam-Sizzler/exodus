@@ -12,8 +12,8 @@ import (
 )
 
 // SubscriptionsHandler handles GET /api/subscriptions
-func SubscriptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
-	renderService := NewRenderService(db, cfg)
+func SubscriptionsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	renderService := NewRenderService(db, backgroundDB, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -65,8 +65,8 @@ func SubscriptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 }
 
 // SubscriptionByUUIDHandler handles GET /api/subscriptions/:uuid and GET /api/subscriptions/connection-keys/:uuid
-func SubscriptionByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
-	renderService := NewRenderService(db, cfg)
+func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	renderService := NewRenderService(db, backgroundDB, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)

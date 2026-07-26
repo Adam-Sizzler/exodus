@@ -16,7 +16,7 @@ import (
 	"exodus/internal/logger"
 )
 
-func SubscriptionPublicHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -37,22 +37,22 @@ func SubscriptionPublicHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 		}
 
 		if len(parts) == 2 && parts[1] == "info" {
-			handlePublicSubscriptionInfo(w, r, db, cfg, parts[0])
+			handlePublicSubscriptionInfo(w, r, db, backgroundDB, cfg, parts[0])
 			return
 		}
 
 		if len(parts) >= 4 && parts[0] == "outline" {
-			handlePublicOutlineSubscription(w, r, db, cfg, parts)
+			handlePublicOutlineSubscription(w, r, db, backgroundDB, cfg, parts)
 			return
 		}
 
 		if len(parts) == 2 {
-			handlePublicSubscription(w, r, db, cfg, parts[0], parts[1])
+			handlePublicSubscription(w, r, db, backgroundDB, cfg, parts[0], parts[1])
 			return
 		}
 
 		if len(parts) == 1 {
-			handlePublicSubscription(w, r, db, cfg, parts[0], "")
+			handlePublicSubscription(w, r, db, backgroundDB, cfg, parts[0], "")
 			return
 		}
 
@@ -60,9 +60,9 @@ func SubscriptionPublicHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 	}
 }
 
-func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, shortUUID string) {
+func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, db, backgroundDB *sql.DB, cfg *config.BackendConfig, shortUUID string) {
 	ctx := r.Context()
-	renderService := NewRenderService(db, cfg)
+	renderService := NewRenderService(db, backgroundDB, cfg)
 
 	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
 	if err != nil {
@@ -94,7 +94,7 @@ func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, db *sq
 	})
 }
 
-func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, parts []string) {
+func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db, backgroundDB *sql.DB, cfg *config.BackendConfig, parts []string) {
 	ctx := r.Context()
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 
@@ -146,7 +146,7 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	renderService := NewRenderService(db, cfg)
+	renderService := NewRenderService(db, backgroundDB, cfg)
 
 	if reqType == "ss" || reqType == "shadowsocks" {
 		links, err := NewXrayGenerator(cfg).GenerateLinks(user, []SubscriptionHost{*targetHost}, settings)
@@ -177,7 +177,7 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db 
 	_, _ = w.Write(content)
 }
 
-func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, shortUUID string, clientType string) {
+func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgroundDB *sql.DB, cfg *config.BackendConfig, shortUUID string, clientType string) {
 	ctx := r.Context()
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 
@@ -191,7 +191,7 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db *sql.DB
 		return
 	}
 
-	renderService := NewRenderService(db, cfg)
+	renderService := NewRenderService(db, backgroundDB, cfg)
 
 	requestHeaders := make(map[string]string)
 	for k, v := range r.Header {
@@ -318,7 +318,7 @@ func (s *RenderService) CheckHwidDeviceLimit(ctx context.Context, user Subscript
 }
 
 func (s *RenderService) UpdateSubscriptionRequest(ctx context.Context, userUUID string, userID int64, userAgent, requestIP string) {
-	updateSubscriptionRequest(ctx, s.db, userUUID, userID, userAgent, requestIP)
+	updateSubscriptionRequest(ctx, s.backgroundDB, userUUID, userID, userAgent, requestIP)
 }
 
 func (s *RenderService) GetSubscriptionTemplate(ctx context.Context, templateType string) ([]byte, error) {

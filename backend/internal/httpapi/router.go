@@ -39,12 +39,12 @@ func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
 
 	// 1. Public routes (unprotected) with optional auth parsing
 	publicMux := http.NewServeMux()
-	RegisterPublicRoutes(publicMux, pools.Interactive, cfg)
+	RegisterPublicRoutes(publicMux, pools.Interactive, pools.Background, cfg)
 	publicHandler := auth.WithOptionalPanelAuth(pools.Interactive, cfg, publicMux)
 
 	// 2. Protected routes with strict Auth enforcement
 	protectedMux := http.NewServeMux()
-	RegisterProtectedRoutes(protectedMux, pools.Interactive, cfg)
+	RegisterProtectedRoutes(protectedMux, pools.Interactive, pools.Background, cfg)
 	protectedHandler := auth.WithPanelAuth(pools.Interactive, cfg, protectedMux)
 
 	// Mount protected routes under /api/ first, then fall back to public routes / mainMux
@@ -94,7 +94,7 @@ func isPublicPath(path string, cfg *config.BackendConfig) bool {
 	return false
 }
 
-func RegisterPublicRoutes(mux *http.ServeMux, db *sql.DB, cfg *config.BackendConfig) {
+func RegisterPublicRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig) {
 	mux.HandleFunc("/api/auth/bootstrap", auth.AuthBootstrapHandler(db, cfg))
 	mux.HandleFunc("/api/auth/setup", auth.AuthSetupHandler(db, cfg))
 	mux.HandleFunc("/api/auth/status", auth.AuthStatusHandler(db, cfg))
@@ -111,15 +111,15 @@ func RegisterPublicRoutes(mux *http.ServeMux, db *sql.DB, cfg *config.BackendCon
 	mux.HandleFunc(cfg.Docs.SwaggerPath, panelsettings.DocsSwaggerHandler(cfg))
 	mux.HandleFunc(cfg.Docs.SwaggerPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
 
-	mux.HandleFunc("/api/sub", subscription.SubscriptionPublicHandler(db, cfg))
-	mux.HandleFunc("/api/sub/", subscription.SubscriptionPublicHandler(db, cfg))
+	mux.HandleFunc("/api/sub", subscription.SubscriptionPublicHandler(db, backgroundDB, cfg))
+	mux.HandleFunc("/api/sub/", subscription.SubscriptionPublicHandler(db, backgroundDB, cfg))
 
 	mux.HandleFunc("/api/system/metadata", system.MetadataHandler(cfg))
 	mux.HandleFunc("/api/system/health", system.HealthHandler(cfg))
 	mux.HandleFunc("/api/health", health.HealthHandler())
 }
 
-func RegisterProtectedRoutes(mux *http.ServeMux, db *sql.DB, cfg *config.BackendConfig) {
+func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig) {
 	mux.HandleFunc("/api/auth/logout", auth.AuthLogoutHandler(db, cfg))
 	mux.HandleFunc("/api/auth/me", auth.AuthMeHandler(db, cfg))
 
@@ -229,9 +229,9 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db *sql.DB, cfg *config.Backend
 	mux.HandleFunc("/api/subscription-templates/", subscriptiontemplate.SubscriptionTemplateByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates/actions/", subscriptiontemplate.SubscriptionTemplatesActionsHandler(db, cfg))
 
-	mux.HandleFunc("/api/subscriptions/connection-keys/", subscription.SubscriptionByUUIDHandler(db, cfg))
-	mux.HandleFunc("/api/subscriptions", subscription.SubscriptionsHandler(db, cfg))
-	mux.HandleFunc("/api/subscriptions/", subscription.SubscriptionByUUIDHandler(db, cfg))
+	mux.HandleFunc("/api/subscriptions/connection-keys/", subscription.SubscriptionByUUIDHandler(db, backgroundDB, cfg))
+	mux.HandleFunc("/api/subscriptions", subscription.SubscriptionsHandler(db, backgroundDB, cfg))
+	mux.HandleFunc("/api/subscriptions/", subscription.SubscriptionByUUIDHandler(db, backgroundDB, cfg))
 
 	mux.HandleFunc("/api/subscription-page-configs", subscriptionpageconfigs.SubscriptionPageConfigsHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-page-configs/", subscriptionpageconfigs.SubscriptionPageConfigByUUIDHandler(db, cfg))
@@ -252,7 +252,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db *sql.DB, cfg *config.Backend
 	mux.Handle("/api/", http.NotFoundHandler())
 }
 
-func RegisterRoutes(mux *http.ServeMux, db *sql.DB, cfg *config.BackendConfig) {
-	RegisterPublicRoutes(mux, db, cfg)
-	RegisterProtectedRoutes(mux, db, cfg)
+func RegisterRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig) {
+	RegisterPublicRoutes(mux, db, backgroundDB, cfg)
+	RegisterProtectedRoutes(mux, db, backgroundDB, cfg)
 }

@@ -27,12 +27,13 @@ import (
 )
 
 type RenderService struct {
-	db  *sql.DB
-	cfg *config.BackendConfig
+	db           *sql.DB
+	backgroundDB *sql.DB
+	cfg          *config.BackendConfig
 }
 
-func NewRenderService(db *sql.DB, cfg *config.BackendConfig) *RenderService {
-	return &RenderService{db: db, cfg: cfg}
+func NewRenderService(db, backgroundDB *sql.DB, cfg *config.BackendConfig) *RenderService {
+	return &RenderService{db: db, backgroundDB: backgroundDB, cfg: cfg}
 }
 
 func applyExternalSquadOverrides(base SubscriptionSettingsParsed, overrides *ExternalSquadOverrides) SubscriptionSettingsParsed {
@@ -145,7 +146,7 @@ func (s *RenderService) RenderUserSubscription(
 	}
 	_ = syntheticUsed
 
-	updateSubscriptionRequest(ctx, s.db, user.UUID, user.TID, userAgent, requestIP)
+	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP)
 
 	reqType := strings.ToUpper(strings.TrimSpace(requestedType))
 	if reqType == "" {

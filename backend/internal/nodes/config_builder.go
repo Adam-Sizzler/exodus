@@ -152,19 +152,19 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 		SELECT
 			u.username,
 			CASE
-				WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid::text
+				WHEN bool_or(lower(cpi.type) = 'vless') THEN COALESCE(u.vless_uuid::text, '')
 				ELSE ''
 			END AS vless_uuid,
 			CASE
-				WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
+				WHEN bool_or(lower(cpi.type) = 'trojan') THEN COALESCE(u.trojan_password, '')
 				ELSE ''
 			END AS trojan_password,
 			CASE
-				WHEN bool_or(lower(cpi.type) = 'naive') THEN u.naive_password
+				WHEN bool_or(lower(cpi.type) = 'naive') THEN COALESCE(u.naive_password, '')
 				ELSE ''
 			END AS naive_password,
 			CASE
-				WHEN bool_or(lower(cpi.type) = 'anytls') THEN u.anytls_password
+				WHEN bool_or(lower(cpi.type) = 'anytls') THEN COALESCE(u.anytls_password, '')
 				ELSE ''
 			END AS anytls_password
 		FROM config_profile_inbounds_to_nodes cpitn
@@ -267,13 +267,13 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		SELECT
 			isi.inbound_uuid,
 			u.username,
-			u.vless_uuid,
-			u.trojan_password,
-			u.ss_password,
-			u.naive_password,
-			u.shadowtls_password,
-			u.hysteria2_password,
-			u.anytls_password
+			COALESCE(u.vless_uuid::text, ''),
+			COALESCE(u.trojan_password, ''),
+			COALESCE(u.ss_password, ''),
+			COALESCE(u.naive_password, ''),
+			COALESCE(u.shadowtls_password, ''),
+			COALESCE(u.hysteria2_password, ''),
+			COALESCE(u.anytls_password, '')
 		FROM internal_squad_inbounds isi
 		JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
 		JOIN users u ON u.t_id = ism.user_id
