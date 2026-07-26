@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"exodus/internal/config"
-	"exodus/internal/dbutil"
 	"exodus/internal/security"
 
 	"github.com/google/uuid"
@@ -71,11 +70,11 @@ func ensureExodusSettings(ctx context.Context, tx *sql.Tx) error {
 	passwordSettings := `{"enabled":true}`
 	brandingSettings := `{"title":"EXODUS","logoUrl":null}`
 
-	query := dbutil.Rebind(`
+	query := `
 		INSERT INTO exodus_settings (
 			id, passkey_settings, oauth2_settings, password_settings, branding_settings
-		) VALUES (1, ?, ?, ?, ?)
-	`)
+		) VALUES (1, $1, $2, $3, $4)
+	`
 	if _, err := tx.ExecContext(ctx, query, passkeySettings, oauth2Settings, passwordSettings, brandingSettings); err != nil {
 		return fmt.Errorf("insert default exodus_settings row: %w", err)
 	}
@@ -92,7 +91,7 @@ func ensureDefaultSubscriptionSettings(ctx context.Context, tx *sql.Tx) error {
 		return nil
 	}
 
-	query := dbutil.Rebind(`
+	query := `
 		INSERT INTO subscription_settings (
 			uuid, profile_title, support_link, profile_update_interval,
 			address, port, api_schema, api_path,
@@ -100,8 +99,8 @@ func ensureDefaultSubscriptionSettings(ctx context.Context, tx *sql.Tx) error {
 			happ_announce, happ_routing, is_show_custom_remarks,
 			custom_remarks, custom_response_headers, randomize_hosts,
 			response_rules, hwid_settings
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	`
 	_, err := tx.ExecContext(ctx, query,
 		uuid.NewString(),
 		"exodus",
@@ -132,18 +131,18 @@ func ensureDefaultSubscriptionSettings(ctx context.Context, tx *sql.Tx) error {
 func ensureDefaultTemplates(ctx context.Context, tx *sql.Tx) error {
 	for _, tmpl := range DefaultSubscriptionTemplates() {
 		var count int
-		if err := tx.QueryRowContext(ctx, dbutil.Rebind(`SELECT COUNT(*) FROM subscription_templates WHERE template_type = ?`), tmpl.TemplateType).Scan(&count); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM subscription_templates WHERE template_type = $1`, tmpl.TemplateType).Scan(&count); err != nil {
 			return fmt.Errorf("count template %s: %w", tmpl.TemplateType, err)
 		}
 		if count > 0 {
 			continue
 		}
 
-		query := dbutil.Rebind(`
+		query := `
 			INSERT INTO subscription_templates (
 				uuid, view_position, name, template_type, template_yaml, template_json
-			) VALUES (?, ?, ?, ?, ?, ?)
-		`)
+			) VALUES ($1, $2, $3, $4, $5, $6)
+		`
 		if _, err := tx.ExecContext(ctx, query,
 			uuid.NewString(),
 			tmpl.ViewPosition,
@@ -168,11 +167,11 @@ func ensureDefaultSubscriptionPageConfig(ctx context.Context, tx *sql.Tx) error 
 		return nil
 	}
 
-	query := dbutil.Rebind(`
+	query := `
 		INSERT INTO subscription_page_config (
 			uuid, view_position, name, config
-		) VALUES (?, ?, ?, ?)
-	`)
+		) VALUES ($1, $2, $3, $4)
+	`
 	if _, err := tx.ExecContext(ctx, query, defaultSubpageConfigUUID, 1, "Default", DefaultSubscriptionPageConfig); err != nil {
 		return fmt.Errorf("insert default subscription_page_config: %w", err)
 	}
@@ -210,10 +209,10 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 			return fmt.Errorf("generate master certs: %w", err)
 		}
 
-		query := dbutil.Rebind(`
+		query := `
 			INSERT INTO keygen (uuid, priv_key, pub_key, ca_cert, ca_key, client_cert, client_key)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-		`)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`
 		if _, err := tx.ExecContext(
 			ctx,
 			query,
@@ -254,24 +253,27 @@ func ensureKeygen(ctx context.Context, tx *sql.Tx) error {
 
 	updateParts := make([]string, 0, 6)
 	args := make([]any, 0, 7)
+	idx := 1
 	if needJWT {
 		newPubKey, newPrivKey, err := security.GenerateJWTKeypair()
 		if err != nil {
 			return fmt.Errorf("regenerate jwt keypair: %w", err)
 		}
-		updateParts = append(updateParts, "pub_key = ?", "priv_key = ?")
+		updateParts = append(updateParts, fmt.Sprintf("pub_key = $%d", idx), fmt.Sprintf("priv_key = $%d", idx+1))
 		args = append(args, newPubKey, newPrivKey)
+		idx += 2
 	}
 	if needMTLS {
 		masterCerts, err := security.GenerateMasterCerts()
 		if err != nil {
 			return fmt.Errorf("regenerate mTLS certificates: %w", err)
 		}
-		updateParts = append(updateParts, "ca_cert = ?", "ca_key = ?", "client_cert = ?", "client_key = ?")
+		updateParts = append(updateParts, fmt.Sprintf("ca_cert = $%d", idx), fmt.Sprintf("ca_key = $%d", idx+1), fmt.Sprintf("client_cert = $%d", idx+2), fmt.Sprintf("client_key = $%d", idx+3))
 		args = append(args, masterCerts.CACertPEM, masterCerts.CAKeyPEM, masterCerts.ClientCertPEM, masterCerts.ClientKeyPEM)
+		idx += 4
 	}
 
-	query := dbutil.Rebind(fmt.Sprintf("UPDATE keygen SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", joinWithComma(updateParts)))
+	query := fmt.Sprintf("UPDATE keygen SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = $%d", joinWithComma(updateParts), idx)
 	args = append(args, id)
 	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("update keygen row: %w", err)

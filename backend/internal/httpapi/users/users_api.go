@@ -1,18 +1,18 @@
 package users
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
 )
 
-func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewUserRepository(manager)
+func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(db)
 	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -28,8 +28,8 @@ func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 	}
 }
 
-func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewUserRepository(manager)
+func UserByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(db)
 	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := trimUsersPath(r.URL.Path, "/")
@@ -113,8 +113,8 @@ func UserByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewUserRepository(manager)
+func UsersBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(db)
 	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -147,8 +147,8 @@ func UsersBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 	}
 }
 
-func UsersTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewUserRepository(manager)
+func UsersTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewUserRepository(db)
 	service := NewUserService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

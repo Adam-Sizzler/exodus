@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"time"
 
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/notifications"
 )
 
@@ -76,37 +75,34 @@ func (s *Scheduler) infraBillingNodesNotifications(ctx context.Context) error {
 }
 
 func (s *Scheduler) getInfraBillingNotifications(ctx context.Context, window infraBillingNotificationWindow) ([]infraBillingNotificationRecord, error) {
-	items := make([]infraBillingNotificationRecord, 0)
-	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT n.name, ip.name, ip.login_url, ibn.next_billing_at
-			FROM infra_billing_nodes ibn
-			INNER JOIN nodes n ON n.uuid = ibn.node_uuid
-			INNER JOIN infra_providers ip ON ip.uuid = ibn.provider_uuid
-			WHERE ibn.next_billing_at >= ?
-			  AND ibn.next_billing_at < ?
-			ORDER BY ibn.next_billing_at ASC, n.name ASC
-		`, window.Start, window.End)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT n.name, ip.name, ip.login_url, ibn.next_billing_at
+		FROM infra_billing_nodes ibn
+		INNER JOIN nodes n ON n.uuid = ibn.node_uuid
+		INNER JOIN infra_providers ip ON ip.uuid = ibn.provider_uuid
+		WHERE ibn.next_billing_at >= $1
+		  AND ibn.next_billing_at < $2
+		ORDER BY ibn.next_billing_at ASC, n.name ASC
+	`, window.Start, window.End)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-		for rows.Next() {
-			var (
-				item     infraBillingNotificationRecord
-				loginURL sql.NullString
-			)
-			if scanErr := rows.Scan(&item.NodeName, &item.ProviderName, &loginURL, &item.NextBillingAt); scanErr != nil {
-				return scanErr
-			}
-			item.LoginURL = nullableStringFromSQL(loginURL)
-			if item.LoginURL == "" {
-				item.LoginURL = "https://docs.rw"
-			}
-			items = append(items, item)
+	items := make([]infraBillingNotificationRecord, 0)
+	for rows.Next() {
+		var (
+			item     infraBillingNotificationRecord
+			loginURL sql.NullString
+		)
+		if scanErr := rows.Scan(&item.NodeName, &item.ProviderName, &loginURL, &item.NextBillingAt); scanErr != nil {
+			return nil, scanErr
 		}
-		return rows.Err()
-	})
-	return items, err
+		item.LoginURL = nullableStringFromSQL(loginURL)
+		if item.LoginURL == "" {
+			item.LoginURL = "https://docs.rw"
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }

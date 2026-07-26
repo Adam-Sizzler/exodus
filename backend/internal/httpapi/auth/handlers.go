@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
@@ -20,14 +19,14 @@ import (
 
 var errAdminAlreadyConfigured = errors.New("admin already configured")
 
-func AuthBootstrapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthBootstrapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		brandingSettings, passwordSettings, defaultUsername, hasAdmin, err := getBootstrapData(manager)
+		brandingSettings, passwordSettings, defaultUsername, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Error("Failed to load auth bootstrap data", "error", err)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load auth bootstrap data")
@@ -43,14 +42,14 @@ func AuthBootstrapHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 	}
 }
 
-func AuthStatusHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		brandingSettings, passwordSettings, _, hasAdmin, err := getBootstrapData(manager)
+		brandingSettings, passwordSettings, _, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Error("Failed to load auth status", "error", err)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load auth status")
@@ -61,7 +60,7 @@ func AuthStatusHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		title, _ := brandingSettings["title"].(string)
 		logoURL, _ := brandingSettings["logoUrl"].(string)
 		if hasAdmin {
-			passkeyEnabled, oauth2Providers := getAuthMethodsStatus(manager)
+			passkeyEnabled, oauth2Providers := getAuthMethodsStatus(db)
 			passwordEnabled := resolvePasswordAuthEnabled(
 				passwordSettings,
 				passkeyEnabled,
@@ -107,7 +106,7 @@ func AuthStatusHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -129,14 +128,14 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
+		password := req.Password
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
 		}
 		cfg.Logger.Trace("Auth login attempt", "username", username, "remote_addr", r.RemoteAddr)
 
-		_, passwordSettings, _, hasAdmin, err := getBootstrapData(manager)
+		_, passwordSettings, _, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Error("Failed to read auth bootstrap for login", "error", err)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
@@ -150,7 +149,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			return
 		}
 
-		passkeyEnabled, oauth2Providers := getAuthMethodsStatus(manager)
+		passkeyEnabled, oauth2Providers := getAuthMethodsStatus(db)
 		passwordEnabled := resolvePasswordAuthEnabled(
 			passwordSettings,
 			passkeyEnabled,
@@ -170,27 +169,19 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			role               string
 		)
 
-		err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			row := db.QueryRow(`
-				SELECT uuid, password_hash, role
-				FROM admin
-				WHERE username = ?
-				LIMIT 1
-			`, username)
+		row := db.QueryRow(`
+			SELECT uuid, password_hash, role
+			FROM admin
+			WHERE username = $1
+			LIMIT 1
+		`, username)
 
-			if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil {
-				if errors.Is(scanErr, sql.ErrNoRows) {
-					return nil
-				}
-				return scanErr
-			}
-			return nil
-		})
-		if err != nil {
-			cfg.Logger.Error("Failed to read admin credentials", "error", err)
+		if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
+			cfg.Logger.Error("Failed to read admin credentials", "error", scanErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
+
 		hashToVerify := storedPasswordHash
 		if adminUUID == "" {
 			hashToVerify = getDummyPasswordHash(cfg.JWT.AuthSecret)
@@ -222,7 +213,7 @@ func AuthLoginCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 	}
 }
 
-func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthRegisterCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -237,7 +228,7 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
+		password := req.Password
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
@@ -250,29 +241,23 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			return
 		}
 
-		adminUUID := uuid.NewString()
-		err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			var adminCount int
-			if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
-				return countErr
-			}
-			if adminCount > 0 {
-				return errAdminAlreadyConfigured
-			}
-
-			_, execErr := db.Exec(`
-				INSERT INTO admin (uuid, username, password_hash, role)
-				VALUES (?, ?, ?, 'ADMIN')
-			`, adminUUID, username, passwordHash)
-			return execErr
-		})
-		if errors.Is(err, errAdminAlreadyConfigured) {
+		var adminCount int
+		if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to check admin status")
+			return
+		}
+		if adminCount > 0 {
 			cfg.Logger.Warn("Auth register blocked: admin already configured", "username", username, "remote_addr", r.RemoteAddr)
 			shared.WriteJSONError(w, http.StatusForbidden, "registration is not allowed")
 			return
 		}
-		if err != nil {
-			cfg.Logger.Error("Auth register failed", "username", username, "remote_addr", r.RemoteAddr, "error", err)
+
+		adminUUID := uuid.NewString()
+		if _, execErr := db.Exec(`
+			INSERT INTO admin (uuid, username, password_hash, role)
+			VALUES ($1, $2, $3, 'ADMIN')
+		`, adminUUID, username, passwordHash); execErr != nil {
+			cfg.Logger.Error("Auth register failed", "username", username, "remote_addr", r.RemoteAddr, "error", execErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
 			return
 		}
@@ -294,7 +279,7 @@ func AuthRegisterCompatHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 	}
 }
 
-func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthSetupHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -308,7 +293,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
+		password := req.Password
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
@@ -321,28 +306,22 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 
-		adminUUID := uuid.NewString()
-		err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			var adminCount int
-			if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
-				return countErr
-			}
-			if adminCount > 0 {
-				return errAdminAlreadyConfigured
-			}
-
-			_, execErr := db.Exec(`
-				INSERT INTO admin (uuid, username, password_hash, role)
-				VALUES (?, ?, ?, 'ADMIN')
-			`, adminUUID, username, passwordHash)
-			return execErr
-		})
-		if errors.Is(err, errAdminAlreadyConfigured) {
+		var adminCount int
+		if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to check admin status")
+			return
+		}
+		if adminCount > 0 {
 			shared.WriteJSONError(w, http.StatusConflict, "admin account already exists")
 			return
 		}
-		if err != nil {
-			cfg.Logger.Error("Failed to create initial admin account", "error", err)
+
+		adminUUID := uuid.NewString()
+		if _, execErr := db.Exec(`
+			INSERT INTO admin (uuid, username, password_hash, role)
+			VALUES ($1, $2, $3, 'ADMIN')
+		`, adminUUID, username, passwordHash); execErr != nil {
+			cfg.Logger.Error("Failed to create initial admin account", "error", execErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
 			return
 		}
@@ -355,7 +334,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		}
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
-		brandingSettings, passwordSettings, _, _, bootstrapErr := getBootstrapData(manager)
+		brandingSettings, passwordSettings, _, _, bootstrapErr := getBootstrapData(db)
 		if bootstrapErr != nil {
 			cfg.Logger.Warn("Failed to include bootstrap settings in setup response", "error", bootstrapErr)
 			brandingSettings = defaultBrandingSettings()
@@ -377,7 +356,7 @@ func AuthSetupHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 	}
 }
 
-func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthLoginHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -391,7 +370,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		}
 
 		username := strings.TrimSpace(req.Username)
-		password := req.Password // do not trim - see NIST 800-63B, upstream Remnawave does not trim either
+		password := req.Password
 		if username == "" || password == "" {
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
@@ -403,27 +382,19 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			role               string
 		)
 
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			row := db.QueryRow(`
-				SELECT uuid, password_hash, role
-				FROM admin
-				WHERE username = ?
-				LIMIT 1
-			`, username)
+		row := db.QueryRow(`
+			SELECT uuid, password_hash, role
+			FROM admin
+			WHERE username = $1
+			LIMIT 1
+		`, username)
 
-			if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil {
-				if errors.Is(scanErr, sql.ErrNoRows) {
-					return nil
-				}
-				return scanErr
-			}
-			return nil
-		})
-		if err != nil {
-			cfg.Logger.Error("Failed to read admin credentials", "error", err)
+		if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
+			cfg.Logger.Error("Failed to read admin credentials", "error", scanErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
+
 		if adminUUID == "" || !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
 			shared.WriteJSONError(w, http.StatusUnauthorized, "invalid username or password")
@@ -440,7 +411,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
-		brandingSettings, passwordSettings, _, _, err := getBootstrapData(manager)
+		brandingSettings, passwordSettings, _, _, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Warn("Failed to include bootstrap settings in login response", "error", err)
 			brandingSettings = defaultBrandingSettings()
@@ -462,7 +433,7 @@ func AuthLoginHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 	}
 }
 
-func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthMeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -479,32 +450,26 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			adminInfo AuthAdminInfo
 			expiresAt = principal.ExpiresAt
 		)
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			row := db.QueryRow(`
-				SELECT uuid, username, role
-				FROM admin
-				WHERE uuid = ?
-				LIMIT 1
-			`, principal.AdminUUID)
+		row := db.QueryRow(`
+			SELECT uuid, username, role
+			FROM admin
+			WHERE uuid = $1
+			LIMIT 1
+		`, principal.AdminUUID)
 
-			if scanErr := row.Scan(&adminInfo.UUID, &adminInfo.Username, &adminInfo.Role); scanErr != nil {
-				return scanErr
-			}
-			adminInfo.Role = strings.ToUpper(adminInfo.Role)
-			adminInfo.SessionTTLMinutes = AuthTTLMinutes()
-			return nil
-		})
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+		if scanErr := row.Scan(&adminInfo.UUID, &adminInfo.Username, &adminInfo.Role); scanErr != nil {
+			if errors.Is(scanErr, sql.ErrNoRows) {
 				shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
-			cfg.Logger.Error("Failed to load auth me payload", "error", err)
+			cfg.Logger.Error("Failed to load auth me payload", "error", scanErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load current session")
 			return
 		}
+		adminInfo.Role = strings.ToUpper(adminInfo.Role)
+		adminInfo.SessionTTLMinutes = AuthTTLMinutes()
 
-		brandingSettings, passwordSettings, _, _, err := getBootstrapData(manager)
+		brandingSettings, passwordSettings, _, _, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Warn("Failed to load branding for auth/me response", "error", err)
 			brandingSettings = defaultBrandingSettings()
@@ -521,7 +486,7 @@ func AuthMeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 	}
 }
 
-func AuthLogoutHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthLogoutHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -544,7 +509,7 @@ func AuthLogoutHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func OAuth2AuthorizeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func OAuth2AuthorizeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -560,11 +525,11 @@ func OAuth2AuthorizeHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
 			return
 		}
-		if !isLoginAllowed(manager) {
+		if !isLoginAllowed(db) {
 			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
 			return
 		}
-		settings, err := loadOAuthSettings(manager)
+		settings, err := loadOAuthSettings(db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
 			return
@@ -593,7 +558,7 @@ func OAuth2AuthorizeHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 	}
 }
 
-func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func OAuth2CallbackHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -616,12 +581,12 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			shared.SendError(w, http.StatusForbidden, "OAuth2 state mismatch", nil, cfg)
 			return
 		}
-		if !isLoginAllowed(manager) {
+		if !isLoginAllowed(db) {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "login_not_allowed", r)
 			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
 			return
 		}
-		settings, err := loadOAuthSettings(manager)
+		settings, err := loadOAuthSettings(db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
 			return
@@ -643,7 +608,7 @@ func OAuth2CallbackHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			shared.SendError(w, http.StatusForbidden, "OAuth2 principal is not allowed", nil, cfg)
 			return
 		}
-		token, adminUUID, err := createFirstAdminSession(w, r, manager, cfg)
+		token, adminUUID, err := createFirstAdminSession(w, r, db, cfg)
 		if err != nil {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "session_create_failed", r)
 			shared.SendError(w, http.StatusForbidden, "failed to create OAuth2 session", err, cfg)

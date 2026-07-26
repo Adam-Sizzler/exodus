@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 )
 
@@ -69,30 +69,30 @@ func (field *optionalString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func ProvidersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func ProvidersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		providerUUID := uuidFromPath(r.URL.Path, "/api/infra-billing/providers")
 
 		switch r.Method {
 		case http.MethodGet:
 			if providerUUID != "" {
-				writeProviderResponse(w, r, manager, cfg, providerUUID)
+				writeProviderResponse(w, r, db, cfg, providerUUID)
 				return
 			}
-			writeProvidersResponse(w, r, manager, cfg)
+			writeProvidersResponse(w, r, db, cfg)
 		case http.MethodPost:
-			handleCreateProvider(w, r, manager, cfg)
+			handleCreateProvider(w, r, db, cfg)
 		case http.MethodPatch:
-			handleUpdateProvider(w, r, manager, cfg)
+			handleUpdateProvider(w, r, db, cfg)
 		case http.MethodDelete:
-			handleDeleteProvider(w, r, manager, cfg, providerUUID)
+			handleDeleteProvider(w, r, db, cfg, providerUUID)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func handleCreateProvider(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleCreateProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req createProviderRequest
 	if err := decodeJSONBody(r, &req); err != nil {
 		shared.WriteJSONError(w, http.StatusBadRequest, "invalid request body")
@@ -116,21 +116,19 @@ func handleCreateProvider(w http.ResponseWriter, r *http.Request, manager *dbman
 	}
 
 	var providerUUID string
-	if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(r.Context(), `
-			INSERT INTO infra_providers (name, favicon_link, login_url)
-			VALUES (?, ?, ?)
-			RETURNING uuid
-		`, name, nullableString(faviconURL), nullableString(loginURL)).Scan(&providerUUID)
-	}); err != nil {
+	if err := db.QueryRowContext(r.Context(), `
+		INSERT INTO infra_providers (name, favicon_link, login_url)
+		VALUES ($1, $2, $3)
+		RETURNING uuid
+	`, name, nullableString(faviconURL), nullableString(loginURL)).Scan(&providerUUID); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "failed to create infra provider", err, cfg)
 		return
 	}
 
-	writeProviderResponseWithStatus(w, r, manager, cfg, providerUUID, http.StatusCreated)
+	writeProviderResponseWithStatus(w, r, db, cfg, providerUUID, http.StatusCreated)
 }
 
-func handleUpdateProvider(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleUpdateProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req updateProviderRequest
 	if err := decodeJSONBody(r, &req); err != nil {
 		shared.WriteJSONError(w, http.StatusBadRequest, "invalid request body")
@@ -144,6 +142,7 @@ func handleUpdateProvider(w http.ResponseWriter, r *http.Request, manager *dbman
 
 	updates := make([]string, 0, 4)
 	args := make([]any, 0, 5)
+	idx := 1
 
 	if req.Name.Set {
 		if req.Name.Value == nil {
@@ -155,8 +154,9 @@ func handleUpdateProvider(w http.ResponseWriter, r *http.Request, manager *dbman
 			shared.WriteJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		updates = append(updates, "name = ?")
+		updates = append(updates, fmt.Sprintf("name = $%d", idx))
 		args = append(args, name)
+		idx++
 	}
 
 	if req.FaviconURL.Set {
@@ -165,8 +165,9 @@ func handleUpdateProvider(w http.ResponseWriter, r *http.Request, manager *dbman
 			shared.WriteJSONError(w, http.StatusBadRequest, "invalid faviconLink")
 			return
 		}
-		updates = append(updates, "favicon_link = ?")
+		updates = append(updates, fmt.Sprintf("favicon_link = $%d", idx))
 		args = append(args, nullableString(faviconURL))
+		idx++
 	}
 
 	if req.LoginURL.Set {
@@ -175,73 +176,51 @@ func handleUpdateProvider(w http.ResponseWriter, r *http.Request, manager *dbman
 			shared.WriteJSONError(w, http.StatusBadRequest, "invalid loginUrl")
 			return
 		}
-		updates = append(updates, "login_url = ?")
+		updates = append(updates, fmt.Sprintf("login_url = $%d", idx))
 		args = append(args, nullableString(loginURL))
+		idx++
 	}
 
 	if len(updates) > 0 {
-		updates = append(updates, "updated_at = now()")
 		args = append(args, req.UUID)
-		query := "UPDATE infra_providers SET " + strings.Join(updates, ", ") + " WHERE uuid = ?"
-		if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			result, err := db.ExecContext(r.Context(), query, args...)
-			if err != nil {
-				return err
-			}
-			affected, err := result.RowsAffected()
-			if err != nil {
-				return err
-			}
-			if affected == 0 {
-				return sql.ErrNoRows
-			}
-			return nil
-		}); err != nil {
-			if err == sql.ErrNoRows {
-				shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
-				return
-			}
+		query := fmt.Sprintf("UPDATE infra_providers SET %s, updated_at = now() WHERE uuid = $%d", strings.Join(updates, ", "), idx)
+		result, err := db.ExecContext(r.Context(), query, args...)
+		if err != nil {
 			shared.SendError(w, http.StatusBadRequest, "failed to update infra provider", err, cfg)
+			return
+		}
+		affected, err := result.RowsAffected()
+		if err != nil || affected == 0 {
+			shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
 			return
 		}
 	}
 
-	writeProviderResponse(w, r, manager, cfg, req.UUID)
+	writeProviderResponse(w, r, db, cfg, req.UUID)
 }
 
-func handleDeleteProvider(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, providerUUID string) {
+func handleDeleteProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, providerUUID string) {
 	if providerUUID == "" {
 		shared.WriteJSONError(w, http.StatusBadRequest, "uuid is required")
 		return
 	}
 
-	if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, err := db.ExecContext(r.Context(), `DELETE FROM infra_providers WHERE uuid = ?`, providerUUID)
-		if err != nil {
-			return err
-		}
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if affected == 0 {
-			return sql.ErrNoRows
-		}
-		return nil
-	}); err != nil {
-		if err == sql.ErrNoRows {
-			shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
-			return
-		}
+	result, err := db.ExecContext(r.Context(), `DELETE FROM infra_providers WHERE uuid = $1`, providerUUID)
+	if err != nil {
 		shared.SendError(w, http.StatusBadRequest, "failed to delete infra provider", err, cfg)
+		return
+	}
+	affected, err := result.RowsAffected()
+	if err != nil || affected == 0 {
+		shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
 		return
 	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
 }
 
-func writeProvidersResponse(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	items, err := getProviders(r.Context(), manager)
+func writeProvidersResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	items, err := getProviders(r.Context(), db)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch infra providers", err, cfg)
 		return
@@ -254,12 +233,12 @@ func writeProvidersResponse(w http.ResponseWriter, r *http.Request, manager *dbm
 	})
 }
 
-func writeProviderResponse(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, providerUUID string) {
-	writeProviderResponseWithStatus(w, r, manager, cfg, providerUUID, http.StatusOK)
+func writeProviderResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, providerUUID string) {
+	writeProviderResponseWithStatus(w, r, db, cfg, providerUUID, http.StatusOK)
 }
 
-func writeProviderResponseWithStatus(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, providerUUID string, status int) {
-	item, err := getProvider(r.Context(), manager, providerUUID)
+func writeProviderResponseWithStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, providerUUID string, status int) {
+	item, err := getProvider(r.Context(), db, providerUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch infra provider", err, cfg)
 		return
@@ -271,92 +250,87 @@ func writeProviderResponseWithStatus(w http.ResponseWriter, r *http.Request, man
 	shared.WriteJSON(w, status, map[string]any{"response": item})
 }
 
-func getProviders(ctx context.Context, manager *dbmanager.DatabaseManager) ([]providerRecord, error) {
+func getProviders(ctx context.Context, db *sql.DB) ([]providerRecord, error) {
 	items := make([]providerRecord, 0)
 	historyByProvider := make(map[string]map[string]any)
 	nodesByProvider := make(map[string][]providerNode)
 
-	if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid, name, favicon_link, login_url, created_at, updated_at
-			FROM infra_providers
-			ORDER BY created_at ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
+	rows, err := db.QueryContext(ctx, `
+		SELECT uuid, name, favicon_link, login_url, created_at, updated_at
+		FROM infra_providers
+		ORDER BY created_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-		for rows.Next() {
-			var rec providerRecord
-			var favicon, loginURL sql.NullString
-			if scanErr := rows.Scan(&rec.UUID, &rec.Name, &favicon, &loginURL, &rec.CreatedAt, &rec.UpdatedAt); scanErr != nil {
-				return scanErr
-			}
-			if favicon.Valid {
-				rec.Favicon = &favicon.String
-			}
-			if loginURL.Valid {
-				rec.LoginURL = &loginURL.String
-			}
-			items = append(items, rec)
+	for rows.Next() {
+		var rec providerRecord
+		var favicon, loginURL sql.NullString
+		if scanErr := rows.Scan(&rec.UUID, &rec.Name, &favicon, &loginURL, &rec.CreatedAt, &rec.UpdatedAt); scanErr != nil {
+			return nil, scanErr
 		}
-		return rows.Err()
-	}); err != nil {
+		if favicon.Valid {
+			rec.Favicon = &favicon.String
+		}
+		if loginURL.Valid {
+			rec.LoginURL = &loginURL.String
+		}
+		items = append(items, rec)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT provider_uuid, COALESCE(ROUND(SUM(amount)::numeric, 2)::float8, 0), COUNT(*)
-			FROM infra_billing_history
-			GROUP BY provider_uuid
-		`)
-		if err != nil {
-			return err
+	histRows, err := db.QueryContext(ctx, `
+		SELECT provider_uuid, COALESCE(ROUND(SUM(amount)::numeric, 2)::float8, 0), COUNT(*)
+		FROM infra_billing_history
+		GROUP BY provider_uuid
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer histRows.Close()
+
+	for histRows.Next() {
+		var providerUUID string
+		var totalAmount float64
+		var totalBills int
+		if scanErr := histRows.Scan(&providerUUID, &totalAmount, &totalBills); scanErr != nil {
+			return nil, scanErr
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var providerUUID string
-			var totalAmount float64
-			var totalBills int
-			if scanErr := rows.Scan(&providerUUID, &totalAmount, &totalBills); scanErr != nil {
-				return scanErr
-			}
-			historyByProvider[providerUUID] = map[string]any{
-				"totalAmount": totalAmount,
-				"totalBills":  totalBills,
-			}
+		historyByProvider[providerUUID] = map[string]any{
+			"totalAmount": totalAmount,
+			"totalBills":  totalBills,
 		}
-		return rows.Err()
-	}); err != nil {
+	}
+	if err := histRows.Err(); err != nil {
 		return nil, err
 	}
 
-	if err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT ibn.provider_uuid, ibn.node_uuid, n.name, n.country_code
-			FROM infra_billing_nodes ibn
-			JOIN nodes n ON n.uuid = ibn.node_uuid
-			ORDER BY n.view_position ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
+	nodeRows, err := db.QueryContext(ctx, `
+		SELECT ibn.provider_uuid, ibn.node_uuid, n.name, n.country_code
+		FROM infra_billing_nodes ibn
+		JOIN nodes n ON n.uuid = ibn.node_uuid
+		ORDER BY n.view_position ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer nodeRows.Close()
 
-		for rows.Next() {
-			var providerUUID string
-			var node providerNode
-			var details providerNodeDetails
-			if scanErr := rows.Scan(&providerUUID, &details.NodeUUID, &node.Name, &details.CountryCode); scanErr != nil {
-				return scanErr
-			}
-			node.Details = &details
-			nodesByProvider[providerUUID] = append(nodesByProvider[providerUUID], node)
+	for nodeRows.Next() {
+		var providerUUID string
+		var node providerNode
+		var details providerNodeDetails
+		if scanErr := nodeRows.Scan(&providerUUID, &details.NodeUUID, &node.Name, &details.CountryCode); scanErr != nil {
+			return nil, scanErr
 		}
-		return rows.Err()
-	}); err != nil {
+		node.Details = &details
+		nodesByProvider[providerUUID] = append(nodesByProvider[providerUUID], node)
+	}
+	if err := nodeRows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -379,13 +353,13 @@ func getProviders(ctx context.Context, manager *dbmanager.DatabaseManager) ([]pr
 	return items, nil
 }
 
-func getProvider(ctx context.Context, manager *dbmanager.DatabaseManager, providerUUID string) (*providerRecord, error) {
+func getProvider(ctx context.Context, db *sql.DB, providerUUID string) (*providerRecord, error) {
 	providerUUID = strings.TrimSpace(providerUUID)
 	if providerUUID == "" {
 		return nil, nil
 	}
 
-	items, err := getProviders(ctx, manager)
+	items, err := getProviders(ctx, db)
 	if err != nil {
 		return nil, err
 	}

@@ -2,17 +2,17 @@ package subscriptionnodes
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 )
 
 type SubNodeMonitor struct {
-	manager *dbmanager.DatabaseManager
-	cfg     *config.BackendConfig
+	db  *sql.DB
+	cfg *config.BackendConfig
 
 	nodes     map[string]*subNodeState
 	nodesLock sync.RWMutex
@@ -29,9 +29,9 @@ type SubNodeMonitor struct {
 	srsSyncNow     chan []string
 }
 
-func NewSubNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) *SubNodeMonitor {
+func NewSubNodeMonitor(db *sql.DB, cfg *config.BackendConfig) *SubNodeMonitor {
 	return &SubNodeMonitor{
-		manager:           manager,
+		db:                db,
 		cfg:               cfg,
 		nodes:             make(map[string]*subNodeState),
 		runtimeByNodeName: make(map[string]SubNodeRuntimeSnapshot),

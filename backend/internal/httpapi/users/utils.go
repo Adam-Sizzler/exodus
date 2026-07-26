@@ -200,6 +200,9 @@ func coalesceUniqueRandomString(name string, value *string, length int, used map
 		trimmed := strings.TrimSpace(*value)
 		return trimmed, addUniqueProtocolCredential(used, name, trimmed)
 	}
+	if isOptionalProtocolCredentialName(name) {
+		return "", nil
+	}
 	for i := 0; i < 16; i++ {
 		generated := generateRandomString(length)
 		if err := addUniqueProtocolCredential(used, name, generated); err == nil {
@@ -212,6 +215,9 @@ func coalesceUniqueRandomString(name string, value *string, length int, used map
 func addUniqueProtocolCredential(used map[string]string, name string, value string) error {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
+		if isOptionalProtocolCredentialName(name) {
+			return nil
+		}
 		return fmt.Errorf("%s cannot be empty", name)
 	}
 	if existing, ok := used[trimmed]; ok {
@@ -219,6 +225,15 @@ func addUniqueProtocolCredential(used map[string]string, name string, value stri
 	}
 	used[trimmed] = name
 	return nil
+}
+
+func isOptionalProtocolCredentialName(name string) bool {
+	switch name {
+	case "naivePassword", "shadowtlsPassword", "hysteria2Password", "anytlsPassword":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeUserTag(value *string) any {

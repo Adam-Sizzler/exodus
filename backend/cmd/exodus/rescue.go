@@ -18,7 +18,6 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/db"
-	"exodus/internal/dbutil"
 	"exodus/internal/jobqueue"
 	"exodus/internal/security"
 
@@ -483,12 +482,12 @@ func resetSuperadmin(resources *rescueResources, reader *bufio.Reader) error {
 		username  string
 	)
 
-	err = resources.db.QueryRow(dbutil.Rebind(`
+	err = resources.db.QueryRow(`
 		SELECT uuid, username
 		FROM admin
 		ORDER BY created_at ASC
 		LIMIT 1
-	`)).Scan(&adminUUID, &username)
+	`).Scan(&adminUUID, &username)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("superadmin not found")
@@ -497,7 +496,7 @@ func resetSuperadmin(resources *rescueResources, reader *bufio.Reader) error {
 		return fmt.Errorf("find superadmin: %w", err)
 	}
 
-	if _, err := resources.db.Exec(dbutil.Rebind("DELETE FROM admin WHERE uuid = ?"), adminUUID); err != nil {
+	if _, err := resources.db.Exec("DELETE FROM admin WHERE uuid = $1", adminUUID); err != nil {
 		return fmt.Errorf("delete superadmin: %w", err)
 	}
 
@@ -565,7 +564,7 @@ func resetCerts(resources *rescueResources, reader *bufio.Reader) error {
 		return fmt.Errorf("find certs: %w", err)
 	}
 
-	if _, err := resources.db.Exec(dbutil.Rebind("DELETE FROM keygen WHERE uuid = ?"), keygenUUID); err != nil {
+	if _, err := resources.db.Exec("DELETE FROM keygen WHERE uuid = $1", keygenUUID); err != nil {
 		return fmt.Errorf("delete certs: %w", err)
 	}
 
@@ -792,11 +791,11 @@ func renderDeleteProgress(current, total int64, startedAt time.Time, lastBatchMs
 func runSingleUsageDelete(resources *rescueResources, startStr, endStr string) (int64, error) {
 	printStatus("◐", "🔄 Deleting records... (do NOT close this window)")
 
-	result, err := resources.db.Exec(dbutil.Rebind(`
+	result, err := resources.db.Exec(`
 		DELETE FROM nodes_user_usage_history
-		WHERE created_at >= ?::date
-		  AND created_at <= ?::date
-	`), startStr, endStr)
+		WHERE created_at >= $1::date
+		  AND created_at <= $2::date
+	`, startStr, endStr)
 	if err != nil {
 		return 0, fmt.Errorf("delete records: %w", err)
 	}
@@ -826,16 +825,16 @@ func runBatchedUsageDelete(
 	for {
 		batchStart := time.Now()
 
-		result, err := resources.db.Exec(dbutil.Rebind(`
+		result, err := resources.db.Exec(`
 			DELETE FROM nodes_user_usage_history
 			WHERE ctid IN (
 				SELECT ctid
 				FROM nodes_user_usage_history
-				WHERE created_at >= ?::date
-				  AND created_at <= ?::date
-				LIMIT ?
+				WHERE created_at >= $1::date
+				  AND created_at <= $2::date
+				LIMIT $3
 			)
-		`), startStr, endStr, batchSize)
+		`, startStr, endStr, batchSize)
 		if err != nil {
 			if term.IsTerminal(int(os.Stdout.Fd())) {
 				fmt.Println()
@@ -945,12 +944,12 @@ func deleteUsersUsageByDateRange(resources *rescueResources, reader *bufio.Reade
 	printStatus("◐", "🔍 Counting affected rows...")
 
 	var rowsToDelete int64
-	if err := resources.db.QueryRow(dbutil.Rebind(`
+	if err := resources.db.QueryRow(`
 		SELECT COUNT(*)
 		FROM nodes_user_usage_history
-		WHERE created_at >= ?::date
-		  AND created_at <= ?::date
-	`), startStr, endStr).Scan(&rowsToDelete); err != nil {
+		WHERE created_at >= $1::date
+		  AND created_at <= $2::date
+	`, startStr, endStr).Scan(&rowsToDelete); err != nil {
 		return fmt.Errorf("count rows: %w", err)
 	}
 

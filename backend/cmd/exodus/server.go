@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
+	"exodus/internal/db"
 	"exodus/internal/httpapi"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/system"
@@ -19,7 +19,7 @@ import (
 )
 
 // startWebServer serves both panel UI and API on a single APP_PORT.
-func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+func startWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Panel.AppPort)
@@ -29,8 +29,8 @@ func startWebServer(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 		panelBasePathNoTrailing = "/"
 	}
 
-	apiHandler := httpapi.NewAPIHandler(manager, cfg)
-	metricsHandler := system.MetricsHandler(manager, cfg)
+	apiHandler := httpapi.NewAPIHandler(pools, cfg)
+	metricsHandler := system.MetricsHandler(pools.Interactive, cfg)
 
 	mux := http.NewServeMux()
 	uiDir := cfg.Panel.StaticDir
@@ -98,10 +98,6 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 			return
 		}
 
-		// Route docs paths (Scalar UI, Swagger UI, raw OpenAPI JSON) through the
-		// API handler. These paths don't carry the /api/ prefix but are served by
-		// Go handlers, not the React SPA. The forwarded path is normalized without
-		// a trailing slash so it matches the exact-match routes in router.go.
 		if docsAPIPath, ok := docsAPIRequestPath(relativePath, docsSwaggerPath, docsScalarPath); ok {
 			apiReq := r.Clone(r.Context())
 			apiReq.URL.Path = docsAPIPath
@@ -145,10 +141,6 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 	})
 }
 
-// docsAPIRequestPath reports whether relativePath (already stripped of
-// panelBasePath) targets the docs UI or its OpenAPI spec, matching with or
-// without a trailing slash, and returns the exact-match path to forward to
-// apiHandler.
 func docsAPIRequestPath(relativePath, docsSwaggerPath, docsScalarPath string) (string, bool) {
 	relativePath = strings.Trim(relativePath, "/")
 

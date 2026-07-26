@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	dbmanager "exodus/internal/db/manager"
-
 	"github.com/iancoleman/orderedmap"
 )
 
@@ -22,30 +20,27 @@ func (nm *NodeMonitor) loadNodePluginRuntimeConfig(ctx context.Context, nodeUUID
 	}
 
 	var pluginConfig activeNodePluginRuntimeConfig
-	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var rawConfig sql.NullString
-		row := db.QueryRowContext(ctx, `
-			SELECT np.plugin_config::text
-			FROM nodes n
-			JOIN node_plugin np ON np.uuid = n.active_plugin_uuid
-			WHERE n.uuid::text = ?
-			LIMIT 1
-		`, nodeUUID)
-		if err := row.Scan(&rawConfig); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
+	var rawConfig sql.NullString
+	row := nm.db.QueryRowContext(ctx, `
+		SELECT np.plugin_config::text
+		FROM nodes n
+		JOIN node_plugin np ON np.uuid = n.active_plugin_uuid
+		WHERE n.uuid::text = $1
+		LIMIT 1
+	`, nodeUUID)
+	if err := row.Scan(&rawConfig); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return pluginConfig, nil
 		}
-		if !rawConfig.Valid || strings.TrimSpace(rawConfig.String) == "" {
-			return nil
-		}
-		if err := json.Unmarshal([]byte(rawConfig.String), &pluginConfig); err != nil {
-			return err
-		}
-		return nil
-	})
-	return pluginConfig, err
+		return pluginConfig, err
+	}
+	if !rawConfig.Valid || strings.TrimSpace(rawConfig.String) == "" {
+		return pluginConfig, nil
+	}
+	if err := json.Unmarshal([]byte(rawConfig.String), &pluginConfig); err != nil {
+		return pluginConfig, err
+	}
+	return pluginConfig, nil
 }
 
 func (cfg activeNodePluginRuntimeConfig) sharedIPLists() map[string][]string {
@@ -130,80 +125,77 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 	matchArgs := []any{nodeUUID}
 	usersArgs := []any{nodeUUID}
 	if !matchAll {
-		tagFilterSQL = " AND cpi.tag = ANY(?)"
+		tagFilterSQL = " AND cpi.tag = ANY($2)"
 		matchArgs = append(matchArgs, inboundTags)
 		usersArgs = append(usersArgs, inboundTags)
 	}
 
 	items := make([]deployHaproxyUserItem, 0)
 	matched := false
-	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		matchQuery := fmt.Sprintf(`
-			SELECT EXISTS (
-				SELECT 1
-				FROM config_profile_inbounds_to_nodes cpitn
-				JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
-				WHERE cpitn.node_uuid::text = ?
-					AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
-			)`, tagFilterSQL)
-		if err := db.QueryRowContext(ctx, matchQuery, matchArgs...).Scan(&matched); err != nil {
-			return err
-		}
-		if !matched {
-			return nil
-		}
 
-		usersQuery := fmt.Sprintf(`
-					SELECT
-						u.username,
-						CASE
-							WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid::text
-							ELSE ''
-						END AS vless_uuid,
-						CASE
-							WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
-							ELSE ''
-						END AS trojan_password,
-						CASE
-							WHEN bool_or(lower(cpi.type) = 'naive') THEN u.naive_password
-							ELSE ''
-						END AS naive_password,
-						CASE
-							WHEN bool_or(lower(cpi.type) = 'anytls') THEN u.anytls_password
-							ELSE ''
-						END AS anytls_password
-					FROM config_profile_inbounds_to_nodes cpitn
-					JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
-					JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
-					JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-					JOIN users u ON u.t_id = ism.user_id
-				WHERE cpitn.node_uuid::text = ?
-					AND u.status = 'ACTIVE'
-					AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
-					GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
-					ORDER BY u.t_id ASC
-			`, tagFilterSQL)
-		rows, err := db.QueryContext(ctx, usersQuery, usersArgs...)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
+	matchQuery := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM config_profile_inbounds_to_nodes cpitn
+			JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+			WHERE cpitn.node_uuid::text = $1
+				AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
+		)`, tagFilterSQL)
+	if err := nm.db.QueryRowContext(ctx, matchQuery, matchArgs...).Scan(&matched); err != nil {
+		return nil, false, err
+	}
+	if !matched {
+		return nil, false, nil
+	}
 
-		for rows.Next() {
-			var item deployHaproxyUserItem
-			if err := rows.Scan(&item.Username, &item.VLESSUUID, &item.TrojanPassword, &item.NaivePassword, &item.AnytlsPassword); err != nil {
-				return err
-			}
-			item.Username = strings.TrimSpace(item.Username)
-			if item.Username == "" {
-				continue
-			}
-			items = append(items, item)
-		}
-		return rows.Err()
-	})
+	usersQuery := fmt.Sprintf(`
+		SELECT
+			u.username,
+			CASE
+				WHEN bool_or(lower(cpi.type) = 'vless') THEN u.vless_uuid::text
+				ELSE ''
+			END AS vless_uuid,
+			CASE
+				WHEN bool_or(lower(cpi.type) = 'trojan') THEN u.trojan_password
+				ELSE ''
+			END AS trojan_password,
+			CASE
+				WHEN bool_or(lower(cpi.type) = 'naive') THEN u.naive_password
+				ELSE ''
+			END AS naive_password,
+			CASE
+				WHEN bool_or(lower(cpi.type) = 'anytls') THEN u.anytls_password
+				ELSE ''
+			END AS anytls_password
+		FROM config_profile_inbounds_to_nodes cpitn
+		JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+		JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
+		JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
+		JOIN users u ON u.t_id = ism.user_id
+		WHERE cpitn.node_uuid::text = $1
+			AND u.status = 'ACTIVE'
+			AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
+		GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
+		ORDER BY u.t_id ASC
+	`, tagFilterSQL)
+	rows, err := nm.db.QueryContext(ctx, usersQuery, usersArgs...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
 
-	return items, matched, err
+	for rows.Next() {
+		var item deployHaproxyUserItem
+		if err := rows.Scan(&item.Username, &item.VLESSUUID, &item.TrojanPassword, &item.NaivePassword, &item.AnytlsPassword); err != nil {
+			return nil, false, err
+		}
+		item.Username = strings.TrimSpace(item.Username)
+		if item.Username == "" {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items, matched, rows.Err()
 }
 
 func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID string) (json.RawMessage, error) {
@@ -216,43 +208,39 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 	}
 
 	var profileConfig json.RawMessage
-	bindings := make([]nodeInboundBinding, 0)
-
-	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT cp.config
-			FROM nodes n
-			JOIN config_profiles cp ON cp.uuid = n.active_config_profile_uuid
-			WHERE n.uuid = ? AND n.is_disabled = false
-		`, nodeUUID)
-		if err := row.Scan(&profileConfig); err != nil {
-			return err
-		}
-
-		rows, err := db.QueryContext(ctx, `
-			SELECT cpi.uuid, cpi.tag
-			FROM config_profile_inbounds_to_nodes cpitn
-			JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
-			WHERE cpitn.node_uuid = ?
-		`, nodeUUID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var item nodeInboundBinding
-			if err := rows.Scan(&item.InboundUUID, &item.Tag); err != nil {
-				return err
-			}
-			bindings = append(bindings, item)
-		}
-		return rows.Err()
-	})
-	if err != nil {
+	row := nm.db.QueryRowContext(ctx, `
+		SELECT cp.config
+		FROM nodes n
+		JOIN config_profiles cp ON cp.uuid = n.active_config_profile_uuid
+		WHERE n.uuid = $1 AND n.is_disabled = false
+	`, nodeUUID)
+	if err := row.Scan(&profileConfig); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("node %s has no active config profile", nodeUUID)
 		}
+		return nil, err
+	}
+
+	rows, err := nm.db.QueryContext(ctx, `
+		SELECT cpi.uuid, cpi.tag
+		FROM config_profile_inbounds_to_nodes cpitn
+		JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
+		WHERE cpitn.node_uuid = $1
+	`, nodeUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	bindings := make([]nodeInboundBinding, 0)
+	for rows.Next() {
+		var item nodeInboundBinding
+		if err := rows.Scan(&item.InboundUUID, &item.Tag); err != nil {
+			return nil, err
+		}
+		bindings = append(bindings, item)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -275,66 +263,62 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 	usersByTag := make(map[string][]inboundUserCredentials, len(activeTags))
 	dedup := make(map[string]map[string]struct{}, len(activeTags))
 
-	err = nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-				SELECT
-					isi.inbound_uuid,
-					u.username,
-					u.vless_uuid,
-					u.trojan_password,
-					u.ss_password,
-					u.naive_password,
-					u.shadowtls_password,
-					u.hysteria2_password,
-					u.anytls_password
-				FROM internal_squad_inbounds isi
-				JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-				JOIN users u ON u.t_id = ism.user_id
-			WHERE isi.inbound_uuid = ANY(?) AND u.status = 'ACTIVE'
-			ORDER BY u.t_id ASC
-		`, inboundUUIDs)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var (
-				inboundUUID string
-				user        inboundUserCredentials
-			)
-			if err := rows.Scan(
-				&inboundUUID,
-				&user.Username,
-				&user.VLESSUUID,
-				&user.TrojanPassword,
-				&user.SSPassword,
-				&user.NaivePassword,
-				&user.ShadowTLSPass,
-				&user.Hysteria2Pass,
-				&user.AnytlsPassword,
-			); err != nil {
-				return err
-			}
-			binding, ok := bindingByInboundUUID[inboundUUID]
-			tag := normalizeTagValue(binding.Tag)
-			if !ok || tag == "" || strings.TrimSpace(user.Username) == "" {
-				continue
-			}
-
-			if dedup[tag] == nil {
-				dedup[tag] = make(map[string]struct{})
-			}
-			if _, exists := dedup[tag][user.Username]; exists {
-				continue
-			}
-			dedup[tag][user.Username] = struct{}{}
-			usersByTag[tag] = append(usersByTag[tag], user)
-		}
-
-		return rows.Err()
-	})
+	userRows, err := nm.db.QueryContext(ctx, `
+		SELECT
+			isi.inbound_uuid,
+			u.username,
+			u.vless_uuid,
+			u.trojan_password,
+			u.ss_password,
+			u.naive_password,
+			u.shadowtls_password,
+			u.hysteria2_password,
+			u.anytls_password
+		FROM internal_squad_inbounds isi
+		JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
+		JOIN users u ON u.t_id = ism.user_id
+		WHERE isi.inbound_uuid = ANY($1) AND u.status = 'ACTIVE'
+		ORDER BY u.t_id ASC
+	`, inboundUUIDs)
 	if err != nil {
+		return nil, err
+	}
+	defer userRows.Close()
+
+	for userRows.Next() {
+		var (
+			inboundUUID string
+			user        inboundUserCredentials
+		)
+		if err := userRows.Scan(
+			&inboundUUID,
+			&user.Username,
+			&user.VLESSUUID,
+			&user.TrojanPassword,
+			&user.SSPassword,
+			&user.NaivePassword,
+			&user.ShadowTLSPass,
+			&user.Hysteria2Pass,
+			&user.AnytlsPassword,
+		); err != nil {
+			return nil, err
+		}
+		binding, ok := bindingByInboundUUID[inboundUUID]
+		tag := normalizeTagValue(binding.Tag)
+		if !ok || tag == "" || strings.TrimSpace(user.Username) == "" {
+			continue
+		}
+
+		if dedup[tag] == nil {
+			dedup[tag] = make(map[string]struct{})
+		}
+		if _, exists := dedup[tag][user.Username]; exists {
+			continue
+		}
+		dedup[tag][user.Username] = struct{}{}
+		usersByTag[tag] = append(usersByTag[tag], user)
+	}
+	if err := userRows.Err(); err != nil {
 		return nil, err
 	}
 

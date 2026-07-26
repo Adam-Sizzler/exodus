@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
 
@@ -88,7 +87,7 @@ var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"bl
 
 const haproxyAllInboundTags = "*"
 
-func Handler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func Handler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/node-plugins")
 		path = strings.Trim(path, "/")
@@ -97,26 +96,26 @@ func Handler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http
 		case path == "":
 			switch r.Method {
 			case http.MethodGet:
-				handleList(w, r, manager, cfg)
+				handleList(w, r, db, cfg)
 			case http.MethodPost:
-				handleCreate(w, r, manager, cfg)
+				handleCreate(w, r, db, cfg)
 			case http.MethodPatch:
-				handleUpdate(w, r, manager, cfg, "")
+				handleUpdate(w, r, db, cfg, "")
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
 		case path == "executor":
-			handleExecutor(w, r, manager, cfg)
+			handleExecutor(w, r, db, cfg)
 		case strings.HasPrefix(path, "actions/"):
-			handleAction(w, r, manager, cfg, strings.TrimPrefix(path, "actions/"))
+			handleAction(w, r, db, cfg, strings.TrimPrefix(path, "actions/"))
 		default:
-			handleByUUID(w, r, manager, cfg, path)
+			handleByUUID(w, r, db, cfg, path)
 		}
 	}
 }
 
-func handleList(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	plugins, err := loadPlugins(r.Context(), manager)
+func handleList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	plugins, err := loadPlugins(r.Context(), db)
 	if err != nil {
 		cfg.Logger.Error("Failed to load node plugins", "error", err)
 		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load node plugins")
@@ -127,7 +126,7 @@ func handleList(w http.ResponseWriter, r *http.Request, manager *dbmanager.Datab
 	})
 }
 
-func handleCreate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleCreate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req createRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
@@ -144,7 +143,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 		return
 	}
 
-	plugin, err := createPlugin(r.Context(), manager, name, configJSON)
+	plugin, err := createPlugin(r.Context(), db, name, configJSON)
 	if err != nil {
 		cfg.Logger.Error("Failed to create node plugin", "error", err)
 		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create node plugin")
@@ -153,7 +152,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 	shared.WriteJSON(w, http.StatusCreated, responseEnvelope[nodePlugin]{Response: plugin})
 }
 
-func handleByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, rawPath string) {
+func handleByUUID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, rawPath string) {
 	parts := strings.Split(strings.Trim(rawPath, "/"), "/")
 	if len(parts) == 0 || parts[0] == "" {
 		shared.WriteJSONError(w, http.StatusNotFound, "not found")
@@ -172,7 +171,7 @@ func handleByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 
 	switch r.Method {
 	case http.MethodGet:
-		plugin, err := loadPluginByUUID(r.Context(), manager, pluginUUID)
+		plugin, err := loadPluginByUUID(r.Context(), db, pluginUUID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
@@ -184,15 +183,15 @@ func handleByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 		}
 		shared.WriteJSON(w, http.StatusOK, responseEnvelope[nodePlugin]{Response: plugin})
 	case http.MethodPatch:
-		handleUpdate(w, r, manager, cfg, pluginUUID)
+		handleUpdate(w, r, db, cfg, pluginUUID)
 	case http.MethodDelete:
-		handleDelete(w, r, manager, cfg, pluginUUID)
+		handleDelete(w, r, db, cfg, pluginUUID)
 	default:
 		shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
-func handleUpdate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, urlUUID string) {
+func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, urlUUID string) {
 	var req updateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
@@ -233,7 +232,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 		configJSON = &normalized
 	}
 
-	plugin, err := updatePlugin(r.Context(), manager, pluginUUID, name, configJSON, req.ViewPosition)
+	plugin, err := updatePlugin(r.Context(), db, pluginUUID, name, configJSON, req.ViewPosition)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
@@ -246,8 +245,8 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 	shared.WriteJSON(w, http.StatusOK, responseEnvelope[nodePlugin]{Response: plugin})
 }
 
-func handleDelete(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, pluginUUID string) {
-	if err := deletePlugin(r.Context(), manager, pluginUUID); err != nil {
+func handleDelete(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, pluginUUID string) {
+	if err := deletePlugin(r.Context(), db, pluginUUID); err != nil {
 		cfg.Logger.Error("Failed to delete node plugin", "uuid", pluginUUID, "error", err)
 		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete node plugin")
 		return
@@ -255,7 +254,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 	shared.WriteJSON(w, http.StatusOK, responseEnvelope[map[string]bool]{Response: map[string]bool{"isDeleted": true}})
 }
 
-func handleExecutor(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleExecutor(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	if r.Method != http.MethodPost {
 		shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -289,7 +288,7 @@ func handleExecutor(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 		}
 	}
 
-	if err := ensureNodesExist(r.Context(), manager, targetNodeUUIDs); err != nil {
+	if err := ensureNodesExist(r.Context(), db, targetNodeUUIDs); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.WriteJSONError(w, http.StatusBadRequest, "one or more nodes were not found")
 			return
@@ -312,7 +311,7 @@ func handleExecutor(w http.ResponseWriter, r *http.Request, manager *dbmanager.D
 	shared.WriteJSON(w, http.StatusOK, responseEnvelope[map[string]bool]{Response: map[string]bool{"eventSent": true}})
 }
 
-func handleAction(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, action string) {
+func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, action string) {
 	if r.Method != http.MethodPost {
 		shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -329,12 +328,12 @@ func handleAction(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 			shared.WriteJSONError(w, http.StatusBadRequest, "items are required")
 			return
 		}
-		if err := reorderPlugins(r.Context(), manager, req); err != nil {
+		if err := reorderPlugins(r.Context(), db, req); err != nil {
 			cfg.Logger.Error("Failed to reorder node plugins", "error", err)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to reorder node plugins")
 			return
 		}
-		plugins, err := loadPlugins(r.Context(), manager)
+		plugins, err := loadPlugins(r.Context(), db)
 		if err != nil {
 			cfg.Logger.Error("Failed to load reordered node plugins", "error", err)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load node plugins")
@@ -351,7 +350,7 @@ func handleAction(w http.ResponseWriter, r *http.Request, manager *dbmanager.Dat
 			shared.WriteJSONError(w, http.StatusBadRequest, "invalid cloneFromUuid")
 			return
 		}
-		plugin, err := clonePlugin(r.Context(), manager, req)
+		plugin, err := clonePlugin(r.Context(), db, req)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
@@ -458,59 +457,55 @@ func normalizeHaproxyInboundTags(raw []string) []string {
 	return result
 }
 
-func loadPlugins(ctx context.Context, manager *dbmanager.DatabaseManager) ([]nodePlugin, error) {
+func loadPlugins(ctx context.Context, db *sql.DB) ([]nodePlugin, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
+		FROM node_plugin
+		ORDER BY view_position ASC, created_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	plugins := make([]nodePlugin, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-			FROM node_plugin
-			ORDER BY view_position ASC, created_at ASC
-		`)
-		if err != nil {
-			return err
+	for rows.Next() {
+		plugin, scanErr := scanPlugin(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
-		defer rows.Close()
-
-		for rows.Next() {
-			plugin, scanErr := scanPlugin(rows)
-			if scanErr != nil {
-				return scanErr
-			}
-			plugins = append(plugins, plugin)
-		}
-		return rows.Err()
-	})
-	return plugins, err
+		plugins = append(plugins, plugin)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return plugins, nil
 }
 
-func loadPluginByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, pluginUUID string) (nodePlugin, error) {
+func loadPluginByUUID(ctx context.Context, db *sql.DB, pluginUUID string) (nodePlugin, error) {
 	var plugin nodePlugin
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-			FROM node_plugin
-			WHERE uuid::text = ?
-		`, pluginUUID)
-		return scanPluginRow(row, &plugin)
-	})
+	row := db.QueryRowContext(ctx, `
+		SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
+		FROM node_plugin
+		WHERE uuid::text = $1
+	`, pluginUUID)
+	err := scanPluginRow(row, &plugin)
 	return plugin, err
 }
 
-func createPlugin(ctx context.Context, manager *dbmanager.DatabaseManager, name string, configJSON json.RawMessage) (nodePlugin, error) {
+func createPlugin(ctx context.Context, db *sql.DB, name string, configJSON json.RawMessage) (nodePlugin, error) {
 	var plugin nodePlugin
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			INSERT INTO node_plugin (name, plugin_config)
-			VALUES (?, ?::jsonb)
-			RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-		`, name, string(configJSON))
-		return scanPluginRow(row, &plugin)
-	})
+	row := db.QueryRowContext(ctx, `
+		INSERT INTO node_plugin (name, plugin_config)
+		VALUES ($1, $2::jsonb)
+		RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
+	`, name, string(configJSON))
+	err := scanPluginRow(row, &plugin)
 	return plugin, err
 }
 
-func updatePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, pluginUUID string, name *string, configJSON *json.RawMessage, viewPosition *int) (nodePlugin, error) {
-	current, err := loadPluginByUUID(ctx, manager, pluginUUID)
+func updatePlugin(ctx context.Context, db *sql.DB, pluginUUID string, name *string, configJSON *json.RawMessage, viewPosition *int) (nodePlugin, error) {
+	current, err := loadPluginByUUID(ctx, db, pluginUUID)
 	if err != nil {
 		return nodePlugin{}, err
 	}
@@ -528,56 +523,54 @@ func updatePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, plugi
 	}
 
 	var plugin nodePlugin
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			UPDATE node_plugin
-			SET name = ?, plugin_config = ?::jsonb, view_position = ?, updated_at = CURRENT_TIMESTAMP
-			WHERE uuid::text = ?
-			RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-		`, nextName, string(nextConfig), nextPosition, pluginUUID)
-		return scanPluginRow(row, &plugin)
-	})
+	row := db.QueryRowContext(ctx, `
+		UPDATE node_plugin
+		SET name = $1, plugin_config = $2::jsonb, view_position = $3, updated_at = CURRENT_TIMESTAMP
+		WHERE uuid::text = $4
+		RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
+	`, nextName, string(nextConfig), nextPosition, pluginUUID)
+	err = scanPluginRow(row, &plugin)
 	return plugin, err
 }
 
-func deletePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, pluginUUID string) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		tx, err := db.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
-		if _, err = tx.ExecContext(ctx, `UPDATE nodes SET active_plugin_uuid = NULL WHERE active_plugin_uuid::text = ?`, pluginUUID); err != nil {
-			return err
-		}
-		if _, err = tx.ExecContext(ctx, `DELETE FROM node_plugin WHERE uuid::text = ?`, pluginUUID); err != nil {
-			return err
-		}
-		return tx.Commit()
-	})
+func deletePlugin(ctx context.Context, db *sql.DB, pluginUUID string) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if _, err = tx.ExecContext(ctx, `UPDATE nodes SET active_plugin_uuid = NULL WHERE active_plugin_uuid::text = $1`, pluginUUID); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `DELETE FROM node_plugin WHERE uuid::text = $1`, pluginUUID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func reorderPlugins(ctx context.Context, manager *dbmanager.DatabaseManager, req reorderRequest) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		tx, err := db.BeginTx(ctx, nil)
-		if err != nil {
+func reorderPlugins(ctx context.Context, db *sql.DB, req reorderRequest) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	for _, item := range req.Items {
+		if _, err := uuid.Parse(item.UUID); err != nil {
+			return fmt.Errorf("invalid uuid")
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE node_plugin SET view_position = $1, updated_at = CURRENT_TIMESTAMP WHERE uuid::text = $2`, item.ViewPosition, item.UUID); err != nil {
 			return err
 		}
-		defer tx.Rollback()
-		for _, item := range req.Items {
-			if _, err := uuid.Parse(item.UUID); err != nil {
-				return fmt.Errorf("invalid uuid")
-			}
-			if _, err := tx.ExecContext(ctx, `UPDATE node_plugin SET view_position = ?, updated_at = CURRENT_TIMESTAMP WHERE uuid::text = ?`, item.ViewPosition, item.UUID); err != nil {
-				return err
-			}
-		}
-		return tx.Commit()
-	})
+	}
+	return tx.Commit()
 }
 
-func clonePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, req cloneRequest) (nodePlugin, error) {
-	source, err := loadPluginByUUID(ctx, manager, strings.TrimSpace(req.CloneFromUUID))
+func clonePlugin(ctx context.Context, db *sql.DB, req cloneRequest) (nodePlugin, error) {
+	source, err := loadPluginByUUID(ctx, db, strings.TrimSpace(req.CloneFromUUID))
 	if err != nil {
 		return nodePlugin{}, err
 	}
@@ -587,20 +580,18 @@ func clonePlugin(ctx context.Context, manager *dbmanager.DatabaseManager, req cl
 	} else {
 		name = fmt.Sprintf("%s copy %s", source.Name, time.Now().UTC().Format("20060102150405"))
 	}
-	return createPlugin(ctx, manager, name, source.PluginConfig)
+	return createPlugin(ctx, db, name, source.PluginConfig)
 }
 
-func ensureNodesExist(ctx context.Context, manager *dbmanager.DatabaseManager, nodeUUIDs []string) error {
-	return manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var count int
-		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE uuid::text = ANY(?)`, nodeUUIDs).Scan(&count); err != nil {
-			return err
-		}
-		if count != len(nodeUUIDs) {
-			return sql.ErrNoRows
-		}
-		return nil
-	})
+func ensureNodesExist(ctx context.Context, db *sql.DB, nodeUUIDs []string) error {
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE uuid::text = ANY($1)`, nodeUUIDs).Scan(&count); err != nil {
+		return err
+	}
+	if count != len(nodeUUIDs) {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func normalizeUUIDList(raw []string) []string {

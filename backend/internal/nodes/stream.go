@@ -3,14 +3,14 @@ package users
 import (
 	"context"
 	"encoding/json"
-	dbmanager "exodus/internal/db/manager"
-	"exodus/internal/notifications"
-	"exodus/internal/proto"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
 	"strings"
+
+	"exodus/internal/notifications"
+	"exodus/internal/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -135,201 +135,181 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 
 	persistedNodeUUID := ""
 	firstConnectedEvents := make([]notifications.Event, 0)
-	err := nm.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		var (
-			nodeUUID                  string
-			nodeID                    int64
-			consumptionMultiplier     int64
-			nodeConsumptionMultiplier int64
-		)
-		if err := db.QueryRow(`SELECT uuid, id, consumption_multiplier, node_consumption_multiplier FROM nodes WHERE name = ?`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier, &nodeConsumptionMultiplier); err != nil {
-			return err
-		}
-		persistedNodeUUID = nodeUUID
 
-		if _, execErr := db.Exec(`
+	var (
+		nodeUUID                  string
+		nodeID                    int64
+		consumptionMultiplier     int64
+		nodeConsumptionMultiplier int64
+	)
+	if err := nm.db.QueryRow(`SELECT uuid, id, consumption_multiplier, node_consumption_multiplier FROM nodes WHERE name = $1`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier, &nodeConsumptionMultiplier); err != nil {
+		nm.cfg.Logger.Warn("Failed to query node from DB", "node", nodeName, "error", err)
+		return
+	}
+	persistedNodeUUID = nodeUUID
+
+	if _, execErr := nm.db.Exec(`
+		UPDATE nodes
+		SET updated_at = CURRENT_TIMESTAMP
+		WHERE name = $1`, nodeName); execErr != nil {
+		nm.cfg.Logger.Warn("Failed to update node updated_at", "node", nodeName, "error", execErr)
+		return
+	}
+
+	if trafficDelta.TotalUploadBytes > 0 || trafficDelta.TotalDownloadBytes > 0 {
+		totalBytes := trafficDelta.TotalUploadBytes + trafficDelta.TotalDownloadBytes
+		nodeUsageBytes := applyConsumptionMultiplier(totalBytes, nodeConsumptionMultiplier)
+		if _, execErr := nm.db.Exec(`
+			INSERT INTO nodes_usage_history (node_uuid, download_bytes, upload_bytes, total_bytes)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (node_uuid, created_at)
+			DO UPDATE SET
+				download_bytes = nodes_usage_history.download_bytes + EXCLUDED.download_bytes,
+				upload_bytes = nodes_usage_history.upload_bytes + EXCLUDED.upload_bytes,
+				total_bytes = nodes_usage_history.total_bytes + EXCLUDED.total_bytes,
+				updated_at = now()
+		`, nodeUUID, trafficDelta.TotalDownloadBytes, trafficDelta.TotalUploadBytes, totalBytes); execErr != nil {
+			nm.cfg.Logger.Warn("Failed to insert node usage history", "node", nodeName, "error", execErr)
+			return
+		}
+
+		if _, execErr := nm.db.Exec(`
 			UPDATE nodes
-			SET updated_at = CURRENT_TIMESTAMP
-			WHERE name = ?`, nodeName); execErr != nil {
-			return execErr
+			SET traffic_used_bytes = COALESCE(traffic_used_bytes, 0) + $1, updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = $2
+		`, nodeUsageBytes, nodeUUID); execErr != nil {
+			nm.cfg.Logger.Warn("Failed to update node traffic used bytes", "node", nodeName, "error", execErr)
+			return
 		}
+	}
 
-		if trafficDelta.TotalUploadBytes > 0 || trafficDelta.TotalDownloadBytes > 0 {
-			totalBytes := trafficDelta.TotalUploadBytes + trafficDelta.TotalDownloadBytes
-			nodeUsageBytes := applyConsumptionMultiplier(totalBytes, nodeConsumptionMultiplier)
-			if _, execErr := db.Exec(`
-				INSERT INTO nodes_usage_history (node_uuid, download_bytes, upload_bytes, total_bytes)
-				VALUES (?, ?, ?, ?)
-				ON CONFLICT (node_uuid, created_at)
-				DO UPDATE SET
-					download_bytes = nodes_usage_history.download_bytes + EXCLUDED.download_bytes,
-					upload_bytes = nodes_usage_history.upload_bytes + EXCLUDED.upload_bytes,
-					total_bytes = nodes_usage_history.total_bytes + EXCLUDED.total_bytes,
-					updated_at = now()
-			`, nodeUUID, trafficDelta.TotalDownloadBytes, trafficDelta.TotalUploadBytes, totalBytes); execErr != nil {
-				return execErr
-			}
-
-			if _, execErr := db.Exec(`
-				UPDATE nodes
-				SET traffic_used_bytes = COALESCE(traffic_used_bytes, 0) + ?, updated_at = CURRENT_TIMESTAMP
-				WHERE uuid = ?
-			`, nodeUsageBytes, nodeUUID); execErr != nil {
-				return execErr
-			}
-		}
-
-		if len(trafficDelta.UserBytesByName) == 0 {
-			return nil
-		}
-
+	if len(trafficDelta.UserBytesByName) > 0 {
 		usernames := make([]string, 0, len(trafficDelta.UserBytesByName))
 		for username := range trafficDelta.UserBytesByName {
 			if strings.TrimSpace(username) != "" {
 				usernames = append(usernames, username)
 			}
 		}
-		if len(usernames) == 0 {
-			return nil
-		}
-
-		rows, queryErr := db.Query(`
-			SELECT t_id, username
-			FROM users
-			WHERE status = 'ACTIVE' AND username = ANY(?)
-		`, usernames)
-		if queryErr != nil {
-			return queryErr
-		}
-		defer rows.Close()
-
-		userIDs := make(map[string]int64, len(usernames))
-		for rows.Next() {
-			var (
-				userID   int64
-				username string
-			)
-			if scanErr := rows.Scan(&userID, &username); scanErr != nil {
-				return scanErr
-			}
-			userIDs[strings.TrimSpace(username)] = userID
-		}
-		if rowsErr := rows.Err(); rowsErr != nil {
-			return rowsErr
-		}
-
-		firstConnectedByID := make(map[int64]bool, len(userIDs))
-		if len(userIDs) > 0 {
-			ids := make([]int64, 0, len(userIDs))
-			for _, userID := range userIDs {
-				ids = append(ids, userID)
-			}
-			firstRows, firstErr := db.Query(`
-				SELECT t_id, first_connected_at IS NOT NULL
-				FROM user_traffic
-				WHERE t_id = ANY(?)
-			`, ids)
-			if firstErr != nil {
-				return firstErr
-			}
-			defer firstRows.Close()
-			for firstRows.Next() {
-				var (
-					userID            int64
-					hasFirstConnected bool
-				)
-				if scanErr := firstRows.Scan(&userID, &hasFirstConnected); scanErr != nil {
-					return scanErr
+		if len(usernames) > 0 {
+			rows, queryErr := nm.db.Query(`
+				SELECT t_id, username
+				FROM users
+				WHERE status = 'ACTIVE' AND username = ANY($1)
+			`, usernames)
+			if queryErr == nil {
+				userIDs := make(map[string]int64, len(usernames))
+				for rows.Next() {
+					var (
+						userID   int64
+						username string
+					)
+					if scanErr := rows.Scan(&userID, &username); scanErr == nil {
+						userIDs[strings.TrimSpace(username)] = userID
+					}
 				}
-				firstConnectedByID[userID] = hasFirstConnected
-			}
-			if rowsErr := firstRows.Err(); rowsErr != nil {
-				return rowsErr
+				rows.Close()
+
+				firstConnectedByID := make(map[int64]bool, len(userIDs))
+				if len(userIDs) > 0 {
+					ids := make([]int64, 0, len(userIDs))
+					for _, userID := range userIDs {
+						ids = append(ids, userID)
+					}
+					firstRows, firstErr := nm.db.Query(`
+						SELECT t_id, first_connected_at IS NOT NULL
+						FROM user_traffic
+						WHERE t_id = ANY($1)
+					`, ids)
+					if firstErr == nil {
+						for firstRows.Next() {
+							var (
+								userID            int64
+								hasFirstConnected bool
+							)
+							if scanErr := firstRows.Scan(&userID, &hasFirstConnected); scanErr == nil {
+								firstConnectedByID[userID] = hasFirstConnected
+							}
+						}
+						firstRows.Close()
+					}
+				}
+
+				usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
+				for username, rawBytes := range trafficDelta.UserBytesByName {
+					username = strings.TrimSpace(username)
+					userID, ok := userIDs[username]
+					if !ok {
+						continue
+					}
+					if nm.cfg != nil && nm.cfg.Redis.UserUsageIgnoreBelowBytes > 0 && rawBytes < nm.cfg.Redis.UserUsageIgnoreBelowBytes {
+						continue
+					}
+
+					effectiveBytes := applyConsumptionMultiplier(rawBytes, consumptionMultiplier)
+					if effectiveBytes <= 0 {
+						continue
+					}
+
+					usageDeltas = append(usageDeltas, userUsageDelta{
+						UserID:       userID,
+						Username:     username,
+						TotalBytes:   effectiveBytes,
+						HistoryBytes: rawBytes,
+					})
+
+					if !firstConnectedByID[userID] {
+						firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
+							Scope: notifications.ScopeUser,
+							Event: notifications.EventUserFirstConnected,
+							Data: map[string]any{
+								"tId":      userID,
+								"username": username,
+								"nodeUuid": nodeUUID,
+								"nodeName": nodeName,
+							},
+						})
+						firstConnectedByID[userID] = true
+					}
+				}
+
+				if len(usageDeltas) > 0 {
+					bulkCtx := nm.globalCtx
+					if bulkCtx == nil {
+						bulkCtx = context.Background()
+					}
+
+					if execErr := bulkUpsertUserTraffic(bulkCtx, nm.db, usageDeltas, nodeUUID); execErr != nil {
+						nm.cfg.Logger.Warn("Failed to upsert user traffic", "node", nodeName, "error", execErr)
+					}
+					if recordErr := nm.recordNodeUserUsageHistory(bulkCtx, nm.db, nodeID, usageDeltas); recordErr != nil {
+						nm.cfg.Logger.Warn("Failed to record node user usage history", "node", nodeName, "error", recordErr)
+					}
+				}
 			}
 		}
-
-		usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
-		for username, rawBytes := range trafficDelta.UserBytesByName {
-			username = strings.TrimSpace(username)
-			userID, ok := userIDs[username]
-			if !ok {
-				continue
-			}
-			if nm.cfg != nil && nm.cfg.Redis.UserUsageIgnoreBelowBytes > 0 && rawBytes < nm.cfg.Redis.UserUsageIgnoreBelowBytes {
-				continue
-			}
-
-			effectiveBytes := applyConsumptionMultiplier(rawBytes, consumptionMultiplier)
-			if effectiveBytes <= 0 {
-				continue
-			}
-
-			usageDeltas = append(usageDeltas, userUsageDelta{
-				UserID:       userID,
-				Username:     username,
-				TotalBytes:   effectiveBytes,
-				HistoryBytes: rawBytes,
-			})
-
-			if !firstConnectedByID[userID] {
-				firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
-					Scope: notifications.ScopeUser,
-					Event: notifications.EventUserFirstConnected,
-					Data: map[string]any{
-						"tId":      userID,
-						"username": username,
-						"nodeUuid": nodeUUID,
-						"nodeName": nodeName,
-					},
-				})
-				firstConnectedByID[userID] = true
-			}
-		}
-
-		if len(usageDeltas) == 0 {
-			return nil
-		}
-
-		bulkCtx := nm.globalCtx
-		if bulkCtx == nil {
-			bulkCtx = context.Background()
-		}
-
-		if execErr := bulkUpsertUserTraffic(bulkCtx, db, usageDeltas, nodeUUID); execErr != nil {
-			return execErr
-		}
-
-		if execErr := nm.recordNodeUserUsageHistory(bulkCtx, db, nodeID, usageDeltas); execErr != nil {
-			return execErr
-		}
-
-		return nil
-	})
-	if err != nil {
-		nm.cfg.Logger.Warn("Failed to persist node runtime stats", "node", nodeName, "error", err)
-		return
 	}
 
-	if persistedNodeUUID != "" {
-		nm.updateNodeHotCache(persistedNodeUUID, singboxVersion, nodeVersion, singboxUptime, hasSingboxUptime, systemInfo, systemStats, usersOnline)
-		nm.updateNodeMetricsSnapshot(persistedNodeUUID, usersOnline, trafficDelta)
-	}
 	for _, event := range firstConnectedEvents {
 		notifications.Emit(context.Background(), nm.cfg, event)
 	}
+
+	nm.updateNodeMetricsSnapshot(persistedNodeUUID, usersOnline, trafficDelta)
+	nm.updateHotCacheNodeRuntime(nodeName, persistedNodeUUID, singboxVersion, nodeVersion, hasSingboxUptime, singboxUptime, usersOnline, systemInfo, systemStats, trafficDelta)
 }
 
-func (nm *NodeMonitor) updateNodeHotCache(
+func (nm *NodeMonitor) updateHotCacheNodeRuntime(
+	nodeName string,
 	nodeUUID string,
 	singboxVersion string,
 	nodeVersion string,
-	singboxUptime int64,
 	hasSingboxUptime bool,
+	singboxUptime int64,
+	usersOnline int,
 	systemInfo json.RawMessage,
 	systemStats json.RawMessage,
-	usersOnline int,
+	delta trafficStatsDelta,
 ) {
-	if nm.hotCache == nil || strings.TrimSpace(nodeUUID) == "" {
+	if nm.hotCache == nil {
 		return
 	}
 	ctx := nm.globalCtx
@@ -337,180 +317,153 @@ func (nm *NodeMonitor) updateNodeHotCache(
 		ctx = context.Background()
 	}
 
-	if err := nm.hotCache.SetUsersOnline(ctx, nodeUUID, usersOnline); err != nil {
-		nm.cfg.Logger.Warn("Failed to update node users online cache", "node_uuid", nodeUUID, "error", err)
-	}
-	if hasSingboxUptime {
-		if err := nm.hotCache.SetUptime(ctx, nodeUUID, singboxUptime); err != nil {
-			nm.cfg.Logger.Warn("Failed to update node sing-box uptime cache", "node_uuid", nodeUUID, "error", err)
+	if nm.hotCache != nil && strings.TrimSpace(nodeUUID) != "" {
+		if systemInfo != nil && json.Valid(systemInfo) {
+			_ = nm.hotCache.SetSystemInfo(ctx, nodeUUID, systemInfo)
 		}
-	}
-	if len(systemStats) > 0 {
-		if err := nm.hotCache.SetSystemStats(ctx, nodeUUID, systemStats); err != nil {
-			nm.cfg.Logger.Warn("Failed to update node system stats cache", "node_uuid", nodeUUID, "error", err)
+		if systemStats != nil && json.Valid(systemStats) {
+			_ = nm.hotCache.SetSystemStats(ctx, nodeUUID, systemStats)
 		}
-	}
-	if len(systemInfo) > 0 {
-		if err := nm.hotCache.SetSystemInfo(ctx, nodeUUID, systemInfo); err != nil {
-			nm.cfg.Logger.Warn("Failed to update node system info cache", "node_uuid", nodeUUID, "error", err)
+		if singboxVersion != "" || nodeVersion != "" {
+			_ = nm.hotCache.SetVersions(ctx, nodeUUID, singboxVersion, nodeVersion)
 		}
-	}
-	if singboxVersion != "" || nodeVersion != "" {
-		if singboxVersion == "" || nodeVersion == "" {
-			hot, _ := nm.hotCache.GetOne(ctx, nodeUUID)
-			if hot.Versions != nil {
-				if singboxVersion == "" {
-					singboxVersion = hot.Versions.Singbox
-				}
-				if nodeVersion == "" {
-					nodeVersion = hot.Versions.Node
-				}
-			}
+		if hasSingboxUptime {
+			_ = nm.hotCache.SetUptime(ctx, nodeUUID, singboxUptime)
 		}
-		if err := nm.hotCache.SetVersions(ctx, nodeUUID, singboxVersion, nodeVersion); err != nil {
-			nm.cfg.Logger.Warn("Failed to update node versions cache", "node_uuid", nodeUUID, "error", err)
+		if usersOnline >= 0 {
+			_ = nm.hotCache.SetUsersOnline(ctx, nodeUUID, usersOnline)
 		}
 	}
 }
 
-type trafficStatsDelta struct {
-	TotalUploadBytes   int64
-	TotalDownloadBytes int64
-	UserBytesByName    map[string]int64
-	UsersOnline        int
-	InboundByTag       map[string]TagTrafficCounters
-	OutboundByTag      map[string]TagTrafficCounters
+func applyConsumptionMultiplier(bytes int64, multiplier int64) int64 {
+	if bytes <= 0 || multiplier <= 0 {
+		return 0
+	}
+	return (bytes * multiplier) / 1_000_000_000
+}
+
+func parseOptionalUptimeSeconds(raw string) (int64, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, false
+	}
+	val, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil || val < 0 {
+		return 0, false
+	}
+	return val, true
+}
+
+func parseOptionalJSONRaw(raw string) json.RawMessage {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil
+	}
+	b := []byte(trimmed)
+	if !json.Valid(b) {
+		return nil
+	}
+	return json.RawMessage(b)
 }
 
 func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
-	delta := trafficStatsDelta{
-		UserBytesByName: make(map[string]int64),
-		UsersOnline:     0,
-		InboundByTag:    make(map[string]TagTrafficCounters),
-		OutboundByTag:   make(map[string]TagTrafficCounters),
-	}
-	onlineUsers := make(map[string]struct{})
+	var delta trafficStatsDelta
+	delta.InboundByTag = make(map[string]TagTrafficCounters)
+	delta.OutboundByTag = make(map[string]TagTrafficCounters)
+	delta.UserBytesByName = make(map[string]int64)
 
 	for _, stat := range stats {
 		if stat == nil {
 			continue
 		}
+		key := strings.ToLower(strings.TrimSpace(stat.GetName()))
+		valStr := strings.TrimSpace(stat.GetValue())
+		val, _ := strconv.ParseInt(valStr, 10, 64)
 
-		name := strings.TrimSpace(stat.GetName())
-		valueRaw := strings.TrimSpace(stat.GetValue())
-		if name == "" || valueRaw == "" {
-			continue
-		}
-
-		value, err := strconv.ParseInt(valueRaw, 10, 64)
-		if err != nil || value <= 0 {
-			continue
-		}
-
-		parts := strings.Split(name, ">>>")
-		if len(parts) < 3 {
-			continue
-		}
-
-		switch strings.ToLower(strings.TrimSpace(parts[0])) {
-		case "inbound":
-			if len(parts) != 4 || !strings.EqualFold(parts[2], "traffic") {
-				continue
-			}
-			tag := strings.TrimSpace(parts[1])
-			if tag == "" {
-				continue
-			}
-			current := delta.InboundByTag[tag]
-			switch strings.ToLower(strings.TrimSpace(parts[3])) {
-			case "uplink":
-				current.UploadBytes += value
-			case "downlink":
-				current.DownloadBytes += value
-			default:
-				continue
-			}
-			delta.InboundByTag[tag] = current
-		case "outbound":
-			if len(parts) != 4 || !strings.EqualFold(parts[2], "traffic") {
-				continue
-			}
-			tag := strings.TrimSpace(parts[1])
-			if tag == "" {
-				continue
-			}
-			current := delta.OutboundByTag[tag]
-			switch strings.ToLower(strings.TrimSpace(parts[3])) {
-			case "uplink":
-				delta.TotalUploadBytes += value
-				current.UploadBytes += value
-			case "downlink":
-				delta.TotalDownloadBytes += value
-				current.DownloadBytes += value
-			default:
-				continue
-			}
-			delta.OutboundByTag[tag] = current
-		case "user":
-			username := strings.TrimSpace(parts[1])
-			if username == "" {
-				continue
-			}
-
-			if len(parts) == 4 && strings.EqualFold(parts[2], "traffic") {
-				switch strings.ToLower(strings.TrimSpace(parts[3])) {
-				case "uplink", "downlink":
-					delta.UserBytesByName[username] += value
-					onlineUsers[username] = struct{}{}
+		if strings.Contains(key, ">>>") {
+			parts := strings.Split(key, ">>>")
+			if len(parts) == 4 && parts[2] == "traffic" {
+				category := parts[0]
+				tagOrUser := parts[1]
+				direction := parts[3]
+				switch category {
+				case "outbound":
+					if direction == "uplink" {
+						delta.TotalUploadBytes += val
+					} else if direction == "downlink" {
+						delta.TotalDownloadBytes += val
+					}
+					counters := delta.OutboundByTag[tagOrUser]
+					if direction == "uplink" {
+						counters.UploadBytes += val
+					} else if direction == "downlink" {
+						counters.DownloadBytes += val
+					}
+					delta.OutboundByTag[tagOrUser] = counters
+				case "inbound":
+					counters := delta.InboundByTag[tagOrUser]
+					if direction == "uplink" {
+						counters.UploadBytes += val
+					} else if direction == "downlink" {
+						counters.DownloadBytes += val
+					}
+					delta.InboundByTag[tagOrUser] = counters
+				case "user":
+					if val > 0 {
+						delta.UserBytesByName[tagOrUser] += val
+					}
 				}
 			}
+			continue
+		}
+
+		switch {
+		case key == "total_download_bytes":
+			delta.TotalDownloadBytes = val
+		case key == "total_upload_bytes":
+			delta.TotalUploadBytes = val
+		case key == "users_online":
+			if val >= 0 && val <= math.MaxInt {
+				delta.UsersOnline = int(val)
+			}
+		case strings.HasPrefix(key, "user_"):
+			username := strings.TrimPrefix(key, "user_")
+			username = strings.TrimSuffix(username, "_bytes")
+			username = strings.TrimSpace(username)
+			if username != "" && val > 0 {
+				delta.UserBytesByName[username] += val
+			}
+		case strings.HasPrefix(key, "inbound_"):
+			parts := strings.Split(key, "_")
+			if len(parts) >= 3 {
+				direction := parts[len(parts)-1]
+				tag := strings.Join(parts[1:len(parts)-1], "_")
+				counters := delta.InboundByTag[tag]
+				if direction == "down" || direction == "download" {
+					counters.DownloadBytes += val
+				} else if direction == "up" || direction == "upload" {
+					counters.UploadBytes += val
+				}
+				delta.InboundByTag[tag] = counters
+			}
+		case strings.HasPrefix(key, "outbound_"):
+			parts := strings.Split(key, "_")
+			if len(parts) >= 3 {
+				direction := parts[len(parts)-1]
+				tag := strings.Join(parts[1:len(parts)-1], "_")
+				counters := delta.OutboundByTag[tag]
+				if direction == "down" || direction == "download" {
+					counters.DownloadBytes += val
+				} else if direction == "up" || direction == "upload" {
+					counters.UploadBytes += val
+				}
+				delta.OutboundByTag[tag] = counters
+			}
 		}
 	}
-
-	delta.UsersOnline = len(onlineUsers)
+	if delta.UsersOnline == 0 {
+		delta.UsersOnline = len(delta.UserBytesByName)
+	}
 	return delta
-}
-
-func applyConsumptionMultiplier(totalBytes int64, multiplierNano int64) int64 {
-	const nanoScale = int64(1_000_000_000)
-
-	if totalBytes <= 0 || multiplierNano <= 0 {
-		return 0
-	}
-	if multiplierNano == nanoScale {
-		return totalBytes
-	}
-
-	scaled := math.Floor((float64(multiplierNano) / float64(nanoScale)) * float64(totalBytes))
-	if scaled <= 0 {
-		return 0
-	}
-	if scaled >= float64(math.MaxInt64) {
-		return math.MaxInt64
-	}
-	return int64(scaled)
-}
-
-func parseOptionalJSONRaw(value string) json.RawMessage {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return nil
-	}
-	var raw json.RawMessage
-	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil || len(raw) == 0 {
-		return nil
-	}
-	return raw
-}
-
-func parseOptionalUptimeSeconds(value string) (int64, bool) {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return 0, false
-	}
-	parsed, err := strconv.ParseInt(trimmed, 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return parsed, true
 }

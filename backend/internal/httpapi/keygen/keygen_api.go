@@ -1,12 +1,12 @@
 package keygen
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/security"
 )
@@ -18,7 +18,7 @@ type secretPayload struct {
 	JWTPublicKey string `json:"jwtPublicKey"`
 }
 
-func KeygenHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func KeygenHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -31,14 +31,12 @@ func KeygenHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			caCert string
 			caKey  string
 		)
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return db.QueryRowContext(r.Context(), `
-				SELECT pub_key, ca_cert, ca_key
-				FROM keygen
-				ORDER BY created_at ASC
-				LIMIT 1
-			`).Scan(&pubKey, &caCert, &caKey)
-		})
+		err := db.QueryRowContext(r.Context(), `
+			SELECT pub_key, ca_cert, ca_key
+			FROM keygen
+			ORDER BY created_at ASC
+			LIMIT 1
+		`).Scan(&pubKey, &caCert, &caKey)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch keygen data", err, cfg)
 			return

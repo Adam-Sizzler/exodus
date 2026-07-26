@@ -140,10 +140,10 @@ func TestBuildBulkUpdateUserClauses(t *testing.T) {
 
 	clauses, args := buildBulkUpdateUserClauses(fields)
 	wantClauses := []string{
-		"status = ?",
+		"status = $1",
 		"description = NULL",
-		"tag = ?",
-		"hwid_device_limit = ?",
+		"tag = $2",
+		"hwid_device_limit = $3",
 	}
 	if len(clauses) != len(wantClauses) {
 		t.Fatalf("clauses len = %d, want %d: %#v", len(clauses), len(wantClauses), clauses)

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/notifications"
 	"exodus/internal/security"
@@ -36,30 +35,24 @@ var oauthStateCache = struct {
 	items: make(map[string]oauthStateEntry),
 }
 
-func isLoginAllowed(manager *dbmanager.DatabaseManager) bool {
+func isLoginAllowed(db *sql.DB) bool {
 	var count int
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&count)
-	})
-	if err != nil {
+	if err := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&count); err != nil {
 		return false
 	}
 	return count > 0
 }
 
-func createFirstAdminSession(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, string, error) {
+func createFirstAdminSession(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) (string, string, error) {
 	var adminUUID, username, role string
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(r.Context(), `
-			SELECT uuid, username, role
-			FROM admin
-			WHERE UPPER(role) = 'ADMIN'
-			ORDER BY created_at ASC
-			LIMIT 1
-		`)
-		return row.Scan(&adminUUID, &username, &role)
-	})
-	if err != nil {
+	row := db.QueryRowContext(r.Context(), `
+		SELECT uuid, username, role
+		FROM admin
+		WHERE UPPER(role) = 'ADMIN'
+		ORDER BY created_at ASC
+		LIMIT 1
+	`)
+	if err := row.Scan(&adminUUID, &username, &role); err != nil {
 		return "", "", err
 	}
 
@@ -144,22 +137,20 @@ func externalLoginNotificationUsername(method, provider, identifier string) stri
 	}
 }
 
-func loadOAuthSettings(manager *dbmanager.DatabaseManager) (oauthSettings, error) {
+func loadOAuthSettings(db *sql.DB) (oauthSettings, error) {
 	var out oauthSettings
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var raw sql.NullString
-		if err := db.QueryRow(`SELECT oauth2_settings FROM exodus_settings WHERE id = 1 LIMIT 1`).Scan(&raw); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
+	var raw sql.NullString
+	if err := db.QueryRow(`SELECT oauth2_settings FROM exodus_settings WHERE id = 1 LIMIT 1`).Scan(&raw); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return out, nil
 		}
-		if raw.Valid && strings.TrimSpace(raw.String) != "" {
-			return json.Unmarshal([]byte(raw.String), &out)
-		}
-		return nil
-	})
-	return out, err
+		return out, err
+	}
+	if raw.Valid && strings.TrimSpace(raw.String) != "" {
+		err := json.Unmarshal([]byte(raw.String), &out)
+		return out, err
+	}
+	return out, nil
 }
 
 func isSupportedOAuthProvider(provider string) bool {

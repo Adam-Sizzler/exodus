@@ -45,11 +45,13 @@ func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, service *Node
 		return
 	}
 
-	clauses := make([]string, 0, 5)
-	args := make([]any, 0, 6)
+	var clauses []string
+	var args []any
+	idx := 1
 	add := func(column string, value any) {
-		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
+		clauses = append(clauses, fmt.Sprintf("%s = $%d", column, idx))
 		args = append(args, value)
+		idx++
 	}
 
 	fields := req.Fields

@@ -1,18 +1,18 @@
 package nodes
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
 )
 
-func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewNodeRepository(manager)
+func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(db)
 	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -28,8 +28,8 @@ func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 	}
 }
 
-func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewNodeRepository(manager)
+func NodeByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(db)
 	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := trimNodesPath(r.URL.Path, "/")
@@ -90,8 +90,8 @@ func NodeByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func NodesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewNodeRepository(manager)
+func NodesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(db)
 	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -110,8 +110,8 @@ func NodesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 	}
 }
 
-func NodesBulkActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewNodeRepository(manager)
+func NodesBulkActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(db)
 	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -133,8 +133,8 @@ func NodesBulkActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 	}
 }
 
-func NodesTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewNodeRepository(manager)
+func NodesTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewNodeRepository(db)
 	service := NewNodeService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

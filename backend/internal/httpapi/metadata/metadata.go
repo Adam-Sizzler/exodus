@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
@@ -18,15 +17,15 @@ type metadataRequest struct {
 	Metadata map[string]any `json:"metadata"`
 }
 
-func UserHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return entityHandler(manager, cfg, "user")
+func UserHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return entityHandler(db, cfg, "user")
 }
 
-func NodeHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	return entityHandler(manager, cfg, "node")
+func NodeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return entityHandler(db, cfg, "node")
 }
 
-func entityHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, entity string) http.HandlerFunc {
+func entityHandler(db *sql.DB, cfg *config.BackendConfig, entity string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entityUUID := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/metadata/"+entity+"/"), "/")
 		if _, err := uuid.Parse(entityUUID); err != nil {
@@ -36,7 +35,7 @@ func entityHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 
 		switch r.Method {
 		case http.MethodGet:
-			metadata, err := getMetadata(r, manager, entity, entityUUID)
+			metadata, err := getMetadata(r, db, entity, entityUUID)
 			if err != nil {
 				shared.SendError(w, http.StatusInternalServerError, "failed to fetch metadata", err, cfg)
 				return
@@ -51,7 +50,7 @@ func entityHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 			if req.Metadata == nil {
 				req.Metadata = map[string]any{}
 			}
-			metadata, err := upsertMetadata(r, manager, entity, entityUUID, req.Metadata)
+			metadata, err := upsertMetadata(r, db, entity, entityUUID, req.Metadata)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					shared.SendError(w, http.StatusNotFound, entity+" not found", nil, cfg)
@@ -67,50 +66,44 @@ func entityHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 	}
 }
 
-func getMetadata(r *http.Request, manager *dbmanager.DatabaseManager, entity, entityUUID string) (map[string]any, error) {
+func getMetadata(r *http.Request, db *sql.DB, entity, entityUUID string) (map[string]any, error) {
 	metadata := map[string]any{}
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		table, column, id, err := metadataTargetID(r, db, entity, entityUUID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
-		}
-		var raw string
-		err = db.QueryRowContext(r.Context(), "SELECT metadata::text FROM "+table+" WHERE "+column+" = ?", id).Scan(&raw)
+	table, column, id, err := metadataTargetID(r, db, entity, entityUUID)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil
+			return metadata, nil
 		}
-		if err != nil {
-			return err
-		}
-		if err := json.Unmarshal([]byte(raw), &metadata); err != nil {
-			return err
-		}
-		return nil
-	})
-	return metadata, err
+		return nil, err
+	}
+	var raw string
+	err = db.QueryRowContext(r.Context(), "SELECT metadata::text FROM "+table+" WHERE "+column+" = $1", id).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return metadata, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(raw), &metadata); err != nil {
+		return nil, err
+	}
+	return metadata, nil
 }
 
-func upsertMetadata(r *http.Request, manager *dbmanager.DatabaseManager, entity, entityUUID string, metadata map[string]any) (map[string]any, error) {
+func upsertMetadata(r *http.Request, db *sql.DB, entity, entityUUID string, metadata map[string]any) (map[string]any, error) {
 	raw, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
 	}
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		table, column, id, err := metadataTargetID(r, db, entity, entityUUID)
-		if err != nil {
-			return err
-		}
-		_, err = db.ExecContext(r.Context(), `
-			INSERT INTO `+table+` (`+column+`, metadata)
-			VALUES (?, ?::jsonb)
-			ON CONFLICT (`+column+`) DO UPDATE
-			SET metadata = EXCLUDED.metadata
-		`, id, string(raw))
-		return err
-	})
+	table, column, id, err := metadataTargetID(r, db, entity, entityUUID)
+	if err != nil {
+		return nil, err
+	}
+	_, err = db.ExecContext(r.Context(), `
+		INSERT INTO `+table+` (`+column+`, metadata)
+		VALUES ($1, $2::jsonb)
+		ON CONFLICT (`+column+`) DO UPDATE
+		SET metadata = EXCLUDED.metadata
+	`, id, string(raw))
 	if err != nil {
 		return nil, err
 	}
@@ -124,12 +117,12 @@ func metadataTable(entity string) (table string, column string) {
 	return "user_meta", "user_id"
 }
 
-func metadataTargetID(r *http.Request, db dbmanager.DBExecutor, entity, entityUUID string) (table string, column string, id int64, err error) {
+func metadataTargetID(r *http.Request, db *sql.DB, entity, entityUUID string) (table string, column string, id int64, err error) {
 	table, column = metadataTable(entity)
 	if entity == "node" {
-		err = db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = ?`, entityUUID).Scan(&id)
+		err = db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = $1`, entityUUID).Scan(&id)
 		return table, column, id, err
 	}
-	err = db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, entityUUID).Scan(&id)
+	err = db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, entityUUID).Scan(&id)
 	return table, column, id, err
 }

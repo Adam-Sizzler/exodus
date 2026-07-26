@@ -1,18 +1,18 @@
 package configprofiles
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
 )
 
-func ConfigProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewConfigProfileRepository(manager)
+func ConfigProfilesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -28,8 +28,8 @@ func ConfigProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 	}
 }
 
-func ConfigProfileByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewConfigProfileRepository(manager)
+func ConfigProfileByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := trimConfigProfilesPath(r.URL.Path, "/")
@@ -81,8 +81,8 @@ func ConfigProfileByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 	}
 }
 
-func ConfigProfilesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewConfigProfileRepository(manager)
+func ConfigProfilesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -100,8 +100,8 @@ func ConfigProfilesActionsHandler(manager *dbmanager.DatabaseManager, cfg *confi
 	}
 }
 
-func ConfigProfilesInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewConfigProfileRepository(manager)
+func ConfigProfilesInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -112,8 +112,8 @@ func ConfigProfilesInboundsHandler(manager *dbmanager.DatabaseManager, cfg *conf
 	}
 }
 
-func ConfigProfileSnippetsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewConfigProfileRepository(manager)
+func ConfigProfileSnippetsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

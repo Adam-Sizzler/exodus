@@ -2,11 +2,11 @@ package shared
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 
 	"github.com/google/uuid"
 )
@@ -46,7 +46,6 @@ func parseUUID(v string) (string, error) {
 	return u, nil
 }
 
-// isolated for testability and to avoid import loops in callers.
 var uuidParse = func(v string) (string, error) {
 	if _, err := uuid.Parse(v); err != nil {
 		return "", err
@@ -54,37 +53,31 @@ var uuidParse = func(v string) (string, error) {
 	return v, nil
 }
 
-func ApplyViewPositionReorder(ctx context.Context, db dbmanager.DBExecutor, tableName string, orderedUUIDs []string, cfg *config.BackendConfig) error {
+func ApplyViewPositionReorder(ctx context.Context, dbConn *sql.DB, tableName string, orderedUUIDs []string, cfg *config.BackendConfig) error {
 	if !isAllowedReorderTable(tableName) {
 		return fmt.Errorf("unsupported table for reorder")
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-
-	inPlaceholders := strings.TrimSuffix(strings.Repeat("?,", len(orderedUUIDs)), ",")
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE uuid IN (%s)", tableName, inPlaceholders)
-	countArgs := make([]interface{}, 0, len(orderedUUIDs))
-	for _, id := range orderedUUIDs {
-		countArgs = append(countArgs, id)
-	}
-
-	var foundCount int
-	if err := tx.QueryRow(countQuery, countArgs...).Scan(&foundCount); err != nil {
+	defer func() {
 		_ = tx.Rollback()
+	}()
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE uuid = ANY($1)", tableName)
+	var foundCount int
+	if err := tx.QueryRowContext(ctx, countQuery, orderedUUIDs).Scan(&foundCount); err != nil {
 		return err
 	}
 	if foundCount != len(orderedUUIDs) {
-		_ = tx.Rollback()
 		return fmt.Errorf("some UUIDs not found in %s", tableName)
 	}
 
-	updateQuery := fmt.Sprintf("UPDATE %s SET view_position = ? WHERE uuid = ?", tableName)
+	updateQuery := fmt.Sprintf("UPDATE %s SET view_position = $1 WHERE uuid = $2", tableName)
 	for i, id := range orderedUUIDs {
-		if _, err := tx.Exec(updateQuery, i, id); err != nil {
-			_ = tx.Rollback()
+		if _, err := tx.ExecContext(ctx, updateQuery, i, id); err != nil {
 			return err
 		}
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/notifications"
 )
 
@@ -14,93 +13,79 @@ import (
 func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isConnecting bool, message string) {
 	message, messageDBValue := optionalStatusMessage(message)
 
-	var notificationEvent notifications.Event
-	err := nm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var (
-			nodeUUID          string
-			nodeAddress       string
-			nodePort          sql.NullInt64
-			currentConnected  bool
-			currentConnecting bool
-			currentMessage    sql.NullString
-		)
+	var (
+		nodeUUID          string
+		nodeAddress       string
+		nodePort          sql.NullInt64
+		currentConnected  bool
+		currentConnecting bool
+		currentMessage    sql.NullString
+	)
 
-		err := db.QueryRow(`SELECT uuid, address, port, is_connected, is_connecting, last_status_message FROM nodes WHERE name = ?`, nodeName).
-			Scan(&nodeUUID, &nodeAddress, &nodePort, &currentConnected, &currentConnecting, &currentMessage)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				nm.cfg.Logger.Debug("Node not found in DB", "node", nodeName)
-				return nil
-			}
-			return fmt.Errorf("query node status: %w", err)
-		}
-
-		msgStr := ""
-		if currentMessage.Valid {
-			msgStr = currentMessage.String
-		}
-
-		if currentConnected == isConnected && currentConnecting == isConnecting && msgStr == message {
-			if !isConnected {
-				return nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID)
-			}
-			return nil
-		}
-
-		query := `
-			UPDATE nodes
-			SET is_connected = ?,
-			    is_connecting = ?,
-			    last_status_message = ?,
-			    last_status_change = CURRENT_TIMESTAMP`
-		args := []any{isConnected, isConnecting, messageDBValue}
-
-		query += ` WHERE name = ?`
-		args = append(args, nodeName)
-
-		if _, execErr := db.Exec(query, args...); execErr != nil {
-			return fmt.Errorf("update node status: %w", execErr)
-		}
-
-		if !isConnected {
-			if err := nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID); err != nil {
-				nm.cfg.Logger.Warn("Failed to clear runtime cache fields on node status change", "node", nodeName, "error", err)
-			}
-		}
-
-		if currentConnected != isConnected {
-			eventName := notifications.EventNodeConnectionRestored
-			if !isConnected {
-				eventName = notifications.EventNodeConnectionLost
-			}
-			notificationEvent = notifications.Event{
-				Scope: notifications.ScopeNode,
-				Event: eventName,
-				Data: map[string]any{
-					"uuid":        nodeUUID,
-					"name":        nodeName,
-					"address":     nodeAddress,
-					"port":        nodePort.Int64,
-					"isConnected": isConnected,
-					"message":     message,
-				},
-			}
-		}
-
-		return nil
-	})
-
+	err := nm.db.QueryRow(`SELECT uuid, address, port, is_connected, is_connecting, last_status_message FROM nodes WHERE name = $1`, nodeName).
+		Scan(&nodeUUID, &nodeAddress, &nodePort, &currentConnected, &currentConnecting, &currentMessage)
 	if err != nil {
-		nm.cfg.Logger.Warn("Failed to update node status in DB", "node", nodeName, "error", err)
+		if err == sql.ErrNoRows {
+			nm.cfg.Logger.Debug("Node not found in DB", "node", nodeName)
+			return
+		}
+		nm.cfg.Logger.Warn("Failed to query node status from DB", "node", nodeName, "error", err)
 		return
 	}
 
-	if notificationEvent.Event != "" {
+	msgStr := ""
+	if currentMessage.Valid {
+		msgStr = currentMessage.String
+	}
+
+	if currentConnected == isConnected && currentConnecting == isConnecting && msgStr == message {
+		if !isConnected {
+			_ = nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID)
+		}
+		return
+	}
+
+	query := `
+		UPDATE nodes
+		SET is_connected = $1,
+		    is_connecting = $2,
+		    last_status_message = $3,
+		    last_status_change = CURRENT_TIMESTAMP
+		WHERE name = $4`
+
+	if _, execErr := nm.db.Exec(query, isConnected, isConnecting, messageDBValue, nodeName); execErr != nil {
+		nm.cfg.Logger.Warn("Failed to update node status in DB", "node", nodeName, "error", execErr)
+		return
+	}
+
+	if !isConnected {
+		if err := nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID); err != nil {
+			nm.cfg.Logger.Warn("Failed to clear runtime cache fields on node status change", "node", nodeName, "error", err)
+		}
+	}
+
+	if currentConnected != isConnected {
+		eventName := notifications.EventNodeConnectionRestored
+		if !isConnected {
+			eventName = notifications.EventNodeConnectionLost
+		}
+		notificationEvent := notifications.Event{
+			Scope: notifications.ScopeNode,
+			Event: eventName,
+			Data: map[string]any{
+				"uuid":        nodeUUID,
+				"name":        nodeName,
+				"address":     nodeAddress,
+				"port":        nodePort.Int64,
+				"isConnected": isConnected,
+				"message":     message,
+			},
+		}
 		notifications.Emit(context.Background(), nm.cfg, notificationEvent)
 	}
 }
 
-func (nm *NodeMonitor) recordNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor, nodeID int64, usageDeltas []userUsageDelta) error {
+func (nm *NodeMonitor) recordNodeUserUsageHistory(ctx context.Context, db *sql.DB, nodeID int64, usageDeltas []userUsageDelta) error {
 	if len(usageDeltas) == 0 {
 		return nil
 	}
@@ -124,7 +109,7 @@ func (nm *NodeMonitor) recordNodeUserUsageHistory(ctx context.Context, db dbmana
 	return bulkUpsertNodeUserUsageHistory(ctx, db, nodeID, usageDeltas)
 }
 
-func bulkUpsertUserTraffic(ctx context.Context, db dbmanager.DBExecutor, usageDeltas []userUsageDelta, nodeUUID string) error {
+func bulkUpsertUserTraffic(ctx context.Context, db *sql.DB, usageDeltas []userUsageDelta, nodeUUID string) error {
 	const chunkSize = 1000
 
 	for start := 0; start < len(usageDeltas); start += chunkSize {
@@ -148,12 +133,14 @@ func bulkUpsertUserTraffic(ctx context.Context, db dbmanager.DBExecutor, usageDe
 				now()
 			FROM (VALUES `)
 
+		idx := 1
 		for i, delta := range chunk {
 			if i > 0 {
 				query.WriteString(", ")
 			}
-			query.WriteString("(?::bigint, ?::bigint, ?::uuid)")
+			query.WriteString(fmt.Sprintf("($%d::bigint, $%d::bigint, $%d::uuid)", idx, idx+1, idx+2))
 			args = append(args, delta.UserID, delta.TotalBytes, nodeUUID)
+			idx += 3
 		}
 
 		query.WriteString(`) AS v(t_id, total_bytes, last_connected_node_uuid)
@@ -174,7 +161,7 @@ func bulkUpsertUserTraffic(ctx context.Context, db dbmanager.DBExecutor, usageDe
 	return nil
 }
 
-func bulkUpsertNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor, nodeID int64, usageDeltas []userUsageDelta) error {
+func bulkUpsertNodeUserUsageHistory(ctx context.Context, db *sql.DB, nodeID int64, usageDeltas []userUsageDelta) error {
 	const chunkSize = 1000
 
 	for start := 0; start < len(usageDeltas); start += chunkSize {
@@ -188,12 +175,14 @@ func bulkUpsertNodeUserUsageHistory(ctx context.Context, db dbmanager.DBExecutor
 			INSERT INTO nodes_user_usage_history (node_id, user_id, total_bytes)
 			VALUES `)
 
+		idx := 1
 		for i, delta := range chunk {
 			if i > 0 {
 				query.WriteString(", ")
 			}
-			query.WriteString("(?::bigint, ?::bigint, ?::bigint)")
+			query.WriteString(fmt.Sprintf("($%d::bigint, $%d::bigint, $%d::bigint)", idx, idx+1, idx+2))
 			args = append(args, nodeID, delta.UserID, delta.HistoryBytes)
+			idx += 3
 		}
 
 		query.WriteString(`

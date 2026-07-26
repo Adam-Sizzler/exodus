@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/auth"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
@@ -18,7 +17,7 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
-func PasskeysHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func PasskeysHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/passkeys" && r.URL.Path != "/api/passkeys/" {
 			shared.WriteJSONError(w, http.StatusNotFound, "not found")
@@ -27,25 +26,25 @@ func PasskeysHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConf
 
 		switch r.Method {
 		case http.MethodGet:
-			handleGetPasskeys(w, r, manager, cfg)
+			handleGetPasskeys(w, r, db, cfg)
 		case http.MethodPatch:
-			handlePatchPasskey(w, r, manager, cfg)
+			handlePatchPasskey(w, r, db, cfg)
 		case http.MethodDelete:
-			handleDeletePasskey(w, r, manager, cfg)
+			handleDeletePasskey(w, r, db, cfg)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func handleGetPasskeys(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleGetPasskeys(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	adminUUID, ok := currentAdminUUID(r)
 	if !ok {
 		shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	items, err := listPasskeysForAdmin(r.Context(), manager, adminUUID)
+	items, err := listPasskeysForAdmin(r.Context(), db, adminUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch passkeys", err, cfg)
 		return
@@ -57,7 +56,7 @@ func handleGetPasskeys(w http.ResponseWriter, r *http.Request, manager *dbmanage
 	})
 }
 
-func handlePatchPasskey(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handlePatchPasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	adminUUID, ok := currentAdminUUID(r)
 	if !ok {
 		shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
@@ -80,34 +79,26 @@ func handlePatchPasskey(w http.ResponseWriter, r *http.Request, manager *dbmanag
 		return
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, execErr := db.ExecContext(r.Context(), `
-			UPDATE passkeys
-			SET passkey_provider = ?, updated_at = CURRENT_TIMESTAMP
-			WHERE id = ? AND admin_uuid = ?
-		`, req.Name, req.ID, adminUUID)
-		if execErr != nil {
-			return execErr
-		}
-		rows, rowsErr := result.RowsAffected()
-		if rowsErr != nil {
-			return rowsErr
-		}
-		if rows == 0 {
-			return sql.ErrNoRows
-		}
-		return nil
-	})
-	if err != nil {
-		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "passkey not found", nil, cfg)
-			return
-		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to update passkey name", err, cfg)
+	result, execErr := db.ExecContext(r.Context(), `
+		UPDATE passkeys
+		SET passkey_provider = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2 AND admin_uuid = $3
+	`, req.Name, req.ID, adminUUID)
+	if execErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to update passkey name", execErr, cfg)
+		return
+	}
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to read rows affected", rowsErr, cfg)
+		return
+	}
+	if rows == 0 {
+		shared.SendError(w, http.StatusNotFound, "passkey not found", nil, cfg)
 		return
 	}
 
-	items, err := listPasskeysForAdmin(r.Context(), manager, adminUUID)
+	items, err := listPasskeysForAdmin(r.Context(), db, adminUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch passkeys", err, cfg)
 		return
@@ -119,7 +110,7 @@ func handlePatchPasskey(w http.ResponseWriter, r *http.Request, manager *dbmanag
 	})
 }
 
-func handleDeletePasskey(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleDeletePasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	adminUUID, ok := currentAdminUUID(r)
 	if !ok {
 		shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
@@ -137,30 +128,22 @@ func handleDeletePasskey(w http.ResponseWriter, r *http.Request, manager *dbmana
 		return
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		result, execErr := db.ExecContext(r.Context(), `DELETE FROM passkeys WHERE id = ? AND admin_uuid = ?`, req.ID, adminUUID)
-		if execErr != nil {
-			return execErr
-		}
-		rows, rowsErr := result.RowsAffected()
-		if rowsErr != nil {
-			return rowsErr
-		}
-		if rows == 0 {
-			return sql.ErrNoRows
-		}
-		return nil
-	})
-	if err != nil {
-		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "passkey not found", nil, cfg)
-			return
-		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete passkey", err, cfg)
+	result, execErr := db.ExecContext(r.Context(), `DELETE FROM passkeys WHERE id = $1 AND admin_uuid = $2`, req.ID, adminUUID)
+	if execErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete passkey", execErr, cfg)
+		return
+	}
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to read rows affected", rowsErr, cfg)
+		return
+	}
+	if rows == 0 {
+		shared.SendError(w, http.StatusNotFound, "passkey not found", nil, cfg)
 		return
 	}
 
-	items, err := listPasskeysForAdmin(r.Context(), manager, adminUUID)
+	items, err := listPasskeysForAdmin(r.Context(), db, adminUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch passkeys", err, cfg)
 		return
@@ -168,7 +151,7 @@ func handleDeletePasskey(w http.ResponseWriter, r *http.Request, manager *dbmana
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"passkeys": items}})
 }
 
-func RegistrationOptionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func RegistrationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -181,13 +164,13 @@ func RegistrationOptionsHandler(manager *dbmanager.DatabaseManager, cfg *config.
 			return
 		}
 
-		admin, err := loadWebAuthnAdmin(r.Context(), manager, adminUUID)
+		admin, err := loadWebAuthnAdmin(r.Context(), db, adminUUID)
 		if err != nil {
 			sendPasskeyError(w, http.StatusInternalServerError, "failed to load admin", err, cfg)
 			return
 		}
 
-		resolved, err := resolvePasskeySettings(r.Context(), manager, r)
+		resolved, err := resolvePasskeySettings(r.Context(), db, r)
 		if err != nil {
 			sendPasskeySetupError(w, err, cfg)
 			return
@@ -218,7 +201,7 @@ func RegistrationOptionsHandler(manager *dbmanager.DatabaseManager, cfg *config.
 	}
 }
 
-func VerifyRegistrationHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func VerifyRegistrationHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -241,7 +224,7 @@ func VerifyRegistrationHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			return
 		}
 
-		admin, err := loadWebAuthnAdmin(r.Context(), manager, adminUUID)
+		admin, err := loadWebAuthnAdmin(r.Context(), db, adminUUID)
 		if err != nil {
 			sendPasskeyError(w, http.StatusInternalServerError, "failed to load admin", err, cfg)
 			return
@@ -253,7 +236,7 @@ func VerifyRegistrationHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			return
 		}
 
-		resolved, err := resolvePasskeySettings(r.Context(), manager, r)
+		resolved, err := resolvePasskeySettings(r.Context(), db, r)
 		if err != nil {
 			sendPasskeySetupError(w, err, cfg)
 			return
@@ -277,7 +260,7 @@ func VerifyRegistrationHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			return
 		}
 
-		if err := saveNewCredential(r.Context(), manager, admin.uuid, credential); err != nil {
+		if err := saveNewCredential(r.Context(), db, admin.uuid, credential); err != nil {
 			sendPasskeyError(w, http.StatusInternalServerError, "failed to save passkey", err, cfg)
 			return
 		}
@@ -290,20 +273,20 @@ func VerifyRegistrationHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 	}
 }
 
-func AuthenticationOptionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func AuthenticationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		resolved, err := resolvePasskeySettings(r.Context(), manager, r)
+		resolved, err := resolvePasskeySettings(r.Context(), db, r)
 		if err != nil {
 			sendPasskeySetupError(w, err, cfg)
 			return
 		}
 
-		admin, err := loadWebAuthnAdmin(r.Context(), manager, "")
+		admin, err := loadWebAuthnAdmin(r.Context(), db, "")
 		if err != nil {
 			sendPasskeyError(w, http.StatusForbidden, "passkey authentication is not available", err, cfg)
 			return
@@ -330,7 +313,7 @@ func AuthenticationOptionsHandler(manager *dbmanager.DatabaseManager, cfg *confi
 	}
 }
 
-func VerifyAuthenticationHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func VerifyAuthenticationHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -347,13 +330,13 @@ func VerifyAuthenticationHandler(manager *dbmanager.DatabaseManager, cfg *config
 			return
 		}
 
-		resolved, err := resolvePasskeySettings(r.Context(), manager, r)
+		resolved, err := resolvePasskeySettings(r.Context(), db, r)
 		if err != nil {
 			sendPasskeySetupError(w, err, cfg)
 			return
 		}
 
-		admin, err := loadWebAuthnAdmin(r.Context(), manager, "")
+		admin, err := loadWebAuthnAdmin(r.Context(), db, "")
 		if err != nil {
 			sendPasskeyError(w, http.StatusForbidden, "passkey authentication is not available", err, cfg)
 			return
@@ -383,12 +366,12 @@ func VerifyAuthenticationHandler(manager *dbmanager.DatabaseManager, cfg *config
 			return
 		}
 
-		if err := updateCredentialUsage(r.Context(), manager, admin.uuid, credential); err != nil {
+		if err := updateCredentialUsage(r.Context(), db, admin.uuid, credential); err != nil {
 			sendPasskeyError(w, http.StatusInternalServerError, "failed to update passkey usage", err, cfg)
 			return
 		}
 
-		sessionToken, expiresAt, err := createAdminSession(r.Context(), manager, cfg, admin)
+		sessionToken, expiresAt, err := createAdminSession(r.Context(), db, cfg, admin)
 		if err != nil {
 			sendPasskeyError(w, http.StatusInternalServerError, "failed to create session", err, cfg)
 			return

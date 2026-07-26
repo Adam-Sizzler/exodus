@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
@@ -102,79 +101,52 @@ func (r *SubscriptionSettingsUpdateRequest) Validate() error {
 	if r.SupportLink != nil && strings.TrimSpace(*r.SupportLink) == "" {
 		return fmt.Errorf("support_link cannot be empty")
 	}
-	if r.ProfileUpdateInterval != nil && *r.ProfileUpdateInterval < 1 {
-		return fmt.Errorf("profile_update_interval must be >= 1")
-	}
-	if r.Address != nil && strings.TrimSpace(*r.Address) == "" {
-		return fmt.Errorf("address cannot be empty")
+	if r.ProfileUpdateInterval != nil && *r.ProfileUpdateInterval <= 0 {
+		return fmt.Errorf("profile_update_interval must be greater than 0")
 	}
 	if r.Port != nil && (*r.Port < 1 || *r.Port > 65535) {
 		return fmt.Errorf("port must be between 1 and 65535")
 	}
 	if r.APISchema != nil {
 		schema := strings.ToLower(strings.TrimSpace(*r.APISchema))
-		switch schema {
-		case "grpc", "grpcs", "http", "https", "tls":
-		default:
-			return fmt.Errorf("api_schema must be one of: grpc, grpcs, http, https, tls")
-		}
-	}
-	if r.CustomResponseHeaders != nil && strings.TrimSpace(*r.CustomResponseHeaders) != "" {
-		if !json.Valid([]byte(*r.CustomResponseHeaders)) {
-			return fmt.Errorf("custom_response_headers must be valid JSON")
-		}
-	}
-	if r.ResponseRules != nil && strings.TrimSpace(*r.ResponseRules) != "" {
-		if !json.Valid([]byte(*r.ResponseRules)) {
-			return fmt.Errorf("response_rules must be valid JSON")
-		}
-	}
-	if r.HWIDSettings != nil && strings.TrimSpace(*r.HWIDSettings) != "" {
-		if !json.Valid([]byte(*r.HWIDSettings)) {
-			return fmt.Errorf("hwid_settings must be valid JSON")
-		}
-	}
-	if r.CustomRemarks != nil && strings.TrimSpace(*r.CustomRemarks) != "" {
-		if !json.Valid([]byte(*r.CustomRemarks)) {
-			return fmt.Errorf("custom_remarks must be valid JSON")
+		if schema != "http" && schema != "https" {
+			return fmt.Errorf("api_schema must be 'http' or 'https'")
 		}
 	}
 	return nil
 }
 
-func (r *SubscriptionSettingsUpdateRequest) HasUpdates() bool {
-	return r.ProfileTitle != nil ||
-		r.SupportLink != nil ||
-		r.ProfileUpdateInterval != nil ||
-		r.Address != nil ||
-		r.Port != nil ||
-		r.APISchema != nil ||
-		r.APIPath != nil ||
-		r.HappAnnounce != nil ||
-		r.HappRouting != nil ||
-		r.IsProfileWebpageURLEnabled != nil ||
-		r.ServeJSONAtBaseSubscription != nil ||
-		r.IsShowCustomRemarks != nil ||
-		r.CustomResponseHeaders != nil ||
-		r.RandomizeHosts != nil ||
-		r.ResponseRules != nil ||
-		r.HWIDSettings != nil ||
-		r.CustomRemarks != nil
+func (s SubscriptionSettings) ProfileTitleValue() string {
+	return strings.TrimSpace(s.ProfileTitle)
+}
+
+func (s SubscriptionSettings) SupportLinkValue() string {
+	return strings.TrimSpace(s.SupportLink)
+}
+
+func (s SubscriptionSettings) ProfileUpdateIntervalValue() int {
+	if s.ProfileUpdateInterval <= 0 {
+		return 12
+	}
+	return s.ProfileUpdateInterval
 }
 
 func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, error) {
 	var s SubscriptionSettings
-	var address, apiSchema, apiPath sql.NullString
-	var port sql.NullInt64
-	var happAnnounce, happRouting sql.NullString
-	var customResponseHeaders, responseRules, hwidSettings, customRemarks sql.NullString
-	var isProfileWebpageURLEnabled, serveJSONAtBaseSubscription, isShowCustomRemarks, randomizeHosts sql.NullBool
+	var (
+		profileTitle, supportLink, address, apiSchema, apiPath sql.NullString
+		happAnnounce, happRouting, customHeaders               sql.NullString
+		responseRules, hwidSettings, customRemarks            sql.NullString
+		profileUpdateInterval, port                             sql.NullInt64
+		isProfileWebpageURLEnabled, serveJSONAtBase             sql.NullBool
+		isShowCustomRemarks, randomizeHosts                    sql.NullBool
+	)
 
 	err := scanner.Scan(
 		&s.UUID,
-		&s.ProfileTitle,
-		&s.SupportLink,
-		&s.ProfileUpdateInterval,
+		&profileTitle,
+		&supportLink,
+		&profileUpdateInterval,
 		&address,
 		&port,
 		&apiSchema,
@@ -184,9 +156,9 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 		&s.CreatedAt,
 		&s.UpdatedAt,
 		&isProfileWebpageURLEnabled,
-		&serveJSONAtBaseSubscription,
+		&serveJSONAtBase,
 		&isShowCustomRemarks,
-		&customResponseHeaders,
+		&customHeaders,
 		&randomizeHosts,
 		&responseRules,
 		&hwidSettings,
@@ -196,8 +168,14 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 		return s, err
 	}
 
-	if happAnnounce.Valid {
-		s.HappAnnounce = happAnnounce.String
+	if profileTitle.Valid {
+		s.ProfileTitle = profileTitle.String
+	}
+	if supportLink.Valid {
+		s.SupportLink = supportLink.String
+	}
+	if profileUpdateInterval.Valid {
+		s.ProfileUpdateInterval = int(profileUpdateInterval.Int64)
 	}
 	if address.Valid {
 		s.Address = address.String
@@ -207,11 +185,12 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 	}
 	if apiSchema.Valid {
 		s.APISchema = apiSchema.String
-	} else {
-		s.APISchema = "grpc"
 	}
 	if apiPath.Valid {
 		s.APIPath = apiPath.String
+	}
+	if happAnnounce.Valid {
+		s.HappAnnounce = happAnnounce.String
 	}
 	if happRouting.Valid {
 		s.HappRouting = happRouting.String
@@ -219,14 +198,14 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 	if isProfileWebpageURLEnabled.Valid {
 		s.IsProfileWebpageURLEnabled = isProfileWebpageURLEnabled.Bool
 	}
-	if serveJSONAtBaseSubscription.Valid {
-		s.ServeJSONAtBaseSubscription = serveJSONAtBaseSubscription.Bool
+	if serveJSONAtBase.Valid {
+		s.ServeJSONAtBaseSubscription = serveJSONAtBase.Bool
 	}
 	if isShowCustomRemarks.Valid {
 		s.IsShowCustomRemarks = isShowCustomRemarks.Bool
 	}
-	if customResponseHeaders.Valid {
-		s.CustomResponseHeaders = customResponseHeaders.String
+	if customHeaders.Valid {
+		s.CustomResponseHeaders = customHeaders.String
 	}
 	if randomizeHosts.Valid {
 		s.RandomizeHosts = randomizeHosts.Bool
@@ -244,38 +223,33 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 	return s, nil
 }
 
-func SubscriptionSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionSettingsEXODUS(w, r, manager, cfg)
+			handleGetSubscriptionSettingsEXODUS(w, r, db, cfg)
 		case http.MethodPatch:
-			handlePatchSubscriptionSettingsEXODUS(w, r, manager, cfg)
+			handlePatchSubscriptionSettingsEXODUS(w, r, db, cfg)
 		default:
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		}
 	}
 }
 
-func handleGetSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	var settings SubscriptionSettings
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(r.Context(), `
-            SELECT
-                uuid, profile_title, support_link, profile_update_interval,
-                address, port, api_schema, api_path,
-                happ_announce, happ_routing,
-                created_at, updated_at,
-                is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-                is_show_custom_remarks, custom_response_headers,
-                randomize_hosts, response_rules, hwid_settings, custom_remarks
-            FROM subscription_settings
-            ORDER BY created_at DESC
-            LIMIT 1`)
-		var scanErr error
-		settings, scanErr = ScanSubscriptionSettings(row)
-		return scanErr
-	})
+func handleGetSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	row := db.QueryRowContext(r.Context(), `
+		SELECT
+			uuid, profile_title, support_link, profile_update_interval,
+			address, port, api_schema, api_path,
+			happ_announce, happ_routing,
+			created_at, updated_at,
+			is_profile_webpage_url_enabled, serve_json_at_base_subscription,
+			is_show_custom_remarks, custom_response_headers,
+			randomize_hosts, response_rules, hwid_settings, custom_remarks
+		FROM subscription_settings
+		ORDER BY created_at DESC
+		LIMIT 1`)
+	settings, err := ScanSubscriptionSettings(row)
 	if err != nil {
 		shared.SendError(w, http.StatusNotFound, "subscription settings not found", err, cfg)
 		return
@@ -290,7 +264,7 @@ func handleGetSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request,
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": apiSettings})
 }
 
-func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req SubscriptionSettingsUpdateRequestAPI
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -308,9 +282,11 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 
 	updates := []string{}
 	args := []any{}
+	idx := 1
 	add := func(column string, value any) {
-		updates = append(updates, fmt.Sprintf("%s = ?", column))
+		updates = append(updates, fmt.Sprintf("%s = $%d", column, idx))
 		args = append(args, value)
+		idx++
 	}
 
 	if req.ProfileTitle != nil {
@@ -384,25 +360,20 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 	updates = append(updates, "updated_at = CURRENT_TIMESTAMP")
 	args = append(args, req.UUID)
 
-	var settings SubscriptionSettings
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		query := fmt.Sprintf(`
-            UPDATE subscription_settings
-            SET %s
-            WHERE uuid = ?
-            RETURNING uuid, profile_title, support_link, profile_update_interval,
-                address, port, api_schema, api_path,
-                happ_announce, happ_routing,
-                created_at, updated_at,
-                is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-                is_show_custom_remarks, custom_response_headers,
-                randomize_hosts, response_rules, hwid_settings, custom_remarks
-        `, strings.Join(updates, ", "))
-		row := db.QueryRowContext(r.Context(), query, args...)
-		var scanErr error
-		settings, scanErr = ScanSubscriptionSettings(row)
-		return scanErr
-	})
+	query := fmt.Sprintf(`
+		UPDATE subscription_settings
+		SET %s
+		WHERE uuid = $%d
+		RETURNING uuid, profile_title, support_link, profile_update_interval,
+			address, port, api_schema, api_path,
+			happ_announce, happ_routing,
+			created_at, updated_at,
+			is_profile_webpage_url_enabled, serve_json_at_base_subscription,
+			is_show_custom_remarks, custom_response_headers,
+			randomize_hosts, response_rules, hwid_settings, custom_remarks
+	`, strings.Join(updates, ", "), idx)
+	row := db.QueryRowContext(r.Context(), query, args...)
+	settings, err := ScanSubscriptionSettings(row)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to update subscription settings", err, cfg)
 		return
@@ -466,93 +437,111 @@ func convertSubscriptionSettingsToAPI(settings SubscriptionSettings) (Subscripti
 	}, nil
 }
 
-func parseJSONMap(raw string) (map[string]any, error) {
-	if strings.TrimSpace(raw) == "" {
-		return nil, nil
+func validateSubscriptionSettingsUpdate(req SubscriptionSettingsUpdateRequestAPI) error {
+	if req.ProfileTitle != nil && strings.TrimSpace(*req.ProfileTitle) == "" {
+		return fmt.Errorf("profileTitle cannot be empty")
 	}
+	if req.SupportLink != nil && strings.TrimSpace(*req.SupportLink) == "" {
+		return fmt.Errorf("supportLink cannot be empty")
+	}
+	if req.ProfileUpdateInterval != nil && *req.ProfileUpdateInterval <= 0 {
+		return fmt.Errorf("profileUpdateInterval must be greater than 0")
+	}
+	return nil
+}
+
+func parseOptionalString(raw *json.RawMessage, maxLen int) (bool, string, error) {
+	if raw == nil {
+		return false, "", nil
+	}
+
+	var str string
+	if err := json.Unmarshal(*raw, &str); err != nil {
+		return false, "", fmt.Errorf("must be a string")
+	}
+
+	str = strings.TrimSpace(str)
+	if maxLen > 0 && len(str) > maxLen {
+		return false, "", fmt.Errorf("length must not exceed %d characters", maxLen)
+	}
+
+	return true, str, nil
+}
+
+func parseOptionalJSONMap(raw *json.RawMessage, allowEmpty bool) (bool, string, error) {
+	if raw == nil {
+		return false, "", nil
+	}
+
 	var obj map[string]any
-	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+	if err := json.Unmarshal(*raw, &obj); err != nil {
+		return false, "", fmt.Errorf("must be a valid JSON object")
+	}
+
+	if !allowEmpty && len(obj) == 0 {
+		return false, "", fmt.Errorf("object cannot be empty")
+	}
+
+	bytes, err := json.Marshal(obj)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to encode JSON object")
+	}
+
+	return true, string(bytes), nil
+}
+
+func parseOptionalHeaders(raw *json.RawMessage) (bool, string, error) {
+	if raw == nil {
+		return false, "", nil
+	}
+
+	var obj map[string]string
+	if err := json.Unmarshal(*raw, &obj); err != nil {
+		return false, "", fmt.Errorf("must be a valid JSON object mapping string keys to string values")
+	}
+
+	validHeaderName := regexp.MustCompile(`^[A-Za-z0-9-]+$`)
+	clean := make(map[string]string, len(obj))
+	for k, v := range obj {
+		key := strings.TrimSpace(k)
+		val := strings.TrimSpace(v)
+		if key == "" || !validHeaderName.MatchString(key) {
+			return false, "", fmt.Errorf("invalid header name: %s", k)
+		}
+		if val == "" {
+			return false, "", fmt.Errorf("header value for %s cannot be empty", key)
+		}
+		clean[key] = val
+	}
+
+	bytes, err := json.Marshal(clean)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to encode headers")
+	}
+
+	return true, string(bytes), nil
+}
+
+func parseJSONMap(raw string) (map[string]any, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return map[string]any{}, nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
 		return nil, err
 	}
-	return obj, nil
+	return out, nil
 }
 
 func parseJSONHeaders(raw string) (map[string]string, error) {
-	if strings.TrimSpace(raw) == "" {
-		return nil, nil
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return map[string]string{}, nil
 	}
-	var obj map[string]string
-	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+	var out map[string]string
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
 		return nil, err
 	}
-	return obj, nil
-}
-
-func parseOptionalString(raw *json.RawMessage, maxLen int) (bool, sql.NullString, error) {
-	if raw == nil {
-		return false, sql.NullString{}, nil
-	}
-	if string(*raw) == "null" {
-		return true, sql.NullString{Valid: false}, nil
-	}
-	var value string
-	if err := json.Unmarshal(*raw, &value); err != nil {
-		return true, sql.NullString{}, fmt.Errorf("invalid string value")
-	}
-	value = strings.TrimSpace(value)
-	if maxLen > 0 && len(value) > maxLen {
-		return true, sql.NullString{}, fmt.Errorf("value must be less than %d characters", maxLen)
-	}
-	return true, sql.NullString{String: value, Valid: true}, nil
-}
-
-func parseOptionalJSONMap(raw *json.RawMessage, allowNull bool) (bool, sql.NullString, error) {
-	if raw == nil {
-		return false, sql.NullString{}, nil
-	}
-	if string(*raw) == "null" {
-		if allowNull {
-			return true, sql.NullString{Valid: false}, nil
-		}
-		return true, sql.NullString{}, fmt.Errorf("null is not allowed")
-	}
-	var obj map[string]any
-	if err := json.Unmarshal(*raw, &obj); err != nil {
-		return true, sql.NullString{}, fmt.Errorf("invalid JSON object")
-	}
-	normalized, err := json.Marshal(obj)
-	if err != nil {
-		return true, sql.NullString{}, fmt.Errorf("invalid JSON object")
-	}
-	return true, sql.NullString{String: string(normalized), Valid: true}, nil
-}
-
-func parseOptionalHeaders(raw *json.RawMessage) (bool, sql.NullString, error) {
-	if raw == nil {
-		return false, sql.NullString{}, nil
-	}
-	if string(*raw) == "null" {
-		return true, sql.NullString{Valid: false}, nil
-	}
-	var obj map[string]string
-	if err := json.Unmarshal(*raw, &obj); err != nil {
-		return true, sql.NullString{}, fmt.Errorf("customResponseHeaders must be an object")
-	}
-	for key := range obj {
-		if !regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString(key) {
-			return true, sql.NullString{}, fmt.Errorf("invalid header name: %s", key)
-		}
-	}
-	normalized, err := json.Marshal(obj)
-	if err != nil {
-		return true, sql.NullString{}, fmt.Errorf("invalid customResponseHeaders")
-	}
-	return true, sql.NullString{String: string(normalized), Valid: true}, nil
-}
-
-func validateSubscriptionSettingsUpdate(req SubscriptionSettingsUpdateRequestAPI) error {
-	if req.ProfileUpdateInterval != nil && *req.ProfileUpdateInterval < 1 {
-		return fmt.Errorf("profileUpdateInterval must be >= 1")
-	}
-	return nil
+	return out, nil
 }

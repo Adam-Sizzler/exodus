@@ -12,7 +12,6 @@ import (
 	"exodus/internal/config"
 	"exodus/internal/constant"
 	"exodus/internal/db"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/panelsettings"
 	"exodus/internal/jobqueue"
 	"exodus/internal/logger"
@@ -51,25 +50,18 @@ func Run() {
 	}
 	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceDatabase).Info("Connected to PostgreSQL")
 
-	manager, err := dbmanager.NewDatabaseManager(
-		dbConn,
-		ctx,
-		cfg.Database.WorkerCount,
-		cfg.Database.HighPriorityBuffer,
-		cfg.Database.LowPriorityBuffer,
-		&cfg,
-	)
+	pools, err := db.NewPools(ctx, dbConn, &cfg)
 	if err != nil {
-		cfg.Logger.Fatal("Failed to create DatabaseManager", "error", err)
+		cfg.Logger.Fatal("Failed to create database pools", "error", err)
 	}
 
 	// Create and start node monitor (dynamically manages nodes from DB)
-	nodeMonitor := users.NewNodeMonitor(manager, &cfg)
+	nodeMonitor := users.NewNodeMonitor(pools.Interactive, &cfg)
 	users.RegisterGlobalNodeMonitor(nodeMonitor)
-	subNodeMonitor := subscriptionnodes.NewSubNodeMonitor(manager, &cfg)
+	subNodeMonitor := subscriptionnodes.NewSubNodeMonitor(pools.Interactive, &cfg)
 	subscriptionnodes.RegisterGlobalSubNodeMonitor(subNodeMonitor)
 
-	redisWorker, err := redisqueue.NewWorker(&cfg, manager)
+	redisWorker, err := redisqueue.NewWorker(&cfg, pools.Background)
 	redisStatus := "Disabled"
 	if err != nil {
 		cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceRedis).Warn("Redis worker disabled", "error", err)
@@ -104,14 +96,14 @@ func Run() {
 	var wg sync.WaitGroup
 	wg.Add(4)
 
-	go startWebServer(ctx, manager, &cfg, &wg)
-	go startMetricsServer(ctx, manager, &cfg, &wg)
+	go startWebServer(ctx, pools, &cfg, &wg)
+	go startMetricsServer(ctx, pools.Interactive, &cfg, &wg)
 	go nodeMonitor.Start(ctx, &wg)
 	go subNodeMonitor.Start(ctx, &wg)
-	notifications.StartDispatcher(ctx, &wg, manager, &cfg)
-	userwatchdog.Start(ctx, &wg, manager, &cfg)
-	scheduler.Start(ctx, &wg, manager, &cfg)
-	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, manager, &cfg); err != nil {
+	notifications.StartDispatcher(ctx, &wg, pools.Background, &cfg)
+	userwatchdog.Start(ctx, &wg, pools.Background, &cfg)
+	scheduler.Start(ctx, &wg, pools.Background, &cfg)
+	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, pools.Background, &cfg); err != nil {
 		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("Subscription job queue disabled", "error", err)
 	}
 	if redisWorker != nil {
@@ -134,10 +126,12 @@ func Run() {
 	nodeMonitor.Stop()
 	subNodeMonitor.Stop()
 
-	// Закрываем DatabaseManager
-	manager.Close()
+	// Close database pools
+	if err := pools.Close(); err != nil {
+		cfg.Logger.Warn("Error closing database pools", "error", err)
+	}
 
-	// Ждём завершения горутин
+	// Wait for goroutines to finish
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -149,14 +143,9 @@ func Run() {
 		cfg.Logger.Debug("All goroutines completed")
 	case <-time.After(10 * time.Second):
 		cfg.Logger.Warn("Timeout waiting for goroutines to complete, forcing shutdown")
-		// Профилирование горутин при тайм-ауте
 		pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
 	}
 
-	// Закрываем базу данных
-	if err := dbConn.Close(); err != nil {
-		cfg.Logger.Error("Failed to close database", "error", err)
-	}
 	if redisWorker != nil {
 		if err := redisWorker.Close(); err != nil {
 			cfg.Logger.Warn("Failed to close redis worker", "error", err)

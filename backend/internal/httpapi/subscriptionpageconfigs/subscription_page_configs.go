@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	"exodus/internal/db"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
 	monitor "exodus/internal/subscriptionnodes"
@@ -31,7 +29,6 @@ const (
 
 var subpageConfigNameRegex = regexp.MustCompile(`^[A-Za-z0-9_\s-]+$`)
 
-// SubscriptionPageConfig represents a subscription page config in API responses.
 type SubscriptionPageConfig struct {
 	UUID         string          `json:"uuid"`
 	ViewPosition int             `json:"viewPosition"`
@@ -73,22 +70,22 @@ type subpageConfigCloneRequest struct {
 	CloneFromUUID string `json:"cloneFromUuid"`
 }
 
-func SubscriptionPageConfigsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionPageConfigsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionPageConfigs(w, r, manager, cfg)
+			handleGetSubscriptionPageConfigs(w, r, db, cfg)
 		case http.MethodPost:
-			handleCreateSubscriptionPageConfig(w, r, manager, cfg)
+			handleCreateSubscriptionPageConfig(w, r, db, cfg)
 		case http.MethodPatch:
-			handleUpdateSubscriptionPageConfig(w, r, manager, cfg)
+			handleUpdateSubscriptionPageConfig(w, r, db, cfg)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func SubscriptionPageConfigsActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionPageConfigsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -99,26 +96,26 @@ func SubscriptionPageConfigsActionsHandler(manager *dbmanager.DatabaseManager, c
 		path = strings.Trim(path, "/")
 		switch path {
 		case "reorder":
-			handleReorderSubscriptionPageConfigs(w, r, manager, cfg)
+			handleReorderSubscriptionPageConfigs(w, r, db, cfg)
 		case "clone":
-			handleCloneSubscriptionPageConfig(w, r, manager, cfg)
+			handleCloneSubscriptionPageConfig(w, r, db, cfg)
 		default:
 			http.NotFound(w, r)
 		}
 	}
 }
 
-func SubscriptionPageConfigByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionPageConfigByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uuidStr := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, subpageConfigsBasePath+"/"))
 		if uuidStr == "" {
 			switch r.Method {
 			case http.MethodGet:
-				handleGetSubscriptionPageConfigs(w, r, manager, cfg)
+				handleGetSubscriptionPageConfigs(w, r, db, cfg)
 			case http.MethodPost:
-				handleCreateSubscriptionPageConfig(w, r, manager, cfg)
+				handleCreateSubscriptionPageConfig(w, r, db, cfg)
 			case http.MethodPatch:
-				handleUpdateSubscriptionPageConfig(w, r, manager, cfg)
+				handleUpdateSubscriptionPageConfig(w, r, db, cfg)
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
@@ -131,45 +128,43 @@ func SubscriptionPageConfigByUUIDHandler(manager *dbmanager.DatabaseManager, cfg
 
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionPageConfigByUUID(w, r, manager, cfg, uuidStr)
+			handleGetSubscriptionPageConfigByUUID(w, r, db, cfg, uuidStr)
 		case http.MethodDelete:
-			handleDeleteSubscriptionPageConfig(w, r, manager, cfg, uuidStr)
+			handleDeleteSubscriptionPageConfig(w, r, db, cfg, uuidStr)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func handleGetSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleGetSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	ctx := r.Context()
-	configs := []SubscriptionPageConfig{}
-
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		rows, err := dbExec.QueryContext(ctx, `
-			SELECT uuid, view_position, name, created_at, updated_at
-			FROM subscription_page_config
-			ORDER BY view_position ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var cfgItem SubscriptionPageConfig
-			var viewPosition sql.NullInt64
-			if err := rows.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
-				return err
-			}
-			if viewPosition.Valid {
-				cfgItem.ViewPosition = int(viewPosition.Int64)
-			}
-			configs = append(configs, cfgItem)
-		}
-		return rows.Err()
-	})
+	rows, err := db.QueryContext(ctx, `
+		SELECT uuid, view_position, name, created_at, updated_at
+		FROM subscription_page_config
+		ORDER BY view_position ASC
+	`)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription page configs", err, cfg)
+		return
+	}
+	defer rows.Close()
+
+	configs := []SubscriptionPageConfig{}
+	for rows.Next() {
+		var cfgItem SubscriptionPageConfig
+		var viewPosition sql.NullInt64
+		if err := rows.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan subscription page config", err, cfg)
+			return
+		}
+		if viewPosition.Valid {
+			cfgItem.ViewPosition = int(viewPosition.Int64)
+		}
+		configs = append(configs, cfgItem)
+	}
+	if err := rows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to iterate subscription page configs", err, cfg)
 		return
 	}
 
@@ -181,9 +176,9 @@ func handleGetSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, ma
 	})
 }
 
-func handleGetSubscriptionPageConfigByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, uuidStr string) {
+func handleGetSubscriptionPageConfigByUUID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, uuidStr string) {
 	ctx := r.Context()
-	cfgItem, err := fetchSubscriptionPageConfig(ctx, manager, uuidStr, true)
+	cfgItem, err := fetchSubscriptionPageConfig(ctx, db, uuidStr, true)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
@@ -198,7 +193,7 @@ func handleGetSubscriptionPageConfigByUUID(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req subpageConfigCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -211,34 +206,22 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	}
 
 	ctx := r.Context()
-	var created SubscriptionPageConfig
-
-	err = manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		defaultConfig, err := fetchDefaultSubpageConfig(ctx, dbExec)
-		if err != nil {
-			return err
-		}
-
-		row := dbExec.QueryRowContext(ctx, `
-			INSERT INTO subscription_page_config (name, config)
-			VALUES (?, ?)
-			RETURNING uuid, view_position, name, config, created_at, updated_at
-		`, name, string(defaultConfig))
-
-		var viewPosition sql.NullInt64
-		var configStr sql.NullString
-		if err := row.Scan(&created.UUID, &viewPosition, &created.Name, &configStr, &created.CreatedAt, &created.UpdatedAt); err != nil {
-			return err
-		}
-		if viewPosition.Valid {
-			created.ViewPosition = int(viewPosition.Int64)
-		}
-		if configStr.Valid {
-			created.Config = json.RawMessage(configStr.String)
-		}
-		return nil
-	})
+	defaultConfig, err := fetchDefaultSubpageConfig(ctx, db)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch default subpage config", err, cfg)
+		return
+	}
+
+	row := db.QueryRowContext(ctx, `
+		INSERT INTO subscription_page_config (name, config)
+		VALUES ($1, $2)
+		RETURNING uuid, view_position, name, config, created_at, updated_at
+	`, name, string(defaultConfig))
+
+	var created SubscriptionPageConfig
+	var viewPosition sql.NullInt64
+	var configStr sql.NullString
+	if err := row.Scan(&created.UUID, &viewPosition, &created.Name, &configStr, &created.CreatedAt, &created.UpdatedAt); err != nil {
 		if isUniqueNameError(err) {
 			shared.SendError(w, http.StatusConflict, "config name already exists", err, cfg)
 			return
@@ -246,12 +229,18 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 		shared.SendError(w, http.StatusInternalServerError, "failed to create subscription page config", err, cfg)
 		return
 	}
+	if viewPosition.Valid {
+		created.ViewPosition = int(viewPosition.Int64)
+	}
+	if configStr.Valid {
+		created.Config = json.RawMessage(configStr.String)
+	}
 
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{
 		"response": created,
 	})
 	emitSubpageConfigChanged(ctx, cfg, "created", created, nil)
-	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, created.UUID)
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, db, created.UUID)
 	if targetErr != nil {
 		cfg.Logger.Warn("Failed to resolve sub nodes for created subpage config push", "subpage_config_uuid", created.UUID, "error", targetErr)
 		return
@@ -262,7 +251,7 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	monitor.RequestSubNodeSubpageConfigPush(created.UUID, created.Config, targetNodeUUIDs...)
 }
 
-func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req subpageConfigUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -280,6 +269,7 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 
 	updates := []string{}
 	args := []any{}
+	idx := 1
 
 	if req.Name != nil {
 		name, err := normalizeSubpageConfigName(*req.Name)
@@ -287,8 +277,9 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
-		updates = append(updates, "name = ?")
+		updates = append(updates, fmt.Sprintf("name = $%d", idx))
 		args = append(args, name)
+		idx++
 	}
 
 	if req.Config != nil {
@@ -302,39 +293,27 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 			shared.SendError(w, http.StatusBadRequest, "invalid config", err, cfg)
 			return
 		}
-		updates = append(updates, "config = ?")
+		updates = append(updates, fmt.Sprintf("config = $%d", idx))
 		args = append(args, string(configJSON))
+		idx++
 	}
 
 	updates = append(updates, "updated_at = CURRENT_TIMESTAMP")
 	args = append(args, req.UUID)
 
 	ctx := r.Context()
+	query := fmt.Sprintf(`
+		UPDATE subscription_page_config
+		SET %s
+		WHERE uuid = $%d
+		RETURNING uuid, view_position, name, config, created_at, updated_at
+	`, strings.Join(updates, ", "), idx)
+
+	row := db.QueryRowContext(ctx, query, args...)
 	var updated SubscriptionPageConfig
-
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		query := fmt.Sprintf(`
-			UPDATE subscription_page_config
-			SET %s
-			WHERE uuid = ?
-			RETURNING uuid, view_position, name, config, created_at, updated_at
-		`, strings.Join(updates, ", "))
-
-		row := dbExec.QueryRowContext(ctx, query, args...)
-		var viewPosition sql.NullInt64
-		var configStr sql.NullString
-		if err := row.Scan(&updated.UUID, &viewPosition, &updated.Name, &configStr, &updated.CreatedAt, &updated.UpdatedAt); err != nil {
-			return err
-		}
-		if viewPosition.Valid {
-			updated.ViewPosition = int(viewPosition.Int64)
-		}
-		if configStr.Valid {
-			updated.Config = json.RawMessage(configStr.String)
-		}
-		return nil
-	})
-	if err != nil {
+	var viewPosition sql.NullInt64
+	var configStr sql.NullString
+	if err := row.Scan(&updated.UUID, &viewPosition, &updated.Name, &configStr, &updated.CreatedAt, &updated.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
 			return
@@ -346,12 +325,18 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 		shared.SendError(w, http.StatusInternalServerError, "failed to update subscription page config", err, cfg)
 		return
 	}
+	if viewPosition.Valid {
+		updated.ViewPosition = int(viewPosition.Int64)
+	}
+	if configStr.Valid {
+		updated.Config = json.RawMessage(configStr.String)
+	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": updated,
 	})
 	emitSubpageConfigChanged(ctx, cfg, "updated", updated, nil)
-	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, updated.UUID)
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, db, updated.UUID)
 	if targetErr != nil {
 		cfg.Logger.Warn("Failed to resolve sub nodes for updated subpage config push", "subpage_config_uuid", updated.UUID, "error", targetErr)
 		return
@@ -369,38 +354,30 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	monitor.RequestSubNodeSubpageConfigPush(updated.UUID, updated.Config, targetNodeUUIDs...)
 }
 
-func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, uuidStr string) {
+func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, uuidStr string) {
 	if uuidStr == defaultSubpageConfigUUID {
 		shared.SendError(w, http.StatusBadRequest, "reserved config cannot be deleted", nil, cfg)
 		return
 	}
 
 	ctx := r.Context()
-	deleted := false
-
-	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, uuidStr)
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, db, uuidStr)
 	if targetErr != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to resolve linked subscription nodes", targetErr, cfg)
 		return
 	}
 
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		result, err := dbExec.ExecContext(ctx, `DELETE FROM subscription_page_config WHERE uuid = ?`, uuidStr)
-		if err != nil {
-			return err
-		}
-		ra, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		deleted = ra > 0
-		return nil
-	})
+	result, err := db.ExecContext(ctx, `DELETE FROM subscription_page_config WHERE uuid = $1`, uuidStr)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to delete subscription page config", err, cfg)
 		return
 	}
-	if !deleted {
+	ra, err := result.RowsAffected()
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to read rows affected", err, cfg)
+		return
+	}
+	if ra == 0 {
 		shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
 		return
 	}
@@ -415,7 +392,7 @@ func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	monitor.RequestSubNodeSubpageConfigPush(uuidStr, nil, targetNodeUUIDs...)
 }
 
-func handleReorderSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleReorderSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req subpageConfigReorderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -440,34 +417,35 @@ func handleReorderSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		tx, err := dbExec.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		for _, item := range req.Items {
-			if _, err := tx.ExecContext(ctx, `UPDATE subscription_page_config SET view_position = ? WHERE uuid = ?`, item.ViewPosition, item.UUID); err != nil {
-				_ = tx.Rollback()
-				return err
-			}
-		}
-		if _, err := tx.ExecContext(ctx, `SELECT setval('subscription_page_config_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM subscription_page_config) + 1)`); err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-		return tx.Commit()
-	})
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder subscription page configs", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "begin tx failed", err, cfg)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, item := range req.Items {
+		if _, err := tx.ExecContext(ctx, `UPDATE subscription_page_config SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder subscription page configs", err, cfg)
+			return
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `SELECT setval('subscription_page_config_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM subscription_page_config) + 1)`); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to update sequence", err, cfg)
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "commit reorder failed", err, cfg)
 		return
 	}
 
 	emitSubpageConfigChanged(ctx, cfg, "reordered", SubscriptionPageConfig{}, map[string]any{"items": len(req.Items)})
-	// Return refreshed list
-	handleGetSubscriptionPageConfigs(w, r, manager, cfg)
+	handleGetSubscriptionPageConfigs(w, r, db, cfg)
 }
 
-func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req subpageConfigCloneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -479,63 +457,57 @@ func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, m
 	}
 
 	ctx := r.Context()
-	var created SubscriptionPageConfig
+	var cfgItem SubscriptionPageConfig
+	row := db.QueryRowContext(ctx, `
+		SELECT uuid, view_position, name, config, created_at, updated_at
+		FROM subscription_page_config
+		WHERE uuid = $1
+		LIMIT 1
+	`, req.CloneFromUUID)
 
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		var cfgItem SubscriptionPageConfig
-		row := dbExec.QueryRowContext(ctx, `
-			SELECT uuid, view_position, name, config, created_at, updated_at
-			FROM subscription_page_config
-			WHERE uuid = ?
-			LIMIT 1
-		`, req.CloneFromUUID)
-
-		var viewPosition sql.NullInt64
-		var configStr sql.NullString
-		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
-			return err
-		}
-		if viewPosition.Valid {
-			cfgItem.ViewPosition = int(viewPosition.Int64)
-		}
-		if configStr.Valid {
-			cfgItem.Config = json.RawMessage(configStr.String)
-		}
-
-		cloneName := fmt.Sprintf("Clone %s", randomSuffix(5))
-		insertRow := dbExec.QueryRowContext(ctx, `
-			INSERT INTO subscription_page_config (name, config)
-			VALUES (?, ?)
-			RETURNING uuid, view_position, name, config, created_at, updated_at
-		`, cloneName, string(cfgItem.Config))
-
-		var insertViewPosition sql.NullInt64
-		var insertConfigStr sql.NullString
-		if err := insertRow.Scan(&created.UUID, &insertViewPosition, &created.Name, &insertConfigStr, &created.CreatedAt, &created.UpdatedAt); err != nil {
-			return err
-		}
-		if insertViewPosition.Valid {
-			created.ViewPosition = int(insertViewPosition.Int64)
-		}
-		if insertConfigStr.Valid {
-			created.Config = json.RawMessage(insertConfigStr.String)
-		}
-		return nil
-	})
-	if err != nil {
+	var viewPosition sql.NullInt64
+	var configStr sql.NullString
+	if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
 			return
 		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription page config for cloning", err, cfg)
+		return
+	}
+	if viewPosition.Valid {
+		cfgItem.ViewPosition = int(viewPosition.Int64)
+	}
+	if configStr.Valid {
+		cfgItem.Config = json.RawMessage(configStr.String)
+	}
+
+	cloneName := fmt.Sprintf("Clone %s", randomSuffix(5))
+	insertRow := db.QueryRowContext(ctx, `
+		INSERT INTO subscription_page_config (name, config)
+		VALUES ($1, $2)
+		RETURNING uuid, view_position, name, config, created_at, updated_at
+	`, cloneName, string(cfgItem.Config))
+
+	var created SubscriptionPageConfig
+	var insertViewPosition sql.NullInt64
+	var insertConfigStr sql.NullString
+	if err := insertRow.Scan(&created.UUID, &insertViewPosition, &created.Name, &insertConfigStr, &created.CreatedAt, &created.UpdatedAt); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to clone subscription page config", err, cfg)
 		return
+	}
+	if insertViewPosition.Valid {
+		created.ViewPosition = int(insertViewPosition.Int64)
+	}
+	if insertConfigStr.Valid {
+		created.Config = json.RawMessage(insertConfigStr.String)
 	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": created,
 	})
 	emitSubpageConfigChanged(ctx, cfg, "cloned", created, map[string]any{"cloneFromUuid": req.CloneFromUUID})
-	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, manager, created.UUID)
+	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, db, created.UUID)
 	if targetErr != nil {
 		cfg.Logger.Warn("Failed to resolve sub nodes for cloned subpage config push", "subpage_config_uuid", created.UUID, "error", targetErr)
 		return
@@ -546,48 +518,43 @@ func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, m
 	monitor.RequestSubNodeSubpageConfigPush(created.UUID, created.Config, targetNodeUUIDs...)
 }
 
-func fetchSubscriptionPageConfig(ctx context.Context, manager *dbmanager.DatabaseManager, uuidStr string, withConfig bool) (SubscriptionPageConfig, error) {
+func fetchSubscriptionPageConfig(ctx context.Context, db *sql.DB, uuidStr string, withConfig bool) (SubscriptionPageConfig, error) {
 	var cfgItem SubscriptionPageConfig
-
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		query := `
-			SELECT uuid, view_position, name, created_at, updated_at
+	query := `
+		SELECT uuid, view_position, name, created_at, updated_at
+		FROM subscription_page_config
+		WHERE uuid = $1
+		LIMIT 1
+	`
+	if withConfig {
+		query = `
+			SELECT uuid, view_position, name, config, created_at, updated_at
 			FROM subscription_page_config
-			WHERE uuid = ?
+			WHERE uuid = $1
 			LIMIT 1
 		`
-		if withConfig {
-			query = `
-				SELECT uuid, view_position, name, config, created_at, updated_at
-				FROM subscription_page_config
-				WHERE uuid = ?
-				LIMIT 1
-			`
-		}
+	}
 
-		row := dbExec.QueryRowContext(ctx, query, uuidStr)
-		var viewPosition sql.NullInt64
-		var configStr sql.NullString
-		if withConfig {
-			if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
-				return err
-			}
-			if configStr.Valid {
-				cfgItem.Config = json.RawMessage(configStr.String)
-			}
-		} else {
-			if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
-				return err
-			}
+	row := db.QueryRowContext(ctx, query, uuidStr)
+	var viewPosition sql.NullInt64
+	var configStr sql.NullString
+	if withConfig {
+		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
+			return cfgItem, err
 		}
-
-		if viewPosition.Valid {
-			cfgItem.ViewPosition = int(viewPosition.Int64)
+		if configStr.Valid {
+			cfgItem.Config = json.RawMessage(configStr.String)
 		}
-		return nil
-	})
+	} else {
+		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
+			return cfgItem, err
+		}
+	}
 
-	return cfgItem, err
+	if viewPosition.Valid {
+		cfgItem.ViewPosition = int(viewPosition.Int64)
+	}
+	return cfgItem, nil
 }
 
 func emitSubpageConfigChanged(ctx context.Context, cfg *config.BackendConfig, action string, item SubscriptionPageConfig, extra map[string]any) {
@@ -613,44 +580,39 @@ func emitSubpageConfigChanged(ctx context.Context, cfg *config.BackendConfig, ac
 	})
 }
 
-func fetchDefaultSubpageConfig(ctx context.Context, dbExec dbmanager.DBExecutor) (json.RawMessage, error) {
-	row := dbExec.QueryRowContext(ctx, `SELECT config FROM subscription_page_config WHERE uuid = ?`, defaultSubpageConfigUUID)
+func fetchDefaultSubpageConfig(ctx context.Context, db *sql.DB) (json.RawMessage, error) {
+	row := db.QueryRowContext(ctx, `SELECT config FROM subscription_page_config WHERE uuid = $1`, defaultSubpageConfigUUID)
 	var cfgStr sql.NullString
 	if err := row.Scan(&cfgStr); err == nil && cfgStr.Valid {
 		return json.RawMessage(cfgStr.String), nil
 	}
 
-	// fallback to embedded default
-	return json.RawMessage(db.DefaultSubscriptionPageConfig), nil
+	return json.RawMessage("{}"), nil
 }
 
-func getSubNodeUUIDsBySubpageConfigUUID(ctx context.Context, manager *dbmanager.DatabaseManager, subpageConfigUUID string) ([]string, error) {
-	nodeUUIDs := make([]string, 0)
-	err := manager.ExecuteHighPriority(func(dbExec dbmanager.DBExecutor) error {
-		rows, err := dbExec.QueryContext(ctx, `
-			SELECT node_uuid
-			FROM sub_nodes_to_subscription_page_config
-			WHERE subpage_config_uuid = ?
-		`, subpageConfigUUID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var nodeUUID string
-			if err := rows.Scan(&nodeUUID); err != nil {
-				return err
-			}
-			nodeUUID = strings.TrimSpace(nodeUUID)
-			if nodeUUID != "" {
-				nodeUUIDs = append(nodeUUIDs, nodeUUID)
-			}
-		}
-
-		return rows.Err()
-	})
+func getSubNodeUUIDsBySubpageConfigUUID(ctx context.Context, db *sql.DB, subpageConfigUUID string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT node_uuid
+		FROM sub_nodes_to_subscription_page_config
+		WHERE subpage_config_uuid = $1
+	`, subpageConfigUUID)
 	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	nodeUUIDs := make([]string, 0)
+	for rows.Next() {
+		var nodeUUID string
+		if err := rows.Scan(&nodeUUID); err != nil {
+			return nil, err
+		}
+		nodeUUID = strings.TrimSpace(nodeUUID)
+		if nodeUUID != "" {
+			nodeUUIDs = append(nodeUUIDs, nodeUUID)
+		}
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 

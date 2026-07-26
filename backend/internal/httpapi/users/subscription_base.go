@@ -9,42 +9,34 @@ import (
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 )
 
-func resolveUsersSubscriptionBase(ctx context.Context, manager *dbmanager.DatabaseManager, r *http.Request, cfg *config.BackendConfig) string {
-	if base := resolveUsersSubscriptionBaseFromNode(ctx, manager); base != "" {
+func resolveUsersSubscriptionBase(ctx context.Context, db *sql.DB, r *http.Request, cfg *config.BackendConfig) string {
+	if base := resolveUsersSubscriptionBaseFromNode(ctx, db); base != "" {
 		return base
 	}
 
 	return resolveUsersSubscriptionBaseFallback(r, cfg)
 }
 
-func resolveUsersSubscriptionBaseFromNode(ctx context.Context, manager *dbmanager.DatabaseManager) string {
-	if manager == nil {
+func resolveUsersSubscriptionBaseFromNode(ctx context.Context, db *sql.DB) string {
+	if db == nil {
 		return ""
 	}
 
 	var domain sql.NullString
 	var apiPath sql.NullString
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT
-				COALESCE(NULLIF(BTRIM(public_domain), ''), NULLIF(BTRIM(address), '')) AS domain,
-				COALESCE(NULLIF(BTRIM(api_path), ''), '/') AS api_path
-			FROM sub_nodes
-			ORDER BY is_disabled ASC, view_position ASC, created_at ASC
-			LIMIT 1
-		`)
+	row := db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(NULLIF(BTRIM(public_domain), ''), NULLIF(BTRIM(address), '')) AS domain,
+			COALESCE(NULLIF(BTRIM(api_path), ''), '/') AS api_path
+		FROM sub_nodes
+		ORDER BY is_disabled ASC, view_position ASC, created_at ASC
+		LIMIT 1
+	`)
 
-		scanErr := row.Scan(&domain, &apiPath)
-		if errors.Is(scanErr, sql.ErrNoRows) {
-			return nil
-		}
-
-		return scanErr
-	})
-	if err != nil || !domain.Valid {
+	scanErr := row.Scan(&domain, &apiPath)
+	if errors.Is(scanErr, sql.ErrNoRows) || scanErr != nil || !domain.Valid {
 		return ""
 	}
 

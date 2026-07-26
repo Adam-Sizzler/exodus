@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 )
 
@@ -70,7 +69,7 @@ type legacyUserUsage struct {
 	Total       int64  `json:"total"`
 }
 
-func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/nodes")
 		path = strings.Trim(path, "/")
@@ -81,7 +80,7 @@ func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
 			}
-			handleGetNodesUsersUsage(w, r, manager, cfg)
+			handleGetNodesUsersUsage(w, r, db, cfg)
 			return
 		}
 
@@ -93,22 +92,22 @@ func NodesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 
 		switch {
 		case path == "":
-			handleGetNodesUsage(w, r, manager, cfg)
+			handleGetNodesUsage(w, r, db, cfg)
 		case path == "realtime":
-			handleGetNodesRealtimeUsage(w, r, manager, cfg)
+			handleGetNodesRealtimeUsage(w, r, db, cfg)
 		case strings.HasSuffix(path, "/users/legacy"):
 			nodeUUID := strings.TrimSuffix(path, "/users/legacy")
-			handleGetLegacyNodeUsersUsage(w, r, manager, cfg, nodeUUID)
+			handleGetLegacyNodeUsersUsage(w, r, db, cfg, nodeUUID)
 		case strings.HasSuffix(path, "/users"):
 			nodeUUID := strings.TrimSuffix(path, "/users")
-			handleGetNodeUsersUsage(w, r, manager, cfg, nodeUUID)
+			handleGetNodeUsersUsage(w, r, db, cfg, nodeUUID)
 		default:
 			shared.WriteJSONError(w, http.StatusNotFound, "not found")
 		}
 	}
 }
 
-func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -125,17 +124,15 @@ func UsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 
 		if strings.HasSuffix(path, "/legacy") {
 			userUUID := strings.TrimSuffix(path, "/legacy")
-			handleGetLegacyUserUsage(w, r, manager, cfg, userUUID)
+			handleGetLegacyUserUsage(w, r, db, cfg, userUUID)
 			return
 		}
-		handleGetUserUsage(w, r, manager, cfg, path)
+		handleGetUserUsage(w, r, db, cfg, path)
 	}
 }
 
-func handleGetNodesRealtimeUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	items := make([]nodeRealtimeUsage, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+func handleGetNodesRealtimeUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	rows, err := db.QueryContext(r.Context(), `
 WITH nodes_latest_updates AS (
 	SELECT
 		node_uuid,
@@ -160,73 +157,74 @@ SELECT
 FROM nodes_latest_updates l
 JOIN nodes n ON n.uuid = l.node_uuid
 ORDER BY total_speed_bps DESC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var it nodeRealtimeUsage
-			if scanErr := rows.Scan(
-				&it.NodeUUID, &it.NodeName, &it.CountryCode,
-				&it.DownloadBytes, &it.UploadBytes, &it.TotalBytes,
-				&it.DownloadSpeedBps, &it.UploadSpeedBps, &it.TotalSpeedBps,
-			); scanErr != nil {
-				return scanErr
-			}
-			items = append(items, it)
-		}
-		return rows.Err()
-	})
+	`)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes realtime usage", err, cfg)
 		return
 	}
+	defer rows.Close()
+
+	items := make([]nodeRealtimeUsage, 0)
+	for rows.Next() {
+		var it nodeRealtimeUsage
+		if scanErr := rows.Scan(
+			&it.NodeUUID, &it.NodeName, &it.CountryCode,
+			&it.DownloadBytes, &it.UploadBytes, &it.TotalBytes,
+			&it.DownloadSpeedBps, &it.UploadSpeedBps, &it.TotalSpeedBps,
+		); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes realtime usage", scanErr, cfg)
+			return
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes realtime usage", err, cfg)
+		return
+	}
+
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": items})
 }
 
-func handleGetNodesUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleGetNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	startDate, endDate, dates, ok := parseDateRange(w, r)
 	if !ok {
 		return
 	}
 	topLimit := parsePositiveIntWithDefault(r.URL.Query().Get("topNodesLimit"), 20)
 
-	sparkline := make([]int64, 0, len(dates))
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkRows, err := db.QueryContext(r.Context(), `
 WITH daily_traffic AS (
 	SELECT DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date AS date, SUM(total_bytes) AS bytes
 	FROM nodes_usage_history
-	WHERE created_at >= ? AND created_at <= ?
+	WHERE created_at >= $1 AND created_at <= $2
 	GROUP BY DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')
 )
 SELECT COALESCE(dt.bytes, 0) AS value
-FROM unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+FROM unnest($3::date[]) WITH ORDINALITY AS d(date, ord)
 LEFT JOIN daily_traffic dt ON dt.date = d.date
 ORDER BY d.ord
-		`, startDate, endDate, pgDateArrayLiteral(dates))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var v int64
-			if scanErr := rows.Scan(&v); scanErr != nil {
-				return scanErr
-			}
-			sparkline = append(sparkline, v)
-		}
-		return rows.Err()
-	})
+	`, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes sparkline", err, cfg)
 		return
 	}
+	defer sparkRows.Close()
 
-	series := make([]usageSeries, 0)
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkline := make([]int64, 0, len(dates))
+	for sparkRows.Next() {
+		var v int64
+		if scanErr := sparkRows.Scan(&v); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes sparkline", scanErr, cfg)
+			return
+		}
+		sparkline = append(sparkline, v)
+	}
+	if err := sparkRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes sparkline", err, cfg)
+		return
+	}
+
+	seriesRows, err := db.QueryContext(r.Context(), `
 WITH daily_usage AS (
 	SELECT
 		n.uuid, n.name, n.country_code,
@@ -234,7 +232,7 @@ WITH daily_usage AS (
 		SUM(h.total_bytes) AS bytes
 	FROM nodes n
 	INNER JOIN nodes_usage_history h ON h.node_uuid = n.uuid
-	WHERE h.created_at >= ? AND h.created_at <= ?
+	WHERE h.created_at >= $1 AND h.created_at <= $2
 	GROUP BY n.uuid, n.name, n.country_code, DATE_TRUNC('day', h.created_at)
 ),
 nodes_with_totals AS (
@@ -246,58 +244,60 @@ SELECT
 	nt.uuid, nt.name, nt.country_code, nt.total_bytes,
 	ARRAY_AGG(COALESCE(du.bytes, 0) ORDER BY d.ord) AS data
 FROM nodes_with_totals nt
-CROSS JOIN unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+CROSS JOIN unnest($3::date[]) WITH ORDINALITY AS d(date, ord)
 LEFT JOIN daily_usage du ON du.uuid = nt.uuid AND du.date = d.date
 GROUP BY nt.uuid, nt.name, nt.country_code, nt.total_bytes
 ORDER BY nt.total_bytes DESC
-		`, startDate, endDate, pgDateArrayLiteral(dates))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var s usageSeries
-			var dataRaw string
-			if scanErr := rows.Scan(&s.UUID, &s.Name, &s.CountryCode, &s.Total, &dataRaw); scanErr != nil {
-				return scanErr
-			}
-			s.Color = colorFromUUID(s.UUID)
-			s.Data = parsePgBigintArray(dataRaw)
-			series = append(series, s)
-		}
-		return rows.Err()
-	})
+	`, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
 		return
 	}
+	defer seriesRows.Close()
 
-	topNodes := make([]topNode, 0)
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	series := make([]usageSeries, 0)
+	for seriesRows.Next() {
+		var s usageSeries
+		var dataRaw string
+		if scanErr := seriesRows.Scan(&s.UUID, &s.Name, &s.CountryCode, &s.Total, &dataRaw); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes usage", scanErr, cfg)
+			return
+		}
+		s.Color = colorFromUUID(s.UUID)
+		s.Data = parsePgBigintArray(dataRaw)
+		series = append(series, s)
+	}
+	if err := seriesRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
+		return
+	}
+
+	topRows, err := db.QueryContext(r.Context(), `
 SELECT n.uuid, n.name, n.country_code, COALESCE(SUM(h.total_bytes), 0) AS total
 FROM nodes n
 INNER JOIN nodes_usage_history h ON h.node_uuid = n.uuid
-WHERE h.created_at >= ? AND h.created_at <= ?
+WHERE h.created_at >= $1 AND h.created_at <= $2
 GROUP BY n.uuid, n.name, n.country_code
 ORDER BY total DESC
-LIMIT ?
-		`, startDate, endDate, topLimit)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var t topNode
-			if scanErr := rows.Scan(&t.UUID, &t.Name, &t.CountryCode, &t.Total); scanErr != nil {
-				return scanErr
-			}
-			t.Color = colorFromUUID(t.UUID)
-			topNodes = append(topNodes, t)
-		}
-		return rows.Err()
-	})
+LIMIT $3
+	`, startDate, endDate, topLimit)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top nodes", err, cfg)
+		return
+	}
+	defer topRows.Close()
+
+	topNodes := make([]topNode, 0)
+	for topRows.Next() {
+		var t topNode
+		if scanErr := topRows.Scan(&t.UUID, &t.Name, &t.CountryCode, &t.Total); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan top nodes", scanErr, cfg)
+			return
+		}
+		t.Color = colorFromUUID(t.UUID)
+		topNodes = append(topNodes, t)
+	}
+	if err := topRows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top nodes", err, cfg)
 		return
 	}
@@ -312,7 +312,7 @@ LIMIT ?
 	})
 }
 
-func handleGetNodeUsersUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
+func handleGetNodeUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, nodeUUID string) {
 	startDate, endDate, dates, ok := parseDateRange(w, r)
 	if !ok {
 		return
@@ -320,9 +320,7 @@ func handleGetNodeUsersUsage(w http.ResponseWriter, r *http.Request, manager *db
 	topLimit := parsePositiveIntWithDefault(r.URL.Query().Get("topUsersLimit"), 100)
 
 	var nodeID int64
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = ?`, nodeUUID).Scan(&nodeID)
-	})
+	err := db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = $1`, nodeUUID).Scan(&nodeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			shared.WriteJSONError(w, http.StatusNotFound, "node not found")
@@ -332,68 +330,68 @@ func handleGetNodeUsersUsage(w http.ResponseWriter, r *http.Request, manager *db
 		return
 	}
 
-	sparkline := make([]int64, 0, len(dates))
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkRows, err := db.QueryContext(r.Context(), `
 WITH daily_traffic AS (
 	SELECT created_at::date AS date, SUM(total_bytes) AS bytes
 	FROM nodes_user_usage_history
-	WHERE node_id = ? AND created_at >= ?::date AND created_at <= ?::date
+	WHERE node_id = $1 AND created_at >= $2::date AND created_at <= $3::date
 	GROUP BY created_at
 )
 SELECT COALESCE(dt.bytes, 0) AS value
-FROM unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+FROM unnest($4::date[]) WITH ORDINALITY AS d(date, ord)
 LEFT JOIN daily_traffic dt ON dt.date = d.date::date
 ORDER BY d.ord
-		`, nodeID, startDate, endDate, pgDateArrayLiteral(dates))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var v int64
-			if scanErr := rows.Scan(&v); scanErr != nil {
-				return scanErr
-			}
-			sparkline = append(sparkline, v)
-		}
-		return rows.Err()
-	})
+	`, nodeID, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node users sparkline", err, cfg)
 		return
 	}
+	defer sparkRows.Close()
 
-	topUsers := make([]topUser, 0)
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkline := make([]int64, 0, len(dates))
+	for sparkRows.Next() {
+		var v int64
+		if scanErr := sparkRows.Scan(&v); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan node users sparkline", scanErr, cfg)
+			return
+		}
+		sparkline = append(sparkline, v)
+	}
+	if err := sparkRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node users sparkline", err, cfg)
+		return
+	}
+
+	topRows, err := db.QueryContext(r.Context(), `
 SELECT u.uuid, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total
 FROM users u
 INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.t_id
-WHERE nuh.node_id = ? AND nuh.created_at >= ? AND nuh.created_at <= ?
+WHERE nuh.node_id = $1 AND nuh.created_at >= $2 AND nuh.created_at <= $3
 GROUP BY u.uuid, u.username
 ORDER BY total DESC
-LIMIT ?
-		`, nodeID, startDate, endDate, topLimit)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var userUUID, username string
-			var total int64
-			if scanErr := rows.Scan(&userUUID, &username, &total); scanErr != nil {
-				return scanErr
-			}
-			topUsers = append(topUsers, topUser{
-				Color:    colorFromUUID(userUUID),
-				Username: username,
-				Total:    total,
-			})
-		}
-		return rows.Err()
-	})
+LIMIT $4
+	`, nodeID, startDate, endDate, topLimit)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		return
+	}
+	defer topRows.Close()
+
+	topUsers := make([]topUser, 0)
+	for topRows.Next() {
+		var userUUID, username string
+		var total int64
+		if scanErr := topRows.Scan(&userUUID, &username, &total); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan top users", scanErr, cfg)
+			return
+		}
+		topUsers = append(topUsers, topUser{
+			Color:    colorFromUUID(userUUID),
+			Username: username,
+			Total:    total,
+		})
+	}
+	if err := topRows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
 		return
 	}
@@ -411,7 +409,7 @@ type getNodesUsersUsageRequest struct {
 	NodesUUIDs []string `json:"nodesUuids"`
 }
 
-func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	startDate, endDate, dates, ok := parseDateRange(w, r)
 	if !ok {
 		return
@@ -428,23 +426,23 @@ func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
-	var nodeIDs []int64
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `SELECT id FROM nodes WHERE uuid = ANY(?)`, req.NodesUUIDs)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id int64
-			if scanErr := rows.Scan(&id); scanErr != nil {
-				return scanErr
-			}
-			nodeIDs = append(nodeIDs, id)
-		}
-		return rows.Err()
-	})
+	nodeRows, err := db.QueryContext(r.Context(), `SELECT id FROM nodes WHERE uuid = ANY($1)`, req.NodesUUIDs)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		return
+	}
+	defer nodeRows.Close()
+
+	var nodeIDs []int64
+	for nodeRows.Next() {
+		var id int64
+		if scanErr := nodeRows.Scan(&id); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan node ID", scanErr, cfg)
+			return
+		}
+		nodeIDs = append(nodeIDs, id)
+	}
+	if err := nodeRows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
 		return
 	}
@@ -453,68 +451,68 @@ func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, manager *d
 		return
 	}
 
-	sparkline := make([]int64, 0, len(dates))
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkRows, err := db.QueryContext(r.Context(), `
 WITH daily_traffic AS (
 	SELECT created_at::date AS date, SUM(total_bytes) AS bytes
 	FROM nodes_user_usage_history
-	WHERE node_id = ANY(?) AND created_at >= ?::date AND created_at <= ?::date
+	WHERE node_id = ANY($1) AND created_at >= $2::date AND created_at <= $3::date
 	GROUP BY created_at
 )
 SELECT COALESCE(dt.bytes, 0) AS value
-FROM unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+FROM unnest($4::date[]) WITH ORDINALITY AS d(date, ord)
 LEFT JOIN daily_traffic dt ON dt.date = d.date::date
 ORDER BY d.ord
-		`, nodeIDs, startDate, endDate, pgDateArrayLiteral(dates))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var v int64
-			if scanErr := rows.Scan(&v); scanErr != nil {
-				return scanErr
-			}
-			sparkline = append(sparkline, v)
-		}
-		return rows.Err()
-	})
+	`, nodeIDs, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes users sparkline", err, cfg)
 		return
 	}
+	defer sparkRows.Close()
 
-	topUsers := make([]topUser, 0)
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkline := make([]int64, 0, len(dates))
+	for sparkRows.Next() {
+		var v int64
+		if scanErr := sparkRows.Scan(&v); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes users sparkline", scanErr, cfg)
+			return
+		}
+		sparkline = append(sparkline, v)
+	}
+	if err := sparkRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes users sparkline", err, cfg)
+		return
+	}
+
+	topRows, err := db.QueryContext(r.Context(), `
 SELECT u.uuid, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total
 FROM users u
 INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.t_id
-WHERE nuh.node_id = ANY(?) AND nuh.created_at >= ? AND nuh.created_at <= ?
+WHERE nuh.node_id = ANY($1) AND nuh.created_at >= $2 AND nuh.created_at <= $3
 GROUP BY u.uuid, u.username
 ORDER BY total DESC
-LIMIT ?
-		`, nodeIDs, startDate, endDate, topLimit)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var userUUID, username string
-			var total int64
-			if scanErr := rows.Scan(&userUUID, &username, &total); scanErr != nil {
-				return scanErr
-			}
-			topUsers = append(topUsers, topUser{
-				Color:    colorFromUUID(userUUID),
-				Username: username,
-				Total:    total,
-			})
-		}
-		return rows.Err()
-	})
+LIMIT $4
+	`, nodeIDs, startDate, endDate, topLimit)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		return
+	}
+	defer topRows.Close()
+
+	topUsers := make([]topUser, 0)
+	for topRows.Next() {
+		var userUUID, username string
+		var total int64
+		if scanErr := topRows.Scan(&userUUID, &username, &total); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan top users", scanErr, cfg)
+			return
+		}
+		topUsers = append(topUsers, topUser{
+			Color:    colorFromUUID(userUUID),
+			Username: username,
+			Total:    total,
+		})
+	}
+	if err := topRows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
 		return
 	}
@@ -528,7 +526,7 @@ LIMIT ?
 	})
 }
 
-func handleGetUserUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+func handleGetUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID string) {
 	startDate, endDate, dates, ok := parseDateRange(w, r)
 	if !ok {
 		return
@@ -536,9 +534,7 @@ func handleGetUserUsage(w http.ResponseWriter, r *http.Request, manager *dbmanag
 	topLimit := parsePositiveIntWithDefault(r.URL.Query().Get("topNodesLimit"), 20)
 
 	var userID int64
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, userUUID).Scan(&userID)
-	})
+	err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			shared.WriteJSONError(w, http.StatusNotFound, "user not found")
@@ -548,41 +544,39 @@ func handleGetUserUsage(w http.ResponseWriter, r *http.Request, manager *dbmanag
 		return
 	}
 
-	sparkline := make([]int64, 0, len(dates))
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkRows, err := db.QueryContext(r.Context(), `
 WITH daily_traffic AS (
 	SELECT created_at::date AS date, SUM(total_bytes) AS bytes
 	FROM nodes_user_usage_history
-	WHERE user_id = ? AND created_at >= ?::date AND created_at <= ?::date
+	WHERE user_id = $1 AND created_at >= $2::date AND created_at <= $3::date
 	GROUP BY created_at
 )
 SELECT COALESCE(dt.bytes, 0) AS value
-FROM unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+FROM unnest($4::date[]) WITH ORDINALITY AS d(date, ord)
 LEFT JOIN daily_traffic dt ON dt.date = d.date::date
 ORDER BY d.ord
-		`, userID, startDate, endDate, pgDateArrayLiteral(dates))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var v int64
-			if scanErr := rows.Scan(&v); scanErr != nil {
-				return scanErr
-			}
-			sparkline = append(sparkline, v)
-		}
-		return rows.Err()
-	})
+	`, userID, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user sparkline", err, cfg)
 		return
 	}
+	defer sparkRows.Close()
 
-	series := make([]usageSeries, 0)
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	sparkline := make([]int64, 0, len(dates))
+	for sparkRows.Next() {
+		var v int64
+		if scanErr := sparkRows.Scan(&v); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan user sparkline", scanErr, cfg)
+			return
+		}
+		sparkline = append(sparkline, v)
+	}
+	if err := sparkRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user sparkline", err, cfg)
+		return
+	}
+
+	seriesRows, err := db.QueryContext(r.Context(), `
 WITH daily_usage AS (
 	SELECT
 		n.uuid, n.name, n.country_code,
@@ -590,7 +584,7 @@ WITH daily_usage AS (
 		SUM(nuh.total_bytes) AS bytes
 	FROM nodes n
 	INNER JOIN nodes_user_usage_history nuh ON nuh.node_id = n.id
-	WHERE nuh.user_id = ? AND nuh.created_at >= ?::date AND nuh.created_at <= ?::date
+	WHERE nuh.user_id = $1 AND nuh.created_at >= $2::date AND nuh.created_at <= $3::date
 	GROUP BY n.uuid, n.name, n.country_code, nuh.created_at
 ),
 nodes_with_totals AS (
@@ -602,58 +596,60 @@ SELECT
 	nt.uuid, nt.name, nt.country_code, nt.total_bytes,
 	ARRAY_AGG(COALESCE(du.bytes, 0) ORDER BY d.ord) AS data
 FROM nodes_with_totals nt
-CROSS JOIN unnest(?::date[]) WITH ORDINALITY AS d(date, ord)
+CROSS JOIN unnest($4::date[]) WITH ORDINALITY AS d(date, ord)
 LEFT JOIN daily_usage du ON du.uuid = nt.uuid AND du.date = d.date::date
 GROUP BY nt.uuid, nt.name, nt.country_code, nt.total_bytes
 ORDER BY nt.total_bytes DESC
-		`, userID, startDate, endDate, pgDateArrayLiteral(dates))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var s usageSeries
-			var dataRaw string
-			if scanErr := rows.Scan(&s.UUID, &s.Name, &s.CountryCode, &s.Total, &dataRaw); scanErr != nil {
-				return scanErr
-			}
-			s.Color = colorFromUUID(s.UUID)
-			s.Data = parsePgBigintArray(dataRaw)
-			series = append(series, s)
-		}
-		return rows.Err()
-	})
+	`, userID, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user nodes series", err, cfg)
 		return
 	}
+	defer seriesRows.Close()
 
-	topNodes := make([]topNode, 0)
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	series := make([]usageSeries, 0)
+	for seriesRows.Next() {
+		var s usageSeries
+		var dataRaw string
+		if scanErr := seriesRows.Scan(&s.UUID, &s.Name, &s.CountryCode, &s.Total, &dataRaw); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan user nodes series", scanErr, cfg)
+			return
+		}
+		s.Color = colorFromUUID(s.UUID)
+		s.Data = parsePgBigintArray(dataRaw)
+		series = append(series, s)
+	}
+	if err := seriesRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user nodes series", err, cfg)
+		return
+	}
+
+	topRows, err := db.QueryContext(r.Context(), `
 SELECT n.uuid, n.name, n.country_code, COALESCE(SUM(nuh.total_bytes), 0) AS total
 FROM nodes n
 INNER JOIN nodes_user_usage_history nuh ON nuh.node_id = n.id
-WHERE nuh.user_id = ? AND nuh.created_at >= ? AND nuh.created_at <= ?
+WHERE nuh.user_id = $1 AND nuh.created_at >= $2 AND nuh.created_at <= $3
 GROUP BY n.uuid, n.name, n.country_code
 ORDER BY total DESC
-LIMIT ?
-		`, userID, startDate, endDate, topLimit)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var t topNode
-			if scanErr := rows.Scan(&t.UUID, &t.Name, &t.CountryCode, &t.Total); scanErr != nil {
-				return scanErr
-			}
-			t.Color = colorFromUUID(t.UUID)
-			topNodes = append(topNodes, t)
-		}
-		return rows.Err()
-	})
+LIMIT $4
+	`, userID, startDate, endDate, topLimit)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user top nodes", err, cfg)
+		return
+	}
+	defer topRows.Close()
+
+	topNodes := make([]topNode, 0)
+	for topRows.Next() {
+		var t topNode
+		if scanErr := topRows.Scan(&t.UUID, &t.Name, &t.CountryCode, &t.Total); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan user top nodes", scanErr, cfg)
+			return
+		}
+		t.Color = colorFromUUID(t.UUID)
+		topNodes = append(topNodes, t)
+	}
+	if err := topRows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user top nodes", err, cfg)
 		return
 	}
@@ -668,14 +664,12 @@ LIMIT ?
 	})
 }
 
-func handleGetLegacyNodeUsersUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, nodeUUID string) {
+func handleGetLegacyNodeUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, nodeUUID string) {
 	startDate, endDate, _, ok := parseDateRange(w, r)
 	if !ok {
 		return
 	}
-	items := make([]legacyNodeUserUsage, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	rows, err := db.QueryContext(r.Context(), `
 SELECT
 	DATE(h.created_at) AS date,
 	n.uuid AS node_uuid,
@@ -685,38 +679,38 @@ SELECT
 FROM nodes_user_usage_history h
 JOIN users u ON h.user_id = u.t_id
 JOIN nodes n ON h.node_id = n.id
-WHERE n.uuid = ? AND h.created_at >= ? AND h.created_at <= ?
+WHERE n.uuid = $1 AND h.created_at >= $2 AND h.created_at <= $3
 GROUP BY DATE(h.created_at), n.uuid, u.uuid, u.username
 ORDER BY DATE(h.created_at) ASC
-		`, nodeUUID, startDate, endDate)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var item legacyNodeUserUsage
-			if scanErr := rows.Scan(&item.Date, &item.NodeUUID, &item.UserUUID, &item.Username, &item.Total); scanErr != nil {
-				return scanErr
-			}
-			items = append(items, item)
-		}
-		return rows.Err()
-	})
+	`, nodeUUID, startDate, endDate)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy node users usage", err, cfg)
+		return
+	}
+	defer rows.Close()
+
+	items := make([]legacyNodeUserUsage, 0)
+	for rows.Next() {
+		var item legacyNodeUserUsage
+		if scanErr := rows.Scan(&item.Date, &item.NodeUUID, &item.UserUUID, &item.Username, &item.Total); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan legacy node users usage", scanErr, cfg)
+			return
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy node users usage", err, cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": items})
 }
 
-func handleGetLegacyUserUsage(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+func handleGetLegacyUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID string) {
 	startDate, endDate, _, ok := parseDateRange(w, r)
 	if !ok {
 		return
 	}
-	items := make([]legacyUserUsage, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(r.Context(), `
+	rows, err := db.QueryContext(r.Context(), `
 SELECT
 	DATE(h.created_at) AS date,
 	u.uuid AS user_uuid,
@@ -727,24 +721,26 @@ SELECT
 FROM nodes_user_usage_history h
 JOIN nodes n ON h.node_id = n.id
 JOIN users u ON h.user_id = u.t_id
-WHERE u.uuid = ? AND h.created_at >= ? AND h.created_at <= ?
+WHERE u.uuid = $1 AND h.created_at >= $2 AND h.created_at <= $3
 GROUP BY DATE(h.created_at), u.uuid, n.uuid, n.name, n.country_code
 ORDER BY DATE(h.created_at) ASC
-		`, userUUID, startDate, endDate)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var item legacyUserUsage
-			if scanErr := rows.Scan(&item.Date, &item.UserUUID, &item.NodeUUID, &item.NodeName, &item.CountryCode, &item.Total); scanErr != nil {
-				return scanErr
-			}
-			items = append(items, item)
-		}
-		return rows.Err()
-	})
+	`, userUUID, startDate, endDate)
 	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy user usage", err, cfg)
+		return
+	}
+	defer rows.Close()
+
+	items := make([]legacyUserUsage, 0)
+	for rows.Next() {
+		var item legacyUserUsage
+		if scanErr := rows.Scan(&item.Date, &item.UserUUID, &item.NodeUUID, &item.NodeName, &item.CountryCode, &item.Total); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan legacy user usage", scanErr, cfg)
+			return
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy user usage", err, cfg)
 		return
 	}

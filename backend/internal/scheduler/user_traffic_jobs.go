@@ -33,7 +33,7 @@ func (s *Scheduler) trafficResetMonth(ctx context.Context) error {
 }
 
 func (s *Scheduler) trafficResetByStrategy(ctx context.Context, strategy string) error {
-	result, err := userwatchdog.ResetTrafficByStrategy(ctx, s.manager, strategy)
+	result, err := userwatchdog.ResetTrafficByStrategy(ctx, s.db, strategy)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (s *Scheduler) trafficResetByStrategy(ctx context.Context, strategy string)
 // srsListsCheck checks availability of all SRS rule-set URLs.
 // Runs every 5 minutes — previously managed by srslists.StartPeriodicChecker.
 func (s *Scheduler) srsListsCheck(ctx context.Context) error {
-	updated, err := srslists.CheckAndUpdateAvailability(ctx, s.manager, s.cfg)
+	updated, err := srslists.CheckAndUpdateAvailability(ctx, s.db, s.cfg)
 	if err != nil {
 		return err
 	}

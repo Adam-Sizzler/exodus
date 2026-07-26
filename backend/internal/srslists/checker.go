@@ -2,14 +2,14 @@ package srslists
 
 import (
 	"context"
+	"database/sql"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 )
 
-func StartPeriodicChecker(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, interval time.Duration) {
+func StartPeriodicChecker(ctx context.Context, wg *sync.WaitGroup, db *sql.DB, cfg *config.BackendConfig, interval time.Duration) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -20,7 +20,7 @@ func StartPeriodicChecker(ctx context.Context, wg *sync.WaitGroup, manager *dbma
 		defer ticker.Stop()
 
 		cfg.Logger.Info("SRS availability checker started", "interval", interval.String())
-		_, _ = CheckAndUpdateAvailability(ctx, manager, cfg)
+		_, _ = CheckAndUpdateAvailability(ctx, db, cfg)
 
 		for {
 			select {
@@ -28,7 +28,7 @@ func StartPeriodicChecker(ctx context.Context, wg *sync.WaitGroup, manager *dbma
 				cfg.Logger.Info("SRS availability checker stopped")
 				return
 			case <-ticker.C:
-				if _, err := CheckAndUpdateAvailability(ctx, manager, cfg); err != nil {
+				if _, err := CheckAndUpdateAvailability(ctx, db, cfg); err != nil {
 					cfg.Logger.Warn("Periodic SRS availability check failed", "error", err)
 				}
 			}

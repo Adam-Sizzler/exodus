@@ -1,15 +1,16 @@
 package panelsettings
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/security"
 
@@ -30,11 +31,11 @@ type APITokenRecord struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			settings, err := loadPanelSettings(manager)
+			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
@@ -47,7 +48,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 				return
 			}
-			candidateSettings, err := loadPanelSettings(manager)
+			candidateSettings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings before update", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
@@ -64,6 +65,7 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 			setClauses := make([]string, 0, len(payload))
 			args := make([]any, 0, len(payload))
 			authSettingsTouched := false
+			idx := 1
 			for key, raw := range payload {
 				column, ok := validKeys[key]
 				if !ok {
@@ -86,8 +88,9 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 				if column == "passkey_settings" || column == "oauth2_settings" || column == "password_settings" {
 					authSettingsTouched = true
 				}
-				setClauses = append(setClauses, column+" = ?")
+				setClauses = append(setClauses, fmt.Sprintf("%s = $%d", column, idx))
 				args = append(args, string(raw))
+				idx++
 			}
 
 			if len(setClauses) == 0 {
@@ -101,34 +104,32 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 				}
 			}
 
-			err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-				if _, execErr := db.Exec(`
-					INSERT INTO exodus_settings (
-						id, passkey_settings, oauth2_settings, password_settings, branding_settings
-					) VALUES (
-						1, ?, ?, ?, ?
-					)
-					ON CONFLICT (id) DO NOTHING
-				`,
-					`{"rpId":null,"origin":null,"enabled":false}`,
-					`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
-					`{"enabled":true}`,
-					`{"title":"EXODUS","logoUrl":null}`,
-				); execErr != nil {
-					return execErr
-				}
-
-				query := "UPDATE exodus_settings SET " + strings.Join(setClauses, ", ") + " WHERE id = 1"
-				_, execErr := db.Exec(query, args...)
-				return execErr
-			})
-			if err != nil {
-				cfg.Logger.Error("Failed to update panel settings", "error", err)
+			if _, execErr := db.ExecContext(r.Context(), `
+				INSERT INTO exodus_settings (
+					id, passkey_settings, oauth2_settings, password_settings, branding_settings
+				) VALUES (
+					1, $1, $2, $3, $4
+				)
+				ON CONFLICT (id) DO NOTHING
+			`,
+				`{"rpId":null,"origin":null,"enabled":false}`,
+				`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
+				`{"enabled":true}`,
+				`{"title":"EXODUS","logoUrl":null}`,
+			); execErr != nil {
+				cfg.Logger.Error("Failed to seed panel settings", "error", execErr)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
 				return
 			}
 
-			settings, err := loadPanelSettings(manager)
+			query := "UPDATE exodus_settings SET " + strings.Join(setClauses, ", ") + " WHERE id = 1"
+			if _, execErr := db.ExecContext(r.Context(), query, args...); execErr != nil {
+				cfg.Logger.Error("Failed to update panel settings", "error", execErr)
+				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
+				return
+			}
+
+			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings after update", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated panel settings")
@@ -141,11 +142,11 @@ func PanelSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 	}
 }
 
-func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			tokens, err := loadAPITokens(manager)
+			tokens, err := loadAPITokens(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load api tokens", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load api tokens")
@@ -204,20 +205,15 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 				Scopes:   scopes,
 			}
 
-			err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-				_, execErr := db.Exec(`
-					INSERT INTO api_tokens (uuid, name, expire_at, scopes)
-					VALUES (?, ?, ?, ?::text[])
-				`, record.UUID, record.Name, record.ExpireAt, postgresTextArrayLiteral(record.Scopes))
-				return execErr
-			})
-			if err != nil {
-				cfg.Logger.Error("Failed to insert api token", "error", err)
+			if _, execErr := db.ExecContext(r.Context(), `
+				INSERT INTO api_tokens (uuid, name, expire_at, scopes)
+				VALUES ($1, $2, $3, $4::text[])
+			`, record.UUID, record.Name, record.ExpireAt, postgresTextArrayLiteral(record.Scopes)); execErr != nil {
+				cfg.Logger.Error("Failed to insert api token", "error", execErr)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to save api token")
 				return
 			}
 
-			// Return full token only in create response.
 			shared.WriteJSON(w, http.StatusCreated, map[string]any{
 				"response": toAPITokenResponse(record, true),
 			})
@@ -227,7 +223,7 @@ func PanelAPITokensHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 	}
 }
 
-func PanelAPITokenScopesHandler(_ *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func PanelAPITokenScopesHandler(_ *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -242,13 +238,13 @@ func PanelAPITokenScopesHandler(_ *dbmanager.DatabaseManager, cfg *config.Backen
 	}
 }
 
-func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func PanelAPITokenByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tokens/"))
 		if tokenUUID == "" {
 			switch r.Method {
 			case http.MethodGet, http.MethodPost:
-				PanelAPITokensHandler(manager, cfg)(w, r)
+				PanelAPITokensHandler(db, cfg)(w, r)
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
@@ -264,21 +260,15 @@ func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 			return
 		}
 
-		var rowsAffected int64
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			result, execErr := db.Exec("DELETE FROM api_tokens WHERE uuid = ?", tokenUUID)
-			if execErr != nil {
-				return execErr
-			}
-			ra, execErr := result.RowsAffected()
-			if execErr != nil {
-				return execErr
-			}
-			rowsAffected = ra
-			return nil
-		})
-		if err != nil {
-			cfg.Logger.Error("Failed to delete api token", "uuid", tokenUUID, "error", err)
+		result, execErr := db.ExecContext(r.Context(), "DELETE FROM api_tokens WHERE uuid = $1", tokenUUID)
+		if execErr != nil {
+			cfg.Logger.Error("Failed to delete api token", "uuid", tokenUUID, "error", execErr)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete api token")
+			return
+		}
+		rowsAffected, execErr := result.RowsAffected()
+		if execErr != nil {
+			cfg.Logger.Error("Failed to read rows affected for api token deletion", "uuid", tokenUUID, "error", execErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete api token")
 			return
 		}
@@ -291,11 +281,11 @@ func PanelAPITokenByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.
 	}
 }
 
-func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func ExodusSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			settings, err := loadPanelSettings(manager)
+			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load exodus settings", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load settings")
@@ -326,7 +316,6 @@ func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 				return
 			}
 
-			// Reuse existing update logic through PanelSettingsHandler payload format.
 			body, _ := json.Marshal(adapted)
 			r2 := r.Clone(r.Context())
 			r2.Method = http.MethodPatch
@@ -334,14 +323,14 @@ func ExodusSettingsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 			r2.Body = ioNopCloser{strings.NewReader(string(body))}
 
 			rec := responseRecorder{header: http.Header{}}
-			PanelSettingsHandler(manager, cfg)(&rec, r2)
+			PanelSettingsHandler(db, cfg)(&rec, r2)
 			if rec.status >= 400 {
 				w.WriteHeader(rec.status)
 				_, _ = w.Write(rec.body)
 				return
 			}
 
-			settings, err := loadPanelSettings(manager)
+			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load exodus settings after update", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated settings")
@@ -397,7 +386,6 @@ func toExodusSettingsResponse(settings map[string]any) map[string]any {
 	}
 }
 
-// local lightweight helpers to internally call handlers without importing httptest.
 type ioNopCloser struct {
 	*strings.Reader
 }
@@ -420,7 +408,7 @@ func (r *responseRecorder) Write(p []byte) (int, error) {
 }
 func (r *responseRecorder) WriteHeader(statusCode int) { r.status = statusCode }
 
-func loadPanelSettings(manager *dbmanager.DatabaseManager) (map[string]any, error) {
+func loadPanelSettings(ctx context.Context, db *sql.DB) (map[string]any, error) {
 	settings := map[string]any{
 		"passkey_settings":  map[string]any{"rpId": nil, "origin": nil, "enabled": false},
 		"oauth2_settings":   defaultOAuth2Settings(),
@@ -428,65 +416,60 @@ func loadPanelSettings(manager *dbmanager.DatabaseManager) (map[string]any, erro
 		"branding_settings": map[string]any{"title": "EXODUS", "logoUrl": nil},
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRow(`
-			SELECT passkey_settings, oauth2_settings, password_settings, branding_settings
-			FROM exodus_settings
-			WHERE id = 1
-			LIMIT 1
-		`)
+	row := db.QueryRowContext(ctx, `
+		SELECT passkey_settings, oauth2_settings, password_settings, branding_settings
+		FROM exodus_settings
+		WHERE id = 1
+		LIMIT 1
+	`)
 
-		var passkeyRaw, oauth2Raw, passwordRaw, brandingRaw sql.NullString
-		if scanErr := row.Scan(&passkeyRaw, &oauth2Raw, &passwordRaw, &brandingRaw); scanErr != nil {
-			if errors.Is(scanErr, sql.ErrNoRows) {
-				return nil
-			}
-			return scanErr
+	var passkeyRaw, oauth2Raw, passwordRaw, brandingRaw sql.NullString
+	if scanErr := row.Scan(&passkeyRaw, &oauth2Raw, &passwordRaw, &brandingRaw); scanErr != nil {
+		if errors.Is(scanErr, sql.ErrNoRows) {
+			return settings, nil
 		}
+		return nil, scanErr
+	}
 
-		mergeJSONObject(settings, "passkey_settings", passkeyRaw.String)
-		mergeJSONObject(settings, "oauth2_settings", oauth2Raw.String)
-		mergeJSONObject(settings, "password_settings", passwordRaw.String)
-		mergeJSONObject(settings, "branding_settings", brandingRaw.String)
-		return nil
-	})
-
-	return settings, err
+	mergeJSONObject(settings, "passkey_settings", passkeyRaw.String)
+	mergeJSONObject(settings, "oauth2_settings", oauth2Raw.String)
+	mergeJSONObject(settings, "password_settings", passwordRaw.String)
+	mergeJSONObject(settings, "branding_settings", brandingRaw.String)
+	return settings, nil
 }
 
-func loadAPITokens(manager *dbmanager.DatabaseManager) ([]APITokenRecord, error) {
+func loadAPITokens(ctx context.Context, db *sql.DB) ([]APITokenRecord, error) {
+	rows, queryErr := db.QueryContext(ctx, `
+		SELECT
+			uuid,
+			name,
+			expire_at,
+			array_to_json(COALESCE(scopes, ARRAY['*']::text[]))::text AS scopes,
+			created_at,
+			updated_at
+		FROM api_tokens
+		ORDER BY created_at DESC
+	`)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+	defer rows.Close()
+
 	tokens := make([]APITokenRecord, 0)
-
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, queryErr := db.Query(`
-			SELECT
-				uuid,
-				name,
-				expire_at,
-				array_to_json(COALESCE(scopes, ARRAY['*']::text[]))::text AS scopes,
-				created_at,
-				updated_at
-			FROM api_tokens
-			ORDER BY created_at DESC
-		`)
-		if queryErr != nil {
-			return queryErr
+	for rows.Next() {
+		var row APITokenRecord
+		var scopesRaw string
+		if scanErr := rows.Scan(&row.UUID, &row.Name, &row.ExpireAt, &scopesRaw, &row.CreatedAt, &row.UpdatedAt); scanErr != nil {
+			return nil, scanErr
 		}
-		defer rows.Close()
+		row.Scopes = parseAPITokenScopes(scopesRaw)
+		tokens = append(tokens, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-		for rows.Next() {
-			var row APITokenRecord
-			var scopesRaw string
-			if scanErr := rows.Scan(&row.UUID, &row.Name, &row.ExpireAt, &scopesRaw, &row.CreatedAt, &row.UpdatedAt); scanErr != nil {
-				return scanErr
-			}
-			row.Scopes = parseAPITokenScopes(scopesRaw)
-			tokens = append(tokens, row)
-		}
-		return rows.Err()
-	})
-
-	return tokens, err
+	return tokens, nil
 }
 
 func mergeJSONObject(target map[string]any, key, raw string) {

@@ -230,9 +230,11 @@ func validateBulkUpdateUsersFields(fields bulkUpdateUsersFields) error {
 func buildBulkUpdateUserClauses(fields bulkUpdateUsersFields) ([]string, []any) {
 	clauses := make([]string, 0)
 	args := make([]any, 0)
+	idx := 1
 	add := func(column string, value any) {
-		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
+		clauses = append(clauses, fmt.Sprintf("%s = $%d", column, idx))
 		args = append(args, value)
+		idx++
 	}
 
 	if fields.Status != nil {

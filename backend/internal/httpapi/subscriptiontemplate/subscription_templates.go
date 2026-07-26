@@ -12,7 +12,6 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/db"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
@@ -26,7 +25,6 @@ const (
 
 var subscriptionTemplateNameRegex = regexp.MustCompile(`^[A-Za-z0-9_\s-]+$`)
 
-// SubscriptionTemplate represents a subscription template response.
 type SubscriptionTemplate struct {
 	UUID               string          `json:"uuid"`
 	ViewPosition       int             `json:"viewPosition"`
@@ -75,22 +73,22 @@ type subscriptionTemplateRecord struct {
 	TemplateJSON json.RawMessage
 }
 
-func SubscriptionTemplatesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionTemplatesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionTemplates(w, r, manager, cfg)
+			handleGetSubscriptionTemplates(w, r, db, cfg)
 		case http.MethodPost:
-			handleCreateSubscriptionTemplate(w, r, manager, cfg)
+			handleCreateSubscriptionTemplate(w, r, db, cfg)
 		case http.MethodPatch:
-			handleUpdateSubscriptionTemplate(w, r, manager, cfg)
+			handleUpdateSubscriptionTemplate(w, r, db, cfg)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func SubscriptionTemplatesActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionTemplatesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -101,24 +99,24 @@ func SubscriptionTemplatesActionsHandler(manager *dbmanager.DatabaseManager, cfg
 		path = strings.Trim(path, "/")
 		switch path {
 		case "reorder":
-			handleReorderSubscriptionTemplates(w, r, manager, cfg)
+			handleReorderSubscriptionTemplates(w, r, db, cfg)
 		default:
 			http.NotFound(w, r)
 		}
 	}
 }
 
-func SubscriptionTemplateByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionTemplateByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uuidStr := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, subscriptionTemplatesBasePath+"/"))
 		if uuidStr == "" {
 			switch r.Method {
 			case http.MethodGet:
-				handleGetSubscriptionTemplates(w, r, manager, cfg)
+				handleGetSubscriptionTemplates(w, r, db, cfg)
 			case http.MethodPost:
-				handleCreateSubscriptionTemplate(w, r, manager, cfg)
+				handleCreateSubscriptionTemplate(w, r, db, cfg)
 			case http.MethodPatch:
-				handleUpdateSubscriptionTemplate(w, r, manager, cfg)
+				handleUpdateSubscriptionTemplate(w, r, db, cfg)
 			default:
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			}
@@ -131,46 +129,44 @@ func SubscriptionTemplateByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *
 
 		switch r.Method {
 		case http.MethodGet:
-			handleGetSubscriptionTemplateByUUID(w, r, manager, cfg, uuidStr)
+			handleGetSubscriptionTemplateByUUID(w, r, db, cfg, uuidStr)
 		case http.MethodDelete:
-			handleDeleteSubscriptionTemplate(w, r, manager, cfg, uuidStr)
+			handleDeleteSubscriptionTemplate(w, r, db, cfg, uuidStr)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	templates := make([]SubscriptionTemplate, 0)
-
-	err := manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		rows, err := dbConn.QueryContext(r.Context(), `
-			SELECT uuid, view_position, name, template_type
-			FROM subscription_templates
-			ORDER BY view_position ASC, template_type ASC`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var rec subscriptionTemplateRecord
-			if scanErr := rows.Scan(&rec.UUID, &rec.ViewPosition, &rec.Name, &rec.TemplateType); scanErr != nil {
-				return scanErr
-			}
-			templates = append(templates, SubscriptionTemplate{
-				UUID:               rec.UUID,
-				ViewPosition:       rec.ViewPosition,
-				Name:               rec.Name,
-				TemplateType:       rec.TemplateType,
-				TemplateJSON:       nil,
-				EncodedTemplateYML: nil,
-			})
-		}
-		return rows.Err()
-	})
+func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig) {
+	rows, err := dbConn.QueryContext(r.Context(), `
+		SELECT uuid, view_position, name, template_type
+		FROM subscription_templates
+		ORDER BY view_position ASC, template_type ASC`)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch templates", err, cfg)
+		return
+	}
+	defer rows.Close()
+
+	templates := make([]SubscriptionTemplate, 0)
+	for rows.Next() {
+		var rec subscriptionTemplateRecord
+		if scanErr := rows.Scan(&rec.UUID, &rec.ViewPosition, &rec.Name, &rec.TemplateType); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan template", scanErr, cfg)
+			return
+		}
+		templates = append(templates, SubscriptionTemplate{
+			UUID:               rec.UUID,
+			ViewPosition:       rec.ViewPosition,
+			Name:               rec.Name,
+			TemplateType:       rec.TemplateType,
+			TemplateJSON:       nil,
+			EncodedTemplateYML: nil,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to iterate templates", err, cfg)
 		return
 	}
 
@@ -182,17 +178,13 @@ func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, mana
 	})
 }
 
-func handleGetSubscriptionTemplateByUUID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, templateUUID string) {
+func handleGetSubscriptionTemplateByUUID(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig, templateUUID string) {
 	var rec subscriptionTemplateRecord
-
-	err := manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		row := dbConn.QueryRowContext(r.Context(), `
-			SELECT uuid, view_position, name, template_type, template_yaml, template_json
-			FROM subscription_templates
-			WHERE uuid = ?`, templateUUID)
-		return scanSubscriptionTemplateRecord(row, &rec)
-	})
-	if err != nil {
+	row := dbConn.QueryRowContext(r.Context(), `
+		SELECT uuid, view_position, name, template_type, template_yaml, template_json
+		FROM subscription_templates
+		WHERE uuid = $1`, templateUUID)
+	if err := scanSubscriptionTemplateRecord(row, &rec); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
 			return
@@ -205,7 +197,7 @@ func handleGetSubscriptionTemplateByUUID(w http.ResponseWriter, r *http.Request,
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": resp})
 }
 
-func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig) {
 	var req subscriptionTemplateCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -239,53 +231,47 @@ func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 	}
 
 	newUUID := uuid.NewString()
-	var created subscriptionTemplateRecord
 
-	err := manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		viewPosition := 0
-		row := dbConn.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(view_position), 0) + 1 FROM subscription_templates`)
-		if scanErr := row.Scan(&viewPosition); scanErr != nil {
-			return scanErr
-		}
+	viewPosition := 0
+	row := dbConn.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(view_position), 0) + 1 FROM subscription_templates`)
+	if scanErr := row.Scan(&viewPosition); scanErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to query max view position", scanErr, cfg)
+		return
+	}
 
-		_, execErr := dbConn.ExecContext(r.Context(), `
-			INSERT INTO subscription_templates (
-				uuid, view_position, name, template_type, template_yaml, template_json
-			) VALUES (?, ?, ?, ?, ?, ?)`,
-			newUUID,
-			viewPosition,
-			req.Name,
-			req.TemplateType,
-			defaultTmpl.TemplateYAML,
-			defaultTmpl.TemplateJSON,
-		)
-		if execErr != nil {
-			return execErr
-		}
-
-		created = subscriptionTemplateRecord{
-			UUID:         newUUID,
-			ViewPosition: viewPosition,
-			Name:         req.Name,
-			TemplateType: req.TemplateType,
-			TemplateYAML: defaultTmpl.TemplateYAML,
-			TemplateJSON: defaultTmpl.TemplateJSON,
-		}
-		return nil
-	})
-	if err != nil {
-		if isUniqueViolation(err) {
-			shared.SendError(w, http.StatusConflict, "template name already exists for templateType", err, cfg)
+	_, execErr := dbConn.ExecContext(r.Context(), `
+		INSERT INTO subscription_templates (
+			uuid, view_position, name, template_type, template_yaml, template_json
+		) VALUES ($1, $2, $3, $4, $5, $6)`,
+		newUUID,
+		viewPosition,
+		req.Name,
+		req.TemplateType,
+		defaultTmpl.TemplateYAML,
+		defaultTmpl.TemplateJSON,
+	)
+	if execErr != nil {
+		if isUniqueViolation(execErr) {
+			shared.SendError(w, http.StatusConflict, "template name already exists for templateType", execErr, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to create template", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to create template", execErr, cfg)
 		return
+	}
+
+	created := subscriptionTemplateRecord{
+		UUID:         newUUID,
+		ViewPosition: viewPosition,
+		Name:         req.Name,
+		TemplateType: req.TemplateType,
+		TemplateYAML: defaultTmpl.TemplateYAML,
+		TemplateJSON: defaultTmpl.TemplateJSON,
 	}
 
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": mapSubscriptionTemplateRecord(created, true)})
 }
 
-func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig) {
 	var req subscriptionTemplateUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -322,114 +308,105 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 	}
 
 	var template subscriptionTemplateRecord
-	var decodedYAML *string
-
-	err := manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		row := dbConn.QueryRowContext(r.Context(), `
-			SELECT uuid, view_position, name, template_type, template_yaml, template_json
-			FROM subscription_templates
-			WHERE uuid = ?`, req.UUID)
-		if scanErr := scanSubscriptionTemplateRecord(row, &template); scanErr != nil {
-			return scanErr
-		}
-
-		isYamlTemplate := template.TemplateType == "MIHOMO" || template.TemplateType == "STASH" || template.TemplateType == "CLASH"
-		isJsonTemplate := template.TemplateType == "XRAY_JSON" || template.TemplateType == "SINGBOX"
-
-		if isYamlTemplate && req.TemplateJSON != nil {
-			return fmt.Errorf("templateJson not allowed for YAML template")
-		}
-		if isJsonTemplate && req.EncodedTemplateYML != nil {
-			return fmt.Errorf("encodedTemplateYaml not allowed for JSON template")
-		}
-
-		if req.EncodedTemplateYML != nil {
-			decoded, decodeErr := base64.StdEncoding.DecodeString(*req.EncodedTemplateYML)
-			if decodeErr != nil {
-				return decodeErr
-			}
-			decodedStr := string(decoded)
-			decodedYAML = &decodedStr
-		}
-
-		var clauses []string
-		var args []any
-		add := func(column string, value any) {
-			clauses = append(clauses, fmt.Sprintf("%s = ?", column))
-			args = append(args, value)
-		}
-
-		if req.Name != nil {
-			add("name", *req.Name)
-		}
-		if req.TemplateJSON != nil {
-			add("template_json", []byte(*req.TemplateJSON))
-		}
-		if req.EncodedTemplateYML != nil {
-			add("template_yaml", decodedYAML)
-		}
-
-		if len(clauses) == 0 {
-			return fmt.Errorf("no fields to update")
-		}
-
-		args = append(args, req.UUID)
-		query := fmt.Sprintf("UPDATE subscription_templates SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?", strings.Join(clauses, ", "))
-
-		result, execErr := dbConn.ExecContext(r.Context(), query, args...)
-		if execErr != nil {
-			return execErr
-		}
-		rowsAffected, raErr := result.RowsAffected()
-		if raErr != nil {
-			return raErr
-		}
-		if rowsAffected == 0 {
-			return sql.ErrNoRows
-		}
-
-		if req.Name != nil {
-			template.Name = *req.Name
-		}
-		if req.TemplateJSON != nil {
-			template.TemplateJSON = *req.TemplateJSON
-		}
-		if req.EncodedTemplateYML != nil {
-			template.TemplateYAML = decodedYAML
-		}
-
-		return nil
-	})
-	if err != nil {
-		var corrupt base64.CorruptInputError
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
+	row := dbConn.QueryRowContext(r.Context(), `
+		SELECT uuid, view_position, name, template_type, template_yaml, template_json
+		FROM subscription_templates
+		WHERE uuid = $1`, req.UUID)
+	if scanErr := scanSubscriptionTemplateRecord(row, &template); scanErr != nil {
+		if errors.Is(scanErr, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
-		case isUniqueViolation(err):
-			shared.SendError(w, http.StatusConflict, "template name already exists for templateType", err, cfg)
-		case strings.Contains(err.Error(), "not allowed"):
-			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		case strings.Contains(err.Error(), "no fields to update"):
-			shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
-		case errors.As(err, &corrupt):
-			shared.SendError(w, http.StatusBadRequest, "encodedTemplateYaml must be base64", err, cfg)
-		default:
-			shared.SendError(w, http.StatusInternalServerError, "update failed", err, cfg)
+			return
 		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch template", scanErr, cfg)
 		return
+	}
+
+	isYamlTemplate := template.TemplateType == "MIHOMO" || template.TemplateType == "STASH" || template.TemplateType == "CLASH"
+	isJsonTemplate := template.TemplateType == "XRAY_JSON" || template.TemplateType == "SINGBOX"
+
+	if isYamlTemplate && req.TemplateJSON != nil {
+		shared.SendError(w, http.StatusBadRequest, "templateJson not allowed for YAML template", nil, cfg)
+		return
+	}
+	if isJsonTemplate && req.EncodedTemplateYML != nil {
+		shared.SendError(w, http.StatusBadRequest, "encodedTemplateYaml not allowed for JSON template", nil, cfg)
+		return
+	}
+
+	var decodedYAML *string
+	if req.EncodedTemplateYML != nil {
+		decoded, decodeErr := base64.StdEncoding.DecodeString(*req.EncodedTemplateYML)
+		if decodeErr != nil {
+			shared.SendError(w, http.StatusBadRequest, "encodedTemplateYaml must be base64", decodeErr, cfg)
+			return
+		}
+		decodedStr := string(decoded)
+		decodedYAML = &decodedStr
+	}
+
+	var clauses []string
+	var args []any
+	idx := 1
+	add := func(column string, value any) {
+		clauses = append(clauses, fmt.Sprintf("%s = $%d", column, idx))
+		args = append(args, value)
+		idx++
+	}
+
+	if req.Name != nil {
+		add("name", *req.Name)
+	}
+	if req.TemplateJSON != nil {
+		add("template_json", []byte(*req.TemplateJSON))
+	}
+	if req.EncodedTemplateYML != nil {
+		add("template_yaml", decodedYAML)
+	}
+
+	if len(clauses) == 0 {
+		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		return
+	}
+
+	args = append(args, req.UUID)
+	query := fmt.Sprintf("UPDATE subscription_templates SET %s, updated_at = CURRENT_TIMESTAMP WHERE uuid = $%d", strings.Join(clauses, ", "), idx)
+
+	result, execErr := dbConn.ExecContext(r.Context(), query, args...)
+	if execErr != nil {
+		if isUniqueViolation(execErr) {
+			shared.SendError(w, http.StatusConflict, "template name already exists for templateType", execErr, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "update failed", execErr, cfg)
+		return
+	}
+	rowsAffected, raErr := result.RowsAffected()
+	if raErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "update failed", raErr, cfg)
+		return
+	}
+	if rowsAffected == 0 {
+		shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
+		return
+	}
+
+	if req.Name != nil {
+		template.Name = *req.Name
+	}
+	if req.TemplateJSON != nil {
+		template.TemplateJSON = *req.TemplateJSON
+	}
+	if req.EncodedTemplateYML != nil {
+		template.TemplateYAML = decodedYAML
 	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": mapSubscriptionTemplateRecord(template, true)})
 }
 
-func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, templateUUID string) {
+func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig, templateUUID string) {
 	var templateName string
-
-	err := manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		row := dbConn.QueryRowContext(r.Context(), `SELECT name FROM subscription_templates WHERE uuid = ?`, templateUUID)
-		return row.Scan(&templateName)
-	})
-	if err != nil {
+	row := dbConn.QueryRowContext(r.Context(), `SELECT name FROM subscription_templates WHERE uuid = $1`, templateUUID)
+	if err := row.Scan(&templateName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
 			return
@@ -443,12 +420,8 @@ func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 		return
 	}
 
-	err = manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		_, execErr := dbConn.ExecContext(r.Context(), `DELETE FROM subscription_templates WHERE uuid = ?`, templateUUID)
-		return execErr
-	})
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete template", err, cfg)
+	if _, execErr := dbConn.ExecContext(r.Context(), `DELETE FROM subscription_templates WHERE uuid = $1`, templateUUID); execErr != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete template", execErr, cfg)
 		return
 	}
 
@@ -457,7 +430,7 @@ func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, ma
 	})
 }
 
-func handleReorderSubscriptionTemplates(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleReorderSubscriptionTemplates(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig) {
 	var req subscriptionTemplateReorderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -474,33 +447,28 @@ func handleReorderSubscriptionTemplates(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	err := manager.ExecuteHighPriority(func(dbConn dbmanager.DBExecutor) error {
-		tx, err := dbConn.BeginTx(r.Context(), nil)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			_ = tx.Rollback()
-		}()
-
-		for _, item := range req.Items {
-			if _, execErr := tx.ExecContext(r.Context(), `UPDATE subscription_templates SET view_position = ? WHERE uuid = ?`, item.ViewPosition, item.UUID); execErr != nil {
-				return execErr
-			}
-		}
-
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-		return nil
-	})
+	tx, err := dbConn.BeginTx(r.Context(), nil)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder templates", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "begin tx failed", err, cfg)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, item := range req.Items {
+		if _, execErr := tx.ExecContext(r.Context(), `UPDATE subscription_templates SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); execErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to reorder templates", execErr, cfg)
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to commit reorder", err, cfg)
 		return
 	}
 
-	// Return updated list without content
-	handleGetSubscriptionTemplates(w, r, manager, cfg)
+	handleGetSubscriptionTemplates(w, r, dbConn, cfg)
 }
 
 func scanSubscriptionTemplateRecord(scanner shared.RowScanner, dest *subscriptionTemplateRecord) error {

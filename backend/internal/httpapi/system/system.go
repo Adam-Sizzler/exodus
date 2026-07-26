@@ -3,6 +3,7 @@ package system
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -18,7 +19,6 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/constant"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/nodehotcache"
 )
@@ -151,7 +151,7 @@ func normalizeVersionCandidate(value string) (string, bool) {
 	return raw, true
 }
 
-func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func StatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -164,25 +164,25 @@ func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 		uptime := readUptimeSeconds()
 		timestamp := time.Now().UnixMilli()
 
-		statusCounts, totalUsers, err := readUsersStatusStats(r.Context(), manager)
+		statusCounts, totalUsers, err := readUsersStatusStats(r.Context(), db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read users stats", err, cfg)
 			return
 		}
 
-		onlineStats, err := readOnlineStats(r.Context(), manager)
+		onlineStats, err := readOnlineStats(r.Context(), db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read online stats", err, cfg)
 			return
 		}
 
-		totalOnline, err := readTotalOnlineOnNodes(r.Context(), manager, cfg)
+		totalOnline, err := readTotalOnlineOnNodes(r.Context(), db, cfg)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes online stats", err, cfg)
 			return
 		}
 
-		lifetimeBytes, err := readLifetimeTrafficBytes(r.Context(), manager)
+		lifetimeBytes, err := readLifetimeTrafficBytes(r.Context(), db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read lifetime traffic", err, cfg)
 			return
@@ -223,7 +223,7 @@ func StatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 	}
 }
 
-func RecapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func RecapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -234,31 +234,31 @@ func RecapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 		startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 		endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
-		users, err := readUsersRecap(r.Context(), manager, startOfMonth)
+		users, err := readUsersRecap(r.Context(), db, startOfMonth)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read users recap", err, cfg)
 			return
 		}
 
-		nodes, err := readNodesRecap(r.Context(), manager, cfg)
+		nodes, err := readNodesRecap(r.Context(), db, cfg)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes recap", err, cfg)
 			return
 		}
 
-		lifetimeTraffic, err := readLifetimeTrafficBytes(r.Context(), manager)
+		lifetimeTraffic, err := readLifetimeTrafficBytes(r.Context(), db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read lifetime traffic recap", err, cfg)
 			return
 		}
 
-		monthTraffic, err := readUsageBytesTextByRange(r.Context(), manager, usageRange{start: startOfMonth, end: endOfMonth})
+		monthTraffic, err := readUsageBytesTextByRange(r.Context(), db, usageRange{start: startOfMonth, end: endOfMonth})
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read month traffic recap", err, cfg)
 			return
 		}
 
-		initDate, err := readInitDate(r.Context(), manager)
+		initDate, err := readInitDate(r.Context(), db)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read init date recap", err, cfg)
 			return
@@ -294,7 +294,7 @@ func RecapHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 	}
 }
 
-func BandwidthStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -305,27 +305,27 @@ func BandwidthStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backe
 		loc := resolveLocation(tz)
 		now := time.Now().In(loc)
 
-		lastTwoDays, err := readUsageComparison(r.Context(), manager, getLastTwoDaysRanges(now))
+		lastTwoDays, err := readUsageComparison(r.Context(), db, getLastTwoDaysRanges(now))
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read last two days bandwidth", err, cfg)
 			return
 		}
-		lastSevenDays, err := readUsageComparison(r.Context(), manager, getLastSevenDaysRanges(now))
+		lastSevenDays, err := readUsageComparison(r.Context(), db, getLastSevenDaysRanges(now))
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read last seven days bandwidth", err, cfg)
 			return
 		}
-		last30Days, err := readUsageComparison(r.Context(), manager, getLast30DaysRanges(now))
+		last30Days, err := readUsageComparison(r.Context(), db, getLast30DaysRanges(now))
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read last 30 days bandwidth", err, cfg)
 			return
 		}
-		calendarMonth, err := readUsageComparison(r.Context(), manager, getCalendarMonthRanges(now))
+		calendarMonth, err := readUsageComparison(r.Context(), db, getCalendarMonthRanges(now))
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read calendar month bandwidth", err, cfg)
 			return
 		}
-		currentYear, err := readUsageComparison(r.Context(), manager, getCalendarYearRanges(now))
+		currentYear, err := readUsageComparison(r.Context(), db, getCalendarYearRanges(now))
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read current year bandwidth", err, cfg)
 			return
@@ -377,7 +377,7 @@ func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
-func NodesStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -391,41 +391,40 @@ func NodesStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 		}
 
 		stats := make([]nodeDayStat, 0)
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			rows, err := db.QueryContext(r.Context(), `
-				SELECT
-					n.name AS node_name,
-					DATE_TRUNC('day', nu.created_at)::date AS date,
-					COALESCE(SUM(nu.total_bytes), 0)::text AS total_bytes
-				FROM nodes_usage_history nu
-				JOIN nodes n ON nu.node_uuid = n.uuid
-				WHERE nu.created_at >= NOW() - INTERVAL '7 days'
-				GROUP BY n.name, DATE_TRUNC('day', nu.created_at)::date
-				ORDER BY date ASC
-			`)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-
-			for rows.Next() {
-				var (
-					name       string
-					date       time.Time
-					totalBytes string
-				)
-				if err := rows.Scan(&name, &date, &totalBytes); err != nil {
-					return err
-				}
-				stats = append(stats, nodeDayStat{
-					NodeName:   name,
-					Date:       date.UTC().Format(time.RFC3339),
-					TotalBytes: totalBytes,
-				})
-			}
-			return rows.Err()
-		})
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT
+				n.name AS node_name,
+				DATE_TRUNC('day', nu.created_at)::date AS date,
+				COALESCE(SUM(nu.total_bytes), 0)::text AS total_bytes
+			FROM nodes_usage_history nu
+			JOIN nodes n ON nu.node_uuid = n.uuid
+			WHERE nu.created_at >= NOW() - INTERVAL '7 days'
+			GROUP BY n.name, DATE_TRUNC('day', nu.created_at)::date
+			ORDER BY date ASC
+		`)
 		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", err, cfg)
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var (
+				name       string
+				date       time.Time
+				totalBytes string
+			)
+			if scanErr := rows.Scan(&name, &date, &totalBytes); scanErr != nil {
+				shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", scanErr, cfg)
+				return
+			}
+			stats = append(stats, nodeDayStat{
+				NodeName:   name,
+				Date:       date.UTC().Format(time.RFC3339),
+				TotalBytes: totalBytes,
+			})
+		}
+		if err := rows.Err(); err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", err, cfg)
 			return
 		}
@@ -438,14 +437,14 @@ func NodesStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func NodesMetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func NodesMetricsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		nodes, err := loadNodesMetricsViaPrometheus(r.Context(), manager, cfg)
+		nodes, err := loadNodesMetricsViaPrometheus(r.Context(), db, cfg)
 		if err != nil {
 			cfg.Logger.Warn("Failed to load nodes metrics via prometheus endpoint", "error", err)
 			nodes = []nodeMetricsItem{}
@@ -474,7 +473,7 @@ type onlineStats struct {
 	neverOnline int64
 }
 
-func readUsersStatusStats(ctx context.Context, manager *dbmanager.DatabaseManager) (map[string]int64, int64, error) {
+func readUsersStatusStats(ctx context.Context, db *sql.DB) (map[string]int64, int64, error) {
 	statusCounts := map[string]int64{
 		"ACTIVE":   0,
 		"DISABLED": 0,
@@ -483,81 +482,72 @@ func readUsersStatusStats(ctx context.Context, manager *dbmanager.DatabaseManage
 	}
 	var total int64
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT status, COUNT(*)
-			FROM users
-			WHERE status IN ('ACTIVE', 'DISABLED', 'LIMITED', 'EXPIRED')
-			GROUP BY status
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
+	rows, err := db.QueryContext(ctx, `
+		SELECT status, COUNT(*)
+		FROM users
+		WHERE status IN ('ACTIVE', 'DISABLED', 'LIMITED', 'EXPIRED')
+		GROUP BY status
+	`)
+	if err != nil {
+		return statusCounts, 0, err
+	}
+	defer rows.Close()
 
-		for rows.Next() {
-			var status string
-			var count int64
-			if err := rows.Scan(&status, &count); err != nil {
-				return err
-			}
-			statusCounts[status] = count
-			total += count
+	for rows.Next() {
+		var status string
+		var count int64
+		if err := rows.Scan(&status, &count); err != nil {
+			return statusCounts, 0, err
 		}
-		return rows.Err()
-	})
-
-	return statusCounts, total, err
+		statusCounts[status] = count
+		total += count
+	}
+	return statusCounts, total, rows.Err()
 }
 
-func readOnlineStats(ctx context.Context, manager *dbmanager.DatabaseManager) (onlineStats, error) {
+func readOnlineStats(ctx context.Context, db *sql.DB) (onlineStats, error) {
 	nowUTC := time.Now().UTC()
 	thresholdOnline := nowUTC.Add(-30 * time.Second)
 	thresholdDay := nowUTC.Add(-24 * time.Hour)
 	thresholdWeek := nowUTC.Add(-7 * 24 * time.Hour)
 
 	stats := onlineStats{}
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT
-				COUNT(t_id) FILTER (WHERE online_at >= ?) AS online_now,
-				COUNT(t_id) FILTER (WHERE online_at >= ?) AS last_day,
-				COUNT(t_id) FILTER (WHERE online_at >= ?) AS last_week,
-				COUNT(t_id) FILTER (WHERE online_at IS NULL) AS never_online
-			FROM user_traffic
-		`, thresholdOnline, thresholdDay, thresholdWeek).Scan(
-			&stats.onlineNow,
-			&stats.lastDay,
-			&stats.lastWeek,
-			&stats.neverOnline,
-		)
-	})
+	err := db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(t_id) FILTER (WHERE online_at >= $1) AS online_now,
+			COUNT(t_id) FILTER (WHERE online_at >= $2) AS last_day,
+			COUNT(t_id) FILTER (WHERE online_at >= $3) AS last_week,
+			COUNT(t_id) FILTER (WHERE online_at IS NULL) AS never_online
+		FROM user_traffic
+	`, thresholdOnline, thresholdDay, thresholdWeek).Scan(
+		&stats.onlineNow,
+		&stats.lastDay,
+		&stats.lastWeek,
+		&stats.neverOnline,
+	)
 
 	return stats, err
 }
 
-func readTotalOnlineOnNodes(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (int64, error) {
+func readTotalOnlineOnNodes(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) (int64, error) {
 	uuids := make([]string, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid
-			FROM nodes
-			WHERE is_connected = TRUE
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var uuid string
-			if err := rows.Scan(&uuid); err != nil {
-				return err
-			}
-			uuids = append(uuids, uuid)
-		}
-		return rows.Err()
-	})
+	rows, err := db.QueryContext(ctx, `
+		SELECT uuid
+		FROM nodes
+		WHERE is_connected = TRUE
+	`)
 	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return 0, err
+		}
+		uuids = append(uuids, uuid)
+	}
+	if err := rows.Err(); err != nil {
 		return 0, err
 	}
 	cache, _ := nodehotcache.Default(cfg).GetMany(ctx, uuids)
@@ -565,65 +555,58 @@ func readTotalOnlineOnNodes(ctx context.Context, manager *dbmanager.DatabaseMana
 	for _, uuid := range uuids {
 		total += int64(cache[uuid].UsersOnline)
 	}
-	return total, err
+	return total, nil
 }
 
-func readLifetimeTrafficBytes(ctx context.Context, manager *dbmanager.DatabaseManager) (string, error) {
+func readLifetimeTrafficBytes(ctx context.Context, db *sql.DB) (string, error) {
 	var total string
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT COALESCE(SUM(total_bytes), 0)::text
-			FROM nodes_usage_history
-		`).Scan(&total)
-	})
+	err := db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(total_bytes), 0)::text
+		FROM nodes_usage_history
+	`).Scan(&total)
 	return total, err
 }
 
-func readUsersRecap(ctx context.Context, manager *dbmanager.DatabaseManager, startOfMonth time.Time) (usersRecap, error) {
+func readUsersRecap(ctx context.Context, db *sql.DB, startOfMonth time.Time) (usersRecap, error) {
 	recap := usersRecap{}
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT
-				COUNT(*)::bigint AS total,
-				COUNT(*) FILTER (WHERE created_at >= ?)::bigint AS new_users_this_month
-			FROM users
-		`, startOfMonth).Scan(&recap.total, &recap.newUsersThisMonth)
-	})
+	err := db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*)::bigint AS total,
+			COUNT(*) FILTER (WHERE created_at >= $1)::bigint AS new_users_this_month
+		FROM users
+	`, startOfMonth).Scan(&recap.total, &recap.newUsersThisMonth)
 	return recap, err
 }
 
-func readNodesRecap(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (nodesRecap, error) {
+func readNodesRecap(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) (nodesRecap, error) {
 	recap := nodesRecap{}
 	uuids := make([]string, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		if err := db.QueryRowContext(ctx, `
-			SELECT
-				COUNT(*)::bigint AS total,
-				COUNT(DISTINCT CASE
-					WHEN country_code IS NOT NULL AND country_code <> '' AND country_code <> 'XX'
-					THEN country_code
-					ELSE NULL
-				END)::bigint AS distinct_countries
-			FROM nodes
-		`).Scan(&recap.total, &recap.distinctCountries); err != nil {
-			return err
-		}
+	if err := db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*)::bigint AS total,
+			COUNT(DISTINCT CASE
+				WHEN country_code IS NOT NULL AND country_code <> '' AND country_code <> 'XX'
+				THEN country_code
+				ELSE NULL
+			END)::bigint AS distinct_countries
+		FROM nodes
+	`).Scan(&recap.total, &recap.distinctCountries); err != nil {
+		return recap, err
+	}
 
-		rows, err := db.QueryContext(ctx, `SELECT uuid FROM nodes`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var uuid string
-			if err := rows.Scan(&uuid); err != nil {
-				return err
-			}
-			uuids = append(uuids, uuid)
-		}
-		return rows.Err()
-	})
+	rows, err := db.QueryContext(ctx, `SELECT uuid FROM nodes`)
 	if err != nil {
+		return recap, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return recap, err
+		}
+		uuids = append(uuids, uuid)
+	}
+	if err := rows.Err(); err != nil {
 		return recap, err
 	}
 	cache, _ := nodehotcache.Default(cfg).GetMany(ctx, uuids)
@@ -646,31 +629,27 @@ func readNodesRecap(ctx context.Context, manager *dbmanager.DatabaseManager, cfg
 	}
 	recap.totalRam = fmt.Sprintf("%d", totalRAM)
 	recap.totalCpuCores = totalCPUCores
-	return recap, err
+	return recap, nil
 }
 
-func readUsageBytesTextByRange(ctx context.Context, manager *dbmanager.DatabaseManager, dtRange usageRange) (string, error) {
+func readUsageBytesTextByRange(ctx context.Context, db *sql.DB, dtRange usageRange) (string, error) {
 	var total string
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT COALESCE(SUM(total_bytes), 0)::text
-			FROM nodes_usage_history
-			WHERE created_at >= ? AND created_at <= ?
-		`, dtRange.start, dtRange.end).Scan(&total)
-	})
+	err := db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(total_bytes), 0)::text
+		FROM nodes_usage_history
+		WHERE created_at >= $1 AND created_at <= $2
+	`, dtRange.start, dtRange.end).Scan(&total)
 	return total, err
 }
 
-func readInitDate(ctx context.Context, manager *dbmanager.DatabaseManager) (time.Time, error) {
+func readInitDate(ctx context.Context, db *sql.DB) (time.Time, error) {
 	var initDate time.Time
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT COALESCE(
-				(SELECT started_at FROM schema_migrations ORDER BY started_at ASC LIMIT 1),
-				NOW()
-			)
-		`).Scan(&initDate)
-	})
+	err := db.QueryRowContext(ctx, `
+		SELECT COALESCE(
+			(SELECT started_at FROM schema_migrations ORDER BY started_at ASC LIMIT 1),
+			NOW()
+		)
+	`).Scan(&initDate)
 	if err != nil {
 		return time.Now().UTC(), err
 	}
@@ -680,12 +659,12 @@ func readInitDate(ctx context.Context, manager *dbmanager.DatabaseManager) (time
 	return initDate, nil
 }
 
-func readUsageComparison(ctx context.Context, manager *dbmanager.DatabaseManager, ranges [2]usageRange) (bandwidthStat, error) {
-	previousBytes, err := readUsageBytesByRange(ctx, manager, ranges[0])
+func readUsageComparison(ctx context.Context, db *sql.DB, ranges [2]usageRange) (bandwidthStat, error) {
+	previousBytes, err := readUsageBytesByRange(ctx, db, ranges[0])
 	if err != nil {
 		return bandwidthStat{}, err
 	}
-	currentBytes, err := readUsageBytesByRange(ctx, manager, ranges[1])
+	currentBytes, err := readUsageBytesByRange(ctx, db, ranges[1])
 	if err != nil {
 		return bandwidthStat{}, err
 	}
@@ -699,15 +678,13 @@ func readUsageComparison(ctx context.Context, manager *dbmanager.DatabaseManager
 	}, nil
 }
 
-func readUsageBytesByRange(ctx context.Context, manager *dbmanager.DatabaseManager, dtRange usageRange) (*big.Int, error) {
+func readUsageBytesByRange(ctx context.Context, db *sql.DB, dtRange usageRange) (*big.Int, error) {
 	var totalText string
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT COALESCE(SUM(total_bytes), 0)::text
-			FROM nodes_usage_history
-			WHERE created_at >= ? AND created_at <= ?
-		`, dtRange.start, dtRange.end).Scan(&totalText)
-	})
+	err := db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(total_bytes), 0)::text
+		FROM nodes_usage_history
+		WHERE created_at >= $1 AND created_at <= $2
+	`, dtRange.start, dtRange.end).Scan(&totalText)
 	if err != nil {
 		return nil, err
 	}

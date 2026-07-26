@@ -1,18 +1,18 @@
 package hosts
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
 )
 
-func HostsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewHostRepository(manager)
+func HostsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -28,8 +28,8 @@ func HostsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig)
 	}
 }
 
-func HostByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewHostRepository(manager)
+func HostByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		uuidStr := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/hosts/"))
@@ -62,8 +62,8 @@ func HostByUUIDHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCo
 	}
 }
 
-func HostsActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewHostRepository(manager)
+func HostsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -81,8 +81,8 @@ func HostsActionsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 	}
 }
 
-func HostsBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewHostRepository(manager)
+func HostsBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/hosts/bulk/")
@@ -133,8 +133,8 @@ func HostsBulkHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 	}
 }
 
-func HostsTagsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewHostRepository(manager)
+func HostsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

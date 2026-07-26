@@ -2,6 +2,7 @@ package jobqueue
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/logger"
 )
 
@@ -50,7 +50,7 @@ var (
 	subscriptionJobs         *subscriptionDispatcher
 )
 
-func StartSubscriptionQueues(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (*Processor, error) {
+func StartSubscriptionQueues(ctx context.Context, wg *sync.WaitGroup, db *sql.DB, cfg *config.BackendConfig) (*Processor, error) {
 	client, err := NewRedisClient(cfg)
 	if err != nil || client == nil {
 		return nil, err
@@ -74,21 +74,21 @@ func StartSubscriptionQueues(ctx context.Context, wg *sync.WaitGroup, manager *d
 			if err := json.Unmarshal(job.Payload, &payload); err != nil {
 				return err
 			}
-			return updateUserSubscription(ctx, manager, payload)
+			return updateUserSubscription(ctx, db, payload)
 		},
 		jobAddSubscriptionRecord: func(ctx context.Context, job Job) error {
 			var payload AddSubscriptionRequestRecordPayload
 			if err := json.Unmarshal(job.Payload, &payload); err != nil {
 				return err
 			}
-			return addSubscriptionRequestRecord(ctx, manager, payload)
+			return addSubscriptionRequestRecord(ctx, db, payload)
 		},
 		jobUpsertHwidDevice: func(ctx context.Context, job Job) error {
 			var payload UpsertHwidDevicePayload
 			if err := json.Unmarshal(job.Payload, &payload); err != nil {
 				return err
 			}
-			return upsertHwidDevice(ctx, manager, payload)
+			return upsertHwidDevice(ctx, db, payload)
 		},
 	}); err != nil {
 		_ = client.Close()
@@ -160,60 +160,56 @@ func enqueueSubscriptionJob(ctx context.Context, jobName string, payload any, op
 	return err == nil, err
 }
 
-func updateUserSubscription(ctx context.Context, manager *dbmanager.DatabaseManager, payload UpdateUserSubscriptionPayload) error {
+func updateUserSubscription(ctx context.Context, db *sql.DB, payload UpdateUserSubscriptionPayload) error {
 	if payload.UserUUID == "" {
 		return nil
 	}
 	return nil
 }
 
-func addSubscriptionRequestRecord(ctx context.Context, manager *dbmanager.DatabaseManager, payload AddSubscriptionRequestRecordPayload) error {
+func addSubscriptionRequestRecord(ctx context.Context, db *sql.DB, payload AddSubscriptionRequestRecordPayload) error {
 	if payload.UserID <= 0 {
 		return nil
 	}
-	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		if _, err := db.ExecContext(ctx, `
-			INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
-			VALUES (?, ?, ?)
-		`, payload.UserID, payload.RequestIP, payload.UserAgent); err != nil {
-			return err
-		}
-
-		_, err := db.ExecContext(ctx, `
-			DELETE FROM user_subscription_request_history
-			WHERE user_id = ?
-			  AND id NOT IN (
-				  SELECT id
-				  FROM user_subscription_request_history
-				  WHERE user_id = ?
-				  ORDER BY request_at DESC, id DESC
-				  LIMIT 24
-			  )
-		`, payload.UserID, payload.UserID)
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
+		VALUES ($1, $2, $3)
+	`, payload.UserID, payload.RequestIP, payload.UserAgent); err != nil {
 		return err
-	})
+	}
+
+	_, err := db.ExecContext(ctx, `
+		DELETE FROM user_subscription_request_history
+		WHERE user_id = $1
+		  AND id NOT IN (
+			  SELECT id
+			  FROM user_subscription_request_history
+			  WHERE user_id = $2
+			  ORDER BY request_at DESC, id DESC
+			  LIMIT 24
+		  )
+	`, payload.UserID, payload.UserID)
+	return err
 }
 
-func upsertHwidDevice(ctx context.Context, manager *dbmanager.DatabaseManager, payload UpsertHwidDevicePayload) error {
+func upsertHwidDevice(ctx context.Context, db *sql.DB, payload UpsertHwidDevicePayload) error {
 	if payload.UserID <= 0 || payload.Hwid == "" {
 		return nil
 	}
 	payload.Platform = lowerStringPtr(payload.Platform)
-	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(ctx, `
-			INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (hwid, user_id)
-			DO UPDATE SET
-				platform = EXCLUDED.platform,
-				os_version = EXCLUDED.os_version,
-				device_model = EXCLUDED.device_model,
-				user_agent = EXCLUDED.user_agent,
-				request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
-				updated_at = now()
-		`, payload.Hwid, payload.UserID, payload.Platform, payload.OsVersion, payload.DeviceModel, payload.UserAgent, payload.RequestIP)
-		return err
-	})
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (hwid, user_id)
+		DO UPDATE SET
+			platform = EXCLUDED.platform,
+			os_version = EXCLUDED.os_version,
+			device_model = EXCLUDED.device_model,
+			user_agent = EXCLUDED.user_agent,
+			request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
+			updated_at = now()
+	`, payload.Hwid, payload.UserID, payload.Platform, payload.OsVersion, payload.DeviceModel, payload.UserAgent, payload.RequestIP)
+	return err
 }
 
 func lowerStringPtr(value *string) *string {

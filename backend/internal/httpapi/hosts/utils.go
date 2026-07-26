@@ -190,8 +190,8 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 	clauses := make([]string, 0)
 	args := make([]any, 0)
 	add := func(column string, value any) {
-		clauses = append(clauses, fmt.Sprintf("%s = ?", column))
 		args = append(args, value)
+		clauses = append(clauses, fmt.Sprintf("%s = $%d", column, len(args)))
 	}
 	addOptionalString := func(column string, value *string) {
 		if value == nil {
@@ -411,3 +411,29 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 
 	return clauses, args, nil
 }
+
+func bytesToRawMessage(b []byte) json.RawMessage {
+	if len(b) == 0 {
+		return nil
+	}
+	return json.RawMessage(b)
+}
+
+func uniqueNonEmptyStrings(slice []string) []string {
+	if len(slice) == 0 {
+		return []string{}
+	}
+	seen := make(map[string]struct{}, len(slice))
+	res := make([]string, 0, len(slice))
+	for _, s := range slice {
+		trimmed := strings.TrimSpace(s)
+		if trimmed != "" {
+			if _, ok := seen[trimmed]; !ok {
+				seen[trimmed] = struct{}{}
+				res = append(res, trimmed)
+			}
+		}
+	}
+	return res
+}
+

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/subtle"
+	"database/sql"
 	"fmt"
 	"io"
 	"math"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/nodehotcache"
 	monitor "exodus/internal/nodes"
 )
@@ -69,7 +69,7 @@ var prometheusMetricsCache = struct {
 	ready      chan struct{}
 }{}
 
-func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func MetricsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -81,7 +81,7 @@ func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 			return
 		}
 
-		payload, err := renderPrometheusMetricsCached(r.Context(), manager, cfg)
+		payload, err := renderPrometheusMetricsCached(r.Context(), db, cfg)
 		if err != nil {
 			if cfg != nil && cfg.Logger != nil {
 				cfg.Logger.Warn("Failed to render prometheus metrics", "error", err)
@@ -98,10 +98,10 @@ func MetricsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfi
 	}
 }
 
-func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
+func renderPrometheusMetricsCached(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) (string, error) {
 	ttl := metricsCacheTTL(cfg)
 	if ttl <= 0 {
-		return renderPrometheusMetrics(ctx, manager, cfg)
+		return renderPrometheusMetrics(ctx, db, cfg)
 	}
 
 	now := time.Now()
@@ -130,7 +130,7 @@ func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.Datab
 		prometheusMetricsCache.refreshing = true
 		prometheusMetricsCache.ready = make(chan struct{})
 		prometheusMetricsCache.Unlock()
-		payload, err := renderPrometheusMetrics(ctx, manager, cfg)
+		payload, err := renderPrometheusMetrics(ctx, db, cfg)
 		prometheusMetricsCache.Lock()
 		prometheusMetricsCache.refreshing = false
 		ready := prometheusMetricsCache.ready
@@ -143,7 +143,7 @@ func renderPrometheusMetricsCached(ctx context.Context, manager *dbmanager.Datab
 		prometheusMetricsCache.Unlock()
 		return payload, err
 	}
-	payload, err := renderPrometheusMetrics(ctx, manager, cfg)
+	payload, err := renderPrometheusMetrics(ctx, db, cfg)
 	if err != nil {
 		return "", err
 	}
@@ -165,8 +165,8 @@ func metricsCacheTTL(cfg *config.BackendConfig) time.Duration {
 	return time.Duration(cfg.Metrics.CacheTTLSeconds) * time.Second
 }
 
-func loadNodesMetricsViaPrometheus(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]nodeMetricsItem, error) {
-	nodesMeta, err := loadNodesMetricsMeta(ctx, manager, cfg)
+func loadNodesMetricsViaPrometheus(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) ([]nodeMetricsItem, error) {
+	nodesMeta, err := loadNodesMetricsMeta(ctx, db, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -306,47 +306,43 @@ func loadNodesMetricsViaPrometheus(ctx context.Context, manager *dbmanager.Datab
 			OutboundsStats: outboundsStats,
 		})
 	}
-
 	return result, nil
 }
 
-func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]nodeMetricsMeta, error) {
+func loadNodesMetricsMeta(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) ([]nodeMetricsMeta, error) {
 	result := make([]nodeMetricsMeta, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT
-				n.uuid,
-				n.name,
-				COALESCE(n.country_code, ''),
-				COALESCE(p.name, 'unknown'),
-				n.view_position,
-				n.is_connected
-			FROM nodes n
-			LEFT JOIN infra_providers p ON p.uuid = n.provider_uuid
-			ORDER BY n.view_position ASC, n.name ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var item nodeMetricsMeta
-			if scanErr := rows.Scan(
-				&item.UUID,
-				&item.Name,
-				&item.CountryCode,
-				&item.ProviderName,
-				&item.ViewPosition,
-				&item.IsConnected,
-			); scanErr != nil {
-				return scanErr
-			}
-			result = append(result, item)
-		}
-		return rows.Err()
-	})
+	rows, err := db.QueryContext(ctx, `
+		SELECT
+			n.uuid,
+			n.name,
+			COALESCE(n.country_code, ''),
+			COALESCE(p.name, 'unknown'),
+			n.view_position,
+			n.is_connected
+		FROM nodes n
+		LEFT JOIN infra_providers p ON p.uuid = n.provider_uuid
+		ORDER BY n.view_position ASC, n.name ASC
+	`)
 	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item nodeMetricsMeta
+		if scanErr := rows.Scan(
+			&item.UUID,
+			&item.Name,
+			&item.CountryCode,
+			&item.ProviderName,
+			&item.ViewPosition,
+			&item.IsConnected,
+		); scanErr != nil {
+			return result, scanErr
+		}
+		result = append(result, item)
+	}
+	if err := rows.Err(); err != nil {
 		return result, err
 	}
 	uuids := make([]string, 0, len(result))
@@ -359,11 +355,11 @@ func loadNodesMetricsMeta(ctx context.Context, manager *dbmanager.DatabaseManage
 			result[i].UsersOnline = cache[result[i].UUID].UsersOnline
 		}
 	}
-	return result, err
+	return result, nil
 }
 
-func renderPrometheusMetrics(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (string, error) {
-	nodesMeta, err := loadNodesMetricsMeta(ctx, manager, cfg)
+func renderPrometheusMetrics(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) (string, error) {
+	nodesMeta, err := loadNodesMetricsMeta(ctx, db, cfg)
 	if err != nil {
 		return "", err
 	}

@@ -2,31 +2,31 @@ package scheduler
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/logger"
 )
 
 type Scheduler struct {
-	manager *dbmanager.DatabaseManager
-	cfg     *config.BackendConfig
+	db  *sql.DB
+	cfg *config.BackendConfig
 
 	mu                  sync.Mutex
 	lastRuns            map[string]string
 	nodeTrafficNotified map[string]bool
 }
 
-func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	if manager == nil || cfg == nil {
+func Start(ctx context.Context, wg *sync.WaitGroup, db *sql.DB, cfg *config.BackendConfig) {
+	if db == nil || cfg == nil {
 		return
 	}
 
 	s := &Scheduler{
-		manager:             manager,
+		db:                  db,
 		cfg:                 cfg,
 		lastRuns:            make(map[string]string),
 		nodeTrafficNotified: make(map[string]bool),
@@ -94,22 +94,14 @@ func (s *Scheduler) run(ctx context.Context) {
 func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	local := now.Local()
 
-	// Every hour: review proxy nodes status.
 	if local.Minute() == 0 && s.shouldRun("reviewNodes", local.Format("2006-01-02T15")) {
 		s.runJob(ctx, "reviewNodes", s.reviewNodes)
 	}
 
-	// Every day at 01:00: reset accumulated node traffic counters.
-	// Mirrors exodus EVERY_DAY_AT_1AM (cron: 0 1 * * *).
 	if local.Hour() == 1 && local.Minute() == 0 && s.shouldRun("resetNodeTraffic", local.Format("2006-01-02")) {
 		s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
 	}
 
-	// Traffic reset schedules — mirrors exodus cron jobs:
-	//   DAY:           0 5 * * *   (every day at 00:05)
-	//   MONTH_ROLLING: 10 0 * * *  (every day at 00:10)
-	//   WEEK:          15 0 * * 1  (Monday at 00:15)
-	//   MONTH:         20 0 1 * *  (1st of month at 00:20)
 	if local.Hour() == 0 && local.Minute() == 5 && s.shouldRun("trafficResetDay", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetDay", s.trafficResetDay)
 	}
@@ -123,37 +115,30 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 		s.runJob(ctx, "trafficResetMonth", s.trafficResetMonth)
 	}
 
-	// Every minute: expire user notifications.
 	if s.shouldRun("expireUserNotifications", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "expireUserNotifications", s.findUsersForExpireNotifications)
 	}
 
-	// Every 5 minutes: bandwidth threshold notifications.
 	if local.Minute()%5 == 0 && s.shouldRun("findUsersForThresholdNotification", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "findUsersForThresholdNotification", s.findUsersForThresholdNotification)
 	}
 
-	// Every 5 minutes: check SRS lists availability.
 	if local.Minute()%5 == 0 && s.shouldRun("srsListsCheck", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "srsListsCheck", s.srsListsCheck)
 	}
 
-	// Every 10 minutes: not-connected users notifications.
 	if local.Minute()%10 == 0 && s.shouldRun("findNotConnectedUsersNotification", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "findNotConnectedUsersNotification", s.findNotConnectedUsersNotification)
 	}
 
-	// Monday 00:30: clean old usage history records.
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 30 && s.shouldRun("cleanOldUsageRecords", local.Format("2006-01-02")) {
 		s.runJob(ctx, "cleanOldUsageRecords", s.cleanOldUsageRecords)
 	}
 
-	// Monday 00:45: vacuum tables.
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 45 && s.shouldRun("vacuumTables", local.Format("2006-01-02")) {
 		s.runJob(ctx, "vacuumTables", s.vacuumTables)
 	}
 
-	// Every day at 17:00: infra billing nodes notifications.
 	if local.Hour() == 17 && local.Minute() == 0 && s.shouldRun("infraBillingNodesNotifications", local.Format("2006-01-02")) {
 		s.runJob(ctx, "infraBillingNodesNotifications", s.infraBillingNodesNotifications)
 	}
