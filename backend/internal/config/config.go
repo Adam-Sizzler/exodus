@@ -113,9 +113,6 @@ type EXODUSConfig struct {
 type DatabaseConfig struct {
 	URL                string
 	Socket             string
-	WorkerCount        int
-	HighPriorityBuffer int
-	LowPriorityBuffer  int
 }
 
 type RedisConfig struct {
@@ -144,9 +141,6 @@ var defaultConfig = BackendConfig{
 	},
 	Database: DatabaseConfig{
 		URL:                "",
-		WorkerCount:        8,
-		HighPriorityBuffer: 1000,
-		LowPriorityBuffer:  2000,
 	},
 	Redis: RedisConfig{
 		Host:                         "",
@@ -372,27 +366,6 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	if strings.TrimSpace(cfg.Database.URL) == "" {
 		cfg.Database.URL = postgresTCPDatabaseURL()
-	}
-	if value := envFirst("DATABASE_WORKER_COUNT", "EXODUS_DATABASE_WORKER_COUNT"); value != "" {
-		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
-			cfg.Database.WorkerCount = parsed
-		} else if cfg.Logger != nil {
-			cfg.Logger.Warn("Invalid DATABASE_WORKER_COUNT value, ignoring", "value", value)
-		}
-	}
-	if value := envFirst("DATABASE_HIGH_PRIORITY_BUFFER", "EXODUS_DATABASE_HIGH_PRIORITY_BUFFER"); value != "" {
-		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
-			cfg.Database.HighPriorityBuffer = parsed
-		} else if cfg.Logger != nil {
-			cfg.Logger.Warn("Invalid DATABASE_HIGH_PRIORITY_BUFFER value, ignoring", "value", value)
-		}
-	}
-	if value := envFirst("DATABASE_LOW_PRIORITY_BUFFER", "EXODUS_DATABASE_LOW_PRIORITY_BUFFER"); value != "" {
-		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 0 {
-			cfg.Database.LowPriorityBuffer = parsed
-		} else if cfg.Logger != nil {
-			cfg.Logger.Warn("Invalid DATABASE_LOW_PRIORITY_BUFFER value, ignoring", "value", value)
-		}
 	}
 
 	if value := envFirst("REDIS_HOST"); value != "" {

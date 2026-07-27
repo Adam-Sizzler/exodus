@@ -61,7 +61,7 @@ func (s *Scheduler) logJobStates() {
 		{name: "trafficResetDay (00:05)", enabled: true},
 		{name: "trafficResetWeek (Mon 00:15)", enabled: true},
 		{name: "trafficResetMonth (1st 00:20)", enabled: true},
-		{name: "srsListsCheck (every 5m)", enabled: true},
+		{name: "srsListsCheck (every 12h)", enabled: true},
 	}
 	log := s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceJobs)
 	for _, job := range jobs {
@@ -94,51 +94,69 @@ func (s *Scheduler) run(ctx context.Context) {
 func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	local := now.Local()
 
+	// Every hour: review proxy nodes status.
 	if local.Minute() == 0 && s.shouldRun("reviewNodes", local.Format("2006-01-02T15")) {
 		s.runJob(ctx, "reviewNodes", s.reviewNodes)
 	}
 
+	// Every day at 01:00: reset accumulated node traffic counters.
+	// Mirrors exodus EVERY_DAY_AT_1AM (cron: 0 1 * * *).
 	if local.Hour() == 1 && local.Minute() == 0 && s.shouldRun("resetNodeTraffic", local.Format("2006-01-02")) {
 		s.runJob(ctx, "resetNodeTraffic", s.resetNodeTraffic)
 	}
 
+	// Traffic reset schedules — mirrors exodus cron jobs:
+	//   DAY:           0 5 * * *   (every day at 00:05)
+	//   MONTH_ROLLING: 10 0 * * *  (every day at 00:10)
+	//   WEEK:          15 0 * * 1  (Monday at 00:15)
+	//   MONTH:         20 0 1 * *  (1st of month at 00:20)
 	if local.Hour() == 0 && local.Minute() == 5 && s.shouldRun("trafficResetDay", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetDay", s.trafficResetDay)
 	}
+
 	if local.Hour() == 0 && local.Minute() == 10 && s.shouldRun("trafficResetMonthRolling", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetMonthRolling", s.trafficResetMonthRolling)
 	}
+
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 15 && s.shouldRun("trafficResetWeek", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetWeek", s.trafficResetWeek)
 	}
+	
 	if local.Day() == 1 && local.Hour() == 0 && local.Minute() == 20 && s.shouldRun("trafficResetMonth", local.Format("2006-01")) {
 		s.runJob(ctx, "trafficResetMonth", s.trafficResetMonth)
 	}
 
+	// Every minute: expire user notifications.
 	if s.shouldRun("expireUserNotifications", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "expireUserNotifications", s.findUsersForExpireNotifications)
 	}
 
+	// Every 5 minutes: bandwidth threshold notifications.
 	if local.Minute()%5 == 0 && s.shouldRun("findUsersForThresholdNotification", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "findUsersForThresholdNotification", s.findUsersForThresholdNotification)
 	}
 
-	if local.Minute()%5 == 0 && s.shouldRun("srsListsCheck", local.Format("2006-01-02T15:04")) {
+	// Every 12 hours: check SRS lists availability.
+	if local.Hour()%12 == 0 && local.Minute() == 0 && s.shouldRun("srsListsCheck", local.Format("2006-01-02T15")) {
 		s.runJob(ctx, "srsListsCheck", s.srsListsCheck)
 	}
 
+	// Every 10 minutes: not-connected users notifications.
 	if local.Minute()%10 == 0 && s.shouldRun("findNotConnectedUsersNotification", local.Format("2006-01-02T15:04")) {
 		s.runJob(ctx, "findNotConnectedUsersNotification", s.findNotConnectedUsersNotification)
 	}
 
+	// Monday 00:30: clean old usage history records.
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 30 && s.shouldRun("cleanOldUsageRecords", local.Format("2006-01-02")) {
 		s.runJob(ctx, "cleanOldUsageRecords", s.cleanOldUsageRecords)
 	}
 
+	// Monday 00:45: vacuum tables.
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 45 && s.shouldRun("vacuumTables", local.Format("2006-01-02")) {
 		s.runJob(ctx, "vacuumTables", s.vacuumTables)
 	}
 
+	// Every day at 17:00: infra billing nodes notifications.
 	if local.Hour() == 17 && local.Minute() == 0 && s.shouldRun("infraBillingNodesNotifications", local.Format("2006-01-02")) {
 		s.runJob(ctx, "infraBillingNodesNotifications", s.infraBillingNodesNotifications)
 	}
