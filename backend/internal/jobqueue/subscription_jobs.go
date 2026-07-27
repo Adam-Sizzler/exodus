@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	subscriptionQueueName     = "subscription_requests"
+	subscriptionQueueName     = "USERS_SUBSCRIPTION_REQUESTS_QUEUE"
 	jobUpdateUserSubscription = "update_user_subscription"
 	jobAddSubscriptionRecord  = "add_subscription_request_record"
 	jobUpsertHwidDevice       = "upsert_hwid_device"

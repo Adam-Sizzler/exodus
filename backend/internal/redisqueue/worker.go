@@ -22,7 +22,7 @@ const (
 	nodeUserUsagePrefix    = "node_user_usage:"
 	processingPostfix      = ":processing"
 	nodeUserUsageBatchSize = 10000
-	pushToDBQueueName      = "push_to_db"
+	pushToDBQueueName      = "PUSH_TO_DB_QUEUE"
 	recordUserUsageJobName = "record_user_usage"
 )
 
