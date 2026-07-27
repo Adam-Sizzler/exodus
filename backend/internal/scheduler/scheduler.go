@@ -61,7 +61,7 @@ func (s *Scheduler) logJobStates() {
 		{name: "trafficResetDay (00:05)", enabled: true},
 		{name: "trafficResetWeek (Mon 00:15)", enabled: true},
 		{name: "trafficResetMonth (1st 00:20)", enabled: true},
-		{name: "srsListsCheck (every 5m)", enabled: true},
+		{name: "srsListsCheck (every 12h)", enabled: true},
 	}
 	log := s.cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceJobs)
 	for _, job := range jobs {
@@ -113,12 +113,15 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	if local.Hour() == 0 && local.Minute() == 5 && s.shouldRun("trafficResetDay", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetDay", s.trafficResetDay)
 	}
+
 	if local.Hour() == 0 && local.Minute() == 10 && s.shouldRun("trafficResetMonthRolling", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetMonthRolling", s.trafficResetMonthRolling)
 	}
+
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 15 && s.shouldRun("trafficResetWeek", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetWeek", s.trafficResetWeek)
 	}
+	
 	if local.Day() == 1 && local.Hour() == 0 && local.Minute() == 20 && s.shouldRun("trafficResetMonth", local.Format("2006-01")) {
 		s.runJob(ctx, "trafficResetMonth", s.trafficResetMonth)
 	}
@@ -133,8 +136,8 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 		s.runJob(ctx, "findUsersForThresholdNotification", s.findUsersForThresholdNotification)
 	}
 
-	// Every 5 minutes: check SRS lists availability.
-	if local.Minute()%5 == 0 && s.shouldRun("srsListsCheck", local.Format("2006-01-02T15:04")) {
+	// Every 12 hours: check SRS lists availability.
+	if local.Hour()%12 == 0 && local.Minute() == 0 && s.shouldRun("srsListsCheck", local.Format("2006-01-02T15")) {
 		s.runJob(ctx, "srsListsCheck", s.srsListsCheck)
 	}
 
