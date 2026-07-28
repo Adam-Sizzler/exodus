@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	exodusdb "exodus/internal/db"
 	"exodus/internal/httpapi/shared"
 )
 
@@ -178,63 +179,49 @@ func (r *ConfigProfileRepository) getConfigProfileNodesMap(ctx context.Context, 
 }
 
 func (r *ConfigProfileRepository) createConfigProfile(ctx context.Context, profileUUID string, req createConfigProfileRequest) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	return exodusdb.WithRetryTx(ctx, r.db, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO config_profiles (uuid, name, config, created_at, updated_at)
+			VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`, profileUUID, strings.TrimSpace(req.Name), req.Config); err != nil {
+			return err
+		}
 
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO config_profiles (uuid, name, config, created_at, updated_at)
-		VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-	`, profileUUID, strings.TrimSpace(req.Name), req.Config); err != nil {
-		return err
-	}
-
-	if _, err := r.syncConfigProfileInboundsTx(ctx, tx, profileUUID, req.Config); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+		if _, err := r.syncConfigProfileInboundsTx(ctx, tx, profileUUID, req.Config); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r *ConfigProfileRepository) updateConfigProfile(ctx context.Context, profileUUID string, clauses []string, args []any, updateConfig *json.RawMessage) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	return exodusdb.WithRetryTx(ctx, r.db, func(tx *sql.Tx) error {
+		if len(clauses) > 0 {
+			txArgs := append(append([]any{}, args...), profileUUID)
+			result, err := tx.ExecContext(ctx, fmt.Sprintf(`
+				UPDATE config_profiles
+				SET %s, updated_at = CURRENT_TIMESTAMP
+				WHERE uuid = $%d
+			`, strings.Join(clauses, ", "), len(txArgs)), txArgs...)
+			if err != nil {
+				return err
+			}
+			rows, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if rows == 0 {
+				return errConfigProfileNotFound
+			}
+		}
 
-	if len(clauses) > 0 {
-		args = append(args, profileUUID)
-		result, err := tx.ExecContext(ctx, fmt.Sprintf(`
-			UPDATE config_profiles
-			SET %s, updated_at = CURRENT_TIMESTAMP
-			WHERE uuid = $%d
-		`, strings.Join(clauses, ", "), len(args)), args...)
-		if err != nil {
-			return err
+		if updateConfig != nil {
+			if _, err := r.syncConfigProfileInboundsTx(ctx, tx, profileUUID, *updateConfig); err != nil {
+				return err
+			}
 		}
-		rows, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rows == 0 {
-			return errConfigProfileNotFound
-		}
-	}
-
-	if updateConfig != nil {
-		if _, err := r.syncConfigProfileInboundsTx(ctx, tx, profileUUID, *updateConfig); err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
+		return nil
+	})
 }
 
 func (r *ConfigProfileRepository) deleteConfigProfile(ctx context.Context, profileUUID string) error {

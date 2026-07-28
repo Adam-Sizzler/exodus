@@ -30,7 +30,7 @@ func startWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 	}
 
 	apiHandler := httpapi.NewAPIHandler(pools, cfg)
-	metricsHandler := system.MetricsHandler(pools.Interactive, cfg)
+	metricsHandler := system.MetricsHandler(pools.Interactive, pools.Background, cfg)
 
 	mux := http.NewServeMux()
 	uiDir := cfg.Panel.StaticDir

@@ -69,7 +69,9 @@ var prometheusMetricsCache = struct {
 	ready      chan struct{}
 }{}
 
-func MetricsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+func MetricsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	runtimeRegistry := newRuntimeMetricsRegistry(db, backgroundDB)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -91,10 +93,16 @@ func MetricsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
+		runtimePayload, err := renderRegistry(runtimeRegistry)
+		if err != nil && cfg != nil && cfg.Logger != nil {
+			cfg.Logger.Warn("Failed to render runtime/db-pool metrics", "error", err)
+		}
+
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, payload)
+		_, _ = io.WriteString(w, runtimePayload)
 	}
 }
 

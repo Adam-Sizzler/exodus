@@ -97,7 +97,7 @@ func Run() {
 	wg.Add(4)
 
 	go startWebServer(ctx, pools, &cfg, &wg)
-	go startMetricsServer(ctx, pools.Interactive, &cfg, &wg)
+	go startMetricsServer(ctx, pools, &cfg, &wg)
 	go nodeMonitor.Start(ctx, &wg)
 	go subNodeMonitor.Start(ctx, &wg)
 	notifications.StartDispatcher(ctx, &wg, pools.Background, &cfg)

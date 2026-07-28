@@ -2,7 +2,6 @@ package exodus
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,13 +9,14 @@ import (
 	"time"
 
 	"exodus/internal/config"
+	exodusdb "exodus/internal/db"
 	"exodus/internal/httpapi/health"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/system"
 	"exodus/internal/logger"
 )
 
-func startMetricsServer(ctx context.Context, db *sql.DB, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+func startMetricsServer(ctx context.Context, pools *exodusdb.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	if cfg == nil || cfg.Metrics.Port <= 0 {
@@ -28,7 +28,7 @@ func startMetricsServer(ctx context.Context, db *sql.DB, cfg *config.BackendConf
 		metricsAddress = "127.0.0.1"
 	}
 	addr := fmt.Sprintf("%s:%d", metricsAddress, cfg.Metrics.Port)
-	metricsHandler := system.MetricsHandler(db, cfg)
+	metricsHandler := system.MetricsHandler(pools.Interactive, pools.Background, cfg)
 	healthHandler := health.HealthHandler()
 
 	mux := http.NewServeMux()
