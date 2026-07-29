@@ -32,16 +32,6 @@ FROM golang:1.25.12-alpine AS builder
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-ARG VERSION=latest
-ARG REVISION=unknown
-ARG FRONTEND_REVISION=unknown
-ARG BUILD_BRANCH=unknown
-ARG BUILD_TIME=unknown
-ARG BUILD_NUMBER=unknown
-ARG REPOSITORY_URL=unknown
-ARG BUILD_TAGS=none
-ARG CGO_ENABLED_STATUS=disabled
-
 WORKDIR /build/backend
 
 # Copy go mod files and download dependencies
@@ -58,69 +48,55 @@ RUN CGO_ENABLED=0 \
         -tags "none" \
         -trimpath \
         -buildvcs=false \
-        -ldflags="-s -w \
-                -X 'exodus/internal/constant.Version=${VERSION}' \
-                -X 'exodus/internal/constant.Revision=${REVISION}' \
-                -X 'exodus/internal/constant.BuildTags=none' \
-                -X 'exodus/internal/constant.CgoEnabled=0'" \
-    -o /build/exodus \
-    .
+        -o /build/exodus \
+        .
 
 # Final stage
 FROM alpine:latest
 
-ARG VERSION=latest
-ARG REVISION=unknown
-ARG FRONTEND_REVISION=unknown
-ARG BUILD_BRANCH=unknown
-ARG BUILD_TIME=unknown
-ARG BUILD_NUMBER=unknown
-ARG REPOSITORY_URL=unknown
+LABEL org.opencontainers.image.title="Exodus" \
+      org.opencontainers.image.description="Powerful proxy management panel" \
+      org.opencontainers.image.url="https://github.com/exodus/backend" \
+      org.opencontainers.image.source="https://github.com/exodus/backend" \
+      org.opencontainers.image.vendor="Exodus" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.documentation="https://docs.exodus.dev"
 
-LABEL org.opencontainers.image.title="exodus" \
-      org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.revision="${REVISION}" \
-      org.opencontainers.image.created="${BUILD_TIME}" \
-      org.opencontainers.image.source="${REPOSITORY_URL}"
+ARG BRANCH=main
+ARG __EX_METADATA_VERSION=1.0.0
+ARG __EX_METADATA_GIT_BACKEND_COMMIT=0f344f388807f5323b49024a563b3f8146d66857
+ARG __EX_METADATA_GIT_FRONTEND_COMMIT=0f344f388807f5323b49024a563b3f8146d66857
+ARG __EX_METADATA_GIT_BRANCH=main
+ARG __EX_METADATA_BUILD_TIME=2026-01-01T00:00:00Z
+ARG __EX_METADATA_BUILD_NUMBER=0
 
-ENV EXODUS_VERSION="${VERSION}" \
-    EXODUS_BACKEND_COMMIT="${REVISION}" \
-    EXODUS_FRONTEND_COMMIT="${FRONTEND_REVISION}" \
-    EXODUS_GIT_BRANCH="${BUILD_BRANCH}" \
-    EXODUS_BUILD_TIME="${BUILD_TIME}" \
-    EXODUS_BUILD_NUMBER="${BUILD_NUMBER}" \
-    EXODUS_REPOSITORY_URL="${REPOSITORY_URL}"
+ENV EXODUS_BRANCH=${BRANCH} \
+    __EX_METADATA_VERSION=${__EX_METADATA_VERSION} \
+    __EX_METADATA_GIT_BACKEND_COMMIT=${__EX_METADATA_GIT_BACKEND_COMMIT} \
+    __EX_METADATA_GIT_FRONTEND_COMMIT=${__EX_METADATA_GIT_FRONTEND_COMMIT} \
+    __EX_METADATA_GIT_BRANCH=${__EX_METADATA_GIT_BRANCH} \
+    __EX_METADATA_BUILD_TIME=${__EX_METADATA_BUILD_TIME} \
+    __EX_METADATA_BUILD_NUMBER=${__EX_METADATA_BUILD_NUMBER}
 
 # Install runtime dependencies including curl for healthchecks
 RUN apk add --no-cache curl ca-certificates tzdata
 
-WORKDIR /app
+WORKDIR /opt/app
 
 # Copy binary from builder
-COPY --from=builder /build/exodus /app/
+COPY --from=builder /build/exodus /opt/app/
 
-# Keep /app/exodus as the server entrypoint, and expose rescue commands
-# for `docker exec -it exodus cli` and `docker exec -it exodus exodus`.
-RUN printf '%s\n' \
-      '#!/bin/sh' \
-      'if [ "$#" -eq 0 ]; then' \
-      '  exec /app/exodus --rescue' \
-      'fi' \
-      'exec /app/exodus "$@"' \
-    > /usr/local/bin/exodus \
-    && printf '%s\n' \
-      '#!/bin/sh' \
-      'exec /app/exodus --rescue "$@"' \
-    > /usr/local/bin/cli \
-    && chmod +x /usr/local/bin/exodus /usr/local/bin/cli
+# Expose CLI symlinks for `docker exec -it exodus cli` and `docker exec -it exodus exodus`
+RUN ln -s /opt/app/exodus /usr/local/bin/exodus && \
+    ln -s /opt/app/exodus /usr/local/bin/cli
 
 # Copy built frontend
-COPY --from=panel-ui /ui/dist /app/ui
-COPY --from=builder /usr/local/go/lib/wasm/wasm_exec.js /app/ui/assets/wasm_exec.js
+COPY --from=panel-ui /ui/dist /opt/app/ui
+COPY --from=builder /usr/local/go/lib/wasm/wasm_exec.js /opt/app/ui/assets/wasm_exec.js
 
 # Create directories for data and certificates
-RUN mkdir -p /app/data /app/certs
+RUN mkdir -p /opt/app/data /opt/app/certs
 
 EXPOSE 3000
 
-ENTRYPOINT ["/app/exodus"]
+ENTRYPOINT ["/opt/app/exodus"]

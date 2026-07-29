@@ -1,22 +1,23 @@
-name: Build And Push Panel Image
+name: Build & Push Release Docker Image & Frontend
 
 on:
+  push:
+    tags:
+      - '*'
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag for Docker image, for example v1.2.3"
+        description: 'Version tag for Docker image and Release (e.g. v1.0.0)'
         required: true
         type: string
-  push:
-    tags:
-      - "*"
 
-permissions:
-  contents: read
+env:
+  REGISTRY_IMAGE: exodus/panel
+  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/exodus
 
 jobs:
-  send-start-deploy-telegram-message:
-    name: Send Telegram message
+  send-tg-msg:
+    name: Send Telegram message (Start)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -24,163 +25,303 @@ jobs:
 
       - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
+        if: ${{ secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           status: info
           notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build started'
+          title: 'Exodus build started.'
 
-  build-docker-image:
+  build-docker-images:
+    name: Build ${{ matrix.platform }}
+    needs: [send-tg-msg]
+    if: always() && !cancelled()
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Prepare platform pair
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
+
+      - name: Prepare build metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            BRANCH="${GITHUB_REF_NAME}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+
+          VERSION="$(printf '%s' "${VERSION}" | tr -d '[:space:]')"
+          BUILD_TIME="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          FRONTEND_COMMIT="$(git rev-parse HEAD)"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "frontend_commit=${FRONTEND_COMMIT}" >> $GITHUB_OUTPUT
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            __EX_METADATA_GIT_BRANCH=${{ steps.meta.outputs.branch }}
+            __EX_METADATA_BUILD_TIME=${{ steps.meta.outputs.build_time }}
+            __EX_METADATA_BUILD_NUMBER=${{ github.run_number }}
+            __EX_METADATA_VERSION=${{ steps.meta.outputs.version }}
+            __EX_METADATA_GIT_BACKEND_COMMIT=${{ github.sha }}
+            __EX_METADATA_GIT_FRONTEND_COMMIT=${{ steps.meta.outputs.frontend_commit }}
+          outputs: |
+            type=image,"name=${{ env.REGISTRY_IMAGE }},${{ env.GHCR_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge & push manifests
+    needs: [build-docker-images]
     runs-on: ubuntu-latest
-    needs: [send-start-deploy-telegram-message]
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
+
+      - name: Prepare version tags
+        id: tags
+        shell: bash
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.version }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Create & push manifest lists
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          TAG="${{ steps.tags.outputs.tag }}"
+
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            docker buildx imagetools create \
+              -t ${{ env.REGISTRY_IMAGE }}:latest \
+              -t ${{ env.REGISTRY_IMAGE }}:${TAG} \
+              $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *) || true
+          fi
+
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_IMAGE }}:latest \
+            -t ${{ env.GHCR_IMAGE }}:${TAG} \
+            $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:${{ steps.tags.outputs.tag }}
+
+  build-frontend-zip:
+    name: Build Frontend Zip Archive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install & Build Frontend
+        run: |
+          cd frontend
+          npm ci --legacy-peer-deps
+          npm run cb
+
+      - name: Create ZIP archive of frontend dist
+        run: |
+          cd frontend
+          zip -r ../exodus-frontend.zip ./dist
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exodus-frontend-zip
+          path: exodus-frontend.zip
+          retention-days: 1
+
+  create-release:
+    name: Create GitHub Release
+    needs: [merge, build-frontend-zip]
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
-    env:
-      DOCKER_BUILD_SUMMARY: "false"
-      DOCKER_BUILD_RECORD_UPLOAD: "false"
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Resolve build metadata
-        id: meta
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Download frontend zip
+        uses: actions/download-artifact@v4
+        with:
+          name: exodus-frontend-zip
+          path: .
+
+      - name: Get tag version
+        id: tag
         shell: bash
         run: |
-          set -euo pipefail
-
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
-
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-            BRANCH="${GITHUB_REF_NAME:-${DEFAULT_BRANCH:-unknown}}"
+            TAG="${{ inputs.version }}"
           else
-            VERSION="${GITHUB_REF_NAME}"
-            git fetch --force --prune origin "+refs/heads/*:refs/remotes/origin/*"
-            BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
-              | sed 's#^origin/##' \
-              | grep -Fx "${DEFAULT_BRANCH}" \
-              | head -n 1 || true)"
-            if [ -z "${BRANCH}" ]; then
-              BRANCH="$(git for-each-ref --format='%(refname:short)' --contains "${GITHUB_SHA}" refs/remotes/origin \
-                | sed 's#^origin/##' \
-                | grep -v '^HEAD$' \
-                | head -n 1 || true)"
-            fi
-            if [ -z "${BRANCH}" ]; then
-              BRANCH="${DEFAULT_BRANCH:-unknown}"
-            fi
+            TAG="${GITHUB_REF_NAME}"
           fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-          VERSION="$(printf '%s' "${VERSION}" | tr -d '[:space:]')"
-          if [ -z "${VERSION}" ]; then
-            echo "Version must not be empty" >&2
-            exit 1
-          fi
-          if ! printf '%s' "${VERSION}" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$'; then
-            echo "Version must be a valid Docker tag, for example v1.2.3 or 1.2.3" >&2
-            exit 1
-          fi
+      - name: Generate changelog
+        id: changelog
+        run: |
+          CHANGELOG=$(npx changelogen || echo "No previous release tag found.")
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-          OWNER_LC="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          IMAGE_BASE="ghcr.io/${OWNER_LC}/exodus"
-          IMAGE_VERSION="${IMAGE_BASE}:${VERSION}"
-          IMAGE_LATEST="${IMAGE_BASE}:latest"
-          BUILD_TIME="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          REPOSITORY_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
-          echo "frontend_revision=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
-          echo "branch=${BRANCH}" >> "${GITHUB_OUTPUT}"
-          echo "build_time=${BUILD_TIME}" >> "${GITHUB_OUTPUT}"
-          echo "build_number=${GITHUB_RUN_NUMBER}" >> "${GITHUB_OUTPUT}"
-          echo "repository_url=${REPOSITORY_URL}" >> "${GITHUB_OUTPUT}"
-          echo "image_base=${IMAGE_BASE}" >> "${GITHUB_OUTPUT}"
-          echo "image_version=${IMAGE_VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "image_latest=${IMAGE_LATEST}" >> "${GITHUB_OUTPUT}"
-
-          {
-            echo "image_tags<<EOF_TAGS"
-            echo "${IMAGE_VERSION}"
-            echo "${IMAGE_LATEST}"
-            echo "EOF_TAGS"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Exodus Panel ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          append_body: true
+          make_latest: true
+          draft: false
+          prerelease: false
+          files: exodus-frontend.zip
+          body: |
+            🚀 Exodus Panel ${{ steps.tag.outputs.tag }}
 
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.image_tags }}
-          labels: |
-            org.opencontainers.image.title=exodus
-            org.opencontainers.image.description=Exodus panel image
-            org.opencontainers.image.url=${{ steps.meta.outputs.repository_url }}
-            org.opencontainers.image.source=${{ steps.meta.outputs.repository_url }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.build_time }}
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-            REVISION=${{ steps.meta.outputs.revision }}
-            FRONTEND_REVISION=${{ steps.meta.outputs.frontend_revision }}
-            BUILD_BRANCH=${{ steps.meta.outputs.branch }}
-            BUILD_TIME=${{ steps.meta.outputs.build_time }}
-            BUILD_NUMBER=${{ steps.meta.outputs.build_number }}
-            REPOSITORY_URL=${{ steps.meta.outputs.repository_url }}
+            ${{ env.CHANGELOG }}
 
-  send-telegram-message:
-    name: Send Telegram message
-    needs: [build-docker-image]
+            ### 📦 Docker Images
+            - `ghcr.io/${{ github.repository_owner }}/exodus:${{ steps.tag.outputs.tag }}`
+            - `ghcr.io/${{ github.repository_owner }}/exodus:latest`
+
+            ### 📁 Frontend Artifact
+            - `exodus-frontend.zip` - Bundle containing compiled static SPA assets
+
+  send-finish-tg-msg:
+    name: Send Telegram message (Finish)
+    needs: [merge, create-release]
     runs-on: ubuntu-latest
+    if: always() && !cancelled()
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
       - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
+        if: ${{ secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: success
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build finished'
+          status: ${{ job.status }}
+          notify_fields: 'repository,branch,commit'
+          title: 'Exodus build finished.'
 
   notify-on-error:
     runs-on: ubuntu-latest
-    needs: [build-docker-image]
+    needs: [build-docker-images, merge, create-release]
     if: failure()
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Send Telegram message
+      - name: Send error notification
         uses: proDreams/actions-telegram-notifier@main
+        if: ${{ secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: error
+          status: failure
           notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build failed'
+          title: 'Exodus build failed.'

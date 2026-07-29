@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -41,6 +42,11 @@ func (a cliAction) String() string {
 
 func ParseCLIFlags() CLIFlags {
 	var flags CLIFlags
+
+	exeName := strings.ToLower(filepath.Base(os.Args[0]))
+	if exeName == "cli" || exeName == "rescue" {
+		flags.Rescue = true
+	}
 
 	for _, arg := range os.Args[1:] {
 		switch strings.ToLower(strings.TrimSpace(arg)) {
