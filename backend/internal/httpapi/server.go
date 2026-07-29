@@ -1,4 +1,4 @@
-package exodus
+package httpapi
 
 import (
 	"context"
@@ -12,14 +12,14 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/db"
-	"exodus/internal/httpapi"
 	"exodus/internal/httpapi/middleware"
+	"exodus/internal/httpapi/static"
 	"exodus/internal/httpapi/system"
 	"exodus/internal/logger"
 )
 
-// startWebServer serves both panel UI and API on a single APP_PORT.
-func startWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+// StartWebServer serves both panel UI and API on a single APP_PORT.
+func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Panel.AppPort)
@@ -29,7 +29,7 @@ func startWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 		panelBasePathNoTrailing = "/"
 	}
 
-	apiHandler := httpapi.NewAPIHandler(pools, cfg)
+	apiHandler := NewAPIHandler(pools, cfg)
 	metricsHandler := system.MetricsHandler(pools.Interactive, pools.Background, cfg)
 
 	mux := http.NewServeMux()
@@ -107,11 +107,7 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 		}
 
 		if relativePath == "app-config.js" {
-			serveAppConfigJS(w, panelBasePathNoTrailing)
-			return
-		}
-
-		if servePanelStaticFile(w, r, staticFS, uiDir, relativePath) {
+			static.ServeAppConfigJS(w, panelBasePathNoTrailing)
 			return
 		}
 
@@ -137,7 +133,7 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 			return
 		}
 
-		servePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
+		static.ServePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
 	})
 }
 

@@ -1,4 +1,4 @@
-package exodus
+package metrics
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"exodus/internal/logger"
 )
 
-func startMetricsServer(ctx context.Context, pools *exodusdb.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
+func StartMetricsServer(ctx context.Context, pools *exodusdb.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	if cfg == nil || cfg.Metrics.Port <= 0 {

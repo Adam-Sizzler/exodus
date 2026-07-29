@@ -13,3 +13,7 @@ frontend_/
 !README.md
 !frontend/public/help-articles/**/*.md
 node_modules
+
+# Compiled Go Binaries
+/backend/exodus
+/exodus

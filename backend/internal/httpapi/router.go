@@ -7,6 +7,7 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/db"
+	"exodus/internal/httpapi/asynqmon"
 	"exodus/internal/httpapi/auth"
 	"exodus/internal/httpapi/bandwidthstats"
 	"exodus/internal/httpapi/configprofiles"
@@ -162,7 +163,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/keygen", keygen.KeygenHandler(db, cfg))
 	mux.HandleFunc("/api/keygen/", keygen.KeygenHandler(db, cfg))
 
-	if asynqmonHandler, err := NewAsynqmon(cfg); err == nil {
+	if asynqmonHandler, err := asynqmon.NewAsynqmon(cfg); err == nil {
 		mux.Handle("/api/queues/static/", asynqmonHandler)
 		mux.Handle("/api/queues/", auth.RequireAdminRoleHandler(asynqmonHandler))
 		mux.Handle("/api/queues", auth.RequireAdminRoleHandler(asynqmonHandler))

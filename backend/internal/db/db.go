@@ -45,15 +45,13 @@ func OpenAndInitDB(cfg *config.BackendConfig) (*sql.DB, error) {
 	initCtx, cancelInit := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelInit()
 
+	fmt.Println("Migrating database...")
 	if err := ApplyMigrations(initCtx, db, cfg); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
-
-	if err := SeedDefaults(initCtx, db, cfg); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
+	fmt.Println("Migrations deployed successfully!")
+	fmt.Println("Seeding database...")
 
 	return db, nil
 }

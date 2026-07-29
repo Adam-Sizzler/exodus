@@ -226,7 +226,7 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 			}
 		}
 
-		cfg.Logger.Info("Applying migration", "name", name)
+		fmt.Printf("Applying migration: %s\n", name)
 		tx, err := conn.BeginTx(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("begin migration %s: %w", name, err)
