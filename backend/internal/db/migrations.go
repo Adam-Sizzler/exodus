@@ -26,6 +26,11 @@ var fixedMigrationChecksums = map[string]struct{ Old, New string }{
 	// "20260724000000_delete_legacy": {Old: "abc123...", New: "def456..."},
 }
 
+// fixedMigrationDeletions — устаревшие записи миграций, которые нужно удалить из истории
+var fixedMigrationDeletions = []string{
+	// "20251230045744_drop_is_custom_remark",
+}
+
 // retiredMigrations — устаревшие миграции, файлы которых были удалены с диска
 // при бейзлайнинге схемы. Наличие этих имен в истории БД игнорируется.
 var retiredMigrations = map[string]struct{}{
@@ -90,7 +95,7 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		return fmt.Errorf("initialize schema_migrations table: %w", err)
 	}
 
-	// 1. Fix old migration checksums (шаг 1 Remnawave)
+	// 1. Fix old migration checksums & delete legacy migration records (шаг 1 Remnawave)
 	for name, sums := range fixedMigrationChecksums {
 		res, err := conn.ExecContext(ctx,
 			`UPDATE public.schema_migrations SET checksum = $1 WHERE migration_name = $2 AND checksum = $3`,
@@ -100,6 +105,17 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		}
 		if n, _ := res.RowsAffected(); n > 0 {
 			cfg.Logger.Info("Fixed migration checksum", "name", name)
+		}
+	}
+
+	for _, name := range fixedMigrationDeletions {
+		res, err := conn.ExecContext(ctx,
+			`DELETE FROM public.schema_migrations WHERE migration_name = $1`, name)
+		if err != nil {
+			return fmt.Errorf("delete old migration record for %s: %w", name, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			cfg.Logger.Info("Deleted old migration record", "name", name)
 		}
 	}
 

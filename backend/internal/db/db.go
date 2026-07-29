@@ -24,14 +24,20 @@ func OpenAndInitDB(cfg *config.BackendConfig) (*sql.DB, error) {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	pingCtx, cancelPing := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelPing()
-	if err := db.PingContext(pingCtx); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("ping database: %w", err)
+	for {
+		pingCtx, cancelPing := context.WithTimeout(context.Background(), 5*time.Second)
+		err := db.PingContext(pingCtx)
+		cancelPing()
+		if err == nil {
+			break
+		}
+		cfg.Logger.Warn("Database not ready, retrying in 5s", "error", err)
+		time.Sleep(5 * time.Second)
 	}
 
-	if _, err := db.ExecContext(pingCtx, `CREATE EXTENSION IF NOT EXISTS "pgcrypto"`); err != nil {
+	execCtx, cancelExec := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelExec()
+	if _, err := db.ExecContext(execCtx, `CREATE EXTENSION IF NOT EXISTS "pgcrypto"`); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("ensure pgcrypto extension: %w", err)
 	}

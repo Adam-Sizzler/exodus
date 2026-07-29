@@ -115,33 +115,36 @@ func (r *ConfigProfileRepository) getConfigProfileInboundsMap(ctx context.Contex
 
 	for inboundRows.Next() {
 		var (
-			item     ConfigProfileInbound
-			network  sql.NullString
-			security sql.NullString
-			port     sql.NullInt64
-			raw      []byte
+			inbound     ConfigProfileInbound
+			networkVal  sql.NullString
+			securityVal sql.NullString
+			portVal     sql.NullInt64
+			rawInbound  []byte
 		)
-		if err := inboundRows.Scan(&item.UUID, &item.ProfileUUID, &item.Tag, &item.Type, &network, &security, &port, &raw); err != nil {
+		if err := inboundRows.Scan(&inbound.UUID, &inbound.ProfileUUID, &inbound.Tag, &inbound.Type, &networkVal, &securityVal, &portVal, &rawInbound); err != nil {
 			return nil, err
 		}
-		if network.Valid {
-			item.Network = &network.String
+		if networkVal.Valid {
+			inbound.Network = &networkVal.String
 		}
-		if security.Valid {
-			item.Security = &security.String
+		if securityVal.Valid {
+			inbound.Security = &securityVal.String
 		}
-		if port.Valid {
-			value := int(port.Int64)
-			item.Port = &value
+		if portVal.Valid {
+			portInt := int(portVal.Int64)
+			inbound.Port = &portInt
 		}
-		item.RawInbound = json.RawMessage(raw)
-		item.ActiveSquads = dedupeStrings(activeSquadsByInbound[item.UUID])
-		result[item.ProfileUUID] = append(result[item.ProfileUUID], item)
+		inbound.RawInbound = json.RawMessage(rawInbound)
+		if squads, ok := activeSquadsByInbound[inbound.UUID]; ok {
+			inbound.ActiveSquads = dedupeStrings(squads)
+		} else {
+			inbound.ActiveSquads = []string{}
+		}
+		result[inbound.ProfileUUID] = append(result[inbound.ProfileUUID], inbound)
 	}
 	if err := inboundRows.Err(); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -187,7 +190,7 @@ func (r *ConfigProfileRepository) createConfigProfile(ctx context.Context, profi
 			return err
 		}
 
-		if _, err := r.syncConfigProfileInboundsTx(ctx, tx, profileUUID, req.Config); err != nil {
+		if _, err := exodusdb.SyncConfigProfileInboundsTx(ctx, tx, profileUUID, req.Config); err != nil {
 			return err
 		}
 		return nil
@@ -216,7 +219,7 @@ func (r *ConfigProfileRepository) updateConfigProfile(ctx context.Context, profi
 		}
 
 		if updateConfig != nil {
-			if _, err := r.syncConfigProfileInboundsTx(ctx, tx, profileUUID, *updateConfig); err != nil {
+			if _, err := exodusdb.SyncConfigProfileInboundsTx(ctx, tx, profileUUID, *updateConfig); err != nil {
 				return err
 			}
 		}
@@ -259,57 +262,8 @@ func (r *ConfigProfileRepository) reorderConfigProfiles(ctx context.Context, ite
 	return tx.Commit()
 }
 
-func (r *ConfigProfileRepository) syncConfigProfileInboundsTx(ctx context.Context, tx *sql.Tx, profileUUID string, configJSON json.RawMessage) (int, error) {
-	inbounds, err := parseConfigInbounds(profileUUID, configJSON)
-	if err != nil {
-		return 0, err
-	}
-
-	currentTags := make([]string, 0, len(inbounds))
-	for _, inbound := range inbounds {
-		currentTags = append(currentTags, inbound.Tag)
-	}
-
-	for _, inbound := range inbounds {
-		var networkVal, securityVal, portVal any
-		if inbound.Network != nil {
-			networkVal = *inbound.Network
-		}
-		if inbound.Security != nil {
-			securityVal = *inbound.Security
-		}
-		if inbound.Port != nil {
-			portVal = *inbound.Port
-		}
-
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO config_profile_inbounds (
-				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (tag) DO UPDATE SET
-				profile_uuid = EXCLUDED.profile_uuid,
-				type         = EXCLUDED.type,
-				network      = EXCLUDED.network,
-				security     = EXCLUDED.security,
-				port         = EXCLUDED.port,
-				raw_inbound  = EXCLUDED.raw_inbound
-		`, inbound.UUID, inbound.ProfileUUID, inbound.Tag, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound); err != nil {
-			return 0, err
-		}
-	}
-
-	if len(currentTags) > 0 {
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM config_profile_inbounds
-			WHERE profile_uuid = $1 AND NOT (tag = ANY($2))
-		`, profileUUID, currentTags); err != nil {
-			return 0, err
-		}
-	} else if _, err := tx.ExecContext(ctx, `DELETE FROM config_profile_inbounds WHERE profile_uuid = $1`, profileUUID); err != nil {
-		return 0, err
-	}
-
-	return len(inbounds), nil
+func (r *ConfigProfileRepository) SyncConfigProfileInboundsTx(ctx context.Context, tx *sql.Tx, profileUUID string, configJSON json.RawMessage) (int, error) {
+	return exodusdb.SyncConfigProfileInboundsTx(ctx, tx, profileUUID, configJSON)
 }
 
 func (r *ConfigProfileRepository) getSnippets(ctx context.Context) ([]ConfigProfileSnippet, error) {
