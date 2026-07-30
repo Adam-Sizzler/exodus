@@ -394,6 +394,17 @@ func (a *App) proxySubscription(
 	}
 
 	if bridgeResp.GetStatusCode() < 200 || bridgeResp.GetStatusCode() >= 300 || len(bridgeResp.GetPayload()) == 0 {
+		if bridgeResp.GetStatusCode() > 0 {
+			headers := protoHeadersToHTTPHeader(bridgeResp.GetHeaders())
+			for k, v := range headers {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(int(bridgeResp.GetStatusCode()))
+			if len(bridgeResp.GetPayload()) > 0 {
+				_, _ = w.Write(bridgeResp.GetPayload())
+			}
+			return
+		}
 		closeConnection(w)
 		return
 	}
