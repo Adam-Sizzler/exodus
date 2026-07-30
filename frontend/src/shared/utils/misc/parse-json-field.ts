@@ -1,10 +1,11 @@
 import consola from 'consola/browser'
 
 export const parseJsonField = (value: unknown): null | object | string => {
-    if (value === '') return null
+    if (value === null || value === undefined || value === '') return null
+    if (typeof value === 'object') return value
 
     try {
-        return JSON.parse(value as unknown as string)
+        return JSON.parse(value as string)
     } catch (error) {
         consola.error(error)
         return null
