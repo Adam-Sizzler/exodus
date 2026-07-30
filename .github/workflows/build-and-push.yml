@@ -235,14 +235,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY }}
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: v${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
           generate_release_notes: true
           append_body: true
           make_latest: true
           draft: false
           prerelease: false
           body: |
-            🚀 Exodus v${{ steps.tag.outputs.tag }}
+            🚀 Exodus ${{ steps.tag.outputs.tag }}
 
             ${{ env.CHANGELOG }}
 
