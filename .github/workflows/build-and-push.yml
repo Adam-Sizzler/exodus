@@ -18,7 +18,6 @@ env:
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
   REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/backend
-  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/exodus
 
 jobs:
   send-tg-msg:
@@ -79,6 +78,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
+
+      - name: Normalize GHCR image name (GHCR requires lowercase)
+        run: |
+          echo "GHCR_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/exodus" >> "$GITHUB_ENV"
 
       - name: Prepare build metadata
         id: meta
@@ -162,6 +165,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
+
+      - name: Normalize GHCR image name (GHCR requires lowercase)
+        run: |
+          echo "GHCR_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/exodus" >> "$GITHUB_ENV"
 
       - name: Prepare version tags
         id: tags
@@ -259,6 +266,10 @@ jobs:
           fi
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
+      - name: Normalize GHCR image name (GHCR requires lowercase)
+        run: |
+          echo "GHCR_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/exodus" >> "$GITHUB_ENV"
+
       - name: Generate changelog
         id: changelog
         run: |
@@ -286,8 +297,8 @@ jobs:
             ${{ env.CHANGELOG }}
 
             ### 📦 Docker Images
-            - `ghcr.io/${{ github.repository_owner }}/exodus:${{ steps.tag.outputs.tag }}`
-            - `ghcr.io/${{ github.repository_owner }}/exodus:latest`
+            - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
+            - `${{ env.GHCR_IMAGE }}:latest`
 
             ### 📁 Frontend Artifact
             - `exodus-frontend.zip` - Bundle containing compiled static SPA assets
@@ -296,7 +307,7 @@ jobs:
     name: Send Telegram message (Finish)
     needs: [merge, create-release]
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
+    if: success()
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
