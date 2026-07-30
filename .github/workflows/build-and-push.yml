@@ -86,11 +86,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
-            BRANCH="${GITHUB_REF_NAME}"
           else
             VERSION="${GITHUB_REF_NAME}"
+          fi
+
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            REAL_BRANCH="$(git branch -r --contains "${GITHUB_SHA}" 2>/dev/null | grep -v 'HEAD' | head -n 1 | sed 's/.*origin\///' | tr -d '[:space:]')"
+            if [ -n "${REAL_BRANCH}" ]; then
+              BRANCH="${REAL_BRANCH}"
+            else
+              BRANCH="${GITHUB_REF_NAME}"
+            fi
+          else
             BRANCH="${GITHUB_REF_NAME}"
           fi
 

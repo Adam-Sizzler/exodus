@@ -25,11 +25,11 @@ func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		version = normalizeVersion(version)
 
-		frontendSHA := firstMetadataEnv("EXODUS_FRONTEND_COMMIT")
+		frontendSHA := firstMetadataEnv("__EX_METADATA_GIT_FRONTEND_COMMIT")
 		if frontendSHA == "" {
 			frontendSHA = backendSHA
 		}
-		buildNumber := firstMetadataEnv("EXODUS_BUILD_NUMBER", "BUILD_NUMBER", "GITHUB_RUN_NUMBER")
+		buildNumber := firstMetadataEnv("__EX_METADATA_BUILD_NUMBER", "BUILD_NUMBER", "GITHUB_RUN_NUMBER")
 		if buildNumber == "" {
 			buildNumber = "unknown"
 		}
