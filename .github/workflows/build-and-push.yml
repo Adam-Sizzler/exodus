@@ -229,11 +229,19 @@ jobs:
     name: Create GitHub Release
     needs: [merge, build-frontend-zip]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
 
       - name: Download frontend zip
         uses: actions/download-artifact@v4
@@ -267,7 +275,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Exodus Panel ${{ steps.tag.outputs.tag }}
-          generate_release_notes: true
+          generate_release_notes: false
           append_body: true
           make_latest: true
           draft: false
@@ -289,7 +297,7 @@ jobs:
     name: Send Telegram message (Finish)
     needs: [merge, create-release]
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
+    if: success()
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -301,7 +309,7 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: ${{ job.status }}
+          status: success
           notify_fields: 'repository,branch,commit'
           title: 'Exodus build finished.'
 
