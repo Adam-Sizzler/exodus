@@ -154,89 +154,79 @@ func inferClientAppFromUserAgent(userAgent string) string {
 	return userAgent
 }
 
-func inferKnownClientPlatform(client string) string {
-	client = strings.ToLower(strings.TrimSpace(client))
-
-	switch client {
-	case "sfa",
-		"sfatv",
-		"sfandroidtv",
-		"v2rayng",
-		"exclave",
-		"nekoboxforandroid",
-		"matsuri",
-		"sagernet",
-		"clashforandroid",
-		"clashmetaforandroid",
-		"cmfa":
-		return "android"
-
-	case "sfi",
-		"streisand",
-		"v2box",
-		"rabbithole",
-		"shadowrocket":
-		return "ios"
-
-	case "sft":
-		return "tvos"
-
-	case "sfw",
-		"v2rayn":
-		return "windows"
-
-	case "sfm",
-		"v2rayu",
-		"v2rayx",
-		"v2rayxs",
-		"clashx":
-		return "macos"
-
-	case "sfl":
-		return "linux"
-
-	default:
-		return ""
+func inferKnownClientPlatform(lowerUA string) string {
+	for _, app := range []string{"sfa", "sfatv", "sfandroidtv", "v2rayng", "exclave", "nekoboxforandroid", "matsuri", "sagernet", "clashforandroid", "clashmetaforandroid", "cmfa"} {
+		if strings.Contains(lowerUA, app) {
+			return "android"
+		}
 	}
+
+	for _, app := range []string{"sfi", "streisand", "v2box", "rabbithole", "shadowrocket", "loon", "quantumult", "stash", "choc"} {
+		if strings.Contains(lowerUA, app) {
+			return "ios"
+		}
+	}
+
+	for _, app := range []string{"sft"} {
+		if strings.Contains(lowerUA, app) {
+			return "tvos"
+		}
+	}
+
+	for _, app := range []string{"sfw", "v2rayn"} {
+		if strings.Contains(lowerUA, app) {
+			return "windows"
+		}
+	}
+
+	for _, app := range []string{"sfm", "v2rayu", "v2rayx", "v2rayxs", "clashx"} {
+		if strings.Contains(lowerUA, app) {
+			return "macos"
+		}
+	}
+
+	for _, app := range []string{"sfl"} {
+		if strings.Contains(lowerUA, app) {
+			return "linux"
+		}
+	}
+
+	return ""
 }
 
 func inferPlatformFromUserAgent(userAgent string) string {
-	lower := strings.ToLower(userAgent)
+	lower := strings.ToLower(strings.TrimSpace(userAgent))
 	if lower == "" {
 		return ""
 	}
 
-	if strings.Contains(lower, "rabbithole") || strings.Contains(lower, "streisand") || strings.Contains(lower, "shadowrocket") || strings.Contains(lower, "loon") || strings.Contains(lower, "quantumult") || strings.Contains(lower, "stash") {
-		return "ios"
-	}
-
-	if platform := inferKnownClientPlatform(inferClientAppFromUserAgent(lower)); platform != "" {
+	if platform := inferKnownClientPlatform(lower); platform != "" {
 		return platform
 	}
 
 	if idx := strings.Index(lower, "platform/"); idx >= 0 {
-		rest := userAgent[idx+len("platform/"):]
+		rest := lower[idx+len("platform/"):]
 		for i, r := range rest {
-			if !(r == '-' || r == '_' || r == '.' || r == '/' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z') {
+			if !(r == '-' || r == '_' || r == '.' || r == '/' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z') {
 				rest = rest[:i]
 				break
 			}
 		}
 		if rest = strings.Trim(rest, "/ "); rest != "" {
-			return strings.ToLower(rest)
+			return rest
 		}
 	}
 
 	switch {
-	case strings.Contains(lower, "windows") || strings.Contains(lower, "sfw"):
+	case strings.Contains(lower, "windows"):
 		return "windows"
-	case strings.Contains(lower, "android") || strings.Contains(lower, "clashmetaforandroid") || strings.Contains(lower, "v2rayng"):
+	case strings.Contains(lower, "android"):
 		return "android"
-	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios") || strings.Contains(lower, "sfi"):
+	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios"):
 		return "ios"
-	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "macintosh") || strings.Contains(lower, "darwin") || strings.Contains(lower, "sfm") || strings.Contains(lower, "clashx"):
+	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "macintosh") || strings.Contains(lower, "darwin"):
 		return "macos"
-	case strings.Contains(lower, "linux") || strings.Contains(lower, "sfl"):
+	case strings.Contains(lower, "linux"):
 		return "linux"
 	default:
 		return ""
