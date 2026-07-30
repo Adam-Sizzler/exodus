@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -635,6 +636,31 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Logger.Warn("Invalid trusted proxy CIDR entries ignored", "entries", invalid)
 	}
 	cfg.Panel.trustedProxyNets = proxyNets
+	cfg.Panel.StaticDir = resolveStaticDir(cfg.Panel.StaticDir)
+}
+
+func resolveStaticDir(configured string) string {
+	if configured != "" {
+		if _, err := os.Stat(filepath.Join(configured, "index.html")); err == nil {
+			return configured
+		}
+	}
+	candidates := []string{
+		"ui",
+		"/opt/app/ui",
+		"/app/ui",
+		"frontend/dist",
+		"../frontend/dist",
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(filepath.Join(candidate, "index.html")); err == nil {
+			return candidate
+		}
+	}
+	if configured != "" {
+		return configured
+	}
+	return "ui"
 }
 
 func parseTrustedProxies(entries []string) ([]*net.IPNet, []string) {

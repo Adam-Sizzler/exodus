@@ -51,7 +51,13 @@ func RenderPanelIndex(page string, basePathWithSlash, basePath string) string {
 		basePathWithSlash,
 		basePath,
 	)
-	page = strings.Replace(page, "<head>", "<head>\n"+injected, 1)
+	if strings.Contains(page, "<head>") {
+		page = strings.Replace(page, "<head>", "<head>\n"+injected, 1)
+	} else if strings.Contains(page, "<HEAD>") {
+		page = strings.Replace(page, "<HEAD>", "<HEAD>\n"+injected, 1)
+	} else {
+		page = injected + page
+	}
 
 	basePrefix := strings.TrimRight(basePathWithSlash, "/")
 
