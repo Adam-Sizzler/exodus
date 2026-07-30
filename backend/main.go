@@ -141,7 +141,7 @@ func main() {
 		Scope: notifications.ScopeService,
 		Event: notifications.EventServicePanelStarted,
 		Data: map[string]any{
-			"version": constant.Version,
+			"version": constant.GetVersion(),
 		},
 	})
 

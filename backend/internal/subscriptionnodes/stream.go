@@ -246,6 +246,8 @@ func (sm *SubNodeMonitor) resolveInternalHandler(path string) http.HandlerFunc {
 	switch {
 	case path == "/api/system/metadata":
 		return systemapi.MetadataHandler(sm.cfg)
+	case strings.HasPrefix(path, "/api/subscriptions/subpage-config/") || path == "/api/subscriptions/subpage-config":
+		return subscriptionapi.SubpageConfigPublicHandler(sm.db, sm.db, sm.cfg)
 	case strings.HasPrefix(path, "/api/sub/") || path == "/api/sub" || strings.HasPrefix(path, "/api/subscriptions/") || path == "/api/subscriptions":
 		return subscriptionapi.SubscriptionPublicHandler(sm.db, sm.db, sm.cfg)
 	default:
