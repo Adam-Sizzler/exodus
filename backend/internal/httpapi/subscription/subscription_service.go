@@ -108,10 +108,6 @@ func (s *RenderService) RenderUserSubscription(
 	requestIP string,
 	hwid *HwidHeaders,
 ) ([]byte, string, map[string]string, error) {
-	if user.Status != "ACTIVE" || (!user.ExpireAt.IsZero() && user.ExpireAt.Before(time.Now())) {
-		return nil, "", nil, ErrUserDisabled
-	}
-
 	settings, err := loadSubscriptionSettings(ctx, s.db, s.cfg)
 	if err != nil {
 		return nil, "", nil, err
@@ -120,19 +116,45 @@ func (s *RenderService) RenderUserSubscription(
 	squadOverrides, _ := loadExternalSquadOverrides(ctx, s.db, ptrString(user.ExternalSquadUUID), s.cfg)
 	settings = applyExternalSquadOverrides(settings, squadOverrides)
 
-	hosts, err := getHostsForUser(ctx, s.db, user)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	if len(hosts) == 0 {
-		return nil, "", nil, ErrNoHosts
+	var earlyExitRemarks []string
+	if settings.Raw.IsShowCustomRemarks {
+		if user.Status == "DISABLED" {
+			earlyExitRemarks = settings.CustomRemarks.DisabledUsers
+		} else if user.Status == "EXPIRED" || (!user.ExpireAt.IsZero() && user.ExpireAt.Before(time.Now())) {
+			earlyExitRemarks = settings.CustomRemarks.ExpiredUsers
+		} else if user.Status == "LIMITED" {
+			earlyExitRemarks = settings.CustomRemarks.LimitedUsers
+		}
 	}
 
-	if len(settings.HostOverrides) > 0 {
+	if len(earlyExitRemarks) == 0 && (user.Status != "ACTIVE" || (!user.ExpireAt.IsZero() && user.ExpireAt.Before(time.Now()))) {
+		return nil, "", nil, ErrUserDisabled
+	}
+
+	var hosts []SubscriptionHost
+	if len(earlyExitRemarks) > 0 {
+		hosts = createFallbackRemarkHosts(earlyExitRemarks)
+	} else {
+		userHosts, err := getHostsForUser(ctx, s.db, user)
+		if err != nil {
+			return nil, "", nil, err
+		}
+		if len(userHosts) == 0 {
+			if settings.Raw.IsShowCustomRemarks && len(settings.CustomRemarks.EmptyHosts) > 0 {
+				hosts = createFallbackRemarkHosts(settings.CustomRemarks.EmptyHosts)
+			} else {
+				return nil, "", nil, ErrNoHosts
+			}
+		} else {
+			hosts = userHosts
+		}
+	}
+
+	if len(settings.HostOverrides) > 0 && len(hosts) > 0 {
 		hosts = applyHostOverrides(hosts, settings.HostOverrides)
 	}
 
-	if settings.Raw.RandomizeHosts {
+	if settings.Raw.RandomizeHosts && len(hosts) > 0 {
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[i], hosts[j] = hosts[j], hosts[i]
 		})
@@ -309,4 +331,23 @@ func sortHosts(hosts []SubscriptionHost) {
 		}
 		return hosts[i].Remark < hosts[j].Remark
 	})
+}
+
+func createFallbackRemarkHosts(remarks []string) []SubscriptionHost {
+	result := make([]SubscriptionHost, 0, len(remarks))
+	for i, remark := range remarks {
+		vlessType := "vless"
+		noneSec := "none"
+		tcpNet := "tcp"
+		result = append(result, SubscriptionHost{
+			UUID:            fmt.Sprintf("00000000-0000-0000-0000-00000000%04d", i+1),
+			Remark:          remark,
+			Address:         "0.0.0.0",
+			Port:            1,
+			InboundType:     &vlessType,
+			InboundSecurity: &noneSec,
+			InboundNetwork:  &tcpNet,
+		})
+	}
+	return result
 }
