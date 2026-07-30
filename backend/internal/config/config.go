@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -158,7 +157,7 @@ var defaultConfig = BackendConfig{
 		PushToDBQueueConcurrency:     3,
 	},
 	Panel: PanelConfig{
-		StaticDir:         "/app/ui",
+		StaticDir:         "/opt/app/ui",
 		BasePath:          "/",
 		AllowInsecureHTTP: false,
 		TrustedProxies:    []string{},
@@ -310,6 +309,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	if value := envFirst("APP_PATH"); value != "" {
 		cfg.Panel.BasePath = value
+	}
+	if value := envFirst("PANEL_STATIC_DIR", "EXODUS_STATIC_DIR"); value != "" {
+		cfg.Panel.StaticDir = value
 	}
 
 	if value := envFirst("IS_DOCS_ENABLED"); value != "" {
@@ -636,31 +638,6 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Logger.Warn("Invalid trusted proxy CIDR entries ignored", "entries", invalid)
 	}
 	cfg.Panel.trustedProxyNets = proxyNets
-	cfg.Panel.StaticDir = resolveStaticDir(cfg.Panel.StaticDir)
-}
-
-func resolveStaticDir(configured string) string {
-	if configured != "" {
-		if _, err := os.Stat(filepath.Join(configured, "index.html")); err == nil {
-			return configured
-		}
-	}
-	candidates := []string{
-		"ui",
-		"/opt/app/ui",
-		"/app/ui",
-		"frontend/dist",
-		"../frontend/dist",
-	}
-	for _, candidate := range candidates {
-		if _, err := os.Stat(filepath.Join(candidate, "index.html")); err == nil {
-			return candidate
-		}
-	}
-	if configured != "" {
-		return configured
-	}
-	return "ui"
 }
 
 func parseTrustedProxies(entries []string) ([]*net.IPNet, []string) {
