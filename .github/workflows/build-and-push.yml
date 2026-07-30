@@ -12,12 +12,8 @@ on:
         type: string
 
 env:
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
-  REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/backend
+  REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/exodus
+  GHCR_IMAGE: ghcr.io/adam-sizzler/exodus
 
 jobs:
   send-tg-msg:
@@ -29,7 +25,7 @@ jobs:
 
       - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
-        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        if: secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -43,9 +39,6 @@ jobs:
     needs: [send-tg-msg]
     if: always() && !cancelled()
     runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: read
-      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -70,7 +63,7 @@ jobs:
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
-        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        if: secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -79,12 +72,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
-
-      - name: Normalize GHCR image name (GHCR requires lowercase)
-        run: |
-          echo "GHCR_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/exodus" >> "$GITHUB_ENV"
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY }}
 
       - name: Prepare build metadata
         id: meta
@@ -157,7 +146,7 @@ jobs:
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
-        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        if: secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -166,12 +155,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
-
-      - name: Normalize GHCR image name (GHCR requires lowercase)
-        run: |
-          echo "GHCR_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/exodus" >> "$GITHUB_ENV"
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY }}
 
       - name: Prepare version tags
         id: tags
@@ -189,7 +174,7 @@ jobs:
         run: |
           TAG="${{ steps.tags.outputs.tag }}"
 
-          if [ -n "${DOCKERHUB_USERNAME}" ]; then
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
             docker buildx imagetools create \
               -t ${{ env.REGISTRY_IMAGE }}:latest \
               -t ${{ env.REGISTRY_IMAGE }}:${TAG} \
@@ -239,18 +224,11 @@ jobs:
     name: Create GitHub Release
     needs: [merge, build-frontend-zip]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
 
       - name: Download frontend zip
         uses: actions/download-artifact@v4
@@ -269,10 +247,6 @@ jobs:
           fi
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-      - name: Normalize GHCR image name (GHCR requires lowercase)
-        run: |
-          echo "GHCR_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/exodus" >> "$GITHUB_ENV"
-
       - name: Generate changelog
         id: changelog
         run: |
@@ -284,7 +258,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY }}
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Exodus Panel ${{ steps.tag.outputs.tag }}
@@ -295,15 +269,15 @@ jobs:
           prerelease: false
           files: exodus-frontend.zip
           body: |
-            🚀 Exodus Panel ${{ steps.tag.outputs.tag }}
+            ?? Exodus Panel ${{ steps.tag.outputs.tag }}
 
             ${{ env.CHANGELOG }}
 
-            ### 📦 Docker Images
+            ### ?? Docker Images
             - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
             - `${{ env.GHCR_IMAGE }}:latest`
 
-            ### 📁 Frontend Artifact
+            ### ?? Frontend Artifact
             - `exodus-frontend.zip` - Bundle containing compiled static SPA assets
 
   send-finish-tg-msg:
@@ -317,7 +291,7 @@ jobs:
 
       - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
-        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        if: secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -336,7 +310,7 @@ jobs:
 
       - name: Send error notification
         uses: proDreams/actions-telegram-notifier@main
-        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        if: secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
