@@ -372,8 +372,13 @@ func SubpageConfigPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendCon
 			RequestHeaders map[string]string `json:"requestHeaders"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if req.RequestHeaders == nil {
+		if req.RequestHeaders == nil || len(req.RequestHeaders) == 0 {
 			req.RequestHeaders = make(map[string]string)
+			for k, v := range r.Header {
+				if len(v) > 0 {
+					req.RequestHeaders[k] = v[0]
+				}
+			}
 		}
 
 		subpageConfigUUID, webpageAllowed, err := getSubpageConfigForUser(r.Context(), db, cfg, shortUUID, req.RequestHeaders)
