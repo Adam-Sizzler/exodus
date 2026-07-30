@@ -1,4 +1,4 @@
-name: Build & Push Release Docker Image & Frontend
+name: Build & Push Release Docker Image
 
 on:
   push:
@@ -195,39 +195,9 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:${{ steps.tags.outputs.tag }}
 
-  build-frontend-zip:
-    name: Build Frontend Zip Archive
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - name: Install & Build Frontend
-        run: |
-          cd frontend
-          npm ci --legacy-peer-deps
-          npm run cb
-
-      - name: Create ZIP archive of frontend dist
-        run: |
-          cd frontend
-          zip -r ../exodus-frontend.zip ./dist
-
-      - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: exodus-frontend-zip
-          path: exodus-frontend.zip
-          retention-days: 1
-
   create-release:
     name: Create GitHub Release
-    needs: [merge, build-frontend-zip]
+    needs: [merge]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -239,12 +209,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
-
-      - name: Download frontend zip
-        uses: actions/download-artifact@v4
-        with:
-          name: exodus-frontend-zip
-          path: .
 
       - name: Get tag version
         id: tag
@@ -271,24 +235,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY }}
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: Exodus Panel ${{ steps.tag.outputs.tag }}
+          name: v${{ steps.tag.outputs.tag }}
           generate_release_notes: true
           append_body: true
           make_latest: true
           draft: false
           prerelease: false
-          files: exodus-frontend.zip
           body: |
-            🚀 Exodus Panel ${{ steps.tag.outputs.tag }}
+            🚀 Exodus v${{ steps.tag.outputs.tag }}
 
             ${{ env.CHANGELOG }}
 
-            ### 📦 Docker Images
-            - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
+            Latest Docker image:
+            - `${{ env.REGISTRY_IMAGE }}:latest`
             - `${{ env.GHCR_IMAGE }}:latest`
 
-            ### 📁 Frontend Artifact
-            - `exodus-frontend.zip` - Bundle containing compiled static SPA assets
+            Docker images:
+            - `${{ env.REGISTRY_IMAGE }}:${{ steps.tag.outputs.tag }}`
+            - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
 
   send-finish-tg-msg:
     name: Send Telegram message (Finish)
