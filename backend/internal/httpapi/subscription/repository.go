@@ -575,13 +575,14 @@ func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID str
 }
 
 func getSubscriptionTemplate(ctx context.Context, dbConn *sql.DB, templateType string) ([]byte, error) {
+	upperType := strings.ToUpper(strings.TrimSpace(templateType))
 	row := dbConn.QueryRowContext(ctx, `
 		SELECT template_yaml, template_json
 		FROM subscription_templates
-		WHERE template_type = $1
+		WHERE UPPER(template_type) = $1
 		ORDER BY view_position ASC
 		LIMIT 1
-	`, templateType)
+	`, upperType)
 
 	var templateYAML sql.NullString
 	var templateJSON sql.NullString
@@ -590,7 +591,7 @@ func getSubscriptionTemplate(ctx context.Context, dbConn *sql.DB, templateType s
 	}
 
 	var templateData []byte
-	if templateType == responseTypeXrayJSON || templateType == responseTypeSingbox {
+	if upperType == responseTypeXrayJSON || upperType == responseTypeSingbox {
 		if templateJSON.Valid {
 			templateData = []byte(templateJSON.String)
 		}
@@ -617,8 +618,9 @@ func getSubscriptionTemplateByName(ctx context.Context, dbConn *sql.DB, name str
 		return "", nil, err
 	}
 
+	upperType := strings.ToUpper(strings.TrimSpace(templateType))
 	var templateData []byte
-	if templateType == responseTypeXrayJSON || templateType == responseTypeSingbox {
+	if upperType == responseTypeXrayJSON || upperType == responseTypeSingbox {
 		if templateJSON.Valid {
 			templateData = []byte(templateJSON.String)
 		}
