@@ -512,10 +512,10 @@ func upsertHwidUserDevice(ctx context.Context, dbConn *sql.DB, userID int64, hwi
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (hwid, user_id)
 		DO UPDATE SET
-			platform = EXCLUDED.platform,
-			os_version = EXCLUDED.os_version,
-			device_model = EXCLUDED.device_model,
-			user_agent = EXCLUDED.user_agent,
+			platform = COALESCE(EXCLUDED.platform, hwid_user_devices.platform),
+			os_version = COALESCE(EXCLUDED.os_version, hwid_user_devices.os_version),
+			device_model = COALESCE(EXCLUDED.device_model, hwid_user_devices.device_model),
+			user_agent = COALESCE(EXCLUDED.user_agent, hwid_user_devices.user_agent),
 			request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
 			updated_at = now()
 	`, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP)

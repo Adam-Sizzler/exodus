@@ -8,24 +8,34 @@ import (
 )
 
 func extractHwidHeaders(r *http.Request) *HwidHeaders {
-	hwid := strings.TrimSpace(r.Header.Get("X-HWID"))
-	if hwid == "" {
+	hwid := firstNonEmptyHeaderValue(r, "X-HWID", "X-Hwid", "Hwid", "X-HWID-Device-ID")
+	if hwid == nil {
 		return nil
 	}
 	userAgent := firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent")
-	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform")
-	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version")
-	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model")
+	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform", "X-Hwid-Platform", "Hwid-Platform")
+	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version", "X-Hwid-Os-Version", "Hwid-Os-Version")
+	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model", "X-Hwid-Device-Model", "Hwid-Device-Model")
 	platform, osVersion, deviceModel, userAgent = normalizeHwidMetadata(platform, osVersion, deviceModel, userAgent)
 
 	h := &HwidHeaders{
-		Hwid:        hwid,
+		Hwid:        *hwid,
 		Platform:    platform,
 		OsVersion:   osVersion,
 		DeviceModel: deviceModel,
 		UserAgent:   userAgent,
 	}
 	return h
+}
+
+func firstNonEmptyHeaderValue(r *http.Request, names ...string) *string {
+	for _, name := range names {
+		val := strings.TrimSpace(r.Header.Get(name))
+		if val != "" {
+			return &val
+		}
+	}
+	return nil
 }
 
 func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *HwidHeaders {
@@ -196,6 +206,10 @@ func inferPlatformFromUserAgent(userAgent string) string {
 		return ""
 	}
 
+	if strings.Contains(lower, "rabbithole") || strings.Contains(lower, "streisand") || strings.Contains(lower, "shadowrocket") || strings.Contains(lower, "loon") || strings.Contains(lower, "quantumult") || strings.Contains(lower, "stash") {
+		return "ios"
+	}
+
 	if platform := inferKnownClientPlatform(inferClientAppFromUserAgent(lower)); platform != "" {
 		return platform
 	}
@@ -214,15 +228,15 @@ func inferPlatformFromUserAgent(userAgent string) string {
 	}
 
 	switch {
-	case strings.Contains(lower, "windows"):
+	case strings.Contains(lower, "windows") || strings.Contains(lower, "sfw"):
 		return "windows"
-	case strings.Contains(lower, "android"):
+	case strings.Contains(lower, "android") || strings.Contains(lower, "clashmetaforandroid") || strings.Contains(lower, "v2rayng"):
 		return "android"
-	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios"):
+	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios") || strings.Contains(lower, "sfi"):
 		return "ios"
-	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "macintosh") || strings.Contains(lower, "darwin"):
+	case strings.Contains(lower, "mac os") || strings.Contains(lower, "macos") || strings.Contains(lower, "macintosh") || strings.Contains(lower, "darwin") || strings.Contains(lower, "sfm") || strings.Contains(lower, "clashx"):
 		return "macos"
-	case strings.Contains(lower, "linux"):
+	case strings.Contains(lower, "linux") || strings.Contains(lower, "sfl"):
 		return "linux"
 	default:
 		return ""

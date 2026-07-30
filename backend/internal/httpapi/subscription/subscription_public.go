@@ -206,8 +206,12 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgr
 		_ = subpageConfigUUID
 	}
 
+	settings, _ := renderService.LoadSubscriptionSettings(ctx)
+	requestIP := middleware.GetClientIP(r, cfg)
+	hwidHeaders := ResolveHwidHeaders(r, user.UUID, requestIP, settings.HwidSettings)
+
 	content, contentType, headers, err := renderService.RenderUserSubscription(
-		ctx, user, r.UserAgent(), clientType, middleware.GetClientIP(r, cfg), ExtractHwidHeaders(r),
+		ctx, user, r.UserAgent(), clientType, requestIP, hwidHeaders,
 	)
 	if err != nil {
 		if err == ErrHwidLimitExceeded {
@@ -240,53 +244,19 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgr
 	_, _ = w.Write(content)
 }
 
+func ResolveHwidHeaders(r *http.Request, userUUID, requestIP string, hwidSettings HwidSettings) *HwidHeaders {
+	hwidHeaders := extractHwidHeaders(r)
+	if hwidHeaders == nil && !hwidSettings.Enabled {
+		hwidHeaders = extractSyntheticHwidHeaders(r, userUUID, requestIP)
+	}
+	if hwidHeaders != nil && hwidHeaders.RequestIP == nil {
+		hwidHeaders.RequestIP = stringPtrIfNotEmpty(requestIP)
+	}
+	return hwidHeaders
+}
+
 func ExtractHwidHeaders(r *http.Request) *HwidHeaders {
-	hwid := r.Header.Get("X-Hwid")
-	if hwid == "" {
-		hwid = r.Header.Get("Hwid")
-	}
-	if hwid == "" {
-		return nil
-	}
-
-	platform := r.Header.Get("X-Hwid-Platform")
-	if platform == "" {
-		platform = r.Header.Get("Hwid-Platform")
-	}
-	osVersion := r.Header.Get("X-Hwid-Os-Version")
-	if osVersion == "" {
-		osVersion = r.Header.Get("Hwid-Os-Version")
-	}
-	deviceModel := r.Header.Get("X-Hwid-Device-Model")
-	if deviceModel == "" {
-		deviceModel = r.Header.Get("Hwid-Device-Model")
-	}
-
-	var pPtr, osPtr, modelPtr *string
-	if platform != "" {
-		pPtr = &platform
-	}
-	if osVersion != "" {
-		osPtr = &osVersion
-	}
-	if deviceModel != "" {
-		modelPtr = &deviceModel
-	}
-
-	userAgent := r.UserAgent()
-	var uaPtr *string
-	if userAgent != "" {
-		uaPtr = &userAgent
-	}
-
-	return &HwidHeaders{
-		Hwid:        hwid,
-		Platform:    pPtr,
-		OsVersion:   osPtr,
-		DeviceModel: modelPtr,
-		UserAgent:   uaPtr,
-		RequestIP:   nil,
-	}
+	return extractHwidHeaders(r)
 }
 
 func (s *RenderService) GetSubscriptionUserByShortUUID(ctx context.Context, shortUUID string) (SubscriptionUser, error) {
