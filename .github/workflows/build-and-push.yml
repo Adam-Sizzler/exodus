@@ -12,6 +12,11 @@ on:
         type: string
 
 env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
   REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/exodus
   GHCR_IMAGE: ghcr.io/adam-sizzler/exodus
 
@@ -25,7 +30,7 @@ jobs:
 
       - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
-        if: secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -63,7 +68,7 @@ jobs:
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
-        if: secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -73,7 +78,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
 
       - name: Prepare build metadata
         id: meta
@@ -146,7 +151,7 @@ jobs:
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
-        if: secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -156,7 +161,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
 
       - name: Prepare version tags
         id: tags
@@ -174,7 +179,7 @@ jobs:
         run: |
           TAG="${{ steps.tags.outputs.tag }}"
 
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+          if [ -n "${DOCKERHUB_USERNAME}" ]; then
             docker buildx imagetools create \
               -t ${{ env.REGISTRY_IMAGE }}:latest \
               -t ${{ env.REGISTRY_IMAGE }}:${TAG} \
@@ -258,7 +263,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY || secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Exodus Panel ${{ steps.tag.outputs.tag }}
@@ -269,29 +274,29 @@ jobs:
           prerelease: false
           files: exodus-frontend.zip
           body: |
-            ?? Exodus Panel ${{ steps.tag.outputs.tag }}
+            🚀 Exodus Panel ${{ steps.tag.outputs.tag }}
 
             ${{ env.CHANGELOG }}
 
-            ### ?? Docker Images
+            ### 📦 Docker Images
             - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
             - `${{ env.GHCR_IMAGE }}:latest`
 
-            ### ?? Frontend Artifact
+            ### 📁 Frontend Artifact
             - `exodus-frontend.zip` - Bundle containing compiled static SPA assets
 
   send-finish-tg-msg:
     name: Send Telegram message (Finish)
     needs: [merge, create-release]
     runs-on: ubuntu-latest
-    if: success()
+    if: always() && !cancelled()
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
       - name: Send Telegram message
         uses: proDreams/actions-telegram-notifier@main
-        if: secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -310,7 +315,7 @@ jobs:
 
       - name: Send error notification
         uses: proDreams/actions-telegram-notifier@main
-        if: secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
