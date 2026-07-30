@@ -272,7 +272,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Exodus Panel ${{ steps.tag.outputs.tag }}
-          generate_release_notes: false
+          generate_release_notes: true
           append_body: true
           make_latest: true
           draft: false
