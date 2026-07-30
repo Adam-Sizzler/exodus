@@ -43,14 +43,17 @@ jobs:
     needs: [send-tg-msg]
     if: always() && !cancelled()
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: linux/amd64
             runner: ubuntu-latest
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
+          # - platform: linux/arm64
+          #   runner: ubuntu-24.04-arm
     steps:
       - name: Prepare platform pair
         run: |
