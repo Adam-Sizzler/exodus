@@ -114,6 +114,25 @@ func main() {
 	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, pools.Background, &cfg); err != nil {
 		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("Subscription job queue disabled", "error", err)
 	}
+	if _, err := jobqueue.StartMiscQueues(ctx, &wg, pools.Background, &cfg, jobqueue.MiscQueueHandlers{
+		HandleUserUsage: func(ctx context.Context, payload jobqueue.UserUsagePayload) error {
+			return nil
+		},
+		HandleWatchdogReview: func(ctx context.Context, payload jobqueue.WatchdogReviewPayload) error {
+			return nil
+		},
+		HandleResetUserTraffic: func(ctx context.Context, payload jobqueue.ResetTrafficPayload) error {
+			return nil
+		},
+		HandleSquadAction: func(ctx context.Context, payload jobqueue.SquadActionPayload) error {
+			return nil
+		},
+		HandleUserEvent: func(ctx context.Context, payload jobqueue.UserEventPayload) error {
+			return nil
+		},
+	}); err != nil {
+		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceJobs).Warn("Misc named queues disabled", "error", err)
+	}
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)
 	}
