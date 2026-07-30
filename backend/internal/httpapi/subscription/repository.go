@@ -716,20 +716,18 @@ func getSubpageConfigForUser(ctx context.Context, dbConn *sql.DB, cfg *config.Ba
 	subpageConfigUUID := ""
 
 	if user.ExternalSquadUUID != nil {
-		var squadCustomRemarks sql.NullString
-		var squadIsHwidLimited bool
-		var squadHwidMaxDevices int
+		var squadSubpageUUID sql.NullString
 
 		err := dbConn.QueryRowContext(ctx, `
-			SELECT custom_remarks, is_hwid_limited, hwid_max_devices 
+			SELECT subpage_config_uuid 
 			FROM external_squads 
 			WHERE uuid = $1`,
-			*user.ExternalSquadUUID).Scan(&squadCustomRemarks, &squadIsHwidLimited, &squadHwidMaxDevices)
+			*user.ExternalSquadUUID).Scan(&squadSubpageUUID)
 
-		if err == nil {
-			log.Debug(fmt.Sprintf("Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices))
-		} else {
-			log.Error(fmt.Sprintf("Failed to load external squad overrides: %v", err))
+		if err == nil && squadSubpageUUID.Valid {
+			subpageConfigUUID = squadSubpageUUID.String
+		} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Error(fmt.Sprintf("Failed to load external squad subpage config: %v", err))
 		}
 	}
 

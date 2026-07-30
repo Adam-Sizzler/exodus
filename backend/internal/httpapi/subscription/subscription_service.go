@@ -137,14 +137,17 @@ func (s *RenderService) RenderUserSubscription(
 		})
 	}
 
-	ok, syntheticUsed, limitReached := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
-	if !ok {
-		if limitReached {
-			return nil, "", nil, ErrHwidLimitExceeded
+	if settings.HwidSettings.Enabled {
+		ok, _, limitReached := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
+		if !ok {
+			if limitReached {
+				return nil, "", nil, ErrHwidLimitExceeded
+			}
+			return nil, "", nil, ErrHwidRequired
 		}
-		return nil, "", nil, ErrHwidRequired
+	} else if hwid != nil {
+		_ = enqueueOrUpsertHwidUserDevice(ctx, s.db, user.TID, *hwid)
 	}
-	_ = syntheticUsed
 
 	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP)
 
