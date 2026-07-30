@@ -53,9 +53,6 @@ func ResolveClientIP(r *http.Request, cfg *config.BackendConfig) string {
 	if r == nil {
 		return ""
 	}
-	if cfg != nil && cfg.Logger != nil {
-		cfg.Logger.Debug("Resolving client IP address", "remote_addr", r.RemoteAddr)
-	}
 
 	candidates := make([]clientIPCandidate, 0, 8)
 	for _, header := range []string{
@@ -76,7 +73,7 @@ func ResolveClientIP(r *http.Request, cfg *config.BackendConfig) string {
 		selected.value = "0.0.0.0"
 	}
 	if cfg != nil && cfg.Logger != nil {
-		cfg.Logger.Trace("Resolved client IP address", "ip", selected.value, "source", selected.source)
+		cfg.Logger.Debug("Resolved client IP address", "client_ip", selected.value, "source", selected.source, "remote_addr", r.RemoteAddr)
 	}
 	return selected.value
 }
@@ -102,10 +99,16 @@ func parseIPCandidate(value, source string) (clientIPCandidate, bool) {
 		trimmed = host
 	}
 	trimmed = strings.Trim(trimmed, "[]")
+	if strings.HasPrefix(strings.ToLower(trimmed), "::ffff:") {
+		trimmed = trimmed[7:]
+	}
 	if zone := strings.LastIndex(trimmed, "%"); zone > -1 {
 		trimmed = trimmed[:zone]
 	}
 	if ip := net.ParseIP(trimmed); ip != nil {
+		if ip4 := ip.To4(); ip4 != nil {
+			ip = ip4
+		}
 		return clientIPCandidate{value: ip.String(), ip: ip, source: source}, true
 	}
 	return clientIPCandidate{}, false

@@ -130,7 +130,6 @@ func (w *Worker) RecordNodeUserUsage(ctx context.Context, nodeID int64, userByte
 		return err
 	}
 	options := jobqueue.JobOptions{
-		ID:       redisKey,
 		DedupeID: redisKey,
 		Attempts: 3,
 		Backoff:  time.Second,

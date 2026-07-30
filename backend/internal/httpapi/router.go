@@ -81,6 +81,8 @@ func isPublicPath(path string, cfg *config.BackendConfig) bool {
 		path == "/api/auth/passkey/authentication/verify",
 		path == "/api/sub",
 		strings.HasPrefix(path, "/api/sub/"),
+		path == "/api/subscriptions/subpage-config",
+		strings.HasPrefix(path, "/api/subscriptions/subpage-config/"),
 		path == "/api/system/metadata",
 		path == "/api/system/health",
 		path == "/api/health":
@@ -114,6 +116,9 @@ func RegisterPublicRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *con
 
 	mux.HandleFunc("/api/sub", subscription.SubscriptionPublicHandler(db, backgroundDB, cfg))
 	mux.HandleFunc("/api/sub/", subscription.SubscriptionPublicHandler(db, backgroundDB, cfg))
+
+	mux.HandleFunc("/api/subscriptions/subpage-config/", subscription.SubpageConfigPublicHandler(db, backgroundDB, cfg))
+	mux.HandleFunc("/api/subscriptions/subpage-config", subscription.SubpageConfigPublicHandler(db, backgroundDB, cfg))
 
 	mux.HandleFunc("/api/system/metadata", system.MetadataHandler(cfg))
 	mux.HandleFunc("/api/system/health", system.HealthHandler(cfg))

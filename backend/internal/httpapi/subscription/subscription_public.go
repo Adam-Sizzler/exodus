@@ -353,3 +353,49 @@ func (s *RenderService) CopyMap(src map[string]string) map[string]string {
 	maps.Copy(dst, src)
 	return dst
 }
+
+func SubpageConfigPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		path := strings.TrimPrefix(r.URL.Path, "/api/subscriptions/subpage-config/")
+		shortUUID := strings.Trim(path, "/")
+		if shortUUID == "" {
+			shared.SendError(w, http.StatusBadRequest, "shortUuid is required", nil, cfg)
+			return
+		}
+
+		var req struct {
+			RequestHeaders map[string]string `json:"requestHeaders"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req.RequestHeaders == nil {
+			req.RequestHeaders = make(map[string]string)
+		}
+
+		subpageConfigUUID, webpageAllowed, err := getSubpageConfigForUser(r.Context(), db, cfg, shortUUID, req.RequestHeaders)
+		if err != nil {
+			if errorsIsNoRows(err) {
+				shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+				return
+			}
+			shared.SendError(w, http.StatusInternalServerError, "failed to get subpage config", err, cfg)
+			return
+		}
+
+		var uuidPtr *string
+		if subpageConfigUUID != "" {
+			uuidPtr = &subpageConfigUUID
+		}
+
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{
+				"subpageConfigUuid": uuidPtr,
+				"webpageAllowed":    webpageAllowed,
+			},
+		})
+	}
+}

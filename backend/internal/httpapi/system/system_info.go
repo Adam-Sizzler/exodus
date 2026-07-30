@@ -167,16 +167,16 @@ func readBuildMetadata() (version string, commitSHA string, branch string, build
 		}
 	}
 
-	if value := firstMetadataEnv("EXODUS_VERSION"); value != "" {
+	if value := firstMetadataEnv("__EX_METADATA_VERSION"); value != "" {
 		version = value
 	}
-	if value := firstMetadataEnv("EXODUS_BACKEND_COMMIT", "EXODUS_REVISION", "EXODUS_COMMIT", "GITHUB_SHA"); value != "" {
+	if value := firstMetadataEnv("__EX_METADATA_GIT_BACKEND_COMMIT", "EXODUS_REVISION", "EXODUS_COMMIT", "GITHUB_SHA"); value != "" {
 		commitSHA = value
 	}
-	if value := firstMetadataEnv("EXODUS_GIT_BRANCH", "EXODUS_BRANCH", "GITHUB_REF_NAME", "GITHUB_HEAD_REF"); value != "" {
+	if value := firstMetadataEnv("__EX_METADATA_GIT_BRANCH", "EXODUS_BRANCH", "GITHUB_REF_NAME", "GITHUB_HEAD_REF"); value != "" {
 		branch = value
 	}
-	if value := firstMetadataEnv("EXODUS_BUILD_TIME"); value != "" {
+	if value := firstMetadataEnv("__EX_METADATA_BUILD_TIME"); value != "" {
 		buildTime = value
 	}
 
