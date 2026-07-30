@@ -154,38 +154,87 @@ func inferClientAppFromUserAgent(userAgent string) string {
 	return userAgent
 }
 
+var (
+	knownAndroidClients = []string{
+		"sfa",
+		"sfatv",
+		"sfandroidtv",
+		"v2rayng",
+		"exclave",
+		"nekoboxforandroid",
+		"matsuri",
+		"sagernet",
+		"clashforandroid",
+		"clashmetaforandroid",
+		"cmfa",
+	}
+
+	knownIOSClients = []string{
+		"sfi",
+		"streisand",
+		"v2box",
+		"rabbithole",
+		"shadowrocket",
+		"loon",
+		"quantumult",
+		"stash",
+		"choc",
+	}
+
+	knownTVOSClients = []string{
+		"sft",
+	}
+
+	knownWindowsClients = []string{
+		"sfw",
+		"v2rayn",
+	}
+
+	knownMacOSClients = []string{
+		"sfm",
+		"v2rayu",
+		"v2rayx",
+		"v2rayxs",
+		"clashx",
+	}
+
+	knownLinuxClients = []string{
+		"sfl",
+	}
+)
+
 func inferKnownClientPlatform(lowerUA string) string {
-	for _, app := range []string{"sfa", "sfatv", "sfandroidtv", "v2rayng", "exclave", "nekoboxforandroid", "matsuri", "sagernet", "clashforandroid", "clashmetaforandroid", "cmfa"} {
+	for _, app := range knownAndroidClients {
 		if strings.Contains(lowerUA, app) {
 			return "android"
 		}
 	}
 
-	for _, app := range []string{"sfi", "streisand", "v2box", "rabbithole", "shadowrocket", "loon", "quantumult", "stash", "choc"} {
+	for _, app := range knownIOSClients {
 		if strings.Contains(lowerUA, app) {
 			return "ios"
 		}
 	}
 
-	for _, app := range []string{"sft"} {
+	for _, app := range knownTVOSClients {
 		if strings.Contains(lowerUA, app) {
 			return "tvos"
 		}
 	}
 
-	for _, app := range []string{"sfw", "v2rayn"} {
+	for _, app := range knownWindowsClients {
 		if strings.Contains(lowerUA, app) {
 			return "windows"
 		}
 	}
 
-	for _, app := range []string{"sfm", "v2rayu", "v2rayx", "v2rayxs", "clashx"} {
+	for _, app := range knownMacOSClients {
 		if strings.Contains(lowerUA, app) {
 			return "macos"
 		}
 	}
 
-	for _, app := range []string{"sfl"} {
+	for _, app := range knownLinuxClients {
 		if strings.Contains(lowerUA, app) {
 			return "linux"
 		}
