@@ -249,7 +249,7 @@ func getHostsForUser(ctx context.Context, dbConn *sql.DB, user SubscriptionUser)
 		JOIN hosts h ON h.config_profile_inbound_uuid = cpi.uuid
 		LEFT JOIN internal_squad_host_exclusions ihe
 			ON ihe.host_uuid = h.uuid AND ihe.squad_uuid = ism.internal_squad_uuid
-		WHERE ism.user_id = $1 AND ihe.host_uuid IS NULL
+		WHERE ism.user_id = $1 AND ihe.host_uuid IS NULL AND NOT COALESCE(h.is_disabled, false) AND NOT COALESCE(h.is_hidden, false)
 		ORDER BY h.view_position ASC, h.remark ASC
 	`, user.TID)
 	if err != nil {

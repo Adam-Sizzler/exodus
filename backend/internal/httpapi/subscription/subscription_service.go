@@ -226,6 +226,23 @@ func (s *RenderService) RenderUserSubscription(
 	return []byte(outputContent), contentType, responseHeaders, nil
 }
 
+func prettifyBytes(bytes int64) string {
+	if bytes <= 0 {
+		return "0 B"
+	}
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	units := []string{"KB", "MB", "GB", "TB", "PB"}
+	return fmt.Sprintf("%.2f %s", float64(bytes)/float64(div), units[exp])
+}
+
 func (s *RenderService) buildSubscriptionInfoResponse(
 	user SubscriptionUser,
 	settings SubscriptionSettingsParsed,
@@ -247,17 +264,37 @@ func (s *RenderService) buildSubscriptionInfoResponse(
 	}
 	subURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
 
+	usedPretty := prettifyBytes(user.UsedTrafficBytes)
+	limitPretty := "0"
+	if user.TrafficLimitBytes > 0 {
+		limitPretty = prettifyBytes(user.TrafficLimitBytes)
+	}
+	lifetimePretty := prettifyBytes(user.LifetimeUsedBytes)
+
+	daysLeft := 0
+	expiresAt := user.ExpireAt
+	if expiresAt.IsZero() || expiresAt.Year() <= 1 {
+		expiresAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
+	} else if expiresAt.After(time.Now()) {
+		daysLeft = int(time.Until(expiresAt).Hours() / 24)
+	}
+
 	return SubscriptionInfoResponse{
 		IsFound: true,
 		User: SubscriptionInfoUser{
-			ShortUUID:            user.ShortUUID,
-			Username:             user.Username,
-			TrafficLimitBytes:    fmt.Sprintf("%d", user.TrafficLimitBytes),
-			TrafficUsedBytes:     fmt.Sprintf("%d", user.UsedTrafficBytes),
-			ExpiresAt:            user.ExpireAt,
-			IsActive:             user.Status == "ACTIVE",
-			UserStatus:           user.Status,
-			TrafficLimitStrategy: user.TrafficLimitStrategy,
+			ShortUUID:                user.ShortUUID,
+			DaysLeft:                 daysLeft,
+			TrafficUsed:              usedPretty,
+			TrafficLimit:             limitPretty,
+			LifetimeTrafficUsed:      lifetimePretty,
+			TrafficUsedBytes:         fmt.Sprintf("%d", user.UsedTrafficBytes),
+			TrafficLimitBytes:        fmt.Sprintf("%d", user.TrafficLimitBytes),
+			LifetimeTrafficUsedBytes: fmt.Sprintf("%d", user.LifetimeUsedBytes),
+			Username:                 user.Username,
+			ExpiresAt:                expiresAt,
+			IsActive:                 user.Status == "ACTIVE",
+			UserStatus:               user.Status,
+			TrafficLimitStrategy:     user.TrafficLimitStrategy,
 		},
 		Links:           links,
 		SSConfLinks:     ssConfLinks,
