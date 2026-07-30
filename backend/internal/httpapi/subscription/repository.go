@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -900,22 +902,122 @@ func applyHostOverrides(hosts []SubscriptionHost, overrides map[string]HostOverr
 
 func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
 	headers := make(map[string]string)
-	if settings.Raw.ProfileTitle != "" {
-		headers["profile-title"] = settings.Raw.ProfileTitle
+	headers["content-disposition"] = fmt.Sprintf("attachment; filename=%s", user.Username)
+
+	domain := strings.TrimSpace(settings.Raw.Address)
+	if domain == "" {
+		domain = "panel.exodus.dev"
 	}
+	scheme := strings.TrimSpace(settings.Raw.APISchema)
+	if scheme == "" {
+		scheme = "https"
+	}
+	apiPath := strings.Trim(strings.TrimSpace(settings.Raw.APIPath), "/")
+	if apiPath == "" {
+		apiPath = "api/sub"
+	}
+	subscriptionURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+
+	title := settings.Raw.ProfileTitle
+	if title == "" {
+		title = user.Username
+	} else {
+		title = formatTemplateValue(title, user, settings, subscriptionURL)
+	}
+	headers["profile-title"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(title)))
+
 	if settings.Raw.SupportLink != "" {
 		headers["support-url"] = settings.Raw.SupportLink
 	}
-	if settings.Raw.ProfileUpdateInterval > 0 {
-		headers["profile-update-interval"] = fmt.Sprintf("%d", settings.Raw.ProfileUpdateInterval)
+
+	interval := settings.Raw.ProfileUpdateInterval
+	if interval <= 0 {
+		interval = 24
 	}
+	headers["profile-update-interval"] = fmt.Sprintf("%d", interval)
+
+	userInfo := getSubscriptionUserInfo(user)
+	parts := []string{}
+	for key, val := range userInfo {
+		parts = append(parts, fmt.Sprintf("%s=%d", key, val))
+	}
+	sort.Strings(parts)
+	headers["subscription-userinfo"] = strings.Join(parts, "; ")
+
+	if settings.Raw.HappAnnounce != "" {
+		announce := formatTemplateValue(settings.Raw.HappAnnounce, user, settings, subscriptionURL)
+		headers["announce"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(announce)))
+	}
+
+	if settings.Raw.HappRouting != "" {
+		headers["routing"] = settings.Raw.HappRouting
+	}
+
+	if settings.Raw.IsProfileWebpageURLEnabled {
+		headers["profile-web-page-url"] = subscriptionURL
+	}
+
+	if refillDate := getSubscriptionRefillDate(user.TrafficLimitStrategy); refillDate != "" {
+		headers["subscription-refill-date"] = refillDate
+	}
+
 	for k, v := range settings.CustomResponseHeaders {
-		headers[k] = v
+		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
 	}
 	for k, v := range settings.ResponseHeaders {
-		headers[k] = v
+		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
 	}
 	return headers
+}
+
+func formatTemplateValue(value string, user SubscriptionUser, _ SubscriptionSettingsParsed, subscriptionURL string) string {
+	replacer := strings.NewReplacer(
+		"{USERNAME}", user.Username,
+		"{{username}}", user.Username,
+		"{SHORT_UUID}", user.ShortUUID,
+		"{{shortUuid}}", user.ShortUUID,
+		"{SUBSCRIPTION_URL}", subscriptionURL,
+		"{{subscriptionUrl}}", subscriptionURL,
+	)
+	return replacer.Replace(value)
+}
+
+func getSubscriptionUserInfo(user SubscriptionUser) map[string]int64 {
+	expire := user.ExpireAt.Unix()
+	if user.ExpireAt.IsZero() || user.ExpireAt.Year() <= 1 || user.ExpireAt.Year() == 2099 {
+		expire = 0
+	}
+
+	return map[string]int64{
+		"upload":   0,
+		"download": user.UsedTrafficBytes,
+		"total":    user.TrafficLimitBytes,
+		"expire":   expire,
+	}
+}
+
+func getSubscriptionRefillDate(strategy string) string {
+	now := time.Now().Local()
+	switch strings.ToUpper(strategy) {
+	case "DAY":
+		now = now.AddDate(0, 0, 1)
+		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		return fmt.Sprintf("%d", now.Unix())
+	case "WEEK":
+		offset := (int(time.Monday) - int(now.Weekday()) + 7) % 7
+		if offset == 0 {
+			offset = 7
+		}
+		now = now.AddDate(0, 0, offset)
+		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		return fmt.Sprintf("%d", now.Unix())
+	case "MONTH":
+		now = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		now = now.AddDate(0, 1, 0)
+		return fmt.Sprintf("%d", now.Unix())
+	default:
+		return ""
+	}
 }
 
 func firstHostTag(host SubscriptionHost) string {
