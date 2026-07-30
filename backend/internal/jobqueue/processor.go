@@ -199,8 +199,6 @@ func (p *Processor) Enqueue(ctx context.Context, queue string, name string, payl
 
 	if options.ID != "" {
 		opts = append(opts, asynq.TaskID(options.ID))
-	} else if options.DedupeID != "" {
-		opts = append(opts, asynq.TaskID(options.DedupeID))
 	}
 
 	if options.Delay > 0 {
