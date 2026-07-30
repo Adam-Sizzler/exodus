@@ -24,6 +24,7 @@ import (
 	"exodus/internal/config"
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
+	"exodus/internal/logger"
 )
 
 type RenderService struct {
@@ -163,6 +164,21 @@ func (s *RenderService) RenderUserSubscription(
 	}
 	if reqType == "" {
 		reqType = defaultResponseType
+	}
+
+	if s.cfg != nil && s.cfg.Logger != nil {
+		s.cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Debug(
+			"Rendering user subscription",
+			"username", user.Username,
+			"short_uuid", user.ShortUUID,
+			"user_agent", userAgent,
+			"client_ip", requestIP,
+			"requested_type", requestedType,
+			"resolved_type", reqType,
+			"used_traffic_bytes", user.UsedTrafficBytes,
+			"traffic_limit_bytes", user.TrafficLimitBytes,
+			"active_hosts", len(hosts),
+		)
 	}
 
 	templateType := strings.ToLower(reqType)

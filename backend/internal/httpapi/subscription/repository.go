@@ -752,6 +752,13 @@ func getSubpageConfigForUser(ctx context.Context, dbConn *sql.DB, cfg *config.Ba
 		webpageAllowed = responseType == responseTypeBrowser
 	}
 
+	log.Debug(
+		"Resolved subpage config for user",
+		"short_uuid", shortUUID,
+		"subpage_config_uuid", subpageConfigUUID,
+		"webpage_allowed", webpageAllowed,
+	)
+
 	return subpageConfigUUID, webpageAllowed, nil
 }
 
