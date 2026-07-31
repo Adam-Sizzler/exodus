@@ -102,7 +102,6 @@ func (w *Worker) EnqueueWebhook(ctx context.Context, event Event) error {
 	}
 	return w.processor.Enqueue(ctx, webhookQueueName, webhookJobName, payload, jobqueue.JobOptions{
 		Attempts: 8,
-		Backoff:  time.Second,
 	})
 }
 
@@ -113,6 +112,5 @@ func (w *Worker) EnqueueTelegram(ctx context.Context, event Event) error {
 	}
 	return w.processor.Enqueue(ctx, telegramQueueName, telegramJobName, payload, jobqueue.JobOptions{
 		Attempts: 8,
-		Backoff:  time.Second,
 	})
 }
