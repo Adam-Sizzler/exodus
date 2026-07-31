@@ -7,12 +7,15 @@ frontend_/
 *.md
 *.key
 *.pem
-*.vscode
 
 !README.md
 !frontend/public/help-articles/**/*.md
 node_modules
 
-# Compiled Go Binaries
-/backend/exodus
-/exodus
+.env
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
