@@ -232,8 +232,16 @@ jobs:
 
       - name: Generate changelog
         id: changelog
+        shell: bash
         run: |
-          CHANGELOG=$(npx changelogen || echo "No previous release tag found.")
+          TAG="${{ steps.tag.outputs.tag }}"
+          git fetch --tags --force
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | grep -v "^${TAG}$" | head -n 1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(npx -y changelogen@latest --from "$PREV_TAG" --to "$TAG" || echo "No previous release tag found.")
+          else
+            CHANGELOG=$(npx -y changelogen@latest || echo "No previous release tag found.")
+          fi
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           echo "$CHANGELOG" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
