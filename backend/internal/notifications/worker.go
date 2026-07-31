@@ -57,7 +57,7 @@ func NewWorker(cfg *config.BackendConfig) (*Worker, error) {
 
 	err = processor.RegisterQueue(jobqueue.QueueOptions{
 		Name:              telegramQueueName,
-		Concurrency:       100,
+		Concurrency:       1,
 		VisibilityTimeout: 10 * time.Minute,
 		Retention:         2000,
 	}, map[string]jobqueue.Handler{
