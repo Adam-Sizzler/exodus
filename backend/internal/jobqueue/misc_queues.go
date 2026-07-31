@@ -188,7 +188,6 @@ func StartMiscQueues(ctx context.Context, wg *sync.WaitGroup, dbConn *sql.DB, cf
 func EnqueueUsersUsageUpdate(ctx context.Context, payload UserUsagePayload) (bool, error) {
 	return enqueueMiscJob(ctx, UsersUpdateUsageQueue, JobUpdateUserUsage, payload, JobOptions{
 		Attempts: 3,
-		Backoff:  time.Second,
 	})
 }
 

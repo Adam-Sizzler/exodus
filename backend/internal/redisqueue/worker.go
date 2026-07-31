@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -132,12 +133,21 @@ func (w *Worker) RecordNodeUserUsage(ctx context.Context, nodeID int64, userByte
 	options := jobqueue.JobOptions{
 		DedupeID: redisKey,
 		Attempts: 3,
-		Backoff:  time.Second,
 	}
 	if w.delay > 0 {
 		options.Delay = w.delay
 	}
-	return w.processor.Enqueue(ctx, pushToDBQueueName, recordUserUsageJobName, payload, options)
+	if err := w.processor.Enqueue(ctx, pushToDBQueueName, recordUserUsageJobName, payload, options); err != nil {
+		if errors.Is(err, jobqueue.ErrDuplicateJob) {
+			// A flush job for this node is already scheduled/pending; the
+			// usage we just recorded above will be picked up by it. Not
+			// an error - must not trigger the direct-DB-write fallback in
+			// the caller.
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func (w *Worker) Close() error {

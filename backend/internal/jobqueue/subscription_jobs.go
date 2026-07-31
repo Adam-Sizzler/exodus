@@ -119,7 +119,6 @@ func EnqueueUpdateUserSubscription(ctx context.Context, payload UpdateUserSubscr
 		ID:       fmt.Sprintf("%s:USS", payload.UserUUID),
 		DedupeID: fmt.Sprintf("%s:USS", payload.UserUUID),
 		Attempts: 3,
-		Backoff:  time.Second,
 	})
 }
 
@@ -128,7 +127,6 @@ func EnqueueAddSubscriptionRequestRecord(ctx context.Context, payload AddSubscri
 		ID:       fmt.Sprintf("%d:AR", payload.UserID),
 		DedupeID: fmt.Sprintf("%d:AR", payload.UserID),
 		Attempts: 3,
-		Backoff:  time.Second,
 	})
 }
 
@@ -141,7 +139,6 @@ func EnqueueUpsertHwidDevice(ctx context.Context, payload UpsertHwidDevicePayloa
 		ID:       jobID,
 		DedupeID: jobID,
 		Attempts: 3,
-		Backoff:  time.Second,
 	})
 }
 
