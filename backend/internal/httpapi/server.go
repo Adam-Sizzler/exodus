@@ -14,7 +14,6 @@ import (
 	"exodus/internal/db"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/static"
-	"exodus/internal/httpapi/system"
 	"exodus/internal/logger"
 )
 
@@ -30,7 +29,6 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 	}
 
 	apiHandler := NewAPIHandler(pools, cfg)
-	metricsHandler := system.MetricsHandler(pools.Interactive, pools.Background, cfg)
 
 	mux := http.NewServeMux()
 	uiDir := cfg.Panel.StaticDir
@@ -40,7 +38,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 		cfg.Logger.Warn("Panel UI index not found; static UI disabled", "path", indexPath, "error", err)
 	}
 
-	mux.Handle("/", panelRequestHandler(panelBasePath, uiDir, staticFS, apiHandler, metricsHandler, cfg.Docs.SwaggerPath, cfg.Docs.ScalarPath))
+	mux.Handle("/", panelRequestHandler(panelBasePath, uiDir, staticFS, apiHandler, cfg.Docs.SwaggerPath, cfg.Docs.ScalarPath))
 
 	server := &http.Server{
 		Addr:    addr,
@@ -65,7 +63,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 	}
 }
 
-func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metricsHandler http.Handler, docsSwaggerPath, docsScalarPath string) http.Handler {
+func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler http.Handler, docsSwaggerPath, docsScalarPath string) http.Handler {
 	indexPath := filepath.Join(uiDir, "index.html")
 	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
 	if panelBasePathNoTrailing == "" {
@@ -86,10 +84,6 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler, metr
 		}
 
 		relativePath := strings.TrimPrefix(requestPath, panelBasePath)
-		if relativePath == "metrics" {
-			metricsHandler.ServeHTTP(w, r)
-			return
-		}
 		if strings.HasPrefix(relativePath, "api/") {
 			apiReq := r.Clone(r.Context())
 			apiReq.URL.Path = "/" + relativePath

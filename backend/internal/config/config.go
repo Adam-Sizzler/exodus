@@ -223,6 +223,16 @@ func LoadConfig() (BackendConfig, error) {
 	}
 	cfg.Logger = realLogger
 
+	if strings.TrimSpace(cfg.Metrics.User) == "" {
+		return cfg, fmt.Errorf("METRICS_USER cannot be empty")
+	}
+	if strings.TrimSpace(cfg.Metrics.Pass) == "" {
+		return cfg, fmt.Errorf("METRICS_PASS cannot be empty")
+	}
+	if strings.TrimSpace(cfg.Database.URL) == "" {
+		return cfg, fmt.Errorf("DATABASE_URL is not set")
+	}
+
 	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceConfig).Debug("Configuration loaded from environment", "node_env", cfg.Log.NodeEnv, "log_format", cfg.Log.LogFormat, "log_level", cfg.Log.LogLevel)
 
 	return cfg, nil
@@ -366,9 +376,6 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("DATABASE_SOCKET", "POSTGRES_SOCKET"); value != "" {
 		cfg.Database.Socket = value
 		cfg.Database.URL = postgresSocketDatabaseURL(value)
-	}
-	if strings.TrimSpace(cfg.Database.URL) == "" {
-		cfg.Database.URL = postgresTCPDatabaseURL()
 	}
 
 	if value := envFirst("REDIS_HOST"); value != "" {
@@ -755,7 +762,12 @@ func postgresSocketDatabaseURL(socketDir string) string {
 		return ""
 	}
 
-	user, password, database := postgresCredentials()
+	user := envFirst("POSTGRES_USER", "DATABASE_USER")
+	password := envFirst("POSTGRES_PASSWORD", "DATABASE_PASSWORD")
+	database := envFirst("POSTGRES_DB", "DATABASE_NAME")
+	if user == "" || database == "" {
+		return ""
+	}
 
 	dsn := url.URL{
 		Scheme: "postgresql",
@@ -764,7 +776,7 @@ func postgresSocketDatabaseURL(socketDir string) string {
 	}
 	if password != "" {
 		dsn.User = url.UserPassword(user, password)
-	} else if user != "" {
+	} else {
 		dsn.User = url.User(user)
 	}
 
@@ -773,48 +785,6 @@ func postgresSocketDatabaseURL(socketDir string) string {
 	dsn.RawQuery = query.Encode()
 
 	return dsn.String()
-}
-
-func postgresTCPDatabaseURL() string {
-	user, password, database := postgresCredentials()
-
-	host := envFirst("DATABASE_HOST", "POSTGRES_HOST")
-	if host == "" {
-		host = "exodus-db"
-	}
-	port := envFirst("DATABASE_PORT", "POSTGRES_PORT")
-	if port == "" {
-		port = "5432"
-	}
-
-	dsn := url.URL{
-		Scheme: "postgresql",
-		Host:   net.JoinHostPort(host, port),
-		Path:   "/" + database,
-	}
-	if password != "" {
-		dsn.User = url.UserPassword(user, password)
-	} else if user != "" {
-		dsn.User = url.User(user)
-	}
-
-	return dsn.String()
-}
-
-func postgresCredentials() (user string, password string, database string) {
-	user = envFirst("POSTGRES_USER")
-	if user == "" {
-		user = "postgres"
-	}
-	password = envFirst("POSTGRES_PASSWORD")
-	if password == "" {
-		password = "postgres"
-	}
-	database = envFirst("POSTGRES_DB")
-	if database == "" {
-		database = "postgres"
-	}
-	return user, password, database
 }
 
 func normalizeBasePath(input string) string {

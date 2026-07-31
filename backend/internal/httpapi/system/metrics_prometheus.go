@@ -3,7 +3,6 @@ package system
 import (
 	"bufio"
 	"context"
-	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"io"
@@ -76,10 +75,6 @@ func MetricsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.Ha
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			_, _ = io.WriteString(w, "method not allowed")
-			return
-		}
-
-		if !authorizeMetricsRequest(w, r, cfg) {
 			return
 		}
 
@@ -642,36 +637,7 @@ func canonicalNodeMetricName(metricName string) string {
 	}
 }
 
-func authorizeMetricsRequest(w http.ResponseWriter, r *http.Request, cfg *config.BackendConfig) bool {
-	if cfg == nil {
-		return true
-	}
 
-	metricsUser := strings.TrimSpace(cfg.Metrics.User)
-	metricsPass := strings.TrimSpace(cfg.Metrics.Pass)
-	if metricsUser == "" && metricsPass == "" {
-		return true
-	}
-
-	user, pass, ok := r.BasicAuth()
-	if !ok {
-		w.Header().Set("WWW-Authenticate", `Basic realm="metrics"`)
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = io.WriteString(w, "unauthorized")
-		return false
-	}
-
-	userMatch := subtle.ConstantTimeCompare([]byte(user), []byte(metricsUser)) == 1
-	passMatch := subtle.ConstantTimeCompare([]byte(pass), []byte(metricsPass)) == 1
-	if !userMatch || !passMatch {
-		w.Header().Set("WWW-Authenticate", `Basic realm="metrics"`)
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = io.WriteString(w, "unauthorized")
-		return false
-	}
-
-	return true
-}
 
 func metricsCandidatePaths(basePath string) []string {
 	paths := []string{"/metrics"}

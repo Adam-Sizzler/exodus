@@ -57,9 +57,10 @@ func StartMetricsServer(ctx context.Context, pools *exodusdb.Pools, cfg *config.
 		}
 	}
 
+	authHandler := middleware.WithMetricsBasicAuth(cfg, mux)
 	server := &http.Server{
 		Addr:    addr,
-		Handler: middleware.WithRequestLogging(cfg, "metrics", mux),
+		Handler: middleware.WithRequestLogging(cfg, "metrics", authHandler),
 	}
 
 	cfg.Logger.RoleService(logger.RoleScheduler, logger.ServiceMetrics).Info("Metrics reporter started", "address", server.Addr)

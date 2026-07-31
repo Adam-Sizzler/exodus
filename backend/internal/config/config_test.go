@@ -56,37 +56,35 @@ func TestDatabaseSocketOverridesDatabaseURL(t *testing.T) {
 	}
 }
 
-func TestDatabaseURLFallsBackToPostgresEnvWhenSocketDisabled(t *testing.T) {
+func TestLoadConfigFailFastValidations(t *testing.T) {
+	t.Setenv("METRICS_USER", "")
+	t.Setenv("METRICS_PASS", "")
 	t.Setenv("DATABASE_URL", "")
-	t.Setenv("DATABASE_SOCKET", "")
-	t.Setenv("POSTGRES_SOCKET", "")
-	t.Setenv("POSTGRES_USER", "exodus")
-	t.Setenv("POSTGRES_PASSWORD", "s3cret")
-	t.Setenv("POSTGRES_DB", "panel")
-	t.Setenv("DATABASE_HOST", "postgres.local")
-	t.Setenv("DATABASE_PORT", "6543")
 
-	cfg := defaultConfig
-	applyEnvOverrides(&cfg)
-
-	if cfg.Database.Socket != "" {
-		t.Fatalf("unexpected socket: %s", cfg.Database.Socket)
+	_, err := LoadConfig()
+	if err == nil {
+		t.Fatalf("expected error when METRICS_USER is empty")
 	}
-	parsed, err := url.Parse(cfg.Database.URL)
+
+	t.Setenv("METRICS_USER", "admin")
+	_, err = LoadConfig()
+	if err == nil {
+		t.Fatalf("expected error when METRICS_PASS is empty")
+	}
+
+	t.Setenv("METRICS_PASS", "pass")
+	_, err = LoadConfig()
+	if err == nil || err.Error() != "DATABASE_URL is not set" {
+		t.Fatalf("expected 'DATABASE_URL is not set' error, got %v", err)
+	}
+
+	t.Setenv("DATABASE_URL", "postgresql://postgres:postgres@exodus-db:5432/postgres")
+	cfg, err := LoadConfig()
 	if err != nil {
-		t.Fatalf("parse dsn: %v", err)
+		t.Fatalf("unexpected error loading valid config: %v", err)
 	}
-	if parsed.Host != "postgres.local:6543" {
-		t.Fatalf("unexpected host: %s", parsed.Host)
-	}
-	if parsed.User.Username() != "exodus" {
-		t.Fatalf("unexpected user: %s", parsed.User.Username())
-	}
-	if password, _ := parsed.User.Password(); password != "s3cret" {
-		t.Fatalf("unexpected password: %s", password)
-	}
-	if parsed.Path != "/panel" {
-		t.Fatalf("unexpected database path: %s", parsed.Path)
+	if cfg.Metrics.User != "admin" || cfg.Metrics.Pass != "pass" {
+		t.Fatalf("unexpected metrics config: user=%q pass=%q", cfg.Metrics.User, cfg.Metrics.Pass)
 	}
 }
 
