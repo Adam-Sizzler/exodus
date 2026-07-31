@@ -265,20 +265,6 @@ func resolveConfiguredLogLevel(value string) string {
 	}
 }
 
-func isDevelopmentEnv(value string) bool {
-	env := strings.ToLower(strings.TrimSpace(value))
-	return env == "development" || env == "dev"
-}
-
-func isDebugOrTraceLogLevel(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "debug", "trace", "verbose":
-		return true
-	default:
-		return false
-	}
-}
-
 func loadDotEnv() error {
 	err := godotenv.Load(".env")
 	if err == nil || os.IsNotExist(err) {
@@ -292,9 +278,8 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		return
 	}
 
-	rawLogLevel := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL")
-	if rawLogLevel != "" {
-		cfg.Log.LogLevel = resolveConfiguredLogLevel(rawLogLevel)
+	if value := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
+		cfg.Log.LogLevel = resolveConfiguredLogLevel(value)
 	}
 	if value := envFirst("LOG_FORMAT", "EXODUS_LOG_FORMAT"); value != "" {
 		cfg.Log.LogFormat = value
@@ -302,13 +287,8 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("NODE_ENV"); value != "" {
 		cfg.Log.NodeEnv = value
 	}
-	enableDebugLogs := parseBoolEnv(envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"))
 	if value := envFirst("IS_HTTP_LOGGING_ENABLED"); value != "" {
 		cfg.Log.IsHTTPLoggingEnabled = parseBoolEnv(value)
-	}
-	// Fallback to debug log level if ENABLE_DEBUG_LOGS=true or NODE_ENV=development and LOG_LEVEL was not explicitly specified
-	if rawLogLevel == "" && (enableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv)) {
-		cfg.Log.LogLevel = "debug"
 	}
 
 	if value := envFirst("APP_ADDRESS"); value != "" {
