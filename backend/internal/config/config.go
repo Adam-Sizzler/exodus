@@ -294,8 +294,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		return
 	}
 
-	if value := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
-		cfg.Log.LogLevel = resolveConfiguredLogLevel(value)
+	rawLogLevel := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL")
+	if rawLogLevel != "" {
+		cfg.Log.LogLevel = resolveConfiguredLogLevel(rawLogLevel)
 	}
 	if value := envFirst("LOG_FORMAT", "EXODUS_LOG_FORMAT"); value != "" {
 		cfg.Log.LogFormat = value
@@ -309,13 +310,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("IS_HTTP_LOGGING_ENABLED"); value != "" {
 		cfg.Log.IsHTTPLoggingEnabled = parseBoolEnv(value)
 	}
-	if cfg.Log.EnableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv) {
+	// Fallback to debug log level if ENABLE_DEBUG_LOGS=true or NODE_ENV=development and LOG_LEVEL was not explicitly specified
+	if rawLogLevel == "" && (cfg.Log.EnableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv)) {
 		cfg.Log.LogLevel = "debug"
-	} else if isDebugOrTraceLogLevel(cfg.Log.LogLevel) {
-		// Match the node service behavior: production does not enable verbose
-		// logging from stale LOG_LEVEL=debug/trace values. Use
-		// ENABLE_DEBUG_LOGS=true or NODE_ENV=development when debug logs are needed.
-		cfg.Log.LogLevel = "info"
 	}
 
 	if value := envFirst("APP_ADDRESS"); value != "" {
