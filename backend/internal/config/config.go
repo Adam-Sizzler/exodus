@@ -104,7 +104,6 @@ type NotificationEventChannelConfig struct {
 type LogConfig struct {
 	LogLevel             string
 	LogFormat            string
-	EnableDebugLogs      bool
 	IsHTTPLoggingEnabled bool
 	NodeEnv              string
 }
@@ -137,7 +136,6 @@ var defaultConfig = BackendConfig{
 	Log: LogConfig{
 		LogLevel:             "info",
 		LogFormat:            "console",
-		EnableDebugLogs:      false,
 		IsHTTPLoggingEnabled: false,
 		NodeEnv:              "production",
 	},
@@ -304,14 +302,12 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("NODE_ENV"); value != "" {
 		cfg.Log.NodeEnv = value
 	}
-	if value := envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"); value != "" {
-		cfg.Log.EnableDebugLogs = parseBoolEnv(value)
-	}
+	enableDebugLogs := parseBoolEnv(envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"))
 	if value := envFirst("IS_HTTP_LOGGING_ENABLED"); value != "" {
 		cfg.Log.IsHTTPLoggingEnabled = parseBoolEnv(value)
 	}
 	// Fallback to debug log level if ENABLE_DEBUG_LOGS=true or NODE_ENV=development and LOG_LEVEL was not explicitly specified
-	if rawLogLevel == "" && (cfg.Log.EnableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv)) {
+	if rawLogLevel == "" && (enableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv)) {
 		cfg.Log.LogLevel = "debug"
 	}
 
