@@ -124,7 +124,11 @@ func createAdminAccessToken(cfg *config.BackendConfig, username, adminUUID, role
 	if strings.TrimSpace(role) == "" {
 		role = "ADMIN"
 	}
-	return security.SignAuthJWT(cfg.JWT.AuthSecret, username, adminUUID, role)
+	lifetime := security.AuthTokenLifetime
+	if cfg != nil && cfg.JWT.AuthLifetimeHours >= 12 {
+		lifetime = time.Duration(cfg.JWT.AuthLifetimeHours) * time.Hour
+	}
+	return security.SignAuthJWTWithLifetime(cfg.JWT.AuthSecret, username, adminUUID, role, lifetime)
 }
 
 func setAuthCookie(w http.ResponseWriter, r *http.Request, cfg *config.BackendConfig, token string, expiresAt int64) {

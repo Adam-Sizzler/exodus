@@ -36,6 +36,7 @@ type PanelConfig struct {
 	AllowInsecureHTTP bool
 	TrustedProxies    []string
 	AppPort           int
+	ShortUUIDLength   int
 	trustedProxyNets  []*net.IPNet
 }
 
@@ -50,8 +51,9 @@ type CORSConfig struct {
 }
 
 type JWTConfig struct {
-	AuthSecret      string
-	APITokensSecret string
+	AuthSecret        string
+	APITokensSecret   string
+	AuthLifetimeHours int
 }
 
 type MetricsConfig struct {
@@ -100,10 +102,11 @@ type NotificationEventChannelConfig struct {
 }
 
 type LogConfig struct {
-	LogLevel        string
-	LogFormat       string
-	EnableDebugLogs bool
-	NodeEnv         string
+	LogLevel             string
+	LogFormat            string
+	EnableDebugLogs      bool
+	IsHTTPLoggingEnabled bool
+	NodeEnv              string
 }
 
 type EXODUSConfig struct {
@@ -132,15 +135,17 @@ type RedisConfig struct {
 
 var defaultConfig = BackendConfig{
 	Log: LogConfig{
-		LogLevel:  "info",
-		LogFormat: "console",
-		NodeEnv:   "production",
+		LogLevel:             "info",
+		LogFormat:            "console",
+		EnableDebugLogs:      false,
+		IsHTTPLoggingEnabled: false,
+		NodeEnv:              "production",
 	},
 	EXODUS: EXODUSConfig{
 		Address: "0.0.0.0",
 	},
 	Database: DatabaseConfig{
-		URL:                "",
+		URL: "",
 	},
 	Redis: RedisConfig{
 		Host:                         "",
@@ -162,7 +167,11 @@ var defaultConfig = BackendConfig{
 		AllowInsecureHTTP: false,
 		TrustedProxies:    []string{},
 		AppPort:           3000,
+		ShortUUIDLength:   16,
 		trustedProxyNets:  nil,
+	},
+	JWT: JWTConfig{
+		AuthLifetimeHours: 12,
 	},
 	Docs: DocsConfig{
 		IsEnabled:   false,
@@ -297,6 +306,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"); value != "" {
 		cfg.Log.EnableDebugLogs = parseBoolEnv(value)
 	}
+	if value := envFirst("IS_HTTP_LOGGING_ENABLED"); value != "" {
+		cfg.Log.IsHTTPLoggingEnabled = parseBoolEnv(value)
+	}
 	if cfg.Log.EnableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv) {
 		cfg.Log.LogLevel = "debug"
 	} else if isDebugOrTraceLogLevel(cfg.Log.LogLevel) {
@@ -315,6 +327,13 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Panel.AppPort = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid APP_PORT value, ignoring", "value", value)
+		}
+	}
+	if value := envFirst("SHORT_UUID_LENGTH"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 16 && parsed <= 64 {
+			cfg.Panel.ShortUUIDLength = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid SHORT_UUID_LENGTH value (must be 16-64), ignoring", "value", value)
 		}
 	}
 	if value := envFirst("APP_PATH"); value != "" {
@@ -453,6 +472,13 @@ func applyEnvOverrides(cfg *BackendConfig) {
 
 	cfg.JWT.AuthSecret = strings.TrimSpace(envFirst("JWT_AUTH_SECRET"))
 	cfg.JWT.APITokensSecret = strings.TrimSpace(envFirst("JWT_API_TOKENS_SECRET"))
+	if value := envFirst("JWT_AUTH_LIFETIME"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 12 && parsed <= 168 {
+			cfg.JWT.AuthLifetimeHours = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid JWT_AUTH_LIFETIME value (must be between 12 and 168 hours), ignoring", "value", value)
+		}
+	}
 
 	if value := envFirst("SERVICE_CLEAN_USAGE_HISTORY"); value != "" {
 		cfg.Scheduler.ServiceCleanUsageHistory = parseBoolEnv(value)

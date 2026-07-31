@@ -23,12 +23,19 @@ type JWTPayload struct {
 }
 
 func SignAuthJWT(secret, username, uuid, role string) (string, int64, error) {
+	return SignAuthJWTWithLifetime(secret, username, uuid, role, AuthTokenLifetime)
+}
+
+func SignAuthJWTWithLifetime(secret, username, uuid, role string, lifetime time.Duration) (string, int64, error) {
+	if lifetime <= 0 {
+		lifetime = AuthTokenLifetime
+	}
 	username = strings.TrimSpace(username)
 	if username == "" {
 		return "", 0, errors.New("username is required")
 	}
 	usernamePtr := username
-	return signJWT(secret, &usernamePtr, uuid, role, AuthTokenLifetime)
+	return signJWT(secret, &usernamePtr, uuid, role, lifetime)
 }
 
 func SignAPITokenJWT(secret, uuid string) (string, int64, error) {

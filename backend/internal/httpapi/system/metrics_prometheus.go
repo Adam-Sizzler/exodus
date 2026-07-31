@@ -637,8 +637,6 @@ func canonicalNodeMetricName(metricName string) string {
 	}
 }
 
-
-
 func metricsCandidatePaths(basePath string) []string {
 	paths := []string{"/metrics"}
 	normalized := strings.TrimSpace(basePath)

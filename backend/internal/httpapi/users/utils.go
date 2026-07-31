@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"exodus/internal/config"
+
 	"github.com/google/uuid"
 )
 
@@ -254,11 +256,15 @@ func coalesceUUID(value *string) string {
 	return uuid.NewString()
 }
 
-func coalesceShortUUID(value *string) string {
+func coalesceShortUUID(value *string, cfg *config.BackendConfig) string {
 	if value != nil && strings.TrimSpace(*value) != "" {
 		return strings.TrimSpace(*value)
 	}
-	return generateSubscriptionShortUUID()
+	length := 16
+	if cfg != nil && cfg.Panel.ShortUUIDLength >= 16 {
+		length = cfg.Panel.ShortUUIDLength
+	}
+	return generateSubscriptionShortUUID(length)
 }
 
 func generateRandomString(length int) string {
@@ -269,10 +275,24 @@ func generateRandomString(length int) string {
 	return hex.EncodeToString(bytes)[:length]
 }
 
-func generateSubscriptionShortUUID() string {
-	bytes := make([]byte, 12)
+func generateSubscriptionShortUUID(length int) string {
+	if length < 16 {
+		length = 16
+	}
+	if length > 64 {
+		length = 64
+	}
+	rawBytesCount := (length * 3) / 4
+	if rawBytesCount < 12 {
+		rawBytesCount = 12
+	}
+	bytes := make([]byte, rawBytesCount)
 	if _, err := rand.Read(bytes); err != nil {
 		return ""
 	}
-	return base64.RawURLEncoding.EncodeToString(bytes)
+	encoded := base64.RawURLEncoding.EncodeToString(bytes)
+	if len(encoded) > length {
+		return encoded[:length]
+	}
+	return encoded
 }
