@@ -238,12 +238,13 @@ jobs:
           git fetch --tags --force
           PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | grep -v "^${TAG}$" | head -n 1 || true)
           if [ -n "$PREV_TAG" ]; then
-            CHANGELOG=$(npx -y changelogen@latest --from "$PREV_TAG" --to "$TAG" || echo "No previous release tag found.")
+            RAW_CHANGELOG=$(npx -y changelogen@latest --from "$PREV_TAG" --to "$TAG" 2>/dev/null || echo "")
           else
-            CHANGELOG=$(npx -y changelogen@latest || echo "No previous release tag found.")
+            RAW_CHANGELOG=$(npx -y changelogen@latest 2>/dev/null || echo "")
           fi
+          CLEAN_CHANGELOG=$(echo "$RAW_CHANGELOG" | sed '/## v/d' | sed '/\[compare changes\]/d' | sed '/### ❤️ Contributors/,$d')
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "$CLEAN_CHANGELOG" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Create Release
@@ -264,11 +265,11 @@ jobs:
             ${{ env.CHANGELOG }}
 
             Latest Docker image:
-            - `${{ env.REGISTRY_IMAGE }}:latest`
+            #- `${{ env.REGISTRY_IMAGE }}:latest`
             - `${{ env.GHCR_IMAGE }}:latest`
 
             Docker images:
-            - `${{ env.REGISTRY_IMAGE }}:${{ steps.tag.outputs.tag }}`
+            #- `${{ env.REGISTRY_IMAGE }}:${{ steps.tag.outputs.tag }}`
             - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
 
   send-finish-tg-msg:
