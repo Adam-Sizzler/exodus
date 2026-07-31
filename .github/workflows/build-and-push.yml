@@ -242,7 +242,7 @@ jobs:
           else
             RAW_CHANGELOG=$(npx -y changelogen@latest || echo "")
           fi
-          CLEAN_CHANGELOG=$(echo "$RAW_CHANGELOG" | grep -v '^[[:space:]]*\[log\][[:space:]]*$' | sed '/### ❤️ Contributors/,$d')
+          CLEAN_CHANGELOG=$(echo "$RAW_CHANGELOG" | grep -v '^[[:space:]]*\[log\][[:space:]]*$')
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           echo "$CLEAN_CHANGELOG" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
