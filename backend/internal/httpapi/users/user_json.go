@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 )
 
 // IdEntry представляет одиночную пару ID и inbound_tag для пользователя.
@@ -42,7 +41,7 @@ type NodeUsers struct {
 }
 
 // LegacyUsersNodeViewHandler returns a legacy node-grouped users view.
-func LegacyUsersNodeViewHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func LegacyUsersNodeViewHandler(dbConn *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg.Logger.Debug("Начало обработки запроса UsersHandler")
 
@@ -54,7 +53,7 @@ func LegacyUsersNodeViewHandler(manager *dbmanager.DatabaseManager, cfg *config.
 			return
 		}
 
-		nodeUsers, err := QueryUsers(r.Context(), manager, cfg)
+		nodeUsers, err := QueryUsers(r.Context(), dbConn, cfg)
 		if err != nil {
 			cfg.Logger.Error("Ошибка в UsersHandler", "error", err)
 			http.Error(w, "Ошибка обработки данных", http.StatusInternalServerError)
@@ -73,24 +72,23 @@ func LegacyUsersNodeViewHandler(manager *dbmanager.DatabaseManager, cfg *config.
 }
 
 // queryUsers выполняет запрос к базе данных для получения пользователей и возвращает NodeUsers.
-func QueryUsers(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) ([]NodeUsers, error) {
+func QueryUsers(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig) ([]NodeUsers, error) {
 	var nodeUsers []NodeUsers
-	err := manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		cfg.Logger.Debug("Выполнение запроса к таблицам user_traffic, user_data, user_ids и nodes")
+	cfg.Logger.Debug("Выполнение запроса к таблицам user_traffic, user_data, user_ids и nodes")
 
-		query := `
-			SELECT ut.node_name, n.address, n.port, ut.user, uu.id, uu.inbound_tag, ut.rate, ut.enabled, ut.created, ud.sub_end, ud.renew, ud.lim_ip, ud.ips, ut.uplink, ut.downlink, ud.traffic_cap
-			FROM user_traffic ut
-			LEFT JOIN user_data ud ON ut.user = ud.user
-			LEFT JOIN user_ids uu ON ut.user = uu.user AND ut.node_name = uu.node_name
-			LEFT JOIN nodes n ON ut.node_name = n.node_name
-		`
-		rows, err := db.QueryContext(ctx, query)
-		if err != nil {
-			cfg.Logger.Error("Не удалось выполнить SQL-запрос", "error", err)
-			return fmt.Errorf("не удалось выполнить SQL-запрос: %v", err)
-		}
-		defer rows.Close()
+	query := `
+		SELECT ut.node_name, n.address, n.port, ut.user, uu.id, uu.inbound_tag, ut.rate, ut.enabled, ut.created, ud.sub_end, ud.renew, ud.lim_ip, ud.ips, ut.uplink, ut.downlink, ud.traffic_cap
+		FROM user_traffic ut
+		LEFT JOIN user_data ud ON ut.user = ud.user
+		LEFT JOIN user_ids uu ON ut.user = uu.user AND ut.node_name = uu.node_name
+		LEFT JOIN nodes n ON ut.node_name = n.node_name
+	`
+	rows, err := dbConn.QueryContext(ctx, query)
+	if err != nil {
+		cfg.Logger.Error("Не удалось выполнить SQL-запрос", "error", err)
+		return nil, fmt.Errorf("не удалось выполнить SQL-запрос: %v", err)
+	}
+	defer rows.Close()
 
 		nodeMap := make(map[string]*NodeUsers)
 
@@ -121,7 +119,7 @@ func QueryUsers(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *co
 				&trafficCap,
 			); err != nil {
 				cfg.Logger.Error("Не удалось прочитать строку", "error", err)
-				return fmt.Errorf("не удалось прочитать строку: %v", err)
+				return nil, fmt.Errorf("не удалось прочитать строку: %v", err)
 			}
 
 			id = idNull.String
@@ -180,23 +178,13 @@ func QueryUsers(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *co
 
 			cfg.Logger.Trace("Прочитан пользователь", "node_name", nodeName, "user", userName, "id", id, "inbound_tag", inboundTag, "enabled", enabled)
 		}
-		if err := rows.Err(); err != nil {
-			cfg.Logger.Error("Ошибка при итерации строк", "error", err)
-			return fmt.Errorf("ошибка при итерации строк: %v", err)
-		}
-
-		for _, node := range nodeMap {
-			nodeUsers = append(nodeUsers, *node)
-		}
-
 		if len(nodeUsers) == 0 {
 			cfg.Logger.Warn("Пользователи не найдены в таблицах user_traffic, user_data, user_ids и nodes")
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
+		if err := rows.Err(); err != nil {
+			cfg.Logger.Error("Ошибка при итерации строк", "error", err)
+			return nil, fmt.Errorf("ошибка при итерации строк: %v", err)
+		}
 
-	return nodeUsers, nil
+		return nodeUsers, nil
 }

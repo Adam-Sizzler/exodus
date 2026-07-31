@@ -2,13 +2,12 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	"strings"
-
-	dbmanager "exodus/internal/db/manager"
 )
 
-func (r *UserRepository) getUserInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, tID int64) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT internal_squad_uuid FROM internal_squad_members WHERE user_id = ?`, tID)
+func (r *UserRepository) getUserInternalSquadsTx(ctx context.Context, tx *sql.Tx, tID int64) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT internal_squad_uuid FROM internal_squad_members WHERE user_id = $1`, tID)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func internalSquadSetsDiffer(current []string, requested []string) bool {
 	return false
 }
 
-func (r *UserRepository) resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx dbmanager.TxExecutor, squadUUIDs []string) ([]string, error) {
+func (r *UserRepository) resolveNodeUUIDsForInternalSquadsTx(ctx context.Context, tx *sql.Tx, squadUUIDs []string) ([]string, error) {
 	cleanSquadUUIDs := dedupeStrings(squadUUIDs)
 	if len(cleanSquadUUIDs) == 0 {
 		return []string{}, nil
@@ -54,7 +53,7 @@ func (r *UserRepository) resolveNodeUUIDsForInternalSquadsTx(ctx context.Context
 		SELECT DISTINCT cpitn.node_uuid
 		FROM internal_squad_inbounds isi
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
-		WHERE isi.internal_squad_uuid = ANY(?)
+		WHERE isi.internal_squad_uuid = ANY($1)
 	`, cleanSquadUUIDs)
 	if err != nil {
 		return nil, err
@@ -76,7 +75,7 @@ func (r *UserRepository) resolveNodeUUIDsForInternalSquadsTx(ctx context.Context
 	return dedupeStrings(nodeUUIDs), nil
 }
 
-func (r *UserRepository) resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx dbmanager.TxExecutor, userUUIDs []string) ([]string, error) {
+func (r *UserRepository) resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx *sql.Tx, userUUIDs []string) ([]string, error) {
 	cleanUserUUIDs := dedupeStrings(userUUIDs)
 	if len(cleanUserUUIDs) == 0 {
 		return []string{}, nil
@@ -88,7 +87,7 @@ func (r *UserRepository) resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx 
 		JOIN internal_squad_members ism ON ism.user_id = u.t_id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
-		WHERE u.uuid = ANY(?)
+		WHERE u.uuid = ANY($1)
 	`, cleanUserUUIDs)
 	if err != nil {
 		return nil, err

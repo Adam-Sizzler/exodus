@@ -2,12 +2,12 @@ package notifications
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 )
 
 type Dispatcher struct {
@@ -21,7 +21,7 @@ var (
 	globalDispatcher   *Dispatcher
 )
 
-func StartDispatcher(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func StartDispatcher(ctx context.Context, wg *sync.WaitGroup, db *sql.DB, cfg *config.BackendConfig) {
 	if cfg == nil {
 		return
 	}
@@ -32,7 +32,7 @@ func StartDispatcher(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager
 		}
 		return
 	}
-	
+
 	dispatcher := &Dispatcher{
 		cfg:      cfg,
 		notifier: New(cfg),

@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	notificationsQueueName = "notifications"
-	webhookJobName         = "sendWebhook"
-	telegramJobName        = "sendTelegram"
+	webhookQueueName  = "NTFY_WEBHOOK_QUEUE"
+	telegramQueueName = "NTFY_TELEGRAM_QUEUE"
+	webhookJobName    = "sendWebhook"
+	telegramJobName   = "sendTelegram"
 )
 
 type Worker struct {
@@ -42,15 +43,27 @@ func NewWorker(cfg *config.BackendConfig) (*Worker, error) {
 	}
 	
 	err = processor.RegisterQueue(jobqueue.QueueOptions{
-		Name:              notificationsQueueName,
-		Concurrency:       5,
+		Name:              webhookQueueName,
+		Concurrency:       100,
 		VisibilityTimeout: 10 * time.Minute,
 		Retention:         2000,
 	}, map[string]jobqueue.Handler{
-		webhookJobName:  worker.handleWebhook,
+		webhookJobName: worker.handleWebhook,
+	})
+	if err != nil {
+		processor.Close()
+		return nil, err
+	}
+
+	err = processor.RegisterQueue(jobqueue.QueueOptions{
+		Name:              telegramQueueName,
+		Concurrency:       100,
+		VisibilityTimeout: 10 * time.Minute,
+		Retention:         2000,
+	}, map[string]jobqueue.Handler{
 		telegramJobName: worker.handleTelegram,
 	})
-	
+
 	if err != nil {
 		processor.Close()
 		return nil, err
@@ -87,9 +100,8 @@ func (w *Worker) EnqueueWebhook(ctx context.Context, event Event) error {
 	if err != nil {
 		return err
 	}
-	return w.processor.Enqueue(ctx, notificationsQueueName, webhookJobName, payload, jobqueue.JobOptions{
+	return w.processor.Enqueue(ctx, webhookQueueName, webhookJobName, payload, jobqueue.JobOptions{
 		Attempts: 8,
-		Backoff:  time.Second,
 	})
 }
 
@@ -98,8 +110,7 @@ func (w *Worker) EnqueueTelegram(ctx context.Context, event Event) error {
 	if err != nil {
 		return err
 	}
-	return w.processor.Enqueue(ctx, notificationsQueueName, telegramJobName, payload, jobqueue.JobOptions{
+	return w.processor.Enqueue(ctx, telegramQueueName, telegramJobName, payload, jobqueue.JobOptions{
 		Attempts: 8,
-		Backoff:  time.Second,
 	})
 }

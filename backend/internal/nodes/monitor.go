@@ -2,20 +2,20 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
 	"exodus/internal/db"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/nodehotcache"
 )
 
 // NodeMonitor dynamically manages node monitoring with status tracking.
 type NodeMonitor struct {
-	manager *dbmanager.DatabaseManager
-	cfg     *config.BackendConfig
+	db  *sql.DB
+	cfg *config.BackendConfig
 
 	// Active node contexts
 	nodes     map[string]*nodeState
@@ -35,18 +35,22 @@ type NodeMonitor struct {
 
 	usageRecorder NodeUserUsageRecorder
 	hotCache      *nodehotcache.Cache
+
+	failedCheckCount map[string]int
+	statusLock       sync.Mutex
 }
 
 // NewNodeMonitor creates a new NodeMonitor.
-func NewNodeMonitor(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) *NodeMonitor {
+func NewNodeMonitor(db *sql.DB, cfg *config.BackendConfig) *NodeMonitor {
 	return &NodeMonitor{
-		manager:           manager,
+		db:                db,
 		cfg:               cfg,
 		nodes:             make(map[string]*nodeState),
 		syncNow:           make(chan struct{}, 1),
 		deployNow:         make(chan deployRequest, 1),
 		metricsByNodeUUID: make(map[string]*NodeMetricsSnapshot),
 		hotCache:          nodehotcache.Default(cfg),
+		failedCheckCount: make(map[string]int),
 	}
 }
 
@@ -171,7 +175,11 @@ func (nm *NodeMonitor) syncNodes() {
 
 // loadActiveNodes loads enabled nodes from database.
 func (nm *NodeMonitor) loadActiveNodes() ([]db.DBNode, error) {
-	nodes, err := db.LoadNodesFromDB(nm.manager, nm.cfg)
+	ctx := nm.globalCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	nodes, err := db.LoadNodesFromDB(ctx, nm.db, nm.cfg)
 	if err != nil {
 		return nil, err
 	}

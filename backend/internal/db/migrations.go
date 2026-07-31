@@ -20,8 +20,43 @@ var migrationsFS embed.FS
 
 const migrationsAdvisoryLockKey int64 = 2203092601
 
+// fixedMigrationChecksums — миграции, чей файл был задним числом отредактирован
+// после релиза. Ключ — migration_name, значение — {старый, новый} checksum.
+var fixedMigrationChecksums = map[string]struct{ Old, New string }{
+	// "20260724000000_delete_legacy": {Old: "abc123...", New: "def456..."},
+}
+
+// fixedMigrationDeletions — устаревшие записи миграций, которые нужно удалить из истории
+var fixedMigrationDeletions = []string{
+	// "20251230045744_drop_is_custom_remark",
+}
+
+// retiredMigrations — устаревшие миграции, файлы которых были удалены с диска
+// при бейзлайнинге схемы. Наличие этих имен в истории БД игнорируется.
 var retiredMigrations = map[string]struct{}{
-	"20260518013000_drop_config_profile_snippets": {},
+	"20260302031100_init_schema":                              {},
+	"20260309163000_probe_users_created_at_index":            {},
+	"20260312230000_srs_lists":                               {},
+	"20260313002000_srs_lists_enabled_drop_type":              {},
+	"20260316000100_add_modules_settings":                     {},
+	"20260316003000_create_modules_settings":                  {},
+	"20260319170000_rename_xray_columns_to_singbox":           {},
+	"20260322030000_hosts_mux_per_core_and_selector_toggle":     {},
+	"20260325010000_preserve_json_key_order":                  {},
+	"20260325223000_subscription_connections":                 {},
+	"20260326000100_sub_nodes_table":                          {},
+	"20260326010100_sub_nodes_runtime_columns":                {},
+	"20260326023000_sub_nodes_panel_api_token":                {},
+	"20260326220000_sub_nodes_subpage_config_uuid":            {},
+	"20260326233000_sub_nodes_grpc_auth_token":                {},
+	"20260326234000_drop_sub_nodes_panel_api_token":           {},
+	"20260327000100_sub_nodes_cleanup_and_keygen_grpc_token":   {},
+	"20260327020000_sub_nodes_subpage_join_and_cleanup":       {},
+	"20260327030000_drop_sub_nodes_to_subpage_timestamps":     {},
+	"20260413190000_rename_cerberus_settings_to_exodus_settings": {},
+	"20260413201500_drop_hosts_xhttp_extra_params":           {},
+	"20260419170000_sub_nodes_public_domain":                  {},
+	"20260518013000_drop_config_profile_snippets":            {},
 }
 
 func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig) error {
@@ -60,6 +95,30 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		return fmt.Errorf("initialize schema_migrations table: %w", err)
 	}
 
+	// 1. Fix old migration checksums & delete legacy migration records (шаг 1 Remnawave)
+	for name, sums := range fixedMigrationChecksums {
+		res, err := conn.ExecContext(ctx,
+			`UPDATE public.schema_migrations SET checksum = $1 WHERE migration_name = $2 AND checksum = $3`,
+			sums.New, name, sums.Old)
+		if err != nil {
+			return fmt.Errorf("fix checksum for %s: %w", name, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			cfg.Logger.Info("Fixed migration checksum", "name", name)
+		}
+	}
+
+	for _, name := range fixedMigrationDeletions {
+		res, err := conn.ExecContext(ctx,
+			`DELETE FROM public.schema_migrations WHERE migration_name = $1`, name)
+		if err != nil {
+			return fmt.Errorf("delete old migration record for %s: %w", name, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			cfg.Logger.Info("Deleted old migration record", "name", name)
+		}
+	}
+
 	dirs, err := fs.ReadDir(migrationsFS, "prisma/migrations")
 	if err != nil {
 		return fmt.Errorf("read migrations directory: %w", err)
@@ -83,6 +142,8 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 	if err != nil {
 		return fmt.Errorf("read applied migrations: %w", err)
 	}
+
+	var legacyCount int
 	var legacyMigrations []string
 	for appliedRows.Next() {
 		var appliedName string
@@ -93,19 +154,46 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		if _, ok := knownMigrations[appliedName]; ok {
 			continue
 		}
-		if _, ok := retiredMigrations[appliedName]; !ok {
-			legacyMigrations = append(legacyMigrations, appliedName)
+		if _, ok := retiredMigrations[appliedName]; ok || appliedName < "20260506000000_initial_schema" {
+			legacyCount++
+			continue
 		}
+		legacyMigrations = append(legacyMigrations, appliedName)
 	}
 	if err := appliedRows.Close(); err != nil {
 		return fmt.Errorf("close applied migrations cursor: %w", err)
 	}
+
 	if len(legacyMigrations) > 0 {
 		return fmt.Errorf(
 			"unsupported legacy migration history detected: %s; this release supports only the %s baseline, use a clean database or prepare the database for the new baseline",
 			strings.Join(legacyMigrations, ", "),
 			strings.Join(names, ", "),
 		)
+	}
+
+	// Auto-baseline for legacy databases: if legacy migration records exist or public.admin table already exists,
+	// ensure baseline initial_schema is marked as applied so it doesn't fail trying to re-create existing tables.
+	var adminTableExists bool
+	_ = conn.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='admin')`).Scan(&adminTableExists)
+
+	if legacyCount > 0 || adminTableExists {
+		baselineName := "20260506000000_initial_schema"
+		var existsCount int
+		_ = conn.QueryRowContext(ctx, `SELECT count(*) FROM public.schema_migrations WHERE migration_name = $1`, baselineName).Scan(&existsCount)
+		if existsCount == 0 {
+			sqlPath := fmt.Sprintf("prisma/migrations/%s/migration.sql", baselineName)
+			if sqlBytes, err := migrationsFS.ReadFile(sqlPath); err == nil {
+				checksum := sha256.Sum256(sqlBytes)
+				checksumHex := hex.EncodeToString(checksum[:])
+				_, _ = conn.ExecContext(ctx, `
+					INSERT INTO public.schema_migrations (
+						migration_name, checksum, started_at, finished_at, applied_steps_count, applied_at
+					) VALUES ($1, $2, now(), now(), 1, now()) ON CONFLICT (migration_name) DO NOTHING
+				`, baselineName, checksumHex)
+				cfg.Logger.Info("Auto-marked baseline migration as applied for legacy database", "name", baselineName)
+			}
+		}
 	}
 
 	for _, name := range names {
@@ -138,7 +226,7 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 			}
 		}
 
-		cfg.Logger.Info("Applying migration", "name", name)
+		fmt.Printf("Applying migration: %s\n", name)
 		tx, err := conn.BeginTx(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("begin migration %s: %w", name, err)

@@ -1,0 +1,169 @@
+package db
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+)
+
+type ConfigProfileInbound struct {
+	UUID                     string          `json:"uuid"`
+	ProfileUUID              string          `json:"profileUuid"`
+	Tag                      string          `json:"tag"`
+	Type                     string          `json:"type"`
+	Network                  *string         `json:"network"`
+	Security                 *string         `json:"security"`
+	Port                     *int            `json:"port"`
+	RawInbound               json.RawMessage `json:"rawInbound"`
+	ActiveInternalSquadUUIDs []string        `json:"activeInternalSquadUuids"`
+}
+
+func extractInboundNetwork(inboundMap map[string]any) string {
+	if transport, ok := inboundMap["transport"].(map[string]any); ok {
+		if transportType, ok := transport["type"].(string); ok && transportType != "" {
+			return transportType
+		}
+	}
+	if networkValue, ok := inboundMap["network"].(string); ok && networkValue != "" {
+		return networkValue
+	}
+	return ""
+}
+
+func extractInboundSecurity(inboundMap map[string]any) string {
+	if tls, ok := inboundMap["tls"].(map[string]any); ok {
+		if enabled, _ := tls["enabled"].(bool); enabled {
+			return "tls"
+		}
+		return ""
+	}
+	if securityValue, ok := inboundMap["security"].(string); ok && securityValue != "" {
+		return securityValue
+	}
+	return ""
+}
+
+func parseConfigInbounds(profileUUID string, configJSON json.RawMessage) ([]ConfigProfileInbound, error) {
+	var configData map[string]any
+	if err := json.Unmarshal(configJSON, &configData); err != nil {
+		return nil, fmt.Errorf("failed to parse config JSON: %w", err)
+	}
+
+	inboundsRaw, ok := configData["inbounds"]
+	if !ok {
+		return []ConfigProfileInbound{}, nil
+	}
+	inboundsArray, ok := inboundsRaw.([]any)
+	if !ok {
+		return nil, fmt.Errorf("inbounds must be an array")
+	}
+
+	seenTags := make(map[string]struct{})
+	result := make([]ConfigProfileInbound, 0, len(inboundsArray))
+
+	for _, inboundRaw := range inboundsArray {
+		inboundMap, ok := inboundRaw.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		tag, _ := inboundMap["tag"].(string)
+		if strings.TrimSpace(tag) == "" {
+			continue
+		}
+		if _, ok := seenTags[tag]; ok {
+			continue
+		}
+		seenTags[tag] = struct{}{}
+
+		item := ConfigProfileInbound{
+			UUID:                     uuid.NewString(),
+			ProfileUUID:              profileUUID,
+			Tag:                      tag,
+			ActiveInternalSquadUUIDs: []string{},
+		}
+		if typeValue, ok := inboundMap["type"].(string); ok {
+			item.Type = typeValue
+		} else if protocolValue, ok := inboundMap["protocol"].(string); ok {
+			item.Type = protocolValue
+		}
+		if networkValue := extractInboundNetwork(inboundMap); networkValue != "" {
+			item.Network = &networkValue
+		}
+		if securityValue := extractInboundSecurity(inboundMap); securityValue != "" {
+			item.Security = &securityValue
+		}
+		if portValue, ok := inboundMap["listen_port"].(float64); ok {
+			p := int(portValue)
+			item.Port = &p
+		} else if portValue, ok := inboundMap["port"].(float64); ok {
+			p := int(portValue)
+			item.Port = &p
+		}
+		rawInbound, err := json.Marshal(inboundMap)
+		if err != nil {
+			continue
+		}
+		item.RawInbound = rawInbound
+		result = append(result, item)
+	}
+
+	return result, nil
+}
+
+func SyncConfigProfileInboundsTx(ctx context.Context, tx *sql.Tx, profileUUID string, configJSON json.RawMessage) (int, error) {
+	inbounds, err := parseConfigInbounds(profileUUID, configJSON)
+	if err != nil {
+		return 0, err
+	}
+
+	currentTags := make([]string, 0, len(inbounds))
+	for _, inbound := range inbounds {
+		currentTags = append(currentTags, inbound.Tag)
+	}
+
+	for _, inbound := range inbounds {
+		var networkVal, securityVal, portVal any
+		if inbound.Network != nil {
+			networkVal = *inbound.Network
+		}
+		if inbound.Security != nil {
+			securityVal = *inbound.Security
+		}
+		if inbound.Port != nil {
+			portVal = *inbound.Port
+		}
+
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO config_profile_inbounds (
+				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			ON CONFLICT (tag) DO UPDATE SET
+				profile_uuid = EXCLUDED.profile_uuid,
+				type         = EXCLUDED.type,
+				network      = EXCLUDED.network,
+				security     = EXCLUDED.security,
+				port         = EXCLUDED.port,
+				raw_inbound  = EXCLUDED.raw_inbound
+		`, inbound.UUID, inbound.ProfileUUID, inbound.Tag, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound); err != nil {
+			return 0, err
+		}
+	}
+
+	if len(currentTags) > 0 {
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM config_profile_inbounds
+			WHERE profile_uuid = $1 AND NOT (tag = ANY($2))
+		`, profileUUID, currentTags); err != nil {
+			return 0, err
+		}
+	} else if _, err := tx.ExecContext(ctx, `DELETE FROM config_profile_inbounds WHERE profile_uuid = $1`, profileUUID); err != nil {
+		return 0, err
+	}
+
+	return len(inbounds), nil
+}

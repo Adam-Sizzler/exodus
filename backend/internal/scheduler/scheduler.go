@@ -2,31 +2,31 @@ package scheduler
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/logger"
 )
 
 type Scheduler struct {
-	manager *dbmanager.DatabaseManager
-	cfg     *config.BackendConfig
+	db  *sql.DB
+	cfg *config.BackendConfig
 
 	mu                  sync.Mutex
 	lastRuns            map[string]string
 	nodeTrafficNotified map[string]bool
 }
 
-func Start(ctx context.Context, wg *sync.WaitGroup, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	if manager == nil || cfg == nil {
+func Start(ctx context.Context, wg *sync.WaitGroup, db *sql.DB, cfg *config.BackendConfig) {
+	if db == nil || cfg == nil {
 		return
 	}
 
 	s := &Scheduler{
-		manager:             manager,
+		db:                  db,
 		cfg:                 cfg,
 		lastRuns:            make(map[string]string),
 		nodeTrafficNotified: make(map[string]bool),

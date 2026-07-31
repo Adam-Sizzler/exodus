@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/nodehotcache"
 	monitor "exodus/internal/nodes"
 	"exodus/internal/notifications"
@@ -95,9 +94,7 @@ func (s *NodeService) RestartNode(ctx context.Context, nodeUUID string, forceRes
 
 func (s *NodeService) RestartAllNodes(ctx context.Context, forceRestart bool) error {
 	var enabledCount int
-	err := s.repo.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE is_disabled = false`).Scan(&enabledCount)
-	})
+	err := s.repo.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE is_disabled = false`).Scan(&enabledCount)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	dbmanager "exodus/internal/db/manager"
 	subscriptionapi "exodus/internal/httpapi/subscription"
 	systemapi "exodus/internal/httpapi/system"
 	"exodus/internal/proto"
@@ -247,10 +246,10 @@ func (sm *SubNodeMonitor) resolveInternalHandler(path string) http.HandlerFunc {
 	switch {
 	case path == "/api/system/metadata":
 		return systemapi.MetadataHandler(sm.cfg)
-	case strings.HasPrefix(path, "/api/sub/") || path == "/api/sub":
-		return subscriptionapi.SubscriptionPublicHandler(sm.manager, sm.cfg)
-	case strings.HasPrefix(path, "/api/subscriptions/") || path == "/api/subscriptions":
-		return subscriptionapi.SubscriptionsByPathHandler(sm.manager, sm.cfg)
+	case strings.HasPrefix(path, "/api/subscriptions/subpage-config/") || path == "/api/subscriptions/subpage-config":
+		return subscriptionapi.SubpageConfigPublicHandler(sm.db, sm.db, sm.cfg)
+	case strings.HasPrefix(path, "/api/sub/") || path == "/api/sub" || strings.HasPrefix(path, "/api/subscriptions/") || path == "/api/subscriptions":
+		return subscriptionapi.SubscriptionPublicHandler(sm.db, sm.db, sm.cfg)
 	default:
 		return nil
 	}
@@ -258,14 +257,12 @@ func (sm *SubNodeMonitor) resolveInternalHandler(path string) http.HandlerFunc {
 
 func (sm *SubNodeMonitor) fetchSubpageConfigRaw(ctx context.Context, uuidValue string) ([]byte, error) {
 	var payload string
-	err := sm.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `
-			SELECT config
-			FROM subscription_page_config
-			WHERE uuid = ?
-			LIMIT 1
-		`, uuidValue).Scan(&payload)
-	})
+	err := sm.db.QueryRowContext(ctx, `
+		SELECT config
+		FROM subscription_page_config
+		WHERE uuid = $1
+		LIMIT 1
+	`, uuidValue).Scan(&payload)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +398,7 @@ func (sm *SubNodeMonitor) syncSRSListsToConnectedNodes(requestedNodeUUIDs []stri
 		return
 	}
 
-	srsLists, err := srscore.LoadNodeSyncItems(context.Background(), sm.manager)
+	srsLists, err := srscore.LoadNodeSyncItems(context.Background(), sm.db)
 	if err != nil {
 		sm.cfg.Logger.Warn("Failed to load SRS lists for subscription node sync", "error", err)
 		return

@@ -119,7 +119,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		nm.cfg.Logger.Debug("Using gRPC path prefix", "node", state.nodeName, "prefix", cleanPath)
 	}
 
-	opts, err := grpcauth.GetDialOptions(state.ctx, nm.manager, useMTLS, useTLS, skipVerify, cleanPath, state.grpcAuthToken, state.proxyURL)
+	opts, err := grpcauth.GetDialOptions(state.ctx, nm.db, useMTLS, useTLS, skipVerify, cleanPath, state.grpcAuthToken, state.proxyURL)
 	if err != nil {
 		nm.cfg.Logger.Warn("Failed to build gRPC options for node", "node", state.nodeName, "error", err)
 		nm.updateConnectionStatus(state.nodeName, false, false, err.Error())

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 )
 
 var fileNameAllowedRe = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
@@ -82,66 +81,63 @@ func DeriveTagFromFileName(fileName string) string {
 	return tag
 }
 
-func LoadAll(ctx context.Context, manager *dbmanager.DatabaseManager) ([]Item, error) {
-	items := make([]Item, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid, tag, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, last_checked_at, last_error, created_at, updated_at
-			FROM srs_lists
-			ORDER BY view_position ASC, created_at ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var item Item
-			var checkedAt sql.NullTime
-			var lastError sql.NullString
-			var pathValue sql.NullString
-			if err := rows.Scan(
-				&item.UUID,
-				&item.Tag,
-				&item.Format,
-				&item.URL,
-				&item.UpdateInterval,
-				&pathValue,
-				&item.FileName,
-				&item.ViewPosition,
-				&item.IsEnabled,
-				&item.IsAvailable,
-				&checkedAt,
-				&lastError,
-				&item.CreatedAt,
-				&item.UpdatedAt,
-			); err != nil {
-				return err
-			}
-			if checkedAt.Valid {
-				t := checkedAt.Time
-				item.LastCheckedAt = &t
-			}
-			if lastError.Valid {
-				e := lastError.String
-				item.LastError = &e
-			}
-			if pathValue.Valid {
-				p := pathValue.String
-				item.Path = &p
-			}
-			items = append(items, item)
-		}
-		return rows.Err()
-	})
+func LoadAll(ctx context.Context, db *sql.DB) ([]Item, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT uuid, tag, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, last_checked_at, last_error, created_at, updated_at
+		FROM srs_lists
+		ORDER BY view_position ASC, created_at ASC
+	`)
 	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]Item, 0)
+	for rows.Next() {
+		var item Item
+		var checkedAt sql.NullTime
+		var lastError sql.NullString
+		var pathValue sql.NullString
+		if err := rows.Scan(
+			&item.UUID,
+			&item.Tag,
+			&item.Format,
+			&item.URL,
+			&item.UpdateInterval,
+			&pathValue,
+			&item.FileName,
+			&item.ViewPosition,
+			&item.IsEnabled,
+			&item.IsAvailable,
+			&checkedAt,
+			&lastError,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if checkedAt.Valid {
+			t := checkedAt.Time
+			item.LastCheckedAt = &t
+		}
+		if lastError.Valid {
+			e := lastError.String
+			item.LastError = &e
+		}
+		if pathValue.Valid {
+			p := pathValue.String
+			item.Path = &p
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return items, nil
 }
 
-func LoadNodeSyncItems(ctx context.Context, manager *dbmanager.DatabaseManager) ([]NodeSyncItem, error) {
-	items, err := LoadAll(ctx, manager)
+func LoadNodeSyncItems(ctx context.Context, db *sql.DB) ([]NodeSyncItem, error) {
+	items, err := LoadAll(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +146,6 @@ func LoadNodeSyncItems(ctx context.Context, manager *dbmanager.DatabaseManager) 
 		if !item.IsEnabled {
 			continue
 		}
-		// Subscription node receives the full SRS registry and downloads the files from its own network.
 		tag := item.Tag
 		if strings.TrimSpace(tag) == "" {
 			tag = DeriveTagFromFileName(item.FileName)
@@ -216,8 +211,8 @@ func CheckOneURL(ctx context.Context, rawURL string) error {
 	return nil
 }
 
-func CheckAndUpdateAvailability(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (int, error) {
-	items, err := LoadAll(ctx, manager)
+func CheckAndUpdateAvailability(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) (int, error) {
+	items, err := LoadAll(ctx, db)
 	if err != nil {
 		return 0, err
 	}
@@ -231,19 +226,18 @@ func CheckAndUpdateAvailability(ctx context.Context, manager *dbmanager.Database
 			errText = err.Error()
 		}
 
-		writeErr := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			_, execErr := db.ExecContext(ctx, `
-				UPDATE srs_lists
-				SET is_available = ?,
-					last_checked_at = CURRENT_TIMESTAMP,
-					last_error = ?,
-					updated_at = CURRENT_TIMESTAMP
-				WHERE uuid = ?
-			`, isAvailable, errText, item.UUID)
-			return execErr
-		})
+		_, writeErr := db.ExecContext(ctx, `
+			UPDATE srs_lists
+			SET is_available = $1,
+				last_checked_at = CURRENT_TIMESTAMP,
+				last_error = $2,
+				updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = $3
+		`, isAvailable, errText, item.UUID)
 		if writeErr != nil {
-			cfg.Logger.Warn("Failed to update SRS availability", "uuid", item.UUID, "error", writeErr)
+			if cfg != nil && cfg.Logger != nil {
+				cfg.Logger.Warn("Failed to update SRS availability", "uuid", item.UUID, "error", writeErr)
+			}
 			continue
 		}
 		updated++

@@ -70,7 +70,7 @@ func sendUpdatedUserResponse(w http.ResponseWriter, r *http.Request, service *Us
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated user", err, service.cfg)
 		return
 	}
-	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.manager, r, service.cfg))
+	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build updated user response", err, service.cfg)
 		return

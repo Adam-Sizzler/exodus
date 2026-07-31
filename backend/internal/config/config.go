@@ -36,6 +36,7 @@ type PanelConfig struct {
 	AllowInsecureHTTP bool
 	TrustedProxies    []string
 	AppPort           int
+	ShortUUIDLength   int
 	trustedProxyNets  []*net.IPNet
 }
 
@@ -50,8 +51,9 @@ type CORSConfig struct {
 }
 
 type JWTConfig struct {
-	AuthSecret      string
-	APITokensSecret string
+	AuthSecret        string
+	APITokensSecret   string
+	AuthLifetimeHours int
 }
 
 type MetricsConfig struct {
@@ -100,10 +102,10 @@ type NotificationEventChannelConfig struct {
 }
 
 type LogConfig struct {
-	LogLevel        string
-	LogFormat       string
-	EnableDebugLogs bool
-	NodeEnv         string
+	LogLevel             string
+	LogFormat            string
+	IsHTTPLoggingEnabled bool
+	NodeEnv              string
 }
 
 type EXODUSConfig struct {
@@ -132,15 +134,16 @@ type RedisConfig struct {
 
 var defaultConfig = BackendConfig{
 	Log: LogConfig{
-		LogLevel:  "info",
-		LogFormat: "console",
-		NodeEnv:   "production",
+		LogLevel:             "info",
+		LogFormat:            "console",
+		IsHTTPLoggingEnabled: false,
+		NodeEnv:              "production",
 	},
 	EXODUS: EXODUSConfig{
 		Address: "0.0.0.0",
 	},
 	Database: DatabaseConfig{
-		URL:                "",
+		URL: "",
 	},
 	Redis: RedisConfig{
 		Host:                         "",
@@ -157,12 +160,16 @@ var defaultConfig = BackendConfig{
 		PushToDBQueueConcurrency:     3,
 	},
 	Panel: PanelConfig{
-		StaticDir:         "/app/ui",
+		StaticDir:         "/opt/app/ui",
 		BasePath:          "/",
 		AllowInsecureHTTP: false,
 		TrustedProxies:    []string{},
 		AppPort:           3000,
+		ShortUUIDLength:   16,
 		trustedProxyNets:  nil,
+	},
+	JWT: JWTConfig{
+		AuthLifetimeHours: 12,
 	},
 	Docs: DocsConfig{
 		IsEnabled:   false,
@@ -223,6 +230,16 @@ func LoadConfig() (BackendConfig, error) {
 	}
 	cfg.Logger = realLogger
 
+	if strings.TrimSpace(cfg.Metrics.User) == "" {
+		return cfg, fmt.Errorf("METRICS_USER cannot be empty")
+	}
+	if strings.TrimSpace(cfg.Metrics.Pass) == "" {
+		return cfg, fmt.Errorf("METRICS_PASS cannot be empty")
+	}
+	if strings.TrimSpace(cfg.Database.URL) == "" {
+		return cfg, fmt.Errorf("DATABASE_URL is not set")
+	}
+
 	cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceConfig).Debug("Configuration loaded from environment", "node_env", cfg.Log.NodeEnv, "log_format", cfg.Log.LogFormat, "log_level", cfg.Log.LogLevel)
 
 	return cfg, nil
@@ -248,20 +265,6 @@ func resolveConfiguredLogLevel(value string) string {
 	}
 }
 
-func isDevelopmentEnv(value string) bool {
-	env := strings.ToLower(strings.TrimSpace(value))
-	return env == "development" || env == "dev"
-}
-
-func isDebugOrTraceLogLevel(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "debug", "trace", "verbose":
-		return true
-	default:
-		return false
-	}
-}
-
 func loadDotEnv() error {
 	err := godotenv.Load(".env")
 	if err == nil || os.IsNotExist(err) {
@@ -284,16 +287,8 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("NODE_ENV"); value != "" {
 		cfg.Log.NodeEnv = value
 	}
-	if value := envFirst("ENABLE_DEBUG_LOGS", "EXODUS_ENABLE_DEBUG_LOGS"); value != "" {
-		cfg.Log.EnableDebugLogs = parseBoolEnv(value)
-	}
-	if cfg.Log.EnableDebugLogs || isDevelopmentEnv(cfg.Log.NodeEnv) {
-		cfg.Log.LogLevel = "debug"
-	} else if isDebugOrTraceLogLevel(cfg.Log.LogLevel) {
-		// Match the node service behavior: production does not enable verbose
-		// logging from stale LOG_LEVEL=debug/trace values. Use
-		// ENABLE_DEBUG_LOGS=true or NODE_ENV=development when debug logs are needed.
-		cfg.Log.LogLevel = "info"
+	if value := envFirst("IS_HTTP_LOGGING_ENABLED"); value != "" {
+		cfg.Log.IsHTTPLoggingEnabled = parseBoolEnv(value)
 	}
 
 	if value := envFirst("APP_ADDRESS"); value != "" {
@@ -307,8 +302,18 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Logger.Warn("Invalid APP_PORT value, ignoring", "value", value)
 		}
 	}
+	if value := envFirst("SHORT_UUID_LENGTH"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 16 && parsed <= 64 {
+			cfg.Panel.ShortUUIDLength = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid SHORT_UUID_LENGTH value (must be 16-64), ignoring", "value", value)
+		}
+	}
 	if value := envFirst("APP_PATH"); value != "" {
 		cfg.Panel.BasePath = value
+	}
+	if value := envFirst("PANEL_STATIC_DIR", "EXODUS_STATIC_DIR"); value != "" {
+		cfg.Panel.StaticDir = value
 	}
 
 	if value := envFirst("IS_DOCS_ENABLED"); value != "" {
@@ -363,9 +368,6 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	if value := envFirst("DATABASE_SOCKET", "POSTGRES_SOCKET"); value != "" {
 		cfg.Database.Socket = value
 		cfg.Database.URL = postgresSocketDatabaseURL(value)
-	}
-	if strings.TrimSpace(cfg.Database.URL) == "" {
-		cfg.Database.URL = postgresTCPDatabaseURL()
 	}
 
 	if value := envFirst("REDIS_HOST"); value != "" {
@@ -443,6 +445,13 @@ func applyEnvOverrides(cfg *BackendConfig) {
 
 	cfg.JWT.AuthSecret = strings.TrimSpace(envFirst("JWT_AUTH_SECRET"))
 	cfg.JWT.APITokensSecret = strings.TrimSpace(envFirst("JWT_API_TOKENS_SECRET"))
+	if value := envFirst("JWT_AUTH_LIFETIME"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 12 && parsed <= 168 {
+			cfg.JWT.AuthLifetimeHours = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid JWT_AUTH_LIFETIME value (must be between 12 and 168 hours), ignoring", "value", value)
+		}
+	}
 
 	if value := envFirst("SERVICE_CLEAN_USAGE_HISTORY"); value != "" {
 		cfg.Scheduler.ServiceCleanUsageHistory = parseBoolEnv(value)
@@ -752,7 +761,12 @@ func postgresSocketDatabaseURL(socketDir string) string {
 		return ""
 	}
 
-	user, password, database := postgresCredentials()
+	user := envFirst("POSTGRES_USER", "DATABASE_USER")
+	password := envFirst("POSTGRES_PASSWORD", "DATABASE_PASSWORD")
+	database := envFirst("POSTGRES_DB", "DATABASE_NAME")
+	if user == "" || database == "" {
+		return ""
+	}
 
 	dsn := url.URL{
 		Scheme: "postgresql",
@@ -761,7 +775,7 @@ func postgresSocketDatabaseURL(socketDir string) string {
 	}
 	if password != "" {
 		dsn.User = url.UserPassword(user, password)
-	} else if user != "" {
+	} else {
 		dsn.User = url.User(user)
 	}
 
@@ -770,48 +784,6 @@ func postgresSocketDatabaseURL(socketDir string) string {
 	dsn.RawQuery = query.Encode()
 
 	return dsn.String()
-}
-
-func postgresTCPDatabaseURL() string {
-	user, password, database := postgresCredentials()
-
-	host := envFirst("DATABASE_HOST", "POSTGRES_HOST")
-	if host == "" {
-		host = "exodus-db"
-	}
-	port := envFirst("DATABASE_PORT", "POSTGRES_PORT")
-	if port == "" {
-		port = "5432"
-	}
-
-	dsn := url.URL{
-		Scheme: "postgresql",
-		Host:   net.JoinHostPort(host, port),
-		Path:   "/" + database,
-	}
-	if password != "" {
-		dsn.User = url.UserPassword(user, password)
-	} else if user != "" {
-		dsn.User = url.User(user)
-	}
-
-	return dsn.String()
-}
-
-func postgresCredentials() (user string, password string, database string) {
-	user = envFirst("POSTGRES_USER")
-	if user == "" {
-		user = "postgres"
-	}
-	password = envFirst("POSTGRES_PASSWORD")
-	if password == "" {
-		password = "postgres"
-	}
-	database = envFirst("POSTGRES_DB")
-	if database == "" {
-		database = "postgres"
-	}
-	return user, password, database
 }
 
 func normalizeBasePath(input string) string {

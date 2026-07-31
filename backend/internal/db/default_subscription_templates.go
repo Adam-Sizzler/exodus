@@ -11,6 +11,13 @@ type DefaultSubscriptionTemplate struct {
 	ViewPosition int
 }
 
+func strPtr(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
+}
+
 // DefaultSubscriptionTemplates returns the list of built-in templates.
 func DefaultSubscriptionTemplates() []DefaultSubscriptionTemplate {
 	return []DefaultSubscriptionTemplate{

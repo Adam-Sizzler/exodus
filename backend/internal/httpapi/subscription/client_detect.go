@@ -8,24 +8,34 @@ import (
 )
 
 func extractHwidHeaders(r *http.Request) *HwidHeaders {
-	hwid := strings.TrimSpace(r.Header.Get("X-HWID"))
-	if hwid == "" {
+	hwid := firstNonEmptyHeaderValue(r, "X-HWID", "X-Hwid", "Hwid", "X-HWID-Device-ID")
+	if hwid == nil {
 		return nil
 	}
 	userAgent := firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent")
-	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform")
-	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version")
-	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model")
+	platform := firstNonEmptyLowerHeader(r, "X-Device-OS", "X-HWID-Platform", "X-Hwid-Platform", "Hwid-Platform")
+	osVersion := firstNonEmptyHeader(r, "X-Ver-OS", "X-HWID-OS-Version", "X-Hwid-Os-Version", "Hwid-Os-Version")
+	deviceModel := firstNonEmptyHeader(r, "X-Device-Model", "X-HWID-Device-Model", "X-Hwid-Device-Model", "Hwid-Device-Model")
 	platform, osVersion, deviceModel, userAgent = normalizeHwidMetadata(platform, osVersion, deviceModel, userAgent)
 
 	h := &HwidHeaders{
-		Hwid:        hwid,
+		Hwid:        *hwid,
 		Platform:    platform,
 		OsVersion:   osVersion,
 		DeviceModel: deviceModel,
 		UserAgent:   userAgent,
 	}
 	return h
+}
+
+func firstNonEmptyHeaderValue(r *http.Request, names ...string) *string {
+	for _, name := range names {
+		val := strings.TrimSpace(r.Header.Get(name))
+		if val != "" {
+			return &val
+		}
+	}
+	return nil
 }
 
 func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *HwidHeaders {
@@ -144,11 +154,9 @@ func inferClientAppFromUserAgent(userAgent string) string {
 	return userAgent
 }
 
-func inferKnownClientPlatform(client string) string {
-	client = strings.ToLower(strings.TrimSpace(client))
-
-	switch client {
-	case "sfa",
+var (
+	knownAndroidClients = []string{
+		"sfa",
 		"sfatv",
 		"sfandroidtv",
 		"v2rayng",
@@ -158,58 +166,103 @@ func inferKnownClientPlatform(client string) string {
 		"sagernet",
 		"clashforandroid",
 		"clashmetaforandroid",
-		"cmfa":
-		return "android"
+		"cmfa",
+	}
 
-	case "sfi",
+	knownIOSClients = []string{
+		"sfi",
 		"streisand",
 		"v2box",
 		"rabbithole",
-		"shadowrocket":
-		return "ios"
+		"shadowrocket",
+		"loon",
+		"quantumult",
+		"stash",
+		"choc",
+	}
 
-	case "sft":
-		return "tvos"
+	knownTVOSClients = []string{
+		"sft",
+	}
 
-	case "sfw",
-		"v2rayn":
-		return "windows"
+	knownWindowsClients = []string{
+		"sfw",
+		"v2rayn",
+	}
 
-	case "sfm",
+	knownMacOSClients = []string{
+		"sfm",
 		"v2rayu",
 		"v2rayx",
 		"v2rayxs",
-		"clashx":
-		return "macos"
-
-	case "sfl":
-		return "linux"
-
-	default:
-		return ""
+		"clashx",
 	}
+
+	knownLinuxClients = []string{
+		"sfl",
+	}
+)
+
+func inferKnownClientPlatform(lowerUA string) string {
+	for _, app := range knownAndroidClients {
+		if strings.Contains(lowerUA, app) {
+			return "android"
+		}
+	}
+
+	for _, app := range knownIOSClients {
+		if strings.Contains(lowerUA, app) {
+			return "ios"
+		}
+	}
+
+	for _, app := range knownTVOSClients {
+		if strings.Contains(lowerUA, app) {
+			return "tvos"
+		}
+	}
+
+	for _, app := range knownWindowsClients {
+		if strings.Contains(lowerUA, app) {
+			return "windows"
+		}
+	}
+
+	for _, app := range knownMacOSClients {
+		if strings.Contains(lowerUA, app) {
+			return "macos"
+		}
+	}
+
+	for _, app := range knownLinuxClients {
+		if strings.Contains(lowerUA, app) {
+			return "linux"
+		}
+	}
+
+	return ""
 }
 
 func inferPlatformFromUserAgent(userAgent string) string {
-	lower := strings.ToLower(userAgent)
+	lower := strings.ToLower(strings.TrimSpace(userAgent))
 	if lower == "" {
 		return ""
 	}
 
-	if platform := inferKnownClientPlatform(inferClientAppFromUserAgent(lower)); platform != "" {
+	if platform := inferKnownClientPlatform(lower); platform != "" {
 		return platform
 	}
 
 	if idx := strings.Index(lower, "platform/"); idx >= 0 {
-		rest := userAgent[idx+len("platform/"):]
+		rest := lower[idx+len("platform/"):]
 		for i, r := range rest {
-			if !(r == '-' || r == '_' || r == '.' || r == '/' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z') {
+			if !(r == '-' || r == '_' || r == '.' || r == '/' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z') {
 				rest = rest[:i]
 				break
 			}
 		}
 		if rest = strings.Trim(rest, "/ "); rest != "" {
-			return strings.ToLower(rest)
+			return rest
 		}
 	}
 

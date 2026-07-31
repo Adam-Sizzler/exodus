@@ -60,14 +60,27 @@ func WithRequestLogging(cfg *config.BackendConfig, component string, next http.H
 			role = logger.RoleScheduler
 		}
 		serviceLogger := cfg.Logger.RoleService(role, logger.ServiceHTTP)
-		serviceLogger.Debug(fmt.Sprintf("%s %s %d %dms", r.Method, r.URL.Path, statusCode, durationMs),
-			"component", component,
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", statusCode,
-			"bytes", lrw.bytes,
-			"duration_ms", durationMs,
-		)
+
+		msg := fmt.Sprintf("%s %s %d %dms", r.Method, r.URL.Path, statusCode, durationMs)
+		if cfg.Log.IsHTTPLoggingEnabled {
+			serviceLogger.Info(msg,
+				"component", component,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", statusCode,
+				"bytes", lrw.bytes,
+				"duration_ms", durationMs,
+			)
+		} else {
+			serviceLogger.Debug(msg,
+				"component", component,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", statusCode,
+				"bytes", lrw.bytes,
+				"duration_ms", durationMs,
+			)
+		}
 		serviceLogger.Trace("HTTP request details",
 			"component", component,
 			"method", r.Method,

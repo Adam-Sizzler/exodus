@@ -3,11 +3,11 @@ package users
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	monitor "exodus/internal/nodes"
 	"exodus/internal/notifications"
 )
@@ -70,72 +70,68 @@ func (s *UserService) ResetUserTraffic(ctx context.Context, userUUID string) err
 }
 
 func (s *UserService) RevokeUserSubscription(ctx context.Context, userUUID string, req revokeUserSubscriptionRequest) error {
-	shortUUID := generateSubscriptionShortUUID()
+	shortUUIDLength := 16
+	if s != nil && s.cfg != nil && s.cfg.Panel.ShortUUIDLength >= 16 {
+		shortUUIDLength = s.cfg.Panel.ShortUUIDLength
+	}
+	shortUUID := generateSubscriptionShortUUID(shortUUIDLength)
 	credentials, err := newUserProtocolCredentials(nil, nil, nil, nil, nil, nil, nil)
 	if shortUUID == "" || err != nil {
 		return err
 	}
 
-	nodeUUIDs := make([]string, 0)
-	err = s.repo.manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		tx, err := db.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-
-		targets, nodeTargetsErr := s.repo.resolveNodeUUIDsForUserUUIDsTx(ctx, tx, []string{userUUID})
-		if nodeTargetsErr != nil {
-			_ = tx.Rollback()
-			return nodeTargetsErr
-		}
-		nodeUUIDs = targets
-
-		query := `
-			UPDATE users
-			SET trojan_password = ?,
-			    vless_uuid = ?,
-			    ss_password = ?,
-			    naive_password = ?,
-			    shadowtls_password = ?,
-			    hysteria2_password = ?,
-			    anytls_password = ?,
-			    sub_revoked_at = CURRENT_TIMESTAMP,
-			    updated_at = CURRENT_TIMESTAMP`
-		args := []any{
-			credentials.TrojanPassword,
-			credentials.VlessUUID,
-			credentials.SSPassword,
-			credentials.NaivePassword,
-			credentials.ShadowtlsPassword,
-			credentials.Hysteria2Password,
-			credentials.AnytlsPassword,
-		}
-		if !req.RevokeOnlyPasswords {
-			query += `, short_uuid = ?`
-			args = append(args, shortUUID)
-		}
-		query += `
-			WHERE uuid = ?
-		`
-		args = append(args, userUUID)
-
-		result, err := tx.ExecContext(ctx, query, args...)
-		if err != nil {
-			_ = tx.Rollback()
-			return mapUserWriteError(err)
-		}
-		rows, err := result.RowsAffected()
-		if err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-		if rows == 0 {
-			_ = tx.Rollback()
-			return errUserNotFound
-		}
-		return tx.Commit()
-	})
+	tx, err := s.repo.db.BeginTx(ctx, nil)
 	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	nodeUUIDs, nodeTargetsErr := s.repo.resolveNodeUUIDsForUserUUIDsTx(ctx, tx, []string{userUUID})
+	if nodeTargetsErr != nil {
+		return nodeTargetsErr
+	}
+
+	query := `
+		UPDATE users
+		SET trojan_password = $1,
+		    vless_uuid = $2,
+		    ss_password = $3,
+		    naive_password = $4,
+		    shadowtls_password = $5,
+		    hysteria2_password = $6,
+		    anytls_password = $7,
+		    sub_revoked_at = CURRENT_TIMESTAMP,
+		    updated_at = CURRENT_TIMESTAMP`
+	args := []any{
+		credentials.TrojanPassword,
+		credentials.VlessUUID,
+		credentials.SSPassword,
+		credentials.NaivePassword,
+		credentials.ShadowtlsPassword,
+		credentials.Hysteria2Password,
+		credentials.AnytlsPassword,
+	}
+	if !req.RevokeOnlyPasswords {
+		query += `, short_uuid = $8`
+		args = append(args, shortUUID)
+	}
+	query += fmt.Sprintf(` WHERE uuid = $%d`, len(args)+1)
+	args = append(args, userUUID)
+
+	result, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return mapUserWriteError(err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errUserNotFound
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 
@@ -150,7 +146,7 @@ func (s *UserService) RevokeUserSubscription(ctx context.Context, userUUID strin
 
 func (s *UserService) CreateUser(ctx context.Context, req createUserRequest) (userRecord, error) {
 	userUUID := coalesceUUID(req.UUID)
-	shortUUID := coalesceShortUUID(req.ShortUUID)
+	shortUUID := coalesceShortUUID(req.ShortUUID, s.cfg)
 	credentials, err := newUserProtocolCredentials(
 		req.TrojanPassword,
 		req.VlessUUID,

@@ -29,6 +29,9 @@ func scanInternalSquad(scanner shared.RowScanner) (InternalSquad, error) {
 }
 
 func buildInternalSquadResponse(squad InternalSquad, membersCount int, inbounds []InternalSquadInboundAPI) InternalSquadAPI {
+	if inbounds == nil {
+		inbounds = []InternalSquadInboundAPI{}
+	}
 	return InternalSquadAPI{
 		UUID:         squad.UUID,
 		ViewPosition: squad.ViewPosition,

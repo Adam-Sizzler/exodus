@@ -2,9 +2,13 @@ package subscription
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
+	"exodus/internal/config"
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
-	"time"
 )
 
 const (
@@ -60,6 +64,8 @@ type HostOverride struct {
 type SubscriptionSettingsParsed struct {
 	Raw subscriptionsettings.SubscriptionSettings
 
+	HostOverrides         map[string]HostOverride
+	ResponseHeaders       map[string]string
 	CustomResponseHeaders map[string]string
 	ResponseRules         *subscriptionresponserules.Config
 	HwidSettings          HwidSettings
@@ -222,3 +228,67 @@ type HwidHeaders struct {
 	RequestIP   *string
 	Synthetic   bool
 }
+
+var (
+	ErrHwidLimitExceeded = errors.New("hwid limit exceeded")
+	ErrHwidRequired      = errors.New("hwid required")
+	ErrUserDisabled      = errors.New("user disabled")
+	ErrNoHosts           = errors.New("no hosts")
+)
+
+type XrayGenerator struct {
+	cfg *config.BackendConfig
+}
+
+func NewXrayGenerator(cfg *config.BackendConfig) *XrayGenerator {
+	return &XrayGenerator{cfg: cfg}
+}
+
+type MihomoGenerator struct {
+	cfg *config.BackendConfig
+}
+
+func NewMihomoGenerator(cfg *config.BackendConfig) *MihomoGenerator {
+	return &MihomoGenerator{cfg: cfg}
+}
+
+type SingboxGenerator struct {
+	cfg *config.BackendConfig
+}
+
+func NewSingboxGenerator(cfg *config.BackendConfig) *SingboxGenerator {
+	return &SingboxGenerator{cfg: cfg}
+}
+
+func (g *XrayGenerator) GenerateLinks(user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) ([]string, error) {
+	links, _ := buildSubscriptionLinks(hosts, user)
+	return links, nil
+}
+
+func (g *XrayGenerator) GenerateJSON(templateJSON []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {
+	return generateXrayJSONConfig(templateJSON, hosts, user)
+}
+
+func (g *MihomoGenerator) Generate(templateYAML []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {
+	return generateYAMLConfig(templateYAML, hosts, user)
+}
+
+func (g *SingboxGenerator) Generate(templateJSON []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {
+	return generateSingboxConfig(templateJSON, hosts, user)
+}
+
+func matchResponseRules(rules *subscriptionresponserules.Config, headers http.Header) string {
+	if rules == nil {
+		return defaultResponseType
+	}
+	res := subscriptionresponserules.MatchRulesDetailed(rules, headers, "", func(s string) string { return s }, defaultResponseType)
+	if res.Matched {
+		return res.ResponseType
+	}
+	return defaultResponseType
+}
+
+func detectClientType(userAgent string) string {
+	return inferPlatformFromUserAgent(userAgent)
+}
+

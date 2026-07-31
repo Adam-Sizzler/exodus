@@ -1,55 +1,51 @@
 package subscription
 
 import (
-	dbmanager "exodus/internal/db/manager"
-
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
 	"exodus/internal/config"
-	"exodus/internal/dbutil"
+	"exodus/internal/db"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
 	"exodus/internal/jobqueue"
 	"exodus/internal/logger"
-	"fmt"
-	"net/http"
-	"strings"
-	"time"
 )
 
-func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseManager, _ *config.BackendConfig) (SubscriptionSettingsParsed, error) {
+func loadSubscriptionSettings(ctx context.Context, dbConn *sql.DB, _ *config.BackendConfig) (SubscriptionSettingsParsed, error) {
 	var parsed SubscriptionSettingsParsed
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-            SELECT uuid, profile_title, support_link, profile_update_interval,
-                   address, port, api_schema, api_path,
-                   happ_announce, happ_routing, created_at, updated_at,
-                   is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-                   is_show_custom_remarks, custom_response_headers, randomize_hosts,
-                   response_rules, hwid_settings, custom_remarks
-            FROM subscription_settings
-            ORDER BY created_at ASC
-            LIMIT 1
-        `)
+	row := dbConn.QueryRowContext(ctx, `
+		SELECT uuid, profile_title, support_link, profile_update_interval,
+			   address, port, api_schema, api_path,
+			   happ_announce, happ_routing, created_at, updated_at,
+			   is_profile_webpage_url_enabled, serve_json_at_base_subscription,
+			   is_show_custom_remarks, custom_response_headers, randomize_hosts,
+			   response_rules, hwid_settings, custom_remarks
+		FROM subscription_settings
+		ORDER BY created_at ASC
+		LIMIT 1
+	`)
 
-		settings, err := subscriptionsettings.ScanSubscriptionSettings(row)
-		if err != nil {
-			return err
-		}
-
-		parsed.Raw = settings
-		parsed.CustomResponseHeaders = map[string]string{}
-		parsed.CustomRemarks = CustomRemarks{}
-		parsed.HwidSettings = HwidSettings{Enabled: false, FallbackDeviceLimit: 999}
-		return nil
-	})
+	settings, err := subscriptionsettings.ScanSubscriptionSettings(row)
 	if err != nil {
 		return parsed, err
 	}
+
+	parsed.Raw = settings
+	parsed.CustomResponseHeaders = map[string]string{}
+	parsed.CustomRemarks = CustomRemarks{}
+	parsed.HwidSettings = HwidSettings{Enabled: false, FallbackDeviceLimit: 999}
 
 	if strings.TrimSpace(parsed.Raw.CustomResponseHeaders) != "" {
 		_ = json.Unmarshal([]byte(parsed.Raw.CustomResponseHeaders), &parsed.CustomResponseHeaders)
@@ -79,222 +75,199 @@ func loadSubscriptionSettings(ctx context.Context, manager *dbmanager.DatabaseMa
 	return parsed, nil
 }
 
-func loadExternalSquadOverrides(ctx context.Context, manager *dbmanager.DatabaseManager, squadUUID string, cfg *config.BackendConfig) (*ExternalSquadOverrides, error) {
+func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID string, cfg *config.BackendConfig) (*ExternalSquadOverrides, error) {
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 	overrides := &ExternalSquadOverrides{
 		Templates: make(map[string]string),
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
+	var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
 
-		query := `SELECT subscription_settings, host_overrides, response_headers, hwid_settings, custom_remarks
-				  FROM external_squads WHERE uuid = ? LIMIT 1`
-		row := db.QueryRowContext(ctx, query, squadUUID)
+	query := `SELECT subscription_settings, host_overrides, response_headers, hwid_settings, custom_remarks
+			  FROM external_squads WHERE uuid = $1 LIMIT 1`
+	row := dbConn.QueryRowContext(ctx, query, squadUUID)
 
-		if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersJSON, &hwidSettingsJSON, &customRemarksJSON); err != nil {
-			return err
-		}
-
-		if subscriptionSettingsJSON.Valid && subscriptionSettingsJSON.String != "" {
-			var ss subscriptionsettings.SubscriptionSettings
-			if err := json.Unmarshal([]byte(subscriptionSettingsJSON.String), &ss); err == nil {
-				overrides.SubscriptionSettings = &ss
-				log.Debug("Loaded subscription_settings override")
-			}
-		}
-		if hostOverridesJSON.Valid && hostOverridesJSON.String != "" {
-			var ho map[string]HostOverride
-			if err := json.Unmarshal([]byte(hostOverridesJSON.String), &ho); err == nil {
-				overrides.HostOverrides = ho
-				log.Debug("Loaded host_overrides override", "count", len(ho))
-			}
-		}
-		if responseHeadersJSON.Valid && responseHeadersJSON.String != "" {
-			var rh map[string]string
-			if err := json.Unmarshal([]byte(responseHeadersJSON.String), &rh); err == nil {
-				overrides.ResponseHeaders = rh
-				log.Debug("Loaded response_headers override")
-			}
-		}
-		if hwidSettingsJSON.Valid && hwidSettingsJSON.String != "" {
-			var hs HwidSettings
-			if err := json.Unmarshal([]byte(hwidSettingsJSON.String), &hs); err == nil {
-				overrides.HwidSettings = &hs
-				log.Debug("Loaded hwid_settings override")
-			}
-		}
-		if customRemarksJSON.Valid && customRemarksJSON.String != "" {
-			var cr CustomRemarks
-			if err := json.Unmarshal([]byte(customRemarksJSON.String), &cr); err == nil {
-				overrides.CustomRemarks = &cr
-				log.Debug("Loaded custom_remarks override")
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersJSON, &hwidSettingsJSON, &customRemarksJSON); err != nil {
 		return nil, err
 	}
 
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT t.name, est.template_type
-			FROM external_squads_templates est
-			JOIN subscription_templates t ON t.uuid = est.template_uuid
-			WHERE est.external_squad_uuid = ?
-		`, squadUUID)
-		if err != nil {
-			return err
+	if subscriptionSettingsJSON.Valid && subscriptionSettingsJSON.String != "" {
+		var ss subscriptionsettings.SubscriptionSettings
+		if err := json.Unmarshal([]byte(subscriptionSettingsJSON.String), &ss); err == nil {
+			overrides.SubscriptionSettings = &ss
+			log.Debug("Loaded subscription_settings override")
 		}
-		defer rows.Close()
+	}
+	if hostOverridesJSON.Valid && hostOverridesJSON.String != "" {
+		var ho map[string]HostOverride
+		if err := json.Unmarshal([]byte(hostOverridesJSON.String), &ho); err == nil {
+			overrides.HostOverrides = ho
+			log.Debug("Loaded host_overrides override", "count", len(ho))
+		}
+	}
+	if responseHeadersJSON.Valid && responseHeadersJSON.String != "" {
+		var rh map[string]string
+		if err := json.Unmarshal([]byte(responseHeadersJSON.String), &rh); err == nil {
+			overrides.ResponseHeaders = rh
+			log.Debug("Loaded response_headers override")
+		}
+	}
+	if hwidSettingsJSON.Valid && hwidSettingsJSON.String != "" {
+		var hs HwidSettings
+		if err := json.Unmarshal([]byte(hwidSettingsJSON.String), &hs); err == nil {
+			overrides.HwidSettings = &hs
+			log.Debug("Loaded hwid_settings override")
+		}
+	}
+	if customRemarksJSON.Valid && customRemarksJSON.String != "" {
+		var cr CustomRemarks
+		if err := json.Unmarshal([]byte(customRemarksJSON.String), &cr); err == nil {
+			overrides.CustomRemarks = &cr
+			log.Debug("Loaded custom_remarks override")
+		}
+	}
 
+	rows, err := dbConn.QueryContext(ctx, `
+		SELECT t.name, est.template_type
+		FROM external_squads_templates est
+		JOIN subscription_templates t ON t.uuid = est.template_uuid
+		WHERE est.external_squad_uuid = $1
+	`, squadUUID)
+	if err == nil {
+		defer rows.Close()
 		for rows.Next() {
 			var templateName, templateType string
 			if err := rows.Scan(&templateName, &templateType); err != nil {
-				return err
+				break
 			}
 			overrides.Templates[strings.ToUpper(templateType)] = templateName
 			log.Debug("Loaded template override", "type", templateType, "name", templateName)
 		}
-		return rows.Err()
-	})
-	if err != nil {
+	} else {
 		log.Warn("Failed to load external squad templates", "error", err)
 	}
 
 	return overrides, nil
 }
 
-func getSubscriptionUserByShortUUID(ctx context.Context, manager *dbmanager.DatabaseManager, shortUUID string) (SubscriptionUser, error) {
-	return getSubscriptionUserByField(ctx, manager, "short_uuid", shortUUID)
+func getSubscriptionUserByShortUUID(ctx context.Context, dbConn *sql.DB, shortUUID string) (SubscriptionUser, error) {
+	return getSubscriptionUserByField(ctx, dbConn, "short_uuid", shortUUID)
 }
 
-func getSubscriptionUserByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string) (SubscriptionUser, error) {
-	return getSubscriptionUserByField(ctx, manager, "uuid", userUUID)
+func getSubscriptionUserByUUID(ctx context.Context, dbConn *sql.DB, userUUID string) (SubscriptionUser, error) {
+	return getSubscriptionUserByField(ctx, dbConn, "uuid", userUUID)
 }
 
-func getSubscriptionUserByUsername(ctx context.Context, manager *dbmanager.DatabaseManager, username string) (SubscriptionUser, error) {
-	return getSubscriptionUserByField(ctx, manager, "username", username)
+func getSubscriptionUserByUsername(ctx context.Context, dbConn *sql.DB, username string) (SubscriptionUser, error) {
+	return getSubscriptionUserByField(ctx, dbConn, "username", username)
 }
 
-func getSubscriptionUserByField(ctx context.Context, manager *dbmanager.DatabaseManager, field string, value string) (SubscriptionUser, error) {
+func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field string, value string) (SubscriptionUser, error) {
 	var user SubscriptionUser
 
 	var where string
 	switch field {
 	case "short_uuid":
-		where = "u.short_uuid = ?"
+		where = "u.short_uuid = $1"
 	case "uuid":
-		where = "u.uuid = ?"
+		where = "u.uuid = $1"
 	case "username":
-		where = "u.username = ?"
+		where = "u.username = $1"
 	default:
 		return user, fmt.Errorf("unsupported search field")
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		query := fmt.Sprintf(`
-            SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
-                   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
-	                   u.trojan_password, u.vless_uuid, u.ss_password,
-	                   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
-	                   u.hwid_device_limit, u.external_squad_uuid,
-                   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
-            FROM users u
-            LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
-            WHERE %s
-            LIMIT 1
-        `, where)
+	query := fmt.Sprintf(`
+		SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
+			   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
+			   u.trojan_password, u.vless_uuid, u.ss_password,
+			   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+			   u.hwid_device_limit, u.external_squad_uuid,
+			   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
+		FROM users u
+		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		WHERE %s
+		LIMIT 1
+	`, where)
 
-		row := db.QueryRowContext(ctx, query, value)
+	row := dbConn.QueryRowContext(ctx, query, value)
 
-		var hwidDeviceLimit sql.NullInt64
-		var externalSquadUUID sql.NullString
-		var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
-		if err := row.Scan(
-			&user.TID,
-			&user.UUID,
-			&user.ShortUUID,
-			&user.Username,
-			&user.Status,
-			&user.TrafficLimitBytes,
-			&user.TrafficLimitStrategy,
-			&user.ExpireAt,
-			&user.TrojanPassword,
-			&user.VlessUUID,
-			&user.SSPassword,
-			&naivePassword,
-			&shadowtlsPassword,
-			&hysteria2Password,
-			&anytlsPassword,
-			&hwidDeviceLimit,
-			&externalSquadUUID,
-			&user.UsedTrafficBytes,
-			&user.LifetimeUsedBytes,
-		); err != nil {
-			return err
-		}
-
-		if hwidDeviceLimit.Valid {
-			v := int(hwidDeviceLimit.Int64)
-			user.HwidDeviceLimit = &v
-		}
-		if externalSquadUUID.Valid {
-			v := externalSquadUUID.String
-			user.ExternalSquadUUID = &v
-		}
-		user.NaivePassword = nullableSQLString(naivePassword)
-		user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
-		user.Hysteria2Password = nullableSQLString(hysteria2Password)
-		user.AnytlsPassword = nullableSQLString(anytlsPassword)
-		return nil
-	})
-	if err != nil {
+	var hwidDeviceLimit sql.NullInt64
+	var externalSquadUUID sql.NullString
+	var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
+	if err := row.Scan(
+		&user.TID,
+		&user.UUID,
+		&user.ShortUUID,
+		&user.Username,
+		&user.Status,
+		&user.TrafficLimitBytes,
+		&user.TrafficLimitStrategy,
+		&user.ExpireAt,
+		&user.TrojanPassword,
+		&user.VlessUUID,
+		&user.SSPassword,
+		&naivePassword,
+		&shadowtlsPassword,
+		&hysteria2Password,
+		&anytlsPassword,
+		&hwidDeviceLimit,
+		&externalSquadUUID,
+		&user.UsedTrafficBytes,
+		&user.LifetimeUsedBytes,
+	); err != nil {
 		return user, err
 	}
+
+	if hwidDeviceLimit.Valid {
+		v := int(hwidDeviceLimit.Int64)
+		user.HwidDeviceLimit = &v
+	}
+	if externalSquadUUID.Valid {
+		v := externalSquadUUID.String
+		user.ExternalSquadUUID = &v
+	}
+	user.NaivePassword = nullableSQLString(naivePassword)
+	user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
+	user.Hysteria2Password = nullableSQLString(hysteria2Password)
+	user.AnytlsPassword = nullableSQLString(anytlsPassword)
 
 	return user, nil
 }
 
-func getHostsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser) ([]SubscriptionHost, error) {
-	var hosts []SubscriptionHost
-
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-                SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
-                       h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-                       h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.is_disabled,
-                       h.server_description, h.override_protocol_credential, h.protocol_credential, h.shuffle_host,
-                       h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
-                       h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
-                       h.config_profile_uuid, h.config_profile_inbound_uuid,
-                       cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
-                FROM internal_squad_members ism
-                JOIN internal_squad_inbounds isi ON ism.internal_squad_uuid = isi.internal_squad_uuid
-                JOIN config_profile_inbounds cpi ON isi.inbound_uuid = cpi.uuid
-                JOIN hosts h ON h.config_profile_inbound_uuid = cpi.uuid
-                LEFT JOIN internal_squad_host_exclusions ihe
-                    ON ihe.host_uuid = h.uuid AND ihe.squad_uuid = ism.internal_squad_uuid
-                WHERE ism.user_id = ? AND ihe.host_uuid IS NULL
-                ORDER BY h.view_position ASC, h.remark ASC
-            `, user.TID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			host, err := scanSubscriptionHost(rows)
-			if err != nil {
-				return err
-			}
-			hosts = append(hosts, host)
-		}
-		return rows.Err()
-	})
-
+func getHostsForUser(ctx context.Context, dbConn *sql.DB, user SubscriptionUser) ([]SubscriptionHost, error) {
+	rows, err := dbConn.QueryContext(ctx, `
+		SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
+			   h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
+			   h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.is_disabled,
+			   h.server_description, h.override_protocol_credential, h.protocol_credential, h.shuffle_host,
+			   h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
+			   h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
+			   h.config_profile_uuid, h.config_profile_inbound_uuid,
+			   cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
+		FROM internal_squad_members ism
+		JOIN internal_squad_inbounds isi ON ism.internal_squad_uuid = isi.internal_squad_uuid
+		JOIN config_profile_inbounds cpi ON isi.inbound_uuid = cpi.uuid
+		JOIN hosts h ON h.config_profile_inbound_uuid = cpi.uuid
+		LEFT JOIN internal_squad_host_exclusions ihe
+			ON ihe.host_uuid = h.uuid AND ihe.squad_uuid = ism.internal_squad_uuid
+		WHERE ism.user_id = $1 AND ihe.host_uuid IS NULL AND NOT COALESCE(h.is_disabled, false) AND NOT COALESCE(h.is_hidden, false)
+		ORDER BY h.view_position ASC, h.remark ASC
+	`, user.TID)
 	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hosts []SubscriptionHost
+	for rows.Next() {
+		host, err := scanSubscriptionHost(rows)
+		if err != nil {
+			return nil, err
+		}
+		hosts = append(hosts, host)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -310,7 +283,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
-	var excludeTypes, hostTags dbutil.StringArray
+	var excludeTypes, hostTags db.StringArray
 	var isDisabled, overrideProtocolCredential, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 
 	err := scanner.Scan(
@@ -430,8 +403,9 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if keepSNIBlank.Valid {
 		h.KeepSNIBlank = keepSNIBlank.Bool
 	}
-	if firstTag := firstHostTag(hostTags.Slice()); firstTag != nil {
-		h.Tag = firstTag
+	if tags := hostTags.Slice(); len(tags) > 0 && strings.TrimSpace(tags[0]) != "" {
+		firstTag := strings.TrimSpace(tags[0])
+		h.Tag = &firstTag
 	}
 	if isHidden.Valid {
 		h.IsHidden = isHidden.Bool
@@ -471,10 +445,10 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	return h, nil
 }
 
-func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManager, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
+func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
 		if hwid != nil {
-			_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.TID, *hwid)
+			_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.TID, *hwid)
 		}
 		return true, false, false
 	}
@@ -483,13 +457,13 @@ func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManage
 		return false, false, true
 	}
 
-	exists, err := hwidDeviceExists(ctx, manager, user.TID, hwid.Hwid)
+	exists, err := hwidDeviceExists(ctx, dbConn, user.TID, hwid.Hwid)
 	if err == nil && exists {
-		_ = enqueueOrUpsertHwidUserDevice(ctx, manager, user.TID, *hwid)
+		_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.TID, *hwid)
 		return true, false, false
 	}
 
-	count, err := countHwidDevices(ctx, manager, user.TID)
+	count, err := countHwidDevices(ctx, dbConn, user.TID)
 	if err != nil {
 		return false, true, false
 	}
@@ -503,65 +477,52 @@ func checkHwidDeviceLimit(ctx context.Context, manager *dbmanager.DatabaseManage
 		return false, true, false
 	}
 
-	if err := upsertHwidUserDevice(ctx, manager, user.TID, *hwid); err != nil {
+	if err := upsertHwidUserDevice(ctx, dbConn, user.TID, *hwid); err != nil {
 		return false, true, false
 	}
 
 	return true, false, false
 }
 
-func countHwidDevices(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64) (int, error) {
+func countHwidDevices(ctx context.Context, dbConn *sql.DB, userID int64) (int, error) {
 	var count int
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_id = ?`, userID).Scan(&count)
-	})
+	err := dbConn.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_id = $1`, userID).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-func hwidDeviceExists(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64, hwid string) (bool, error) {
-	var exists bool
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var tmp int
-		err := db.QueryRowContext(ctx, `SELECT 1 FROM hwid_user_devices WHERE user_id = ? AND hwid = ?`, userID, hwid).Scan(&tmp)
-		if err == sql.ErrNoRows {
-			exists = false
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		exists = true
-		return nil
-	})
+func hwidDeviceExists(ctx context.Context, dbConn *sql.DB, userID int64, hwid string) (bool, error) {
+	var tmp int
+	err := dbConn.QueryRowContext(ctx, `SELECT 1 FROM hwid_user_devices WHERE user_id = $1 AND hwid = $2`, userID, hwid).Scan(&tmp)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	return exists, nil
+	return true, nil
 }
 
-func upsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64, hwid HwidHeaders) error {
+func upsertHwidUserDevice(ctx context.Context, dbConn *sql.DB, userID int64, hwid HwidHeaders) error {
 	hwid.Platform = lowerStringPtr(hwid.Platform)
-	return manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(ctx, `
-            INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (hwid, user_id)
-            DO UPDATE SET
-                platform = EXCLUDED.platform,
-                os_version = EXCLUDED.os_version,
-                device_model = EXCLUDED.device_model,
-                user_agent = EXCLUDED.user_agent,
-                request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
-                updated_at = now()
-        `, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP)
-		return err
-	})
+	_, err := dbConn.ExecContext(ctx, `
+		INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (hwid, user_id)
+		DO UPDATE SET
+			platform = COALESCE(EXCLUDED.platform, hwid_user_devices.platform),
+			os_version = COALESCE(EXCLUDED.os_version, hwid_user_devices.os_version),
+			device_model = COALESCE(EXCLUDED.device_model, hwid_user_devices.device_model),
+			user_agent = COALESCE(EXCLUDED.user_agent, hwid_user_devices.user_agent),
+			request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
+			updated_at = now()
+	`, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP)
+	return err
 }
 
-func enqueueOrUpsertHwidUserDevice(ctx context.Context, manager *dbmanager.DatabaseManager, userID int64, hwid HwidHeaders) error {
+func enqueueOrUpsertHwidUserDevice(ctx context.Context, dbConn *sql.DB, userID int64, hwid HwidHeaders) error {
 	hwid.Platform = lowerStringPtr(hwid.Platform)
 	queued, err := jobqueue.EnqueueUpsertHwidDevice(ctx, jobqueue.UpsertHwidDevicePayload{
 		UserID:      userID,
@@ -575,10 +536,10 @@ func enqueueOrUpsertHwidUserDevice(ctx context.Context, manager *dbmanager.Datab
 	if err == nil && queued {
 		return nil
 	}
-	return upsertHwidUserDevice(ctx, manager, userID, hwid)
+	return upsertHwidUserDevice(ctx, dbConn, userID, hwid)
 }
 
-func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string, userID int64, userAgent, requestIP string) {
+func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID string, userID int64, userAgent, requestIP string) {
 	updateQueued, updateErr := jobqueue.EnqueueUpdateUserSubscription(ctx, jobqueue.UpdateUserSubscriptionPayload{
 		UserUUID:  userUUID,
 		UserAgent: userAgent,
@@ -596,183 +557,162 @@ func updateSubscriptionRequest(ctx context.Context, manager *dbmanager.DatabaseM
 		jobCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		_ = manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-			if _, err := db.ExecContext(jobCtx, `
-	            INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
-	            VALUES (?, ?, ?)
-	        `, userID, requestIP, userAgent); err != nil {
-				return err
-			}
+		_, _ = dbConn.ExecContext(jobCtx, `
+			INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
+			VALUES ($1, $2, $3)
+		`, userID, requestIP, userAgent)
 
-			_, err := db.ExecContext(jobCtx, `
-	            DELETE FROM user_subscription_request_history
-	            WHERE user_id = ?
-	              AND id NOT IN (
-                  SELECT id
-                  FROM user_subscription_request_history
-                  WHERE user_id = ?
-                  ORDER BY request_at DESC, id DESC
-	                  LIMIT 24
-	              )
-	        `, userID, userID)
-			return err
-		})
+		_, _ = dbConn.ExecContext(jobCtx, `
+			DELETE FROM user_subscription_request_history
+			WHERE user_id = $1
+			  AND id NOT IN (
+				  SELECT id
+				  FROM user_subscription_request_history
+				  WHERE user_id = $2
+				  ORDER BY request_at DESC, id DESC
+				  LIMIT 24
+			  )
+		`, userID, userID)
 	}()
 }
 
-func getSubscriptionTemplate(ctx context.Context, manager *dbmanager.DatabaseManager, templateType string) ([]byte, error) {
-	var templateData []byte
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-            SELECT template_yaml, template_json
-            FROM subscription_templates
-            WHERE template_type = ?
-            ORDER BY view_position ASC
-            LIMIT 1
-        `, templateType)
+func getSubscriptionTemplate(ctx context.Context, dbConn *sql.DB, templateType string) ([]byte, error) {
+	upperType := strings.ToUpper(strings.TrimSpace(templateType))
+	row := dbConn.QueryRowContext(ctx, `
+		SELECT template_yaml, template_json
+		FROM subscription_templates
+		WHERE UPPER(template_type) = $1
+		ORDER BY view_position ASC
+		LIMIT 1
+	`, upperType)
 
-		var templateYAML sql.NullString
-		var templateJSON sql.NullString
-		if err := row.Scan(&templateYAML, &templateJSON); err != nil {
-			return err
-		}
-
-		if templateType == responseTypeXrayJSON || templateType == responseTypeSingbox {
-			if templateJSON.Valid {
-				templateData = []byte(templateJSON.String)
-			}
-		} else {
-			if templateYAML.Valid {
-				templateData = []byte(templateYAML.String)
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	var templateYAML sql.NullString
+	var templateJSON sql.NullString
+	if err := row.Scan(&templateYAML, &templateJSON); err != nil {
 		return nil, err
+	}
+
+	var templateData []byte
+	if upperType == responseTypeXrayJSON || upperType == responseTypeSingbox {
+		if templateJSON.Valid {
+			templateData = []byte(templateJSON.String)
+		}
+	} else {
+		if templateYAML.Valid {
+			templateData = []byte(templateYAML.String)
+		}
 	}
 	return templateData, nil
 }
 
-func getSubscriptionTemplateByName(ctx context.Context, manager *dbmanager.DatabaseManager, name string) (string, []byte, error) {
+func getSubscriptionTemplateByName(ctx context.Context, dbConn *sql.DB, name string) (string, []byte, error) {
+	row := dbConn.QueryRowContext(ctx, `
+		SELECT template_type, template_yaml, template_json
+		FROM subscription_templates
+		WHERE name = $1
+		LIMIT 1
+	`, name)
+
 	var templateType string
-	var templateData []byte
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-            SELECT template_type, template_yaml, template_json
-            FROM subscription_templates
-            WHERE name = ?
-            LIMIT 1
-        `, name)
-
-		var templateYAML sql.NullString
-		var templateJSON sql.NullString
-		if err := row.Scan(&templateType, &templateYAML, &templateJSON); err != nil {
-			return err
-		}
-
-		if templateType == responseTypeXrayJSON || templateType == responseTypeSingbox {
-			if templateJSON.Valid {
-				templateData = []byte(templateJSON.String)
-			}
-		} else {
-			if templateYAML.Valid {
-				templateData = []byte(templateYAML.String)
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	var templateYAML sql.NullString
+	var templateJSON sql.NullString
+	if err := row.Scan(&templateType, &templateYAML, &templateJSON); err != nil {
 		return "", nil, err
+	}
+
+	upperType := strings.ToUpper(strings.TrimSpace(templateType))
+	var templateData []byte
+	if upperType == responseTypeXrayJSON || upperType == responseTypeSingbox {
+		if templateJSON.Valid {
+			templateData = []byte(templateJSON.String)
+		}
+	} else {
+		if templateYAML.Valid {
+			templateData = []byte(templateYAML.String)
+		}
 	}
 	return templateType, templateData, nil
 }
 
-func getUsersWithPagination(ctx context.Context, manager *dbmanager.DatabaseManager, start, size int) ([]SubscriptionUser, int, error) {
-	users := []SubscriptionUser{}
-	total := 0
+func getUsersWithPagination(ctx context.Context, dbConn *sql.DB, start, size int) ([]SubscriptionUser, int, error) {
+	var total int
+	if err := dbConn.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
-			return err
-		}
-
-		rows, err := db.QueryContext(ctx, `
-            SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
-                   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
-	                   u.trojan_password, u.vless_uuid, u.ss_password,
-	                   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
-	                   u.hwid_device_limit, u.external_squad_uuid,
-                   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
-            FROM users u
-            LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
-            ORDER BY u.created_at DESC
-            LIMIT ? OFFSET ?
-        `, size, start)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var user SubscriptionUser
-			var hwidDeviceLimit sql.NullInt64
-			var externalSquadUUID sql.NullString
-			var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
-
-			if err := rows.Scan(
-				&user.TID,
-				&user.UUID,
-				&user.ShortUUID,
-				&user.Username,
-				&user.Status,
-				&user.TrafficLimitBytes,
-				&user.TrafficLimitStrategy,
-				&user.ExpireAt,
-				&user.TrojanPassword,
-				&user.VlessUUID,
-				&user.SSPassword,
-				&naivePassword,
-				&shadowtlsPassword,
-				&hysteria2Password,
-				&anytlsPassword,
-				&hwidDeviceLimit,
-				&externalSquadUUID,
-				&user.UsedTrafficBytes,
-				&user.LifetimeUsedBytes,
-			); err != nil {
-				return err
-			}
-
-			if hwidDeviceLimit.Valid {
-				v := int(hwidDeviceLimit.Int64)
-				user.HwidDeviceLimit = &v
-			}
-			if externalSquadUUID.Valid {
-				v := externalSquadUUID.String
-				user.ExternalSquadUUID = &v
-			}
-			user.NaivePassword = nullableSQLString(naivePassword)
-			user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
-			user.Hysteria2Password = nullableSQLString(hysteria2Password)
-			user.AnytlsPassword = nullableSQLString(anytlsPassword)
-
-			users = append(users, user)
-		}
-
-		return rows.Err()
-	})
-
+	rows, err := dbConn.QueryContext(ctx, `
+		SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
+			   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
+			   u.trojan_password, u.vless_uuid, u.ss_password,
+			   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+			   u.hwid_device_limit, u.external_squad_uuid,
+			   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
+		FROM users u
+		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		ORDER BY u.created_at DESC
+		LIMIT $1 OFFSET $2
+	`, size, start)
 	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	users := []SubscriptionUser{}
+	for rows.Next() {
+		var user SubscriptionUser
+		var hwidDeviceLimit sql.NullInt64
+		var externalSquadUUID sql.NullString
+		var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
+
+		if err := rows.Scan(
+			&user.TID,
+			&user.UUID,
+			&user.ShortUUID,
+			&user.Username,
+			&user.Status,
+			&user.TrafficLimitBytes,
+			&user.TrafficLimitStrategy,
+			&user.ExpireAt,
+			&user.TrojanPassword,
+			&user.VlessUUID,
+			&user.SSPassword,
+			&naivePassword,
+			&shadowtlsPassword,
+			&hysteria2Password,
+			&anytlsPassword,
+			&hwidDeviceLimit,
+			&externalSquadUUID,
+			&user.UsedTrafficBytes,
+			&user.LifetimeUsedBytes,
+		); err != nil {
+			return nil, 0, err
+		}
+
+		if hwidDeviceLimit.Valid {
+			v := int(hwidDeviceLimit.Int64)
+			user.HwidDeviceLimit = &v
+		}
+		if externalSquadUUID.Valid {
+			v := externalSquadUUID.String
+			user.ExternalSquadUUID = &v
+		}
+		user.NaivePassword = nullableSQLString(naivePassword)
+		user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
+		user.Hysteria2Password = nullableSQLString(hysteria2Password)
+		user.AnytlsPassword = nullableSQLString(anytlsPassword)
+
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
 
 	return users, total, nil
 }
 
-func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string, requestHeaders map[string]string) (string, bool, error) {
+func getSubpageConfigForUser(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig, shortUUID string, requestHeaders map[string]string) (string, bool, error) {
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
-	user, err := getSubscriptionUserByShortUUID(ctx, manager, shortUUID)
+	user, err := getSubscriptionUserByShortUUID(ctx, dbConn, shortUUID)
 	if err != nil {
 		return "", false, err
 	}
@@ -780,26 +720,18 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
 	subpageConfigUUID := ""
 
 	if user.ExternalSquadUUID != nil {
-		var squadCustomRemarks sql.NullString
-		var squadIsHwidLimited bool
-		var squadHwidMaxDevices int
+		var squadSubpageUUID sql.NullString
 
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			return db.QueryRowContext(ctx, `
-			SELECT custom_remarks, is_hwid_limited, hwid_max_devices 
+		err := dbConn.QueryRowContext(ctx, `
+			SELECT subpage_config_uuid 
 			FROM external_squads 
-			WHERE uuid = ?`,
-				*user.ExternalSquadUUID).Scan(&squadCustomRemarks, squadIsHwidLimited, squadHwidMaxDevices)
-		})
+			WHERE uuid = $1`,
+			*user.ExternalSquadUUID).Scan(&squadSubpageUUID)
 
-		if err == nil {
-			log.Debug("Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices)
-
-			_ = squadCustomRemarks
-
-			log.Debug(fmt.Sprintf(" Applied external squad overrides: is_hwid_limited=%v hwid_max_devices=%d", squadIsHwidLimited, squadHwidMaxDevices))
-		} else {
-			log.Error(fmt.Sprintf("Failed to load external squad overrides: %v", err))
+		if err == nil && squadSubpageUUID.Valid {
+			subpageConfigUUID = squadSubpageUUID.String
+		} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Error(fmt.Sprintf("Failed to load external squad subpage config: %v", err))
 		}
 	}
 
@@ -807,7 +739,7 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
 		subpageConfigUUID = defaultSubpageConfigUUID
 	}
 
-	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
+	settings, err := loadSubscriptionSettings(ctx, dbConn, cfg)
 	if err != nil {
 		return subpageConfigUUID, false, err
 	}
@@ -822,22 +754,27 @@ func getSubpageConfigForUser(ctx context.Context, manager *dbmanager.DatabaseMan
 		webpageAllowed = responseType == responseTypeBrowser
 	}
 
+	log.Debug(
+		"Resolved subpage config for user",
+		"short_uuid", shortUUID,
+		"subpage_config_uuid", subpageConfigUUID,
+		"webpage_allowed", webpageAllowed,
+	)
+
 	return subpageConfigUUID, webpageAllowed, nil
 }
 
-func UpdateExternalSquad(ctx context.Context, manager *dbmanager.DatabaseManager, squadUUID string, input UpdateExternalSquadInput) error {
+func UpdateExternalSquad(ctx context.Context, dbConn *sql.DB, squadUUID string, input UpdateExternalSquadInput) error {
 	var currentName string
 	var currentSubpageConfigUUID sql.NullString
 	var currentCustomRemarks sql.NullString
 	var currentHwidSettingsRaw []byte
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		return db.QueryRowContext(ctx,
-			`SELECT name, subpage_config_uuid, custom_remarks, hwid_settings FROM external_squads WHERE uuid = ?`,
-			squadUUID).Scan(&currentName, &currentSubpageConfigUUID, &currentCustomRemarks, &currentHwidSettingsRaw)
-	})
+	err := dbConn.QueryRowContext(ctx,
+		`SELECT name, subpage_config_uuid, custom_remarks, hwid_settings FROM external_squads WHERE uuid = $1`,
+		squadUUID).Scan(&currentName, &currentSubpageConfigUUID, &currentCustomRemarks, &currentHwidSettingsRaw)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("external squad not found")
 		}
 		return fmt.Errorf("failed to fetch current external squad: %w", err)
@@ -845,35 +782,40 @@ func UpdateExternalSquad(ctx context.Context, manager *dbmanager.DatabaseManager
 
 	var columns []string
 	var args []interface{}
+	idx := 1
 
 	if input.Name != nil {
-		columns = append(columns, "name = ?")
+		columns = append(columns, fmt.Sprintf("name = $%d", idx))
 		args = append(args, *input.Name)
+		idx++
 	}
 
 	if input.SubpageConfigUUID != nil {
-		columns = append(columns, "subpage_config_uuid = ?")
+		columns = append(columns, fmt.Sprintf("subpage_config_uuid = $%d", idx))
 		if *input.SubpageConfigUUID == "" {
 			args = append(args, nil)
 		} else {
 			args = append(args, *input.SubpageConfigUUID)
 		}
+		idx++
 	}
 
 	if input.CustomRemarks != nil {
-		columns = append(columns, "custom_remarks = ?")
+		columns = append(columns, fmt.Sprintf("custom_remarks = $%d", idx))
 		if len(*input.CustomRemarks) == 0 || string(*input.CustomRemarks) == "null" {
 			args = append(args, nil)
 		} else {
 			args = append(args, string(*input.CustomRemarks))
 		}
+		idx++
 	}
 
 	if len(input.HwidSettings) > 0 {
 		raw := strings.TrimSpace(string(input.HwidSettings))
 		if raw == "null" {
-			columns = append(columns, "hwid_settings = ?")
+			columns = append(columns, fmt.Sprintf("hwid_settings = $%d", idx))
 			args = append(args, nil)
+			idx++
 		} else {
 			var hwidInput HwidSettingsInput
 			if err := json.Unmarshal(input.HwidSettings, &hwidInput); err != nil {
@@ -907,8 +849,9 @@ func UpdateExternalSquad(ctx context.Context, manager *dbmanager.DatabaseManager
 				return fmt.Errorf("failed to marshal merged hwid settings: %w", err)
 			}
 
-			columns = append(columns, "hwid_settings = ?")
+			columns = append(columns, fmt.Sprintf("hwid_settings = $%d", idx))
 			args = append(args, string(updatedHwidRaw))
+			idx++
 		}
 	}
 
@@ -917,11 +860,169 @@ func UpdateExternalSquad(ctx context.Context, manager *dbmanager.DatabaseManager
 	}
 
 	args = append(args, squadUUID)
-	query := fmt.Sprintf("UPDATE external_squads SET %s WHERE uuid = ?", strings.Join(columns, ", "))
+	query := fmt.Sprintf("UPDATE external_squads SET %s WHERE uuid = $%d", strings.Join(columns, ", "), idx)
 
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(ctx, query, args...)
-		return err
-	})
+	_, err = dbConn.ExecContext(ctx, query, args...)
 	return err
+}
+
+func applyHostOverrides(hosts []SubscriptionHost, overrides map[string]HostOverride) []SubscriptionHost {
+	if len(overrides) == 0 {
+		return hosts
+	}
+	result := make([]SubscriptionHost, len(hosts))
+	for i, h := range hosts {
+		override, ok := overrides[h.UUID]
+		if !ok {
+			result[i] = h
+			continue
+		}
+		if override.Address != nil && strings.TrimSpace(*override.Address) != "" {
+			h.Address = *override.Address
+		}
+		if override.Port != nil && *override.Port > 0 {
+			h.Port = *override.Port
+		}
+		if override.Remark != nil && strings.TrimSpace(*override.Remark) != "" {
+			h.Remark = *override.Remark
+		}
+		if override.SNI != nil && strings.TrimSpace(*override.SNI) != "" {
+			h.SNI = override.SNI
+		}
+		if override.Host != nil && strings.TrimSpace(*override.Host) != "" {
+			h.Host = override.Host
+		}
+		if override.Path != nil && strings.TrimSpace(*override.Path) != "" {
+			h.Path = override.Path
+		}
+		result[i] = h
+	}
+	return result
+}
+
+func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
+	headers := make(map[string]string)
+	headers["content-disposition"] = fmt.Sprintf("attachment; filename=%s", user.Username)
+
+	domain := strings.TrimSpace(settings.Raw.Address)
+	if domain == "" {
+		domain = "panel.exodus.dev"
+	}
+	scheme := strings.TrimSpace(settings.Raw.APISchema)
+	if scheme == "" {
+		scheme = "https"
+	}
+	apiPath := strings.Trim(strings.TrimSpace(settings.Raw.APIPath), "/")
+	if apiPath == "" {
+		apiPath = "api/sub"
+	}
+	subscriptionURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+
+	title := settings.Raw.ProfileTitle
+	if title == "" {
+		title = user.Username
+	} else {
+		title = formatTemplateValue(title, user, settings, subscriptionURL)
+	}
+	headers["profile-title"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(title)))
+
+	if settings.Raw.SupportLink != "" {
+		headers["support-url"] = settings.Raw.SupportLink
+	}
+
+	interval := settings.Raw.ProfileUpdateInterval
+	if interval <= 0 {
+		interval = 24
+	}
+	headers["profile-update-interval"] = fmt.Sprintf("%d", interval)
+
+	userInfo := getSubscriptionUserInfo(user)
+	parts := []string{}
+	for key, val := range userInfo {
+		parts = append(parts, fmt.Sprintf("%s=%d", key, val))
+	}
+	sort.Strings(parts)
+	headers["subscription-userinfo"] = strings.Join(parts, "; ")
+
+	if settings.Raw.HappAnnounce != "" {
+		announce := formatTemplateValue(settings.Raw.HappAnnounce, user, settings, subscriptionURL)
+		headers["announce"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(announce)))
+	}
+
+	if settings.Raw.HappRouting != "" {
+		headers["routing"] = settings.Raw.HappRouting
+	}
+
+	if settings.Raw.IsProfileWebpageURLEnabled {
+		headers["profile-web-page-url"] = subscriptionURL
+	}
+
+	if refillDate := getSubscriptionRefillDate(user.TrafficLimitStrategy); refillDate != "" {
+		headers["subscription-refill-date"] = refillDate
+	}
+
+	for k, v := range settings.CustomResponseHeaders {
+		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
+	}
+	for k, v := range settings.ResponseHeaders {
+		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
+	}
+	return headers
+}
+
+func formatTemplateValue(value string, user SubscriptionUser, _ SubscriptionSettingsParsed, subscriptionURL string) string {
+	replacer := strings.NewReplacer(
+		"{USERNAME}", user.Username,
+		"{{username}}", user.Username,
+		"{SHORT_UUID}", user.ShortUUID,
+		"{{shortUuid}}", user.ShortUUID,
+		"{SUBSCRIPTION_URL}", subscriptionURL,
+		"{{subscriptionUrl}}", subscriptionURL,
+	)
+	return replacer.Replace(value)
+}
+
+func getSubscriptionUserInfo(user SubscriptionUser) map[string]int64 {
+	expire := user.ExpireAt.Unix()
+	if user.ExpireAt.IsZero() || user.ExpireAt.Year() <= 1 || user.ExpireAt.Year() == 2099 {
+		expire = 0
+	}
+
+	return map[string]int64{
+		"upload":   0,
+		"download": user.UsedTrafficBytes,
+		"total":    user.TrafficLimitBytes,
+		"expire":   expire,
+	}
+}
+
+func getSubscriptionRefillDate(strategy string) string {
+	now := time.Now().Local()
+	switch strings.ToUpper(strategy) {
+	case "DAY":
+		now = now.AddDate(0, 0, 1)
+		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		return fmt.Sprintf("%d", now.Unix())
+	case "WEEK":
+		offset := (int(time.Monday) - int(now.Weekday()) + 7) % 7
+		if offset == 0 {
+			offset = 7
+		}
+		now = now.AddDate(0, 0, offset)
+		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		return fmt.Sprintf("%d", now.Unix())
+	case "MONTH":
+		now = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		now = now.AddDate(0, 1, 0)
+		return fmt.Sprintf("%d", now.Unix())
+	default:
+		return ""
+	}
+}
+
+func firstHostTag(host SubscriptionHost) string {
+	if host.Remark != "" {
+		return host.Remark
+	}
+	return host.Address
 }

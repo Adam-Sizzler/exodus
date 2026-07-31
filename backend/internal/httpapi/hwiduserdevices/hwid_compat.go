@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
 
@@ -60,7 +59,7 @@ type tableSorting struct {
 	Desc bool   `json:"desc"`
 }
 
-func HWIDCompatDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func HWIDCompatDevicesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/hwid/devices"), "/")
 
@@ -69,12 +68,12 @@ func HWIDCompatDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.Ba
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
 			}
-			handleHWIDCompatDeleteUserDevice(w, r, manager, cfg)
+			handleHWIDCompatDeleteUserDevice(w, r, db, cfg)
 			return
 		}
 
 		if r.Method == http.MethodPost && path == "" {
-			handleHWIDCompatCreateUserDevice(w, r, manager, cfg)
+			handleHWIDCompatCreateUserDevice(w, r, db, cfg)
 			return
 		}
 
@@ -84,12 +83,12 @@ func HWIDCompatDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.Ba
 		}
 
 		if path != "" {
-			handleHWIDCompatGetUserDevices(w, r, manager, cfg, path)
+			handleHWIDCompatGetUserDevices(w, r, db, cfg, path)
 			return
 		}
 
 		start, size := parseStartSize(r, 0, 25, 1000)
-		devices, total, err := getHWIDCompatDevices(r.Context(), manager, start, size, r)
+		devices, total, err := getHWIDCompatDevices(r.Context(), db, start, size, r)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid devices", err, cfg)
 			return
@@ -104,13 +103,13 @@ func HWIDCompatDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.Ba
 	}
 }
 
-func handleHWIDCompatGetUserDevices(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID string) {
+func handleHWIDCompatGetUserDevices(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID string) {
 	if _, err := uuid.Parse(userUUID); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid userUuid format", nil, cfg)
 		return
 	}
 
-	devices, err := getHWIDCompatDevicesByUserUUID(r.Context(), manager, userUUID)
+	devices, err := getHWIDCompatDevicesByUserUUID(r.Context(), db, userUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
@@ -128,7 +127,7 @@ func handleHWIDCompatGetUserDevices(w http.ResponseWriter, r *http.Request, mana
 	})
 }
 
-func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req createUserHWIDDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -145,37 +144,36 @@ func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, ma
 		return
 	}
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var userID int64
-		if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, userUUID).Scan(&userID); err != nil {
-			return err
-		}
-		var deviceExists bool
-		if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM hwid_user_devices WHERE hwid = ? AND user_id = ?)`, hwid, userID).Scan(&deviceExists); err != nil {
-			return err
-		}
-		if deviceExists {
-			return errHWIDDeviceExists
-		}
-		_, err := db.ExecContext(r.Context(), `
-			INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		`, hwid, userID, req.Platform, req.OSVersion, req.DeviceModel, req.UserAgent, req.RequestIP)
-		return err
-	})
-	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
+	var userID int64
+	if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
-		case errors.Is(err, errHWIDDeviceExists):
-			shared.SendError(w, http.StatusConflict, "hwid already registered for this user", nil, cfg)
-		default:
-			shared.SendError(w, http.StatusInternalServerError, "failed to create user hwid device", err, cfg)
+			return
 		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
 		return
 	}
 
-	devices, err := getHWIDCompatDevicesByUserUUID(r.Context(), manager, userUUID)
+	var deviceExists bool
+	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM hwid_user_devices WHERE hwid = $1 AND user_id = $2)`, hwid, userID).Scan(&deviceExists); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to check device", err, cfg)
+		return
+	}
+	if deviceExists {
+		shared.SendError(w, http.StatusConflict, "hwid already registered for this user", nil, cfg)
+		return
+	}
+
+	_, err := db.ExecContext(r.Context(), `
+		INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`, hwid, userID, req.Platform, req.OSVersion, req.DeviceModel, req.UserAgent, req.RequestIP)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to create user hwid device", err, cfg)
+		return
+	}
+
+	devices, err := getHWIDCompatDevicesByUserUUID(r.Context(), db, userUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
 		return
@@ -194,7 +192,7 @@ func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, ma
 	})
 }
 
-func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req deleteUserHWIDDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -211,53 +209,45 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, ma
 		return
 	}
 
-	var deletedDevice hwidCompatDevice
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var userID int64
-		if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, userUUID).Scan(&userID); err != nil {
-			return err
-		}
-		row := db.QueryRowContext(r.Context(), `
-			SELECT h.hwid, u.uuid, h.user_id, h.platform, h.os_version, h.device_model, h.user_agent, h.request_ip, h.created_at, h.updated_at
-			FROM hwid_user_devices h
-			JOIN users u ON u.t_id = h.user_id
-			WHERE h.hwid = ? AND h.user_id = ?
-			LIMIT 1
-		`, hwid, userID)
-		device, scanErr := scanHWIDCompatDevice(row)
-		if scanErr != nil {
-			if errors.Is(scanErr, sql.ErrNoRows) {
-				return errHWIDDeviceNotFound
-			}
-			return scanErr
-		}
-		deletedDevice = device
-		result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE hwid = ? AND user_id = ?`, hwid, userID)
-		if err != nil {
-			return err
-		}
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rowsAffected == 0 {
-			return errHWIDDeviceNotFound
-		}
-		return nil
-	})
-	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
+	var userID int64
+	if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
-		case errors.Is(err, errHWIDDeviceNotFound):
-			shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
-		default:
-			shared.SendError(w, http.StatusInternalServerError, "failed to delete user hwid device", err, cfg)
+			return
 		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
 		return
 	}
 
-	devices, err := getHWIDCompatDevicesByUserUUID(r.Context(), manager, userUUID)
+	row := db.QueryRowContext(r.Context(), `
+		SELECT h.hwid, u.uuid, h.user_id, h.platform, h.os_version, h.device_model, h.user_agent, h.request_ip, h.created_at, h.updated_at
+		FROM hwid_user_devices h
+		JOIN users u ON u.t_id = h.user_id
+		WHERE h.hwid = $1 AND h.user_id = $2
+		LIMIT 1
+	`, hwid, userID)
+	deletedDevice, err := scanHWIDCompatDevice(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to find hwid device", err, cfg)
+		return
+	}
+
+	result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE hwid = $1 AND user_id = $2`, hwid, userID)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to delete user hwid device", err, cfg)
+		return
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
+		return
+	}
+
+	devices, err := getHWIDCompatDevicesByUserUUID(r.Context(), db, userUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
 		return
@@ -271,7 +261,7 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, ma
 	})
 }
 
-func HWIDCompatDeleteAllUserDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func HWIDCompatDeleteAllUserDevicesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -289,27 +279,22 @@ func HWIDCompatDeleteAllUserDevicesHandler(manager *dbmanager.DatabaseManager, c
 			return
 		}
 
-		var deletedCount int64
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			var userID int64
-			if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = ?`, userUUID).Scan(&userID); err != nil {
-				return err
-			}
-			result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE user_id = ?`, userID)
-			if err != nil {
-				return err
-			}
-			deletedCount, err = result.RowsAffected()
-			return err
-		})
-		if err != nil {
+		var userID int64
+		if err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&userID); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
 				return
 			}
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+			return
+		}
+
+		result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE user_id = $1`, userID)
+		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to delete user hwid devices", err, cfg)
 			return
 		}
+		deletedCount, _ := result.RowsAffected()
 
 		if deletedCount > 0 {
 			emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceDeleted, map[string]any{
@@ -327,90 +312,89 @@ func HWIDCompatDeleteAllUserDevicesHandler(manager *dbmanager.DatabaseManager, c
 	}
 }
 
-func HWIDCompatStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		byPlatform := make([]map[string]any, 0)
-		byAppByPlatform := map[string][]map[string]any{}
-		var totalDevices int
-		var uniqueDevices int
-		var uniqueUsers int
-
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			row := db.QueryRowContext(r.Context(), `
-				SELECT COUNT(*), COUNT(DISTINCT hwid), COUNT(DISTINCT user_id)
-				FROM hwid_user_devices
-			`)
-			if err := row.Scan(&totalDevices, &uniqueDevices, &uniqueUsers); err != nil {
-				return err
-			}
-
-			rows, err := db.QueryContext(r.Context(), `
-				SELECT COALESCE(NULLIF(platform, ''), 'Unknown') AS platform, COUNT(*) AS count
-				FROM hwid_user_devices
-				GROUP BY platform
-				ORDER BY count DESC
-			`)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var platform string
-				var count int
-				if scanErr := rows.Scan(&platform, &count); scanErr != nil {
-					return scanErr
-				}
-				byPlatform = append(byPlatform, map[string]any{"platform": platform, "count": count, "byApp": []map[string]any{}})
-			}
-			if err := rows.Err(); err != nil {
-				return err
-			}
-
-			rows2, err := db.QueryContext(r.Context(), `
-				SELECT
-					COALESCE(NULLIF(platform, ''), 'Unknown') AS platform,
-					COALESCE(NULLIF(SPLIT_PART(user_agent, '/', 1), ''), 'Unknown') AS app,
-					COUNT(*) AS count
-				FROM hwid_user_devices
-				GROUP BY platform, app
-				ORDER BY platform ASC, count DESC
-			`)
-			if err != nil {
-				return err
-			}
-			defer rows2.Close()
-			for rows2.Next() {
-				var platform string
-				var app string
-				var count int
-				if scanErr := rows2.Scan(&platform, &app, &count); scanErr != nil {
-					return scanErr
-				}
-				if strings.HasPrefix(app, "https:") {
-					continue
-				}
-				byAppByPlatform[platform] = append(byAppByPlatform[platform], map[string]any{"app": app, "count": count})
-			}
-			if err := rows2.Err(); err != nil {
-				return err
-			}
-
-			for _, platform := range byPlatform {
-				name, _ := platform["platform"].(string)
-				if byApp, ok := byAppByPlatform[name]; ok {
-					platform["byApp"] = byApp
-				}
-			}
-			return nil
-		})
-		if err != nil {
+		var totalDevices, uniqueDevices, uniqueUsers int
+		row := db.QueryRowContext(r.Context(), `
+			SELECT COUNT(*), COUNT(DISTINCT hwid), COUNT(DISTINCT user_id)
+			FROM hwid_user_devices
+		`)
+		if err := row.Scan(&totalDevices, &uniqueDevices, &uniqueUsers); err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid stats", err, cfg)
 			return
+		}
+
+		byPlatform := make([]map[string]any, 0)
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT COALESCE(NULLIF(platform, ''), 'Unknown') AS platform, COUNT(*) AS count
+			FROM hwid_user_devices
+			GROUP BY platform
+			ORDER BY count DESC
+		`)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid platform stats", err, cfg)
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var platform string
+			var count int
+			if scanErr := rows.Scan(&platform, &count); scanErr != nil {
+				shared.SendError(w, http.StatusInternalServerError, "failed to scan hwid platform stats", scanErr, cfg)
+				return
+			}
+			byPlatform = append(byPlatform, map[string]any{"platform": platform, "count": count, "byApp": []map[string]any{}})
+		}
+		if err := rows.Err(); err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid platform stats", err, cfg)
+			return
+		}
+
+		byAppByPlatform := map[string][]map[string]any{}
+		rows2, err := db.QueryContext(r.Context(), `
+			SELECT
+				COALESCE(NULLIF(platform, ''), 'Unknown') AS platform,
+				COALESCE(NULLIF(SPLIT_PART(user_agent, '/', 1), ''), 'Unknown') AS app,
+				COUNT(*) AS count
+			FROM hwid_user_devices
+			GROUP BY platform, app
+			ORDER BY platform ASC, count DESC
+		`)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid app stats", err, cfg)
+			return
+		}
+		defer rows2.Close()
+
+		for rows2.Next() {
+			var platform string
+			var app string
+			var count int
+			if scanErr := rows2.Scan(&platform, &app, &count); scanErr != nil {
+				shared.SendError(w, http.StatusInternalServerError, "failed to scan hwid app stats", scanErr, cfg)
+				return
+			}
+			if strings.HasPrefix(app, "https:") {
+				continue
+			}
+			byAppByPlatform[platform] = append(byAppByPlatform[platform], map[string]any{"app": app, "count": count})
+		}
+		if err := rows2.Err(); err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid app stats", err, cfg)
+			return
+		}
+
+		for _, platform := range byPlatform {
+			name, _ := platform["platform"].(string)
+			if byApp, ok := byAppByPlatform[name]; ok {
+				platform["byApp"] = byApp
+			}
 		}
 
 		avg := 0.0
@@ -431,7 +415,7 @@ func HWIDCompatStatsHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 	}
 }
 
-func HWIDCompatTopUsersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func HWIDCompatTopUsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -445,35 +429,36 @@ func HWIDCompatTopUsersHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			Username     string `json:"username"`
 			DevicesCount int    `json:"devicesCount"`
 		}
-		users := make([]item, 0)
-		total := 0
+		var total int
+		if err := db.QueryRowContext(r.Context(), `SELECT COUNT(DISTINCT user_id) FROM hwid_user_devices`).Scan(&total); err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users count", err, cfg)
+			return
+		}
 
-		err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-			if err := db.QueryRowContext(r.Context(), `SELECT COUNT(DISTINCT user_id) FROM hwid_user_devices`).Scan(&total); err != nil {
-				return err
-			}
-			rows, err := db.QueryContext(r.Context(), `
-				SELECT u.uuid, u.t_id, u.username, COUNT(*) AS devices_count
-				FROM hwid_user_devices h
-				JOIN users u ON u.t_id = h.user_id
-				GROUP BY u.uuid, u.t_id, u.username
-				ORDER BY devices_count DESC, u.t_id ASC
-				OFFSET ? LIMIT ?
-			`, start, size)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var v item
-				if scanErr := rows.Scan(&v.UserUUID, &v.ID, &v.Username, &v.DevicesCount); scanErr != nil {
-					return scanErr
-				}
-				users = append(users, v)
-			}
-			return rows.Err()
-		})
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT u.uuid, u.t_id, u.username, COUNT(*) AS devices_count
+			FROM hwid_user_devices h
+			JOIN users u ON u.t_id = h.user_id
+			GROUP BY u.uuid, u.t_id, u.username
+			ORDER BY devices_count DESC, u.t_id ASC
+			OFFSET $1 LIMIT $2
+		`, start, size)
 		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users by hwid devices", err, cfg)
+			return
+		}
+		defer rows.Close()
+
+		users := make([]item, 0)
+		for rows.Next() {
+			var v item
+			if scanErr := rows.Scan(&v.UserUUID, &v.ID, &v.Username, &v.DevicesCount); scanErr != nil {
+				shared.SendError(w, http.StatusInternalServerError, "failed to scan top users by hwid devices", scanErr, cfg)
+				return
+			}
+			users = append(users, v)
+		}
+		if err := rows.Err(); err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users by hwid devices", err, cfg)
 			return
 		}
@@ -487,9 +472,7 @@ func HWIDCompatTopUsersHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 	}
 }
 
-func getHWIDCompatDevices(ctx context.Context, manager *dbmanager.DatabaseManager, start, size int, r *http.Request) ([]hwidCompatDevice, int, error) {
-	items := make([]hwidCompatDevice, 0)
-	total := 0
+func getHWIDCompatDevices(ctx context.Context, db *sql.DB, start, size int, r *http.Request) ([]hwidCompatDevice, int, error) {
 	columns := map[string]string{
 		"hwid":        "h.hwid",
 		"userUuid":    "u.uuid",
@@ -505,67 +488,65 @@ func getHWIDCompatDevices(ctx context.Context, manager *dbmanager.DatabaseManage
 	whereSQL, whereArgs := buildTableWhereClause(r, columns)
 	orderSQL := buildTableOrderClause(r, columns, "h.created_at DESC")
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		countQuery := `SELECT COUNT(*) FROM hwid_user_devices h JOIN users u ON u.t_id = h.user_id` + whereSQL
-		if err := db.QueryRowContext(ctx, countQuery, whereArgs...).Scan(&total); err != nil {
-			return err
-		}
+	var total int
+	countQuery := `SELECT COUNT(*) FROM hwid_user_devices h JOIN users u ON u.t_id = h.user_id` + whereSQL
+	if err := db.QueryRowContext(ctx, countQuery, whereArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 
-		args := append(append([]any{}, whereArgs...), start, size)
-		query := `
-			SELECT h.hwid, u.uuid, h.user_id, h.platform, h.os_version, h.device_model, h.user_agent, h.request_ip, h.created_at, h.updated_at
-			FROM hwid_user_devices h
-			JOIN users u ON u.t_id = h.user_id
-		` + whereSQL + orderSQL + ` OFFSET ? LIMIT ?`
-		rows, err := db.QueryContext(ctx, query, args...)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
+	args := append(append([]any{}, whereArgs...), start, size)
+	query := fmt.Sprintf(`
+		SELECT h.hwid, u.uuid, h.user_id, h.platform, h.os_version, h.device_model, h.user_agent, h.request_ip, h.created_at, h.updated_at
+		FROM hwid_user_devices h
+		JOIN users u ON u.t_id = h.user_id
+	`+whereSQL+orderSQL+` OFFSET $%d LIMIT $%d`, len(whereArgs)+1, len(whereArgs)+2)
 
-		for rows.Next() {
-			item, scanErr := scanHWIDCompatDevice(rows)
-			if scanErr != nil {
-				return scanErr
-			}
-			items = append(items, item)
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := make([]hwidCompatDevice, 0)
+	for rows.Next() {
+		item, scanErr := scanHWIDCompatDevice(rows)
+		if scanErr != nil {
+			return nil, 0, scanErr
 		}
-		return rows.Err()
-	})
-	return items, total, err
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
 }
 
-func getHWIDCompatDevicesByUserUUID(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string) ([]hwidCompatDevice, error) {
+func getHWIDCompatDevicesByUserUUID(ctx context.Context, db *sql.DB, userUUID string) ([]hwidCompatDevice, error) {
+	var exists bool
+	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE uuid = $1)`, userUUID).Scan(&exists); err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, sql.ErrNoRows
+	}
+	rows, err := db.QueryContext(ctx, `
+		SELECT h.hwid, u.uuid, h.user_id, h.platform, h.os_version, h.device_model, h.user_agent, h.request_ip, h.created_at, h.updated_at
+		FROM hwid_user_devices h
+		JOIN users u ON u.t_id = h.user_id
+		WHERE h.user_id = (SELECT t_id FROM users WHERE uuid = $1)
+		ORDER BY h.created_at DESC
+	`, userUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	items := make([]hwidCompatDevice, 0)
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		var exists bool
-		if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE uuid = ?)`, userUUID).Scan(&exists); err != nil {
-			return err
+	for rows.Next() {
+		item, scanErr := scanHWIDCompatDevice(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
-		if !exists {
-			return sql.ErrNoRows
-		}
-		rows, err := db.QueryContext(ctx, `
-			SELECT h.hwid, u.uuid, h.user_id, h.platform, h.os_version, h.device_model, h.user_agent, h.request_ip, h.created_at, h.updated_at
-			FROM hwid_user_devices h
-			JOIN users u ON u.t_id = h.user_id
-			WHERE h.user_id = (SELECT t_id FROM users WHERE uuid = ?)
-			ORDER BY h.created_at DESC
-		`, userUUID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			item, scanErr := scanHWIDCompatDevice(rows)
-			if scanErr != nil {
-				return scanErr
-			}
-			items = append(items, item)
-		}
-		return rows.Err()
-	})
-	return items, err
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 type hwidCompatScanner interface {
@@ -595,6 +576,7 @@ func buildTableWhereClause(r *http.Request, columns map[string]string) (string, 
 
 	parts := make([]string, 0, len(filters))
 	args := make([]any, 0, len(filters))
+	idx := 1
 	for _, filter := range filters {
 		column, ok := columns[filter.ID]
 		if !ok {
@@ -604,8 +586,9 @@ func buildTableWhereClause(r *http.Request, columns map[string]string) (string, 
 		if value == "" {
 			continue
 		}
-		parts = append(parts, "LOWER(COALESCE("+column+"::text, '')) LIKE LOWER(?)")
+		parts = append(parts, fmt.Sprintf("LOWER(COALESCE(%s::text, '')) LIKE LOWER($%d)", column, idx))
 		args = append(args, "%"+value+"%")
+		idx++
 	}
 	if len(parts) == 0 {
 		return "", nil

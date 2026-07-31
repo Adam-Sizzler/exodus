@@ -23,6 +23,15 @@ type userUsageDelta struct {
 	HistoryBytes int64
 }
 
+type trafficStatsDelta struct {
+	UsersOnline        int
+	TotalUploadBytes   int64
+	TotalDownloadBytes int64
+	InboundByTag       map[string]TagTrafficCounters
+	OutboundByTag      map[string]TagTrafficCounters
+	UserBytesByName    map[string]int64
+}
+
 type NodeUserUsageRecorder interface {
 	RecordNodeUserUsage(ctx context.Context, nodeID int64, userBytes map[int64]int64) error
 }

@@ -3,6 +3,7 @@ package jobqueue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -14,6 +15,13 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 )
+
+// ErrDuplicateJob is returned by Enqueue when a job with the same
+// deduplication identity is already scheduled/pending/active and has not
+// been processed yet. Callers should treat this as a non-error: the data
+// this job would have flushed is already covered by the job that's still
+// in the queue.
+var ErrDuplicateJob = errors.New("job already exists")
 
 type Handler func(ctx context.Context, job Job) error
 
@@ -41,7 +49,6 @@ type JobOptions struct {
 	DedupeID  string
 	Delay     time.Duration
 	Attempts  int
-	Backoff   time.Duration
 	Retention int64
 }
 
@@ -197,11 +204,13 @@ func (p *Processor) Enqueue(ctx context.Context, queue string, name string, payl
 	var opts []asynq.Option
 	opts = append(opts, asynq.Queue(queue))
 
-	if options.ID != "" {
-		opts = append(opts, asynq.TaskID(options.ID))
-	} else if options.DedupeID != "" {
-		opts = append(opts, asynq.TaskID(options.DedupeID))
+	taskID := options.ID
+	if taskID == "" {
+		taskID = options.DedupeID
 	}
+	if taskID != "" {
+		opts = append(opts, asynq.TaskID(taskID))
+ 	}
 
 	if options.Delay > 0 {
 		opts = append(opts, asynq.ProcessIn(options.Delay))
@@ -216,7 +225,13 @@ func (p *Processor) Enqueue(ctx context.Context, queue string, name string, payl
 	}
 
 	_, err := p.client.EnqueueContext(ctx, task, opts...)
-	return err
+	if err != nil {
+		if errors.Is(err, asynq.ErrTaskIDConflict) || errors.Is(err, asynq.ErrDuplicateTask) {
+			return ErrDuplicateJob
+		}
+		return err
+	}
+	return nil
 }
 
 func (p *Processor) Close() error {

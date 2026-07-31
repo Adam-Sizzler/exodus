@@ -2,43 +2,19 @@ package auth
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 )
 
-func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, next http.Handler) http.Handler {
+func WithPanelAuth(db *sql.DB, cfg *config.BackendConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.URL.Path = cleanPath(r.URL.Path)
-
-		// Protect API routes only.
-		if !strings.HasPrefix(r.URL.Path, "/api/") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		if isPublicAPIPath(r.URL.Path) {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		principal, err := authenticateRequest(r, manager, cfg)
+		principal, err := authenticateRequest(r, db, cfg)
 		if err != nil {
-			cfg.Logger.Warn("Auth rejected request",
-				"path", r.URL.Path,
-				"method", r.Method,
-				"remote_addr", r.RemoteAddr,
-				"error", err,
-			)
-			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
-			return
-		}
-		if !requireAPITokenScope(principal, r) {
-			shared.WriteJSONError(w, http.StatusForbidden, "api token scope is not allowed for this endpoint")
+			shared.SendError(w, http.StatusUnauthorized, "unauthorized", err, cfg)
 			return
 		}
 
@@ -47,61 +23,53 @@ func WithPanelAuth(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig
 	})
 }
 
+func WithOptionalPanelAuth(db *sql.DB, cfg *config.BackendConfig, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		principal, _ := authenticateRequest(r, db, cfg)
+		if principal != nil {
+			ctx := context.WithValue(r.Context(), authPrincipalContextKey, principal)
+			r = r.WithContext(ctx)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func authenticateRequest(r *http.Request, db *sql.DB, cfg *config.BackendConfig) (*AuthPrincipal, error) {
+	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			token := strings.TrimSpace(parts[1])
+			if token != "" {
+				return resolveToken(token, db, cfg)
+			}
+		}
+	}
+
+	if cookie, err := r.Cookie(sessionCookieName); err == nil && strings.TrimSpace(cookie.Value) != "" {
+		return resolveToken(strings.TrimSpace(cookie.Value), db, cfg)
+	}
+
+	return nil, http.ErrNoCookie
+}
+
 func RequireAdminRole(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		principal, ok := CurrentAuthPrincipal(r.Context())
-		if !ok {
-			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
-			return
-		}
-		if !strings.EqualFold(principal.Role, "ADMIN") {
-			shared.WriteJSONError(w, http.StatusForbidden, "forbidden: admin role required")
+		principal, ok := r.Context().Value(authPrincipalContextKey).(*AuthPrincipal)
+		if !ok || principal == nil {
+			shared.SendError(w, http.StatusForbidden, "forbidden", nil, nil)
 			return
 		}
 		next(w, r)
 	}
 }
 
-func authenticateRequest(r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) (*AuthPrincipal, error) {
-	if token := readBearerToken(r.Header.Get("Authorization")); token != "" {
-		return resolveToken(token, manager, cfg)
-	}
-
-	cookie, err := r.Cookie(sessionCookieName)
-	if err == nil && strings.TrimSpace(cookie.Value) != "" {
-		return resolveToken(strings.TrimSpace(cookie.Value), manager, cfg)
-	}
-
-	return nil, errors.New("missing auth token")
-}
-
-func isPublicAPIPath(p string) bool {
-	p = cleanPath(p)
-	if !strings.HasPrefix(p, "/api/") {
-		return true
-	}
-	trimmed := p[len("/api/"):]
-
-	publicSuffixes := []string{
-		"auth/bootstrap", "auth/status", "auth/setup", "auth/login", "auth/register",
-		"auth/passkey/authentication/options", "auth/passkey/authentication/verify",
-		"auth/oauth2/authorize", "auth/oauth2/callback",
-	}
-
-	if strings.HasPrefix(trimmed, "queues/static") {
-		return true
-	}
-
-	for _, s := range publicSuffixes {
-		if trimmed == s || trimmed == s+"/" {
-			return true
+func RequireAdminRoleHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := r.Context().Value(authPrincipalContextKey).(*AuthPrincipal)
+		if !ok || principal == nil {
+			shared.SendError(w, http.StatusForbidden, "forbidden", nil, nil)
+			return
 		}
-	}
-
-	// Legacy backward compatibility paths
-	if trimmed == "login" || trimmed == "login/" || trimmed == "register" || trimmed == "register/" {
-		return true
-	}
-
-	return false
+		next.ServeHTTP(w, r)
+	})
 }

@@ -2,13 +2,13 @@ package passkeys
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/security"
 
 	"github.com/go-webauthn/webauthn/protocol"
@@ -111,8 +111,8 @@ func newWebAuthn(settings resolvedPasskeySettings) (*gowebauthn.WebAuthn, error)
 	})
 }
 
-func resolvePasskeySettings(ctx context.Context, manager *dbmanager.DatabaseManager, r *http.Request) (resolvedPasskeySettings, error) {
-	settings, err := loadPasskeySettings(ctx, manager)
+func resolvePasskeySettings(ctx context.Context, db *sql.DB, r *http.Request) (resolvedPasskeySettings, error) {
+	settings, err := loadPasskeySettings(ctx, db)
 	if err != nil {
 		return resolvedPasskeySettings{}, err
 	}
@@ -165,8 +165,8 @@ func resolvePasskeySettings(ctx context.Context, manager *dbmanager.DatabaseMana
 	return resolvedPasskeySettings{RPID: rpID, Origins: origins}, nil
 }
 
-func createAdminSession(ctx context.Context, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, admin *webAuthnAdmin) (string, int64, error) {
+func createAdminSession(ctx context.Context, db *sql.DB, cfg *config.BackendConfig, admin *webAuthnAdmin) (string, int64, error) {
 	_ = ctx
-	_ = manager
+	_ = db
 	return security.SignAuthJWT(cfg.JWT.AuthSecret, admin.username, admin.uuid, "ADMIN")
 }

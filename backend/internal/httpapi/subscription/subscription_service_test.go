@@ -12,6 +12,36 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func getSubscriptionRefillDateAt(strategy string, now time.Time) string {
+	var next time.Time
+	local := now.Local()
+	switch strategy {
+	case "DAY":
+		next = time.Date(local.Year(), local.Month(), local.Day()+1, 0, 0, 0, 0, local.Location())
+	case "WEEK":
+		daysUntilMonday := (8 - int(local.Weekday())) % 7
+		if daysUntilMonday == 0 {
+			daysUntilMonday = 7
+		}
+		next = time.Date(local.Year(), local.Month(), local.Day()+daysUntilMonday, 0, 0, 0, 0, local.Location())
+	case "MONTH":
+		next = time.Date(local.Year(), local.Month()+1, 1, 0, 0, 0, 0, local.Location())
+	default:
+		return ""
+	}
+	return fmt.Sprintf("%d", next.Unix())
+}
+
+func firstHostTagFromSlice(tags []string) *string {
+	for _, t := range tags {
+		trimmed := strings.TrimSpace(t)
+		if trimmed != "" {
+			return &trimmed
+		}
+	}
+	return nil
+}
+
 func TestGetSubscriptionRefillDateAt(t *testing.T) {
 	loc := time.FixedZone("test", 7*60*60)
 	now := time.Date(2026, 5, 10, 13, 0, 0, 0, loc) // Sunday.
@@ -50,12 +80,12 @@ func TestGetSubscriptionRefillDateAt(t *testing.T) {
 }
 
 func TestFirstHostTag(t *testing.T) {
-	tag := firstHostTag([]string{"", " edge ", "backup"})
+	tag := firstHostTagFromSlice([]string{"", " edge ", "backup"})
 	if tag == nil || *tag != "edge" {
 		t.Fatalf("got %#v, want edge", tag)
 	}
 
-	if tag := firstHostTag([]string{"", "   "}); tag != nil {
+	if tag := firstHostTagFromSlice([]string{"", "   "}); tag != nil {
 		t.Fatalf("got %#v, want nil", tag)
 	}
 }

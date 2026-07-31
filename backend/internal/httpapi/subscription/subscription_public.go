@@ -1,21 +1,22 @@
 package subscription
 
 import (
+	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"maps"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/logger"
 )
 
-func SubscriptionPublicHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func SubscriptionPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -35,27 +36,23 @@ func SubscriptionPublicHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 			return
 		}
 
-		// /api/sub/:shortUuid/info
 		if len(parts) == 2 && parts[1] == "info" {
-			handlePublicSubscriptionInfo(w, r, manager, cfg, parts[0])
+			handlePublicSubscriptionInfo(w, r, db, backgroundDB, cfg, parts[0])
 			return
 		}
 
-		// /api/sub/outline/:shortUuid/:type/:encodedTag
 		if len(parts) >= 4 && parts[0] == "outline" {
-			handlePublicOutlineSubscription(w, r, manager, cfg, parts)
+			handlePublicOutlineSubscription(w, r, db, backgroundDB, cfg, parts)
 			return
 		}
 
-		// /api/sub/:shortUuid/:clientType
 		if len(parts) == 2 {
-			handlePublicSubscription(w, r, manager, cfg, parts[0], parts[1])
+			handlePublicSubscription(w, r, db, backgroundDB, cfg, parts[0], parts[1])
 			return
 		}
 
-		// /api/sub/:shortUuid
 		if len(parts) == 1 {
-			handlePublicSubscription(w, r, manager, cfg, parts[0], "")
+			handlePublicSubscription(w, r, db, backgroundDB, cfg, parts[0], "")
 			return
 		}
 
@@ -63,397 +60,317 @@ func SubscriptionPublicHandler(manager *dbmanager.DatabaseManager, cfg *config.B
 	}
 }
 
-func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID string) {
-	renderService := NewRenderService(manager, cfg)
+func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, db, backgroundDB *sql.DB, cfg *config.BackendConfig, shortUUID string) {
 	ctx := r.Context()
+	renderService := NewRenderService(db, backgroundDB, cfg)
 
-	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
+	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
+	if err != nil {
+		if errorsIsNoRows(err) {
+			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		return
+	}
+
+	settings, err := loadSubscriptionSettings(ctx, db, cfg)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
 		return
 	}
 
-	user, err := getSubscriptionUserByShortUUID(ctx, manager, shortUUID)
-	if err != nil {
-		shared.SendError(w, http.StatusNotFound, "user not found", err, cfg)
-		return
-	}
-
-	hosts, err := getHostsForUser(ctx, manager, user)
+	hosts, err := getHostsForUser(ctx, db, user)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
 
-	response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
+	info := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{"response": response})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"response": info,
+	})
 }
 
-func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, parts []string) {
-	if len(parts) < 4 {
-		http.NotFound(w, r)
-		return
-	}
-
-	shortUUID := parts[1]
-	typ := parts[2]
-	encodedTag := parts[3]
-
-	if typ != "ss" || encodedTag == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	handlePublicSubscription(w, r, manager, cfg, shortUUID, "")
-}
-
-func handlePublicSubscription(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, shortUUID, clientType string) {
-	renderService := NewRenderService(manager, cfg)
+func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db, backgroundDB *sql.DB, cfg *config.BackendConfig, parts []string) {
 	ctx := r.Context()
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 
-	var headerDump strings.Builder
-	for name, values := range r.Header {
-		fmt.Fprintf(&headerDump, "  %s: %s\n", name, strings.Join(values, ", "))
-	}
-	log.Debug("Public subscription request", "short_uuid", shortUUID, "headers", headerDump.String())
+	shortUUID := parts[1]
+	reqType := parts[2]
+	encodedTag := parts[3]
 
-	log.Debug("Loading subscription settings")
-	settings, err := loadSubscriptionSettings(ctx, manager, cfg)
+	tagBytes, err := base64.RawURLEncoding.DecodeString(encodedTag)
 	if err != nil {
-		log.Warn("Failed to load subscription settings", "error", err)
-		shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
-		return
-	}
-	log.Debug("Subscription settings loaded", "hwid_enabled", settings.HwidSettings.Enabled)
-
-	log.Debug("Looking up subscription user", "short_uuid", shortUUID)
-	user, err := getSubscriptionUserByShortUUID(ctx, manager, shortUUID)
-	if err != nil {
-		log.Warn("Failed to load subscription user", "short_uuid", shortUUID, "error", err)
-		shared.SendError(w, http.StatusNotFound, "user not found", err, cfg)
-		return
-	}
-	log.Debug("Subscription user found", "uuid", user.UUID, "status", user.Status, "hwid_limit", user.HwidDeviceLimit)
-
-	var externalOverrides *ExternalSquadOverrides
-	if user.ExternalSquadUUID != nil && *user.ExternalSquadUUID != "" {
-		log.Debug("Loading external squad overrides", "squad_uuid", *user.ExternalSquadUUID)
-		overrides, err := loadExternalSquadOverrides(ctx, manager, *user.ExternalSquadUUID, cfg)
+		tagBytes, err = base64.StdEncoding.DecodeString(encodedTag)
 		if err != nil {
-			log.Warn("Failed to load external squad overrides, continuing without them", "error", err)
-		} else {
-			externalOverrides = overrides
-			settings = applyExternalSquadOverrides(settings, externalOverrides)
-			log.Debug("Applied external squad overrides",
-				"has_host_overrides", len(externalOverrides.HostOverrides) > 0,
-				"has_templates", len(externalOverrides.Templates) > 0)
-		}
-	}
-
-	headersForMatch := r.Header.Clone()
-	headersForMatch.Set("x-exodus-injected-short-uuid", shortUUID)
-	if clientType != "" {
-		headersForMatch.Set("x-exodus-injected-client-type", clientType)
-	}
-
-	log.Debug("Matching subscription response rules", "client_type", clientType)
-	matchResult := matchResponseRulesDetailed(settings.ResponseRules, headersForMatch, clientType)
-	log.Debug("Subscription response rule matched", "matched", matchResult.Matched, "response_type", matchResult.ResponseType)
-
-	if !matchResult.Matched || matchResult.ResponseType == "" {
-		log.Debug("Response rule did not match, returning forbidden")
-		shared.SendError(w, http.StatusForbidden, "forbidden", nil, cfg)
-		return
-	}
-
-	responseType := matchResult.ResponseType
-	if responseType == "" {
-		responseType = defaultResponseType
-	}
-	log.Debug("Effective subscription response type", "response_type", responseType)
-
-	var extraHeaders map[string]string
-	var overrideTemplateName string
-	ignoreServeJsonAtBaseSubscription := false
-
-	if matchResult.MatchedRule != nil && matchResult.MatchedRule.ResponseModifications != nil {
-		mods := matchResult.MatchedRule.ResponseModifications
-		if len(mods.Headers) > 0 {
-			if mods.ApplyHeadersToEnd {
-				extraHeaders = map[string]string{}
-				for _, header := range mods.Headers {
-					extraHeaders[header.Key] = header.Value
-				}
-			} else {
-				for _, header := range mods.Headers {
-					w.Header().Set(header.Key, header.Value)
-				}
-			}
-		}
-		if mods.SubscriptionTemplate != nil {
-			overrideTemplateName = strings.TrimSpace(*mods.SubscriptionTemplate)
-		}
-		if mods.IgnoreServeJsonAtBaseSubscription {
-			ignoreServeJsonAtBaseSubscription = true
-		}
-	}
-
-	switch responseType {
-	case responseTypeBlock:
-		log.Debug("Response type BLOCK, returning forbidden")
-		shared.SendError(w, http.StatusForbidden, "forbidden", nil, cfg)
-		return
-	case responseTypeStatus404:
-		log.Debug("Response type 404, returning not found")
-		http.NotFound(w, r)
-		return
-	case responseTypeStatus451:
-		log.Debug("Response type 451, returning unavailable for legal reasons")
-		http.Error(w, "Unavailable For Legal Reasons", http.StatusUnavailableForLegalReasons)
-		return
-	case responseTypeSocketDrop:
-		log.Debug("Response type SOCKET_DROP, dropping connection")
-		if hj, ok := w.(http.Hijacker); ok {
-			conn, _, err := hj.Hijack()
-			if err == nil {
-				_ = conn.Close()
-				return
-			}
-		}
-		return
-	}
-
-	if responseType == responseTypeXrayBase64 && settings.Raw.ServeJSONAtBaseSubscription && !ignoreServeJsonAtBaseSubscription {
-		log.Debug("Switching response type from XRAY_BASE64 to XRAY_JSON")
-		responseType = responseTypeXrayJSON
-	}
-
-	if responseType == responseTypeBrowser {
-		log.Debug("Generating browser subscription info page")
-		hosts, err := getHostsForUser(ctx, manager, user)
-		if err != nil {
-			log.Warn("Failed to fetch hosts for browser subscription", "error", err)
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+			shared.SendError(w, http.StatusBadRequest, "invalid encoded tag", err, cfg)
 			return
 		}
-		response := renderService.buildSubscriptionInfoResponse(user, settings, hosts)
-		for key, value := range extraHeaders {
-			w.Header().Set(key, value)
+	}
+	targetTag := string(tagBytes)
+
+	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
+	if err != nil {
+		if errorsIsNoRows(err) {
+			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			return
 		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(w).Encode(response)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
 		return
 	}
 
-	log.Debug("Fetching subscription hosts")
-	hosts, err := getHostsForUser(ctx, manager, user)
+	hosts, err := getHostsForUser(ctx, db, user)
 	if err != nil {
-		log.Warn("Failed to fetch subscription hosts", "error", err)
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
-	log.Debug("Subscription hosts fetched", "hosts", len(hosts))
 
-	if externalOverrides != nil && len(externalOverrides.HostOverrides) > 0 {
-		hosts = applyHostOverrides(hosts, externalOverrides.HostOverrides)
-		log.Debug("Applied host overrides to subscription hosts")
-	}
-
-	renderService.shuffleHostsIfNeeded(hosts, settings)
-
-	log.Debug("Extracting HWID headers")
-	hwidHeaders := extractHwidHeaders(r)
-	requestIP := middleware.GetClientIP(r, cfg)
-	if hwidHeaders == nil && !settings.HwidSettings.Enabled {
-		hwidHeaders = extractSyntheticHwidHeaders(r, user.UUID, requestIP)
-		if hwidHeaders != nil {
-			log.Debug("Synthetic HWID generated", "hwid", hwidHeaders.Hwid, "platform", hwidHeaders.Platform, "model", hwidHeaders.DeviceModel, "user_agent", hwidHeaders.UserAgent)
+	var targetHost *SubscriptionHost
+	for _, h := range hosts {
+		if h.InboundTag != nil && *h.InboundTag == targetTag {
+			targetHost = &h
+			break
 		}
 	}
-	if hwidHeaders != nil && hwidHeaders.RequestIP == nil {
-		hwidHeaders.RequestIP = stringPtrIfNotEmpty(requestIP)
-	}
-	log.Debug("HWID headers extracted", "hwid_headers", hwidHeaders)
-
-	isHapp := strings.HasPrefix(strings.ToLower(r.Header.Get("User-Agent")), "happ/")
-	headers := renderService.buildSubscriptionHeaders(user, settings, isHapp)
-	maps.Copy(headers, extraHeaders)
-
-	if settings.HwidSettings.Enabled {
-		log.Debug("Checking HWID device limit")
-		allowed, maxReached, notSupported := checkHwidDeviceLimit(ctx, manager, user, hwidHeaders, settings.HwidSettings)
-		log.Debug("HWID device limit checked", "allowed", allowed, "max_reached", maxReached, "not_supported", notSupported)
-		if !allowed {
-			headers["x-hwid-limit"] = "true"
-			if notSupported {
-				headers["x-hwid-not-supported"] = "true"
-			}
-			if maxReached {
-				headers["x-hwid-max-devices-reached"] = "true"
-			}
-			if !notSupported && !maxReached {
-				// device is known but limit is active (e.g. per-user override)
-				headers["x-hwid-active"] = "true"
-			}
-			if settings.HwidSettings.MaxDevicesAnnounce != nil {
-				headers["announce"] = "base64:" + base64EncodeSafe(*settings.HwidSettings.MaxDevicesAnnounce)
-			}
-			if settings.Raw.IsShowCustomRemarks {
-				body := strings.Join(buildHwidRemarks(settings.CustomRemarks, maxReached, notSupported), "\n")
-				writeSubscriptionResponse(w, headers, "text/plain", body)
-				return
-			}
-			writeSubscriptionResponse(w, headers, "text/plain", "")
-			return
-		}
-	} else {
-		if hwidHeaders != nil {
-			log.Debug("HWID disabled, inserting device record")
-			if err := enqueueOrUpsertHwidUserDevice(ctx, manager, user.TID, *hwidHeaders); err != nil {
-				log.Warn("Failed to upsert HWID user device", "error", err)
-			} else {
-				log.Debug("HWID device record upserted")
-			}
-		}
-	}
-
-	filteredHosts := renderService.filterHostsForResponseType(hosts, responseType, false)
-
-	if settings.Raw.IsShowCustomRemarks {
-		statusRemarks := buildStatusRemarks(settings.CustomRemarks, user.Status)
-		if len(statusRemarks) > 0 {
-			writeSubscriptionResponse(w, headers, "text/plain", strings.Join(statusRemarks, "\n"))
-			return
-		}
-		if len(filteredHosts) == 0 && len(settings.CustomRemarks.EmptyHosts) > 0 {
-			writeSubscriptionResponse(w, headers, "text/plain", strings.Join(settings.CustomRemarks.EmptyHosts, "\n"))
-			return
-		}
-	}
-
-	templateType := responseTypeToTemplateType(responseType)
-	var templateData []byte
-	var templateLoaded bool
-
-	normalizeKey := func(k string) string {
-		k = strings.ReplaceAll(k, "_", "")
-		k = strings.ReplaceAll(k, "-", "")
-		return strings.ToUpper(k)
-	}
-
-	if externalOverrides != nil {
-		targetKey := normalizeKey(templateType)
-		var templateName string
-		for k, v := range externalOverrides.Templates {
-			if normalizeKey(k) == targetKey {
-				templateName = v
-				break
-			}
-		}
-
-		if templateName != "" {
-			log.Debug("Using external squad template", "template_type", templateType, "template_name", templateName)
-			var err error
-			_, templateData, err = getSubscriptionTemplateByName(ctx, manager, templateName)
-			if err == nil && len(templateData) > 0 {
-				templateLoaded = true
-			} else {
-				log.Warn("Failed to load external squad template, falling back to global", "template_name", templateName, "error", err)
-			}
-		}
-	}
-
-	if !templateLoaded {
-		templateData, _ = getSubscriptionTemplate(ctx, manager, templateType)
-	}
-
-	if overrideTemplateName != "" {
-		log.Debug("Applying template override from response rules", "template_name", overrideTemplateName)
-		if overrideType, overrideData, err := getSubscriptionTemplateByName(ctx, manager, overrideTemplateName); err == nil {
-			if strings.EqualFold(normalizeKey(overrideType), normalizeKey(templateType)) && len(overrideData) > 0 {
-				templateData = overrideData
-				log.Debug("Template from response rule override applied successfully")
-			} else {
-				log.Warn("Override template type mismatch or empty", "expected", templateType, "actual", overrideType)
-			}
-		} else {
-			log.Warn("Failed to load override template by name", "name", overrideTemplateName, "error", err)
-		}
-	}
-
-	subscription, err := renderService.generateSubscriptionContent(responseType, templateData, filteredHosts, user)
-	if err != nil {
-		log.Warn("Failed to generate subscription content", "error", err)
-		shared.SendError(w, http.StatusInternalServerError, "failed to generate subscription", err, cfg)
+	if targetHost == nil {
+		shared.SendError(w, http.StatusNotFound, "host for tag not found", nil, cfg)
 		return
 	}
 
-	log.Debug("Updating subscription request history")
-	updateSubscriptionRequest(ctx, manager, user.UUID, user.TID, r.Header.Get("User-Agent"), requestIP)
-
-	log.Debug("Writing subscription response", "bytes", len(subscription.Body))
-	writeSubscriptionResponse(w, headers, subscription.ContentType, subscription.Body)
-}
-
-func mapClientTypeToResponseType(clientType string) string {
-	switch strings.ToLower(clientType) {
-	case "json", "v2ray-json":
-		return responseTypeXrayJSON
-	case "mihomo":
-		return responseTypeMihomo
-	case "stash":
-		return responseTypeStash
-	case "clash":
-		return responseTypeClash
-	case "singbox":
-		return responseTypeSingbox
-	case "xray-json":
-		return responseTypeXrayJSON
-	default:
-		return responseTypeBlock
+	settings, err := loadSubscriptionSettings(ctx, db, cfg)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to load settings", err, cfg)
+		return
 	}
-}
 
-func writeSubscriptionResponse(w http.ResponseWriter, headers map[string]string, contentType, body string) {
-	for key, value := range headers {
-		if value == "" {
-			continue
+	renderService := NewRenderService(db, backgroundDB, cfg)
+
+	if reqType == "ss" || reqType == "shadowsocks" {
+		links, err := NewXrayGenerator(cfg).GenerateLinks(user, []SubscriptionHost{*targetHost}, settings)
+		if err != nil || len(links) == 0 {
+			shared.SendError(w, http.StatusInternalServerError, "failed to generate shadowsocks link", err, cfg)
+			return
 		}
-		w.Header().Set(key, value)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte(links[0]))
+		return
+	}
+
+	content, contentType, headers, err := renderService.RenderUserSubscription(
+		ctx, user, r.UserAgent(), reqType, middleware.GetClientIP(r, cfg), ExtractHwidHeaders(r),
+	)
+	if err != nil {
+		log.Warn("Failed to render outline subscription", "short_uuid", shortUUID, "error", err)
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	}
+
+	for k, v := range headers {
+		w.Header().Set(k, v)
 	}
 	if contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(body))
+	_, _ = w.Write(content)
 }
 
-func base64EncodeSafe(value string) string {
-	return base64.StdEncoding.EncodeToString([]byte(value))
-}
+func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgroundDB *sql.DB, cfg *config.BackendConfig, shortUUID string, clientType string) {
+	ctx := r.Context()
+	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 
-func buildHwidRemarks(remarks CustomRemarks, maxReached, notSupported bool) []string {
-	if notSupported && len(remarks.HWIDNotSupported) > 0 {
-		return remarks.HWIDNotSupported
+	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
+	if err != nil {
+		if errorsIsNoRows(err) {
+			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			return
+		}
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		return
 	}
-	if maxReached && len(remarks.HWIDMaxDevicesExceeded) > 0 {
-		return remarks.HWIDMaxDevicesExceeded
+
+	renderService := NewRenderService(db, backgroundDB, cfg)
+
+	requestHeaders := make(map[string]string)
+	for k, v := range r.Header {
+		if len(v) > 0 {
+			requestHeaders[k] = v[0]
+		}
 	}
-	return []string{"Subscription limited"}
+
+	subpageConfigUUID, webpageAllowed, _ := getSubpageConfigForUser(ctx, db, cfg, shortUUID, requestHeaders)
+
+	if webpageAllowed {
+		_ = subpageConfigUUID
+	}
+
+	settings, _ := renderService.LoadSubscriptionSettings(ctx)
+	requestIP := middleware.GetClientIP(r, cfg)
+	hwidHeaders := ResolveHwidHeaders(r, user.UUID, requestIP, settings.HwidSettings)
+
+	content, contentType, headers, err := renderService.RenderUserSubscription(
+		ctx, user, r.UserAgent(), clientType, requestIP, hwidHeaders,
+	)
+	if err != nil {
+		if err == ErrHwidLimitExceeded {
+			shared.SendError(w, http.StatusForbidden, "HWID limit exceeded", nil, cfg)
+			return
+		}
+		if err == ErrHwidRequired {
+			shared.SendError(w, http.StatusBadRequest, "HWID header required", nil, cfg)
+			return
+		}
+		if err == ErrUserDisabled {
+			shared.SendError(w, http.StatusForbidden, "user is disabled or expired", nil, cfg)
+			return
+		}
+		if err == ErrNoHosts {
+			shared.SendError(w, http.StatusNotFound, "no active hosts available", nil, cfg)
+			return
+		}
+		log.Warn("Failed to render subscription", "short_uuid", shortUUID, "error", err)
+		shared.SendError(w, http.StatusInternalServerError, "failed to render subscription", err, cfg)
+		return
+	}
+
+	for k, v := range headers {
+		w.Header().Set(k, v)
+	}
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	_, _ = w.Write(content)
 }
 
-func buildStatusRemarks(remarks CustomRemarks, status string) []string {
-	switch strings.ToUpper(status) {
-	case "EXPIRED":
-		return remarks.ExpiredUsers
-	case "LIMITED":
-		return remarks.LimitedUsers
-	case "DISABLED":
-		return remarks.DisabledUsers
-	default:
+func ResolveHwidHeaders(r *http.Request, userUUID, requestIP string, hwidSettings HwidSettings) *HwidHeaders {
+	hwidHeaders := extractHwidHeaders(r)
+	if hwidHeaders == nil && !hwidSettings.Enabled {
+		hwidHeaders = extractSyntheticHwidHeaders(r, userUUID, requestIP)
+	}
+	if hwidHeaders != nil && hwidHeaders.RequestIP == nil {
+		hwidHeaders.RequestIP = stringPtrIfNotEmpty(requestIP)
+	}
+	return hwidHeaders
+}
+
+func ExtractHwidHeaders(r *http.Request) *HwidHeaders {
+	return extractHwidHeaders(r)
+}
+
+func (s *RenderService) GetSubscriptionUserByShortUUID(ctx context.Context, shortUUID string) (SubscriptionUser, error) {
+	return getSubscriptionUserByShortUUID(ctx, s.db, shortUUID)
+}
+
+func (s *RenderService) GetHostsForUser(ctx context.Context, user SubscriptionUser) ([]SubscriptionHost, error) {
+	return getHostsForUser(ctx, s.db, user)
+}
+
+func (s *RenderService) LoadSubscriptionSettings(ctx context.Context) (SubscriptionSettingsParsed, error) {
+	return loadSubscriptionSettings(ctx, s.db, s.cfg)
+}
+
+func (s *RenderService) LoadExternalSquadOverrides(ctx context.Context, squadUUID string) (*ExternalSquadOverrides, error) {
+	return loadExternalSquadOverrides(ctx, s.db, squadUUID, s.cfg)
+}
+
+func (s *RenderService) MergeSettings(base SubscriptionSettingsParsed, squad *ExternalSquadOverrides) SubscriptionSettingsParsed {
+	return applyExternalSquadOverrides(base, squad)
+}
+
+func (s *RenderService) ApplyHostOverrides(hosts []SubscriptionHost, overrides map[string]HostOverride) []SubscriptionHost {
+	return applyHostOverrides(hosts, overrides)
+}
+
+func (s *RenderService) CheckHwidDeviceLimit(ctx context.Context, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
+	return checkHwidDeviceLimit(ctx, s.db, user, hwid, settings)
+}
+
+func (s *RenderService) UpdateSubscriptionRequest(ctx context.Context, userUUID string, userID int64, userAgent, requestIP string) {
+	updateSubscriptionRequest(ctx, s.backgroundDB, userUUID, userID, userAgent, requestIP)
+}
+
+func (s *RenderService) GetSubscriptionTemplate(ctx context.Context, templateType string) ([]byte, error) {
+	return getSubscriptionTemplate(ctx, s.db, templateType)
+}
+
+func (s *RenderService) GetSubscriptionTemplateByName(ctx context.Context, name string) (string, []byte, error) {
+	return getSubscriptionTemplateByName(ctx, s.db, name)
+}
+
+func (s *RenderService) BuildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
+	return buildResponseHeaders(user, settings, contentType)
+}
+
+func (s *RenderService) MatchResponseRules(rules *subscriptionresponserules.Config, header http.Header) string {
+	return matchResponseRules(rules, header)
+}
+
+func (s *RenderService) DetectClientType(userAgent string) string {
+	return detectClientType(userAgent)
+}
+
+func (s *RenderService) BuildSubscriptionInfoResponse(user SubscriptionUser, settings SubscriptionSettingsParsed, hosts []SubscriptionHost) SubscriptionInfoResponse {
+	return s.buildSubscriptionInfoResponse(user, settings, hosts)
+}
+
+func (s *RenderService) CopyMap(src map[string]string) map[string]string {
+	if src == nil {
 		return nil
+	}
+	dst := make(map[string]string, len(src))
+	maps.Copy(dst, src)
+	return dst
+}
+
+func SubpageConfigPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		path := strings.TrimPrefix(r.URL.Path, "/api/subscriptions/subpage-config/")
+		shortUUID := strings.Trim(path, "/")
+		if shortUUID == "" {
+			shared.SendError(w, http.StatusBadRequest, "shortUuid is required", nil, cfg)
+			return
+		}
+
+		var req struct {
+			RequestHeaders map[string]string `json:"requestHeaders"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req.RequestHeaders == nil || len(req.RequestHeaders) == 0 {
+			req.RequestHeaders = make(map[string]string)
+			for k, v := range r.Header {
+				if len(v) > 0 {
+					req.RequestHeaders[k] = v[0]
+				}
+			}
+		}
+
+		subpageConfigUUID, webpageAllowed, err := getSubpageConfigForUser(r.Context(), db, cfg, shortUUID, req.RequestHeaders)
+		if err != nil {
+			if errorsIsNoRows(err) {
+				shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+				return
+			}
+			shared.SendError(w, http.StatusInternalServerError, "failed to get subpage config", err, cfg)
+			return
+		}
+
+		var uuidPtr *string
+		if subpageConfigUUID != "" {
+			uuidPtr = &subpageConfigUUID
+		}
+
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{
+				"subpageConfigUuid": uuidPtr,
+				"webpageAllowed":    webpageAllowed,
+			},
+		})
 	}
 }

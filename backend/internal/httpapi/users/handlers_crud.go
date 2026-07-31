@@ -21,7 +21,7 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request, service *UserService
 		return
 	}
 
-	response, err := buildUserResponses(r.Context(), service.repo, records, resolveUsersSubscriptionBase(r.Context(), service.repo.manager, r, service.cfg))
+	response, err := buildUserResponses(r.Context(), service.repo, records, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build users response", err, service.cfg)
 		return
@@ -51,7 +51,7 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, service *UserService,
 		return
 	}
 
-	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.manager, r, service.cfg))
+	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build user response", err, service.cfg)
 		return
@@ -78,7 +78,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, service *UserServi
 		return
 	}
 
-	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.manager, r, service.cfg))
+	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build created user response", err, service.cfg)
 		return
@@ -108,7 +108,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, service *UserServi
 		return
 	}
 
-	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{updatedRecord}, resolveUsersSubscriptionBase(r.Context(), service.repo.manager, r, service.cfg))
+	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{updatedRecord}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build updated user response", err, service.cfg)
 		return

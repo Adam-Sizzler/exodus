@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
 
@@ -99,20 +98,20 @@ func (r *CheckHWIDRequest) Validate() error {
 	return nil
 }
 
-func HWIDUserDevicesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func HWIDUserDevicesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGetHWIDDevices(w, r, manager, cfg)
+			handleGetHWIDDevices(w, r, db, cfg)
 		case http.MethodPost:
-			handleCreateHWIDDevice(w, r, manager, cfg)
+			handleCreateHWIDDevice(w, r, db, cfg)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
 	}
 }
 
-func HWIDCheckHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
+func HWIDCheckHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -130,12 +129,12 @@ func HWIDCheckHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendCon
 			return
 		}
 
-		handleCheckHWID(w, r, manager, cfg, req.UserUUID, req.HWID)
+		handleCheckHWID(w, r, db, cfg, req.UserUUID, req.HWID)
 	}
 }
 
-func handleGetHWIDDevices(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
-	records, err := getHWIDDevices(r.Context(), manager)
+func handleGetHWIDDevices(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	records, err := getHWIDDevices(r.Context(), db)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid devices", err, cfg)
 		return
@@ -149,7 +148,7 @@ func handleGetHWIDDevices(w http.ResponseWriter, r *http.Request, manager *dbman
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": result})
 }
 
-func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) {
+func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req CreateHWIDDeviceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
@@ -161,8 +160,7 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 		return
 	}
 
-	// Get user's HWID limit
-	userTID, hwidLimit, err := getUserHWIDLimit(r.Context(), manager, req.UserUUID)
+	userTID, hwidLimit, err := getUserHWIDLimit(r.Context(), db, req.UserUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
@@ -172,8 +170,7 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 		return
 	}
 
-	// Check if HWID already exists for this user
-	exists, err := hwidExistsForUser(r.Context(), manager, userTID, req.HWID)
+	exists, err := hwidExistsForUser(r.Context(), db, userTID, req.HWID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to check hwid", err, cfg)
 		return
@@ -183,9 +180,8 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 		return
 	}
 
-	// Check device limit
 	if hwidLimit != nil && *hwidLimit > 0 {
-		count, err := countUserHWIDDevices(r.Context(), manager, userTID)
+		count, err := countUserHWIDDevices(r.Context(), db, userTID)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to count devices", err, cfg)
 			return
@@ -199,21 +195,18 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 	deviceUUID := uuid.NewString()
 	now := time.Now()
 
-	err = manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		_, err := db.ExecContext(r.Context(), `
-			INSERT INTO hwid_user_devices (
-				uuid, user_t_id, hwid, device_name,
-				first_seen_at, last_seen_at, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		`, deviceUUID, userTID, req.HWID, req.DeviceName, now, now)
-		return err
-	})
+	_, err = db.ExecContext(r.Context(), `
+		INSERT INTO hwid_user_devices (
+			uuid, user_t_id, hwid, device_name,
+			first_seen_at, last_seen_at, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`, deviceUUID, userTID, req.HWID, req.DeviceName, now, now)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to create hwid device", err, cfg)
 		return
 	}
 
-	created, err := getHWIDDeviceByUUID(r.Context(), manager, deviceUUID)
+	created, err := getHWIDDeviceByUUID(r.Context(), db, deviceUUID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch created hwid device", err, cfg)
 		return
@@ -223,8 +216,8 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, manager *dbm
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": convertHWIDRecordToAPI(created)})
 }
 
-func handleCheckHWID(w http.ResponseWriter, r *http.Request, manager *dbmanager.DatabaseManager, cfg *config.BackendConfig, userUUID, hwid string) {
-	userTID, hwidLimit, err := getUserHWIDLimit(r.Context(), manager, userUUID)
+func handleCheckHWID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID, hwid string) {
+	userTID, hwidLimit, err := getUserHWIDLimit(r.Context(), db, userUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
@@ -238,8 +231,7 @@ func handleCheckHWID(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 		DeviceLimit: hwidLimit,
 	}
 
-	// Check if HWID already exists for this user
-	exists, existingHWID, err := hwidExistsForUserWithDetail(r.Context(), manager, userTID, hwid)
+	exists, existingHWID, err := hwidExistsForUserWithDetail(r.Context(), db, userTID, hwid)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to check hwid", err, cfg)
 		return
@@ -252,15 +244,13 @@ func handleCheckHWID(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 		return
 	}
 
-	// Count current devices
-	count, err := countUserHWIDDevices(r.Context(), manager, userTID)
+	count, err := countUserHWIDDevices(r.Context(), db, userTID)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to count devices", err, cfg)
 		return
 	}
 	response.DeviceCount = count
 
-	// Check limit
 	if hwidLimit != nil && *hwidLimit > 0 {
 		if count >= *hwidLimit {
 			response.Allowed = false
@@ -275,71 +265,52 @@ func handleCheckHWID(w http.ResponseWriter, r *http.Request, manager *dbmanager.
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response})
 }
 
-func getHWIDDevices(ctx context.Context, manager *dbmanager.DatabaseManager) ([]HWIDUserDeviceRecord, error) {
+func getHWIDDevices(ctx context.Context, db *sql.DB) ([]HWIDUserDeviceRecord, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT uuid, user_t_id, hwid, device_name,
+			first_seen_at, last_seen_at, created_at, updated_at
+		FROM hwid_user_devices
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	records := make([]HWIDUserDeviceRecord, 0)
-
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid, user_t_id, hwid, device_name,
-				first_seen_at, last_seen_at, created_at, updated_at
-			FROM hwid_user_devices
-			ORDER BY created_at DESC
-		`)
+	for rows.Next() {
+		rec, err := scanHWIDDevice(rows)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		defer rows.Close()
+		records = append(records, rec)
+	}
 
-		for rows.Next() {
-			rec, err := scanHWIDDevice(rows)
-			if err != nil {
-				return err
-			}
-			records = append(records, rec)
-		}
-
-		return rows.Err()
-	})
-
-	return records, err
+	return records, rows.Err()
 }
 
-func getHWIDDeviceByUUID(ctx context.Context, manager *dbmanager.DatabaseManager, deviceUUID string) (HWIDUserDeviceRecord, error) {
-	var record HWIDUserDeviceRecord
+func getHWIDDeviceByUUID(ctx context.Context, db *sql.DB, deviceUUID string) (HWIDUserDeviceRecord, error) {
+	row := db.QueryRowContext(ctx, `
+		SELECT uuid, user_t_id, hwid, device_name,
+			first_seen_at, last_seen_at, created_at, updated_at
+		FROM hwid_user_devices
+		WHERE uuid = $1
+	`, deviceUUID)
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT uuid, user_t_id, hwid, device_name,
-				first_seen_at, last_seen_at, created_at, updated_at
-			FROM hwid_user_devices
-			WHERE uuid = ?
-		`, deviceUUID)
-
-		rec, err := scanHWIDDevice(row)
-		if err != nil {
-			return err
-		}
-		record = rec
-		return nil
-	})
-
-	return record, err
+	return scanHWIDDevice(row)
 }
 
-func getUserHWIDLimit(ctx context.Context, manager *dbmanager.DatabaseManager, userUUID string) (int64, *int, error) {
+func getUserHWIDLimit(ctx context.Context, db *sql.DB, userUUID string) (int64, *int, error) {
 	var userTID int64
 	var hwidDeviceLimit sql.NullInt64
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT t_id, hwid_device_limit
-			FROM users
-			WHERE uuid = ?
-		`, userUUID)
+	row := db.QueryRowContext(ctx, `
+		SELECT t_id, hwid_device_limit
+		FROM users
+		WHERE uuid = $1
+	`, userUUID)
 
-		return row.Scan(&userTID, &hwidDeviceLimit)
-	})
-	if err != nil {
+	if err := row.Scan(&userTID, &hwidDeviceLimit); err != nil {
 		return 0, nil, err
 	}
 
@@ -352,35 +323,30 @@ func getUserHWIDLimit(ctx context.Context, manager *dbmanager.DatabaseManager, u
 	return userTID, limit, nil
 }
 
-func hwidExistsForUser(ctx context.Context, manager *dbmanager.DatabaseManager, userTID int64, hwid string) (bool, error) {
+func hwidExistsForUser(ctx context.Context, db *sql.DB, userTID int64, hwid string) (bool, error) {
 	var exists bool
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT EXISTS(
-				SELECT 1 FROM hwid_user_devices
-				WHERE user_t_id = ? AND hwid = ?
-			)
-		`, userTID, hwid)
+	row := db.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM hwid_user_devices
+			WHERE user_t_id = $1 AND hwid = $2
+		)
+	`, userTID, hwid)
 
-		return row.Scan(&exists)
-	})
-
+	err := row.Scan(&exists)
 	return exists, err
 }
 
-func hwidExistsForUserWithDetail(ctx context.Context, manager *dbmanager.DatabaseManager, userTID int64, hwid string) (bool, string, error) {
+func hwidExistsForUserWithDetail(ctx context.Context, db *sql.DB, userTID int64, hwid string) (bool, string, error) {
 	var hwidValue string
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT hwid FROM hwid_user_devices
-			WHERE user_t_id = ? AND hwid = ?
-			LIMIT 1
-		`, userTID, hwid)
+	row := db.QueryRowContext(ctx, `
+		SELECT hwid FROM hwid_user_devices
+		WHERE user_t_id = $1 AND hwid = $2
+		LIMIT 1
+	`, userTID, hwid)
 
-		return row.Scan(&hwidValue)
-	})
+	err := row.Scan(&hwidValue)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, "", nil
@@ -391,18 +357,15 @@ func hwidExistsForUserWithDetail(ctx context.Context, manager *dbmanager.Databas
 	return true, hwidValue, nil
 }
 
-func countUserHWIDDevices(ctx context.Context, manager *dbmanager.DatabaseManager, userTID int64) (int, error) {
+func countUserHWIDDevices(ctx context.Context, db *sql.DB, userTID int64) (int, error) {
 	var count int
 
-	err := manager.ExecuteHighPriority(func(db dbmanager.DBExecutor) error {
-		row := db.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM hwid_user_devices
-			WHERE user_t_id = ?
-		`, userTID)
+	row := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM hwid_user_devices
+		WHERE user_t_id = $1
+	`, userTID)
 
-		return row.Scan(&count)
-	})
-
+	err := row.Scan(&count)
 	return count, err
 }
 

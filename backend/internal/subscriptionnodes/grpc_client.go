@@ -106,7 +106,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 	}
 
 	cleanPath := normalizeSubPath(state.apiPath)
-	opts, err := grpcauth.GetDialOptions(state.ctx, sm.manager, useMTLS, useTLS, skipVerify, cleanPath, state.grpcAuthToken, "")
+	opts, err := grpcauth.GetDialOptions(state.ctx, sm.db, useMTLS, useTLS, skipVerify, cleanPath, state.grpcAuthToken, "")
 	if err != nil {
 		sm.cfg.Logger.Warn("Failed to build mTLS config for subscription node", "node", state.nodeName, "error", err)
 		sm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("mTLS config failed: %v", err))

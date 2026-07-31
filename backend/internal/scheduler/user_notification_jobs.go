@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/notifications"
 )
 
@@ -65,43 +64,41 @@ func (s *Scheduler) findUsersForExpireNotifications(ctx context.Context) error {
 }
 
 func (s *Scheduler) usersByExpireAt(ctx context.Context, start, end time.Time) ([]userNotificationRecord, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			u.t_id, u.uuid::text, u.username, u.short_uuid, u.status,
+			u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0),
+			u.expire_at, u.last_triggered_threshold, u.created_at
+		FROM users u
+		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		WHERE u.expire_at >= $1 AND u.expire_at < $2
+		ORDER BY u.created_at ASC
+	`, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	users := make([]userNotificationRecord, 0)
-	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT
-				u.t_id, u.uuid::text, u.username, u.short_uuid, u.status,
-				u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0),
-				u.expire_at, u.last_triggered_threshold, u.created_at
-			FROM users u
-			LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
-			WHERE u.expire_at >= ? AND u.expire_at < ?
-			ORDER BY u.created_at ASC
-		`, start, end)
-		if err != nil {
-			return err
+	for rows.Next() {
+		var user userNotificationRecord
+		if scanErr := rows.Scan(
+			&user.TID,
+			&user.UUID,
+			&user.Username,
+			&user.ShortUUID,
+			&user.Status,
+			&user.TrafficLimitBytes,
+			&user.UsedTrafficBytes,
+			&user.ExpireAt,
+			&user.LastTriggeredThreshold,
+			&user.CreatedAt,
+		); scanErr != nil {
+			return nil, scanErr
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var user userNotificationRecord
-			if scanErr := rows.Scan(
-				&user.TID,
-				&user.UUID,
-				&user.Username,
-				&user.ShortUUID,
-				&user.Status,
-				&user.TrafficLimitBytes,
-				&user.UsedTrafficBytes,
-				&user.ExpireAt,
-				&user.LastTriggeredThreshold,
-				&user.CreatedAt,
-			); scanErr != nil {
-				return scanErr
-			}
-			users = append(users, user)
-		}
-		return rows.Err()
-	})
-	return users, err
+		users = append(users, user)
+	}
+	return users, rows.Err()
 }
 
 func (s *Scheduler) findUsersForThresholdNotification(ctx context.Context) error {
@@ -168,8 +165,8 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 
 	values := make([]string, 0, len(thresholds))
 	args := make([]any, 0, len(thresholds))
-	for _, threshold := range thresholds {
-		values = append(values, "(?::int)")
+	for i, threshold := range thresholds {
+		values = append(values, fmt.Sprintf("($%d::int)", i+1))
 		args = append(args, threshold)
 	}
 
@@ -209,34 +206,32 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 			u.created_at
 	`, strings.Join(values, ","))
 
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	users := make([]userNotificationRecord, 0)
-	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, query, args...)
-		if err != nil {
-			return err
+	for rows.Next() {
+		var user userNotificationRecord
+		if scanErr := rows.Scan(
+			&user.TID,
+			&user.UUID,
+			&user.Username,
+			&user.ShortUUID,
+			&user.Status,
+			&user.TrafficLimitBytes,
+			&user.UsedTrafficBytes,
+			&user.ExpireAt,
+			&user.LastTriggeredThreshold,
+			&user.CreatedAt,
+		); scanErr != nil {
+			return nil, scanErr
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var user userNotificationRecord
-			if scanErr := rows.Scan(
-				&user.TID,
-				&user.UUID,
-				&user.Username,
-				&user.ShortUUID,
-				&user.Status,
-				&user.TrafficLimitBytes,
-				&user.UsedTrafficBytes,
-				&user.ExpireAt,
-				&user.LastTriggeredThreshold,
-				&user.CreatedAt,
-			); scanErr != nil {
-				return scanErr
-			}
-			users = append(users, user)
-		}
-		return rows.Err()
-	})
-	return users, err
+		users = append(users, user)
+	}
+	return users, rows.Err()
 }
 
 func (s *Scheduler) findNotConnectedUsersNotification(ctx context.Context) error {
@@ -281,47 +276,45 @@ func (s *Scheduler) findNotConnectedUsersNotification(ctx context.Context) error
 }
 
 func (s *Scheduler) notConnectedUsers(ctx context.Context, start, end time.Time) ([]userNotificationRecord, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			u.t_id, u.uuid::text, u.username, u.short_uuid, u.status,
+			u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0),
+			u.expire_at, u.last_triggered_threshold, u.created_at
+		FROM users u
+		INNER JOIN user_traffic ut ON ut.t_id = u.t_id
+		WHERE u.status = 'ACTIVE'
+		  AND ut.first_connected_at IS NULL
+		  AND ut.online_at IS NULL
+		  AND u.created_at >= $1
+		  AND u.created_at < $2
+		ORDER BY u.created_at ASC
+	`, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	users := make([]userNotificationRecord, 0)
-	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT
-				u.t_id, u.uuid::text, u.username, u.short_uuid, u.status,
-				u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0),
-				u.expire_at, u.last_triggered_threshold, u.created_at
-			FROM users u
-			INNER JOIN user_traffic ut ON ut.t_id = u.t_id
-			WHERE u.status = 'ACTIVE'
-			  AND ut.first_connected_at IS NULL
-			  AND ut.online_at IS NULL
-			  AND u.created_at >= ?
-			  AND u.created_at < ?
-			ORDER BY u.created_at ASC
-		`, start, end)
-		if err != nil {
-			return err
+	for rows.Next() {
+		var user userNotificationRecord
+		if scanErr := rows.Scan(
+			&user.TID,
+			&user.UUID,
+			&user.Username,
+			&user.ShortUUID,
+			&user.Status,
+			&user.TrafficLimitBytes,
+			&user.UsedTrafficBytes,
+			&user.ExpireAt,
+			&user.LastTriggeredThreshold,
+			&user.CreatedAt,
+		); scanErr != nil {
+			return nil, scanErr
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var user userNotificationRecord
-			if scanErr := rows.Scan(
-				&user.TID,
-				&user.UUID,
-				&user.Username,
-				&user.ShortUUID,
-				&user.Status,
-				&user.TrafficLimitBytes,
-				&user.UsedTrafficBytes,
-				&user.ExpireAt,
-				&user.LastTriggeredThreshold,
-				&user.CreatedAt,
-			); scanErr != nil {
-				return scanErr
-			}
-			users = append(users, user)
-		}
-		return rows.Err()
-	})
-	return users, err
+		users = append(users, user)
+	}
+	return users, rows.Err()
 }
 
 func (u userNotificationRecord) notificationData() map[string]any {

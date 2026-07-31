@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/notifications"
 )
 
@@ -22,75 +21,73 @@ type nodeTrafficResetTarget struct {
 
 func (s *Scheduler) resetNodeTraffic(ctx context.Context) error {
 	now := time.Now()
-	targets := make([]nodeTrafficResetTarget, 0)
-
-	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT
-				n.uuid::text,
-				COALESCE(n.traffic_used_bytes, 0),
-				COALESCE(n.traffic_reset_day, 1),
-				n.created_at,
-				MAX(nth.reset_at)
-			FROM nodes n
-			LEFT JOIN nodes_traffic_usage_history nth ON nth.node_uuid = n.uuid
-			WHERE n.is_traffic_tracking_active = true
-			GROUP BY n.uuid, n.traffic_used_bytes, n.traffic_reset_day, n.created_at, n.view_position, n.name
-			ORDER BY n.view_position ASC, n.name ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var target nodeTrafficResetTarget
-			if scanErr := rows.Scan(&target.UUID, &target.Bytes, &target.ResetDay, &target.CreatedAt, &target.LastResetAt); scanErr != nil {
-				return scanErr
-			}
-			scheduledAt, due := nodeTrafficResetDue(now, target.ResetDay, target.CreatedAt, target.LastResetAt)
-			if !due {
-				continue
-			}
-			target.ScheduledAt = scheduledAt
-			targets = append(targets, target)
-		}
-		if rowsErr := rows.Err(); rowsErr != nil {
-			return rowsErr
-		}
-		if len(targets) == 0 {
-			return nil
-		}
-
-		tx, err := db.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		for _, target := range targets {
-			if strings.TrimSpace(target.UUID) == "" {
-				continue
-			}
-			if _, execErr := tx.ExecContext(ctx, `
-				INSERT INTO nodes_traffic_usage_history (node_uuid, traffic_bytes, reset_at)
-				VALUES (?, ?, CURRENT_TIMESTAMP)
-			`, target.UUID, target.Bytes); execErr != nil {
-				_ = tx.Rollback()
-				return execErr
-			}
-			if _, execErr := tx.ExecContext(ctx, `
-				UPDATE nodes
-				SET traffic_used_bytes = 0, updated_at = CURRENT_TIMESTAMP
-				WHERE uuid = ?
-			`, target.UUID); execErr != nil {
-				_ = tx.Rollback()
-				return execErr
-			}
-		}
-		return tx.Commit()
-	})
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			n.uuid::text,
+			COALESCE(n.traffic_used_bytes, 0),
+			COALESCE(n.traffic_reset_day, 1),
+			n.created_at,
+			MAX(nth.reset_at)
+		FROM nodes n
+		LEFT JOIN nodes_traffic_usage_history nth ON nth.node_uuid = n.uuid
+		WHERE n.is_traffic_tracking_active = true
+		GROUP BY n.uuid, n.traffic_used_bytes, n.traffic_reset_day, n.created_at, n.view_position, n.name
+		ORDER BY n.view_position ASC, n.name ASC
+	`)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
+
+	targets := make([]nodeTrafficResetTarget, 0)
+	for rows.Next() {
+		var target nodeTrafficResetTarget
+		if scanErr := rows.Scan(&target.UUID, &target.Bytes, &target.ResetDay, &target.CreatedAt, &target.LastResetAt); scanErr != nil {
+			return scanErr
+		}
+		scheduledAt, due := nodeTrafficResetDue(now, target.ResetDay, target.CreatedAt, target.LastResetAt)
+		if !due {
+			continue
+		}
+		target.ScheduledAt = scheduledAt
+		targets = append(targets, target)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	for _, target := range targets {
+		if strings.TrimSpace(target.UUID) == "" {
+			continue
+		}
+		if _, execErr := tx.ExecContext(ctx, `
+			INSERT INTO nodes_traffic_usage_history (node_uuid, traffic_bytes, reset_at)
+			VALUES ($1, $2, CURRENT_TIMESTAMP)
+		`, target.UUID, target.Bytes); execErr != nil {
+			return execErr
+		}
+		if _, execErr := tx.ExecContext(ctx, `
+			UPDATE nodes
+			SET traffic_used_bytes = 0, updated_at = CURRENT_TIMESTAMP
+			WHERE uuid = $1
+		`, target.UUID); execErr != nil {
+			return execErr
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
 	if len(targets) > 0 {
 		s.cfg.Logger.Info("Node traffic reset completed", "nodes", len(targets), "scheduled_at", targets[0].ScheduledAt.Format(time.RFC3339))
 	}
@@ -156,32 +153,29 @@ type nodeReviewRecord struct {
 }
 
 func (s *Scheduler) reviewNodes(ctx context.Context) error {
-	nodes := make([]nodeReviewRecord, 0)
-	err := s.manager.ExecuteLowPriority(func(db dbmanager.DBExecutor) error {
-		rows, err := db.QueryContext(ctx, `
-			SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(traffic_reset_day, 1), COALESCE(notify_percent, 0)
-			FROM nodes
-			WHERE is_traffic_tracking_active = true
-			  AND is_disabled = false
-			  AND COALESCE(notify_percent, 0) > 0
-			  AND COALESCE(traffic_limit_bytes, 0) > 0
-			ORDER BY view_position ASC, name ASC
-		`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var node nodeReviewRecord
-			if scanErr := rows.Scan(&node.UUID, &node.Name, &node.Address, &node.Port, &node.TrafficUsedBytes, &node.TrafficLimitBytes, &node.TrafficResetDay, &node.NotifyPercent); scanErr != nil {
-				return scanErr
-			}
-			nodes = append(nodes, node)
-		}
-		return rows.Err()
-	})
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT uuid::text, name, address, COALESCE(port, 0), COALESCE(traffic_used_bytes, 0), COALESCE(traffic_limit_bytes, 0), COALESCE(traffic_reset_day, 1), COALESCE(notify_percent, 0)
+		FROM nodes
+		WHERE is_traffic_tracking_active = true
+		  AND is_disabled = false
+		  AND COALESCE(notify_percent, 0) > 0
+		  AND COALESCE(traffic_limit_bytes, 0) > 0
+		ORDER BY view_position ASC, name ASC
+	`)
 	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	nodes := make([]nodeReviewRecord, 0)
+	for rows.Next() {
+		var node nodeReviewRecord
+		if scanErr := rows.Scan(&node.UUID, &node.Name, &node.Address, &node.Port, &node.TrafficUsedBytes, &node.TrafficLimitBytes, &node.TrafficResetDay, &node.NotifyPercent); scanErr != nil {
+			return scanErr
+		}
+		nodes = append(nodes, node)
+	}
+	if err := rows.Err(); err != nil {
 		return err
 	}
 

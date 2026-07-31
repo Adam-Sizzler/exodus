@@ -1,13 +1,13 @@
 package squads
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
-	dbmanager "exodus/internal/db/manager"
 	"exodus/internal/httpapi/shared"
 
 	"github.com/google/uuid"
@@ -189,9 +189,16 @@ func handleGetInternalSquadAccessibleNodes(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if nodes == nil {
+		nodes = []InternalSquadAccessibleNode{}
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"response": nodes,
+		"response": map[string]interface{}{
+			"squadUuid":       squadUUID,
+			"accessibleNodes": nodes,
+		},
 	})
 }
 
@@ -278,8 +285,8 @@ func handleGetConfigProfilesWithInbounds(w http.ResponseWriter, r *http.Request,
 	})
 }
 
-func NodesWithConfigHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(manager)
+func NodesWithConfigHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
@@ -298,8 +305,8 @@ func NodesWithConfigHandler(manager *dbmanager.DatabaseManager, cfg *config.Back
 	}
 }
 
-func InboundsWithProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(manager)
+func InboundsWithProfilesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
@@ -318,8 +325,8 @@ func InboundsWithProfilesHandler(manager *dbmanager.DatabaseManager, cfg *config
 	}
 }
 
-func AllSquadsSummaryHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(manager)
+func AllSquadsSummaryHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
@@ -338,8 +345,8 @@ func AllSquadsSummaryHandler(manager *dbmanager.DatabaseManager, cfg *config.Bac
 	}
 }
 
-func SquadInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(manager)
+func SquadInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -390,8 +397,8 @@ func SquadInboundsHandler(manager *dbmanager.DatabaseManager, cfg *config.Backen
 	}
 }
 
-func SquadMembersHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(manager)
+func SquadMembersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -442,8 +449,8 @@ func SquadMembersHandler(manager *dbmanager.DatabaseManager, cfg *config.Backend
 	}
 }
 
-func SquadDetailsHandler(manager *dbmanager.DatabaseManager, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(manager)
+func SquadDetailsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
