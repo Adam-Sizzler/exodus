@@ -1,5 +1,8 @@
 certs/
-frontend/dist/
+dist/
+**/dist/
+node_modules/
+**/node_modules/
 frontend_/
 
 *.log
@@ -10,7 +13,6 @@ frontend_/
 
 !README.md
 !frontend/public/help-articles/**/*.md
-node_modules
 
 .env
 
