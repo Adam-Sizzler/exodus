@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,34 +18,68 @@ type revokeUserSubscriptionRequest struct {
 	RevokeOnlyPasswords bool `json:"revokeOnlyPasswords"`
 }
 
+// resolveActionUserUUID mirrors upstream: these routes' contract param is always
+// numeric (numberParamSchema), so we resolve strictly by id — no uuid/short_uuid/
+// username fallback matching, matching getUserByUniqueFields({ id }) in Remnawave.
+func resolveActionUserUUID(w http.ResponseWriter, r *http.Request, service *UserService, identifier string) (string, bool) {
+	id, err := strconv.ParseInt(strings.TrimSpace(identifier), 10, 64)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "userId must be numeric", err, service.cfg)
+		return "", false
+	}
+	record, err := service.repo.getUserRecordByID(r.Context(), id)
+	if err != nil {
+		handleUserActionError(w, err, service.cfg, "failed to resolve user")
+		return "", false
+	}
+	return record.UUID, true
+}
+
 func handleEnableUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
-	err := service.EnableUser(r.Context(), userUUID)
+	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
+	if !ok {
+		return
+	}
+	err := service.EnableUser(r.Context(), resolvedUUID)
 	if err != nil {
 		handleUserActionError(w, err, service.cfg, "failed to enable user")
 		return
 	}
-	sendUpdatedUserResponse(w, r, service, userUUID)
+	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
 func handleDisableUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
-	err := service.DisableUser(r.Context(), userUUID)
+	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
+	if !ok {
+		return
+	}
+	err := service.DisableUser(r.Context(), resolvedUUID)
 	if err != nil {
 		handleUserActionError(w, err, service.cfg, "failed to disable user")
 		return
 	}
-	sendUpdatedUserResponse(w, r, service, userUUID)
+	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
 func handleResetUserTraffic(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
-	err := service.ResetUserTraffic(r.Context(), userUUID)
+	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
+	if !ok {
+		return
+	}
+	err := service.ResetUserTraffic(r.Context(), resolvedUUID)
 	if err != nil {
 		handleUserActionError(w, err, service.cfg, "failed to reset user traffic")
 		return
 	}
-	sendUpdatedUserResponse(w, r, service, userUUID)
+	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
 func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
+	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
+	if !ok {
+		return
+	}
+
 	req := revokeUserSubscriptionRequest{}
 	if r.Body != nil {
 		body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
@@ -56,12 +91,12 @@ func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, servic
 		}
 	}
 
-	err := service.RevokeUserSubscription(r.Context(), userUUID, req)
+	err := service.RevokeUserSubscription(r.Context(), resolvedUUID, req)
 	if err != nil {
 		handleUserWriteError(w, err, service.cfg)
 		return
 	}
-	sendUpdatedUserResponse(w, r, service, userUUID)
+	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
 func sendUpdatedUserResponse(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
@@ -128,6 +163,10 @@ func handleExtendUser(w http.ResponseWriter, r *http.Request, service *UserServi
 		Days       int `json:"days"`
 		ExtendDays int `json:"extendDays"`
 	}
+	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
+	if !ok {
+		return
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
@@ -140,10 +179,10 @@ func handleExtendUser(w http.ResponseWriter, r *http.Request, service *UserServi
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
 	}
-	err := service.ExtendUserExpirationDate(r.Context(), userUUID, days)
+	err := service.ExtendUserExpirationDate(r.Context(), resolvedUUID, days)
 	if err != nil {
 		handleUserActionError(w, err, service.cfg, "failed to extend user expiration date")
 		return
 	}
-	sendUpdatedUserResponse(w, r, service, userUUID)
+	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }

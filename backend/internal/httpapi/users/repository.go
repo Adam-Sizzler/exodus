@@ -54,6 +54,34 @@ func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, e
 	return records, nil
 }
 
+// getUserRecordByID resolves a user strictly by numeric primary key, matching
+// upstream Remnawave's getUserByUniqueFields({ id }) used for the by-id GET
+// route and all single-user actions (enable/disable/reset-traffic/revoke/extend),
+// whose contract param schema is numberParamSchema — always a number, never a
+// uuid/short_uuid/username. No fallback matching against other columns.
+func (r *UserRepository) getUserRecordByID(ctx context.Context, id int64) (userRecord, error) {
+	query := `
+		SELECT
+			u.id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+			u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
+			u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+			u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+			u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
+			u.last_triggered_threshold, u.created_at, u.updated_at,
+			COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
+			ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
+		FROM users u
+		LEFT JOIN user_traffic ut ON ut.id = u.id
+		WHERE u.id = $1
+	`
+	row := r.db.QueryRowContext(ctx, query, id)
+	record, scanErr := scanUserRecord(row)
+	if errors.Is(scanErr, sql.ErrNoRows) {
+		return record, errUserNotFound
+	}
+	return record, scanErr
+}
+
 func (r *UserRepository) getUserRecordByUUID(ctx context.Context, identifier string) (userRecord, error) {
 	identifier = strings.TrimSpace(identifier)
 	if identifier == "" {
