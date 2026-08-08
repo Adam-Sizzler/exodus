@@ -22,4 +22,5 @@ var GetBandwidthStatsCommand;
             bandwidthCurrentYear: base_stat_schema_1.BaseStatSchema,
         }),
     });
+
 })(GetBandwidthStatsCommand || (exports.GetBandwidthStatsCommand = GetBandwidthStatsCommand = {}));

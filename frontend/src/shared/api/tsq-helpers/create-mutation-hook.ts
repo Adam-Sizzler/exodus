@@ -3,13 +3,13 @@ import { z } from 'zod'
 
 import { instance } from '../axios'
 import { createUrl, handleRequestError } from '../helpers'
-import { CreateMutationHookArgs } from '../interfaces'
+import { CreateMutationHookArgs, MutationResponse } from '../interfaces'
 
 export function createMutationHook<
-    RouteParamsSchema extends z.ZodType,
-    RequestQuerySchema extends z.ZodType,
+    RouteParamsSchema extends z.ZodType<Record<string, unknown>>,
+    RequestQuerySchema extends z.ZodType<Record<string, unknown>>,
     BodySchema extends z.ZodType,
-    ResponseSchema extends z.ZodType
+    ResponseSchema extends undefined | z.ZodType<{ response: unknown }> = undefined
 >({
     endpoint,
     requestMethod,
@@ -43,23 +43,26 @@ export function createMutationHook<
             const url = createUrl(baseUrl, query, route)
 
             return instance
-                .request<z.infer<ResponseSchema>>({
+                .request({
                     method: requestMethod,
                     url,
                     data: bodySchema?.parse(variables)
                 })
                 .then(async (response) => {
+                    if (!responseSchema) {
+                        return undefined as MutationResponse<ResponseSchema>
+                    }
                     const result = await responseSchema.safeParseAsync(response.data)
                     if (!result.success) {
                         throw result.error
                     }
-                    return result.data.response
+                    return result.data.response as MutationResponse<ResponseSchema>
                 })
                 .catch((error) => handleRequestError(error))
         }
 
         return useMutation<
-            z.infer<ResponseSchema>['response'],
+            MutationResponse<ResponseSchema>,
             Error,
             {
                 mutationFns?: Partial<typeof rMutationParams>

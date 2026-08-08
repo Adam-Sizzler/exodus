@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.INTERNAL_CACHE_KEYS_TTL = exports.INTERNAL_CACHE_KEYS = exports.CACHE_KEYS_TTL = exports.CACHE_KEYS = void 0;
+exports.EXPORT_TO_STREAM_KEYS = exports.INTERNAL_CACHE_KEYS_TTL = exports.INTERNAL_CACHE_KEYS = exports.CACHE_KEYS_TTL = exports.CACHE_KEYS = void 0;
 exports.CACHE_KEYS = {
     SUBSCRIPTION_SETTINGS: 'subscription_settings',
     EXTERNAL_SQUAD_SETTINGS: (uuid) => `external_squad_settings:${uuid}`,
@@ -15,6 +15,7 @@ exports.CACHE_KEYS = {
     NODE_XRAY_UPTIME: (uuid) => `node_xray_uptime:${uuid}`,
     RAW_INBOUND: (uuid) => `raw_inbound:${uuid}`,
     XRAY_JSON_TEMPLATE: (uuid) => `xray_json_template:${uuid}`,
+    EXTERNAL_SQUAD_TEMPLATE_NAME: (uuid, type) => `external_squad_template_name:${uuid}:${type}`,
 };
 exports.CACHE_KEYS_TTL = {
     EXODUS_SETTINGS: 86400, // 1 day
@@ -25,6 +26,7 @@ exports.CACHE_KEYS_TTL = {
     NODE_XRAY_UPTIME: 16, // 16 seconds
     RAW_INBOUND: 3600, // 1 hour
     XRAY_JSON_TEMPLATE: 3600, // 1 hour
+    EXTERNAL_SQUAD_TEMPLATE_NAME: 3600, // 1 hour
 };
 exports.INTERNAL_CACHE_KEYS = {
     NODE_USER_USAGE_PREFIX: 'node_user_usage:',
@@ -35,4 +37,10 @@ exports.INTERNAL_CACHE_KEYS = {
 };
 exports.INTERNAL_CACHE_KEYS_TTL = {
     NODE_USER_USAGE: 10800, // 3 hours in seconds
+};
+exports.EXPORT_TO_STREAM_KEYS = {
+    PREFIX: 'ioraw:',
+    USER_USAGE: 'export:user_usage',
+    SUBSCRIPTION_REQUESTS: 'export:subscription_requests',
+    NODE_CONNECTIONS: 'export:node_connections',
 };

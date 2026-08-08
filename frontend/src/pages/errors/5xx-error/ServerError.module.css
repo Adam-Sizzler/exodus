@@ -31,10 +31,12 @@
     }
 }
 
-.description {
-    max-width: rem(540px);
+.details {
+    max-width: rem(720px);
+    max-height: rem(240px);
     margin: auto;
-    margin-top: var(--mantine-spacing-xl);
-    margin-bottom: calc(var(--mantine-spacing-xl) * 1.5);
-    color: var(--mantine-color-blue-1);
+    overflow: auto;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
 }

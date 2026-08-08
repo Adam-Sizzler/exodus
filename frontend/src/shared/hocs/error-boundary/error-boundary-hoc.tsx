@@ -1,10 +1,31 @@
-import { FC } from 'react'
-import { ErrorBoundary, ErrorBoundaryProps } from 'react-error-boundary'
+import { ComponentType, FC, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { Outlet } from 'react-router'
 
-export const ErrorBoundaryHoc: FC<ErrorBoundaryProps> = (props) => {
+export interface ErrorBoundaryFallbackProps {
+    componentStack: null | string
+    error: unknown
+    resetErrorBoundary: () => void
+}
+
+interface IProps {
+    FallbackComponent: ComponentType<ErrorBoundaryFallbackProps>
+}
+
+export const ErrorBoundaryHoc: FC<IProps> = ({ FallbackComponent }) => {
+    const [componentStack, setComponentStack] = useState<null | string>(null)
+
     return (
-        <ErrorBoundary {...props}>
+        <ErrorBoundary
+            fallbackRender={({ error, resetErrorBoundary }) => (
+                <FallbackComponent
+                    componentStack={componentStack}
+                    error={error}
+                    resetErrorBoundary={resetErrorBoundary}
+                />
+            )}
+            onError={(_error, info) => setComponentStack(info.componentStack ?? null)}
+        >
             <Outlet />
         </ErrorBoundary>
     )

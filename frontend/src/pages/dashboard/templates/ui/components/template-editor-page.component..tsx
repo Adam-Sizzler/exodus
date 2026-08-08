@@ -1,17 +1,17 @@
 import { ActionIcon, Group } from '@mantine/core'
-import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
+import { GetHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
 import { SubscriptionTemplateEditorWidget } from '@widgets/dashboard/templates/subscription-template-editor'
 import { TbArrowBackUp } from 'react-icons/tb'
 import { useNavigate } from 'react-router'
 
+import { HelpActionIconShared } from '@shared/_modals/universal'
 import { ROUTES } from '@shared/constants'
 import { Page, PageHeaderShared } from '@shared/ui'
 import { getCoreLogoFromType } from '@shared/ui/get-core-logo-from-type'
-import { HelpActionIconShared } from '@shared/ui/help-drawer'
 
 interface Props {
     editorType: 'json' | 'yaml'
-    hosts: GetAllHostsCommand.Response['response']
+    hosts: GetHostsCommand.Response['response']
     template: GetSubscriptionTemplateCommand.Response['response']
     title: string
 }

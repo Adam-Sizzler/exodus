@@ -3,22 +3,32 @@ import { modals } from '@mantine/modals'
 import { useTranslation } from 'react-i18next'
 import { TbTrash } from 'react-icons/tb'
 
-import { useDeleteUser } from '@shared/api/hooks'
+import { hideModal } from '@shared/_modals/show-modal'
+import { QueryKeys, useDeleteUser } from '@shared/api/hooks'
+import { queryClient } from '@shared/api/query-client'
 
-import { useUserModalStoreActions } from '@entities/dashboard/user-modal-store/user-modal-store'
-
-import { IProps } from './interfaces'
+interface IProps {
+    userId: number
+}
 
 export function DeleteUserFeature(props: IProps) {
-    const { userUuid } = props
+    const { userId } = props
     const { t } = useTranslation()
-
-    const actions = useUserModalStoreActions()
 
     const { mutate: deleteUser, isPending: isDeleteUserPending } = useDeleteUser({
         mutationFns: {
             onSuccess: () => {
-                actions.changeModalState(false)
+                hideModal('users_viewUserModal')
+
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.users.getAllUsers._def
+                })
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.users.getUserTags.queryKey
+                })
+                queryClient.refetchQueries({
+                    queryKey: QueryKeys.system.getSystemStats.queryKey
+                })
             }
         }
     })
@@ -26,27 +36,30 @@ export function DeleteUserFeature(props: IProps) {
     const handleDeleteUser = () => {
         deleteUser({
             route: {
-                uuid: userUuid ?? ''
+                userId: userId
             }
         })
     }
 
     const openModal = () =>
         modals.openConfirmModal({
-            title: t('common.delete'),
+            title: t('common.confirm-action'),
             children: t('common.confirm-action-description'),
             labels: {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
             centered: true,
-            confirmProps: { color: 'red' },
+            confirmProps: { color: 'red', variant: 'soft' },
+            cancelProps: {
+                variant: 'subtle'
+            },
             onConfirm: () => handleDeleteUser()
         })
 
     return (
         <Menu.Item
-            color="red.5"
+            color="red"
             leftSection={
                 isDeleteUserPending ? <Loader color="red" size={16} /> : <TbTrash size={16} />
             }

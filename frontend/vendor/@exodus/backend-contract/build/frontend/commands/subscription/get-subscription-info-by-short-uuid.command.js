@@ -10,10 +10,11 @@ var GetSubscriptionInfoByShortUuidCommand;
     GetSubscriptionInfoByShortUuidCommand.url = api_1.REST_API.SUBSCRIPTION.GET_INFO;
     GetSubscriptionInfoByShortUuidCommand.TSQ_url = GetSubscriptionInfoByShortUuidCommand.url(':shortUuid');
     GetSubscriptionInfoByShortUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_ROUTES.GET_INFO(':shortUuid'), 'get', 'Get Subscription Info by Short UUID', { scope: 'get', kind: 'read' });
-    GetSubscriptionInfoByShortUuidCommand.RequestSchema = zod_1.z.object({
+    GetSubscriptionInfoByShortUuidCommand.RequestParamSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
     GetSubscriptionInfoByShortUuidCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionInfoSchema,
     });
+
 })(GetSubscriptionInfoByShortUuidCommand || (exports.GetSubscriptionInfoByShortUuidCommand = GetSubscriptionInfoByShortUuidCommand = {}));

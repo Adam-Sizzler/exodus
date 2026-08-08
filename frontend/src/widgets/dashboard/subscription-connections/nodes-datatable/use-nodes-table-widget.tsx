@@ -1,6 +1,6 @@
 import { GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { ActionIcon, Avatar, Badge, Group, Text } from '@mantine/core'
-import { DataTableColumn } from 'mantine-datatable'
+import { DataTableColumn } from '@kastov/mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'
 import { TbEdit } from 'react-icons/tb'
 import { TFunction } from 'i18next'

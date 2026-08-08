@@ -1,12 +1,8 @@
 import { Stack } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { HwidInspectorLeaderboardWidget } from '@widgets/dashboard/hwid-inspector/hwid-inspector-leaderboard'
+import { HwidInspectorMetrics } from '@widgets/dashboard/hwid-inspector/hwid-inspector-metrics'
 import { HwidInspectorTableWidget } from '@widgets/dashboard/hwid-inspector/hwid-inspector-table'
-import { DetailedUserInfoDrawerWidget } from '@widgets/dashboard/users/detailed-user-info-drawer/detailed-user-info-drawer.widget'
-import { HwidInspectorMetrics } from '@widgets/dashboard/users/hwid-inspector-metrics'
-import { InternalSquadsDrawerWithStore } from '@widgets/dashboard/users/internal-squads-drawer-with-store'
-import { UserAccessibleNodesModalWidget } from '@widgets/dashboard/users/user-accessible-nodes-modal/user-accessible-nodes.modal.widget'
-import { ViewUserModal } from '@widgets/dashboard/users/view-user-modal'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 
@@ -39,11 +35,6 @@ export default function HwidInspectorPageComponent() {
                     <HwidInspectorTableWidget />
                 </motion.div>
             </Stack>
-
-            <ViewUserModal key="view-user-modal" />
-            <DetailedUserInfoDrawerWidget key="detailed-user-info-drawer" />
-            <UserAccessibleNodesModalWidget key="user-accessible-nodes-modal" />
-            <InternalSquadsDrawerWithStore key="internal-squads-drawer-with-store" />
         </Page>
     )
 }

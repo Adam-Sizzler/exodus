@@ -24,7 +24,6 @@ var GetTopUsersByHwidDevicesCommand;
     GetTopUsersByHwidDevicesCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             users: zod_1.z.array(zod_1.z.object({
-                userUuid: zod_1.z.string().uuid(),
                 id: zod_1.z.number(),
                 username: zod_1.z.string(),
                 devicesCount: zod_1.z.number(),
@@ -32,4 +31,5 @@ var GetTopUsersByHwidDevicesCommand;
             total: zod_1.z.number(),
         }),
     });
+
 })(GetTopUsersByHwidDevicesCommand || (exports.GetTopUsersByHwidDevicesCommand = GetTopUsersByHwidDevicesCommand = {}));

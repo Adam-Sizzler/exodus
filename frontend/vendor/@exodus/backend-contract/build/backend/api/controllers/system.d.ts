@@ -5,7 +5,9 @@ export declare const SYSTEM_ROUTES: {
         readonly BANDWIDTH_STATS: "stats/bandwidth";
         readonly NODES_STATS: "stats/nodes";
         readonly RECAP: "stats/recap";
+        readonly DIGEST: "stats/digest";
         readonly NODES_METRICS: "nodes/metrics";
+        readonly HTTP: "stats/http";
     };
     readonly TOOLS: {
         readonly GENERATE_X25519: "tools/x25519/generate";

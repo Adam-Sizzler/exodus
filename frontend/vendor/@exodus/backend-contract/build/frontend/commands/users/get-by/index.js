@@ -14,9 +14,5 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-__exportStar(require("./get-user-by-email.command"), exports);
-__exportStar(require("./get-user-by-id.command"), exports);
 __exportStar(require("./get-user-by-short-uuid.command"), exports);
-__exportStar(require("./get-user-by-tag.command"), exports);
-__exportStar(require("./get-user-by-telegram-id.command"), exports);
 __exportStar(require("./get-user-by-username.command"), exports);

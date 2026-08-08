@@ -1,5 +1,5 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
-import { FindAllApiTokensCommand, GetApiTokenScopesCommand } from '@exodus/backend-contract'
+import { GetApiTokensCommand, GetApiTokenScopesCommand } from '@exodus/backend-contract'
 import { keepPreviousData } from '@tanstack/react-query'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
@@ -14,8 +14,8 @@ export const apiTokensQueryKeys = createQueryKeys('apiTokens', {
 })
 
 export const useGetApiTokens = createGetQueryHook({
-    endpoint: FindAllApiTokensCommand.TSQ_url,
-    responseSchema: FindAllApiTokensCommand.ResponseSchema,
+    endpoint: GetApiTokensCommand.TSQ_url,
+    responseSchema: GetApiTokensCommand.ResponseSchema,
     getQueryKey: () => apiTokensQueryKeys.getAllApiTokens.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,

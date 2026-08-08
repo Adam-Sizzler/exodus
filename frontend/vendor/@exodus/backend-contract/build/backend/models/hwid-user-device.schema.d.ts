@@ -7,27 +7,7 @@ export declare const HwidUserDeviceSchema: z.ZodObject<{
     deviceModel: z.ZodNullable<z.ZodString>;
     userAgent: z.ZodNullable<z.ZodString>;
     requestIp: z.ZodNullable<z.ZodString>;
-    createdAt: z.ZodEffects<z.ZodString, Date, string>;
-    updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-}, "strip", z.ZodTypeAny, {
-    hwid: string;
-    createdAt: Date;
-    updatedAt: Date;
-    userId: number;
-    platform: string | null;
-    osVersion: string | null;
-    deviceModel: string | null;
-    userAgent: string | null;
-    requestIp: string | null;
-}, {
-    hwid: string;
-    createdAt: string;
-    updatedAt: string;
-    userId: number;
-    platform: string | null;
-    osVersion: string | null;
-    deviceModel: string | null;
-    userAgent: string | null;
-    requestIp: string | null;
-}>;
+    createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+    updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+}, z.core.$strip>;
 //# sourceMappingURL=hwid-user-device.schema.d.ts.map

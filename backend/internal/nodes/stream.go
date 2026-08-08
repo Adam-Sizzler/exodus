@@ -192,7 +192,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 		}
 		if len(usernames) > 0 {
 			rows, queryErr := nm.db.Query(`
-				SELECT t_id, username
+				SELECT id, username
 				FROM users
 				WHERE status = 'ACTIVE' AND username = ANY($1)
 			`, usernames)
@@ -216,9 +216,9 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 						ids = append(ids, userID)
 					}
 					firstRows, firstErr := nm.db.Query(`
-						SELECT t_id, first_connected_at IS NOT NULL
+						SELECT id, first_connected_at IS NOT NULL
 						FROM user_traffic
-						WHERE t_id = ANY($1)
+						WHERE id = ANY($1)
 					`, ids)
 					if firstErr == nil {
 						for firstRows.Next() {

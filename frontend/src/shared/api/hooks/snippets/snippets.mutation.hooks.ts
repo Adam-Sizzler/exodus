@@ -9,7 +9,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useUpdateSnippet = createMutationHook({
     endpoint: UpdateSnippetCommand.TSQ_url,
-    bodySchema: UpdateSnippetCommand.RequestSchema,
+    bodySchema: UpdateSnippetCommand.RequestBodySchema,
     responseSchema: UpdateSnippetCommand.ResponseSchema,
     requestMethod: UpdateSnippetCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -33,8 +33,7 @@ export const useUpdateSnippet = createMutationHook({
 
 export const useDeleteSnippet = createMutationHook({
     endpoint: DeleteSnippetCommand.TSQ_url,
-    responseSchema: DeleteSnippetCommand.ResponseSchema,
-    bodySchema: DeleteSnippetCommand.RequestSchema,
+    bodySchema: DeleteSnippetCommand.RequestBodySchema,
     requestMethod: DeleteSnippetCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -58,7 +57,7 @@ export const useDeleteSnippet = createMutationHook({
 export const useCreateSnippet = createMutationHook({
     endpoint: CreateSnippetCommand.TSQ_url,
     responseSchema: CreateSnippetCommand.ResponseSchema,
-    bodySchema: CreateSnippetCommand.RequestSchema,
+    bodySchema: CreateSnippetCommand.RequestBodySchema,
     requestMethod: CreateSnippetCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {

@@ -1,8 +1,8 @@
 import { UseFormReturnType } from '@mantine/form'
 import {
     CreateHostCommand,
-    GetAllHostTagsCommand,
-    GetAllNodesCommand,
+    GetHostsTagsCommand,
+    GetNodesCommand,
     GetConfigProfilesCommand,
     GetInternalSquadsCommand,
     GetSubscriptionTemplatesCommand,
@@ -11,17 +11,21 @@ import {
 } from '@exodus/backend-contract'
 
 export interface IProps<
-    T extends CreateHostCommand.Request | UpdateHostCommand.Request | UpdateManyHostsCommand.Request
+    T extends
+        | CreateHostCommand.RequestBody
+        | UpdateHostCommand.RequestBody
+        | UpdateManyHostsCommand.RequestBody
 > {
     advancedOpened: boolean
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles']
     form: UseFormReturnType<T>
     handleSubmit: () => void
-    hostTags: GetAllHostTagsCommand.Response['response']['tags']
+    hostTags: GetHostsTagsCommand.Response['response']['tags']
     internalSquads: GetInternalSquadsCommand.Response['response']['internalSquads']
     isSubmitting: boolean
-    nodes: GetAllNodesCommand.Response['response']
+    nodes: GetNodesCommand.Response['response']
     removeRequiredFields?: boolean
     setAdvancedOpened: (value: boolean) => void
     subscriptionTemplates: GetSubscriptionTemplatesCommand.Response['response']['templates']
+    hostUuid?: string
 }

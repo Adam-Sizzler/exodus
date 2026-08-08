@@ -2,7 +2,7 @@ import { MRT_Column } from '@kastov/mantine-react-table-open'
 /* eslint-disable camelcase */
 import { Group, NativeSelect, NumberInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
-import { GetAllUsersCommand } from '@exodus/backend-contract'
+import { GetUsersCommand } from '@exodus/backend-contract'
 import { useEffect, useRef, useState } from 'react'
 
 import {
@@ -13,7 +13,7 @@ import {
     unitToBytesUtil
 } from '@shared/utils/bytes'
 
-type TUser = GetAllUsersCommand.Response['response']['users'][number]
+type TUser = GetUsersCommand.Response['response']['users'][number]
 type TRange = [null | string, null | string]
 type TValues = [number | string, number | string]
 

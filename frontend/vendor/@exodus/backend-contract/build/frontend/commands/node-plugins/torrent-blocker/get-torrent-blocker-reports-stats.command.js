@@ -18,13 +18,13 @@ var GetTorrentBlockerReportsStatsCommand;
                 reportsLast24Hours: zod_1.z.number(),
             }),
             topUsers: zod_1.z.array(zod_1.z.object({
-                uuid: zod_1.z.string().uuid(),
+                userId: zod_1.z.number(),
                 color: zod_1.z.string(),
                 username: zod_1.z.string(),
                 total: zod_1.z.number(),
             })),
             topNodes: zod_1.z.array(zod_1.z.object({
-                uuid: zod_1.z.string().uuid(),
+                uuid: zod_1.z.uuid(),
                 countryCode: zod_1.z.string(),
                 color: zod_1.z.string(),
                 name: zod_1.z.string(),
@@ -32,4 +32,5 @@ var GetTorrentBlockerReportsStatsCommand;
             })),
         }),
     });
+
 })(GetTorrentBlockerReportsStatsCommand || (exports.GetTorrentBlockerReportsStatsCommand = GetTorrentBlockerReportsStatsCommand = {}));

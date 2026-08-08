@@ -24,6 +24,8 @@ export * from './infra-billing/infra-billing.query.hooks'
 export * from './internal-squads/internal-squads.mutation.hooks'
 export * from './internal-squads/internal-squads.query.hooks'
 
+export * from './connections/connections.mutation.hooks'
+export * from './connections/connections.query.hooks'
 export * from './keys-factory'
 export * from './node-plugins/node-plugins.mutation.hooks'
 

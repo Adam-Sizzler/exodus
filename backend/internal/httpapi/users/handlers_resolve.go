@@ -5,11 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"exodus/internal/httpapi/shared"
-
-	"github.com/google/uuid"
 )
 
 func handleResolveUser(w http.ResponseWriter, r *http.Request, service *UserService) {
@@ -40,9 +37,6 @@ func validateResolveUserRequest(req resolveUserRequest) error {
 	provided := 0
 	if req.UUID != nil {
 		provided++
-		if _, err := uuid.Parse(strings.TrimSpace(*req.UUID)); err != nil {
-			return fmt.Errorf("invalid uuid")
-		}
 	}
 	if req.ID != nil {
 		provided++

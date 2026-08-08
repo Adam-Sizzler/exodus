@@ -484,11 +484,6 @@ export declare const ERRORS: {
         readonly message: "Activate all inbounds error";
         readonly httpCode: 500;
     };
-    readonly GET_NODES_USER_USAGE_BY_RANGE_ERROR: {
-        readonly code: "A094";
-        readonly message: "Get nodes user usage by range error";
-        readonly httpCode: 500;
-    };
     readonly CREATE_HWID_USER_DEVICE_ERROR: {
         readonly code: "A096";
         readonly message: "Create hwid user device error";
@@ -1178,6 +1173,41 @@ export declare const ERRORS: {
         readonly code: "A230";
         readonly message: "Either nodeUuid or name must be provided";
         readonly httpCode: 400;
+    };
+    readonly CUSTOM_RAW_REMARK_VALIDATION_ERROR: {
+        readonly code: "A231";
+        readonly message: "Invalid custom raw remark";
+        readonly httpCode: 500;
+        readonly withMessage: (message: string) => {
+            code: string;
+            message: string;
+            httpCode: number;
+        };
+    };
+    readonly GET_INTERNAL_SQUAD_USAGE_ERROR: {
+        readonly code: "A232";
+        readonly message: "Get internal squad usage error";
+        readonly httpCode: 500;
+    };
+    readonly ADD_MANY_USERS_TO_INTERNAL_SQUAD_ERROR: {
+        readonly code: "A233";
+        readonly message: "Add many users to internal squad error";
+        readonly httpCode: 500;
+    };
+    readonly REMOVE_MANY_USERS_FROM_INTERNAL_SQUAD_ERROR: {
+        readonly code: "A234";
+        readonly message: "Remove many users from internal squad error";
+        readonly httpCode: 500;
+    };
+    readonly GET_STATS_DIGEST_INVALID_RANGE: {
+        readonly code: "A235";
+        readonly message: "Start date must be before or equal to end date";
+        readonly httpCode: 400;
+    };
+    readonly GET_STATS_DIGEST_ERROR: {
+        readonly code: "A236";
+        readonly message: "Get stats digest error";
+        readonly httpCode: 500;
     };
 };
 //# sourceMappingURL=errors.d.ts.map

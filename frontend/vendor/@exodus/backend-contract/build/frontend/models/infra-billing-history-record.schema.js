@@ -4,12 +4,10 @@ exports.InfraBillingHistoryRecordSchema = void 0;
 const zod_1 = require("zod");
 const infra_provider_schema_1 = require("./infra-provider.schema");
 exports.InfraBillingHistoryRecordSchema = zod_1.z.object({
-    uuid: zod_1.z.string().uuid(),
-    providerUuid: zod_1.z.string().uuid(),
+    uuid: zod_1.z.uuid(),
+    providerUuid: zod_1.z.uuid(),
     amount: zod_1.z.number(),
-    billedAt: zod_1.z
-        .string()
-        .datetime()
+    billedAt: zod_1.z.iso.datetime()
         .transform((str) => new Date(str)),
     provider: infra_provider_schema_1.PartialInfraProviderSchema.omit({
         createdAt: true,

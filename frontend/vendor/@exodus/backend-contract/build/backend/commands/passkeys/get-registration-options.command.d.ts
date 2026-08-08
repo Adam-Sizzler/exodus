@@ -5,11 +5,7 @@ export declare namespace GetPasskeyRegistrationOptionsCommand {
     const endpointDetails: import("../../constants").EndpointDetails;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodUnknown;
-    }, "strip", z.ZodTypeAny, {
-        response?: unknown;
-    }, {
-        response?: unknown;
-    }>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-registration-options.command.d.ts.map

@@ -3,20 +3,15 @@ export declare namespace GetSubscriptionTemplateCommand {
     const url: (uuid: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    const RequestParamSchema: z.ZodObject<{
+        uuid: z.ZodUUID;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            uuid: z.ZodString;
+            uuid: z.ZodUUID;
             viewPosition: z.ZodNumber;
             name: z.ZodString;
-            templateType: z.ZodNativeEnum<{
+            templateType: z.ZodEnum<{
                 readonly XRAY_JSON: "XRAY_JSON";
                 readonly XRAY_BASE64: "XRAY_BASE64";
                 readonly MIHOMO: "MIHOMO";
@@ -26,40 +21,9 @@ export declare namespace GetSubscriptionTemplateCommand {
             }>;
             templateJson: z.ZodNullable<z.ZodUnknown>;
             encodedTemplateYaml: z.ZodNullable<z.ZodString>;
-        }, "strip", z.ZodTypeAny, {
-            uuid: string;
-            name: string;
-            viewPosition: number;
-            templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-            encodedTemplateYaml: string | null;
-            templateJson?: unknown;
-        }, {
-            uuid: string;
-            name: string;
-            viewPosition: number;
-            templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-            encodedTemplateYaml: string | null;
-            templateJson?: unknown;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            uuid: string;
-            name: string;
-            viewPosition: number;
-            templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-            encodedTemplateYaml: string | null;
-            templateJson?: unknown;
-        };
-    }, {
-        response: {
-            uuid: string;
-            name: string;
-            viewPosition: number;
-            templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-            encodedTemplateYaml: string | null;
-            templateJson?: unknown;
-        };
-    }>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-template.command.d.ts.map

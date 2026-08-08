@@ -9,12 +9,8 @@ var DeleteHostCommand;
     DeleteHostCommand.url = api_1.REST_API.HOSTS.DELETE;
     DeleteHostCommand.TSQ_url = DeleteHostCommand.url(':uuid');
     DeleteHostCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HOSTS_ROUTES.DELETE(':uuid'), 'delete', 'Delete a host by UUID', { scope: 'delete', kind: 'write' });
-    DeleteHostCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteHostCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    DeleteHostCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            isDeleted: zod_1.z.boolean(),
-        }),
-    });
+
 })(DeleteHostCommand || (exports.DeleteHostCommand = DeleteHostCommand = {}));

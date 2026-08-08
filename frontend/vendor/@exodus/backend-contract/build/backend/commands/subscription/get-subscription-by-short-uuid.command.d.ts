@@ -2,13 +2,9 @@ import { z } from 'zod';
 export declare namespace GetSubscriptionByShortUuidCommand {
     const url: (shortUuid: string) => string;
     const TSQ_url: string;
-    const RequestSchema: z.ZodObject<{
+    const RequestParamSchema: z.ZodObject<{
         shortUuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        shortUuid: string;
-    }, {
-        shortUuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
 }
 //# sourceMappingURL=get-subscription-by-short-uuid.command.d.ts.map

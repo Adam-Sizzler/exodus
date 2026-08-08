@@ -10,8 +10,8 @@ var UpdateNodePluginCommand;
     UpdateNodePluginCommand.url = api_1.REST_API.NODE_PLUGINS.UPDATE;
     UpdateNodePluginCommand.TSQ_url = UpdateNodePluginCommand.url;
     UpdateNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.UPDATE, 'patch', 'Update Node Plugin', { scope: 'update', kind: 'write' });
-    UpdateNodePluginCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    UpdateNodePluginCommand.RequestBodySchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
         name: zod_1.z
             .string()
             .min(2, 'Name must be at least 2 characters')
@@ -25,4 +25,5 @@ var UpdateNodePluginCommand;
             pluginConfig: zod_1.z.unknown(),
         }),
     });
+
 })(UpdateNodePluginCommand || (exports.UpdateNodePluginCommand = UpdateNodePluginCommand = {}));

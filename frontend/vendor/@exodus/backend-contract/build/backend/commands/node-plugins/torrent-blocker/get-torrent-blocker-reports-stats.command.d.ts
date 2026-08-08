@@ -10,138 +10,22 @@ export declare namespace GetTorrentBlockerReportsStatsCommand {
                 distinctUsers: z.ZodNumber;
                 totalReports: z.ZodNumber;
                 reportsLast24Hours: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                distinctNodes: number;
-                distinctUsers: number;
-                totalReports: number;
-                reportsLast24Hours: number;
-            }, {
-                distinctNodes: number;
-                distinctUsers: number;
-                totalReports: number;
-                reportsLast24Hours: number;
-            }>;
+            }, z.core.$strip>;
             topUsers: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                userId: z.ZodNumber;
                 color: z.ZodString;
                 username: z.ZodString;
                 total: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                username: string;
-                total: number;
-                color: string;
-            }, {
-                uuid: string;
-                username: string;
-                total: number;
-                color: string;
-            }>, "many">;
+            }, z.core.$strip>>;
             topNodes: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 countryCode: z.ZodString;
                 color: z.ZodString;
                 name: z.ZodString;
                 total: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }, {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            stats: {
-                distinctNodes: number;
-                distinctUsers: number;
-                totalReports: number;
-                reportsLast24Hours: number;
-            };
-            topUsers: {
-                uuid: string;
-                username: string;
-                total: number;
-                color: string;
-            }[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-        }, {
-            stats: {
-                distinctNodes: number;
-                distinctUsers: number;
-                totalReports: number;
-                reportsLast24Hours: number;
-            };
-            topUsers: {
-                uuid: string;
-                username: string;
-                total: number;
-                color: string;
-            }[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            stats: {
-                distinctNodes: number;
-                distinctUsers: number;
-                totalReports: number;
-                reportsLast24Hours: number;
-            };
-            topUsers: {
-                uuid: string;
-                username: string;
-                total: number;
-                color: string;
-            }[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-        };
-    }, {
-        response: {
-            stats: {
-                distinctNodes: number;
-                distinctUsers: number;
-                totalReports: number;
-                reportsLast24Hours: number;
-            };
-            topUsers: {
-                uuid: string;
-                username: string;
-                total: number;
-                color: string;
-            }[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-        };
-    }>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-torrent-blocker-reports-stats.command.d.ts.map

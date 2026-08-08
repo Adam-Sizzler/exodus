@@ -1,7 +1,6 @@
 import { AppShell, Group, GroupProps } from '@mantine/core'
 import { Outlet, ScrollRestoration } from 'react-router'
 
-import { HelpDrawerShared } from '@shared/ui/help-drawer'
 import { SidebarLogoShared, SidebarTitleShared } from '@shared/ui/sidebar'
 
 import { app } from '../../../../config'
@@ -17,7 +16,6 @@ export const LayoutMain = (props: LayoutMainProps) => (
     <AppShell.Main {...props}>
         <Outlet />
         <ScrollRestoration />
-        <HelpDrawerShared />
     </AppShell.Main>
 )
 

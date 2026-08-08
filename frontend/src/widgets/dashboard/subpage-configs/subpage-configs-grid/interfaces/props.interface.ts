@@ -1,5 +1,5 @@
-import { GetSubscriptionPageConfigsCommand } from '@exodus/backend-contract'
+import { GetSubpageConfigsCommand } from '@exodus/backend-contract'
 
 export interface IProps {
-    configs: GetSubscriptionPageConfigsCommand.Response['response']['configs']
+    configs: GetSubpageConfigsCommand.Response['response']['configs']
 }

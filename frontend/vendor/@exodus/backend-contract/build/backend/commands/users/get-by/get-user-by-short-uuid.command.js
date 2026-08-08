@@ -4,16 +4,15 @@ exports.GetUserByShortUuidCommand = void 0;
 const zod_1 = require("zod");
 const api_1 = require("../../../api");
 const constants_1 = require("../../../constants");
-const models_1 = require("../../../models");
+const user_response_1 = require("../user.response");
 var GetUserByShortUuidCommand;
 (function (GetUserByShortUuidCommand) {
     GetUserByShortUuidCommand.url = api_1.REST_API.USERS.GET_BY.SHORT_UUID;
     GetUserByShortUuidCommand.TSQ_url = GetUserByShortUuidCommand.url(':shortUuid');
     GetUserByShortUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.GET_BY.SHORT_UUID(':shortUuid'), 'get', 'Get user by Short UUID', { scope: 'by-short-uuid', kind: 'read' });
-    GetUserByShortUuidCommand.RequestSchema = zod_1.z.object({
+    GetUserByShortUuidCommand.RequestParamSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
-    GetUserByShortUuidCommand.ResponseSchema = zod_1.z.object({
-        response: models_1.ExtendedUsersSchema,
-    });
+    GetUserByShortUuidCommand.ResponseSchema = user_response_1.UserResponseSchema;
+
 })(GetUserByShortUuidCommand || (exports.GetUserByShortUuidCommand = GetUserByShortUuidCommand = {}));

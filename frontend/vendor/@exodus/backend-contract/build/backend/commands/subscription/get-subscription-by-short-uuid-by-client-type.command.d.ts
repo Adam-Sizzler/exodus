@@ -2,9 +2,9 @@ import { z } from 'zod';
 export declare namespace GetSubscriptionByShortUuidByClientTypeCommand {
     const url: (shortUuid: string) => string;
     const TSQ_url: string;
-    const RequestSchema: z.ZodObject<{
+    const RequestParamSchema: z.ZodObject<{
         shortUuid: z.ZodString;
-        clientType: z.ZodNativeEnum<{
+        clientType: z.ZodEnum<{
             readonly STASH: "stash";
             readonly SINGBOX: "singbox";
             readonly MIHOMO: "mihomo";
@@ -12,13 +12,7 @@ export declare namespace GetSubscriptionByShortUuidByClientTypeCommand {
             readonly V2RAY_JSON: "v2ray-json";
             readonly CLASH: "clash";
         }>;
-    }, "strip", z.ZodTypeAny, {
-        shortUuid: string;
-        clientType: "stash" | "singbox" | "mihomo" | "json" | "v2ray-json" | "clash";
-    }, {
-        shortUuid: string;
-        clientType: "stash" | "singbox" | "mihomo" | "json" | "v2ray-json" | "clash";
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
 }
 //# sourceMappingURL=get-subscription-by-short-uuid-by-client-type.command.d.ts.map

@@ -7,4 +7,5 @@ exports.API_TOKENS_ROUTES = {
     DELETE: (uuid) => `${uuid}`,
     GET: '',
     GET_SCOPES: 'scopes',
+    OTT: 'ott',
 };

@@ -9,12 +9,8 @@ var DeleteUsersFromExternalSquadCommand;
     DeleteUsersFromExternalSquadCommand.url = api_1.REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS;
     DeleteUsersFromExternalSquadCommand.TSQ_url = DeleteUsersFromExternalSquadCommand.url(':uuid');
     DeleteUsersFromExternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.BULK_ACTIONS.REMOVE_USERS(':uuid'), 'delete', 'Delete users from external squad', { scope: 'remove-users', kind: 'write' });
-    DeleteUsersFromExternalSquadCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteUsersFromExternalSquadCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid().describe('UUID of the external squad'),
     });
-    DeleteUsersFromExternalSquadCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            eventSent: zod_1.z.boolean(),
-        }),
-    });
+
 })(DeleteUsersFromExternalSquadCommand || (exports.DeleteUsersFromExternalSquadCommand = DeleteUsersFromExternalSquadCommand = {}));

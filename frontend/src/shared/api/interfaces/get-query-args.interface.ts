@@ -8,9 +8,9 @@ import { z } from 'zod'
  * @template RouteParamsSchema - Zod schema for validating route parameters
  */
 export interface CreateGetQueryHookArgs<
-    ResponseSchema extends z.ZodType,
-    RequestQuerySchema extends z.ZodType,
-    RouteParamsSchema extends z.ZodType
+    ResponseSchema extends z.ZodType<{ response: unknown }>,
+    RequestQuerySchema extends z.ZodType<Record<string, unknown>>,
+    RouteParamsSchema extends z.ZodType<Record<string, unknown>>
 > {
     /** API endpoint URL, can include route parameters (e.g. /api/users/:id) */
     endpoint: string

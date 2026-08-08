@@ -13,4 +13,5 @@ var GetSubscriptionSettingsCommand;
     GetSubscriptionSettingsCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionSettingsSchema,
     });
+
 })(GetSubscriptionSettingsCommand || (exports.GetSubscriptionSettingsCommand = GetSubscriptionSettingsCommand = {}));

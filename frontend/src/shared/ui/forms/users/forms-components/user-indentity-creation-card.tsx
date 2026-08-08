@@ -11,7 +11,7 @@ import { SectionCard } from '@shared/ui/section-card'
 
 interface IProps {
     cardVariants: Variants
-    form: UseFormReturnType<CreateUserCommand.Request>
+    form: UseFormReturnType<CreateUserCommand.RequestBody>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 

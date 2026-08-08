@@ -3,14 +3,9 @@ export declare namespace GetSubscriptionInfoByShortUuidCommand {
     const url: (shortUuid: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
+    const RequestParamSchema: z.ZodObject<{
         shortUuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        shortUuid: string;
-    }, {
-        shortUuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             isFound: z.ZodBoolean;
@@ -24,139 +19,28 @@ export declare namespace GetSubscriptionInfoByShortUuidCommand {
                 trafficLimitBytes: z.ZodString;
                 lifetimeTrafficUsedBytes: z.ZodString;
                 username: z.ZodString;
-                expiresAt: z.ZodEffects<z.ZodString, Date, string>;
+                expiresAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
                 isActive: z.ZodBoolean;
-                userStatus: z.ZodNativeEnum<{
+                userStatus: z.ZodEnum<{
                     readonly ACTIVE: "ACTIVE";
                     readonly DISABLED: "DISABLED";
                     readonly LIMITED: "LIMITED";
                     readonly EXPIRED: "EXPIRED";
                 }>;
-                trafficLimitStrategy: z.ZodNativeEnum<{
+                trafficLimitStrategy: z.ZodEnum<{
                     readonly NO_RESET: "NO_RESET";
                     readonly DAY: "DAY";
                     readonly WEEK: "WEEK";
                     readonly MONTH: "MONTH";
                     readonly MONTH_ROLLING: "MONTH_ROLLING";
                 }>;
-            }, "strip", z.ZodTypeAny, {
-                username: string;
-                shortUuid: string;
-                trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                trafficUsedBytes: string;
-                daysLeft: number;
-                trafficUsed: string;
-                trafficLimit: string;
-                lifetimeTrafficUsed: string;
-                lifetimeTrafficUsedBytes: string;
-                expiresAt: Date;
-                isActive: boolean;
-                userStatus: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-            }, {
-                username: string;
-                shortUuid: string;
-                trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                trafficUsedBytes: string;
-                daysLeft: number;
-                trafficUsed: string;
-                trafficLimit: string;
-                lifetimeTrafficUsed: string;
-                lifetimeTrafficUsedBytes: string;
-                expiresAt: string;
-                isActive: boolean;
-                userStatus: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-            }>;
-            links: z.ZodArray<z.ZodString, "many">;
+            }, z.core.$strip>;
+            links: z.ZodArray<z.ZodString>;
             ssConfLinks: z.ZodRecord<z.ZodString, z.ZodString>;
             subscriptionUrl: z.ZodString;
-        }, "strip", z.ZodTypeAny, {
-            user: {
-                username: string;
-                shortUuid: string;
-                trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                trafficUsedBytes: string;
-                daysLeft: number;
-                trafficUsed: string;
-                trafficLimit: string;
-                lifetimeTrafficUsed: string;
-                lifetimeTrafficUsedBytes: string;
-                expiresAt: Date;
-                isActive: boolean;
-                userStatus: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-            };
-            subscriptionUrl: string;
-            isFound: boolean;
-            links: string[];
-            ssConfLinks: Record<string, string>;
-        }, {
-            user: {
-                username: string;
-                shortUuid: string;
-                trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                trafficUsedBytes: string;
-                daysLeft: number;
-                trafficUsed: string;
-                trafficLimit: string;
-                lifetimeTrafficUsed: string;
-                lifetimeTrafficUsedBytes: string;
-                expiresAt: string;
-                isActive: boolean;
-                userStatus: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-            };
-            subscriptionUrl: string;
-            isFound: boolean;
-            links: string[];
-            ssConfLinks: Record<string, string>;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            user: {
-                username: string;
-                shortUuid: string;
-                trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                trafficUsedBytes: string;
-                daysLeft: number;
-                trafficUsed: string;
-                trafficLimit: string;
-                lifetimeTrafficUsed: string;
-                lifetimeTrafficUsedBytes: string;
-                expiresAt: Date;
-                isActive: boolean;
-                userStatus: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-            };
-            subscriptionUrl: string;
-            isFound: boolean;
-            links: string[];
-            ssConfLinks: Record<string, string>;
-        };
-    }, {
-        response: {
-            user: {
-                username: string;
-                shortUuid: string;
-                trafficLimitBytes: string;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                trafficUsedBytes: string;
-                daysLeft: number;
-                trafficUsed: string;
-                trafficLimit: string;
-                lifetimeTrafficUsed: string;
-                lifetimeTrafficUsedBytes: string;
-                expiresAt: string;
-                isActive: boolean;
-                userStatus: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-            };
-            subscriptionUrl: string;
-            isFound: boolean;
-            links: string[];
-            ssConfLinks: Record<string, string>;
-        };
-    }>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-subscription-info-by-short-uuid.command.d.ts.map

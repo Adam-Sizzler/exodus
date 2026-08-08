@@ -135,5 +135,5 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, service *NodeServi
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
+	w.WriteHeader(http.StatusNoContent)
 }

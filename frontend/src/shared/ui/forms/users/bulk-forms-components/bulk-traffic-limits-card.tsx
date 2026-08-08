@@ -13,7 +13,7 @@ import { SectionCard } from '@shared/ui/section-card'
 
 interface IProps {
     cardVariants: Variants
-    form: UseFormReturnType<BulkAllUpdateUsersCommand.Request>
+    form: UseFormReturnType<BulkAllUpdateUsersCommand.RequestBody>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 

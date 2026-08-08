@@ -4,5 +4,6 @@ export declare const API_TOKENS_ROUTES: {
     readonly DELETE: (uuid: string) => string;
     readonly GET: "";
     readonly GET_SCOPES: "scopes";
+    readonly OTT: "ott";
 };
 //# sourceMappingURL=api-tokens.d.ts.map

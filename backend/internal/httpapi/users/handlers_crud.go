@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"exodus/internal/httpapi/shared"
 )
@@ -36,6 +37,52 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request, service *UserService
 		"response": map[string]any{
 			"users": response,
 			"total": total,
+		},
+	})
+}
+
+func handleGetUsersStream(w http.ResponseWriter, r *http.Request, service *UserService) {
+	q := r.URL.Query()
+	size := 250
+	if sizeStr := q.Get("size"); sizeStr != "" {
+		if parsed, err := strconv.Atoi(sizeStr); err == nil && parsed >= 1 {
+			size = parsed
+			if size > 1000 {
+				size = 1000
+			}
+		}
+	}
+	var cursor int64 = 0
+	if cursorStr := q.Get("cursor"); cursorStr != "" {
+		if parsed, err := strconv.ParseInt(cursorStr, 10, 64); err == nil && parsed >= 0 {
+			cursor = parsed
+		}
+	}
+
+	telegramID := q.Get("telegramId")
+	email := q.Get("email")
+	tag := q.Get("tag")
+	status := q.Get("status")
+	trafficLimitStrategy := q.Get("trafficLimitStrategy")
+	externalSquadUUID := q.Get("externalSquadUuid")
+
+	records, nextCursor, total, err := service.repo.getUsersStream(r.Context(), cursor, size, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to stream users", err, service.cfg)
+		return
+	}
+
+	response, err := buildUserResponses(r.Context(), service.repo, records, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to build users response", err, service.cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"users":      response,
+			"total":      total,
+			"nextCursor": nextCursor,
 		},
 	})
 }
@@ -137,7 +184,7 @@ func handleGetUserSubscriptionRequestHistory(w http.ResponseWriter, r *http.Requ
 }
 
 func handleGetUserAccessibleNodes(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
-	activeNodes, err := service.repo.getUserAccessibleNodes(r.Context(), userUUID)
+	userID, canonicalUUID, activeNodes, err := service.repo.getUserAccessibleNodes(r.Context(), userUUID)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
@@ -149,7 +196,8 @@ func handleGetUserAccessibleNodes(w http.ResponseWriter, r *http.Request, servic
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
-			"userUuid":    userUUID,
+			"userId":      userID,
+			"userUuid":    canonicalUUID,
 			"activeNodes": activeNodes,
 		},
 	})
@@ -166,5 +214,5 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, service *UserServi
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
+	w.WriteHeader(http.StatusNoContent)
 }

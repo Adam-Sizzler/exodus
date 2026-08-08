@@ -5,11 +5,7 @@ export declare namespace GetPasskeyAuthenticationOptionsCommand {
     const endpointDetails: import("../../../constants").EndpointDetails;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodUnknown;
-    }, "strip", z.ZodTypeAny, {
-        response?: unknown;
-    }, {
-        response?: unknown;
-    }>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-authentication-options.command.d.ts.map

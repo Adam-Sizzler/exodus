@@ -1,19 +1,19 @@
 import { notifications } from '@mantine/notifications'
 import {
-    CloneSubscriptionPageConfigCommand,
-    CreateSubscriptionPageConfigCommand,
-    DeleteSubscriptionPageConfigCommand,
-    ReorderSubscriptionPageConfigsCommand,
-    UpdateSubscriptionPageConfigCommand
+    CloneSubpageConfigCommand,
+    CreateSubpageConfigCommand,
+    DeleteSubpageConfigCommand,
+    ReorderSubpageConfigsCommand,
+    UpdateSubpageConfigCommand
 } from '@exodus/backend-contract'
 
 import { createMutationHook } from '../../tsq-helpers'
 
-export const useUpdateSubscriptionPageConfig = createMutationHook({
-    endpoint: UpdateSubscriptionPageConfigCommand.TSQ_url,
-    bodySchema: UpdateSubscriptionPageConfigCommand.RequestSchema,
-    responseSchema: UpdateSubscriptionPageConfigCommand.ResponseSchema,
-    requestMethod: UpdateSubscriptionPageConfigCommand.endpointDetails.REQUEST_METHOD,
+export const useUpdateSubpageConfig = createMutationHook({
+    endpoint: UpdateSubpageConfigCommand.TSQ_url,
+    bodySchema: UpdateSubpageConfigCommand.RequestBodySchema,
+    responseSchema: UpdateSubpageConfigCommand.ResponseSchema,
+    requestMethod: UpdateSubpageConfigCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -33,11 +33,11 @@ export const useUpdateSubscriptionPageConfig = createMutationHook({
     }
 })
 
-export const useCreateSubscriptionPageConfig = createMutationHook({
-    endpoint: CreateSubscriptionPageConfigCommand.TSQ_url,
-    bodySchema: CreateSubscriptionPageConfigCommand.RequestSchema,
-    responseSchema: CreateSubscriptionPageConfigCommand.ResponseSchema,
-    requestMethod: CreateSubscriptionPageConfigCommand.endpointDetails.REQUEST_METHOD,
+export const useCreateSubpageConfig = createMutationHook({
+    endpoint: CreateSubpageConfigCommand.TSQ_url,
+    bodySchema: CreateSubpageConfigCommand.RequestBodySchema,
+    responseSchema: CreateSubpageConfigCommand.ResponseSchema,
+    requestMethod: CreateSubpageConfigCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -57,11 +57,10 @@ export const useCreateSubscriptionPageConfig = createMutationHook({
     }
 })
 
-export const useDeleteSubscriptionPageConfig = createMutationHook({
-    endpoint: DeleteSubscriptionPageConfigCommand.TSQ_url,
-    routeParamsSchema: DeleteSubscriptionPageConfigCommand.RequestSchema,
-    responseSchema: DeleteSubscriptionPageConfigCommand.ResponseSchema,
-    requestMethod: DeleteSubscriptionPageConfigCommand.endpointDetails.REQUEST_METHOD,
+export const useDeleteSubpageConfig = createMutationHook({
+    endpoint: DeleteSubpageConfigCommand.TSQ_url,
+    routeParamsSchema: DeleteSubpageConfigCommand.RequestParamSchema,
+    requestMethod: DeleteSubpageConfigCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -81,11 +80,11 @@ export const useDeleteSubscriptionPageConfig = createMutationHook({
     }
 })
 
-export const useReorderSubscriptionPageConfigs = createMutationHook({
-    endpoint: ReorderSubscriptionPageConfigsCommand.TSQ_url,
-    bodySchema: ReorderSubscriptionPageConfigsCommand.RequestSchema,
-    responseSchema: ReorderSubscriptionPageConfigsCommand.ResponseSchema,
-    requestMethod: ReorderSubscriptionPageConfigsCommand.endpointDetails.REQUEST_METHOD,
+export const useReorderSubpageConfigs = createMutationHook({
+    endpoint: ReorderSubpageConfigsCommand.TSQ_url,
+    bodySchema: ReorderSubpageConfigsCommand.RequestBodySchema,
+    responseSchema: ReorderSubpageConfigsCommand.ResponseSchema,
+    requestMethod: ReorderSubpageConfigsCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onError: (error) => {
             notifications.show({
@@ -98,11 +97,11 @@ export const useReorderSubscriptionPageConfigs = createMutationHook({
     }
 })
 
-export const useCloneSubscriptionPageConfig = createMutationHook({
-    endpoint: CloneSubscriptionPageConfigCommand.TSQ_url,
-    bodySchema: CloneSubscriptionPageConfigCommand.RequestSchema,
-    responseSchema: CloneSubscriptionPageConfigCommand.ResponseSchema,
-    requestMethod: CloneSubscriptionPageConfigCommand.endpointDetails.REQUEST_METHOD,
+export const useCloneSubpageConfig = createMutationHook({
+    endpoint: CloneSubpageConfigCommand.TSQ_url,
+    bodySchema: CloneSubpageConfigCommand.RequestBodySchema,
+    responseSchema: CloneSubpageConfigCommand.ResponseSchema,
+    requestMethod: CloneSubpageConfigCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({

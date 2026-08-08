@@ -20,12 +20,9 @@ RUN if [ ! -f public/assets/main.wasm ] || [ ! -f public/assets/wasm_exec.js ] |
       echo "Assets already present locally, skipping download"; \
     fi
 
+ARG BUILD_BUST=1
 RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache \
-    if [ -d dist ]; then \
-      echo "Using existing dist directory from host"; \
-    else \
-      npm run cb; \
-    fi
+    rm -rf dist && npm run cb
 
 FROM golang:1.25.12-alpine AS builder
 

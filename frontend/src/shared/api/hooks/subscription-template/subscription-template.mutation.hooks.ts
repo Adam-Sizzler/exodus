@@ -10,7 +10,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useUpdateSubscriptionTemplate = createMutationHook({
     endpoint: UpdateSubscriptionTemplateCommand.TSQ_url,
-    bodySchema: UpdateSubscriptionTemplateCommand.RequestSchema,
+    bodySchema: UpdateSubscriptionTemplateCommand.RequestBodySchema,
     responseSchema: UpdateSubscriptionTemplateCommand.ResponseSchema,
     requestMethod: UpdateSubscriptionTemplateCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -34,7 +34,7 @@ export const useUpdateSubscriptionTemplate = createMutationHook({
 
 export const useCreateSubscriptionTemplate = createMutationHook({
     endpoint: CreateSubscriptionTemplateCommand.TSQ_url,
-    bodySchema: CreateSubscriptionTemplateCommand.RequestSchema,
+    bodySchema: CreateSubscriptionTemplateCommand.RequestBodySchema,
     responseSchema: CreateSubscriptionTemplateCommand.ResponseSchema,
     requestMethod: CreateSubscriptionTemplateCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -58,8 +58,7 @@ export const useCreateSubscriptionTemplate = createMutationHook({
 
 export const useDeleteSubscriptionTemplate = createMutationHook({
     endpoint: DeleteSubscriptionTemplateCommand.TSQ_url,
-    routeParamsSchema: DeleteSubscriptionTemplateCommand.RequestSchema,
-    responseSchema: DeleteSubscriptionTemplateCommand.ResponseSchema,
+    routeParamsSchema: DeleteSubscriptionTemplateCommand.RequestParamSchema,
     requestMethod: DeleteSubscriptionTemplateCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -82,7 +81,7 @@ export const useDeleteSubscriptionTemplate = createMutationHook({
 
 export const useReorderSubscriptionTemplates = createMutationHook({
     endpoint: ReorderSubscriptionTemplateCommand.TSQ_url,
-    bodySchema: ReorderSubscriptionTemplateCommand.RequestSchema,
+    bodySchema: ReorderSubscriptionTemplateCommand.RequestBodySchema,
     responseSchema: ReorderSubscriptionTemplateCommand.ResponseSchema,
     requestMethod: ReorderSubscriptionTemplateCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

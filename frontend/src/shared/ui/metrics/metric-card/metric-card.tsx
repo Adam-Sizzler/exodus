@@ -1,4 +1,5 @@
 import { Card, Group, Stack, Text, ThemeIcon, ThemeIconProps } from '@mantine/core'
+import { ReactNode } from 'react'
 
 import { ShimmerSkeleton } from '@shared/ui/shimmer-skeleton'
 import { formatInt } from '@shared/utils/misc'
@@ -15,6 +16,7 @@ export interface IMetricCardProps {
     themeIconProps?: ThemeIconProps
     title: string
     value: number | string
+    rollingNumberComponent?: ReactNode
 }
 
 export function MetricCardShared(props: IMetricCardProps) {
@@ -27,7 +29,8 @@ export function MetricCardShared(props: IMetricCardProps) {
         isLoading,
         title,
         value,
-        subtitle
+        subtitle,
+        rollingNumberComponent
     } = props
 
     return (
@@ -50,9 +53,11 @@ export function MetricCardShared(props: IMetricCardProps) {
                     {isLoading ? (
                         <ShimmerSkeleton height={24} width={80} />
                     ) : (
-                        <Text className={classes.value} truncate="end">
-                            {typeof value === 'number' ? formatInt(value) : value}
-                        </Text>
+                        (rollingNumberComponent ?? (
+                            <Text className={classes.value} truncate="end">
+                                {typeof value === 'number' ? formatInt(value) : value}
+                            </Text>
+                        ))
                     )}
                     {subtitle && <Text className={classes.subtitle}>{subtitle}</Text>}
                 </Stack>

@@ -1,7 +1,6 @@
 import { Button, Group, Stack, Switch } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'react-i18next'
 import { PiGear } from 'react-icons/pi'
 
@@ -18,16 +17,15 @@ export const SubscriptionAdditionalOptionsWidget = (props: IProps) => {
     const { subscriptionSettings } = props
     const { t } = useTranslation()
 
-    const form = useForm<UpdateSubscriptionSettingsCommand.Request>({
+    const form = useForm<UpdateSubscriptionSettingsCommand.RequestBody>({
         name: 'subscription-additional-options-form',
         mode: 'uncontrolled',
-        validate: zodResolver(UpdateSubscriptionSettingsCommand.RequestSchema),
+        validate: schemaResolver(UpdateSubscriptionSettingsCommand.RequestBodySchema),
         initialValues: {
             uuid: subscriptionSettings.uuid,
             serveJsonAtBaseSubscription: subscriptionSettings.serveJsonAtBaseSubscription,
             randomizeHosts: subscriptionSettings.randomizeHosts,
-            isShowCustomRemarks: subscriptionSettings.isShowCustomRemarks,
-            isProfileWebpageUrlEnabled: subscriptionSettings.isProfileWebpageUrlEnabled
+            isShowCustomRemarks: subscriptionSettings.isShowCustomRemarks
         }
     })
 
@@ -52,8 +50,7 @@ export const SubscriptionAdditionalOptionsWidget = (props: IProps) => {
                 uuid: values.uuid,
                 serveJsonAtBaseSubscription: values.serveJsonAtBaseSubscription,
                 randomizeHosts: values.randomizeHosts,
-                isShowCustomRemarks: values.isShowCustomRemarks,
-                isProfileWebpageUrlEnabled: values.isProfileWebpageUrlEnabled
+                isShowCustomRemarks: values.isShowCustomRemarks
             }
         })
     })
@@ -91,18 +88,6 @@ export const SubscriptionAdditionalOptionsWidget = (props: IProps) => {
                             label={t('subscription-tabs.widget.randomize-hosts')}
                             size="sm"
                             {...form.getInputProps('randomizeHosts', {
-                                type: 'checkbox'
-                            })}
-                        />
-
-                        <Switch
-                            description={t(
-                                'subscription-settings.widget.profile-webpage-url-description'
-                            )}
-                            key={form.key('isProfileWebpageUrlEnabled')}
-                            label={t('subscription-settings.widget.profile-webpage-url')}
-                            size="sm"
-                            {...form.getInputProps('isProfileWebpageUrlEnabled', {
                                 type: 'checkbox'
                             })}
                         />

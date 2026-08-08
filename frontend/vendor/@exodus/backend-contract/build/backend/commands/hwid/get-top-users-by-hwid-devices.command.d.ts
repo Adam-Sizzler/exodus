@@ -4,73 +4,20 @@ export declare namespace GetTopUsersByHwidDevicesCommand {
     const TSQ_url: "/api/hwid/devices/top-users";
     const endpointDetails: import("../../constants").EndpointDetails;
     const RequestQuerySchema: z.ZodObject<{
-        start: z.ZodDefault<z.ZodNumber>;
-        size: z.ZodDefault<z.ZodNumber>;
-    }, "strip", z.ZodTypeAny, {
-        start: number;
-        size: number;
-    }, {
-        start?: number | undefined;
-        size?: number | undefined;
-    }>;
-    type RequestQuery = z.infer<typeof RequestQuerySchema>;
+        start: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
+        size: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             users: z.ZodArray<z.ZodObject<{
-                userUuid: z.ZodString;
                 id: z.ZodNumber;
                 username: z.ZodString;
                 devicesCount: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                username: string;
-                userUuid: string;
-                id: number;
-                devicesCount: number;
-            }, {
-                username: string;
-                userUuid: string;
-                id: number;
-                devicesCount: number;
-            }>, "many">;
+            }, z.core.$strip>>;
             total: z.ZodNumber;
-        }, "strip", z.ZodTypeAny, {
-            users: {
-                username: string;
-                userUuid: string;
-                id: number;
-                devicesCount: number;
-            }[];
-            total: number;
-        }, {
-            users: {
-                username: string;
-                userUuid: string;
-                id: number;
-                devicesCount: number;
-            }[];
-            total: number;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            users: {
-                username: string;
-                userUuid: string;
-                id: number;
-                devicesCount: number;
-            }[];
-            total: number;
-        };
-    }, {
-        response: {
-            users: {
-                username: string;
-                userUuid: string;
-                id: number;
-                devicesCount: number;
-            }[];
-            total: number;
-        };
-    }>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestQuery = z.infer<typeof RequestQuerySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-top-users-by-hwid-devices.command.d.ts.map

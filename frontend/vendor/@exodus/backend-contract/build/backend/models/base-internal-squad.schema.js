@@ -3,6 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseInternalSquadSchema = void 0;
 const zod_1 = require("zod");
 exports.BaseInternalSquadSchema = zod_1.z.object({
-    uuid: zod_1.z.string().uuid(),
+    uuid: zod_1.z.uuid(),
     name: zod_1.z.string(),
 });

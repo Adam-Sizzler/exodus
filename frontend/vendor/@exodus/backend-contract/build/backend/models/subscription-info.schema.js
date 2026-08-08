@@ -15,13 +15,11 @@ exports.SubscriptionInfoSchema = zod_1.z.object({
         trafficLimitBytes: zod_1.z.string(),
         lifetimeTrafficUsedBytes: zod_1.z.string(),
         username: zod_1.z.string(),
-        expiresAt: zod_1.z
-            .string()
-            .datetime()
+        expiresAt: zod_1.z.iso.datetime()
             .transform((str) => new Date(str)),
         isActive: zod_1.z.boolean(),
-        userStatus: zod_1.z.nativeEnum(constants_1.USERS_STATUS),
-        trafficLimitStrategy: zod_1.z.nativeEnum(constants_1.RESET_PERIODS),
+        userStatus: zod_1.z.enum(constants_1.USERS_STATUS),
+        trafficLimitStrategy: zod_1.z.enum(constants_1.RESET_PERIODS),
     }),
     links: zod_1.z.array(zod_1.z.string()),
     ssConfLinks: zod_1.z.record(zod_1.z.string(), zod_1.z.string()),

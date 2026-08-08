@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"exodus/internal/config"
@@ -14,6 +15,16 @@ func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/nodes")
 		path = strings.Trim(path, "/")
+
+		if path == "usage" {
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handlePostNodesUsage(w, r, db, cfg)
+			return
+		}
 
 		if path == "users" {
 			if r.Method != http.MethodPost {
@@ -36,9 +47,6 @@ func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			handleGetNodesUsage(w, r, db, cfg)
 		case path == "realtime":
 			handleGetNodesRealtimeUsage(w, r, db, cfg)
-		case strings.HasSuffix(path, "/users/legacy"):
-			nodeUUID := strings.TrimSuffix(path, "/users/legacy")
-			handleGetLegacyNodeUsersUsage(w, r, db, cfg, nodeUUID)
 		case strings.HasSuffix(path, "/users"):
 			nodeUUID := strings.TrimSuffix(path, "/users")
 			handleGetNodeUsersUsage(w, r, db, cfg, nodeUUID)
@@ -63,11 +71,6 @@ func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		if strings.HasSuffix(path, "/legacy") {
-			userUUID := strings.TrimSuffix(path, "/legacy")
-			handleGetLegacyUserUsage(w, r, db, cfg, userUUID)
-			return
-		}
 		handleGetUserUsage(w, r, db, cfg, path)
 	}
 }
@@ -306,7 +309,7 @@ ORDER BY d.ord
 	topRows, err := db.QueryContext(r.Context(), `
 SELECT u.uuid, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total
 FROM users u
-INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.t_id
+INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.id
 WHERE nuh.node_id = $1 AND nuh.created_at >= $2 AND nuh.created_at <= $3
 GROUP BY u.uuid, u.username
 ORDER BY total DESC
@@ -423,7 +426,7 @@ ORDER BY d.ord
 	topRows, err := db.QueryContext(r.Context(), `
 SELECT u.uuid, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total
 FROM users u
-INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.t_id
+INNER JOIN nodes_user_usage_history nuh ON nuh.user_id = u.id
 WHERE nuh.node_id = ANY($1) AND nuh.created_at >= $2 AND nuh.created_at <= $3
 GROUP BY u.uuid, u.username
 ORDER BY total DESC
@@ -471,7 +474,12 @@ func handleGetUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg 
 	topLimit := parsePositiveIntWithDefault(r.URL.Query().Get("topNodesLimit"), 20)
 
 	var userID int64
-	err := db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&userID)
+	var err error
+	if idNum, parseErr := strconv.ParseInt(userUUID, 10, 64); parseErr == nil {
+		err = db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE id = $1 OR uuid::text = $2 OR short_uuid = $2 OR username = $2`, idNum, userUUID).Scan(&userID)
+	} else {
+		err = db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE uuid::text = $1 OR short_uuid = $1 OR username = $1`, userUUID).Scan(&userID)
+	}
 	if err != nil {
 		if err == sql.ErrNoRows {
 			shared.WriteJSONError(w, http.StatusNotFound, "user not found")
@@ -601,85 +609,66 @@ LIMIT $4
 	})
 }
 
-func handleGetLegacyNodeUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, nodeUUID string) {
+func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	startDate, endDate, _, ok := parseDateRange(w, r)
 	if !ok {
 		return
 	}
+	minTotalBytesStr := r.URL.Query().Get("minTotalBytes")
+	var minTotalBytes int64 = 0
+	if minTotalBytesStr != "" {
+		if parsed, err := strconv.ParseInt(minTotalBytesStr, 10, 64); err == nil && parsed > 0 {
+			minTotalBytes = parsed
+		}
+	}
+
+	var req struct {
+		NodesUUIDs []string `json:"nodesUuids"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	if len(req.NodesUUIDs) == 0 {
+		shared.WriteJSON(w, http.StatusOK, map[string]any{"response": []any{}})
+		return
+	}
+
 	rows, err := db.QueryContext(r.Context(), `
-SELECT
-	DATE(h.created_at) AS date,
-	n.uuid AS node_uuid,
-	u.uuid AS user_uuid,
-	u.username,
-	COALESCE(SUM(h.total_bytes), 0) AS total
-FROM nodes_user_usage_history h
-JOIN users u ON h.user_id = u.t_id
-JOIN nodes n ON h.node_id = n.id
-WHERE n.uuid = $1 AND h.created_at >= $2 AND h.created_at <= $3
-GROUP BY DATE(h.created_at), n.uuid, u.uuid, u.username
-ORDER BY DATE(h.created_at) ASC
-	`, nodeUUID, startDate, endDate)
+		SELECT u.id, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total_bytes
+		FROM nodes_user_usage_history nuh
+		JOIN nodes n ON nuh.node_id = n.id
+		JOIN users u ON nuh.user_id = u.id
+		WHERE n.uuid = ANY($1::text[]) AND nuh.created_at >= $2 AND nuh.created_at <= $3
+		GROUP BY u.id, u.username
+		HAVING SUM(nuh.total_bytes) >= $4
+		ORDER BY total_bytes DESC
+	`, pgDateArrayLiteral(req.NodesUUIDs), startDate, endDate, minTotalBytes)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy node users usage", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
 		return
 	}
 	defer rows.Close()
 
-	items := make([]legacyNodeUserUsage, 0)
+	type nodeUserUsageItem struct {
+		UserID     int64  `json:"userId"`
+		Username   string `json:"username"`
+		TotalBytes int64  `json:"totalBytes"`
+	}
+
+	items := make([]nodeUserUsageItem, 0)
 	for rows.Next() {
-		var item legacyNodeUserUsage
-		if scanErr := rows.Scan(&item.Date, &item.NodeUUID, &item.UserUUID, &item.Username, &item.Total); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan legacy node users usage", scanErr, cfg)
+		var item nodeUserUsageItem
+		if scanErr := rows.Scan(&item.UserID, &item.Username, &item.TotalBytes); scanErr != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan node user usage item", scanErr, cfg)
 			return
 		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy node users usage", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node user usage items", err, cfg)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": items})
-}
 
-func handleGetLegacyUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID string) {
-	startDate, endDate, _, ok := parseDateRange(w, r)
-	if !ok {
-		return
-	}
-	rows, err := db.QueryContext(r.Context(), `
-SELECT
-	DATE(h.created_at) AS date,
-	u.uuid AS user_uuid,
-	n.uuid AS node_uuid,
-	n.name AS node_name,
-	n.country_code,
-	COALESCE(SUM(h.total_bytes), 0) AS total
-FROM nodes_user_usage_history h
-JOIN nodes n ON h.node_id = n.id
-JOIN users u ON h.user_id = u.t_id
-WHERE u.uuid = $1 AND h.created_at >= $2 AND h.created_at <= $3
-GROUP BY DATE(h.created_at), u.uuid, n.uuid, n.name, n.country_code
-ORDER BY DATE(h.created_at) ASC
-	`, userUUID, startDate, endDate)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy user usage", err, cfg)
-		return
-	}
-	defer rows.Close()
-
-	items := make([]legacyUserUsage, 0)
-	for rows.Next() {
-		var item legacyUserUsage
-		if scanErr := rows.Scan(&item.Date, &item.UserUUID, &item.NodeUUID, &item.NodeName, &item.CountryCode, &item.Total); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan legacy user usage", scanErr, cfg)
-			return
-		}
-		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch legacy user usage", err, cfg)
-		return
-	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": items})
 }

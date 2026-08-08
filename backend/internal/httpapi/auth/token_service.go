@@ -72,7 +72,7 @@ func resolveAdminJWT(token string, db *sql.DB, cfg *config.BackendConfig) (*Auth
 }
 
 func resolveAPIJWT(token string, db *sql.DB, cfg *config.BackendConfig) (*AuthPrincipal, error) {
-	payload, err := security.ParseJWT(cfg.JWT.APITokensSecret, token)
+	payload, err := security.ParseJWT(cfg.JWT.AuthSecret, token)
 	if err != nil {
 		return nil, err
 	}

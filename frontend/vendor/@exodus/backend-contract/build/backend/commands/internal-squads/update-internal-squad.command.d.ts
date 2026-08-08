@@ -3,151 +3,35 @@ export declare namespace UpdateInternalSquadCommand {
     const url: "/api/internal-squads/";
     const TSQ_url: "/api/internal-squads/";
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        uuid: z.ZodString;
+    const RequestBodySchema: z.ZodObject<{
+        uuid: z.ZodUUID;
         name: z.ZodOptional<z.ZodString>;
-        inbounds: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-        inbounds?: string[] | undefined;
-        name?: string | undefined;
-    }, {
-        uuid: string;
-        inbounds?: string[] | undefined;
-        name?: string | undefined;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+        inbounds: z.ZodOptional<z.ZodArray<z.ZodUUID>>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            uuid: z.ZodString;
-            viewPosition: z.ZodNumber;
+            uuid: z.ZodUUID;
+            viewPosition: z.ZodInt;
             name: z.ZodString;
             info: z.ZodObject<{
                 membersCount: z.ZodNumber;
                 inboundsCount: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                membersCount: number;
-                inboundsCount: number;
-            }, {
-                membersCount: number;
-                inboundsCount: number;
-            }>;
+            }, z.core.$strip>;
             inbounds: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
-                profileUuid: z.ZodString;
+                uuid: z.ZodUUID;
+                profileUuid: z.ZodUUID;
                 tag: z.ZodString;
                 type: z.ZodString;
                 network: z.ZodNullable<z.ZodString>;
                 security: z.ZodNullable<z.ZodString>;
                 port: z.ZodNullable<z.ZodNumber>;
                 rawInbound: z.ZodNullable<z.ZodUnknown>;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }, {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }>, "many">;
-            createdAt: z.ZodEffects<z.ZodString, Date, string>;
-            updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-        }, "strip", z.ZodTypeAny, {
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            viewPosition: number;
-            info: {
-                membersCount: number;
-                inboundsCount: number;
-            };
-        }, {
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            viewPosition: number;
-            info: {
-                membersCount: number;
-                inboundsCount: number;
-            };
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            viewPosition: number;
-            info: {
-                membersCount: number;
-                inboundsCount: number;
-            };
-        };
-    }, {
-        response: {
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            viewPosition: number;
-            info: {
-                membersCount: number;
-                inboundsCount: number;
-            };
-        };
-    }>;
+            }, z.core.$strip>>;
+            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=update-internal-squad.command.d.ts.map

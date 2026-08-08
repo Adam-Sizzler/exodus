@@ -10,13 +10,9 @@ export declare namespace GetStatusCommand {
             authentication: z.ZodNullable<z.ZodObject<{
                 passkey: z.ZodObject<{
                     enabled: z.ZodBoolean;
-                }, "strip", z.ZodTypeAny, {
-                    enabled: boolean;
-                }, {
-                    enabled: boolean;
-                }>;
+                }, z.core.$strip>;
                 oauth2: z.ZodObject<{
-                    providers: z.ZodRecord<z.ZodNativeEnum<{
+                    providers: z.ZodRecord<z.ZodEnum<{
                         readonly TELEGRAM: "telegram";
                         readonly GITHUB: "github";
                         readonly POCKETID: "pocketid";
@@ -24,127 +20,17 @@ export declare namespace GetStatusCommand {
                         readonly KEYCLOAK: "keycloak";
                         readonly GENERIC: "generic";
                     }>, z.ZodBoolean>;
-                }, "strip", z.ZodTypeAny, {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                }, {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                }>;
+                }, z.core.$strip>;
                 password: z.ZodObject<{
                     enabled: z.ZodBoolean;
-                }, "strip", z.ZodTypeAny, {
-                    enabled: boolean;
-                }, {
-                    enabled: boolean;
-                }>;
-            }, "strip", z.ZodTypeAny, {
-                passkey: {
-                    enabled: boolean;
-                };
-                oauth2: {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                };
-                password: {
-                    enabled: boolean;
-                };
-            }, {
-                passkey: {
-                    enabled: boolean;
-                };
-                oauth2: {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                };
-                password: {
-                    enabled: boolean;
-                };
-            }>>;
+                }, z.core.$strip>;
+            }, z.core.$strip>>;
             branding: z.ZodObject<{
                 title: z.ZodNullable<z.ZodString>;
                 logoUrl: z.ZodNullable<z.ZodString>;
-            }, "strip", z.ZodTypeAny, {
-                title: string | null;
-                logoUrl: string | null;
-            }, {
-                title: string | null;
-                logoUrl: string | null;
-            }>;
-        }, "strip", z.ZodTypeAny, {
-            isLoginAllowed: boolean;
-            isRegisterAllowed: boolean;
-            authentication: {
-                passkey: {
-                    enabled: boolean;
-                };
-                oauth2: {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                };
-                password: {
-                    enabled: boolean;
-                };
-            } | null;
-            branding: {
-                title: string | null;
-                logoUrl: string | null;
-            };
-        }, {
-            isLoginAllowed: boolean;
-            isRegisterAllowed: boolean;
-            authentication: {
-                passkey: {
-                    enabled: boolean;
-                };
-                oauth2: {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                };
-                password: {
-                    enabled: boolean;
-                };
-            } | null;
-            branding: {
-                title: string | null;
-                logoUrl: string | null;
-            };
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            isLoginAllowed: boolean;
-            isRegisterAllowed: boolean;
-            authentication: {
-                passkey: {
-                    enabled: boolean;
-                };
-                oauth2: {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                };
-                password: {
-                    enabled: boolean;
-                };
-            } | null;
-            branding: {
-                title: string | null;
-                logoUrl: string | null;
-            };
-        };
-    }, {
-        response: {
-            isLoginAllowed: boolean;
-            isRegisterAllowed: boolean;
-            authentication: {
-                passkey: {
-                    enabled: boolean;
-                };
-                oauth2: {
-                    providers: Partial<Record<"telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic", boolean>>;
-                };
-                password: {
-                    enabled: boolean;
-                };
-            } | null;
-            branding: {
-                title: string | null;
-                logoUrl: string | null;
-            };
-        };
-    }>;
+            }, z.core.$strip>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-status.command.d.ts.map

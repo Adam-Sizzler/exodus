@@ -10,12 +10,13 @@ var GetNodePluginCommand;
     GetNodePluginCommand.url = api_1.REST_API.NODE_PLUGINS.GET;
     GetNodePluginCommand.TSQ_url = GetNodePluginCommand.url(':uuid');
     GetNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.GET(':uuid'), 'get', 'Get Node Plugin by uuid', { scope: 'get', kind: 'read' });
-    GetNodePluginCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    GetNodePluginCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
     GetNodePluginCommand.ResponseSchema = zod_1.z.object({
         response: models_1.NodePluginSchema.extend({
             pluginConfig: zod_1.z.unknown(),
         }),
     });
+
 })(GetNodePluginCommand || (exports.GetNodePluginCommand = GetNodePluginCommand = {}));

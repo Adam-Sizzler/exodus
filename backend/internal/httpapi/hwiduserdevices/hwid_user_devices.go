@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	hwidRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{8,64}$`)
+	hwidRegex = regexp.MustCompile(`^[a-zA-Z0-9=-]{10,64}$`)
 )
 
 var (
@@ -51,13 +52,15 @@ type HWIDUserDeviceAPI struct {
 }
 
 type CreateHWIDDeviceRequest struct {
-	UserUUID   string `json:"userUuid"`
+	UserID     *int64 `json:"userId,omitempty"`
+	UserUUID   string `json:"userUuid,omitempty"`
 	HWID       string `json:"hwid"`
 	DeviceName string `json:"deviceName"`
 }
 
 type CheckHWIDRequest struct {
-	UserUUID string `json:"userUuid"`
+	UserID   *int64 `json:"userId,omitempty"`
+	UserUUID string `json:"userUuid,omitempty"`
 	HWID     string `json:"hwid"`
 }
 
@@ -69,9 +72,16 @@ type CheckHWIDResponse struct {
 	ExistingHWID string `json:"existingHwid,omitempty"`
 }
 
+func (r *CreateHWIDDeviceRequest) UserIdentifier() string {
+	if r.UserID != nil && *r.UserID > 0 {
+		return strconv.FormatInt(*r.UserID, 10)
+	}
+	return r.UserUUID
+}
+
 func (r *CreateHWIDDeviceRequest) Validate() error {
-	if _, err := uuid.Parse(r.UserUUID); err != nil {
-		return fmt.Errorf("invalid userUuid format")
+	if r.UserIdentifier() == "" {
+		return fmt.Errorf("userId or userUuid is required")
 	}
 	if strings.TrimSpace(r.HWID) == "" {
 		return fmt.Errorf("hwid is required")
@@ -88,9 +98,16 @@ func (r *CreateHWIDDeviceRequest) Validate() error {
 	return nil
 }
 
+func (r *CheckHWIDRequest) UserIdentifier() string {
+	if r.UserID != nil && *r.UserID > 0 {
+		return strconv.FormatInt(*r.UserID, 10)
+	}
+	return r.UserUUID
+}
+
 func (r *CheckHWIDRequest) Validate() error {
-	if _, err := uuid.Parse(r.UserUUID); err != nil {
-		return fmt.Errorf("invalid userUuid format")
+	if r.UserIdentifier() == "" {
+		return fmt.Errorf("userId or userUuid is required")
 	}
 	if strings.TrimSpace(r.HWID) == "" {
 		return fmt.Errorf("hwid is required")
@@ -129,7 +146,7 @@ func HWIDCheckHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		handleCheckHWID(w, r, db, cfg, req.UserUUID, req.HWID)
+		handleCheckHWID(w, r, db, cfg, req.UserIdentifier(), req.HWID)
 	}
 }
 
@@ -160,7 +177,7 @@ func handleCreateHWIDDevice(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		return
 	}
 
-	userTID, hwidLimit, err := getUserHWIDLimit(r.Context(), db, req.UserUUID)
+	userTID, hwidLimit, err := getUserHWIDLimit(r.Context(), db, req.UserIdentifier())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
@@ -300,15 +317,24 @@ func getHWIDDeviceByUUID(ctx context.Context, db *sql.DB, deviceUUID string) (HW
 	return scanHWIDDevice(row)
 }
 
-func getUserHWIDLimit(ctx context.Context, db *sql.DB, userUUID string) (int64, *int, error) {
+func getUserHWIDLimit(ctx context.Context, db *sql.DB, userIdentifier string) (int64, *int, error) {
 	var userTID int64
 	var hwidDeviceLimit sql.NullInt64
 
-	row := db.QueryRowContext(ctx, `
-		SELECT t_id, hwid_device_limit
-		FROM users
-		WHERE uuid = $1
-	`, userUUID)
+	var row *sql.Row
+	if idNum, parseErr := strconv.ParseInt(userIdentifier, 10, 64); parseErr == nil {
+		row = db.QueryRowContext(ctx, `
+			SELECT id, hwid_device_limit
+			FROM users
+			WHERE id = $1 OR uuid::text = $2 OR short_uuid = $2 OR username = $2
+		`, idNum, userIdentifier)
+	} else {
+		row = db.QueryRowContext(ctx, `
+			SELECT id, hwid_device_limit
+			FROM users
+			WHERE uuid::text = $1 OR short_uuid = $1 OR username = $1
+		`, userIdentifier)
+	}
 
 	if err := row.Scan(&userTID, &hwidDeviceLimit); err != nil {
 		return 0, nil, err

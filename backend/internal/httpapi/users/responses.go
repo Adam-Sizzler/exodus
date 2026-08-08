@@ -22,7 +22,6 @@ func buildUserResponses(ctx context.Context, repo *UserRepository, records []use
 			activeSquads = []internalSquadResponse{}
 		}
 		response = append(response, userAPI{
-			UUID:                   record.UUID,
 			ID:                     record.TID,
 			ShortUUID:              record.ShortUUID,
 			Username:               record.Username,

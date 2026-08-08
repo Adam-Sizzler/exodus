@@ -1,13 +1,13 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
-    GetAllPasskeysCommand,
+    GetPasskeysCommand,
     GetPasskeyRegistrationOptionsCommand
 } from '@exodus/backend-contract'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 export const passkeysQueryKeys = createQueryKeys('passkeys', {
-    getAllPasskeys: {
+    getPasskeys: {
         queryKey: null
     },
     getPasskeyRegistrationOptions: {
@@ -25,10 +25,10 @@ export const usePasskeyRegistrationOptions = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Passkey Registration Options')
 })
 
-export const useGetAllPasskeys = createGetQueryHook({
-    endpoint: GetAllPasskeysCommand.TSQ_url,
-    responseSchema: GetAllPasskeysCommand.ResponseSchema,
-    getQueryKey: () => passkeysQueryKeys.getAllPasskeys.queryKey,
+export const useGetPasskeys = createGetQueryHook({
+    endpoint: GetPasskeysCommand.TSQ_url,
+    responseSchema: GetPasskeysCommand.ResponseSchema,
+    getQueryKey: () => passkeysQueryKeys.getPasskeys.queryKey,
     rQueryParams: {
         refetchOnMount: false
     },

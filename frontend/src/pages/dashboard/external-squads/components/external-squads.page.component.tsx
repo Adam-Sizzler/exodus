@@ -1,12 +1,10 @@
 import { ExternalSquadsHeaderActionButtonsFeature } from '@features/ui/dashboard/external-squads/header-action-buttons'
-import { ExternalSquadsDrawer } from '@widgets/dashboard/external-squads/external-squads-drawer'
 import { ExternalSquadsGridWidget } from '@widgets/dashboard/external-squads/external-squads-grid/external-squads-grid.widget'
 import { ExternalSquadsSpotlightWidget } from '@widgets/dashboard/external-squads/external-squads-spotlight/external-squads-spotlight'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { TbWebhook } from 'react-icons/tb'
 
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 import { Page } from '@shared/ui/page'
 import { PageHeaderShared } from '@shared/ui/page-header/page-header.shared'
 
@@ -39,8 +37,6 @@ export const ExternalSquadsPageComponent = (props: Props) => {
             {externalSquads.length > 0 && (
                 <ExternalSquadsSpotlightWidget externalSquads={externalSquads} />
             )}
-            <ExternalSquadsDrawer />
-            <RenameModalShared key="rename-external-squad-modal" renameFrom="externalSquad" />
         </Page>
     )
 }

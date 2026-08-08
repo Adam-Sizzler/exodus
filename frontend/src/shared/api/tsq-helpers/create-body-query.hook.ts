@@ -23,9 +23,9 @@ type QueryParams<R, Q, B> = {
  * needs a body (typically because filters don't fit in a query string).
  */
 export function createBodyQueryHook<
-    ResponseSchema extends z.ZodType,
-    RequestQuerySchema extends z.ZodType,
-    RouteParamsSchema extends z.ZodType,
+    ResponseSchema extends z.ZodType<{ response: unknown }>,
+    RequestQuerySchema extends z.ZodType<Record<string, unknown>>,
+    RouteParamsSchema extends z.ZodType<Record<string, unknown>>,
     BodySchema extends z.ZodType
 >({
     endpoint,

@@ -38,7 +38,6 @@ type userTrafficResponse struct {
 }
 
 type userAPI struct {
-	UUID                   string                  `json:"uuid"`
 	ID                     int64                   `json:"id"`
 	ShortUUID              string                  `json:"shortUuid"`
 	Username               string                  `json:"username"`
@@ -152,6 +151,7 @@ type createUserRequest struct {
 }
 
 type updateUserRequest struct {
+	ID                   *int64         `json:"id,omitempty"`
 	UUID                 *string        `json:"uuid,omitempty"`
 	Username             *string        `json:"username,omitempty"`
 	Status               *string        `json:"status,omitempty"`
@@ -175,35 +175,38 @@ type updateUserRequest struct {
 }
 
 type resolveUserRequest struct {
-	UUID      *string `json:"uuid,omitempty"`
 	ID        *int64  `json:"id,omitempty"`
+	UUID      *string `json:"uuid,omitempty"`
 	ShortUUID *string `json:"shortUuid,omitempty"`
 	Username  *string `json:"username,omitempty"`
 }
 
 type resolveUserResponse struct {
-	UUID      string `json:"uuid"`
 	ID        int64  `json:"id"`
 	ShortUUID string `json:"shortUuid"`
 	Username  string `json:"username"`
 }
 
 type bulkDeleteUsersRequest struct {
-	UUIDs []string `json:"uuids"`
+	UserIDs []int64  `json:"userIds,omitempty"`
+	UUIDs   []string `json:"uuids,omitempty"`
 }
 
 type bulkExtendExpirationDateRequest struct {
-	UUIDs      []string `json:"uuids"`
+	UserIDs    []int64  `json:"userIds,omitempty"`
+	UUIDs      []string `json:"uuids,omitempty"`
 	ExtendDays int      `json:"extendDays"`
 }
 
 type bulkUpdateUsersRequest struct {
-	UUIDs  []string              `json:"uuids"`
-	Fields bulkUpdateUsersFields `json:"fields"`
+	UserIDs []int64                `json:"userIds,omitempty"`
+	UUIDs   []string               `json:"uuids,omitempty"`
+	Fields  bulkUpdateUsersFields  `json:"fields"`
 }
 
 type bulkUpdateUsersSquadsRequest struct {
-	UUIDs                []string `json:"uuids"`
+	UserIDs              []int64  `json:"userIds,omitempty"`
+	UUIDs                []string `json:"uuids,omitempty"`
 	ActiveInternalSquads []string `json:"activeInternalSquads"`
 }
 

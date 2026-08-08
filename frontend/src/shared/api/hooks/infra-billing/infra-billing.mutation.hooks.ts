@@ -1,11 +1,11 @@
 import { notifications } from '@mantine/notifications'
 import {
-    CreateInfraBillingHistoryRecordCommand,
+    CreateInfraBillingRecordCommand,
     CreateInfraBillingNodeCommand,
     CreateInfraProviderCommand,
-    DeleteInfraBillingHistoryRecordCommand,
-    DeleteInfraBillingNodeByUuidCommand,
-    DeleteInfraProviderByUuidCommand,
+    DeleteInfraBillingRecordCommand,
+    DeleteInfraBillingNodeCommand,
+    DeleteInfraProviderCommand,
     UpdateInfraBillingNodeCommand,
     UpdateInfraProviderCommand
 } from '@exodus/backend-contract'
@@ -14,7 +14,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useUpdateInfraProvider = createMutationHook({
     endpoint: UpdateInfraProviderCommand.TSQ_url,
-    bodySchema: UpdateInfraProviderCommand.RequestSchema,
+    bodySchema: UpdateInfraProviderCommand.RequestBodySchema,
     responseSchema: UpdateInfraProviderCommand.ResponseSchema,
     requestMethod: UpdateInfraProviderCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -37,10 +37,9 @@ export const useUpdateInfraProvider = createMutationHook({
 })
 
 export const useDeleteInfraProvider = createMutationHook({
-    endpoint: DeleteInfraProviderByUuidCommand.TSQ_url,
-    responseSchema: DeleteInfraProviderByUuidCommand.ResponseSchema,
-    routeParamsSchema: DeleteInfraProviderByUuidCommand.RequestSchema,
-    requestMethod: DeleteInfraProviderByUuidCommand.endpointDetails.REQUEST_METHOD,
+    endpoint: DeleteInfraProviderCommand.TSQ_url,
+    routeParamsSchema: DeleteInfraProviderCommand.RequestParamSchema,
+    requestMethod: DeleteInfraProviderCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -63,7 +62,7 @@ export const useDeleteInfraProvider = createMutationHook({
 export const useCreateInfraProvider = createMutationHook({
     endpoint: CreateInfraProviderCommand.TSQ_url,
     responseSchema: CreateInfraProviderCommand.ResponseSchema,
-    bodySchema: CreateInfraProviderCommand.RequestSchema,
+    bodySchema: CreateInfraProviderCommand.RequestBodySchema,
     requestMethod: CreateInfraProviderCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -85,10 +84,9 @@ export const useCreateInfraProvider = createMutationHook({
 })
 
 export const useDeleteInfraBillingHistoryRecord = createMutationHook({
-    endpoint: DeleteInfraBillingHistoryRecordCommand.TSQ_url,
-    responseSchema: DeleteInfraBillingHistoryRecordCommand.ResponseSchema,
-    routeParamsSchema: DeleteInfraBillingHistoryRecordCommand.RequestSchema,
-    requestMethod: DeleteInfraBillingHistoryRecordCommand.endpointDetails.REQUEST_METHOD,
+    endpoint: DeleteInfraBillingRecordCommand.TSQ_url,
+    routeParamsSchema: DeleteInfraBillingRecordCommand.RequestParamSchema,
+    requestMethod: DeleteInfraBillingRecordCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -109,10 +107,10 @@ export const useDeleteInfraBillingHistoryRecord = createMutationHook({
 })
 
 export const useCreateInfraBillingHistoryRecord = createMutationHook({
-    endpoint: CreateInfraBillingHistoryRecordCommand.TSQ_url,
-    responseSchema: CreateInfraBillingHistoryRecordCommand.ResponseSchema,
-    bodySchema: CreateInfraBillingHistoryRecordCommand.RequestSchema,
-    requestMethod: CreateInfraBillingHistoryRecordCommand.endpointDetails.REQUEST_METHOD,
+    endpoint: CreateInfraBillingRecordCommand.TSQ_url,
+    responseSchema: CreateInfraBillingRecordCommand.ResponseSchema,
+    bodySchema: CreateInfraBillingRecordCommand.RequestBodySchema,
+    requestMethod: CreateInfraBillingRecordCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -135,7 +133,7 @@ export const useCreateInfraBillingHistoryRecord = createMutationHook({
 export const useCreateInfraBillingNode = createMutationHook({
     endpoint: CreateInfraBillingNodeCommand.TSQ_url,
     responseSchema: CreateInfraBillingNodeCommand.ResponseSchema,
-    bodySchema: CreateInfraBillingNodeCommand.RequestSchema,
+    bodySchema: CreateInfraBillingNodeCommand.RequestBodySchema,
     requestMethod: CreateInfraBillingNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -157,10 +155,9 @@ export const useCreateInfraBillingNode = createMutationHook({
 })
 
 export const useDeleteInfraBillingNode = createMutationHook({
-    endpoint: DeleteInfraBillingNodeByUuidCommand.TSQ_url,
-    responseSchema: DeleteInfraBillingNodeByUuidCommand.ResponseSchema,
-    routeParamsSchema: DeleteInfraBillingNodeByUuidCommand.RequestSchema,
-    requestMethod: DeleteInfraBillingNodeByUuidCommand.endpointDetails.REQUEST_METHOD,
+    endpoint: DeleteInfraBillingNodeCommand.TSQ_url,
+    routeParamsSchema: DeleteInfraBillingNodeCommand.RequestParamSchema,
+    requestMethod: DeleteInfraBillingNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
             notifications.show({
@@ -182,7 +179,7 @@ export const useDeleteInfraBillingNode = createMutationHook({
 
 export const useUpdateInfraBillingNode = createMutationHook({
     endpoint: UpdateInfraBillingNodeCommand.TSQ_url,
-    bodySchema: UpdateInfraBillingNodeCommand.RequestSchema,
+    bodySchema: UpdateInfraBillingNodeCommand.RequestBodySchema,
     responseSchema: UpdateInfraBillingNodeCommand.ResponseSchema,
     requestMethod: UpdateInfraBillingNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

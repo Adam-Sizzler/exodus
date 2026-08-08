@@ -4,12 +4,10 @@ import { useTranslation } from 'react-i18next'
 
 import { QueryKeys, useDeleteConfigProfile, useReorderConfigProfiles } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
-import { ActiveNodesListModalWithStoreShared } from '@shared/ui/config-profiles/active-nodes-list-modal-with-store/active-nodes-list-with-store.modal.shared'
 import { SingboxLogo } from '@shared/ui/logos'
 import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
 
 import { ConfigProfileCardWidget } from '../config-profile-card/config-profile-card.widget'
-import { ConfigProfileInboundsDrawerWidget } from '../config-profile-inbounds-drawer/config-profile-inbounds.drawer.widget'
 import { IProps } from './interfaces'
 
 export function ConfigProfilesGridWidget(props: IProps) {
@@ -42,7 +40,10 @@ export function ConfigProfilesGridWidget(props: IProps) {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
-            confirmProps: { color: 'red' },
+            confirmProps: { color: 'red', variant: 'soft' },
+            cancelProps: {
+                variant: 'subtle'
+            },
             centered: true,
             onConfirm: () => {
                 deleteConfigProfile({
@@ -86,29 +87,24 @@ export function ConfigProfilesGridWidget(props: IProps) {
     }
 
     return (
-        <>
-            <VirtualizedDndGrid
-                enableDnd={true}
-                items={configProfiles}
-                onReorder={handleReorder}
-                renderDragOverlay={(profile) => (
-                    <ConfigProfileCardWidget
-                        configProfile={profile}
-                        handleDeleteConfigProfile={handleDeleteProfile}
-                        isDragOverlay
-                    />
-                )}
-                renderItem={(profile) => (
-                    <ConfigProfileCardWidget
-                        configProfile={profile}
-                        handleDeleteConfigProfile={handleDeleteProfile}
-                    />
-                )}
-                useWindowScroll={true}
-            />
-
-            <ConfigProfileInboundsDrawerWidget />
-            <ActiveNodesListModalWithStoreShared />
-        </>
+        <VirtualizedDndGrid
+            enableDnd={true}
+            items={configProfiles}
+            onReorder={handleReorder}
+            renderDragOverlay={(profile) => (
+                <ConfigProfileCardWidget
+                    configProfile={profile}
+                    handleDeleteConfigProfile={handleDeleteProfile}
+                    isDragOverlay
+                />
+            )}
+            renderItem={(profile) => (
+                <ConfigProfileCardWidget
+                    configProfile={profile}
+                    handleDeleteConfigProfile={handleDeleteProfile}
+                />
+            )}
+            useWindowScroll={true}
+        />
     )
 }

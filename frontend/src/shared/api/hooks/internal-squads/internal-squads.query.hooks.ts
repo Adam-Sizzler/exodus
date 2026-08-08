@@ -1,7 +1,7 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
     GetInternalSquadAccessibleNodesCommand,
-    GetInternalSquadByUuidCommand,
+    GetInternalSquadCommand,
     GetInternalSquadsCommand
 } from '@exodus/backend-contract'
 import { keepPreviousData } from '@tanstack/react-query'
@@ -14,10 +14,12 @@ export const internalSquadsQueryKeys = createQueryKeys('internalSquads', {
     getInternalSquads: {
         queryKey: null
     },
-    getInternalSquad: (route: GetInternalSquadByUuidCommand.Request) => ({
+    getInternalSquad: (route: GetInternalSquadCommand.RequestParam) => ({
         queryKey: [route]
     }),
-    getInternalSquadAccessibleNodes: (route: GetInternalSquadAccessibleNodesCommand.Request) => ({
+    getInternalSquadAccessibleNodes: (
+        route: GetInternalSquadAccessibleNodesCommand.RequestParam
+    ) => ({
         queryKey: [route]
     })
 })
@@ -36,9 +38,9 @@ export const useGetInternalSquads = createGetQueryHook({
 })
 
 export const useGetInternalSquad = createGetQueryHook({
-    endpoint: GetInternalSquadByUuidCommand.TSQ_url,
-    responseSchema: GetInternalSquadByUuidCommand.ResponseSchema,
-    routeParamsSchema: GetInternalSquadByUuidCommand.RequestSchema,
+    endpoint: GetInternalSquadCommand.TSQ_url,
+    responseSchema: GetInternalSquadCommand.ResponseSchema,
+    routeParamsSchema: GetInternalSquadCommand.RequestParamSchema,
     getQueryKey: ({ route }) => internalSquadsQueryKeys.getInternalSquad(route!).queryKey,
     rQueryParams: {
         refetchOnMount: true,
@@ -50,7 +52,7 @@ export const useGetInternalSquad = createGetQueryHook({
 export const useGetInternalSquadAccessibleNodes = createGetQueryHook({
     endpoint: GetInternalSquadAccessibleNodesCommand.TSQ_url,
     responseSchema: GetInternalSquadAccessibleNodesCommand.ResponseSchema,
-    routeParamsSchema: GetInternalSquadAccessibleNodesCommand.RequestSchema,
+    routeParamsSchema: GetInternalSquadAccessibleNodesCommand.RequestParamSchema,
     getQueryKey: ({ route }) =>
         internalSquadsQueryKeys.getInternalSquadAccessibleNodes(route!).queryKey,
     rQueryParams: {

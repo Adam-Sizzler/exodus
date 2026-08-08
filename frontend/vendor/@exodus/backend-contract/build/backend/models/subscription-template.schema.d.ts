@@ -1,9 +1,9 @@
 import z from 'zod';
 export declare const SubscriptionTemplateSchema: z.ZodObject<{
-    uuid: z.ZodString;
+    uuid: z.ZodUUID;
     viewPosition: z.ZodNumber;
     name: z.ZodString;
-    templateType: z.ZodNativeEnum<{
+    templateType: z.ZodEnum<{
         readonly XRAY_JSON: "XRAY_JSON";
         readonly XRAY_BASE64: "XRAY_BASE64";
         readonly MIHOMO: "MIHOMO";
@@ -13,19 +13,5 @@ export declare const SubscriptionTemplateSchema: z.ZodObject<{
     }>;
     templateJson: z.ZodNullable<z.ZodUnknown>;
     encodedTemplateYaml: z.ZodNullable<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    uuid: string;
-    name: string;
-    viewPosition: number;
-    templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-    encodedTemplateYaml: string | null;
-    templateJson?: unknown;
-}, {
-    uuid: string;
-    name: string;
-    viewPosition: number;
-    templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-    encodedTemplateYaml: string | null;
-    templateJson?: unknown;
-}>;
+}, z.core.$strip>;
 //# sourceMappingURL=subscription-template.schema.d.ts.map

@@ -23,7 +23,7 @@ __exportStar(require("./hosts"), exports);
 __exportStar(require("./hwid"), exports);
 __exportStar(require("./infra-billing"), exports);
 __exportStar(require("./internal-squads"), exports);
-__exportStar(require("./ip-control"), exports);
+__exportStar(require("./connections"), exports);
 __exportStar(require("./keygen"), exports);
 __exportStar(require("./metadata"), exports);
 __exportStar(require("./node-plugins"), exports);

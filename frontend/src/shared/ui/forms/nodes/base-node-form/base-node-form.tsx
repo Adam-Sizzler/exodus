@@ -6,8 +6,8 @@ import { Button, CopyButton, Group, Menu, px, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import {
     GetNodePluginsCommand,
-    GetOneNodeCommand,
-    GetPubKeyCommand,
+    GetNodeSecretKeyCommand,
+    GetNodeCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
 import { ModalAccordionWidget } from '@widgets/dashboard/nodes/modal-accordeon-widget'
@@ -46,24 +46,24 @@ const cardVariants = {
     }
 }
 
-interface IProps<T extends UpdateNodeCommand.Request> {
+interface IProps<T extends UpdateNodeCommand.RequestBody> {
     form: UseFormReturnType<T>
     handleClose: () => void
     handleSubmit: () => void
     isDataSubmitting: boolean
-    node: GetOneNodeCommand.Response['response']
+    node: GetNodeCommand.Response['response']
     nodeDetailsCard?: ReactNode
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     nodeSystemCard?: ReactNode
-    pubKey: GetPubKeyCommand.Response['response'] | undefined
+    secretKey: GetNodeSecretKeyCommand.Response['response'] | undefined
 }
 
-export const BaseNodeForm = <T extends UpdateNodeCommand.Request>(props: IProps<T>) => {
+export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IProps<T>) => {
     const {
         form,
         node,
         nodePlugins,
-        pubKey,
+        secretKey,
         nodeDetailsCard,
         nodeSystemCard,
         handleClose,
@@ -98,7 +98,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.Request>(props: IProps<
                         motionWrapper={MotionWrapper}
                         nodePlugins={nodePlugins}
                         nodeUuid={node.uuid}
-                        pubKey={pubKey}
+                        secretKey={secretKey}
                     />
 
                     <NodeConfigProfilesCard
@@ -141,7 +141,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.Request>(props: IProps<
                             motionWrapper={MotionWrapper}
                             nodePlugins={nodePlugins}
                             nodeUuid={node.uuid}
-                            pubKey={pubKey}
+                            secretKey={secretKey}
                         />
 
                         <NodeConsumptionCard

@@ -171,12 +171,12 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 		JOIN config_profile_inbounds cpi ON cpi.uuid = cpitn.config_profile_inbound_uuid
 		JOIN internal_squad_inbounds isi ON isi.inbound_uuid = cpitn.config_profile_inbound_uuid
 		JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-		JOIN users u ON u.t_id = ism.user_id
+		JOIN users u ON u.id = ism.user_id
 		WHERE cpitn.node_uuid::text = $1
 			AND u.status = 'ACTIVE'
 			AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
-		GROUP BY u.t_id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
-		ORDER BY u.t_id ASC
+		GROUP BY u.id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
+		ORDER BY u.id ASC
 	`, tagFilterSQL)
 	rows, err := nm.db.QueryContext(ctx, usersQuery, usersArgs...)
 	if err != nil {
@@ -276,9 +276,9 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 			COALESCE(u.anytls_password, '')
 		FROM internal_squad_inbounds isi
 		JOIN internal_squad_members ism ON ism.internal_squad_uuid = isi.internal_squad_uuid
-		JOIN users u ON u.t_id = ism.user_id
+		JOIN users u ON u.id = ism.user_id
 		WHERE isi.inbound_uuid = ANY($1) AND u.status = 'ACTIVE'
-		ORDER BY u.t_id ASC
+		ORDER BY u.id ASC
 	`, inboundUUIDs)
 	if err != nil {
 		return nil, err

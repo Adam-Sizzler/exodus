@@ -4,7 +4,7 @@ import { UseFormReturnType } from '@mantine/form'
 import { SiSecurityscorecard } from 'react-icons/si'
 import { useTranslation } from 'react-i18next'
 
-import { useGetSubscriptionPageConfigs } from '@shared/api/hooks'
+import { useGetSubpageConfigs } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
@@ -23,7 +23,7 @@ export const SubscriptionConfigCard = <T extends SubscriptionConfigForm>(props: 
     const { cardVariants, form, motionWrapper } = props
     const MotionWrapper = motionWrapper
 
-    const { data: subpageConfigs, isLoading: isSubpageConfigsLoading } = useGetSubscriptionPageConfigs()
+    const { data: subpageConfigs, isLoading: isSubpageConfigsLoading } = useGetSubpageConfigs()
 
     const configOptions = (subpageConfigs?.configs ?? []).map((item) => ({
         value: item.uuid,

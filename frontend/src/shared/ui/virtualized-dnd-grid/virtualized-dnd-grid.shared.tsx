@@ -1,21 +1,17 @@
+import { RestrictToWindow } from '@dnd-kit/dom/modifiers'
+import { move } from '@dnd-kit/helpers'
 import {
-    closestCenter,
-    DndContext,
+    DragDropProvider,
     DragEndEvent,
+    DragOverEvent,
     DragOverlay,
-    DragStartEvent,
-    KeyboardSensor,
-    MouseSensor,
-    TouchSensor,
-    UniqueIdentifier,
-    useSensor,
-    useSensors
-} from '@dnd-kit/core'
-import { restrictToWindowEdges } from '@dnd-kit/modifiers'
-import { arrayMove, rectSortingStrategy, SortableContext } from '@dnd-kit/sortable'
+    DragStartEvent
+} from '@dnd-kit/react'
 import { Box } from '@mantine/core'
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
 import { VirtuosoGrid } from 'react-virtuoso'
+
+import { DndSortableIndexContext } from '@shared/hocs/with-dnd-sortable'
 
 import classes from './virtualized-dnd-grid.module.css'
 import { VirtualizedGridComponents } from './virtualized-grid-components'
@@ -42,62 +38,66 @@ export function VirtualizedDndGrid<T extends { uuid: string }>(props: Virtualize
     } = props
 
     const [items, setItems] = useState(initialItems)
-    const [activeId, setActiveId] = useState<null | UniqueIdentifier>(null)
+    const [activeId, setActiveId] = useState<null | string>(null)
+    const itemsRef = useRef(items)
+    const dragSnapshotRef = useRef<null | T[]>(null)
 
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: {
-                distance: 5
-            }
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 250,
-                tolerance: 5
-            }
-        }),
-        useSensor(KeyboardSensor, {})
-    )
+    useEffect(() => {
+        itemsRef.current = items
+    }, [items])
 
     useEffect(() => {
         setItems(initialItems)
     }, [initialItems])
 
     const handleDragStart = (event: DragStartEvent) => {
-        setActiveId(event.active.id)
+        const sourceId = event.operation.source?.id
+        dragSnapshotRef.current = itemsRef.current
+        setActiveId(sourceId ? String(sourceId) : null)
+    }
+
+    const handleDragOver = (event: DragOverEvent) => {
+        setItems((prev) => {
+            const ids = prev.map((item) => item.uuid)
+            const newIds = move(ids, event)
+            if (newIds === ids) return prev
+
+            const itemsByUuid = new Map(prev.map((item) => [item.uuid, item]))
+            return newIds.map((uuid) => itemsByUuid.get(uuid)!)
+        })
     }
 
     const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event
+        setActiveId(null)
 
-        if (over && active.id !== over.id) {
-            setItems((items) => {
-                const oldIndex = items.findIndex((item) => item.uuid === active.id)
-                const newIndex = items.findIndex((item) => item.uuid === over.id)
+        const snapshot = dragSnapshotRef.current
+        dragSnapshotRef.current = null
 
-                const newItems = arrayMove(items, oldIndex, newIndex)
-                onReorder?.(newItems)
-                return newItems
-            })
+        if (event.canceled) {
+            if (snapshot) setItems(snapshot)
+            return
         }
 
-        setActiveId(null)
-    }
+        const newItems = itemsRef.current
+        const hasOrderChanged = snapshot?.some((item, index) => item.uuid !== newItems[index]?.uuid)
 
-    const handleDragCancel = () => {
-        setActiveId(null)
+        if (hasOrderChanged) {
+            onReorder?.(newItems)
+        }
     }
 
     const draggedItem = activeId ? items.find((item) => item.uuid === activeId) : null
+
+    const computeItemKey = (index: number) => items[index]?.uuid ?? index
 
     const itemContent = (index: number) => {
         const item = items[index]
         if (!item) return null
 
         return (
-            <div className={classes.itemWrapper} key={item.uuid}>
-                {renderItem(item, index)}
-            </div>
+            <DndSortableIndexContext.Provider key={item.uuid} value={index}>
+                <div className={classes.itemWrapper}>{renderItem(item, index)}</div>
+            </DndSortableIndexContext.Provider>
         )
     }
 
@@ -106,6 +106,7 @@ export function VirtualizedDndGrid<T extends { uuid: string }>(props: Virtualize
             <Box style={style}>
                 <VirtuosoGrid
                     components={VirtualizedGridComponents}
+                    computeItemKey={computeItemKey}
                     itemContent={itemContent}
                     totalCount={items.length}
                     useWindowScroll={useWindowScroll}
@@ -115,34 +116,31 @@ export function VirtualizedDndGrid<T extends { uuid: string }>(props: Virtualize
     }
 
     return (
-        <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToWindowEdges]}
-            onDragCancel={handleDragCancel}
+        <DragDropProvider
+            modifiers={[RestrictToWindow]}
             onDragEnd={handleDragEnd}
+            onDragOver={handleDragOver}
             onDragStart={handleDragStart}
-            sensors={sensors}
         >
-            <SortableContext items={items.map((item) => item.uuid)} strategy={rectSortingStrategy}>
-                <Box style={style}>
-                    <VirtuosoGrid
-                        components={VirtualizedGridComponents}
-                        itemContent={itemContent}
-                        overscan={{
-                            main: 10,
-                            reverse: 10
-                        }}
-                        totalCount={items.length}
-                        useWindowScroll={useWindowScroll}
-                    />
-                </Box>
-            </SortableContext>
+            <Box style={style}>
+                <VirtuosoGrid
+                    components={VirtualizedGridComponents}
+                    computeItemKey={computeItemKey}
+                    itemContent={itemContent}
+                    overscan={{
+                        main: 10,
+                        reverse: 10
+                    }}
+                    totalCount={items.length}
+                    useWindowScroll={useWindowScroll}
+                />
+            </Box>
 
             <DragOverlay>
                 {draggedItem && renderDragOverlay ? (
                     <Box style={{ width: '100%' }}>{renderDragOverlay(draggedItem)}</Box>
                 ) : null}
             </DragOverlay>
-        </DndContext>
+        </DragDropProvider>
     )
 }

@@ -5,170 +5,47 @@ export declare namespace GetApiTokenScopesCommand {
     const endpointDetails: import("../../constants").EndpointDetails;
     const EndpointScopeSchema: z.ZodObject<{
         key: z.ZodString;
-        kind: z.ZodEnum<["read", "write"]>;
+        kind: z.ZodEnum<{
+            read: "read";
+            write: "write";
+        }>;
         method: z.ZodString;
         path: z.ZodString;
         description: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        path: string;
-        key: string;
-        kind: "read" | "write";
-        method: string;
-        description: string;
-    }, {
-        path: string;
-        key: string;
-        kind: "read" | "write";
-        method: string;
-        description: string;
-    }>;
+    }, z.core.$strip>;
     const ResourceScopesSchema: z.ZodObject<{
         resource: z.ZodString;
-        resourceScopes: z.ZodArray<z.ZodString, "many">;
+        resourceScopes: z.ZodArray<z.ZodString>;
         endpoints: z.ZodArray<z.ZodObject<{
             key: z.ZodString;
-            kind: z.ZodEnum<["read", "write"]>;
+            kind: z.ZodEnum<{
+                read: "read";
+                write: "write";
+            }>;
             method: z.ZodString;
             path: z.ZodString;
             description: z.ZodString;
-        }, "strip", z.ZodTypeAny, {
-            path: string;
-            key: string;
-            kind: "read" | "write";
-            method: string;
-            description: string;
-        }, {
-            path: string;
-            key: string;
-            kind: "read" | "write";
-            method: string;
-            description: string;
-        }>, "many">;
-    }, "strip", z.ZodTypeAny, {
-        resource: string;
-        resourceScopes: string[];
-        endpoints: {
-            path: string;
-            key: string;
-            kind: "read" | "write";
-            method: string;
-            description: string;
-        }[];
-    }, {
-        resource: string;
-        resourceScopes: string[];
-        endpoints: {
-            path: string;
-            key: string;
-            kind: "read" | "write";
-            method: string;
-            description: string;
-        }[];
-    }>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             wildcard: z.ZodString;
             resources: z.ZodArray<z.ZodObject<{
                 resource: z.ZodString;
-                resourceScopes: z.ZodArray<z.ZodString, "many">;
+                resourceScopes: z.ZodArray<z.ZodString>;
                 endpoints: z.ZodArray<z.ZodObject<{
                     key: z.ZodString;
-                    kind: z.ZodEnum<["read", "write"]>;
+                    kind: z.ZodEnum<{
+                        read: "read";
+                        write: "write";
+                    }>;
                     method: z.ZodString;
                     path: z.ZodString;
                     description: z.ZodString;
-                }, "strip", z.ZodTypeAny, {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }, {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }>, "many">;
-            }, "strip", z.ZodTypeAny, {
-                resource: string;
-                resourceScopes: string[];
-                endpoints: {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }[];
-            }, {
-                resource: string;
-                resourceScopes: string[];
-                endpoints: {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }[];
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            wildcard: string;
-            resources: {
-                resource: string;
-                resourceScopes: string[];
-                endpoints: {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }[];
-            }[];
-        }, {
-            wildcard: string;
-            resources: {
-                resource: string;
-                resourceScopes: string[];
-                endpoints: {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }[];
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            wildcard: string;
-            resources: {
-                resource: string;
-                resourceScopes: string[];
-                endpoints: {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }[];
-            }[];
-        };
-    }, {
-        response: {
-            wildcard: string;
-            resources: {
-                resource: string;
-                resourceScopes: string[];
-                endpoints: {
-                    path: string;
-                    key: string;
-                    kind: "read" | "write";
-                    method: string;
-                    description: string;
-                }[];
-            }[];
-        };
-    }>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-scopes.command.d.ts.map

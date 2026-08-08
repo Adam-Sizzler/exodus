@@ -10,7 +10,7 @@ var GetRawSubscriptionByShortUuidCommand;
     GetRawSubscriptionByShortUuidCommand.url = api_1.REST_API.SUBSCRIPTIONS.GET_BY.SHORT_UUID_RAW;
     GetRawSubscriptionByShortUuidCommand.TSQ_url = GetRawSubscriptionByShortUuidCommand.url(':shortUuid');
     GetRawSubscriptionByShortUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.GET_BY.SHORT_UUID_RAW(':shortUuid'), 'get', 'Get Raw Subscription by Short UUID', { scope: 'raw', kind: 'read' });
-    GetRawSubscriptionByShortUuidCommand.RequestSchema = zod_1.z.object({
+    GetRawSubscriptionByShortUuidCommand.RequestParamSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
     GetRawSubscriptionByShortUuidCommand.RequestQuerySchema = zod_1.z.object({
@@ -18,7 +18,7 @@ var GetRawSubscriptionByShortUuidCommand;
             .string()
             .transform((str) => str === 'true')
             .optional()
-            .default('false'),
+            .prefault('false'),
     });
     GetRawSubscriptionByShortUuidCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
@@ -41,4 +41,5 @@ var GetRawSubscriptionByShortUuidCommand;
             resolvedProxyConfigs: zod_1.z.array(models_1.ResolvedProxyConfigSchema),
         }),
     });
+
 })(GetRawSubscriptionByShortUuidCommand || (exports.GetRawSubscriptionByShortUuidCommand = GetRawSubscriptionByShortUuidCommand = {}));

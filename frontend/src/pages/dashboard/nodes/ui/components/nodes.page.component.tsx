@@ -2,20 +2,17 @@ import { MultiSelectNodesFeature } from '@features/dashboard/nodes/multi-select-
 import { NodesHeaderActionButtonsFeature } from '@features/ui/dashboard/nodes/nodes-header-action-buttons'
 import { Grid, Stack } from '@mantine/core'
 /* eslint-disable no-nested-ternary */
-import { GetAllNodesCommand } from '@exodus/backend-contract'
-import { CreateNodeModalWidget } from '@widgets/dashboard/nodes/create-node-modal'
-import { EditNodeByUuidModalWidget } from '@widgets/dashboard/nodes/edit-node-by-uuid-modal'
-import { LinkedHostsDrawer } from '@widgets/dashboard/nodes/linked-hosts-drawer/linked-hosts-drawer.widget'
-import { NodeUsersUsageDrawer } from '@widgets/dashboard/nodes/node-users-usage-statistic'
+import { GetNodesCommand } from '@exodus/backend-contract'
 import { NodesDataTableWidget } from '@widgets/dashboard/nodes/nodes-datatable/nodes-datatable.widget'
 import { NodesRealtimeUsageMetrics } from '@widgets/dashboard/nodes/nodes-realtime-metrics'
 import { NodesTableWidget } from '@widgets/dashboard/nodes/nodes-table'
-import { NodesUsersUsageStatisticsDrawer } from '@widgets/dashboard/nodes/nodes-users-usage-statistics/nodes-users-usage-statistics.drawer'
 import { motion } from 'motion/react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HiServer } from 'react-icons/hi'
 
+import { queryClient } from '@shared/api'
+import { nodesQueryKeys, useReorderNodes } from '@shared/api/hooks'
 import { LoadingScreen, Page, PageHeaderShared } from '@shared/ui'
 
 import {
@@ -34,8 +31,57 @@ export default function NodesPageComponent(props: IProps) {
     const viewMode = useNodesViewMode()
     const { setNodesViewMode } = useViewPreferencesStoreActions()
     const [selectedRecords, setSelectedRecords] = useState<
-        GetAllNodesCommand.Response['response'][number][]
+        GetNodesCommand.Response['response'][number][]
     >([])
+
+    const { mutate: reorderNodes } = useReorderNodes({
+        mutationFns: {
+            onSuccess: (data) => {
+                queryClient.setQueryData(nodesQueryKeys.getAllNodes.queryKey, data)
+            },
+            onError: () => {
+                queryClient.invalidateQueries({ queryKey: nodesQueryKeys.getAllNodes.queryKey })
+            }
+        }
+    })
+
+    const moveSelected = useCallback(
+        (mode: 'bottom' | 'down' | 'top' | 'up') => {
+            if (!nodes || selectedRecords.length === 0) return
+            const selected = new Set(selectedRecords.map((record) => record.uuid))
+
+            let next: typeof nodes
+            if (mode === 'top' || mode === 'bottom') {
+                const sel = nodes.filter((node) => selected.has(node.uuid))
+                const rest = nodes.filter((node) => !selected.has(node.uuid))
+                next = mode === 'top' ? [...sel, ...rest] : [...rest, ...sel]
+            } else {
+                next = [...nodes]
+                const offset = mode === 'up' ? -1 : 1
+                const start = mode === 'up' ? 1 : next.length - 2
+                const end = mode === 'up' ? next.length : -1
+                const step = mode === 'up' ? 1 : -1
+
+                for (let i = start; i !== end; i += step) {
+                    const j = i + offset
+                    if (selected.has(next[i].uuid) && !selected.has(next[j].uuid)) {
+                        ;[next[i], next[j]] = [next[j], next[i]]
+                    }
+                }
+            }
+
+            const hasOrderChanged = nodes.some((node, index) => node.uuid !== next[index].uuid)
+            if (!hasOrderChanged) return
+
+            queryClient.setQueryData(nodesQueryKeys.getAllNodes.queryKey, next)
+            reorderNodes({
+                variables: {
+                    nodes: next.map((node, index) => ({ uuid: node.uuid, viewPosition: index }))
+                }
+            })
+        },
+        [nodes, selectedRecords, reorderNodes]
+    )
 
     return (
         <Page title={t('constants.nodes')}>
@@ -78,16 +124,11 @@ export default function NodesPageComponent(props: IProps) {
                 </Grid.Col>
             </Grid>
 
-            <EditNodeByUuidModalWidget key="edit-node-by-uuid-modal" />
-            <CreateNodeModalWidget key="create-node-widget" />
-            <NodeUsersUsageDrawer key="node-users-usage-drawer" />
-            <LinkedHostsDrawer key="linked-hosts-drawer" />
-
             <MultiSelectNodesFeature
+                moveSelected={moveSelected}
                 selectedRecords={selectedRecords}
                 setSelectedRecords={setSelectedRecords}
             />
-            <NodesUsersUsageStatisticsDrawer key="nodes-users-usage-statistics-drawer" />
         </Page>
     )
 }

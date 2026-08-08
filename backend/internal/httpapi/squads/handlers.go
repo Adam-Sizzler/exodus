@@ -130,7 +130,7 @@ func handleUpdateInternalSquad(w http.ResponseWriter, r *http.Request, service *
 }
 
 func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, service *SquadService, squadUUID string) {
-	name, err := service.DeleteSquad(r.Context(), squadUUID)
+	_, err := service.DeleteSquad(r.Context(), squadUUID)
 	if err != nil {
 		if errors.Is(err, errSquadNotFound) {
 			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, service.cfg)
@@ -140,13 +140,7 @@ func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, service *
 		return
 	}
 
-	service.cfg.Logger.Info("Internal squad deleted", "uuid", squadUUID, "name", name)
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"response": map[string]interface{}{
-			"isDeleted": true,
-		},
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleGetInternalSquad(w http.ResponseWriter, r *http.Request, service *SquadService, squadUUID string) {

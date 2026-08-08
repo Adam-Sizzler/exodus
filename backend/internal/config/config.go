@@ -52,7 +52,6 @@ type CORSConfig struct {
 
 type JWTConfig struct {
 	AuthSecret        string
-	APITokensSecret   string
 	AuthLifetimeHours int
 }
 
@@ -130,6 +129,8 @@ type RedisConfig struct {
 	JobQueueVisibilitySeconds    int
 	SubscriptionQueueConcurrency int
 	PushToDBQueueConcurrency     int
+	ExportToStreamEnabled        bool
+	ExportToStreamMaxLen         int
 }
 
 var defaultConfig = BackendConfig{
@@ -158,6 +159,8 @@ var defaultConfig = BackendConfig{
 		JobQueueVisibilitySeconds:    300,
 		SubscriptionQueueConcurrency: 50,
 		PushToDBQueueConcurrency:     3,
+		ExportToStreamEnabled:        false,
+		ExportToStreamMaxLen:         3000,
 	},
 	Panel: PanelConfig{
 		StaticDir:         "/opt/app/ui",
@@ -172,9 +175,9 @@ var defaultConfig = BackendConfig{
 		AuthLifetimeHours: 12,
 	},
 	Docs: DocsConfig{
-		IsEnabled:   false,
-		ScalarPath:  "/scalar",
-		SwaggerPath: "/docs",
+		IsEnabled:   true,
+		ScalarPath:  "/api/backend-tools/scalar",
+		SwaggerPath: "/api/backend-tools/swagger",
 	},
 	Metrics: MetricsConfig{
 		Address:         "0.0.0.0",
@@ -443,8 +446,7 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		cfg.CORS.AllowedOrigins = splitCSV(value)
 	}
 
-	cfg.JWT.AuthSecret = strings.TrimSpace(envFirst("JWT_AUTH_SECRET"))
-	cfg.JWT.APITokensSecret = strings.TrimSpace(envFirst("JWT_API_TOKENS_SECRET"))
+	cfg.JWT.AuthSecret = strings.TrimSpace(envFirst("APP_SECRET"))
 	if value := envFirst("JWT_AUTH_LIFETIME"); value != "" {
 		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 12 && parsed <= 168 {
 			cfg.JWT.AuthLifetimeHours = parsed
@@ -729,8 +731,8 @@ func parseExpirationNotificationIntervals(value string) ([]int, error) {
 	positiveCount := 0
 	seen := make(map[int]struct{}, len(result))
 	for i, interval := range result {
-		if interval == 0 || interval < -168 || interval > 168 {
-			return nil, fmt.Errorf("all expiration values must be non-zero integers between -168 and 168")
+		if interval == 0 || interval < -744 || interval > 744 {
+			return nil, fmt.Errorf("all expiration values must be non-zero integers between -744 and 744")
 		}
 		if i > 0 && interval <= result[i-1] {
 			return nil, fmt.Errorf("EXPIRATION_NOTIFICATIONS values must be in strictly ascending order")

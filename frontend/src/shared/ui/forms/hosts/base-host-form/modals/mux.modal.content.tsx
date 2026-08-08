@@ -20,7 +20,9 @@ export const MUX_MODAL_ID = 'mux-modal'
 
 interface IProps {
     form: UseFormReturnType<
-        CreateHostCommand.Request | UpdateHostCommand.Request | UpdateManyHostsCommand.Request
+        | CreateHostCommand.RequestBody
+        | UpdateHostCommand.RequestBody
+        | UpdateManyHostsCommand.RequestBody
     >
 }
 

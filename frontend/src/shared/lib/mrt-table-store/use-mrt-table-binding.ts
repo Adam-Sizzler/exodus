@@ -12,7 +12,8 @@ export const useMrtTableBinding = (useStore: UseBoundStore<StoreApi<MrtTableStor
             columnSizing: s.columnSize,
             columnVisibility: s.columnVisibility,
             pagination: s.paginationState,
-            showColumnFilters: s.showColumnFilters
+            showColumnFilters: s.showColumnFilters,
+            sorting: s.sorting
         }))
     )
     const actions = useStore((s) => s.actions)
@@ -26,7 +27,8 @@ export const useMrtTableBinding = (useStore: UseBoundStore<StoreApi<MrtTableStor
             onColumnSizingChange: actions.setColumnSize,
             onColumnVisibilityChange: actions.setColumnVisibility,
             onPaginationChange: actions.setPaginationState,
-            onShowColumnFiltersChange: actions.setShowColumnFilters
+            onShowColumnFiltersChange: actions.setShowColumnFilters,
+            onSortingChange: actions.setSorting
         }
     }
 }

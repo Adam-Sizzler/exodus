@@ -4,11 +4,11 @@ exports.METADATA_ROUTES = exports.METADATA_CONTROLLER = void 0;
 exports.METADATA_CONTROLLER = 'metadata';
 exports.METADATA_ROUTES = {
     NODE: {
-        GET: (uuid) => `node/${uuid}`,
-        UPSERT: (uuid) => `node/${uuid}`,
+        GET: (nodeId) => `node/${nodeId}`,
+        UPSERT: (nodeId) => `node/${nodeId}`,
     },
     USER: {
-        GET: (uuid) => `user/${uuid}`,
-        UPSERT: (uuid) => `user/${uuid}`,
+        GET: (userId) => `user/${userId}`,
+        UPSERT: (userId) => `user/${userId}`,
     },
 };

@@ -8,13 +8,7 @@ export declare namespace GetRecapCommand {
             thisMonth: z.ZodObject<{
                 users: z.ZodNumber;
                 traffic: z.ZodString;
-            }, "strip", z.ZodTypeAny, {
-                users: number;
-                traffic: string;
-            }, {
-                users: number;
-                traffic: string;
-            }>;
+            }, z.core.$strip>;
             total: z.ZodObject<{
                 users: z.ZodNumber;
                 nodes: z.ZodNumber;
@@ -22,89 +16,11 @@ export declare namespace GetRecapCommand {
                 nodesRam: z.ZodString;
                 nodesCpuCores: z.ZodNumber;
                 distinctCountries: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                nodes: number;
-                users: number;
-                traffic: string;
-                nodesRam: string;
-                nodesCpuCores: number;
-                distinctCountries: number;
-            }, {
-                nodes: number;
-                users: number;
-                traffic: string;
-                nodesRam: string;
-                nodesCpuCores: number;
-                distinctCountries: number;
-            }>;
+            }, z.core.$strip>;
             version: z.ZodString;
-            initDate: z.ZodEffects<z.ZodString, Date, string>;
-        }, "strip", z.ZodTypeAny, {
-            total: {
-                nodes: number;
-                users: number;
-                traffic: string;
-                nodesRam: string;
-                nodesCpuCores: number;
-                distinctCountries: number;
-            };
-            version: string;
-            thisMonth: {
-                users: number;
-                traffic: string;
-            };
-            initDate: Date;
-        }, {
-            total: {
-                nodes: number;
-                users: number;
-                traffic: string;
-                nodesRam: string;
-                nodesCpuCores: number;
-                distinctCountries: number;
-            };
-            version: string;
-            thisMonth: {
-                users: number;
-                traffic: string;
-            };
-            initDate: string;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            total: {
-                nodes: number;
-                users: number;
-                traffic: string;
-                nodesRam: string;
-                nodesCpuCores: number;
-                distinctCountries: number;
-            };
-            version: string;
-            thisMonth: {
-                users: number;
-                traffic: string;
-            };
-            initDate: Date;
-        };
-    }, {
-        response: {
-            total: {
-                nodes: number;
-                users: number;
-                traffic: string;
-                nodesRam: string;
-                nodesCpuCores: number;
-                distinctCountries: number;
-            };
-            version: string;
-            thisMonth: {
-                users: number;
-                traffic: string;
-            };
-            initDate: string;
-        };
-    }>;
+            initDate: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-recap.command.d.ts.map

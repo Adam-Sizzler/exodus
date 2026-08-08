@@ -14,6 +14,8 @@ exports.INTERNAL_SQUADS_ROUTES = {
     BULK_ACTIONS: {
         ADD_USERS: (uuid) => `${uuid}/${BULK_ACTIONS_ROUTE}/add-users`, // Add users to internal squad // post
         REMOVE_USERS: (uuid) => `${uuid}/${BULK_ACTIONS_ROUTE}/remove-users`, // Remove users from internal squad // delete
+        ADD_MANY_USERS: (uuid) => `${uuid}/${BULK_ACTIONS_ROUTE}/add-many-users`, // Add many users to internal squad // post
+        REMOVE_MANY_USERS: (uuid) => `${uuid}/${BULK_ACTIONS_ROUTE}/remove-many-users`, // Remove many users from internal squad // delete
     },
     ACTIONS: {
         REORDER: `${ACTIONS_ROUTE}/reorder`,

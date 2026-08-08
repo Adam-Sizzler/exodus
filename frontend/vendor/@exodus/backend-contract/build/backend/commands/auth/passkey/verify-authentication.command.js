@@ -9,7 +9,7 @@ var VerifyPasskeyAuthenticationCommand;
     VerifyPasskeyAuthenticationCommand.url = api_1.REST_API.AUTH.PASSKEY.VERIFY_AUTHENTICATION;
     VerifyPasskeyAuthenticationCommand.TSQ_url = VerifyPasskeyAuthenticationCommand.url;
     VerifyPasskeyAuthenticationCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.AUTH_ROUTES.PASSKEY.VERIFY_AUTHENTICATION, 'post', 'Verify the authentication for passkey', { scope: 'verify-authentication', kind: 'write' });
-    VerifyPasskeyAuthenticationCommand.RequestSchema = zod_1.z.object({
+    VerifyPasskeyAuthenticationCommand.RequestBodySchema = zod_1.z.object({
         response: zod_1.z.unknown(),
     });
     VerifyPasskeyAuthenticationCommand.ResponseSchema = zod_1.z.object({
@@ -17,4 +17,5 @@ var VerifyPasskeyAuthenticationCommand;
             accessToken: zod_1.z.string(),
         }),
     });
+
 })(VerifyPasskeyAuthenticationCommand || (exports.VerifyPasskeyAuthenticationCommand = VerifyPasskeyAuthenticationCommand = {}));

@@ -5,15 +5,15 @@ const zod_1 = require("zod");
 const api_1 = require("../../../api");
 const constants_1 = require("../../../constants");
 const models_1 = require("../../../models");
+const user_response_1 = require("../user.response");
 var DisableUserCommand;
 (function (DisableUserCommand) {
     DisableUserCommand.url = api_1.REST_API.USERS.ACTIONS.DISABLE;
-    DisableUserCommand.TSQ_url = DisableUserCommand.url(':uuid');
-    DisableUserCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.ACTIONS.DISABLE(':uuid'), 'post', 'Disable user', { scope: 'disable', kind: 'write' });
-    DisableUserCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DisableUserCommand.TSQ_url = DisableUserCommand.url(':userId');
+    DisableUserCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.ACTIONS.DISABLE(':userId'), 'post', 'Disable user', { scope: 'disable', kind: 'write' });
+    DisableUserCommand.RequestParamSchema = zod_1.z.object({
+        userId: models_1.numberParamSchema,
     });
-    DisableUserCommand.ResponseSchema = zod_1.z.object({
-        response: models_1.ExtendedUsersSchema,
-    });
+    DisableUserCommand.ResponseSchema = user_response_1.UserResponseSchema;
+
 })(DisableUserCommand || (exports.DisableUserCommand = DisableUserCommand = {}));

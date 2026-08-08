@@ -4,7 +4,7 @@ import { TemplateEditorActionsFeature } from '@features/dashboard/subscription-t
 import { Box, Card, Paper } from '@mantine/core'
 import Editor, { Monaco } from '@monaco-editor/react'
 import 'monaco-yaml/yaml.worker.js'
-import { GetAllHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
+import { GetHostsCommand, GetSubscriptionTemplateCommand } from '@exodus/backend-contract'
 import { decode } from '@stablelib/base64'
 import clsx from 'clsx'
 import { useLayoutEffect, useRef } from 'react'
@@ -20,7 +20,7 @@ import { configureMonaco } from './utils/setup-template-monaco'
 
 interface Props {
     editorType: 'json' | 'yaml'
-    hosts: GetAllHostsCommand.Response['response']
+    hosts: GetHostsCommand.Response['response']
     template: GetSubscriptionTemplateCommand.Response['response']
 }
 

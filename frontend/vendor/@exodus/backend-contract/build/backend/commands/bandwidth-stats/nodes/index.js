@@ -17,3 +17,4 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./get-stats-node-users-usage.command"), exports);
 __exportStar(require("./get-stats-nodes-usage.command"), exports);
 __exportStar(require("./get-stats-nodes-users-usage.command"), exports);
+__exportStar(require("./get-node-usage.command"), exports);

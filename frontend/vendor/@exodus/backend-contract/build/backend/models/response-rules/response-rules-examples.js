@@ -37,10 +37,10 @@ exports.EXAMPLES_SRR_BLOCK_LEGACY_CLIENTS_RULE = {
 };
 function generateResponseRuleDescription(schema) {
     const fields = Object.entries(schema.shape).map(([key, value]) => {
-        const desc = value.description ? JSON.parse(value.description) : {};
+        const meta = value.meta() ?? {};
         return {
             name: key,
-            description: desc.markdownDescription || desc.title || 'No description',
+            description: meta.markdownDescription || meta.title || 'No description',
         };
     });
     const fieldsText = fields

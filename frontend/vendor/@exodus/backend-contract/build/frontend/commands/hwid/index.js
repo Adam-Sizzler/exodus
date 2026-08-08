@@ -17,7 +17,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./create-user-hwid-device.command"), exports);
 __exportStar(require("./delete-all-user-hwid-devices.command"), exports);
 __exportStar(require("./delete-user-hwid-device.command"), exports);
-__exportStar(require("./get-all-hwid-devices.command"), exports);
+__exportStar(require("./get-hwid-devices.command"), exports);
 __exportStar(require("./get-hwid-devices-stats.command"), exports);
 __exportStar(require("./get-top-users-by-hwid-devices.command"), exports);
 __exportStar(require("./get-user-hwid-devices.command"), exports);

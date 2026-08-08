@@ -14,4 +14,5 @@ export * from './scopes';
 export * from './subscription-template';
 export * from './templates';
 export * from './users';
+export * from './backend-tools';
 //# sourceMappingURL=index.d.ts.map

@@ -11,19 +11,20 @@ import (
 )
 
 type ExternalSquadAPI struct {
-	UUID                 string                  `json:"uuid"`
-	ViewPosition         int                     `json:"viewPosition"`
-	Name                 string                  `json:"name"`
-	Info                 ExternalSquadInfo       `json:"info"`
-	Templates            []ExternalSquadTemplate `json:"templates"`
-	SubscriptionSettings map[string]any          `json:"subscriptionSettings"`
-	HostOverrides        map[string]any          `json:"hostOverrides"`
-	ResponseHeaders      map[string]string       `json:"responseHeaders"`
-	HWIDSettings         map[string]any          `json:"hwidSettings"`
-	CustomRemarks        map[string]any          `json:"customRemarks"`
-	SubpageConfigUUID    *string                 `json:"subpageConfigUuid"`
-	CreatedAt            time.Time               `json:"createdAt"`
-	UpdatedAt            time.Time               `json:"updatedAt"`
+	UUID                  string                  `json:"uuid"`
+	ViewPosition          int                     `json:"viewPosition"`
+	Name                  string                  `json:"name"`
+	Info                  ExternalSquadInfo       `json:"info"`
+	Templates             []ExternalSquadTemplate `json:"templates"`
+	SubscriptionSettings  map[string]any          `json:"subscriptionSettings"`
+	HostOverrides         map[string]any          `json:"hostOverrides"`
+	ResponseHeadersAdd    map[string]string       `json:"responseHeadersAdd"`
+	ResponseHeadersRemove []string                `json:"responseHeadersRemove"`
+	HWIDSettings          map[string]any          `json:"hwidSettings"`
+	CustomRemarks         map[string]any          `json:"customRemarks"`
+	SubpageConfigUUID     *string                 `json:"subpageConfigUuid"`
+	CreatedAt             time.Time               `json:"createdAt"`
+	UpdatedAt             time.Time               `json:"updatedAt"`
 }
 
 type ExternalSquadInfo struct {
@@ -36,27 +37,29 @@ type ExternalSquadTemplate struct {
 }
 
 type CreateExternalSquadRequest struct {
-	Name                 string            `json:"name"`
-	ViewPosition         *int              `json:"viewPosition,omitempty"`
-	SubscriptionSettings map[string]any    `json:"subscriptionSettings,omitempty"`
-	HostOverrides        map[string]any    `json:"hostOverrides,omitempty"`
-	ResponseHeaders      map[string]string `json:"responseHeaders,omitempty"`
-	HWIDSettings         map[string]any    `json:"hwidSettings,omitempty"`
-	CustomRemarks        map[string]any    `json:"customRemarks,omitempty"`
-	SubpageConfigUUID    *string           `json:"subpageConfigUuid,omitempty"`
+	Name                  string            `json:"name"`
+	ViewPosition          *int              `json:"viewPosition,omitempty"`
+	SubscriptionSettings  map[string]any    `json:"subscriptionSettings,omitempty"`
+	HostOverrides         map[string]any    `json:"hostOverrides,omitempty"`
+	ResponseHeadersAdd    map[string]string `json:"responseHeadersAdd,omitempty"`
+	ResponseHeadersRemove []string          `json:"responseHeadersRemove,omitempty"`
+	HWIDSettings          map[string]any    `json:"hwidSettings,omitempty"`
+	CustomRemarks         map[string]any    `json:"customRemarks,omitempty"`
+	SubpageConfigUUID     *string           `json:"subpageConfigUuid,omitempty"`
 }
 
 type UpdateExternalSquadRequest struct {
-	UUID                 string                   `json:"uuid"`
-	Name                 *string                  `json:"name,omitempty"`
-	ViewPosition         *int                     `json:"viewPosition,omitempty"`
-	Templates            *[]ExternalSquadTemplate `json:"templates,omitempty"`
-	SubscriptionSettings json.RawMessage          `json:"subscriptionSettings,omitempty"`
-	HostOverrides        json.RawMessage          `json:"hostOverrides,omitempty"`
-	ResponseHeaders      json.RawMessage          `json:"responseHeaders,omitempty"`
-	HWIDSettings         json.RawMessage          `json:"hwidSettings,omitempty"`
-	CustomRemarks        json.RawMessage          `json:"customRemarks,omitempty"`
-	SubpageConfigUUID    *string                  `json:"subpageConfigUuid,omitempty"`
+	UUID                  string                   `json:"uuid"`
+	Name                  *string                  `json:"name,omitempty"`
+	ViewPosition          *int                     `json:"viewPosition,omitempty"`
+	Templates             *[]ExternalSquadTemplate `json:"templates,omitempty"`
+	SubscriptionSettings  json.RawMessage          `json:"subscriptionSettings,omitempty"`
+	HostOverrides         json.RawMessage          `json:"hostOverrides,omitempty"`
+	ResponseHeadersAdd    json.RawMessage          `json:"responseHeadersAdd,omitempty"`
+	ResponseHeadersRemove json.RawMessage          `json:"responseHeadersRemove,omitempty"`
+	HWIDSettings          json.RawMessage          `json:"hwidSettings,omitempty"`
+	CustomRemarks         json.RawMessage          `json:"customRemarks,omitempty"`
+	SubpageConfigUUID     *string                  `json:"subpageConfigUuid,omitempty"`
 }
 
 type ReorderExternalSquadsRequest struct {
@@ -115,14 +118,16 @@ func (r *BulkUsersRequest) Validate() error {
 
 func convertExternalSquadToAPI(rec ExternalSquadRecord) (ExternalSquadAPI, error) {
 	api := ExternalSquadAPI{
-		UUID:              rec.UUID,
-		ViewPosition:      rec.ViewPosition,
-		Name:              rec.Name,
-		Info:              ExternalSquadInfo{MembersCount: 0},
-		Templates:         make([]ExternalSquadTemplate, 0),
-		CreatedAt:         rec.CreatedAt,
-		UpdatedAt:         rec.UpdatedAt,
-		SubpageConfigUUID: rec.SubpageConfigUUID,
+		UUID:                  rec.UUID,
+		ViewPosition:          rec.ViewPosition,
+		Name:                  rec.Name,
+		Info:                  ExternalSquadInfo{MembersCount: 0},
+		Templates:             make([]ExternalSquadTemplate, 0),
+		ResponseHeadersAdd:    make(map[string]string),
+		ResponseHeadersRemove: make([]string, 0),
+		CreatedAt:             rec.CreatedAt,
+		UpdatedAt:             rec.UpdatedAt,
+		SubpageConfigUUID:     rec.SubpageConfigUUID,
 	}
 
 	var err error
@@ -138,10 +143,16 @@ func convertExternalSquadToAPI(rec ExternalSquadRecord) (ExternalSquadAPI, error
 			return api, err
 		}
 	}
-	if len(rec.ResponseHeaders) > 0 {
-		api.ResponseHeaders, err = parseJSONHeaders(string(rec.ResponseHeaders))
-		if err != nil {
-			return api, err
+	if len(rec.ResponseHeadersAdd) > 0 {
+		var headersAdd map[string]string
+		if err := json.Unmarshal(rec.ResponseHeadersAdd, &headersAdd); err == nil && headersAdd != nil {
+			api.ResponseHeadersAdd = headersAdd
+		}
+	}
+	if len(rec.ResponseHeadersRemove) > 0 {
+		var headersRemove []string
+		if err := json.Unmarshal(rec.ResponseHeadersRemove, &headersRemove); err == nil && headersRemove != nil {
+			api.ResponseHeadersRemove = headersRemove
 		}
 	}
 	if len(rec.HWIDSettings) > 0 {

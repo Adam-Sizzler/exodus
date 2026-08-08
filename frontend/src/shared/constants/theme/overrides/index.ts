@@ -14,6 +14,7 @@ import notification from './notification'
 import ringProgress from './ring-progress'
 import segmentedControl from './segmented-control'
 import table from './table'
+import tabs from './tabs'
 import tooltip from './tooltip'
 
 export default {
@@ -33,5 +34,6 @@ export default {
     ...segmentedControl,
     ...table,
     ...tooltip,
-    ...layouts
+    ...layouts,
+    ...tabs
 }

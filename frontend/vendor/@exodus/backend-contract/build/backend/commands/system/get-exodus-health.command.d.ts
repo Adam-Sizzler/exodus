@@ -19,105 +19,10 @@ export declare namespace GetExodusHealthCommand {
                 timestamp: z.ZodNumber;
                 instanceId: z.ZodString;
                 instanceType: z.ZodString;
-            }, "strip", z.ZodTypeAny, {
-                uptime: number;
-                timestamp: number;
-                rss: number;
-                heapUsed: number;
-                heapTotal: number;
-                external: number;
-                arrayBuffers: number;
-                eventLoopDelayMs: number;
-                eventLoopP99Ms: number;
-                activeHandles: number;
-                pid: number;
-                instanceId: string;
-                instanceType: string;
-            }, {
-                uptime: number;
-                timestamp: number;
-                rss: number;
-                heapUsed: number;
-                heapTotal: number;
-                external: number;
-                arrayBuffers: number;
-                eventLoopDelayMs: number;
-                eventLoopP99Ms: number;
-                activeHandles: number;
-                pid: number;
-                instanceId: string;
-                instanceType: string;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            runtimeMetrics: {
-                uptime: number;
-                timestamp: number;
-                rss: number;
-                heapUsed: number;
-                heapTotal: number;
-                external: number;
-                arrayBuffers: number;
-                eventLoopDelayMs: number;
-                eventLoopP99Ms: number;
-                activeHandles: number;
-                pid: number;
-                instanceId: string;
-                instanceType: string;
-            }[];
-        }, {
-            runtimeMetrics: {
-                uptime: number;
-                timestamp: number;
-                rss: number;
-                heapUsed: number;
-                heapTotal: number;
-                external: number;
-                arrayBuffers: number;
-                eventLoopDelayMs: number;
-                eventLoopP99Ms: number;
-                activeHandles: number;
-                pid: number;
-                instanceId: string;
-                instanceType: string;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            runtimeMetrics: {
-                uptime: number;
-                timestamp: number;
-                rss: number;
-                heapUsed: number;
-                heapTotal: number;
-                external: number;
-                arrayBuffers: number;
-                eventLoopDelayMs: number;
-                eventLoopP99Ms: number;
-                activeHandles: number;
-                pid: number;
-                instanceId: string;
-                instanceType: string;
-            }[];
-        };
-    }, {
-        response: {
-            runtimeMetrics: {
-                uptime: number;
-                timestamp: number;
-                rss: number;
-                heapUsed: number;
-                heapTotal: number;
-                external: number;
-                arrayBuffers: number;
-                eventLoopDelayMs: number;
-                eventLoopP99Ms: number;
-                activeHandles: number;
-                pid: number;
-                instanceId: string;
-                instanceType: string;
-            }[];
-        };
-    }>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-exodus-health.command.d.ts.map
+export import GetExodusHealthCommand = GetExodusHealthCommand;

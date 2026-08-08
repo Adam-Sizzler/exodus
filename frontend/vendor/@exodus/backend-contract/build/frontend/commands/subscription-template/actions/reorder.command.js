@@ -10,7 +10,7 @@ var ReorderSubscriptionTemplateCommand;
     ReorderSubscriptionTemplateCommand.url = api_1.REST_API.SUBSCRIPTION_TEMPLATE.ACTIONS.REORDER;
     ReorderSubscriptionTemplateCommand.TSQ_url = ReorderSubscriptionTemplateCommand.url;
     ReorderSubscriptionTemplateCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_TEMPLATE_ROUTES.ACTIONS.REORDER, 'post', 'Reorder subscription templates', { scope: 'reorder', kind: 'write' });
-    ReorderSubscriptionTemplateCommand.RequestSchema = zod_1.z.object({
+    ReorderSubscriptionTemplateCommand.RequestBodySchema = zod_1.z.object({
         items: zod_1.z.array(models_1.SubscriptionTemplateSchema.pick({
             viewPosition: true,
             uuid: true,
@@ -22,4 +22,6 @@ var ReorderSubscriptionTemplateCommand;
             templates: zod_1.z.array(models_1.SubscriptionTemplateSchema),
         }),
     });
+
 })(ReorderSubscriptionTemplateCommand || (exports.ReorderSubscriptionTemplateCommand = ReorderSubscriptionTemplateCommand = {}));
+

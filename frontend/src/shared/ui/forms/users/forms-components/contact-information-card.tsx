@@ -9,14 +9,14 @@ import { TbMail } from 'react-icons/tb'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
-interface IProps<T extends CreateUserCommand.Request | UpdateUserCommand.Request> {
+interface IProps<T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 
 export function ContactInformationCard<
-    T extends CreateUserCommand.Request | UpdateUserCommand.Request
+    T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody
 >(props: IProps<T>) {
     const { t } = useTranslation()
 

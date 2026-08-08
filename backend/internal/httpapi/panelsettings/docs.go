@@ -47,17 +47,13 @@ func buildDocsResponse(cfg *config.BackendConfig) map[string]any {
 // Route: GET /scalar (or whatever SCALAR_PATH is set to, registered in router.go).
 func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !cfg.Docs.IsEnabled {
-			shared.WriteJSONError(w, http.StatusNotFound, "docs are not enabled")
-			return
-		}
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
-		specURL := fmt.Sprintf("%s%s/openapi.json", basePath, cfg.Docs.ScalarPath)
+		specURL := fmt.Sprintf("%s/api/backend-tools/scalar/openapi.json", basePath)
 
 		html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -96,21 +92,15 @@ func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
-// DocsSwaggerHandler serves a Swagger UI page compatible with SWAGGER_PATH.
-// The raw OpenAPI spec remains available at SWAGGER_PATH/openapi.json.
 func DocsSwaggerHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !cfg.Docs.IsEnabled {
-			shared.WriteJSONError(w, http.StatusNotFound, "docs are not enabled")
-			return
-		}
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
 		basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
-		specURL := fmt.Sprintf("%s%s/openapi.json", basePath, cfg.Docs.SwaggerPath)
+		specURL := fmt.Sprintf("%s/api/backend-tools/swagger/openapi.json", basePath)
 
 		html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -145,14 +135,8 @@ func DocsSwaggerHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
-// DocsOpenAPIHandler serves the raw OpenAPI JSON spec.
-// Route: GET /scalar/openapi.json or /docs/openapi.json.
-func DocsOpenAPIHandler(cfg *config.BackendConfig) http.HandlerFunc {
+func DocsOpenAPIHandler(_ *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !cfg.Docs.IsEnabled {
-			shared.WriteJSONError(w, http.StatusNotFound, "docs are not enabled")
-			return
-		}
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return

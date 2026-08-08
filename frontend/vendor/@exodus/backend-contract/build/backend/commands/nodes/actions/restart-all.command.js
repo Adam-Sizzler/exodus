@@ -12,9 +12,5 @@ var RestartAllNodesCommand;
     RestartAllNodesCommand.RequestBodySchema = zod_1.z.object({
         forceRestart: zod_1.z.boolean(),
     });
-    RestartAllNodesCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            eventSent: zod_1.z.boolean(),
-        }),
-    });
+
 })(RestartAllNodesCommand || (exports.RestartAllNodesCommand = RestartAllNodesCommand = {}));

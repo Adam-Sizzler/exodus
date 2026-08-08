@@ -9,8 +9,8 @@ var RegisterCommand;
     RegisterCommand.url = api_1.REST_API.AUTH.REGISTER;
     RegisterCommand.TSQ_url = RegisterCommand.url;
     RegisterCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.AUTH_ROUTES.REGISTER, 'post', 'Register as superadmin', { scope: 'register', kind: 'write' });
-    RegisterCommand.RequestSchema = zod_1.z.object({
-        username: zod_1.z.string(),
+    RegisterCommand.RequestBodySchema = zod_1.z.object({
+        username: zod_1.z.string().describe('Username of the user'),
         password: zod_1.z
             .string()
             .min(24, 'Password must contain at least 24 characters')
@@ -21,4 +21,5 @@ var RegisterCommand;
             accessToken: zod_1.z.string(),
         }),
     });
+
 })(RegisterCommand || (exports.RegisterCommand = RegisterCommand = {}));

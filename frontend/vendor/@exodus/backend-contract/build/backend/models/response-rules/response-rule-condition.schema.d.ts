@@ -1,7 +1,7 @@
 import { z } from 'zod';
 export declare const ResponseRuleConditionSchema: z.ZodObject<{
     headerName: z.ZodString;
-    operator: z.ZodNativeEnum<{
+    operator: z.ZodEnum<{
         readonly EQUALS: "EQUALS";
         readonly NOT_EQUALS: "NOT_EQUALS";
         readonly CONTAINS: "CONTAINS";
@@ -15,15 +15,5 @@ export declare const ResponseRuleConditionSchema: z.ZodObject<{
     }>;
     value: z.ZodString;
     caseSensitive: z.ZodBoolean;
-}, "strip", z.ZodTypeAny, {
-    value: string;
-    headerName: string;
-    operator: "EQUALS" | "NOT_EQUALS" | "CONTAINS" | "NOT_CONTAINS" | "STARTS_WITH" | "NOT_STARTS_WITH" | "ENDS_WITH" | "NOT_ENDS_WITH" | "REGEX" | "NOT_REGEX";
-    caseSensitive: boolean;
-}, {
-    value: string;
-    headerName: string;
-    operator: "EQUALS" | "NOT_EQUALS" | "CONTAINS" | "NOT_CONTAINS" | "STARTS_WITH" | "NOT_STARTS_WITH" | "ENDS_WITH" | "NOT_ENDS_WITH" | "REGEX" | "NOT_REGEX";
-    caseSensitive: boolean;
-}>;
+}, z.core.$strip>;
 //# sourceMappingURL=response-rule-condition.schema.d.ts.map

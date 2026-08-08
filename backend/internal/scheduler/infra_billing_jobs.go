@@ -100,7 +100,7 @@ func (s *Scheduler) getInfraBillingNotifications(ctx context.Context, window inf
 		}
 		item.LoginURL = nullableStringFromSQL(loginURL)
 		if item.LoginURL == "" {
-			item.LoginURL = "https://docs.rw"
+			item.LoginURL = "https://docs.exodus"
 		}
 		items = append(items, item)
 	}

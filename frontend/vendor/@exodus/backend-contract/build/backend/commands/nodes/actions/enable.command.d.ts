@@ -3,125 +3,60 @@ export declare namespace EnableNodeCommand {
     const url: (uuid: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    const RequestParamSchema: z.ZodObject<{
+        uuid: z.ZodUUID;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            uuid: z.ZodString;
+            uuid: z.ZodUUID;
             name: z.ZodString;
             address: z.ZodString;
-            port: z.ZodNullable<z.ZodNumber>;
+            port: z.ZodNullable<z.ZodInt>;
             proxyUrl: z.ZodNullable<z.ZodString>;
             isConnected: z.ZodBoolean;
             isDisabled: z.ZodBoolean;
             isConnecting: z.ZodBoolean;
-            lastStatusChange: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
+            lastStatusChange: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastStatusMessage: z.ZodNullable<z.ZodString>;
-
-            singboxVersion: z.ZodNullable<z.ZodString>;
-
-            nodeVersion: z.ZodNullable<z.ZodString>;
             isTrafficTrackingActive: z.ZodBoolean;
-            trafficResetDay: z.ZodNullable<z.ZodNumber>;
+            trafficResetDay: z.ZodNullable<z.ZodInt>;
             trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
             trafficUsedBytes: z.ZodNullable<z.ZodNumber>;
-            notifyPercent: z.ZodNullable<z.ZodNumber>;
-            viewPosition: z.ZodNumber;
+            notifyPercent: z.ZodNullable<z.ZodInt>;
+            viewPosition: z.ZodInt;
             countryCode: z.ZodString;
             consumptionMultiplier: z.ZodNumber;
             nodeConsumptionMultiplier: z.ZodNumber;
-            tags: z.ZodArray<z.ZodString, "many">;
-            createdAt: z.ZodEffects<z.ZodString, Date, string>;
-            updatedAt: z.ZodEffects<z.ZodString, Date, string>;
+            tags: z.ZodArray<z.ZodString>;
+            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
             configProfile: z.ZodObject<{
-                activeConfigProfileUuid: z.ZodNullable<z.ZodString>;
+                activeConfigProfileUuid: z.ZodNullable<z.ZodUUID>;
                 activeInbounds: z.ZodArray<z.ZodObject<{
-                    uuid: z.ZodString;
-                    profileUuid: z.ZodString;
+                    uuid: z.ZodUUID;
+                    profileUuid: z.ZodUUID;
                     tag: z.ZodString;
                     type: z.ZodString;
                     network: z.ZodNullable<z.ZodString>;
                     security: z.ZodNullable<z.ZodString>;
                     port: z.ZodNullable<z.ZodNumber>;
                     rawInbound: z.ZodNullable<z.ZodUnknown>;
-                }, "strip", z.ZodTypeAny, {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }, {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }>, "many">;
-            }, "strip", z.ZodTypeAny, {
-                activeConfigProfileUuid: string | null;
-                activeInbounds: {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }[];
-            }, {
-                activeConfigProfileUuid: string | null;
-                activeInbounds: {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }[];
-            }>;
-            providerUuid: z.ZodNullable<z.ZodString>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>;
+            providerUuid: z.ZodNullable<z.ZodUUID>;
             provider: z.ZodNullable<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 name: z.ZodString;
                 faviconLink: z.ZodNullable<z.ZodString>;
                 loginUrl: z.ZodNullable<z.ZodString>;
-                createdAt: z.ZodEffects<z.ZodString, Date, string>;
-                updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                createdAt: Date;
-                updatedAt: Date;
-                faviconLink: string | null;
-                loginUrl: string | null;
-            }, {
-                uuid: string;
-                name: string;
-                createdAt: string;
-                updatedAt: string;
-                faviconLink: string | null;
-                loginUrl: string | null;
-            }>>;
-            activePluginUuid: z.ZodNullable<z.ZodString>;
+                createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+                updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+            }, z.core.$strip>>;
+            activePluginUuid: z.ZodNullable<z.ZodUUID>;
             system: z.ZodNullable<z.ZodObject<{
                 info: z.ZodObject<{
                     arch: z.ZodString;
-                    cpus: z.ZodNumber;
+                    cpus: z.ZodInt;
                     cpuModel: z.ZodString;
                     memoryTotal: z.ZodNumber;
                     hostname: z.ZodString;
@@ -129,487 +64,32 @@ export declare namespace EnableNodeCommand {
                     release: z.ZodString;
                     type: z.ZodString;
                     version: z.ZodString;
-                    networkInterfaces: z.ZodArray<z.ZodString, "many">;
-                }, "strip", z.ZodTypeAny, {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                }, {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                }>;
+                    networkInterfaces: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>;
                 stats: z.ZodObject<{
                     memoryFree: z.ZodNumber;
                     memoryUsed: z.ZodNumber;
                     uptime: z.ZodNumber;
-                    loadAvg: z.ZodArray<z.ZodNumber, "many">;
+                    loadAvg: z.ZodArray<z.ZodNumber>;
                     interface: z.ZodNullable<z.ZodObject<{
                         interface: z.ZodString;
                         rxBytesPerSec: z.ZodNumber;
                         txBytesPerSec: z.ZodNumber;
                         rxTotal: z.ZodNumber;
                         txTotal: z.ZodNumber;
-                    }, "strip", z.ZodTypeAny, {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    }, {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    }>>;
-                }, "strip", z.ZodTypeAny, {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                }, {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                }>;
-            }, "strip", z.ZodTypeAny, {
-                stats: {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                };
-                info: {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                };
-            }, {
-                stats: {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                };
-                info: {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                };
-            }>>;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>;
+            }, z.core.$strip>>;
             versions: z.ZodNullable<z.ZodObject<{
-                singbox: z.ZodString;
+                xray: z.ZodString;
                 node: z.ZodString;
-            }, "strip", z.ZodTypeAny, {
-                node: string;
-                singbox: string;
-            }, {
-                node: string;
-                singbox: string;
-            }>>;
+            }, z.core.$strip>>;
             singboxUptime: z.ZodNumber;
             usersOnline: z.ZodNumber;
             note: z.ZodNullable<z.ZodString>;
-        }, "strip", z.ZodTypeAny, {
-            tags: string[];
-            system: {
-                stats: {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                };
-                info: {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                };
-            } | null;
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            provider: {
-                uuid: string;
-                name: string;
-                createdAt: Date;
-                updatedAt: Date;
-                faviconLink: string | null;
-                loginUrl: string | null;
-            } | null;
-            countryCode: string;
-            port: number | null;
-            viewPosition: number;
-            trafficLimitBytes: number | null;
-            address: string;
-            isDisabled: boolean;
-            proxyUrl: string | null;
-            isConnected: boolean;
-            isConnecting: boolean;
-            lastStatusChange: Date | null;
-            lastStatusMessage: string | null;
-
-            singboxVersion: string | null;
-
-            nodeVersion: string | null;
-            isTrafficTrackingActive: boolean;
-            trafficResetDay: number | null;
-            trafficUsedBytes: number | null;
-            notifyPercent: number | null;
-            consumptionMultiplier: number;
-            nodeConsumptionMultiplier: number;
-            configProfile: {
-                activeConfigProfileUuid: string | null;
-                activeInbounds: {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }[];
-            };
-            providerUuid: string | null;
-            activePluginUuid: string | null;
-            versions: {
-                node: string;
-                singbox: string;
-            } | null;
-            singboxUptime: number;
-            usersOnline: number;
-            note: string | null;
-        }, {
-            tags: string[];
-            system: {
-                stats: {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                };
-                info: {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                };
-            } | null;
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            provider: {
-                uuid: string;
-                name: string;
-                createdAt: string;
-                updatedAt: string;
-                faviconLink: string | null;
-                loginUrl: string | null;
-            } | null;
-            countryCode: string;
-            port: number | null;
-            viewPosition: number;
-            trafficLimitBytes: number | null;
-            address: string;
-            isDisabled: boolean;
-            proxyUrl: string | null;
-            isConnected: boolean;
-            isConnecting: boolean;
-            lastStatusChange: string | null;
-            lastStatusMessage: string | null;
-
-            singboxVersion: string | null;
-
-            nodeVersion: string | null;
-            isTrafficTrackingActive: boolean;
-            trafficResetDay: number | null;
-            trafficUsedBytes: number | null;
-            notifyPercent: number | null;
-            consumptionMultiplier: number;
-            nodeConsumptionMultiplier: number;
-            configProfile: {
-                activeConfigProfileUuid: string | null;
-                activeInbounds: {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }[];
-            };
-            providerUuid: string | null;
-            activePluginUuid: string | null;
-            versions: {
-                node: string;
-                singbox: string;
-            } | null;
-            singboxUptime: number;
-            usersOnline: number;
-            note: string | null;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            tags: string[];
-            system: {
-                stats: {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                };
-                info: {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                };
-            } | null;
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            provider: {
-                uuid: string;
-                name: string;
-                createdAt: Date;
-                updatedAt: Date;
-                faviconLink: string | null;
-                loginUrl: string | null;
-            } | null;
-            countryCode: string;
-            port: number | null;
-            viewPosition: number;
-            trafficLimitBytes: number | null;
-            address: string;
-            isDisabled: boolean;
-            proxyUrl: string | null;
-            isConnected: boolean;
-            isConnecting: boolean;
-            lastStatusChange: Date | null;
-            lastStatusMessage: string | null;
-
-            singboxVersion: string | null;
-
-            nodeVersion: string | null;
-            isTrafficTrackingActive: boolean;
-            trafficResetDay: number | null;
-            trafficUsedBytes: number | null;
-            notifyPercent: number | null;
-            consumptionMultiplier: number;
-            nodeConsumptionMultiplier: number;
-            configProfile: {
-                activeConfigProfileUuid: string | null;
-                activeInbounds: {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }[];
-            };
-            providerUuid: string | null;
-            activePluginUuid: string | null;
-            versions: {
-                node: string;
-                singbox: string;
-            } | null;
-            singboxUptime: number;
-            usersOnline: number;
-            note: string | null;
-        };
-    }, {
-        response: {
-            tags: string[];
-            system: {
-                stats: {
-                    interface: {
-                        interface: string;
-                        rxBytesPerSec: number;
-                        txBytesPerSec: number;
-                        rxTotal: number;
-                        txTotal: number;
-                    } | null;
-                    memoryFree: number;
-                    memoryUsed: number;
-                    uptime: number;
-                    loadAvg: number[];
-                };
-                info: {
-                    type: string;
-                    version: string;
-                    platform: string;
-                    arch: string;
-                    cpus: number;
-                    cpuModel: string;
-                    memoryTotal: number;
-                    hostname: string;
-                    release: string;
-                    networkInterfaces: string[];
-                };
-            } | null;
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            provider: {
-                uuid: string;
-                name: string;
-                createdAt: string;
-                updatedAt: string;
-                faviconLink: string | null;
-                loginUrl: string | null;
-            } | null;
-            countryCode: string;
-            port: number | null;
-            viewPosition: number;
-            trafficLimitBytes: number | null;
-            address: string;
-            isDisabled: boolean;
-            proxyUrl: string | null;
-            isConnected: boolean;
-            isConnecting: boolean;
-            lastStatusChange: string | null;
-            lastStatusMessage: string | null;
-
-            singboxVersion: string | null;
-
-            nodeVersion: string | null;
-            isTrafficTrackingActive: boolean;
-            trafficResetDay: number | null;
-            trafficUsedBytes: number | null;
-            notifyPercent: number | null;
-            consumptionMultiplier: number;
-            nodeConsumptionMultiplier: number;
-            configProfile: {
-                activeConfigProfileUuid: string | null;
-                activeInbounds: {
-                    uuid: string;
-                    type: string;
-                    profileUuid: string;
-                    tag: string;
-                    network: string | null;
-                    security: string | null;
-                    port: number | null;
-                    rawInbound?: unknown;
-                }[];
-            };
-            providerUuid: string | null;
-            activePluginUuid: string | null;
-            versions: {
-                node: string;
-                singbox: string;
-            } | null;
-            singboxUptime: number;
-            usersOnline: number;
-            note: string | null;
-        };
-    }>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=enable.command.d.ts.map

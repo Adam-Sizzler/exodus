@@ -1,7 +1,10 @@
 export declare const ROOT: "/api";
 export declare const METRICS_ROOT: "/metrics";
 export declare const HEALTH_ROOT: "/health";
-export declare const BULLBOARD_ROOT: "/queues";
+export declare const BACKEND_TOOLS_ROOT: "/backend-tools";
+export declare const BULLBOARD_ROOT: "/backend-tools/queues";
+export declare const SWAGGER_ROOT: "/backend-tools/swagger";
+export declare const SCALAR_ROOT: "/backend-tools/scalar";
 export declare const REST_API: {
     readonly AUTH: {
         readonly LOGIN: "/api/auth/login";
@@ -29,6 +32,7 @@ export declare const REST_API: {
         readonly DELETE: (uuid: string) => string;
         readonly GET: "/api/tokens/";
         readonly GET_SCOPES: "/api/tokens/scopes";
+        readonly OTT: "/api/tokens/ott";
     };
     readonly KEYGEN: {
         readonly GET: "/api/keygen/";
@@ -61,24 +65,20 @@ export declare const REST_API: {
         readonly UPDATE: "/api/users/";
         readonly GET: "/api/users/";
         readonly STREAM: "/api/users/stream";
-        readonly DELETE: (uuid: string) => string;
-        readonly GET_BY_UUID: (uuid: string) => string;
-        readonly ACCESSIBLE_NODES: (uuid: string) => string;
-        readonly SUBSCRIPTION_REQUEST_HISTORY: (uuid: string) => string;
+        readonly DELETE: (userId: string) => string;
+        readonly GET_BY_ID: (userId: string) => string;
+        readonly ACCESSIBLE_NODES: (userId: string) => string;
+        readonly SUBSCRIPTION_REQUEST_HISTORY: (userId: string) => string;
         readonly ACTIONS: {
-            readonly DISABLE: (uuid: string) => string;
-            readonly ENABLE: (uuid: string) => string;
-            readonly RESET_TRAFFIC: (uuid: string) => string;
-            readonly REVOKE_SUBSCRIPTION: (uuid: string) => string;
+            readonly DISABLE: (userId: string) => string;
+            readonly ENABLE: (userId: string) => string;
+            readonly RESET_TRAFFIC: (userId: string) => string;
+            readonly REVOKE_SUBSCRIPTION: (userId: string) => string;
+            readonly EXTEND_EXPIRATION_DATE: (userId: string) => string;
         };
         readonly GET_BY: {
-            readonly ID: (id: string) => string;
             readonly SHORT_UUID: (shortUuid: string) => string;
             readonly USERNAME: (username: string) => string;
-            readonly SUBSCRIPTION_UUID: (subscriptionUuid: string) => string;
-            readonly TELEGRAM_ID: (telegramId: string) => string;
-            readonly EMAIL: (email: string) => string;
-            readonly TAG: (tag: string) => string;
         };
         readonly RESOLVE: "/api/users/resolve";
         readonly BULK: {
@@ -131,6 +131,8 @@ export declare const REST_API: {
             readonly NODES_STATS: "/api/system/stats/nodes";
             readonly NODES_METRICS: "/api/system/nodes/metrics";
             readonly RECAP: "/api/system/stats/recap";
+            readonly DIGEST: "/api/system/stats/digest";
+            readonly HTTP: "/api/system/stats/http";
         };
         readonly TOOLS: {
             readonly GENERATE_X25519: "/api/system/tools/x25519/generate";
@@ -156,7 +158,7 @@ export declare const REST_API: {
     readonly HWID: {
         readonly GET_ALL_HWID_DEVICES: "/api/hwid/devices";
         readonly CREATE_USER_HWID_DEVICE: "/api/hwid/devices";
-        readonly GET_USER_HWID_DEVICES: (userUuid: string) => string;
+        readonly GET_USER_HWID_DEVICES: (userId: string) => string;
         readonly DELETE_USER_HWID_DEVICE: "/api/hwid/devices/delete";
         readonly DELETE_ALL_USER_HWID_DEVICES: "/api/hwid/devices/delete-all";
         readonly STATS: "/api/hwid/devices/stats";
@@ -166,14 +168,14 @@ export declare const REST_API: {
         readonly GET: "/api/subscriptions/";
         readonly GET_BY: {
             readonly USERNAME: (username: string) => string;
-            readonly UUID: (uuid: string) => string;
             readonly SHORT_UUID: (shortUuid: string) => string;
             readonly SHORT_UUID_RAW: (shortUuid: string) => string;
+            readonly ID: (userId: string) => string;
         };
         readonly SUBPAGE: {
             readonly GET_CONFIG: (shortUuid: string) => string;
         };
-        readonly GET_CONNECTION_KEYS_BY_UUID: (uuid: string) => string;
+        readonly GET_CONNECTION_KEYS_BY_USER_ID: (userId: string) => string;
     };
     readonly CONFIG_PROFILES: {
         readonly GET: "/api/config-profiles/";
@@ -198,6 +200,8 @@ export declare const REST_API: {
         readonly BULK_ACTIONS: {
             readonly ADD_USERS: (uuid: string) => string;
             readonly REMOVE_USERS: (uuid: string) => string;
+            readonly ADD_MANY_USERS: (uuid: string) => string;
+            readonly REMOVE_MANY_USERS: (uuid: string) => string;
         };
         readonly ACTIONS: {
             readonly REORDER: "/api/internal-squads/actions/reorder";
@@ -241,7 +245,7 @@ export declare const REST_API: {
             readonly REORDER: "/api/external-squads/actions/reorder";
         };
     };
-    readonly EXODUS_SETTINGS: {
+    readonly REMNAAWAVE_SETTINGS: {
         readonly GET: "/api/exodus-settings/";
         readonly UPDATE: "/api/exodus-settings/";
     };
@@ -279,25 +283,22 @@ export declare const REST_API: {
             readonly GET_REALTIME: "/api/bandwidth-stats/nodes/realtime";
             readonly GET_USERS: (uuid: string) => string;
             readonly GET_USERS_BY_NODES: "/api/bandwidth-stats/nodes/users";
+            readonly GET_USAGE: "/api/bandwidth-stats/nodes/usage";
         };
         readonly USERS: {
-            readonly GET_BY_UUID: (uuid: string) => string;
+            readonly GET_BY_ID: (userId: string) => string;
         };
-        readonly LEGACY: {
-            readonly NODES: {
-                readonly GET_USERS: (uuid: string) => string;
-            };
-            readonly USERS: {
-                readonly GET_BY_UUID: (uuid: string) => string;
-            };
+        readonly INTERNAL_SQUADS: {
+            readonly GET_USAGE: (uuid: string) => string;
+            readonly USER_USAGE: (squadUuid: string, userId: string) => string;
         };
     };
-    readonly IP_CONTROL: {
-        readonly FETCH_IPS: (uuid: string) => string;
-        readonly GET_FETCH_IPS_RESULT: (jobId: string) => string;
-        readonly DROP_CONNECTIONS: "/api/ip-control/drop-connections";
-        readonly FETCH_USERS_IPS: (nodeUuid: string) => string;
-        readonly GET_FETCH_USERS_IPS_RESULT: (jobId: string) => string;
+    readonly CONNECTIONS: {
+        readonly CONNECTIONS_BY_USER: (userId: string) => string;
+        readonly CONNECTIONS_BY_USER_RESULT: (jobId: string) => string;
+        readonly CONNECTIONS_BY_NODE: (uuid: string) => string;
+        readonly CONNECTIONS_BY_NODE_RESULT: (jobId: string) => string;
+        readonly DROP_CONNECTIONS: "/api/connections/drop";
     };
     readonly METADATA: {
         readonly NODE: {
@@ -305,8 +306,8 @@ export declare const REST_API: {
             readonly UPSERT: (uuid: string) => string;
         };
         readonly USER: {
-            readonly GET: (uuid: string) => string;
-            readonly UPSERT: (uuid: string) => string;
+            readonly GET: (userId: string) => string;
+            readonly UPSERT: (userId: string) => string;
         };
     };
 };

@@ -20,18 +20,42 @@ export const APP_BASE_PATH = normalizeBasePath(runtimeBasePath)
 export const APP_BASE_PATH_WITH_TRAILING_SLASH =
     APP_BASE_PATH === '' ? '/' : `${APP_BASE_PATH}/`
 
+export const getAppBasePath = (): string => {
+    if (typeof window !== 'undefined') {
+        if (window.__EXODUS_RUNTIME__?.basePath) {
+            return normalizeBasePath(window.__EXODUS_RUNTIME__.basePath)
+        }
+        const baseEl = document.querySelector('base')
+        if (baseEl) {
+            const href = baseEl.getAttribute('href')
+            if (href && href !== '/') {
+                return normalizeBasePath(href)
+            }
+        }
+        const pathname = window.location.pathname
+        if (pathname && pathname !== '/') {
+            const firstSegment = pathname.split('/').filter(Boolean)[0]
+            if (firstSegment && !['api', 'assets', 'favicons', 'lotties'].includes(firstSegment)) {
+                return `/${firstSegment}`
+            }
+        }
+    }
+    return APP_BASE_PATH
+}
+
 export const withBasePath = (path: string): string => {
     if (!path.startsWith('/')) {
         return path
     }
 
-    if (APP_BASE_PATH === '') {
+    const basePath = getAppBasePath()
+    if (basePath === '') {
         return path
     }
 
-    if (path === APP_BASE_PATH || path.startsWith(`${APP_BASE_PATH}/`)) {
+    if (path === basePath || path.startsWith(`${basePath}/`)) {
         return path
     }
 
-    return `${APP_BASE_PATH}${path}`
+    return `${basePath}${path}`
 }

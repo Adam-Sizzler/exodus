@@ -8,26 +8,27 @@ exports.ResponseRuleConditionSchema = zod_1.z
     headerName: zod_1.z
         .string()
         .regex(/^[!#$%&'*+\-.0-9A-Z^_`a-z|~]+$/, 'Invalid header name. Only letters(a-z, A-Z), numbers(0-9), underscores(_) and hyphens(-) are allowed.')
-        .describe(JSON.stringify({
+        .meta({
+        title: 'Header Name',
         markdownDescription: '**Name** of the HTTP header to check. Must comply with RFC 7230.',
-    })),
-    operator: zod_1.z.nativeEnum(constants_1.RESPONSE_RULES_CONDITION_OPERATORS).describe(JSON.stringify({
+    }),
+    operator: zod_1.z.enum(constants_1.RESPONSE_RULES_CONDITION_OPERATORS).meta({
         errorMessage: 'Invalid operator. Please select a valid operator.',
         markdownDescription: 'Operator to use for comparing the `headerName` with `value`.',
         markdownEnumDescriptions: Object.entries(constants_1.RESPONSE_RULES_CONDITION_OPERATORS_DESCRIPTION).map(([_key, description]) => description),
-    })),
+    }),
     value: zod_1.z
         .string()
         .min(1, 'Value is required')
         .max(255, 'Value must be less than 255 characters')
-        .describe(JSON.stringify({
-        markdownDescription: `**Value** to check against the **headerName**.`,
-    })),
-    caseSensitive: zod_1.z.boolean().describe(JSON.stringify({
+        .meta({
+        markdownDescription: '**Value** to check against the **headerName**.',
+    }),
+    caseSensitive: zod_1.z.boolean().meta({
         markdownDescription: 'Whether the value is **case sensitive**. \n\n - `true`: the value will be compared as is. \n\n - `false`: the value will be lowercased **before** comparison.',
-    })),
+    }),
 })
-    .describe(JSON.stringify({
+    .meta({
     markdownDescription: 'Condition to check against the **headerName**.',
     defaultSnippets: [
         {
@@ -41,4 +42,4 @@ exports.ResponseRuleConditionSchema = zod_1.z
             },
         },
     ],
-}));
+});

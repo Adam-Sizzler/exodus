@@ -1,9 +1,9 @@
 import { Monaco } from '@monaco-editor/react'
-import { GetAllHostsCommand } from '@exodus/backend-contract'
+import { GetHostsCommand } from '@exodus/backend-contract'
 import consola from 'consola'
 import { configureMonacoYaml } from 'monaco-yaml'
 
-type Host = GetAllHostsCommand.Response['response'][number]
+type Host = GetHostsCommand.Response['response'][number]
 
 const DOCS_URL = 'https://docs.exodus.dev/docs/learn/xray-json-advanced'
 const DOCS_LINK = `\n\n[📖 Documentation](${DOCS_URL})`
@@ -42,7 +42,7 @@ function buildMarkdownDescription(host: Host): string {
 export const configureMonaco = (
     monaco: Monaco,
     language: 'json' | 'yaml',
-    hosts: GetAllHostsCommand.Response['response']
+    hosts: GetHostsCommand.Response['response']
 ) => {
     try {
         if (language === 'yaml') {

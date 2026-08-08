@@ -134,11 +134,11 @@ func bulkUpsertUserTraffic(ctx context.Context, db *sql.DB, usageDeltas []userUs
 
 		query.WriteString(`
 			INSERT INTO user_traffic (
-				t_id, used_traffic_bytes, lifetime_used_traffic_bytes,
+				id, used_traffic_bytes, lifetime_used_traffic_bytes,
 				online_at, last_connected_node_uuid, first_connected_at
 			)
 			SELECT
-				v.t_id,
+				v.id,
 				v.total_bytes,
 				v.total_bytes,
 				now(),
@@ -156,8 +156,8 @@ func bulkUpsertUserTraffic(ctx context.Context, db *sql.DB, usageDeltas []userUs
 			idx += 3
 		}
 
-		query.WriteString(`) AS v(t_id, total_bytes, last_connected_node_uuid)
-			ON CONFLICT (t_id)
+		query.WriteString(`) AS v(id, total_bytes, last_connected_node_uuid)
+			ON CONFLICT (id)
 			DO UPDATE SET
 				used_traffic_bytes = user_traffic.used_traffic_bytes + EXCLUDED.used_traffic_bytes,
 				lifetime_used_traffic_bytes = user_traffic.lifetime_used_traffic_bytes + EXCLUDED.lifetime_used_traffic_bytes,

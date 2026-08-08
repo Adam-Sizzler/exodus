@@ -9,7 +9,7 @@ var GetSubpageConfigByShortUuidCommand;
     GetSubpageConfigByShortUuidCommand.url = api_1.REST_API.SUBSCRIPTIONS.SUBPAGE.GET_CONFIG;
     GetSubpageConfigByShortUuidCommand.TSQ_url = GetSubpageConfigByShortUuidCommand.url(':shortUuid');
     GetSubpageConfigByShortUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTIONS_ROUTES.SUBPAGE.GET_CONFIG(':shortUuid'), 'get', 'Get Subpage Config by Short UUID', { scope: 'subpage-config', kind: 'read' });
-    GetSubpageConfigByShortUuidCommand.RequestSchema = zod_1.z.object({
+    GetSubpageConfigByShortUuidCommand.RequestParamSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
     GetSubpageConfigByShortUuidCommand.RequestBodySchema = zod_1.z.object({
@@ -17,8 +17,9 @@ var GetSubpageConfigByShortUuidCommand;
     });
     GetSubpageConfigByShortUuidCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
-            subpageConfigUuid: zod_1.z.string().uuid().nullable(),
+            subpageConfigUuid: zod_1.z.uuid().nullable(),
             webpageAllowed: zod_1.z.boolean(),
         }),
     });
+
 })(GetSubpageConfigByShortUuidCommand || (exports.GetSubpageConfigByShortUuidCommand = GetSubpageConfigByShortUuidCommand = {}));

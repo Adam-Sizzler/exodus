@@ -1,53 +1,21 @@
 import { z } from 'zod';
 export declare namespace UpsertUserMetadataCommand {
-    const url: (uuid: string) => string;
+    const url: (userId: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../../constants").EndpointDetails;
     const RequestParamsSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type RequestParams = z.infer<typeof RequestParamsSchema>;
+        userId: z.ZodCoercedNumber<unknown>;
+    }, z.core.$strip>;
     const RequestBodySchema: z.ZodObject<{
-        metadata: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
-    }, "strip", z.ZodTypeAny, {
-        metadata: {} & {
-            [k: string]: unknown;
-        };
-    }, {
-        metadata: {} & {
-            [k: string]: unknown;
-        };
-    }>;
-    type RequestBody = z.infer<typeof RequestBodySchema>;
+        metadata: z.ZodObject<{}, z.core.$loose>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            metadata: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
-        }, "strip", z.ZodTypeAny, {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        }, {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        };
-    }, {
-        response: {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        };
-    }>;
+            metadata: z.ZodObject<{}, z.core.$loose>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParams = z.infer<typeof RequestParamsSchema>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=upsert-user-metadata.command.d.ts.map

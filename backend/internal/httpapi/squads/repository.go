@@ -537,7 +537,7 @@ func (r *SquadRepository) getSquadMembers(ctx context.Context, squadUUID string)
 		query = `
 			SELECT m.internal_squad_uuid, m.user_id, u.username
 			FROM internal_squad_members m
-			JOIN users u ON m.user_id = u.t_id
+			JOIN users u ON m.user_id = u.id
 			WHERE m.internal_squad_uuid = $1
 			ORDER BY m.user_id`
 		args = []interface{}{squadUUID}
@@ -545,7 +545,7 @@ func (r *SquadRepository) getSquadMembers(ctx context.Context, squadUUID string)
 		query = `
 			SELECT m.internal_squad_uuid, m.user_id, u.username
 			FROM internal_squad_members m
-			JOIN users u ON m.user_id = u.t_id
+			JOIN users u ON m.user_id = u.id
 			ORDER BY m.internal_squad_uuid, m.user_id`
 	}
 
@@ -594,7 +594,7 @@ func (r *SquadRepository) setSquadMembers(ctx context.Context, squadUUID string,
 
 	for _, userID := range userIDs {
 		var exists bool
-		err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE t_id = $1)", userID).Scan(&exists)
+		err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userID).Scan(&exists)
 		if err != nil {
 			return err
 		}
@@ -681,7 +681,7 @@ func (r *SquadRepository) getSquadDetails(ctx context.Context, squadUUID string)
 	memberQuery := `
 		SELECT m.user_id, u.username
 		FROM internal_squad_members m
-		JOIN users u ON m.user_id = u.t_id
+		JOIN users u ON m.user_id = u.id
 		WHERE m.internal_squad_uuid = $1
 		ORDER BY u.username`
 

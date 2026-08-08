@@ -1,25 +1,24 @@
 import { Group, Stack, Text, ThemeIcon } from '@mantine/core'
-import { GetAllHostsCommand, GetConfigProfilesCommand } from '@exodus/backend-contract'
+import { GetHostsCommand, GetConfigProfilesCommand } from '@exodus/backend-contract'
 import { PiProhibit, PiPulse } from 'react-icons/pi'
 import { TbEyeOff } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { SingboxLogo } from '@shared/ui/logos'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-
 interface IProps {
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles']
-    hosts: GetAllHostsCommand.Response['response']
+    hosts: GetHostsCommand.Response['response']
 }
 
 export const HostsSpotlightWidget = (props: IProps) => {
     const { configProfiles, hosts } = props
 
-    const openModalWithData = useModalsStoreOpenWithData()
-
     const handleViewHost = (hostUuid: string) => {
-        openModalWithData(MODALS.EDIT_HOST_MODAL, hosts.find((host) => host.uuid === hostUuid)!)
+        showModal('hosts_editHostDrawer', {
+            host: hosts.find((host) => host.uuid === hostUuid)!
+        })
     }
 
     const getHostIcon = (isDisabled: boolean, isHidden: boolean) => {

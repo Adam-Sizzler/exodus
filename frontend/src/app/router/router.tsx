@@ -6,11 +6,11 @@ import { InfraBillingPageConnector } from '@pages/dashboard/crm/infra-billing/co
 import { ExternalSquadsPageConnector } from '@pages/dashboard/external-squads/connectors'
 import { HomePageConnector } from '@pages/dashboard/home/connectors'
 import { HostsPageConnector } from '@pages/dashboard/hosts/ui/connectors'
+import { HttpStatsPageConnector } from '@pages/dashboard/http-stats/ui/connectors/http-stats.page.connector'
 import { HwidInspectorPageConnector } from '@pages/dashboard/hwid-inspector/ui/connectors'
 import { InternalSquadsPageConnector } from '@pages/dashboard/internal-squads/connectors/internal-squads.page.connector'
 import { NodePluginEditorPageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugin-editor-page.connector'
 import { NodePluginsBasePageConnector } from '@pages/dashboard/node-plugins/ui/connectors/node-plugins-base-page.connector'
-import { NodesBandwidthTablePageConnector } from '@pages/dashboard/nodes-bandwidth-table/ui/connectors'
 import { NodesMetricsPageConnector } from '@pages/dashboard/nodes-metrics/ui/connectors'
 import { NodesPageConnector } from '@pages/dashboard/nodes/ui/connectors'
 import { ExodusSettingsConnector } from '@pages/dashboard/exodus-settings/connectors'
@@ -45,7 +45,7 @@ import { MainLayout } from '../layouts/dashboard/main-layout/layout'
 
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route element={<ErrorBoundaryHoc fallback={<ErrorPageComponent />} />}>
+        <Route element={<ErrorBoundaryHoc FallbackComponent={ErrorPageComponent} />}>
             <Route element={<AuthLayout />} path={ROUTES.OAUTH2.ROOT}>
                 <Route element={<Oauth2CallbackPage />} path={ROUTES.OAUTH2.ROOT} />
             </Route>
@@ -76,11 +76,6 @@ const router = createBrowserRouter(
                         <Route
                             element={<NodesPageConnector />}
                             path={ROUTES.DASHBOARD.MANAGEMENT.NODES}
-                        />
-
-                        <Route
-                            element={<NodesBandwidthTablePageConnector />}
-                            path={ROUTES.DASHBOARD.MANAGEMENT.NODES_BANDWIDTH_TABLE}
                         />
                         <Route
                             element={<StatisticNodesConnector />}
@@ -149,6 +144,10 @@ const router = createBrowserRouter(
                             path={ROUTES.DASHBOARD.TOOLS.SRH_INSPECTOR}
                         />
 
+                        <Route
+                            element={<HttpStatsPageConnector />}
+                            path={ROUTES.DASHBOARD.TOOLS.HTTP_STATS}
+                        />
                     </Route>
 
                     <Route path={ROUTES.DASHBOARD.TEMPLATES.ROOT}>

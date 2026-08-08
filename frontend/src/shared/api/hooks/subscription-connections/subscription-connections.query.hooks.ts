@@ -1,4 +1,4 @@
-import { GetAllNodesTagsCommand, GetOneNodeCommand } from '@exodus/backend-contract'
+import { GetNodesTagsCommand, GetNodeCommand } from '@exodus/backend-contract'
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import { keepPreviousData } from '@tanstack/react-query'
 import { z } from 'zod'
@@ -155,7 +155,7 @@ export const subscriptionConnectionsQueryKeys = createQueryKeys('subscriptionCon
     getAllNodes: {
         queryKey: null
     },
-    getNode: (route: GetOneNodeCommand.Request) => ({
+    getNode: (route: GetNodeCommand.RequestParam) => ({
         queryKey: [route]
     }),
     getPubKey: {
@@ -180,7 +180,7 @@ export const useGetSubscriptionConnections = createGetQueryHook({
 export const useGetSubscriptionConnection = createGetQueryHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.GET_ONE,
     responseSchema: getOneSubscriptionConnectionResponseSchema,
-    routeParamsSchema: GetOneNodeCommand.RequestSchema,
+    routeParamsSchema: GetNodeCommand.RequestSchema,
     getQueryKey: ({ route }) => subscriptionConnectionsQueryKeys.getNode(route!).queryKey,
     rQueryParams: {
         refetchOnMount: true,
@@ -205,7 +205,7 @@ export const useGetSubscriptionConnectionsPubKey = createGetQueryHook({
 
 export const useGetSubscriptionConnectionsTags = createGetQueryHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.GET_TAGS,
-    responseSchema: GetAllNodesTagsCommand.ResponseSchema,
+    responseSchema: GetNodesTagsCommand.ResponseSchema,
     getQueryKey: () => subscriptionConnectionsQueryKeys.getAllTags.queryKey,
     rQueryParams: {
         staleTime: 0

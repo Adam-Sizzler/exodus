@@ -56,7 +56,6 @@ import {
     TbServer2,
     TbStar
 } from 'react-icons/tb'
-import { Link } from 'react-router'
 
 import { useIsMobile } from '@shared/hooks'
 import { ChipMultiSelect } from '@shared/ui/chip-multi-select'
@@ -67,10 +66,8 @@ import { TemplateInfoPopoverShared } from '@shared/ui/popovers'
 import { PopoverWithInfoShared } from '@shared/ui/popovers/popover-with-info'
 import { SectionCard } from '@shared/ui/section-card'
 import { TagInputPill } from '@shared/ui/tag-input-pill'
-import { handleFormErrors } from '@shared/utils/misc'
 import { emojiFlag, resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
 
-import classes from './HostTabs.module.css'
 import { IProps } from './interfaces'
 import { FINAL_MASK_MODAL_ID, FinalMaskModalContent } from './modals/final-mask.modal.content'
 import { MUX_MODAL_ID, MuxModalContent } from './modals/mux.modal.content'
@@ -171,7 +168,10 @@ const generatePassword = () => {
 }
 
 export const BaseHostForm = <
-    T extends CreateHostCommand.Request | UpdateHostCommand.Request | UpdateManyHostsCommand.Request
+    T extends
+        | CreateHostCommand.RequestBody
+        | UpdateHostCommand.RequestBody
+        | UpdateManyHostsCommand.RequestBody
 >(
     props: IProps<T>
 ) => {
@@ -184,7 +184,8 @@ export const BaseHostForm = <
         internalSquads,
         subscriptionTemplates,
         hostTags,
-        removeRequiredFields
+        removeRequiredFields,
+        hostUuid
     } = props
 
     const { t } = useTranslation()
@@ -251,10 +252,6 @@ export const BaseHostForm = <
         })
     }
 
-    useEffect(() => {
-        handleFormErrors(form, form.errors)
-    }, [form.errors])
-
     const syncCredentialInbound = () => {
         const values = form.getValues() as {
             inbound?: {
@@ -299,7 +296,6 @@ export const BaseHostForm = <
             )
         }
     })
-
     const patternHoverCard = (showSingle = true, showMulti = true, showWildcard = true) => {
         return (
             <HoverCard shadow="md" width={300} withArrow>
@@ -352,62 +348,6 @@ export const BaseHostForm = <
                                     </Text>
                                 </Stack>
                             )}
-                        </Stack>
-                    </Stack>
-                </HoverCard.Dropdown>
-            </HoverCard>
-        )
-    }
-
-    const vlessRouteHoverCard = () => {
-        return (
-            <HoverCard shadow="md" width={300} withArrow>
-                <HoverCard.Target>
-                    <ActionIcon color="gray" size="xs" variant="subtle">
-                        <HiQuestionMarkCircle size={20} />
-                    </ActionIcon>
-                </HoverCard.Target>
-                <HoverCard.Dropdown>
-                    <Stack gap="md">
-                        <Stack gap="sm">
-                            <Text c="dimmed" size="sm">
-                                Refer to the{' '}
-                                <Link
-                                    target="_blank"
-                                    to="https://xtls.github.io/config/routing.html"
-                                >
-                                    XTLS Documentation
-                                </Link>{' '}
-                                for more information.
-                            </Text>
-                        </Stack>
-                    </Stack>
-                </HoverCard.Dropdown>
-            </HoverCard>
-        )
-    }
-
-    const mihomoX25519HoverCard = () => {
-        return (
-            <HoverCard shadow="md" width={280} withArrow>
-                <HoverCard.Target>
-                    <ActionIcon color="gray" size="xs" variant="subtle">
-                        <HiQuestionMarkCircle size={20} />
-                    </ActionIcon>
-                </HoverCard.Target>
-                <HoverCard.Dropdown>
-                    <Stack gap="md">
-                        <Stack gap="sm">
-                            <Text c="dimmed" size="sm">
-                                Refer to the{' '}
-                                <Link
-                                    target="_blank"
-                                    to="https://wiki.metacubex.one/en/config/proxies/tls/#reality-optssupport-x25519mlkem768"
-                                >
-                                    Mihomo Documentation
-                                </Link>{' '}
-                                for more information.
-                            </Text>
                         </Stack>
                     </Stack>
                 </HoverCard.Dropdown>
@@ -491,12 +431,10 @@ export const BaseHostForm = <
             </Group>
 
             <Tabs
-                classNames={classes}
                 keepMounted
                 keepMountedMode="display-none"
                 onChange={setActiveTab}
                 value={activeTab}
-                variant="unstyled"
             >
                 <Tabs.List grow mb="md">
                     <Tabs.Tab key="basic" leftSection={<PiNoteDuotone size={16} />} value="basic">
@@ -1008,7 +946,21 @@ export const BaseHostForm = <
                                                 hideControls
                                                 max={65535}
                                                 min={0}
-                                                rightSection={vlessRouteHoverCard()}
+                                                rightSection={
+                                                    <ActionIcon
+                                                        color="gray"
+                                                        onClick={() => {
+                                                            window.open(
+                                                                'https://xtls.github.io/config/routing.html',
+                                                                '_blank'
+                                                            )
+                                                        }}
+                                                        size="xs"
+                                                        variant="subtle"
+                                                    >
+                                                        <HiQuestionMarkCircle size={20} />
+                                                    </ActionIcon>
+                                                }
                                             />
 
                                             <Group align="flex-end" gap="xs" wrap="nowrap" w="100%">
@@ -1492,7 +1444,19 @@ export const BaseHostForm = <
                                                     <Text fw={600} size="sm">
                                                         {t('base-host-form.enable-x25519mlkem768')}
                                                     </Text>
-                                                    {mihomoX25519HoverCard()}
+                                                    <ActionIcon
+                                                        color="gray"
+                                                        onClick={() => {
+                                                            window.open(
+                                                                'https://wiki.metacubex.one/en/config/proxies/tls/#reality-optssupport-x25519mlkem768',
+                                                                '_blank'
+                                                            )
+                                                        }}
+                                                        size="xs"
+                                                        variant="subtle"
+                                                    >
+                                                        <HiQuestionMarkCircle size={20} />
+                                                    </ActionIcon>
                                                 </Group>
                                                 <Switch
                                                     color="teal.8"
@@ -1559,9 +1523,7 @@ export const BaseHostForm = <
                         </Button>
                     </Group>
 
-                    <Group>
-                        <DeleteHostFeature />
-                    </Group>
+                    {!!hostUuid && <DeleteHostFeature hostUuid={hostUuid} />}
                 </Group>
             </DrawerFooter>
         </form>

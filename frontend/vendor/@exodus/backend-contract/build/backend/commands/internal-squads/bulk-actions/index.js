@@ -16,3 +16,5 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./add-users-to-internal-squad.command"), exports);
 __exportStar(require("./delete-users-from-internal-squad.command"), exports);
+__exportStar(require("./add-many-users-to-internal-squad.command"), exports);
+__exportStar(require("./delete-many-users-from-internal-squad.command"), exports);

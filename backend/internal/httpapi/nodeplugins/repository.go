@@ -142,7 +142,7 @@ func normalizeHaproxyAuthConfig(raw any) (map[string]any, error) {
 			}
 			tags = append(tags, value)
 		}
-		result["inboundTags"] = normalizeHaproxyInboundTags(tags)
+		result["inboundTags"] = tags
 		return result, nil
 	}
 

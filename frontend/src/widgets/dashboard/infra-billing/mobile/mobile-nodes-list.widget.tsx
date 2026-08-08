@@ -17,13 +17,12 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TbCalendar, TbCheck, TbCpu, TbCreditCard, TbExternalLink, TbServer } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { queryClient } from '@shared/api'
 import { QueryKeys, useUpdateInfraBillingNode } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 import { formatTimeUtil } from '@shared/utils/time-utils'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 type BillingNode = GetInfraBillingNodesCommand.Response['response']['billingNodes'][number]
 
@@ -49,7 +48,6 @@ interface IProps {
 
 export function MobileNodesListWidget(props: IProps) {
     const { nodes, style, selectMode = false, selectedUuids, onToggleSelect } = props
-    const openModalWithData = useModalsStoreOpenWithData()
     const { t, i18n } = useTranslation()
     const [updatingUuids, setUpdatingUuids] = useState<Set<string>>(new Set())
 
@@ -75,7 +73,7 @@ export function MobileNodesListWidget(props: IProps) {
     }
 
     const handleClickBillingAt = (node: BillingNode) => {
-        openModalWithData(MODALS.UPDATE_BILLING_DATE_MODAL, {
+        showModal('infraBilling_updateBillingDateModal', {
             uuids: [node.uuid],
             nextBillingAt: node.nextBillingAt
         })
@@ -84,7 +82,7 @@ export function MobileNodesListWidget(props: IProps) {
     const handleOpenNode = (node: BillingNode) => {
         if (!node.nodeUuid) return
 
-        openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, {
+        showModal('nodes_editNodeModal', {
             nodeUuid: node.nodeUuid
         })
     }

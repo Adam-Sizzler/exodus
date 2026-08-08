@@ -1,6 +1,6 @@
 import { Menu } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { GetOneNodeCommand } from '@exodus/backend-contract'
+import { GetNodeCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import { TbReload, TbRocket } from 'react-icons/tb'
 
@@ -10,7 +10,7 @@ import { RestartNodeModalContentFeature } from './restart-node.modal-content.fea
 
 interface IProps {
     handleClose: () => void
-    node: GetOneNodeCommand.Response['response']
+    node: GetNodeCommand.Response['response']
 }
 
 export function RestartNodeButtonFeature(props: IProps) {

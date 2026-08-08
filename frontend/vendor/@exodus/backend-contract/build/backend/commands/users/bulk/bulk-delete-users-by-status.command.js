@@ -10,12 +10,8 @@ var BulkDeleteUsersByStatusCommand;
     BulkDeleteUsersByStatusCommand.url = api_1.REST_API.USERS.BULK.DELETE_BY_STATUS;
     BulkDeleteUsersByStatusCommand.TSQ_url = BulkDeleteUsersByStatusCommand.url;
     BulkDeleteUsersByStatusCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.DELETE_BY_STATUS, 'post', 'Bulk delete users by status', { scope: 'bulk-delete-by-status', kind: 'write' });
-    BulkDeleteUsersByStatusCommand.RequestSchema = zod_1.z.object({
+    BulkDeleteUsersByStatusCommand.RequestBodySchema = zod_1.z.object({
         status: models_1.UsersSchema.shape.status,
     });
-    BulkDeleteUsersByStatusCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            affectedRows: zod_1.z.number(),
-        }),
-    });
+
 })(BulkDeleteUsersByStatusCommand || (exports.BulkDeleteUsersByStatusCommand = BulkDeleteUsersByStatusCommand = {}));

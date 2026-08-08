@@ -114,30 +114,21 @@ func ensureDefaultSubscriptionSettings(ctx context.Context, tx *sql.Tx, _ *confi
 
 	query := `
 		INSERT INTO subscription_settings (
-			uuid, profile_title, support_link, profile_update_interval,
-			address, port, api_schema, api_path,
-			is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-			happ_announce, happ_routing, is_show_custom_remarks,
-			custom_remarks, custom_response_headers, randomize_hosts,
-			response_rules, hwid_settings
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			uuid, address, port, api_schema, api_path,
+			serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+			custom_response_headers, randomize_hosts, response_rules, hwid_settings
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	`
 	_, err = tx.ExecContext(ctx, query,
 		"00000000-0000-0000-0000-000000000000",
-		"exodus",
-		"https://github.com",
-		12,
 		"",
 		9263,
 		"grpc",
 		"",
-		true,
 		false,
-		"",
-		"",
 		true,
 		defaultCustomRemarks,
-		`{}`,
+		`{"profile-title":"exEncodeBase64:exodus","support-url":"https://github.com","profile-update-interval":"12","profile-web-page-url":"{{SUBSCRIPTION_URL}}"}`,
 		false,
 		defaultResponseRules,
 		defaultHWIDSettings,

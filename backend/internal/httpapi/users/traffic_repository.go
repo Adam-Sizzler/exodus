@@ -10,7 +10,7 @@ func (r *UserRepository) queryLimitedUserNodeUUIDsTx(ctx context.Context, tx *sq
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
-		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_members ism ON ism.user_id = u.id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'LIMITED' AND u.uuid = ANY($1)
@@ -27,7 +27,7 @@ func (r *UserRepository) queryAllLimitedUserNodeUUIDsTx(ctx context.Context, tx 
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
-		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_members ism ON ism.user_id = u.id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'LIMITED'
@@ -44,13 +44,12 @@ func (r *UserRepository) queryReactivatedExpiredUserNodeUUIDsTx(ctx context.Cont
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
-		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_members ism ON ism.user_id = u.id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'EXPIRED'
 		  AND u.uuid = ANY($1)
-		  AND u.expire_at + ($2::int * INTERVAL '1 day') > CURRENT_TIMESTAMP
-	`, dedupeStrings(userUUIDs), extendDays)
+	`, dedupeStrings(userUUIDs))
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +62,7 @@ func (r *UserRepository) queryAllReactivatedExpiredUserNodeUUIDsTx(ctx context.C
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
-		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_members ism ON ism.user_id = u.id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'EXPIRED'
@@ -122,7 +121,7 @@ func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE user_traffic
 		SET used_traffic_bytes = 0
-		WHERE t_id IN (SELECT t_id FROM users WHERE uuid = ANY($1))
+		WHERE id IN (SELECT id FROM users WHERE uuid = ANY($1))
 	`, dedupeStrings(userUUIDs)); err != nil {
 		return 0, nil, err
 	}
@@ -187,14 +186,17 @@ func (r *UserRepository) extendUsersExpirationByUUIDs(ctx context.Context, userU
 
 	result, err := tx.ExecContext(ctx, `
 		UPDATE users
-		SET expire_at = expire_at + ($1::int * INTERVAL '1 day'),
+		SET expire_at = CASE
+				WHEN status = 'EXPIRED' THEN CURRENT_TIMESTAMP + ($1::int * INTERVAL '1 day')
+				ELSE expire_at + ($1::int * INTERVAL '1 day')
+			END,
 			status = CASE
-				WHEN status = 'EXPIRED' AND expire_at + ($2::int * INTERVAL '1 day') > CURRENT_TIMESTAMP THEN 'ACTIVE'
+				WHEN status = 'EXPIRED' THEN 'ACTIVE'
 				ELSE status
 			END,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE uuid = ANY($3)
-	`, extendDays, extendDays, dedupeStrings(userUUIDs))
+		WHERE uuid = ANY($2)
+	`, extendDays, dedupeStrings(userUUIDs))
 	if err != nil {
 		return 0, nil, err
 	}

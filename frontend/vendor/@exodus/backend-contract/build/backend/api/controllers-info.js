@@ -2,21 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CONTROLLERS_INFO = void 0;
 exports.CONTROLLERS_INFO = {
-    AUTH: {
-        tag: 'Auth Controller',
-        description: 'Used to authenticate admin users.',
-        resource: 'auth',
-    },
-    PASSKEYS: {
-        tag: 'Passkeys Controller',
-        description: 'Management of Passkeys.',
-        resource: 'passkeys',
-    },
-    API_TOKENS: {
-        tag: 'API Tokens Controller',
-        description: "Manage API tokens to use in your code. This controller can't be used with API token, only with Admin JWT token",
-        resource: 'api-tokens',
-    },
     USERS: {
         tag: 'Users Controller',
         description: 'Manage users, change their status, reset traffic, etc.',
@@ -57,10 +42,10 @@ exports.CONTROLLERS_INFO = {
         description: '',
         resource: 'bandwidth-stats',
     },
-    IP_CONTROL: {
-        tag: 'IP Management Controller',
-        description: 'Management of IP addresses and connections.',
-        resource: 'ip-control',
+    CONNECTIONS: {
+        tag: 'Connections Controller',
+        description: 'Management of connections by user and node.',
+        resource: 'connections',
     },
     CONFIG_PROFILES: {
         tag: 'Config Profiles Controller',
@@ -122,7 +107,7 @@ exports.CONTROLLERS_INFO = {
         description: '',
         resource: 'snippets',
     },
-    EXODUS_SETTINGS: {
+    REMNAAWAVE_SETTINGS: {
         tag: 'Exodus Settings Controller',
         description: '',
         resource: 'exodus-settings',
@@ -136,5 +121,20 @@ exports.CONTROLLERS_INFO = {
         tag: 'Metadata Controller',
         description: 'Manage arbitrary metadata for Users and Nodes.',
         resource: 'metadata',
+    },
+    AUTH: {
+        tag: 'Auth Controller',
+        description: 'Used to authenticate admin users.',
+        resource: 'auth',
+    },
+    PASSKEYS: {
+        tag: 'Passkeys Controller',
+        description: 'Management of Passkeys.',
+        resource: 'passkeys',
+    },
+    API_TOKENS: {
+        tag: 'API Tokens Controller',
+        description: "Manage API tokens to use in your code. This controller can't be used with API token, only with Admin JWT token",
+        resource: 'api-tokens',
     },
 };

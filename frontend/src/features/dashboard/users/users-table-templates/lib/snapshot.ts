@@ -1,9 +1,9 @@
 import { MRT_TableInstance } from '@kastov/mantine-react-table-open'
-import { GetAllUsersCommand } from '@exodus/backend-contract'
+import { GetUsersCommand } from '@exodus/backend-contract'
 
 import { UsersTableTemplateSnapshot } from '@entities/dashboard/users/users-table-templates-store'
 
-type UserRow = GetAllUsersCommand.Response['response']['users'][number]
+type UserRow = GetUsersCommand.Response['response']['users'][number]
 type UsersTable = MRT_TableInstance<UserRow>
 
 export const captureSnapshot = (table: UsersTable): UsersTableTemplateSnapshot => {

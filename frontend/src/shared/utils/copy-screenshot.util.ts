@@ -60,20 +60,35 @@ function assertScreenshotSupported(): void {
     }
 }
 
-export async function copyScreenshotToClipboard(element: HTMLElement): Promise<void> {
+type ScreenshotTarget = (() => HTMLElement | Promise<HTMLElement>) | HTMLElement
+
+export async function copyScreenshotToClipboard(target: ScreenshotTarget): Promise<void> {
     assertScreenshotSupported()
 
-    const blobPromise = renderScreenshot(element).then(
-        (canvas) =>
-            new Promise<Blob>((resolve, reject) => {
-                canvas.toBlob(
-                    (b) => (b ? resolve(b) : reject(new Error('Failed to capture'))),
-                    'image/png'
-                )
-            })
-    )
+    let renderError: unknown
 
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+    const blobPromise = Promise.resolve()
+        .then(() => (typeof target === 'function' ? target() : target))
+        .then((element) => renderScreenshot(element))
+        .then(
+            (canvas) =>
+                new Promise<Blob>((resolve, reject) => {
+                    canvas.toBlob(
+                        (b) => (b ? resolve(b) : reject(new Error('Failed to capture'))),
+                        'image/png'
+                    )
+                })
+        )
+        .catch((error) => {
+            renderError = error
+            throw error
+        })
+
+    try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+    } catch (error) {
+        throw renderError ?? error
+    }
 }
 
 export async function downloadScreenshot(element: HTMLElement, filename: string): Promise<void> {

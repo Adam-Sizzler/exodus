@@ -97,7 +97,7 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 				ON CONFLICT (id) DO NOTHING
 			`,
 				`{"rpId":null,"origin":null,"enabled":false}`,
-				`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
+				`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"frontendDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
 				`{"enabled":true}`,
 				`{"title":"EXODUS","logoUrl":null}`,
 			); execErr != nil {
@@ -139,7 +139,6 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 			shared.WriteJSON(w, http.StatusOK, map[string]any{
 				"response": map[string]any{
 					"tokens": toAPITokensResponse(tokens),
-					"docs":   buildDocsResponse(cfg),
 				},
 			})
 		case http.MethodPost:
@@ -173,7 +172,7 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 
 			tokenUUID := uuid.NewString()
 			lifetime := time.Duration(expiresInDays) * 24 * time.Hour
-			tokenValue, expiresAtUnix, err := security.SignAPITokenJWTWithLifetime(cfg.JWT.APITokensSecret, tokenUUID, lifetime)
+			tokenValue, expiresAtUnix, err := security.SignAPITokenJWTWithLifetime(cfg.JWT.AuthSecret, tokenUUID, lifetime)
 			if err != nil {
 				cfg.Logger.Error("Failed to generate api token", "error", err)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to generate api token")
@@ -217,6 +216,29 @@ func PanelAPITokenScopesHandler(_ *sql.DB, cfg *config.BackendConfig) http.Handl
 			"response": map[string]any{
 				"wildcard":  "*",
 				"resources": buildAPITokenScopes(cfg),
+			},
+		})
+	}
+}
+
+func PanelAPITokensOttHandler(_ *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		secret := cfg.JWT.AuthSecret
+		ott, err := security.SignOttJWT(secret)
+		if err != nil {
+			cfg.Logger.Error("Failed to issue OTT token", "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to issue ott token")
+			return
+		}
+
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{
+				"ott": ott,
 			},
 		})
 	}

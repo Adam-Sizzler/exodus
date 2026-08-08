@@ -7,14 +7,14 @@ const response_rule_settings_schema_1 = require("./response-rule-settings.schema
 const response_rule_schema_1 = require("./response-rule.schema");
 const response_rules_examples_1 = require("./response-rules-examples");
 exports.ResponseRulesConfigSchema = zod_1.z.object({
-    version: zod_1.z.nativeEnum(constants_1.RESPONSE_RULES_CONFIG_VERSION).describe(JSON.stringify({
+    version: zod_1.z.enum(constants_1.RESPONSE_RULES_CONFIG_VERSION).meta({
         title: 'Response Rules Config Version',
         markdownDescription: 'Version of the **response rules** config. Currently supported version is **1**.',
-    })),
+    }),
     settings: response_rule_settings_schema_1.ResponseRuleSettingsSchema,
-    rules: zod_1.z.array(response_rule_schema_1.ResponseRuleSchema).describe(JSON.stringify({
+    rules: zod_1.z.array(response_rule_schema_1.ResponseRuleSchema).meta({
         title: 'Response Rules',
         markdownDescription: `Array of **response rules**. Rules are evaluated in order and the first rule that matches is applied. If no rule matches, request will be blocked by default.\n\n**Example:**\n\`\`\`json\n${JSON.stringify([response_rules_examples_1.EXAMPLES_SRR_BLANK_RULE], null, 2)}\n\`\`\``,
         defaultSnippets: [],
-    })),
+    }),
 });

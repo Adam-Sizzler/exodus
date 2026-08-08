@@ -183,7 +183,7 @@ func normalizeUsersTableFilterValues(value any) []string {
 func usersTableFieldValue(user userAPI, columnID string) any {
 	switch columnID {
 	case "uuid":
-		return user.UUID
+		return user.ID
 	case "id":
 		return user.ID
 	case "shortUuid":

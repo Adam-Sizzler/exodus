@@ -1,7 +1,6 @@
 import { Button, Container, Paper, PasswordInput, TextInput } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { LoginCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'react-i18next'
 import { PiSignInDuotone } from 'react-icons/pi'
 
@@ -16,7 +15,7 @@ export const LoginFormFeature = () => {
 
     const form = useForm({
         mode: 'uncontrolled',
-        validate: zodResolver(LoginCommand.RequestSchema),
+        validate: schemaResolver(LoginCommand.RequestBodySchema),
         initialValues: { username: '', password: '' }
     })
 

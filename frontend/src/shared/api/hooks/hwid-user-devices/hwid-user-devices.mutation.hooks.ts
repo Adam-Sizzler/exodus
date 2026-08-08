@@ -8,7 +8,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useDeleteUserHwidDevice = createMutationHook({
     endpoint: DeleteUserHwidDeviceCommand.TSQ_url,
-    bodySchema: DeleteUserHwidDeviceCommand.RequestSchema,
+    bodySchema: DeleteUserHwidDeviceCommand.RequestBodySchema,
     responseSchema: DeleteUserHwidDeviceCommand.ResponseSchema,
     requestMethod: DeleteUserHwidDeviceCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -32,7 +32,7 @@ export const useDeleteUserHwidDevice = createMutationHook({
 
 export const useDeleteAllUserHwidDevices = createMutationHook({
     endpoint: DeleteAllUserHwidDevicesCommand.TSQ_url,
-    bodySchema: DeleteAllUserHwidDevicesCommand.RequestSchema,
+    bodySchema: DeleteAllUserHwidDevicesCommand.RequestBodySchema,
     responseSchema: DeleteAllUserHwidDevicesCommand.ResponseSchema,
     requestMethod: DeleteAllUserHwidDevicesCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

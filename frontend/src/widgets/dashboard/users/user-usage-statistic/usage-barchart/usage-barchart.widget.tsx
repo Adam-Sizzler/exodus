@@ -133,6 +133,7 @@ export const UserUsageBarchartWidget = (props: IProps) => {
     return (
         <Card h="100%" p="xs" withBorder>
             <Chart
+                title=""
                 options={{
                     chart: {
                         type: 'bar',

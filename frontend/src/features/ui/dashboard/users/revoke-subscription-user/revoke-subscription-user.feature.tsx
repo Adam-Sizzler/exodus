@@ -9,10 +9,12 @@ import { useRevokeUserSubscription, usersQueryKeys } from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui/action-card'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { IProps } from './interfaces'
+interface IProps {
+    userId: number
+}
 
 export function RevokeSubscriptionUserFeature(props: IProps) {
-    const { userUuid } = props
+    const { userId } = props
     const { t } = useTranslation()
 
     const RevokeModalContent = () => {
@@ -20,7 +22,7 @@ export function RevokeSubscriptionUserFeature(props: IProps) {
             mutationFns: {
                 onSuccess: (data) => {
                     queryClient.setQueryData(
-                        usersQueryKeys.getUserByUuid({ uuid: userUuid }).queryKey,
+                        usersQueryKeys.getUserById({ userId: userId }).queryKey,
                         data
                     )
 
@@ -41,7 +43,7 @@ export function RevokeSubscriptionUserFeature(props: IProps) {
                             variables: {
                                 revokeOnlyPasswords: false
                             },
-                            route: { uuid: userUuid }
+                            route: { userId: userId }
                         })
                     }}
                     title={t('revoke-subscription-user.feature.full-revoke')}
@@ -58,7 +60,7 @@ export function RevokeSubscriptionUserFeature(props: IProps) {
                             variables: {
                                 revokeOnlyPasswords: true
                             },
-                            route: { uuid: userUuid }
+                            route: { userId: userId }
                         })
                     }}
                     title={t('revoke-subscription-user.feature.passwords-only')}

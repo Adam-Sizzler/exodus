@@ -15,7 +15,7 @@ var PluginExecutorCommand;
             command: zod_1.z.literal('blockIps'),
             ips: zod_1.z
                 .array(zod_1.z.object({
-                ip: zod_1.z.string().ip(),
+                ip: zod_1.z.union([zod_1.z.ipv4(), zod_1.z.ipv6()]),
                 timeout: zod_1.z.number(),
             }))
                 .min(1),
@@ -24,7 +24,7 @@ var PluginExecutorCommand;
         zod_1.z
             .object({
             command: zod_1.z.literal('unblockIps'),
-            ips: zod_1.z.array(zod_1.z.string().ip()).min(1),
+            ips: zod_1.z.array(zod_1.z.union([zod_1.z.ipv4(), zod_1.z.ipv6()])).min(1),
         })
             .describe('Unblock IPs'),
         zod_1.z
@@ -42,17 +42,13 @@ var PluginExecutorCommand;
         zod_1.z
             .object({
             target: zod_1.z.literal('specificNodes'),
-            nodeUuids: zod_1.z.array(zod_1.z.string().uuid()).min(1),
+            nodeUuids: zod_1.z.array(zod_1.z.uuid()).min(1),
         })
             .describe('Target specific nodes'),
     ]);
-    PluginExecutorCommand.RequestSchema = zod_1.z.object({
+    PluginExecutorCommand.RequestBodySchema = zod_1.z.object({
         command: PluginExecutorCommand.CommandSchema,
         targetNodes: PluginExecutorCommand.TargetNodesSchema,
     });
-    PluginExecutorCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            eventSent: zod_1.z.boolean(),
-        }),
-    });
+
 })(PluginExecutorCommand || (exports.PluginExecutorCommand = PluginExecutorCommand = {}));

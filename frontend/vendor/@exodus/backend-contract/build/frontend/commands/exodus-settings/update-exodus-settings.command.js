@@ -7,10 +7,10 @@ const constants_1 = require("../../constants");
 const models_1 = require("../../models");
 var UpdateExodusSettingsCommand;
 (function (UpdateExodusSettingsCommand) {
-    UpdateExodusSettingsCommand.url = api_1.REST_API.EXODUS_SETTINGS.UPDATE;
+    UpdateExodusSettingsCommand.url = api_1.REST_API.REMNAAWAVE_SETTINGS.UPDATE;
     UpdateExodusSettingsCommand.TSQ_url = UpdateExodusSettingsCommand.url;
     UpdateExodusSettingsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXODUS_SETTINGS_ROUTES.UPDATE, 'patch', 'Update Exodus settings', { scope: 'update', kind: 'write' });
-    UpdateExodusSettingsCommand.RequestSchema = zod_1.z.object({
+    UpdateExodusSettingsCommand.RequestBodySchema = zod_1.z.object({
         passkeySettings: models_1.PasskeySettingsSchema.optional(),
         oauth2Settings: models_1.Oauth2SettingsSchema.optional(),
         passwordSettings: models_1.PasswordAuthSettingsSchema.optional(),
@@ -19,4 +19,5 @@ var UpdateExodusSettingsCommand;
     UpdateExodusSettingsCommand.ResponseSchema = zod_1.z.object({
         response: models_1.ExodusSettingsSchema,
     });
+
 })(UpdateExodusSettingsCommand || (exports.UpdateExodusSettingsCommand = UpdateExodusSettingsCommand = {}));

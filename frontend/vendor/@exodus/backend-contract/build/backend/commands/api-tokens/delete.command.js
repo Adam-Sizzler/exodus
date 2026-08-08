@@ -8,11 +8,9 @@ var DeleteApiTokenCommand;
 (function (DeleteApiTokenCommand) {
     DeleteApiTokenCommand.url = api_1.REST_API.API_TOKENS.DELETE;
     DeleteApiTokenCommand.TSQ_url = DeleteApiTokenCommand.url(':uuid');
-    DeleteApiTokenCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.API_TOKENS_ROUTES.DELETE(':uuid'), 'delete', 'Delete an API token by UUID', { scope: 'delete', kind: 'write' }, 'This endpoint is forbidden to use via "API-key". It can be used only with an admin JWT-token.');
-    DeleteApiTokenCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteApiTokenCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.API_TOKENS_ROUTES.DELETE(':uuid'), 'delete', 'Delete API token', { scope: 'delete', kind: 'write' }, 'This endpoint is forbidden to use via "API-key". It can be used only with an admin JWT-token.');
+    DeleteApiTokenCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid().describe('UUID of the API token'),
     });
-    DeleteApiTokenCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.boolean(),
-    });
+
 })(DeleteApiTokenCommand || (exports.DeleteApiTokenCommand = DeleteApiTokenCommand = {}));

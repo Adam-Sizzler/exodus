@@ -95,7 +95,7 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		return fmt.Errorf("initialize schema_migrations table: %w", err)
 	}
 
-	// 1. Fix old migration checksums & delete legacy migration records (шаг 1 Remnawave)
+	// 1. Fix old migration checksums & delete legacy migration records (шаг 1 Exodus)
 	for name, sums := range fixedMigrationChecksums {
 		res, err := conn.ExecContext(ctx,
 			`UPDATE public.schema_migrations SET checksum = $1 WHERE migration_name = $2 AND checksum = $3`,

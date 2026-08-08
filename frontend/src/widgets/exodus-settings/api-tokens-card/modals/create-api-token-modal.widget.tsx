@@ -67,12 +67,12 @@ export const CreateApiTokenContentWidget = ({ isMobile }: IProps) => {
 
     const { data: scopesData } = useGetScopes()
 
-    const tokenNameField = useField<CreateApiTokenCommand.Request['name']>({
+    const tokenNameField = useField<CreateApiTokenCommand.RequestBody['name']>({
         initialValue: '',
         validateOnChange: true,
         validate: (value) => {
-            const result = CreateApiTokenCommand.RequestSchema.shape.name.safeParse(value)
-            return result.success ? null : result.error.errors[0]?.message
+            const result = CreateApiTokenCommand.RequestBodySchema.shape.name.safeParse(value)
+            return result.success ? null : result.error.issues[0]?.message
         }
     })
 

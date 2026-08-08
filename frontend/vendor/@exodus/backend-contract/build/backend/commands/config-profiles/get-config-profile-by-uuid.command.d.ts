@@ -3,157 +3,35 @@ export declare namespace GetConfigProfileByUuidCommand {
     const url: (uuid: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    const RequestParamSchema: z.ZodObject<{
+        uuid: z.ZodUUID;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            uuid: z.ZodString;
-            viewPosition: z.ZodNumber;
+            uuid: z.ZodUUID;
+            viewPosition: z.ZodInt;
             name: z.ZodString;
             config: z.ZodUnknown;
             inbounds: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
-                profileUuid: z.ZodString;
+                uuid: z.ZodUUID;
+                profileUuid: z.ZodUUID;
                 tag: z.ZodString;
                 type: z.ZodString;
                 network: z.ZodNullable<z.ZodString>;
                 security: z.ZodNullable<z.ZodString>;
                 port: z.ZodNullable<z.ZodNumber>;
                 rawInbound: z.ZodNullable<z.ZodUnknown>;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }, {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }>, "many">;
+            }, z.core.$strip>>;
             nodes: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 name: z.ZodString;
                 countryCode: z.ZodString;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                countryCode: string;
-            }, {
-                uuid: string;
-                name: string;
-                countryCode: string;
-            }>, "many">;
-            createdAt: z.ZodEffects<z.ZodString, Date, string>;
-            updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-        }, "strip", z.ZodTypeAny, {
-            nodes: {
-                uuid: string;
-                name: string;
-                countryCode: string;
-            }[];
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            viewPosition: number;
-            config?: unknown;
-        }, {
-            nodes: {
-                uuid: string;
-                name: string;
-                countryCode: string;
-            }[];
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            viewPosition: number;
-            config?: unknown;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            nodes: {
-                uuid: string;
-                name: string;
-                countryCode: string;
-            }[];
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            viewPosition: number;
-            config?: unknown;
-        };
-    }, {
-        response: {
-            nodes: {
-                uuid: string;
-                name: string;
-                countryCode: string;
-            }[];
-            inbounds: {
-                uuid: string;
-                type: string;
-                profileUuid: string;
-                tag: string;
-                network: string | null;
-                security: string | null;
-                port: number | null;
-                rawInbound?: unknown;
-            }[];
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            viewPosition: number;
-            config?: unknown;
-        };
-    }>;
+            }, z.core.$strip>>;
+            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-config-profile-by-uuid.command.d.ts.map

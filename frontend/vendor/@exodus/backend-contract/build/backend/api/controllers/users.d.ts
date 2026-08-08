@@ -5,24 +5,20 @@ export declare const USERS_ROUTES: {
     readonly UPDATE: "";
     readonly GET: "";
     readonly STREAM: "stream";
-    readonly DELETE: (uuid: string) => string;
-    readonly GET_BY_UUID: (uuid: string) => string;
-    readonly ACCESSIBLE_NODES: (uuid: string) => string;
-    readonly SUBSCRIPTION_REQUEST_HISTORY: (uuid: string) => string;
+    readonly DELETE: (userId: string) => string;
+    readonly GET_BY_ID: (userId: string) => string;
+    readonly ACCESSIBLE_NODES: (userId: string) => string;
+    readonly SUBSCRIPTION_REQUEST_HISTORY: (userId: string) => string;
     readonly ACTIONS: {
-        readonly ENABLE: (uuid: string) => string;
-        readonly DISABLE: (uuid: string) => string;
-        readonly RESET_TRAFFIC: (uuid: string) => string;
-        readonly REVOKE_SUBSCRIPTION: (uuid: string) => string;
+        readonly ENABLE: (userId: string) => string;
+        readonly DISABLE: (userId: string) => string;
+        readonly RESET_TRAFFIC: (userId: string) => string;
+        readonly REVOKE_SUBSCRIPTION: (userId: string) => string;
+        readonly EXTEND_EXPIRATION_DATE: (userId: string) => string;
     };
     readonly GET_BY: {
-        readonly ID: (id: string) => string;
         readonly SHORT_UUID: (shortUuid: string) => string;
         readonly USERNAME: (username: string) => string;
-        readonly SUBSCRIPTION_UUID: (subscriptionUuid: string) => string;
-        readonly TELEGRAM_ID: (telegramId: string) => string;
-        readonly EMAIL: (email: string) => string;
-        readonly TAG: (tag: string) => string;
     };
     readonly BULK: {
         readonly DELETE_BY_STATUS: "bulk/delete-by-status";

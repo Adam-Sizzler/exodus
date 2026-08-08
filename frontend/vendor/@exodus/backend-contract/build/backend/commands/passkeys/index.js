@@ -14,8 +14,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-__exportStar(require("./delete-passkeys.command"), exports);
-__exportStar(require("./get-active-passkeys.command"), exports);
+__exportStar(require("./delete-passkey.command"), exports);
+__exportStar(require("./get-passkeys.command"), exports);
 __exportStar(require("./get-registration-options.command"), exports);
 __exportStar(require("./update-passkey.command"), exports);
 __exportStar(require("./verify-registration.command"), exports);

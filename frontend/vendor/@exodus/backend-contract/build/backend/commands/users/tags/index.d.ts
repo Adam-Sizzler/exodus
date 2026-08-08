@@ -1,2 +1,2 @@
-export * from './get-all-tags.command';
+export * from './get-users-tags.command';
 //# sourceMappingURL=index.d.ts.map

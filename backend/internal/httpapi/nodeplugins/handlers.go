@@ -178,7 +178,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete node plugin")
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, responseEnvelope[map[string]bool]{Response: map[string]bool{"isDeleted": true}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleExecutor(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
@@ -235,7 +235,7 @@ func handleExecutor(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *con
 		shared.WriteJSONError(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, responseEnvelope[map[string]bool]{Response: map[string]bool{"eventSent": true}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, action string) {

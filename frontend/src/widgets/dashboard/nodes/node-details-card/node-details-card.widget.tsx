@@ -1,3 +1,4 @@
+import { GetNodeInboundsHostsFeature } from '@features/ui/dashboard/nodes/get-node-inbounds-hosts'
 import { GetNodeLinkedHostsFeature } from '@features/ui/dashboard/nodes/get-node-linked-hosts'
 import { GetNodeUsersUsageFeature } from '@features/ui/dashboard/nodes/get-node-users-usage'
 import {
@@ -15,7 +16,7 @@ import {
     Tooltip
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { GetOneNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
+import { GetNodeCommand, UpdateNodeCommand } from '@exodus/backend-contract'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,7 +38,7 @@ import { prettifyBytesUtil } from '@shared/utils/bytes'
 import { getNodeResetDaysUtil, getSingboxUptimeUtil } from '@shared/utils/time-utils'
 
 interface IProps {
-    node: GetOneNodeCommand.Response['response']
+    node: GetNodeCommand.Response['response']
 }
 
 export const NodeDetailsCardWidget = memo((props: IProps) => {
@@ -300,6 +301,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
 
                     <Group gap="xs" justify="center">
                         <GetNodeLinkedHostsFeature nodeUuid={node.uuid} />
+                        <GetNodeInboundsHostsFeature nodeUuid={node.uuid} />
                     </Group>
 
                     <Divider opacity={0.3} orientation="vertical" />

@@ -6,11 +6,10 @@ import { PiCheck, PiCopy, PiPencil, PiTrashDuotone } from 'react-icons/pi'
 import { TbEdit } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { ROUTES } from '@shared/constants'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     handleDeleteTemplate: (templateUuid: string) => void
@@ -30,8 +29,6 @@ export function TemplatesCardWidget(props: IProps) {
     } = props
 
     const { t } = useTranslation()
-
-    const openModalWithData = useModalsStoreOpenWithData()
 
     const navigate = useNavigate()
 
@@ -92,7 +89,8 @@ export function TemplatesCardWidget(props: IProps) {
                             disabled={template.name === 'Default'}
                             leftSection={<PiPencil size={18} />}
                             onClick={() => {
-                                openModalWithData(MODALS.RENAME_SQUAD_OR_CONFIG_PROFILE_MODAL, {
+                                showModal('renameModal', {
+                                    renameFrom: 'template',
                                     name: template.name,
                                     uuid: template.uuid
                                 })

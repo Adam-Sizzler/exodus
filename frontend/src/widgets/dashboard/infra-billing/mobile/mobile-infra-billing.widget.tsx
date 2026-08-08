@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TbCloud, TbCreditCard, TbPlus, TbRefresh, TbServer } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import {
     useGetInfraBillingHistoryRecordsInfinite,
     useGetInfraBillingNodes,
@@ -10,9 +11,6 @@ import {
 } from '@shared/api/hooks'
 import { LoadingScreen } from '@shared/ui'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-
-import styles from './mobile-infra-billing.module.css'
 import { MobileNodesListWidget } from './mobile-nodes-list.widget'
 import { MobileProvidersListWidget } from './mobile-providers-list.widget'
 import { MobileStatsWidget } from './mobile-stats.widget'
@@ -54,19 +52,18 @@ export function MobileInfraBillingWidget() {
         }
     }
 
-    const openModalWithData = useModalsStoreOpenWithData()
     const { t } = useTranslation()
 
     const handleAdd = () => {
         switch (activeTab) {
             case 'nodes':
-                openModalWithData(MODALS.CREATE_INFRA_BILLING_NODE_MODAL, undefined)
+                showModal('infraBilling_createInfraBillingNodeModal')
                 break
             case 'providers':
-                openModalWithData(MODALS.CREATE_INFRA_PROVIDER_DRAWER, undefined)
+                showModal('infraBilling_createInfraProviderModal')
                 break
             case 'records':
-                openModalWithData(MODALS.CREATE_INFRA_BILLING_RECORD_DRAWER, undefined)
+                showModal('infraBilling_createInfraBillingRecordModal')
                 break
             default:
                 break
@@ -95,10 +92,6 @@ export function MobileInfraBillingWidget() {
             <MobileStatsWidget />
 
             <Tabs
-                classNames={{
-                    tab: styles.tab,
-                    tabLabel: styles.tabLabel
-                }}
                 color="cyan"
                 keepMountedMode="display-none"
                 onChange={(value) => {
@@ -107,7 +100,6 @@ export function MobileInfraBillingWidget() {
                     }
                 }}
                 value={activeTab}
-                variant="unstyled"
             >
                 <Tabs.List grow mb="md">
                     <Tabs.Tab leftSection={<TbServer size={16} />} value="nodes">

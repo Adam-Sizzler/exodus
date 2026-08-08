@@ -25,26 +25,21 @@ import {
 } from 'react-icons/pi'
 import { TbServer } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { useGetNodesMetrics } from '@shared/api/hooks'
 import { useIsMobile } from '@shared/hooks'
 import { MetricCardShared } from '@shared/ui/metrics/metric-card'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 import { NodeDetailsCard } from './node-details-card'
 import styles from './NodeDetails.module.css'
 
 export const NodeMetricsWidget = () => {
     const { data: nodeMetrics, isLoading } = useGetNodesMetrics()
-    const openModalWithData = useModalsStoreOpenWithData()
     const isMobile = useIsMobile()
 
-    const handleNodeClick = useCallback(
-        (nodeUuid: string) => {
-            openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, { nodeUuid })
-        },
-        [openModalWithData]
-    )
+    const handleNodeClick = useCallback((nodeUuid: string) => {
+        showModal('nodes_editNodeModal', { nodeUuid })
+    }, [])
 
     const overallStats = useMemo(() => {
         if (!nodeMetrics?.nodes) return null

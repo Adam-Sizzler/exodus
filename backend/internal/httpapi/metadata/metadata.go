@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"exodus/internal/config"
@@ -27,15 +28,22 @@ func NodeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 func entityHandler(db *sql.DB, cfg *config.BackendConfig, entity string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		entityUUID := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/metadata/"+entity+"/"), "/")
-		if _, err := uuid.Parse(entityUUID); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid uuid format", nil, cfg)
-			return
+		pathParam := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/metadata/"+entity+"/"), "/")
+		if entity == "node" {
+			if _, err := uuid.Parse(pathParam); err != nil {
+				shared.SendError(w, http.StatusBadRequest, "invalid uuid format", nil, cfg)
+				return
+			}
+		} else if entity == "user" {
+			if _, err := strconv.ParseInt(pathParam, 10, 64); err != nil {
+				shared.SendError(w, http.StatusBadRequest, "invalid userId format", nil, cfg)
+				return
+			}
 		}
 
 		switch r.Method {
 		case http.MethodGet:
-			metadata, err := getMetadata(r, db, entity, entityUUID)
+			metadata, err := getMetadata(r, db, entity, pathParam)
 			if err != nil {
 				shared.SendError(w, http.StatusInternalServerError, "failed to fetch metadata", err, cfg)
 				return
@@ -50,7 +58,7 @@ func entityHandler(db *sql.DB, cfg *config.BackendConfig, entity string) http.Ha
 			if req.Metadata == nil {
 				req.Metadata = map[string]any{}
 			}
-			metadata, err := upsertMetadata(r, db, entity, entityUUID, req.Metadata)
+			metadata, err := upsertMetadata(r, db, entity, pathParam, req.Metadata)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					shared.SendError(w, http.StatusNotFound, entity+" not found", nil, cfg)
@@ -66,9 +74,9 @@ func entityHandler(db *sql.DB, cfg *config.BackendConfig, entity string) http.Ha
 	}
 }
 
-func getMetadata(r *http.Request, db *sql.DB, entity, entityUUID string) (map[string]any, error) {
+func getMetadata(r *http.Request, db *sql.DB, entity, pathParam string) (map[string]any, error) {
 	metadata := map[string]any{}
-	table, column, id, err := metadataTargetID(r, db, entity, entityUUID)
+	table, column, id, err := metadataTargetID(r, db, entity, pathParam)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return metadata, nil
@@ -89,12 +97,12 @@ func getMetadata(r *http.Request, db *sql.DB, entity, entityUUID string) (map[st
 	return metadata, nil
 }
 
-func upsertMetadata(r *http.Request, db *sql.DB, entity, entityUUID string, metadata map[string]any) (map[string]any, error) {
+func upsertMetadata(r *http.Request, db *sql.DB, entity, pathParam string, metadata map[string]any) (map[string]any, error) {
 	raw, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
 	}
-	table, column, id, err := metadataTargetID(r, db, entity, entityUUID)
+	table, column, id, err := metadataTargetID(r, db, entity, pathParam)
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +125,12 @@ func metadataTable(entity string) (table string, column string) {
 	return "user_meta", "user_id"
 }
 
-func metadataTargetID(r *http.Request, db *sql.DB, entity, entityUUID string) (table string, column string, id int64, err error) {
+func metadataTargetID(r *http.Request, db *sql.DB, entity, pathParam string) (table string, column string, id int64, err error) {
 	table, column = metadataTable(entity)
 	if entity == "node" {
-		err = db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = $1`, entityUUID).Scan(&id)
+		err = db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = $1`, pathParam).Scan(&id)
 		return table, column, id, err
 	}
-	err = db.QueryRowContext(r.Context(), `SELECT t_id FROM users WHERE uuid = $1`, entityUUID).Scan(&id)
+	id, err = strconv.ParseInt(pathParam, 10, 64)
 	return table, column, id, err
 }

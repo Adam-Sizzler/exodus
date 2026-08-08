@@ -2,12 +2,12 @@ import { ActionIcon, ActionIconGroup, Group, Tooltip } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { TbCards, TbPlus, TbRefresh, TbTable } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
+import { HelpActionIconShared } from '@shared/_modals/universal'
 import { queryClient } from '@shared/api'
 import { QueryKeys, useGetHosts } from '@shared/api/hooks'
-import { HelpActionIconShared } from '@shared/ui/help-drawer/help-action-icon.shared'
 import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { HOSTS_VIEW_MODE } from '@entities/dashboard/view-preferences-store'
 
 interface IProps {
@@ -20,12 +20,10 @@ export const HeaderActionButtonsFeature = (props: IProps) => {
 
     const { t } = useTranslation()
 
-    const openModalWithData = useModalsStoreOpenWithData()
-
     const { isFetching } = useGetHosts()
 
     const handleCreate = () => {
-        openModalWithData(MODALS.CREATE_HOST_MODAL, undefined)
+        showModal('hosts_createHostDrawer')
     }
 
     const handleUpdate = async () => {

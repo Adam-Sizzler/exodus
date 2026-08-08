@@ -84,8 +84,7 @@ func (r *UserRepository) resolveNodeUUIDsForUserUUIDsTx(ctx context.Context, tx 
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid
 		FROM users u
-		JOIN internal_squad_members ism ON ism.user_id = u.t_id
-		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
+		JOIN internal_squad_members ism ON ism.user_id = u.id
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.uuid = ANY($1)
 	`, cleanUserUUIDs)

@@ -52,10 +52,13 @@ export const HomePage = (props: IProps) => {
         if (!runtimeRef.current || copying) return
         setCopying(true)
         try {
-            await new Promise<void>((resolve) => {
-                setTimeout(resolve, 100)
+            await copyScreenshotToClipboard(async () => {
+                await new Promise<void>((resolve) => {
+                    setTimeout(resolve, 100)
+                })
+                if (!runtimeRef.current) throw new Error('runtimeRef')
+                return runtimeRef.current
             })
-            await copyScreenshotToClipboard(runtimeRef.current)
         } catch (error) {
             notifications.show({
                 color: 'red',

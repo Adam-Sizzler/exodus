@@ -54,14 +54,15 @@ export function RecapContent() {
     const copy = async () => {
         setCopying(true)
         try {
-            if (!ref.current) throw new Error('ref')
             setCardKey((k) => k + 1)
 
-            await new Promise<void>((resolve) => {
-                requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+            await copyScreenshotToClipboard(async () => {
+                await new Promise<void>((resolve) => {
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                })
+                if (!ref.current) throw new Error('ref')
+                return ref.current
             })
-
-            await copyScreenshotToClipboard(ref.current)
         } catch (error) {
             notifications.show({
                 color: 'red',

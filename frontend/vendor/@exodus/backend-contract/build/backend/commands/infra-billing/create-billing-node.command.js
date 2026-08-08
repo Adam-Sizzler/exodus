@@ -10,15 +10,12 @@ var CreateInfraBillingNodeCommand;
     CreateInfraBillingNodeCommand.url = api_1.REST_API.INFRA_BILLING.CREATE_BILLING_NODE;
     CreateInfraBillingNodeCommand.TSQ_url = CreateInfraBillingNodeCommand.url;
     CreateInfraBillingNodeCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INFRA_BILLING_ROUTES.CREATE_BILLING_NODE, 'post', 'Create infra billing node', { scope: 'create-billing-node', kind: 'write' });
-    CreateInfraBillingNodeCommand.RequestSchema = zod_1.z.object({
-        providerUuid: zod_1.z.string().uuid(),
-        nodeUuid: zod_1.z.string().uuid().nullable(),
+    CreateInfraBillingNodeCommand.RequestBodySchema = zod_1.z.object({
+        providerUuid: zod_1.z.uuid(),
+        nodeUuid: zod_1.z.uuid().nullable(),
         name: zod_1.z.string().min(1).max(255).nullable(),
-        nextBillingAt: zod_1.z
-            .string({
-            invalid_type_error: 'Invalid date format',
-        })
-            .datetime({ message: 'Invalid date format', offset: true, local: true })
+        nextBillingAt: zod_1.z.iso
+            .datetime({ offset: true, local: true })
             .transform((str) => new Date(str))
             .describe('Next billing date. Format: 2025-01-17T15:38:45.065Z'),
     });
@@ -35,4 +32,5 @@ var CreateInfraBillingNodeCommand;
             }),
         }),
     });
+
 })(CreateInfraBillingNodeCommand || (exports.CreateInfraBillingNodeCommand = CreateInfraBillingNodeCommand = {}));

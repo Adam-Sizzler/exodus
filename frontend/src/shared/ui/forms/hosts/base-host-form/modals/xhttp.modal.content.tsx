@@ -16,7 +16,9 @@ export const XHTTP_MODAL_ID = 'xhttp-modal'
 
 interface IProps {
     form: UseFormReturnType<
-        CreateHostCommand.Request | UpdateHostCommand.Request | UpdateManyHostsCommand.Request
+        | CreateHostCommand.RequestBody
+        | UpdateHostCommand.RequestBody
+        | UpdateManyHostsCommand.RequestBody
     >
 }
 

@@ -1,32 +1,27 @@
-import { Button, Group, Text } from '@mantine/core'
-import { modals } from '@mantine/modals'
-import { BulkUsersActionsWidget } from '@widgets/dashboard/users/bulk-users-actions/bulk-users-actions.widget'
+import { ActionIcon, Badge, Button, CloseButton, Group, Tooltip } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
-import { PiClockClockwise } from 'react-icons/pi'
-import { TbDots } from 'react-icons/tb'
+import { TbBolt, TbEdit, TbSelectAll } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { QueryKeys } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
-import { useIsMobile } from '@shared/hooks'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { useBulkUsersActionsStoreActions } from '@entities/dashboard/users/bulk-users-actions-store'
+import { useUsersTableSelectionStoreActions } from '@entities/dashboard/users/users-table-selection'
 
 import { IProps } from './interfaces/props.interface'
 
 export const UsersTableSelectionFeature = (props: IProps) => {
     const { resetRowSelection, toggleAllPageRowsSelected } = props
     const { t } = useTranslation()
-    const isMobile = useIsMobile()
 
-    const bulkUsersActionsStoreActions = useBulkUsersActionsStoreActions()
+    const usersTableSelectionStoreActions = useUsersTableSelectionStoreActions()
 
     const handleClearSelection = () => {
         resetRowSelection()
-        bulkUsersActionsStoreActions.resetState()
+        usersTableSelectionStoreActions.resetState()
     }
 
-    const usersToUpdate = bulkUsersActionsStoreActions.getUuidLength()
+    const usersToUpdate = usersTableSelectionStoreActions.getIdsLength()
 
     if (usersToUpdate === 0) {
         return null
@@ -34,54 +29,62 @@ export const UsersTableSelectionFeature = (props: IProps) => {
 
     const handleCloseModal = async () => {
         resetRowSelection()
-        bulkUsersActionsStoreActions.resetState()
+        usersTableSelectionStoreActions.resetState()
         await queryClient.refetchQueries({ queryKey: QueryKeys.users.getAllUsers._def })
         await queryClient.refetchQueries({ queryKey: QueryKeys.system._def })
     }
 
     return (
         <Group justify="apart" px="xs">
-            <Text fw={600} size="sm">
-                {usersToUpdate} {t('users-table-selection.feature.row-s-selected')}
-            </Text>
+            <Group justify="space-between">
+                <Badge color="gray" size="lg" variant="light">
+                    {t('common.selected', { count: usersToUpdate })}
+                </Badge>
+                <Group gap={0} justify="flex-end">
+                    <Tooltip label={t('common.select-all')} withArrow>
+                        <ActionIcon
+                            color="gray"
+                            onClick={toggleAllPageRowsSelected}
+                            size="lg"
+                            variant="subtle"
+                        >
+                            <TbSelectAll size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={t('common.clear-selection')} withArrow>
+                        <CloseButton onClick={handleClearSelection} />
+                    </Tooltip>
+                </Group>
+            </Group>
+
             <Group gap="xs">
-                <Button color="blue" onClick={handleClearSelection} size="xs" variant="subtle">
-                    {t('users-table-selection.feature.clear-selection')}
-                </Button>
-                <Button color="blue" onClick={toggleAllPageRowsSelected} size="xs" variant="subtle">
-                    {t('users-table-selection.feature.select-all')}
-                </Button>
                 <Button
                     color="green"
-                    leftSection={<PiClockClockwise />}
+                    leftSection={<TbBolt />}
                     onClick={() =>
-                        modals.open({
-                            title: (
-                                <BaseOverlayHeader
-                                    iconColor="cyan"
-                                    IconComponent={TbDots}
-                                    iconVariant="soft"
-                                    subtitle={t(
-                                        'bulk-user-actions.actions.tab.feature.perform-action-on-users',
-                                        {
-                                            usersCount: usersToUpdate
-                                        }
-                                    )}
-                                    title={t('bulk-user-actions-drawer.widget.bulk-user-actions')}
-                                    titleOrder={5}
-                                />
-                            ),
-                            size: 'lg',
-                            fullScreen: isMobile,
-                            centered: true,
-                            onClose: handleCloseModal,
-                            children: <BulkUsersActionsWidget isMobile={isMobile} />
+                        showModal('users_bulkManyUsersActionsModal', {
+                            usersCount: usersToUpdate,
+                            onClose: handleCloseModal
                         })
                     }
                     size="sm"
-                    variant="subtle"
+                    variant="soft"
                 >
-                    {t('users-table-selection.feature.bulk-actions')}
+                    {t('common.actions')}
+                </Button>
+                <Button
+                    color="red"
+                    leftSection={<TbEdit />}
+                    onClick={() =>
+                        showModal('users_bulkManyUsersUpdateModal', {
+                            usersCount: usersToUpdate,
+                            onClose: handleCloseModal
+                        })
+                    }
+                    size="sm"
+                    variant="soft"
+                >
+                    {t('common.update')}
                 </Button>
             </Group>
         </Group>

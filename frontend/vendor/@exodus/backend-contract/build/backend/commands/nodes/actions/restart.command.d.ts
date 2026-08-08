@@ -3,39 +3,13 @@ export declare namespace RestartNodeCommand {
     const url: (uuid: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    const RequestParamSchema: z.ZodObject<{
+        uuid: z.ZodUUID;
+    }, z.core.$strip>;
     const RequestBodySchema: z.ZodObject<{
         forceRestart: z.ZodBoolean;
-    }, "strip", z.ZodTypeAny, {
-        forceRestart: boolean;
-    }, {
-        forceRestart: boolean;
-    }>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
     type RequestBody = z.infer<typeof RequestBodySchema>;
-    const ResponseSchema: z.ZodObject<{
-        response: z.ZodObject<{
-            eventSent: z.ZodBoolean;
-        }, "strip", z.ZodTypeAny, {
-            eventSent: boolean;
-        }, {
-            eventSent: boolean;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            eventSent: boolean;
-        };
-    }, {
-        response: {
-            eventSent: boolean;
-        };
-    }>;
-    type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=restart.command.d.ts.map

@@ -30,3 +30,4 @@ __exportStar(require("./scopes"), exports);
 __exportStar(require("./subscription-template"), exports);
 __exportStar(require("./templates"), exports);
 __exportStar(require("./users"), exports);
+__exportStar(require("./backend-tools"), exports);

@@ -15,6 +15,7 @@ import {
     TbX
 } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { queryClient } from '@shared/api'
 import {
     QueryKeys,
@@ -25,8 +26,6 @@ import {
 } from '@shared/api/hooks'
 import { LoadingScreen } from '@shared/ui'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-
 import { AddButton } from './add-button'
 import { Column } from './column'
 import { RefreshButton } from './refresh-button'
@@ -35,7 +34,6 @@ const COLUMN_HEIGHT = 'calc(100vh - 320px)'
 
 export function DesktopColumnsInfraBillingWidget() {
     const { t } = useTranslation()
-    const openModalWithData = useModalsStoreOpenWithData()
 
     const [selectMode, setSelectMode] = useState(false)
     const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set())
@@ -100,11 +98,14 @@ export function DesktopColumnsInfraBillingWidget() {
 
     const handleDeleteSelected = () =>
         modals.openConfirmModal({
-            title: t('common.delete'),
+            title: t('common.confirm-action'),
             children: t('common.confirm-action-description'),
             labels: { confirm: t('common.delete'), cancel: t('common.cancel') },
             centered: true,
-            confirmProps: { color: 'red' },
+            confirmProps: { color: 'red', variant: 'soft' },
+            cancelProps: {
+                variant: 'subtle'
+            },
             onConfirm: () => {
                 for (const uuid of selectedUuids) {
                     deleteNode({ route: { uuid } })
@@ -114,7 +115,7 @@ export function DesktopColumnsInfraBillingWidget() {
         })
 
     const handleUpdateSelected = () => {
-        openModalWithData(MODALS.UPDATE_BILLING_DATE_MODAL, {
+        showModal('infraBilling_updateBillingDateModal', {
             uuids: Array.from(selectedUuids),
             callback: exitSelectMode
         })
@@ -182,9 +183,7 @@ export function DesktopColumnsInfraBillingWidget() {
 
             <RefreshButton loading={isInfraBillingNodesFetching} onClick={refetchNodes} />
 
-            <AddButton
-                onClick={() => openModalWithData(MODALS.CREATE_INFRA_BILLING_NODE_MODAL, undefined)}
-            />
+            <AddButton onClick={() => showModal('infraBilling_createInfraBillingNodeModal')} />
         </>
     )
 
@@ -215,12 +214,7 @@ export function DesktopColumnsInfraBillingWidget() {
                         />
 
                         <AddButton
-                            onClick={() =>
-                                openModalWithData(
-                                    MODALS.CREATE_INFRA_BILLING_RECORD_DRAWER,
-                                    undefined
-                                )
-                            }
+                            onClick={() => showModal('infraBilling_createInfraBillingRecordModal')}
                         />
                     </>
                 }
@@ -248,9 +242,7 @@ export function DesktopColumnsInfraBillingWidget() {
                         />
 
                         <AddButton
-                            onClick={() =>
-                                openModalWithData(MODALS.CREATE_INFRA_PROVIDER_DRAWER, undefined)
-                            }
+                            onClick={() => showModal('infraBilling_createInfraProviderModal')}
                         />
                     </>
                 }

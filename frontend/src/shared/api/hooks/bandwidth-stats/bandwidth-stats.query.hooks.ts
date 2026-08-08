@@ -1,46 +1,47 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
-    GetLegacyStatsNodeUserUsageCommand,
-    GetLegacyStatsUserUsageCommand,
     GetStatsNodesUsageCommand,
     GetStatsNodesUsersUsageCommand,
     GetStatsNodeUsersUsageCommand,
-    GetStatsUserUsageCommand
+    GetStatsUserUsageCommand,
+    GetInternalSquadUsageCommand
 } from '@exodus/backend-contract'
 
 import { sToMs } from '@shared/utils/time-utils'
 
-import { createBodyQueryHook, createGetQueryHook, errorHandler } from '../../tsq-helpers'
+import {
+    createBodyQueryHook,
+    createGetInfiniteQueryHook,
+    createGetQueryHook,
+    errorHandler
+} from '../../tsq-helpers'
 
 export const bandwidthStatsQueryKeys = createQueryKeys('bandwidthStats', {
     getStatsNodesUsageCommand: (filters: GetStatsNodesUsageCommand.RequestQuery) => ({
         queryKey: [filters]
     }),
     getStatsUserUsageCommand: (
-        query: GetStatsUserUsageCommand.Request & GetStatsUserUsageCommand.RequestQuery
+        query: GetStatsUserUsageCommand.RequestParam & GetStatsUserUsageCommand.RequestQuery
     ) => ({
         queryKey: [query]
     }),
     getStatsNodeUsersUsageCommand: (
-        query: GetStatsNodeUsersUsageCommand.Request & GetStatsNodeUsersUsageCommand.RequestQuery
+        query: GetStatsNodeUsersUsageCommand.RequestParam &
+            GetStatsNodeUsersUsageCommand.RequestQuery
     ) => ({
         queryKey: [query]
     }),
     getStatsNodesUsersUsageCommand: (
-        params: GetStatsNodesUsersUsageCommand.Request & GetStatsNodesUsersUsageCommand.RequestQuery
+        params: GetStatsNodesUsersUsageCommand.RequestBody &
+            GetStatsNodesUsersUsageCommand.RequestQuery
     ) => ({
         queryKey: [params]
     }),
-    getLegacyStatsUserUsageCommand: (
-        query: GetLegacyStatsUserUsageCommand.Request & GetLegacyStatsUserUsageCommand.RequestQuery
+    getInternalSquadUsageCommand: (
+        params: GetInternalSquadUsageCommand.RequestParam &
+            GetInternalSquadUsageCommand.RequestQuery
     ) => ({
-        queryKey: [query]
-    }),
-    getLegacyStatsNodeUserUsageCommand: (
-        query: GetLegacyStatsNodeUserUsageCommand.Request &
-            GetLegacyStatsNodeUserUsageCommand.RequestQuery
-    ) => ({
-        queryKey: [query]
+        queryKey: [params]
     })
 })
 
@@ -59,6 +60,7 @@ export const useGetStatsUserUsage = createGetQueryHook({
     endpoint: GetStatsUserUsageCommand.TSQ_url,
     responseSchema: GetStatsUserUsageCommand.ResponseSchema,
     requestQuerySchema: GetStatsUserUsageCommand.RequestQuerySchema,
+    routeParamsSchema: GetStatsUserUsageCommand.RequestParamSchema,
     getQueryKey: ({ route, query }) =>
         bandwidthStatsQueryKeys.getStatsUserUsageCommand({ ...route!, ...query! }).queryKey,
     rQueryParams: {
@@ -71,6 +73,7 @@ export const useGetStatsNodeUsersUsage = createGetQueryHook({
     endpoint: GetStatsNodeUsersUsageCommand.TSQ_url,
     responseSchema: GetStatsNodeUsersUsageCommand.ResponseSchema,
     requestQuerySchema: GetStatsNodeUsersUsageCommand.RequestQuerySchema,
+    routeParamsSchema: GetStatsNodeUsersUsageCommand.RequestParamSchema,
     getQueryKey: ({ route, query }) =>
         bandwidthStatsQueryKeys.getStatsNodeUsersUsageCommand({ ...route!, ...query! }).queryKey,
     rQueryParams: {
@@ -84,7 +87,7 @@ export const useGetStatsNodesUsersUsage = createBodyQueryHook({
     requestMethod: GetStatsNodesUsersUsageCommand.endpointDetails.REQUEST_METHOD,
     responseSchema: GetStatsNodesUsersUsageCommand.ResponseSchema,
     requestQuerySchema: GetStatsNodesUsersUsageCommand.RequestQuerySchema,
-    bodySchema: GetStatsNodesUsersUsageCommand.RequestSchema,
+    bodySchema: GetStatsNodesUsersUsageCommand.RequestBodySchema,
     getQueryKey: ({ query, body }) =>
         bandwidthStatsQueryKeys.getStatsNodesUsersUsageCommand({ ...query!, ...body! }).queryKey,
     rQueryParams: {
@@ -93,29 +96,34 @@ export const useGetStatsNodesUsersUsage = createBodyQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Nodes Users Usage By Range')
 })
 
-export const useGetLegacyStatsNodeUserUsage = createGetQueryHook({
-    endpoint: GetLegacyStatsNodeUserUsageCommand.TSQ_url,
-    responseSchema: GetLegacyStatsNodeUserUsageCommand.ResponseSchema,
-    requestQuerySchema: GetLegacyStatsNodeUserUsageCommand.RequestQuerySchema,
-    routeParamsSchema: GetLegacyStatsNodeUserUsageCommand.RequestSchema,
+export const useGetInternalSquadUsage = createGetQueryHook({
+    endpoint: GetInternalSquadUsageCommand.TSQ_url,
+    responseSchema: GetInternalSquadUsageCommand.ResponseSchema,
+    requestQuerySchema: GetInternalSquadUsageCommand.RequestQuerySchema,
+    routeParamsSchema: GetInternalSquadUsageCommand.RequestParamSchema,
     getQueryKey: ({ route, query }) =>
-        bandwidthStatsQueryKeys.getLegacyStatsNodeUserUsageCommand({ ...route!, ...query! })
-            .queryKey,
+        bandwidthStatsQueryKeys.getInternalSquadUsageCommand({ ...route!, ...query! }).queryKey,
     rQueryParams: {
         staleTime: sToMs(60)
     },
-    errorHandler: (error) => errorHandler(error, 'Get Node Users Usage By Range')
+    errorHandler: (error) => errorHandler(error, 'Get Internal Squad Users Usage By Range')
 })
 
-export const useGetLegacyStatsUserUsage = createGetQueryHook({
-    endpoint: GetLegacyStatsUserUsageCommand.TSQ_url,
-    responseSchema: GetLegacyStatsUserUsageCommand.ResponseSchema,
-    requestQuerySchema: GetLegacyStatsUserUsageCommand.RequestQuerySchema,
-    routeParamsSchema: GetLegacyStatsUserUsageCommand.RequestSchema,
-    getQueryKey: ({ route, query }) =>
-        bandwidthStatsQueryKeys.getLegacyStatsUserUsageCommand({ ...route!, ...query! }).queryKey,
+export const useGetInternalSquadUsageInfinite = createGetInfiniteQueryHook({
+    endpoint: GetInternalSquadUsageCommand.TSQ_url,
+    responseSchema: GetInternalSquadUsageCommand.ResponseSchema,
+    requestQuerySchema: GetInternalSquadUsageCommand.RequestQuerySchema,
+    routeParamsSchema: GetInternalSquadUsageCommand.RequestParamSchema,
+    getQueryKey: ({ route, query }) => [
+        ...bandwidthStatsQueryKeys.getInternalSquadUsageCommand({ ...route!, ...query! }).queryKey,
+        'infinite'
+    ],
+    pageParamKey: 'cursor',
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
     rQueryParams: {
-        staleTime: sToMs(15)
+        staleTime: sToMs(60),
+        refetchOnMount: true
     },
-    errorHandler: (error) => errorHandler(error, 'Get User Usage By Range')
+    errorHandler: (error) => errorHandler(error, 'Get Internal Squad Usage (infinite)')
 })

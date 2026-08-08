@@ -1,4 +1,4 @@
-import { DataTable, useDataTableColumns } from 'mantine-datatable'
+import { DataTable, useDataTableColumns } from '@kastov/mantine-datatable'
 import { Box, Button, Stack, Text } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { PiEmpty } from 'react-icons/pi'

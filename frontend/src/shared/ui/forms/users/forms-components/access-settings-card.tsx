@@ -19,7 +19,7 @@ import { TbShield, TbWebhook } from 'react-icons/tb'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
-interface IProps<T extends CreateUserCommand.Request | UpdateUserCommand.Request> {
+interface IProps<T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody> {
     cardVariants: Variants
     externalSquads: GetExternalSquadsCommand.Response['response'] | undefined
     form: UseFormReturnType<T>
@@ -27,7 +27,9 @@ interface IProps<T extends CreateUserCommand.Request | UpdateUserCommand.Request
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 
-export const AccessSettingsCard = <T extends CreateUserCommand.Request | UpdateUserCommand.Request>(
+export const AccessSettingsCard = <
+    T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody
+>(
     props: IProps<T>
 ) => {
     const { t, i18n } = useTranslation()

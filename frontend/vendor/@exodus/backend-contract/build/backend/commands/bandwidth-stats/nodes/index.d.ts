@@ -1,4 +1,5 @@
 export * from './get-stats-node-users-usage.command';
 export * from './get-stats-nodes-usage.command';
 export * from './get-stats-nodes-users-usage.command';
+export * from './get-node-usage.command';
 //# sourceMappingURL=index.d.ts.map

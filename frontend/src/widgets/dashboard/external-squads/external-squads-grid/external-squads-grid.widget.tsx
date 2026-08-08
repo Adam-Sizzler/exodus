@@ -75,8 +75,8 @@ export function ExternalSquadsGridWidget(props: IProps) {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             centered: true,
             onConfirm: () => {
                 deleteExternalSquad({
@@ -97,8 +97,8 @@ export function ExternalSquadsGridWidget(props: IProps) {
                 confirm: t('common.remove'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             onConfirm: () => {
                 deleteUsersFromExternalSquad({
                     route: {
@@ -118,8 +118,8 @@ export function ExternalSquadsGridWidget(props: IProps) {
                 confirm: t('common.add'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'teal' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'teal', variant: 'soft' },
             onConfirm: () => {
                 addUsersToExternalSquad({
                     route: {
@@ -161,6 +161,9 @@ export function ExternalSquadsGridWidget(props: IProps) {
             labels: {
                 confirm: t('common.clone'),
                 cancel: t('common.cancel')
+            },
+            cancelProps: {
+                variant: 'subtle'
             },
             confirmProps: {
                 color: 'cyan',

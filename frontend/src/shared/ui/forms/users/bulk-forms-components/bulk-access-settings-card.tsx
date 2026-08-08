@@ -17,7 +17,7 @@ import { SectionCard } from '@shared/ui/section-card'
 interface IProps {
     cardVariants: Variants
     externalSquads: GetExternalSquadsCommand.Response['response'] | undefined
-    form: UseFormReturnType<BulkAllUpdateUsersCommand.Request>
+    form: UseFormReturnType<BulkAllUpdateUsersCommand.RequestBody>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 

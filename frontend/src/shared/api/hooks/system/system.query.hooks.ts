@@ -1,6 +1,7 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
     GetBandwidthStatsCommand,
+    GetHttpStatsCommand,
     GetMetadataCommand,
     GetNodesMetricsCommand,
     GetNodesStatisticsCommand,
@@ -37,6 +38,9 @@ export const systemQueryKeys = createQueryKeys('system', {
         queryKey: null
     },
     getRecap: {
+        queryKey: null
+    },
+    getHttpStats: {
         queryKey: null
     }
 })
@@ -135,4 +139,15 @@ export const useGetRecap = createGetQueryHook({
         staleTime: sToMs(60)
     },
     errorHandler: (error) => errorHandler(error, 'Get Recap')
+})
+
+export const useGetHttpStats = createGetQueryHook({
+    endpoint: GetHttpStatsCommand.TSQ_url,
+    responseSchema: GetHttpStatsCommand.ResponseSchema,
+    getQueryKey: () => systemQueryKeys.getHttpStats.queryKey,
+    rQueryParams: {
+        placeholderData: keepPreviousData,
+        refetchOnMount: true
+    },
+    errorHandler: (error) => errorHandler(error, 'Get Http Stats')
 })

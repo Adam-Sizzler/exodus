@@ -5,6 +5,7 @@ import {
     MRT_ColumnPinningState,
     MRT_ColumnSizingState,
     MRT_PaginationState,
+    MRT_SortingState,
     MRT_VisibilityState
 } from '@kastov/mantine-react-table-open'
 import { create } from 'zustand'
@@ -18,6 +19,7 @@ export interface MrtTableState {
     columnVisibility: MRT_VisibilityState
     paginationState: MRT_PaginationState
     showColumnFilters: boolean
+    sorting: MRT_SortingState
 }
 
 type Updater<T> = ((prev: T) => T) | T
@@ -31,6 +33,7 @@ export interface MrtTableActions {
     setColumnVisibility: (updater: Updater<MRT_VisibilityState>) => void
     setPaginationState: (updater: Updater<MRT_PaginationState>) => void
     setShowColumnFilters: (updater: Updater<boolean>) => void
+    setSorting: (updater: Updater<MRT_SortingState>) => void
 }
 
 export type MrtTableStore = MrtTableState & { actions: MrtTableActions }
@@ -44,7 +47,8 @@ const BASE_DEFAULTS: MrtTableState = {
     columnSize: {},
     columnVisibility: {},
     paginationState: { ...DEFAULT_PAGINATION_STATE },
-    showColumnFilters: false
+    showColumnFilters: false,
+    sorting: []
 }
 
 const apply = <T>(updater: Updater<T>, prev: T): T =>
@@ -87,7 +91,8 @@ export const createMrtTableStore = ({ name, version, defaults }: CreateMrtTableS
                     setPaginationState: (u) =>
                         set((s) => ({ paginationState: apply(u, s.paginationState) })),
                     setShowColumnFilters: (u) =>
-                        set((s) => ({ showColumnFilters: apply(u, s.showColumnFilters) }))
+                        set((s) => ({ showColumnFilters: apply(u, s.showColumnFilters) })),
+                    setSorting: (u) => set((s) => ({ sorting: apply(u, s.sorting) }))
                 }
             }),
             {
@@ -101,14 +106,12 @@ export const createMrtTableStore = ({ name, version, defaults }: CreateMrtTableS
                     columnSize: state.columnSize,
                     columnVisibility: state.columnVisibility,
                     paginationState: state.paginationState,
-                    showColumnFilters: state.showColumnFilters
+                    showColumnFilters: state.showColumnFilters,
+                    sorting: state.sorting
                 }),
                 migrate: () => initial,
-                // Strip empty filters left over in already-persisted state (e.g. cleared
-                // multi-selects saved as `[]`) so they don't read as active on load.
                 onRehydrateStorage: () => (state) => {
                     if (state) {
-                        // eslint-disable-next-line no-param-reassign
                         state.columnFilter = normalizeColumnFilters(state.columnFilter)
                     }
                 }

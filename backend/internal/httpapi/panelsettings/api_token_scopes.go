@@ -29,14 +29,15 @@ func buildAPITokenScopes(_ *config.BackendConfig) []apiTokenResourceScopes {
 			readScope("system:metadata", "GET", "/api/system/metadata", "Read build metadata"),
 			readScope("system:health", "GET", "/api/system/health", "Read runtime health"),
 			readScope("system:recap", "GET", "/api/system/stats/recap", "Read recap information"),
+			readScope("system:http", "GET", "/api/system/stats/http", "Read HTTP statistics"),
 		}),
 		scopeResource("users", []apiTokenEndpointScope{
 			readScope("users:list", "GET", "/api/users", "List users"),
-			readScope("users:get", "GET", "/api/users/{uuid}", "Read user"),
+			readScope("users:get", "GET", "/api/users/{userId}", "Read user"),
 			readScope("users:by-username", "GET", "/api/sub/{username}", "Read user subscription by username"),
 			writeScope("users:create", "POST", "/api/users", "Create user"),
-			writeScope("users:update", "PATCH", "/api/users/{uuid}", "Update user"),
-			writeScope("users:delete", "DELETE", "/api/users/{uuid}", "Delete user"),
+			writeScope("users:update", "PATCH", "/api/users/{userId}", "Update user"),
+			writeScope("users:delete", "DELETE", "/api/users/{userId}", "Delete user"),
 		}),
 		scopeResource("nodes", []apiTokenEndpointScope{
 			readScope("nodes:list", "GET", "/api/nodes", "List nodes"),
@@ -92,8 +93,8 @@ func buildAPITokenScopes(_ *config.BackendConfig) []apiTokenResourceScopes {
 			readScope("subscription-request-history:read", "GET", "/api/subscription-request-history", "Read subscription request history"),
 		}),
 		scopeResource("metadata", []apiTokenEndpointScope{
-			readScope("metadata:get-user", "GET", "/api/metadata/user/{uuid}", "Read user metadata"),
-			writeScope("metadata:upsert-user", "PUT", "/api/metadata/user/{uuid}", "Update user metadata"),
+			readScope("metadata:get-user", "GET", "/api/metadata/user/{userId}", "Read user metadata"),
+			writeScope("metadata:upsert-user", "PUT", "/api/metadata/user/{userId}", "Update user metadata"),
 			readScope("metadata:get-node", "GET", "/api/metadata/node/{uuid}", "Read node metadata"),
 			writeScope("metadata:upsert-node", "PUT", "/api/metadata/node/{uuid}", "Update node metadata"),
 		}),
@@ -139,6 +140,13 @@ func buildAPITokenScopes(_ *config.BackendConfig) []apiTokenResourceScopes {
 		scopeResource("keygen", []apiTokenEndpointScope{
 			readScope("keygen:read", "GET", "/api/keygen", "Generate key material"),
 		}),
+		scopeResource("connections", []apiTokenEndpointScope{
+			writeScope("connections:by-user", "POST", "/api/connections/by-user/{userId}", "Fetch user connections"),
+			readScope("connections:by-user-result", "GET", "/api/connections/by-user/{jobId}", "Fetch user connections result"),
+			writeScope("connections:by-node", "POST", "/api/connections/by-node/{nodeUuid}", "Fetch node connections"),
+			readScope("connections:by-node-result", "GET", "/api/connections/by-node/{jobId}", "Fetch node connections result"),
+			writeScope("connections:drop", "POST", "/api/connections/drop", "Drop active connections"),
+		}),
 	}
 
 	return resources
@@ -167,6 +175,11 @@ func normalizeAPITokenScopes(scopes []string) []string {
 		scope = strings.TrimSpace(scope)
 		if scope == "" {
 			continue
+		}
+		if strings.HasPrefix(scope, "ip-control:") {
+			scope = "connections:" + strings.TrimPrefix(scope, "ip-control:")
+		} else if strings.HasPrefix(scope, "ip_control:") {
+			scope = "connections:" + strings.TrimPrefix(scope, "ip_control:")
 		}
 		if _, ok := seen[scope]; ok {
 			continue

@@ -10,18 +10,9 @@ var UpdateSubscriptionSettingsCommand;
     UpdateSubscriptionSettingsCommand.url = api_1.REST_API.SUBSCRIPTION_SETTINGS.UPDATE;
     UpdateSubscriptionSettingsCommand.TSQ_url = UpdateSubscriptionSettingsCommand.url;
     UpdateSubscriptionSettingsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_SETTINGS_ROUTES.UPDATE, 'patch', 'Update subscription settings', { scope: 'update', kind: 'write' });
-    UpdateSubscriptionSettingsCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
-        profileTitle: zod_1.z.optional(zod_1.z.string()),
-        supportLink: zod_1.z.optional(zod_1.z.string()),
-        profileUpdateInterval: zod_1.z.optional(zod_1.z.number().int()),
-        isProfileWebpageUrlEnabled: zod_1.z.optional(zod_1.z.boolean()),
+    UpdateSubscriptionSettingsCommand.RequestBodySchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
         serveJsonAtBaseSubscription: zod_1.z.optional(zod_1.z.boolean()),
-        happAnnounce: zod_1.z.optional(zod_1.z
-            .string()
-            .max(200, { message: 'Announce must be less than 200 characters' })
-            .nullable()),
-        happRouting: zod_1.z.optional(zod_1.z.string().nullable()),
         isShowCustomRemarks: zod_1.z.optional(zod_1.z.boolean()),
         customRemarks: zod_1.z.optional(models_1.CustomRemarksSchema),
         customResponseHeaders: zod_1.z.optional(zod_1.z.record(zod_1.z
@@ -34,4 +25,5 @@ var UpdateSubscriptionSettingsCommand;
     UpdateSubscriptionSettingsCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionSettingsSchema,
     });
+
 })(UpdateSubscriptionSettingsCommand || (exports.UpdateSubscriptionSettingsCommand = UpdateSubscriptionSettingsCommand = {}));

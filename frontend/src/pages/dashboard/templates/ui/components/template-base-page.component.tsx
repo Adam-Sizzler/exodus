@@ -9,7 +9,6 @@ import { motion } from 'motion/react'
 
 import { Page, PageHeaderShared } from '@shared/ui'
 import { getCoreLogoFromType } from '@shared/ui/get-core-logo-from-type'
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 
 interface Props {
     templates: GetSubscriptionTemplatesCommand.Response['response']['templates']
@@ -37,8 +36,6 @@ export const TemplateBasePageComponent = (props: Props) => {
             </motion.div>
 
             <TemplatesSpotlightWidget templates={templates} />
-
-            <RenameModalShared key="rename-template-modal" renameFrom="template" />
         </Page>
     )
 }

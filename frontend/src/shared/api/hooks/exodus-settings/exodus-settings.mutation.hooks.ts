@@ -5,7 +5,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useUpdateExodusSettings = createMutationHook({
     endpoint: UpdateExodusSettingsCommand.TSQ_url,
-    bodySchema: UpdateExodusSettingsCommand.RequestSchema,
+    bodySchema: UpdateExodusSettingsCommand.RequestBodySchema,
     responseSchema: UpdateExodusSettingsCommand.ResponseSchema,
     requestMethod: UpdateExodusSettingsCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

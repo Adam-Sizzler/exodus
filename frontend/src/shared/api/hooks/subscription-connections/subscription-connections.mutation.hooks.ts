@@ -5,7 +5,7 @@ import {
     DeleteNodeCommand,
     DisableNodeCommand,
     EnableNodeCommand,
-    ReorderNodeCommand,
+    ReorderNodesCommand,
     ResetNodeTrafficCommand,
     RestartAllNodesCommand,
     RestartNodeCommand,
@@ -165,7 +165,7 @@ export const useUpdateSubscriptionConnection = createMutationHook({
 export const useDeleteSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.DELETE,
     responseSchema: deleteSubscriptionConnectionResponseSchema,
-    routeParamsSchema: DeleteNodeCommand.RequestSchema,
+    routeParamsSchema: DeleteNodeCommand.RequestParamSchema,
     requestMethod: DeleteNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -189,7 +189,7 @@ export const useDeleteSubscriptionConnection = createMutationHook({
 export const useEnableSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.ENABLE,
     responseSchema: getOneSubscriptionConnectionResponseSchema,
-    routeParamsSchema: EnableNodeCommand.RequestSchema,
+    routeParamsSchema: EnableNodeCommand.RequestParamSchema,
     requestMethod: EnableNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -213,7 +213,7 @@ export const useEnableSubscriptionConnection = createMutationHook({
 export const useDisableSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.DISABLE,
     responseSchema: getOneSubscriptionConnectionResponseSchema,
-    routeParamsSchema: DisableNodeCommand.RequestSchema,
+    routeParamsSchema: DisableNodeCommand.RequestParamSchema,
     requestMethod: DisableNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -260,9 +260,9 @@ export const useRestartAllSubscriptionConnections = createMutationHook({
 
 export const useReorderSubscriptionConnections = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.REORDER,
-    bodySchema: ReorderNodeCommand.RequestSchema,
+    bodySchema: ReorderNodesCommand.RequestBodySchema,
     responseSchema: getAllSubscriptionConnectionsResponseSchema,
-    requestMethod: ReorderNodeCommand.endpointDetails.REQUEST_METHOD,
+    requestMethod: ReorderNodesCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onError: (error) => {
             notifications.show({
@@ -278,7 +278,8 @@ export const useReorderSubscriptionConnections = createMutationHook({
 export const useRestartSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.RESTART,
     responseSchema: subscriptionConnectionEventSentResponseSchema,
-    routeParamsSchema: RestartNodeCommand.RequestSchema,
+    routeParamsSchema: RestartNodeCommand.RequestParamSchema,
+    bodySchema: RestartNodeCommand.RequestBodySchema,
     requestMethod: RestartNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -302,7 +303,7 @@ export const useRestartSubscriptionConnection = createMutationHook({
 export const useResetSubscriptionConnectionTraffic = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.RESET_TRAFFIC,
     responseSchema: subscriptionConnectionEventSentResponseSchema,
-    routeParamsSchema: ResetNodeTrafficCommand.RequestSchema,
+    routeParamsSchema: ResetNodeTrafficCommand.RequestParamSchema,
     requestMethod: ResetNodeTrafficCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -326,7 +327,7 @@ export const useResetSubscriptionConnectionTraffic = createMutationHook({
 export const useBulkSubscriptionConnectionsProfileModification = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.BULK_PROFILE_MODIFICATION,
     responseSchema: subscriptionConnectionEventSentResponseSchema,
-    bodySchema: BulkNodesProfileModificationCommand.RequestSchema,
+    bodySchema: BulkNodesProfileModificationCommand.RequestBodySchema,
     requestMethod: BulkNodesProfileModificationCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -350,7 +351,7 @@ export const useBulkSubscriptionConnectionsProfileModification = createMutationH
 export const useBulkSubscriptionConnectionsActions = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.BULK_ACTIONS,
     responseSchema: subscriptionConnectionEventSentResponseSchema,
-    bodySchema: BulkNodesActionsCommand.RequestSchema,
+    bodySchema: BulkNodesActionsCommand.RequestBodySchema,
     requestMethod: BulkNodesActionsCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {

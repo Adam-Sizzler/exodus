@@ -10,12 +10,8 @@ exports.HwidUserDeviceSchema = zod_1.z.object({
     deviceModel: zod_1.z.nullable(zod_1.z.string()),
     userAgent: zod_1.z.nullable(zod_1.z.string()),
     requestIp: zod_1.z.nullable(zod_1.z.string()),
-    createdAt: zod_1.z
-        .string()
-        .datetime()
+    createdAt: zod_1.z.iso.datetime()
         .transform((str) => new Date(str)),
-    updatedAt: zod_1.z
-        .string()
-        .datetime()
+    updatedAt: zod_1.z.iso.datetime()
         .transform((str) => new Date(str)),
 });

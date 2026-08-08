@@ -75,9 +75,9 @@ type QueryParams<R, Q> = {
  */
 
 export function createGetQueryHook<
-    ResponseSchema extends z.ZodType,
-    RequestQuerySchema extends z.ZodType,
-    RouteParamsSchema extends z.ZodType,
+    ResponseSchema extends z.ZodType<{ response: unknown }>,
+    RequestQuerySchema extends z.ZodType<Record<string, unknown>>,
+    RouteParamsSchema extends z.ZodType<Record<string, unknown>>,
     ErrorHandler extends (error: unknown) => void = (error: unknown) => void
 >({
     endpoint,

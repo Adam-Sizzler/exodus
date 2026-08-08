@@ -7,8 +7,6 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
-
-	"github.com/google/uuid"
 )
 
 func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
@@ -48,6 +46,15 @@ func UserByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		}
 
 		parts := strings.Split(path, "/")
+		if len(parts) == 1 && parts[0] == "stream" {
+			if r.Method != http.MethodGet {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleGetUsersStream(w, r, service)
+			return
+		}
+
 		if len(parts) == 1 && parts[0] == "resolve" {
 			if r.Method != http.MethodPost {
 				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -57,11 +64,25 @@ func UserByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		userUUID := parts[0]
-		if _, err := uuid.Parse(userUUID); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+		if len(parts) == 2 && parts[0] == "by-short-uuid" {
+			if r.Method != http.MethodGet {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleGetUser(w, r, service, parts[1])
 			return
 		}
+
+		if len(parts) == 2 && parts[0] == "by-username" {
+			if r.Method != http.MethodGet {
+				shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			handleGetUser(w, r, service, parts[1])
+			return
+		}
+
+		userUUID := parts[0]
 
 		if len(parts) >= 3 && parts[1] == "actions" && r.Method == http.MethodPost {
 			switch parts[2] {
@@ -73,6 +94,8 @@ func UserByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 				handleResetUserTraffic(w, r, service, userUUID)
 			case "revoke":
 				handleRevokeUserSubscription(w, r, service, userUUID)
+			case "extend":
+				handleExtendUser(w, r, service, userUUID)
 			default:
 				http.NotFound(w, r)
 			}

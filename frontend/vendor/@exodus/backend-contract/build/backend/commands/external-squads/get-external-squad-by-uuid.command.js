@@ -10,10 +10,11 @@ var GetExternalSquadByUuidCommand;
     GetExternalSquadByUuidCommand.url = api_1.REST_API.EXTERNAL_SQUADS.GET_BY_UUID;
     GetExternalSquadByUuidCommand.TSQ_url = GetExternalSquadByUuidCommand.url(':uuid');
     GetExternalSquadByUuidCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.EXTERNAL_SQUADS_ROUTES.GET_BY_UUID(':uuid'), 'get', 'Get external squad by uuid', { scope: 'get', kind: 'read' });
-    GetExternalSquadByUuidCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    GetExternalSquadByUuidCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid().describe('UUID of the external squad'),
     });
     GetExternalSquadByUuidCommand.ResponseSchema = zod_1.z.object({
         response: models_1.ExternalSquadSchema,
     });
+
 })(GetExternalSquadByUuidCommand || (exports.GetExternalSquadByUuidCommand = GetExternalSquadByUuidCommand = {}));

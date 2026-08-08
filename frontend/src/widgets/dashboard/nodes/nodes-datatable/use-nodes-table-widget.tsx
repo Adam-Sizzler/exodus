@@ -1,12 +1,12 @@
+import { DataTableColumn } from '@kastov/mantine-datatable'
 import { ActionIcon, Avatar, Badge, Group, MultiSelect, Text, TextInput } from '@mantine/core'
 import {
-    GetAllNodesCommand,
+    GetNodesCommand,
     GetConfigProfilesCommand,
     GetNodePluginsCommand
 } from '@exodus/backend-contract'
 import { TFunction } from 'i18next'
 import sortBy from 'lodash/sortBy'
-import { DataTableColumn } from 'mantine-datatable'
 import ReactCountryFlag from 'react-country-flag'
 import {
     PiCloudArrowUpDuotone,
@@ -57,7 +57,7 @@ export function getNodesTableColumns(
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins'],
     handleViewNode: (nodeUuid: string) => void,
     filters: NodesTableFilters
-): DataTableColumn<GetAllNodesCommand.Response['response'][number]>[] {
+): DataTableColumn<GetNodesCommand.Response['response'][number]>[] {
     return [
         {
             accessor: 'name',
@@ -84,9 +84,7 @@ export function getNodesTableColumns(
                 />
             ),
             draggable: false,
-            toggleable: false,
-            resizable: false,
-
+            resizable: true,
             filtering: filters.nameQuery !== '',
             render: ({ name, countryCode }) => (
                 <Group gap={6} wrap="nowrap">
@@ -247,7 +245,6 @@ export function getNodesTableColumns(
                     value={filters.selectedInbounds}
                 />
             ),
-            toggleable: true,
             filtering: filters.selectedInbounds.length > 0,
             title: t('use-nodes-table-widget.inbounds'),
             render: ({ configProfile: { activeInbounds } }) =>
@@ -468,7 +465,6 @@ export function getNodesTableColumns(
             ),
 
             textAlign: 'right',
-            toggleable: false,
             render: ({ uuid }) => (
                 <Group gap={4} justify="flex-end" wrap="nowrap">
                     <ActionIcon

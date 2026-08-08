@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Group, Menu, Text } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { FindAllApiTokensCommand } from '@exodus/backend-contract'
+import { GetApiTokensCommand } from '@exodus/backend-contract'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { TbCookie, TbDots, TbEye, TbTrash } from 'react-icons/tb'
@@ -15,7 +15,7 @@ import classes from './api-token-card.module.css'
 import { ViewApiTokenContentWidget } from './modals/view-api-token-modal.widget'
 
 interface IProps {
-    apiToken: FindAllApiTokensCommand.Response['response']['tokens'][number]
+    apiToken: GetApiTokensCommand.Response['response']['tokens'][number]
 }
 
 export const ApiTokenItem = ({ apiToken }: IProps) => {

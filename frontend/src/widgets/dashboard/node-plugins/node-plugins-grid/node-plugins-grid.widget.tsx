@@ -1,6 +1,6 @@
 import { Badge, Center, Group, Stack, Text, ThemeIcon } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { GetAllNodesCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
+import { GetNodesCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import {
     TbAlertTriangle,
@@ -25,7 +25,7 @@ import { ActivePluginsOnNodesModalShared } from '../active-on-nodes-modal/adtive
 import { NodePluginCardWidget } from '../node-plugin-card/node-plugin-card.widget'
 
 interface IProps {
-    nodes: GetAllNodesCommand.Response['response']
+    nodes: GetNodesCommand.Response['response']
     plugins: GetNodePluginsCommand.Response['response']['nodePlugins']
 }
 
@@ -71,8 +71,8 @@ export function NodePluginsGridWidget(props: IProps) {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             centered: true,
             onConfirm: () => {
                 deleteNodePlugin({

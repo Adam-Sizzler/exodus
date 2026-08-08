@@ -7,7 +7,7 @@ export * from './hosts';
 export * from './hwid';
 export * from './infra-billing';
 export * from './internal-squads';
-export * from './ip-control';
+export * from './connections';
 export * from './keygen';
 export * from './metadata';
 export * from './node-plugins';

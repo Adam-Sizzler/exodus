@@ -138,6 +138,7 @@ export const NodesStatisticBarchartWidget = (props: IProps) => {
     return (
         <Card p="xs" withBorder>
             <Chart
+                title=""
                 options={{
                     chart: {
                         type: 'bar',

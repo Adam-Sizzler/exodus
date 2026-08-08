@@ -5,178 +5,41 @@ export declare namespace GetStatsCommand {
     const endpointDetails: import("../../constants").EndpointDetails;
     const RequestQuerySchema: z.ZodObject<{
         tz: z.ZodOptional<z.ZodString>;
-    }, "strip", z.ZodTypeAny, {
-        tz?: string | undefined;
-    }, {
-        tz?: string | undefined;
-    }>;
-    type Request = z.infer<typeof RequestQuerySchema>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             cpu: z.ZodObject<{
                 cores: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                cores: number;
-            }, {
-                cores: number;
-            }>;
+            }, z.core.$strip>;
             memory: z.ZodObject<{
                 total: z.ZodNumber;
                 free: z.ZodNumber;
                 used: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                total: number;
-                free: number;
-                used: number;
-            }, {
-                total: number;
-                free: number;
-                used: number;
-            }>;
+            }, z.core.$strip>;
             uptime: z.ZodNumber;
             timestamp: z.ZodNumber;
             users: z.ZodObject<{
-                statusCounts: z.ZodRecord<z.ZodEnum<[string, ...string[]]>, z.ZodNumber>;
+                statusCounts: z.ZodRecord<z.ZodEnum<{
+                    readonly ACTIVE: "ACTIVE";
+                    readonly DISABLED: "DISABLED";
+                    readonly LIMITED: "LIMITED";
+                    readonly EXPIRED: "EXPIRED";
+                }>, z.ZodNumber>;
                 totalUsers: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                statusCounts: Record<string, number>;
-                totalUsers: number;
-            }, {
-                statusCounts: Record<string, number>;
-                totalUsers: number;
-            }>;
+            }, z.core.$strip>;
             onlineStats: z.ZodObject<{
                 lastDay: z.ZodNumber;
                 lastWeek: z.ZodNumber;
                 neverOnline: z.ZodNumber;
                 onlineNow: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                lastDay: number;
-                lastWeek: number;
-                neverOnline: number;
-                onlineNow: number;
-            }, {
-                lastDay: number;
-                lastWeek: number;
-                neverOnline: number;
-                onlineNow: number;
-            }>;
+            }, z.core.$strip>;
             nodes: z.ZodObject<{
                 totalOnline: z.ZodNumber;
                 totalBytesLifetime: z.ZodString;
-            }, "strip", z.ZodTypeAny, {
-                totalOnline: number;
-                totalBytesLifetime: string;
-            }, {
-                totalOnline: number;
-                totalBytesLifetime: string;
-            }>;
-        }, "strip", z.ZodTypeAny, {
-            nodes: {
-                totalOnline: number;
-                totalBytesLifetime: string;
-            };
-            users: {
-                statusCounts: Record<string, number>;
-                totalUsers: number;
-            };
-            uptime: number;
-            timestamp: number;
-            cpu: {
-                cores: number;
-            };
-            memory: {
-                total: number;
-                free: number;
-                used: number;
-            };
-            onlineStats: {
-                lastDay: number;
-                lastWeek: number;
-                neverOnline: number;
-                onlineNow: number;
-            };
-        }, {
-            nodes: {
-                totalOnline: number;
-                totalBytesLifetime: string;
-            };
-            users: {
-                statusCounts: Record<string, number>;
-                totalUsers: number;
-            };
-            uptime: number;
-            timestamp: number;
-            cpu: {
-                cores: number;
-            };
-            memory: {
-                total: number;
-                free: number;
-                used: number;
-            };
-            onlineStats: {
-                lastDay: number;
-                lastWeek: number;
-                neverOnline: number;
-                onlineNow: number;
-            };
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            nodes: {
-                totalOnline: number;
-                totalBytesLifetime: string;
-            };
-            users: {
-                statusCounts: Record<string, number>;
-                totalUsers: number;
-            };
-            uptime: number;
-            timestamp: number;
-            cpu: {
-                cores: number;
-            };
-            memory: {
-                total: number;
-                free: number;
-                used: number;
-            };
-            onlineStats: {
-                lastDay: number;
-                lastWeek: number;
-                neverOnline: number;
-                onlineNow: number;
-            };
-        };
-    }, {
-        response: {
-            nodes: {
-                totalOnline: number;
-                totalBytesLifetime: string;
-            };
-            users: {
-                statusCounts: Record<string, number>;
-                totalUsers: number;
-            };
-            uptime: number;
-            timestamp: number;
-            cpu: {
-                cores: number;
-            };
-            memory: {
-                total: number;
-                free: number;
-                used: number;
-            };
-            onlineStats: {
-                lastDay: number;
-                lastWeek: number;
-                neverOnline: number;
-                onlineNow: number;
-            };
-        };
-    }>;
+            }, z.core.$strip>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestQuery = z.infer<typeof RequestQuerySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-stats.command.d.ts.map

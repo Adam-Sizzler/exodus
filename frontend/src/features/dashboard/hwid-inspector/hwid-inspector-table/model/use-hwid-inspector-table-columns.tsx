@@ -1,6 +1,6 @@
 import { MRT_ColumnDef } from '@kastov/mantine-react-table-open'
 /* eslint-disable camelcase */
-import { GetAllHwidDevicesCommand } from '@exodus/backend-contract'
+import { GetHwidDevicesCommand } from '@exodus/backend-contract'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -9,9 +9,7 @@ import { formatTimeUtil } from '@shared/utils/time-utils'
 export const useHwidInspectorTableColumns = () => {
     const { t, i18n } = useTranslation()
 
-    return useMemo<
-        MRT_ColumnDef<GetAllHwidDevicesCommand.Response['response']['devices'][number]>[]
-    >(
+    return useMemo<MRT_ColumnDef<GetHwidDevicesCommand.Response['response']['devices'][number]>[]>(
         () => [
             {
                 accessorKey: 'userId',

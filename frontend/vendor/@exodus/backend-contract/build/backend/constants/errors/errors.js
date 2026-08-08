@@ -455,11 +455,6 @@ exports.ERRORS = {
         message: 'Activate all inbounds error',
         httpCode: 500,
     },
-    GET_NODES_USER_USAGE_BY_RANGE_ERROR: {
-        code: 'A094',
-        message: 'Get nodes user usage by range error',
-        httpCode: 500,
-    },
     CREATE_HWID_USER_DEVICE_ERROR: {
         code: 'A096',
         message: 'Create hwid user device error',
@@ -1149,5 +1144,40 @@ exports.ERRORS = {
         code: 'A230',
         message: 'Either nodeUuid or name must be provided',
         httpCode: 400,
+    },
+    CUSTOM_RAW_REMARK_VALIDATION_ERROR: {
+        code: 'A231',
+        message: 'Invalid custom raw remark',
+        httpCode: 500,
+        withMessage: (message) => ({
+            code: 'A231',
+            message,
+            httpCode: 500,
+        }),
+    },
+    GET_INTERNAL_SQUAD_USAGE_ERROR: {
+        code: 'A232',
+        message: 'Get internal squad usage error',
+        httpCode: 500,
+    },
+    ADD_MANY_USERS_TO_INTERNAL_SQUAD_ERROR: {
+        code: 'A233',
+        message: 'Add many users to internal squad error',
+        httpCode: 500,
+    },
+    REMOVE_MANY_USERS_FROM_INTERNAL_SQUAD_ERROR: {
+        code: 'A234',
+        message: 'Remove many users from internal squad error',
+        httpCode: 500,
+    },
+    GET_STATS_DIGEST_INVALID_RANGE: {
+        code: 'A235',
+        message: 'Start date must be before or equal to end date',
+        httpCode: 400,
+    },
+    GET_STATS_DIGEST_ERROR: {
+        code: 'A236',
+        message: 'Get stats digest error',
+        httpCode: 500,
     },
 };

@@ -26,7 +26,7 @@ var GetStatsCommand;
             uptime: zod_1.z.number(),
             timestamp: zod_1.z.number(),
             users: zod_1.z.object({
-                statusCounts: zod_1.z.record(zod_1.z.enum(Object.values(constants_2.USERS_STATUS)), zod_1.z.number()),
+                statusCounts: zod_1.z.record(zod_1.z.enum(constants_2.USERS_STATUS), zod_1.z.number()),
                 totalUsers: zod_1.z.number(),
             }),
             onlineStats: zod_1.z.object({
@@ -41,4 +41,5 @@ var GetStatsCommand;
             }),
         }),
     });
+
 })(GetStatsCommand || (exports.GetStatsCommand = GetStatsCommand = {}));

@@ -10,8 +10,8 @@ var DeleteAllUserHwidDevicesCommand;
     DeleteAllUserHwidDevicesCommand.url = api_1.REST_API.HWID.DELETE_ALL_USER_HWID_DEVICES;
     DeleteAllUserHwidDevicesCommand.TSQ_url = DeleteAllUserHwidDevicesCommand.url;
     DeleteAllUserHwidDevicesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HWID_ROUTES.DELETE_ALL_USER_HWID_DEVICES, 'post', 'Delete all user HWID devices', { scope: 'delete-all', kind: 'write' });
-    DeleteAllUserHwidDevicesCommand.RequestSchema = zod_1.z.object({
-        userUuid: zod_1.z.string().uuid(),
+    DeleteAllUserHwidDevicesCommand.RequestBodySchema = zod_1.z.object({
+        userId: zod_1.z.number(),
     });
     DeleteAllUserHwidDevicesCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
@@ -19,4 +19,5 @@ var DeleteAllUserHwidDevicesCommand;
             devices: zod_1.z.array(models_1.HwidUserDeviceSchema),
         }),
     });
+
 })(DeleteAllUserHwidDevicesCommand || (exports.DeleteAllUserHwidDevicesCommand = DeleteAllUserHwidDevicesCommand = {}));

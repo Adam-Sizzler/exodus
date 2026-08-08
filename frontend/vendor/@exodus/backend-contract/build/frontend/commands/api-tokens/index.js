@@ -16,5 +16,6 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./create.command"), exports);
 __exportStar(require("./delete.command"), exports);
-__exportStar(require("./find.command"), exports);
+__exportStar(require("./get-api-tokens.command"), exports);
 __exportStar(require("./get-scopes.command"), exports);
+__exportStar(require("./get-ott.command"), exports);

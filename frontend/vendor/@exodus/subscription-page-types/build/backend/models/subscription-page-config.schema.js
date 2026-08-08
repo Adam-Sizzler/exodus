@@ -7,12 +7,14 @@ const subscription_page_config_validator_1 = require("./subscription-page-config
 const LocalizedTextSchema = zod_1.z
     .record(zod_1.z.string().regex(/^[a-z]{2}$/, 'Language code must be 2 lowercase letters'), zod_1.z.string())
     .refine((obj) => Object.keys(obj).length > 0, {
-    message: 'At least one language must be specified',
+    error: 'At least one language must be specified',
 });
-const SvgLibrarySchema = zod_1.z.record(zod_1.z.string().regex(/^[A-Za-z]+$/, { message: 'Only latin characters, no spaces allowed' }), zod_1.z.string());
+const SvgLibrarySchema = zod_1.z.record(zod_1.z.string().regex(/^[A-Za-z]+$/, {
+    error: 'Only latin characters, no spaces allowed',
+}), zod_1.z.string());
 const ButtonSchema = zod_1.z.object({
     link: zod_1.z.string(),
-    type: zod_1.z.nativeEnum(constants_1.BUTTON_TYPES),
+    type: zod_1.z.enum(constants_1.BUTTON_TYPES),
     text: LocalizedTextSchema,
     svgIconKey: zod_1.z.string(),
 });
@@ -36,7 +38,7 @@ const BlockSchema = zod_1.z.object({
         'violet',
         'yellow',
     ].includes(value) || /^#[0-9a-fA-F]{3,8}$/.test(value), {
-        message: 'svgIconColor must be one of the predefined colors or a hex color beginning with #',
+        error: 'svgIconColor must be one of the predefined colors or a hex color beginning with #',
     }),
     title: LocalizedTextSchema,
     description: LocalizedTextSchema,
@@ -56,11 +58,11 @@ const PlatformSchema = zod_1.z.object({
 const BrandingSettingsSchema = zod_1.z.object({
     title: zod_1.z.string(),
     logoUrl: zod_1.z.string(),
-    supportUrl: zod_1.z.string().url(),
+    supportUrl: zod_1.z.url(),
 });
 const UiConfigSchema = zod_1.z.object({
-    subscriptionInfoBlockType: zod_1.z.nativeEnum(constants_1.SUBSCRIPTION_INFO_BLOCK_VARIANTS),
-    installationGuidesBlockType: zod_1.z.nativeEnum(constants_1.INSTALLATION_GUIDE_BLOCKS_VARIANTS),
+    subscriptionInfoBlockType: zod_1.z.enum(constants_1.SUBSCRIPTION_INFO_BLOCK_VARIANTS),
+    installationGuidesBlockType: zod_1.z.enum(constants_1.INSTALLATION_GUIDE_BLOCKS_VARIANTS),
 });
 const SubscriptionPageTranslateKeysSchema = zod_1.z.object({
     installationGuideHeader: LocalizedTextSchema,
@@ -98,16 +100,19 @@ const BaseSettingsSchema = zod_1.z
 });
 exports.SubscriptionPageRawConfigSchema = zod_1.z
     .object({
-    version: zod_1.z.nativeEnum(constants_1.SUBSCRIPTION_PAGE_CONFIG_VERSION),
+    version: zod_1.z.enum(constants_1.SUBSCRIPTION_PAGE_CONFIG_VERSION),
     locales: zod_1.z.array(zod_1.z.enum(constants_1.LANGUAGE_CODES)).min(1, 'At least one locale must be specified'),
     brandingSettings: BrandingSettingsSchema,
     uiConfig: UiConfigSchema,
     baseSettings: BaseSettingsSchema,
     baseTranslations: SubscriptionPageTranslateKeysSchema,
     svgLibrary: SvgLibrarySchema,
-    platforms: zod_1.z.record(zod_1.z.nativeEnum(constants_1.SUBSCRIPTION_PAGE_CONFIG_PLATFORM_TYPES), PlatformSchema),
+    platforms: zod_1.z.partialRecord(zod_1.z.enum(constants_1.SUBSCRIPTION_PAGE_CONFIG_PLATFORM_TYPES), PlatformSchema),
 })
     .superRefine((data, ctx) => {
     (0, subscription_page_config_validator_1.validateLocalizedTexts)(data, data.locales, ctx);
     (0, subscription_page_config_validator_1.validateSvgReferences)(data, ctx);
 });
+
+exports.PlatformSchema = PlatformSchema;
+exports.TSubscriptionPagePlatformSchema = PlatformSchema;

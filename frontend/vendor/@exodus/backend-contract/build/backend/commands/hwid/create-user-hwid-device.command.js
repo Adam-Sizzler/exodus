@@ -10,9 +10,9 @@ var CreateUserHwidDeviceCommand;
     CreateUserHwidDeviceCommand.url = api_1.REST_API.HWID.CREATE_USER_HWID_DEVICE;
     CreateUserHwidDeviceCommand.TSQ_url = CreateUserHwidDeviceCommand.url;
     CreateUserHwidDeviceCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.HWID_ROUTES.CREATE_USER_HWID_DEVICE, 'post', 'Create a user HWID device', { scope: 'create', kind: 'write' });
-    CreateUserHwidDeviceCommand.RequestSchema = zod_1.z.object({
-        hwid: zod_1.z.string(),
-        userUuid: zod_1.z.string().uuid(),
+    CreateUserHwidDeviceCommand.RequestBodySchema = zod_1.z.object({
+        hwid: zod_1.z.string().regex(/^[a-zA-Z0-9=-]{10,64}$/),
+        userId: zod_1.z.number(),
         platform: zod_1.z.optional(zod_1.z.string()),
         osVersion: zod_1.z.optional(zod_1.z.string()),
         deviceModel: zod_1.z.optional(zod_1.z.string()),
@@ -25,4 +25,5 @@ var CreateUserHwidDeviceCommand;
             devices: zod_1.z.array(models_1.HwidUserDeviceSchema),
         }),
     });
+
 })(CreateUserHwidDeviceCommand || (exports.CreateUserHwidDeviceCommand = CreateUserHwidDeviceCommand = {}));

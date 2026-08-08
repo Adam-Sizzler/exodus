@@ -1,12 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"strings"
 
 	"exodus/internal/config"
 	"exodus/internal/db"
+	"exodus/internal/jobqueue"
 	"exodus/internal/httpapi/asynqmon"
 	"exodus/internal/httpapi/auth"
 	"exodus/internal/httpapi/bandwidthstats"
@@ -36,6 +38,10 @@ import (
 )
 
 func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
+	redisClient, _ := jobqueue.NewRedisClient(cfg)
+	routeCounter := system.NewRouteCounter(redisClient, cfg)
+	routeCounter.Start(context.Background())
+
 	mainMux := http.NewServeMux()
 
 	// 1. Public routes (unprotected) with optional auth parsing
@@ -45,7 +51,7 @@ func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
 
 	// 2. Protected routes with strict Auth enforcement
 	protectedMux := http.NewServeMux()
-	RegisterProtectedRoutes(protectedMux, pools.Interactive, pools.Background, cfg)
+	RegisterProtectedRoutes(protectedMux, pools.Interactive, pools.Background, cfg, routeCounter)
 	protectedHandler := auth.WithPanelAuth(pools.Interactive, cfg, protectedMux)
 
 	// Mount protected routes under /api/ first, then fall back to public routes / mainMux
@@ -61,13 +67,26 @@ func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
 	// Non-/api/ public routes (e.g. /health)
 	mainMux.HandleFunc("/health", health.HealthHandler())
 
-	handler := middleware.WithRequestLogging(cfg, "api", mainMux)
+	handler := middleware.WithRequestLogging(cfg, "api", system.Middleware(routeCounter)(mainMux))
 	return middleware.WithCORS(cfg, handler)
 }
 
 func isPublicPath(path string, cfg *config.BackendConfig) bool {
+	if cfg != nil && cfg.Panel.BasePath != "" && cfg.Panel.BasePath != "/" {
+		basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
+		if strings.HasPrefix(path, basePath) {
+			path = strings.TrimPrefix(path, basePath)
+		}
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
 	if strings.HasPrefix(path, "/api/subscriptions/connection-keys/") {
 		return false
+	}
+	if strings.HasPrefix(path, "/api/backend-tools") {
+		return true
 	}
 	switch {
 	case path == "/api/auth/status",
@@ -88,12 +107,6 @@ func isPublicPath(path string, cfg *config.BackendConfig) bool {
 		path == "/api/health":
 		return true
 	}
-	if cfg != nil && cfg.Docs.IsEnabled {
-		if path == cfg.Docs.ScalarPath || path == cfg.Docs.ScalarPath+"/openapi.json" ||
-			path == cfg.Docs.SwaggerPath || path == cfg.Docs.SwaggerPath+"/openapi.json" {
-			return true
-		}
-	}
 	return false
 }
 
@@ -108,11 +121,25 @@ func RegisterPublicRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *con
 	mux.HandleFunc("/api/auth/passkey/authentication/options", passkeys.AuthenticationOptionsHandler(db, cfg))
 	mux.HandleFunc("/api/auth/passkey/authentication/verify", passkeys.VerifyAuthenticationHandler(db, cfg))
 
-	// API docs (Scalar UI + Swagger UI + raw OpenAPI JSON). Only active when IS_DOCS_ENABLED=true.
-	mux.HandleFunc(cfg.Docs.ScalarPath, panelsettings.DocsScalarHandler(cfg))
-	mux.HandleFunc(cfg.Docs.ScalarPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
-	mux.HandleFunc(cfg.Docs.SwaggerPath, panelsettings.DocsSwaggerHandler(cfg))
-	mux.HandleFunc(cfg.Docs.SwaggerPath+"/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
+	// Backend Tools routes (Swagger, Scalar, Queue Viewer / Bull Board)
+	toolsMux := http.NewServeMux()
+	toolsMux.HandleFunc("/api/backend-tools/swagger", panelsettings.DocsSwaggerHandler(cfg))
+	toolsMux.HandleFunc("/api/backend-tools/swagger/", panelsettings.DocsSwaggerHandler(cfg))
+	toolsMux.HandleFunc("/api/backend-tools/swagger/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
+
+	toolsMux.HandleFunc("/api/backend-tools/scalar", panelsettings.DocsScalarHandler(cfg))
+	toolsMux.HandleFunc("/api/backend-tools/scalar/", panelsettings.DocsScalarHandler(cfg))
+	toolsMux.HandleFunc("/api/backend-tools/scalar/openapi.json", panelsettings.DocsOpenAPIHandler(cfg))
+
+	if asynqmonHandler, err := asynqmon.NewAsynqmonWithRootPath(cfg, "/api/backend-tools/queues"); err == nil {
+		toolsMux.Handle("/api/backend-tools/queues/static/", asynqmonHandler)
+		toolsMux.Handle("/api/backend-tools/queues/", asynqmonHandler)
+		toolsMux.Handle("/api/backend-tools/queues", asynqmonHandler)
+	}
+
+	toolsHandler := panelsettings.ToolsAuthMiddleware(cfg)(toolsMux)
+	mux.Handle("/api/backend-tools", toolsHandler)
+	mux.Handle("/api/backend-tools/", toolsHandler)
 
 	mux.HandleFunc("/api/sub", subscription.SubscriptionPublicHandler(db, backgroundDB, cfg))
 	mux.HandleFunc("/api/sub/", subscription.SubscriptionPublicHandler(db, backgroundDB, cfg))
@@ -125,13 +152,14 @@ func RegisterPublicRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *con
 	mux.HandleFunc("/api/health", health.HealthHandler())
 }
 
-func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig) {
+func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig, routeCounter *system.RouteCounter) {
 	mux.HandleFunc("/api/auth/logout", auth.AuthLogoutHandler(db, cfg))
 	mux.HandleFunc("/api/auth/me", auth.AuthMeHandler(db, cfg))
 
 	mux.HandleFunc("/api/exodus-settings", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(db, cfg)))
 	mux.HandleFunc("/api/exodus-settings/", auth.RequireAdminRole(panelsettings.ExodusSettingsHandler(db, cfg)))
 	mux.HandleFunc("/api/tokens/scopes", auth.RequireAdminRole(panelsettings.PanelAPITokenScopesHandler(db, cfg)))
+	mux.HandleFunc("/api/tokens/ott", auth.RequireAdminRole(panelsettings.PanelAPITokensOttHandler(db, cfg)))
 	mux.HandleFunc("/api/tokens", auth.RequireAdminRole(panelsettings.PanelAPITokensHandler(db, cfg)))
 	mux.HandleFunc("/api/tokens/", auth.RequireAdminRole(panelsettings.PanelAPITokenByUUIDHandler(db, cfg)))
 
@@ -182,6 +210,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/bandwidth-stats/nodes/", bandwidthstats.NodesHandler(db, cfg))
 	mux.HandleFunc("/api/bandwidth-stats/users", bandwidthstats.UsersHandler(db, cfg))
 	mux.HandleFunc("/api/bandwidth-stats/users/", bandwidthstats.UsersHandler(db, cfg))
+	mux.HandleFunc("/api/bandwidth-stats/internal-squads/", squads.BandwidthStatsInternalSquadsHandler(db, cfg))
 
 	mux.HandleFunc("/api/config-profiles", configprofiles.ConfigProfilesHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles/", configprofiles.ConfigProfileByUUIDHandler(db, cfg))
@@ -250,6 +279,8 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/system/stats/bandwidth", system.BandwidthStatsHandler(db, cfg))
 	mux.HandleFunc("/api/system/stats/nodes", system.NodesStatsHandler(db, cfg))
 	mux.HandleFunc("/api/system/stats/recap", system.RecapHandler(db, cfg))
+	mux.HandleFunc("/api/system/stats/http", system.HTTPStatsHandler(routeCounter, cfg))
+	mux.HandleFunc("/api/system/stats/digest", system.DigestHandler(db, cfg))
 	mux.HandleFunc("/api/system/nodes/metrics", system.NodesMetricsHandler(db, cfg))
 	mux.HandleFunc("/api/system/testers/srr-matcher", system.TestSRRMatcherHandler(cfg))
 	mux.HandleFunc("/api/system/tools/happ/encrypt", system.EncryptHappCryptoLinkHandler(cfg))
@@ -259,6 +290,9 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 }
 
 func RegisterRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig) {
+	redisClient, _ := jobqueue.NewRedisClient(cfg)
+	routeCounter := system.NewRouteCounter(redisClient, cfg)
+	routeCounter.Start(context.Background())
 	RegisterPublicRoutes(mux, db, backgroundDB, cfg)
-	RegisterProtectedRoutes(mux, db, backgroundDB, cfg)
+	RegisterProtectedRoutes(mux, db, backgroundDB, cfg, routeCounter)
 }

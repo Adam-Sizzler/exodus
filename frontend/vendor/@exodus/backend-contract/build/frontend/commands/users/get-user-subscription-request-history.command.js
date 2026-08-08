@@ -4,13 +4,14 @@ exports.GetUserSubscriptionRequestHistoryCommand = void 0;
 const zod_1 = require("zod");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 var GetUserSubscriptionRequestHistoryCommand;
 (function (GetUserSubscriptionRequestHistoryCommand) {
     GetUserSubscriptionRequestHistoryCommand.url = api_1.REST_API.USERS.SUBSCRIPTION_REQUEST_HISTORY;
-    GetUserSubscriptionRequestHistoryCommand.TSQ_url = GetUserSubscriptionRequestHistoryCommand.url(':uuid');
-    GetUserSubscriptionRequestHistoryCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.SUBSCRIPTION_REQUEST_HISTORY(':uuid'), 'get', 'Get user subscription request history, recent 24 records', { scope: 'subscription-request-history', kind: 'read' });
-    GetUserSubscriptionRequestHistoryCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    GetUserSubscriptionRequestHistoryCommand.TSQ_url = GetUserSubscriptionRequestHistoryCommand.url(':userId');
+    GetUserSubscriptionRequestHistoryCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.SUBSCRIPTION_REQUEST_HISTORY(':userId'), 'get', 'Get user subscription request history, recent 24 records', { scope: 'subscription-request-history', kind: 'read' });
+    GetUserSubscriptionRequestHistoryCommand.RequestParamSchema = zod_1.z.object({
+        userId: models_1.numberParamSchema,
     });
     GetUserSubscriptionRequestHistoryCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
@@ -18,13 +19,11 @@ var GetUserSubscriptionRequestHistoryCommand;
             records: zod_1.z.array(zod_1.z.object({
                 id: zod_1.z.number(),
                 userId: zod_1.z.number(),
-                requestAt: zod_1.z
-                    .string()
-                    .datetime()
-                    .transform((str) => new Date(str)),
+                requestAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
                 requestIp: zod_1.z.string().optional().nullable(),
                 userAgent: zod_1.z.string().optional().nullable(),
             })),
         }),
     });
+
 })(GetUserSubscriptionRequestHistoryCommand || (exports.GetUserSubscriptionRequestHistoryCommand = GetUserSubscriptionRequestHistoryCommand = {}));

@@ -9,20 +9,12 @@ var BulkNodesProfileModificationCommand;
     BulkNodesProfileModificationCommand.url = api_1.REST_API.NODES.BULK_ACTIONS.PROFILE_MODIFICATION;
     BulkNodesProfileModificationCommand.TSQ_url = BulkNodesProfileModificationCommand.url;
     BulkNodesProfileModificationCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODES_ROUTES.BULK_ACTIONS.PROFILE_MODIFICATION, 'post', 'Modify Inbounds & Profile for many nodes', { scope: 'bulk-profile-modification', kind: 'write' });
-    BulkNodesProfileModificationCommand.RequestSchema = zod_1.z.object({
-        uuids: zod_1.z.array(zod_1.z.string().uuid()).min(1, 'Must be at least 1 Node UUID'),
+    BulkNodesProfileModificationCommand.RequestBodySchema = zod_1.z.object({
+        uuids: zod_1.z.array(zod_1.z.uuid()).min(1),
         configProfile: zod_1.z.object({
-            activeConfigProfileUuid: zod_1.z.string().uuid(),
-            activeInbounds: zod_1.z
-                .array(zod_1.z.string().uuid(), {
-                invalid_type_error: 'Must be an array of UUIDs',
-            })
-                .min(1, 'Must be at least 1 inbound UUID'),
+            activeConfigProfileUuid: zod_1.z.uuid(),
+            activeInbounds: zod_1.z.array(zod_1.z.uuid()).min(1),
         }),
     });
-    BulkNodesProfileModificationCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            eventSent: zod_1.z.boolean(),
-        }),
-    });
+
 })(BulkNodesProfileModificationCommand || (exports.BulkNodesProfileModificationCommand = BulkNodesProfileModificationCommand = {}));

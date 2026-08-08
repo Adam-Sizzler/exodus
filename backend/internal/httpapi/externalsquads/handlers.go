@@ -254,9 +254,14 @@ func handleCreateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 		shared.SendError(w, http.StatusInternalServerError, "failed to marshal overrides", err, cfg)
 		return
 	}
-	respHeaders, err := marshalJSON(req.ResponseHeaders)
+	respHeadersAdd, err := marshalJSON(req.ResponseHeadersAdd)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to marshal headers", err, cfg)
+		shared.SendError(w, http.StatusInternalServerError, "failed to marshal headers add", err, cfg)
+		return
+	}
+	respHeadersRemove, err := marshalJSON(req.ResponseHeadersRemove)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to marshal headers remove", err, cfg)
 		return
 	}
 	hwidSettings, err := marshalJSON(req.HWIDSettings)
@@ -273,16 +278,17 @@ func handleCreateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 	_, err = tx.ExecContext(r.Context(), `
 		INSERT INTO external_squads (
 			uuid, view_position, name,
-			subscription_settings, host_overrides, response_headers,
+			subscription_settings, host_overrides, response_headers_add, response_headers_remove,
 			hwid_settings, custom_remarks, subpage_config_uuid
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`,
 		squadUUID,
 		coalesceInt(req.ViewPosition, 0),
 		strings.TrimSpace(req.Name),
 		subSettings,
 		hostOverrides,
-		respHeaders,
+		respHeadersAdd,
+		respHeadersRemove,
 		hwidSettings,
 		customRemarks,
 		normalizeStringPtr(req.SubpageConfigUUID),
@@ -365,11 +371,18 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 			add("host_overrides", string(req.HostOverrides))
 		}
 	}
-	if req.ResponseHeaders != nil {
-		if string(req.ResponseHeaders) == "null" {
-			add("response_headers", nil)
+	if req.ResponseHeadersAdd != nil {
+		if string(req.ResponseHeadersAdd) == "null" {
+			add("response_headers_add", nil)
 		} else {
-			add("response_headers", string(req.ResponseHeaders))
+			add("response_headers_add", string(req.ResponseHeadersAdd))
+		}
+	}
+	if req.ResponseHeadersRemove != nil {
+		if string(req.ResponseHeadersRemove) == "null" {
+			add("response_headers_remove", nil)
+		} else {
+			add("response_headers_remove", string(req.ResponseHeadersRemove))
 		}
 	}
 	if req.HWIDSettings != nil {
@@ -464,7 +477,7 @@ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isDeleted": true}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, squadUUID string) {

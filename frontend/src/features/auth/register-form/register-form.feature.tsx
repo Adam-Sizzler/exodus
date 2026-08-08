@@ -8,11 +8,10 @@ import {
     TextInput,
     Title
 } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { useClipboard } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { RegisterCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PiShuffleDuotone, PiSignpostDuotone } from 'react-icons/pi'
@@ -30,7 +29,7 @@ export const RegisterFormFeature = () => {
 
     const form = useForm({
         validate: {
-            ...zodResolver(RegisterCommand.RequestSchema),
+            ...schemaResolver(RegisterCommand.RequestBodySchema),
             confirmPassword: (value, values) =>
                 value !== values.password
                     ? t('register-form.feature.passwords-do-not-match')

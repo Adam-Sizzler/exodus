@@ -6,12 +6,12 @@ exports.SUBSCRIPTIONS_ROUTES = {
     GET: '',
     GET_BY: {
         USERNAME: (username) => `by-username/${username}`,
-        UUID: (uuid) => `by-uuid/${uuid}`,
+        ID: (userId) => `by-id/${userId}`,
         SHORT_UUID: (shortUuid) => `by-short-uuid/${shortUuid}`,
         SHORT_UUID_RAW: (shortUuid) => `by-short-uuid/${shortUuid}/raw`,
     },
     SUBPAGE: {
         GET_CONFIG: (shortUuid) => `subpage-config/${shortUuid}`,
     },
-    GET_CONNECTION_KEYS_BY_UUID: (uuid) => `connection-keys/${uuid}`,
+    GET_CONNECTION_KEYS_BY_USER_ID: (userId) => `connection-keys/${userId}`,
 };

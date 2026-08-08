@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cleanLocalizedTexts = exports.validateSvgReferences = exports.validateLocalizedTexts = void 0;
-const zod_1 = require("zod");
 const constants_1 = require("../constants");
 const isLocalizedText = (obj) => {
     if (obj === null || typeof obj !== 'object' || Array.isArray(obj))
@@ -21,8 +20,9 @@ const validateLocalizedTexts = (data, requiredLocales, ctx) => {
             for (const locale of requiredLocales) {
                 const value = obj[locale];
                 if (!value || value.trim() === '') {
-                    ctx.addIssue({
-                        code: zod_1.z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: obj,
+                        code: 'custom',
                         message: `Missing required locale '${locale}' at ${path}`,
                         path: [path, locale],
                     });
@@ -54,8 +54,9 @@ const validateSvgReferences = (data, ctx) => {
         for (const [key, value] of Object.entries(obj)) {
             if (key === 'svgIconKey' && typeof value === 'string') {
                 if (!validKeys.has(value)) {
-                    ctx.addIssue({
-                        code: zod_1.z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: obj,
+                        code: 'custom',
                         message: `Unknown svgIconKey '${value}' at ${path}.${key}. Available: ${[...validKeys].join(', ')}`,
                         path: [path, key],
                     });

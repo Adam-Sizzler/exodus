@@ -9,12 +9,13 @@ var OAuth2AuthorizeCommand;
     OAuth2AuthorizeCommand.url = api_1.REST_API.AUTH.OAUTH2.AUTHORIZE;
     OAuth2AuthorizeCommand.TSQ_url = OAuth2AuthorizeCommand.url;
     OAuth2AuthorizeCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.AUTH_ROUTES.OAUTH2.AUTHORIZE, 'post', 'Initiate OAuth2 authorization', { scope: 'authorize', kind: 'read' });
-    OAuth2AuthorizeCommand.RequestSchema = zod_1.z.object({
-        provider: zod_1.z.nativeEnum(constants_1.OAUTH2_PROVIDERS),
+    OAuth2AuthorizeCommand.RequestBodySchema = zod_1.z.object({
+        provider: zod_1.z.enum(constants_1.OAUTH2_PROVIDERS),
     });
     OAuth2AuthorizeCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
-            authorizationUrl: zod_1.z.nullable(zod_1.z.string().url()),
+            authorizationUrl: zod_1.z.nullable(zod_1.z.url()),
         }),
     });
+
 })(OAuth2AuthorizeCommand || (exports.OAuth2AuthorizeCommand = OAuth2AuthorizeCommand = {}));

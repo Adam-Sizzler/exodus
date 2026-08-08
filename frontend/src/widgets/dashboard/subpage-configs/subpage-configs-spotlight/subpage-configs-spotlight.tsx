@@ -1,4 +1,4 @@
-import { GetSubscriptionPageConfigsCommand } from '@exodus/backend-contract'
+import { GetSubpageConfigsCommand } from '@exodus/backend-contract'
 import { TbFile } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router'
 
@@ -6,7 +6,7 @@ import { ROUTES } from '@shared/constants'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 
 interface IProps {
-    configs: GetSubscriptionPageConfigsCommand.Response['response']['configs']
+    configs: GetSubpageConfigsCommand.Response['response']['configs']
 }
 
 export const SubpageConfigsSpotlightWidget = (props: IProps) => {

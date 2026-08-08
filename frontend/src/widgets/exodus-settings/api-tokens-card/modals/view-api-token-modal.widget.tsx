@@ -9,7 +9,7 @@ import {
     Tooltip
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { CreateApiTokenCommand, FindAllApiTokensCommand } from '@exodus/backend-contract'
+import { CreateApiTokenCommand, GetApiTokensCommand } from '@exodus/backend-contract'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,7 +28,7 @@ interface IProps {
     isMobile: boolean
     token:
         | CreateApiTokenCommand.Response['response']
-        | FindAllApiTokensCommand.Response['response']['tokens'][number]
+        | GetApiTokensCommand.Response['response']['tokens'][number]
 }
 
 export const ViewApiTokenContentWidget = ({ isMobile, token }: IProps) => {
@@ -102,11 +102,7 @@ export const ViewApiTokenContentWidget = ({ isMobile, token }: IProps) => {
                                             size="xs"
                                             variant="subtle"
                                         >
-                                            {copied ? (
-                                                <TbCheck size={14} />
-                                            ) : (
-                                                <TbCopy size={14} />
-                                            )}
+                                            {copied ? <TbCheck size={14} /> : <TbCopy size={14} />}
                                         </ActionIcon>
                                     </Tooltip>
                                 )}

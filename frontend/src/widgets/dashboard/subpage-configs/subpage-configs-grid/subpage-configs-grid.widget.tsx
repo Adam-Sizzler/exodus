@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 
 import {
     QueryKeys,
-    useCloneSubscriptionPageConfig,
-    useDeleteSubscriptionPageConfig,
-    useReorderSubscriptionPageConfigs
+    useCloneSubpageConfig,
+    useDeleteSubpageConfig,
+    useReorderSubpageConfigs
 } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
 import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
@@ -17,31 +17,28 @@ export function SubpageConfigsGridWidget(props: IProps) {
     const { t } = useTranslation()
     const { configs } = props
 
-    const { mutate: deleteSubpageConfig } = useDeleteSubscriptionPageConfig({
+    const { mutate: deleteSubpageConfig } = useDeleteSubpageConfig({
         mutationFns: {
             onSuccess: () => {
                 queryClient.refetchQueries({
-                    queryKey: QueryKeys.subpageConfigs.getSubscriptionPageConfigs.queryKey
+                    queryKey: QueryKeys.subpageConfigs.getSubpageConfigs.queryKey
                 })
             }
         }
     })
-    const { mutate: reorderSubpageConfigs } = useReorderSubscriptionPageConfigs({
+    const { mutate: reorderSubpageConfigs } = useReorderSubpageConfigs({
         mutationFns: {
             onSuccess: (data) => {
-                queryClient.setQueryData(
-                    QueryKeys.subpageConfigs.getSubscriptionPageConfigs.queryKey,
-                    data
-                )
+                queryClient.setQueryData(QueryKeys.subpageConfigs.getSubpageConfigs.queryKey, data)
             }
         }
     })
 
-    const { mutate: cloneSubpageConfig } = useCloneSubscriptionPageConfig({
+    const { mutate: cloneSubpageConfig } = useCloneSubpageConfig({
         mutationFns: {
             onSuccess: () => {
                 queryClient.refetchQueries({
-                    queryKey: QueryKeys.subpageConfigs.getSubscriptionPageConfigs.queryKey
+                    queryKey: QueryKeys.subpageConfigs.getSubpageConfigs.queryKey
                 })
             }
         }
@@ -55,8 +52,8 @@ export function SubpageConfigsGridWidget(props: IProps) {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             centered: true,
             onConfirm: () => {
                 deleteSubpageConfig({

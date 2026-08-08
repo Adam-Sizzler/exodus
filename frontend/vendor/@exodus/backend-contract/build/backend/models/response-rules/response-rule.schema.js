@@ -11,34 +11,40 @@ exports.ResponseRuleSchemaBase = zod_1.z.object({
         .string()
         .min(1, 'Name is required')
         .max(50, 'Name must be less than 50 characters')
-        .describe(JSON.stringify({
+        .meta({
+        title: 'Name',
         markdownDescription: 'Name of the response rule.',
-    })),
+    }),
     description: zod_1.z
         .string()
         .min(1, 'Description is required')
         .max(250, 'Description must be less than 250 characters')
         .optional()
-        .describe(JSON.stringify({
+        .meta({
+        title: 'Description',
         markdownDescription: 'Description of the response rule. Optional.',
-    })),
-    enabled: zod_1.z.boolean().describe(JSON.stringify({
+    }),
+    enabled: zod_1.z.boolean().meta({
+        title: 'Enabled',
         markdownDescription: 'Control whether the response rule is enabled or disabled. \n\n - `true` the rule will be applied. \n\n - `false` the rule will be always ignored.',
-    })),
-    operator: zod_1.z.nativeEnum(constants_1.RESPONSE_RULES_OPERATORS).describe(JSON.stringify({
+    }),
+    operator: zod_1.z.enum(constants_1.RESPONSE_RULES_OPERATORS).meta({
         markdownDescription: 'Operator to use for combining conditions in the rule.',
-    })),
-    conditions: zod_1.z.array(response_rule_condition_schema_1.ResponseRuleConditionSchema).describe(JSON.stringify({
+    }),
+    conditions: zod_1.z.array(response_rule_condition_schema_1.ResponseRuleConditionSchema).meta({
+        title: 'Conditions',
         markdownDescription: 'Array of conditions to check against the request headers. Conditions are applied with **operator**. If conditions are empty, the rule will be matched.',
-    })),
-    responseType: zod_1.z.nativeEnum(constants_1.RESPONSE_RULES_RESPONSE_TYPES).describe(JSON.stringify({
+    }),
+    responseType: zod_1.z.enum(constants_1.RESPONSE_RULES_RESPONSE_TYPES).meta({
         errorMessage: 'Invalid response type. Please select a valid response type.',
         markdownDescription: `Type of the response. Determines the type of **response** to be returned when the rule is matched.`,
         markdownEnumDescriptions: Object.entries(constants_1.RESPONSE_RULES_RESPONSE_TYPES_DESCRIPTION).map(([_key, description]) => description),
-    })),
+    }),
     responseModifications: response_rule_modifications_schema_1.ResponseRuleModificationsSchema,
 });
-exports.ResponseRuleSchema = exports.ResponseRuleSchemaBase.describe(JSON.stringify({
+exports.ResponseRuleSchema = exports.ResponseRuleSchemaBase.meta({
+    title: 'Response Rule',
+    markdownDescription: (0, response_rules_examples_1.generateResponseRuleDescription)(exports.ResponseRuleSchemaBase),
     defaultSnippets: [
         {
             label: 'Examples: Blank rule',
@@ -55,6 +61,4 @@ exports.ResponseRuleSchema = exports.ResponseRuleSchemaBase.describe(JSON.string
             },
         },
     ],
-    title: 'Response Rule',
-    markdownDescription: (0, response_rules_examples_1.generateResponseRuleDescription)(exports.ResponseRuleSchemaBase),
-}));
+});

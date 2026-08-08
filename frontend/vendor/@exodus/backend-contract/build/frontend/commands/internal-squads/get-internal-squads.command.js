@@ -16,4 +16,5 @@ var GetInternalSquadsCommand;
             internalSquads: zod_1.z.array(models_1.InternalSquadSchema),
         }),
     });
+
 })(GetInternalSquadsCommand || (exports.GetInternalSquadsCommand = GetInternalSquadsCommand = {}));

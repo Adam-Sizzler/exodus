@@ -3,7 +3,7 @@ import { UseFormReturnType } from '@mantine/form'
 import {
     CreateNodeCommand,
     GetNodePluginsCommand,
-    GetPubKeyCommand,
+    GetNodeSecretKeyCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
@@ -29,20 +29,22 @@ import { SectionCard } from '@shared/ui/section-card'
 
 import { COUNTRIES } from './constants'
 
-interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {
+interface IProps<T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     nodeUuid: string
-    pubKey: GetPubKeyCommand.Response['response'] | undefined
+    secretKey: GetNodeSecretKeyCommand.Response['response'] | undefined
 }
 
-export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeCommand.Request>(
+export const NodeVitalsCard = <
+    T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody
+>(
     props: IProps<T>
 ) => {
     const { t } = useTranslation()
-    const { cardVariants, form, motionWrapper, nodePlugins, pubKey, nodeUuid } = props
+    const { cardVariants, form, motionWrapper, nodePlugins, secretKey, nodeUuid } = props
 
     const MotionWrapper = motionWrapper
 
@@ -59,7 +61,7 @@ export const NodeVitalsCard = <T extends CreateNodeCommand.Request | UpdateNodeC
     const credentialValue =
         apiSchema === 'tls'
             ? (grpcAuthToken.trim() || 'Error loading...')
-            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
+            : (secretKey?.secretKey.trimEnd() ?? 'Error loading...')
 
     const regenerateGrpcAuthToken = () => {
         const newToken = generateGrpcAuthToken()

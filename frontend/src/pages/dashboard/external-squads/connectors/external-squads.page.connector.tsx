@@ -1,6 +1,6 @@
 import {
     useGetExternalSquads,
-    useGetSubscriptionPageConfigs,
+    useGetSubpageConfigs,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
 import { LoadingScreen } from '@shared/ui'
@@ -10,13 +10,13 @@ import { ExternalSquadsPageComponent } from '../components/external-squads.page.
 export function ExternalSquadsPageConnector() {
     const { data: externalSquads, isLoading: isExternalSquadsLoading } = useGetExternalSquads()
     const { isLoading: isTemplatesLoading } = useGetSubscriptionTemplates()
-    const { isLoading: isSubscriptionPageConfigsLoading } = useGetSubscriptionPageConfigs()
+    const { isLoading: isSubpageConfigsLoading } = useGetSubpageConfigs()
 
     if (
         isExternalSquadsLoading ||
         !externalSquads ||
         isTemplatesLoading ||
-        isSubscriptionPageConfigsLoading
+        isSubpageConfigsLoading
     ) {
         return <LoadingScreen />
     }

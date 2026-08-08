@@ -1,4 +1,5 @@
 import { Loader, Menu } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import { useTranslation } from 'react-i18next'
 import { TbTrash } from 'react-icons/tb'
 
@@ -21,15 +22,27 @@ export function DeleteNodeFeature(props: IProps) {
         }
     })
 
-    const handleDeleteNode = async () => {
-        deleteNode({})
-    }
+    const openModal = () =>
+        modals.openConfirmModal({
+            title: t('common.confirm-action'),
+            children: t('common.confirm-action-description'),
+            labels: {
+                confirm: t('common.delete'),
+                cancel: t('common.cancel')
+            },
+            centered: true,
+            cancelProps: {
+                variant: 'subtle'
+            },
+            confirmProps: { color: 'red', variant: 'soft' },
+            onConfirm: () => deleteNode({})
+        })
 
     return (
         <Menu.Item
-            color="red.5"
+            color="red"
             leftSection={isPending ? <Loader color="red" size="1rem" /> : <TbTrash size="1rem" />}
-            onClick={handleDeleteNode}
+            onClick={openModal}
         >
             {t('common.delete')}
         </Menu.Item>

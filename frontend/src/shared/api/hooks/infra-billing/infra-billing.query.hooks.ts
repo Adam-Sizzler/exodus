@@ -1,8 +1,8 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
-    GetInfraBillingHistoryRecordsCommand,
+    GetInfraBillingRecordsCommand,
     GetInfraBillingNodesCommand,
-    GetInfraProviderByUuidCommand,
+    GetInfraProviderCommand,
     GetInfraProvidersCommand
 } from '@exodus/backend-contract'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
@@ -17,12 +17,10 @@ export const infraBillingQueryKeys = createQueryKeys('infraBilling', {
     getInfraProviders: {
         queryKey: null
     },
-    getInfraProvider: (route: GetInfraProviderByUuidCommand.Request) => ({
+    getInfraProvider: (route: GetInfraProviderCommand.RequestParam) => ({
         queryKey: [route]
     }),
-    getInfraBillingHistoryRecords: (
-        filters: GetInfraBillingHistoryRecordsCommand.RequestQuery
-    ) => ({
+    getInfraBillingHistoryRecords: (filters: GetInfraBillingRecordsCommand.RequestQuery) => ({
         queryKey: [filters]
     }),
     getInfraBillingNodes: {
@@ -42,9 +40,9 @@ export const useGetInfraProviders = createGetQueryHook({
 })
 
 export const useGetInfraProvider = createGetQueryHook({
-    endpoint: GetInfraProviderByUuidCommand.TSQ_url,
-    responseSchema: GetInfraProviderByUuidCommand.ResponseSchema,
-    routeParamsSchema: GetInfraProviderByUuidCommand.RequestSchema,
+    endpoint: GetInfraProviderCommand.TSQ_url,
+    responseSchema: GetInfraProviderCommand.ResponseSchema,
+    routeParamsSchema: GetInfraProviderCommand.RequestParamSchema,
     getQueryKey: ({ route }) => infraBillingQueryKeys.getInfraProvider(route!).queryKey,
     rQueryParams: {
         refetchOnMount: true,
@@ -55,9 +53,9 @@ export const useGetInfraProvider = createGetQueryHook({
 })
 
 export const useGetInfraBillingHistoryRecords = createGetQueryHook({
-    endpoint: GetInfraBillingHistoryRecordsCommand.TSQ_url,
-    responseSchema: GetInfraBillingHistoryRecordsCommand.ResponseSchema,
-    requestQuerySchema: GetInfraBillingHistoryRecordsCommand.RequestQuerySchema,
+    endpoint: GetInfraBillingRecordsCommand.TSQ_url,
+    responseSchema: GetInfraBillingRecordsCommand.ResponseSchema,
+    requestQuerySchema: GetInfraBillingRecordsCommand.RequestQuerySchema,
     getQueryKey: ({ query }) =>
         infraBillingQueryKeys.getInfraBillingHistoryRecords(query!).queryKey,
     rQueryParams: {
@@ -76,17 +74,16 @@ export const useGetInfraBillingHistoryRecordsInfinite = (size = HISTORY_RECORDS_
         queryKey: [...infraBillingQueryKeys.getInfraBillingHistoryRecords._def, 'infinite', size],
         initialPageParam: 0,
         queryFn: async ({ pageParam }) => {
-            const url = createUrl(GetInfraBillingHistoryRecordsCommand.TSQ_url, {
+            const url = createUrl(GetInfraBillingRecordsCommand.TSQ_url, {
                 start: pageParam,
                 size
             })
 
             try {
                 const response = await instance.get(url)
-                const result =
-                    await GetInfraBillingHistoryRecordsCommand.ResponseSchema.safeParseAsync(
-                        response.data
-                    )
+                const result = await GetInfraBillingRecordsCommand.ResponseSchema.safeParseAsync(
+                    response.data
+                )
                 if (!result.success) {
                     throw result.error
                 }

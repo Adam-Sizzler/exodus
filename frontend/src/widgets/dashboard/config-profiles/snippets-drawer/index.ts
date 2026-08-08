@@ -1,1 +1,1 @@
-export * from './snippets.drawer.widget'
+export * from './snippets.widget'

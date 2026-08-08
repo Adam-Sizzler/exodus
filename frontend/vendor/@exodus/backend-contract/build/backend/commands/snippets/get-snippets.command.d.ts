@@ -9,43 +9,9 @@ export declare namespace GetSnippetsCommand {
             snippets: z.ZodArray<z.ZodObject<{
                 name: z.ZodString;
                 snippet: z.ZodUnknown;
-            }, "strip", z.ZodTypeAny, {
-                name: string;
-                snippet?: unknown;
-            }, {
-                name: string;
-                snippet?: unknown;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            snippets: {
-                name: string;
-                snippet?: unknown;
-            }[];
-            total: number;
-        }, {
-            snippets: {
-                name: string;
-                snippet?: unknown;
-            }[];
-            total: number;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            snippets: {
-                name: string;
-                snippet?: unknown;
-            }[];
-            total: number;
-        };
-    }, {
-        response: {
-            snippets: {
-                name: string;
-                snippet?: unknown;
-            }[];
-            total: number;
-        };
-    }>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-snippets.command.d.ts.map

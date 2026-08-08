@@ -1,12 +1,10 @@
 import { ConfigProfilesHeaderActionButtonsFeature } from '@features/ui/dashboard/config-profiles/header-action-buttons'
 import { ConfigProfilesGridWidget } from '@widgets/dashboard/config-profiles/config-profiles-grid/config-profiles-grid.widget'
 import { ConfigProfilesSpotlightWidget } from '@widgets/dashboard/config-profiles/config-profiles-spotlight/config-profiles-spotlight'
-import { SnippetsDrawerWidget } from '@widgets/dashboard/config-profiles/snippets-drawer'
-import { InternalSquadsDrawerWithStore } from '@widgets/dashboard/users/internal-squads-drawer-with-store'
+import { SnippetsWidget } from '@widgets/dashboard/config-profiles/snippets-drawer/snippets.widget'
 import { useTranslation } from 'react-i18next'
 
 import { SingboxLogo } from '@shared/ui/logos'
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 import { Page } from '@shared/ui/page'
 import { PageHeaderShared } from '@shared/ui/page-header/page-header.shared'
 
@@ -42,7 +40,7 @@ export const ConfigPageComponent = (props: Props) => {
             />
 
             {viewMode === CONFIG_PROFILES_VIEW_MODE.SNIPPETS && (
-                <SnippetsDrawerWidget fromMainView={true} />
+                <SnippetsWidget fromMainView={true} />
             )}
 
             {viewMode === CONFIG_PROFILES_VIEW_MODE.PROFILES && (
@@ -52,9 +50,6 @@ export const ConfigPageComponent = (props: Props) => {
             {configProfileCount > 0 && (
                 <ConfigProfilesSpotlightWidget configProfiles={configProfiles} />
             )}
-
-            <RenameModalShared key="rename-config-profile-modal" renameFrom="configProfile" />
-            <InternalSquadsDrawerWithStore key="internal-squads-drawer-with-store" />
         </Page>
     )
 }

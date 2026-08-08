@@ -181,7 +181,7 @@ func defaultOAuth2Settings() map[string]any {
 			"enabled": false, "clientId": nil, "clientSecret": nil, "allowedEmails": []any{},
 		},
 		"pocketid": map[string]any{
-			"enabled": false, "clientId": nil, "clientSecret": nil, "plainDomain": nil, "allowedEmails": []any{},
+			"enabled": false, "clientId": nil, "clientSecret": nil, "plainDomain": nil, "frontendDomain": nil, "allowedEmails": []any{},
 		},
 		"yandex": map[string]any{
 			"enabled": false, "clientId": nil, "clientSecret": nil, "allowedEmails": []any{},

@@ -1,6 +1,6 @@
 {
   "name": "@exodus/backend-contract",
-  "version": "2.8.35",
+  "version": "3.0.0",
   "description": "A contract library for Exodus Backend. It can be used in backend and frontend.",
   "keywords": [],
   "homepage": "https://github.com/exodus",
@@ -27,7 +27,7 @@
     "prepublish": "npm run build"
   },
   "dependencies": {
-    "zod": "3.25.76"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "typescript": "5.9.3"

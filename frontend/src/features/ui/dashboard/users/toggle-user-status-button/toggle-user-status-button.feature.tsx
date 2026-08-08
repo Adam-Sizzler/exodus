@@ -1,23 +1,25 @@
 import { Loader, Menu } from '@mantine/core'
-import { USERS_STATUS } from '@exodus/backend-contract'
+import { GetUserByIdCommand, USERS_STATUS } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import { PiCellSignalFullDuotone, PiCellSignalSlashDuotone, PiTrashDuotone } from 'react-icons/pi'
 
 import { queryClient } from '@shared/api'
 import { useDisableUser, useEnableUser, usersQueryKeys } from '@shared/api/hooks'
 
-import { IProps } from './interfaces'
+interface IProps {
+    user: GetUserByIdCommand.Response['response']
+}
 
 export function ToggleUserStatusButtonFeature(props: IProps) {
     const { t } = useTranslation()
 
     const { user } = props
-    const { uuid } = user
+    const { id } = user
 
     const { mutate: disableUser, isPending: isDisableUserPending } = useDisableUser({
         mutationFns: {
             onSuccess: (data) => {
-                queryClient.setQueryData(usersQueryKeys.getUserByUuid({ uuid }).queryKey, data)
+                queryClient.setQueryData(usersQueryKeys.getUserById({ userId: id }).queryKey, data)
             }
         }
     })
@@ -25,7 +27,7 @@ export function ToggleUserStatusButtonFeature(props: IProps) {
     const { mutate: enableUser, isPending: isEnableUserPending } = useEnableUser({
         mutationFns: {
             onSuccess: (data) => {
-                queryClient.setQueryData(usersQueryKeys.getUserByUuid({ uuid }).queryKey, data)
+                queryClient.setQueryData(usersQueryKeys.getUserById({ userId: id }).queryKey, data)
             }
         }
     })
@@ -46,9 +48,9 @@ export function ToggleUserStatusButtonFeature(props: IProps) {
 
     const handleToggleUserStatus = async () => {
         if (user.status !== USERS_STATUS.DISABLED) {
-            disableUser({ route: { uuid } })
+            disableUser({ route: { userId: id } })
         } else {
-            enableUser({ route: { uuid } })
+            enableUser({ route: { userId: id } })
         }
     }
 

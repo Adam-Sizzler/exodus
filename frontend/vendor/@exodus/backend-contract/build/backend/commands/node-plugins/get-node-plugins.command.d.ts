@@ -7,59 +7,13 @@ export declare namespace GetNodePluginsCommand {
         response: z.ZodObject<{
             total: z.ZodNumber;
             nodePlugins: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 viewPosition: z.ZodNumber;
                 name: z.ZodString;
                 pluginConfig: z.ZodNullable<z.ZodUnknown>;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                pluginConfig?: unknown;
-            }, {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                pluginConfig?: unknown;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            total: number;
-            nodePlugins: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                pluginConfig?: unknown;
-            }[];
-        }, {
-            total: number;
-            nodePlugins: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                pluginConfig?: unknown;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            total: number;
-            nodePlugins: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                pluginConfig?: unknown;
-            }[];
-        };
-    }, {
-        response: {
-            total: number;
-            nodePlugins: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                pluginConfig?: unknown;
-            }[];
-        };
-    }>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-node-plugins.command.d.ts.map

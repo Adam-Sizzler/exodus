@@ -10,13 +10,13 @@ var CreateSnippetCommand;
     CreateSnippetCommand.url = api_1.REST_API.SNIPPETS.CREATE;
     CreateSnippetCommand.TSQ_url = CreateSnippetCommand.url;
     CreateSnippetCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SNIPPETS_ROUTES.CREATE, 'post', 'Create snippet', { scope: 'create', kind: 'write' });
-    CreateSnippetCommand.RequestSchema = zod_1.z.object({
+    CreateSnippetCommand.RequestBodySchema = zod_1.z.object({
         name: zod_1.z
             .string()
-            .min(2, 'Name must be at least 2 characters')
-            .max(255, 'Name must be less than 255 characters')
+            .min(2)
+            .max(255)
             .regex(/^[A-Za-z0-9_\s-]+$/, 'Name can only contain letters, numbers, underscores, dashes and spaces'),
-        snippet: zod_1.z.array(zod_1.z.object({}).passthrough()),
+        snippet: zod_1.z.array(zod_1.z.looseObject({})),
     });
     CreateSnippetCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
@@ -24,4 +24,5 @@ var CreateSnippetCommand;
             snippets: zod_1.z.array(models_1.SnippetsSchema),
         }),
     });
+
 })(CreateSnippetCommand || (exports.CreateSnippetCommand = CreateSnippetCommand = {}));

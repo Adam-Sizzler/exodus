@@ -4,6 +4,7 @@ import { apiTokensQueryKeys } from './api-tokens/api-tokens.query.hooks'
 import { authQueryKeys } from './auth/auth.query.hooks'
 import { bandwidthStatsQueryKeys } from './bandwidth-stats/bandwidth-stats.query.hooks'
 import { configProfilesQueryKeys } from './config-profiles/config-profiles.query.hooks'
+import { connectionsQueryKeys } from './connections/connections.query.hooks'
 import { externalSquadsQueryKeys } from './external-squads/external-squads.query.hooks'
 import { hostsQueryKeys } from './hosts/hosts.query.hooks'
 import { hwidUserDevicesQueryKeys } from './hwid-user-devices/hwid-user-devices.query.hooks'
@@ -43,6 +44,7 @@ export const QueryKeys = mergeQueryKeys(
     passkeysQueryKeys,
     subpageConfigsQueryKeys,
     bandwidthStatsQueryKeys,
+    connectionsQueryKeys,
     nodePluginsQueryKeys,
     subscriptionConnectionsQueryKeys,
     srsListsQueryKeys

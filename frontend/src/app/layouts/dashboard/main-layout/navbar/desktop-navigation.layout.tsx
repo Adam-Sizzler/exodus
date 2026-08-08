@@ -61,12 +61,16 @@ export const DesktopNavigation = () => {
                     )
                 }
 
+                const firstItem = section.section.find((item) => !item.newTab)
+                const firstSectionHref = firstItem?.dropdownItems?.[0]?.href ?? firstItem?.href
+
                 return (
                     <Menubar.Menu key={section.id} width={250} withinPortal>
                         <Menubar.Target
                             className={clsx(classes.navItem, {
                                 [classes.navItemActive]: sectionActive
                             })}
+                            {...(firstSectionHref ? { component: Link, to: firstSectionHref } : {})}
                         >
                             <NavIcon icon={section.icon} />
                             <span>{section.header}</span>

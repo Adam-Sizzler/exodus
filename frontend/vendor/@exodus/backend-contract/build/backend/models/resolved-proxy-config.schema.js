@@ -15,7 +15,7 @@ exports.ShadowsocksProtocolOptionsSchema = zod_1.z.object({
     method: zod_1.z.string(),
     password: zod_1.z.string(),
     uot: zod_1.z.boolean(),
-    uotVersion: zod_1.z.number().int(),
+    uotVersion: zod_1.z.int(),
 });
 const TcpHeaderNoneSchema = zod_1.z.object({
     type: zod_1.z.literal('none'),
@@ -24,13 +24,13 @@ const TcpHeaderHttpRequestSchema = zod_1.z.object({
     version: zod_1.z.string().optional(),
     method: zod_1.z.string().optional(),
     path: zod_1.z.array(zod_1.z.string()).optional(),
-    headers: zod_1.z.record(zod_1.z.unknown()).optional(),
+    headers: zod_1.z.record(zod_1.z.string(), zod_1.z.unknown()).optional(),
 });
 const TcpHeaderHttpResponseSchema = zod_1.z.object({
     version: zod_1.z.string().optional(),
     status: zod_1.z.string().optional(),
     reason: zod_1.z.string().optional(),
-    headers: zod_1.z.record(zod_1.z.unknown()).optional(),
+    headers: zod_1.z.record(zod_1.z.string(), zod_1.z.unknown()).optional(),
 });
 const TcpHeaderHttpSchema = zod_1.z.object({
     type: zod_1.z.literal('http'),
@@ -45,18 +45,18 @@ exports.XhttpTransportOptionsSchema = zod_1.z.object({
     path: zod_1.z.string().nullable(),
     host: zod_1.z.string().nullable(),
     mode: zod_1.z.enum(['auto', 'packet-up', 'stream-up', 'stream-one']),
-    extra: zod_1.z.record(zod_1.z.unknown()).nullable(),
+    extra: zod_1.z.record(zod_1.z.string(), zod_1.z.unknown()).nullable(),
 });
 exports.WsTransportOptionsSchema = zod_1.z.object({
     path: zod_1.z.string().nullable(),
     host: zod_1.z.string().nullable(),
-    headers: zod_1.z.record(zod_1.z.string()).nullable(),
+    headers: zod_1.z.record(zod_1.z.string(), zod_1.z.string()).nullable(),
     heartbeatPeriod: zod_1.z.number().nullable(),
 });
 exports.HttpUpgradeTransportOptionsSchema = zod_1.z.object({
     path: zod_1.z.string().nullable(),
     host: zod_1.z.string().nullable(),
-    headers: zod_1.z.record(zod_1.z.string()).nullable(),
+    headers: zod_1.z.record(zod_1.z.string(), zod_1.z.string()).nullable(),
 });
 exports.GrpcTransportOptionsSchema = zod_1.z.object({
     authority: zod_1.z.string().nullable(),
@@ -64,15 +64,15 @@ exports.GrpcTransportOptionsSchema = zod_1.z.object({
     multiMode: zod_1.z.boolean(),
 });
 exports.KcpTransportOptionsSchema = zod_1.z.object({
-    clientMtu: zod_1.z.number().int(),
-    clientTti: zod_1.z.number().int(),
+    clientMtu: zod_1.z.int(),
+    clientTti: zod_1.z.int(),
     congestion: zod_1.z.boolean(),
 });
 exports.HysteriaProtocolOptionsSchema = zod_1.z.object({
-    version: zod_1.z.number().int(),
+    version: zod_1.z.int(),
 });
 exports.HysteriaTransportOptionsSchema = zod_1.z.object({
-    version: zod_1.z.number().int(),
+    version: zod_1.z.int(),
     auth: zod_1.z.string(),
 });
 exports.TlsSecurityOptionsSchema = zod_1.z.object({
@@ -84,6 +84,7 @@ exports.TlsSecurityOptionsSchema = zod_1.z.object({
     serverName: zod_1.z.string().nullable(),
     echConfigList: zod_1.z.string().nullable(),
     echForceQuery: zod_1.z.string().nullable(),
+    echSockopt: zod_1.z.nullable(zod_1.z.unknown()),
 });
 exports.RealitySecurityOptionsSchema = zod_1.z.object({
     fingerprint: zod_1.z.string(),
@@ -169,23 +170,23 @@ exports.SecurityVariantSchema = zod_1.z.discriminatedUnion('security', [
     NoneSecuritySchema,
 ]);
 exports.ProxyEntryMetadataSchema = zod_1.z.object({
-    uuid: zod_1.z.string().uuid(),
+    uuid: zod_1.z.uuid(),
     tags: zod_1.z.array(zod_1.z.string()),
-    excludeFromSubscriptionTypes: zod_1.z.array(zod_1.z.nativeEnum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)),
+    excludeFromSubscriptionTypes: zod_1.z.array(zod_1.z.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)),
     inboundTag: zod_1.z.string(),
-    configProfileUuid: zod_1.z.string().uuid().nullable(),
-    configProfileInboundUuid: zod_1.z.string().uuid().nullable(),
+    configProfileUuid: zod_1.z.uuid().nullable(),
+    configProfileInboundUuid: zod_1.z.uuid().nullable(),
     isDisabled: zod_1.z.boolean(),
     isHidden: zod_1.z.boolean(),
-    viewPosition: zod_1.z.number().int(),
+    viewPosition: zod_1.z.int(),
     remark: zod_1.z.string(),
-    vlessRouteId: zod_1.z.number().int().nullable(),
+    vlessRouteId: zod_1.z.int().nullable(),
     rawInbound: zod_1.z.nullable(zod_1.z.unknown()),
 });
 exports.ResolvedProxyConfigSchema = zod_1.z.object({
     finalRemark: zod_1.z.string(),
     address: zod_1.z.string(),
-    port: zod_1.z.number().int().positive(),
+    port: zod_1.z.int().positive(),
     protocol: zod_1.z.enum(['vless', 'trojan', 'shadowsocks', 'hysteria']),
     protocolOptions: zod_1.z.union([
         exports.VlessProtocolOptionsSchema,
@@ -213,7 +214,7 @@ exports.ResolvedProxyConfigSchema = zod_1.z.object({
     clientOverrides: zod_1.z.object({
         shuffleHost: zod_1.z.boolean(),
         mihomoX25519: zod_1.z.boolean(),
-        mihomoIpVersion: zod_1.z.nativeEnum(constants_1.MIHOMO_IP_VERSION).nullable(),
+        mihomoIpVersion: zod_1.z.enum(constants_1.MIHOMO_IP_VERSION).nullable(),
         serverDescription: zod_1.z.string().nullable(),
         xrayJsonTemplate: zod_1.z.nullable(zod_1.z.unknown()),
     }),

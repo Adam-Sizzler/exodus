@@ -11,13 +11,15 @@ import { TrafficLimitInput } from '@shared/ui/forms/traffic-limit-input'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
-interface IProps<T extends CreateUserCommand.Request | UpdateUserCommand.Request> {
+interface IProps<T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 
-export const TrafficLimitsCard = <T extends CreateUserCommand.Request | UpdateUserCommand.Request>(
+export const TrafficLimitsCard = <
+    T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody
+>(
     props: IProps<T>
 ) => {
     const { t } = useTranslation()

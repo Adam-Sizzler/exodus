@@ -2,7 +2,7 @@ import { Anchor, Checkbox, Code, Input, NumberInput, Stack, Text, Textarea } fro
 import { UseFormReturnType } from '@mantine/form'
 import {
     CreateUserCommand,
-    GetAllTagsCommand,
+    GetUsersTagsCommand,
     UpdateUserCommand
 } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
@@ -13,15 +13,15 @@ import { CreateableTagInputShared } from '@shared/ui/createable-tag-input/create
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
-interface IProps<T extends CreateUserCommand.Request | UpdateUserCommand.Request> {
+interface IProps<T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
-    tags: GetAllTagsCommand.Response['response'] | undefined
+    tags: GetUsersTagsCommand.Response['response'] | undefined
 }
 
 export function DeviceTagSettingsCard<
-    T extends CreateUserCommand.Request | UpdateUserCommand.Request
+    T extends CreateUserCommand.RequestBody | UpdateUserCommand.RequestBody
 >(props: IProps<T>) {
     const { t } = useTranslation()
 

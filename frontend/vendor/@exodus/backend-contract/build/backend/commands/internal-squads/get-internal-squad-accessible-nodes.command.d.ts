@@ -3,85 +3,23 @@ export declare namespace GetInternalSquadAccessibleNodesCommand {
     const url: (uuid: string) => string;
     const TSQ_url: string;
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    const RequestParamSchema: z.ZodObject<{
+        uuid: z.ZodUUID;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            squadUuid: z.ZodString;
+            squadUuid: z.ZodUUID;
             accessibleNodes: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 nodeName: z.ZodString;
                 countryCode: z.ZodString;
-                configProfileUuid: z.ZodString;
+                configProfileUuid: z.ZodUUID;
                 configProfileName: z.ZodString;
-                activeInbounds: z.ZodArray<z.ZodString, "many">;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                nodeName: string;
-                countryCode: string;
-                configProfileUuid: string;
-                activeInbounds: string[];
-                configProfileName: string;
-            }, {
-                uuid: string;
-                nodeName: string;
-                countryCode: string;
-                configProfileUuid: string;
-                activeInbounds: string[];
-                configProfileName: string;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            squadUuid: string;
-            accessibleNodes: {
-                uuid: string;
-                nodeName: string;
-                countryCode: string;
-                configProfileUuid: string;
-                activeInbounds: string[];
-                configProfileName: string;
-            }[];
-        }, {
-            squadUuid: string;
-            accessibleNodes: {
-                uuid: string;
-                nodeName: string;
-                countryCode: string;
-                configProfileUuid: string;
-                activeInbounds: string[];
-                configProfileName: string;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            squadUuid: string;
-            accessibleNodes: {
-                uuid: string;
-                nodeName: string;
-                countryCode: string;
-                configProfileUuid: string;
-                activeInbounds: string[];
-                configProfileName: string;
-            }[];
-        };
-    }, {
-        response: {
-            squadUuid: string;
-            accessibleNodes: {
-                uuid: string;
-                nodeName: string;
-                countryCode: string;
-                configProfileUuid: string;
-                activeInbounds: string[];
-                configProfileName: string;
-            }[];
-        };
-    }>;
+                activeInbounds: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParam = z.infer<typeof RequestParamSchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-internal-squad-accessible-nodes.command.d.ts.map

@@ -50,8 +50,8 @@ export const SnippetsGridWidget = (props: IProps) => {
                 cancel: t('common.cancel')
             },
             centered: true,
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             onConfirm: () => {
                 deleteSnippet({
                     variables: {

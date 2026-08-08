@@ -13,7 +13,7 @@ export const externalSquadsQueryKeys = createQueryKeys('externalSquads', {
     getExternalSquads: {
         queryKey: null
     },
-    getExternalSquad: (route: GetExternalSquadByUuidCommand.Request) => ({
+    getExternalSquad: (route: GetExternalSquadByUuidCommand.RequestParam) => ({
         queryKey: [route]
     })
 })
@@ -34,7 +34,7 @@ export const useGetExternalSquads = createGetQueryHook({
 export const useGetExternalSquad = createGetQueryHook({
     endpoint: GetExternalSquadByUuidCommand.TSQ_url,
     responseSchema: GetExternalSquadByUuidCommand.ResponseSchema,
-    routeParamsSchema: GetExternalSquadByUuidCommand.RequestSchema,
+    routeParamsSchema: GetExternalSquadByUuidCommand.RequestParamSchema,
     getQueryKey: ({ route }) => externalSquadsQueryKeys.getExternalSquad(route!).queryKey,
     rQueryParams: {
         refetchOnMount: false,

@@ -9,12 +9,8 @@ var DeleteSubscriptionTemplateCommand;
     DeleteSubscriptionTemplateCommand.url = api_1.REST_API.SUBSCRIPTION_TEMPLATE.DELETE;
     DeleteSubscriptionTemplateCommand.TSQ_url = DeleteSubscriptionTemplateCommand.url(':uuid');
     DeleteSubscriptionTemplateCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.SUBSCRIPTION_TEMPLATE_ROUTES.DELETE(':uuid'), 'delete', 'Delete subscription template', { scope: 'delete', kind: 'write' });
-    DeleteSubscriptionTemplateCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteSubscriptionTemplateCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    DeleteSubscriptionTemplateCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            isDeleted: zod_1.z.boolean(),
-        }),
-    });
+
 })(DeleteSubscriptionTemplateCommand || (exports.DeleteSubscriptionTemplateCommand = DeleteSubscriptionTemplateCommand = {}));

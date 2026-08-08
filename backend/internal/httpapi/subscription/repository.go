@@ -26,12 +26,10 @@ func loadSubscriptionSettings(ctx context.Context, dbConn *sql.DB, _ *config.Bac
 	var parsed SubscriptionSettingsParsed
 
 	row := dbConn.QueryRowContext(ctx, `
-		SELECT uuid, profile_title, support_link, profile_update_interval,
-			   address, port, api_schema, api_path,
-			   happ_announce, happ_routing, created_at, updated_at,
-			   is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-			   is_show_custom_remarks, custom_response_headers, randomize_hosts,
-			   response_rules, hwid_settings, custom_remarks
+		SELECT uuid, address, port, api_schema, api_path,
+			   serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+			   custom_response_headers, randomize_hosts, response_rules, hwid_settings,
+			   created_at, updated_at
 		FROM subscription_settings
 		ORDER BY created_at ASC
 		LIMIT 1
@@ -39,7 +37,36 @@ func loadSubscriptionSettings(ctx context.Context, dbConn *sql.DB, _ *config.Bac
 
 	settings, err := subscriptionsettings.ScanSubscriptionSettings(row)
 	if err != nil {
-		return parsed, err
+		if errors.Is(err, sql.ErrNoRows) {
+			_, _ = dbConn.ExecContext(ctx, `
+				INSERT INTO subscription_settings (
+					uuid, address, port, api_schema, api_path,
+					serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+					custom_response_headers, randomize_hosts, response_rules, hwid_settings
+				) VALUES (
+					'00000000-0000-0000-0000-000000000000', '', 9263, 'grpc', '',
+					false, true, '{}'::jsonb,
+					'{"profile-title":"exEncodeBase64:exodus","support-url":"https://github.com","profile-update-interval":"12"}'::jsonb,
+					false, '[]'::jsonb, '{}'::jsonb
+				) ON CONFLICT DO NOTHING
+			`)
+			rowRetry := dbConn.QueryRowContext(ctx, `
+				SELECT uuid, address, port, api_schema, api_path,
+					   serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+					   custom_response_headers, randomize_hosts, response_rules, hwid_settings,
+					   created_at, updated_at
+				FROM subscription_settings
+				ORDER BY created_at ASC
+				LIMIT 1
+			`)
+			if sRetry, errRetry := subscriptionsettings.ScanSubscriptionSettings(rowRetry); errRetry == nil {
+				settings = sRetry
+				err = nil
+			}
+		}
+		if err != nil {
+			return parsed, err
+		}
 	}
 
 	parsed.Raw = settings
@@ -162,15 +189,17 @@ func getSubscriptionUserByUsername(ctx context.Context, dbConn *sql.DB, username
 	return getSubscriptionUserByField(ctx, dbConn, "username", username)
 }
 
-func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field string, value string) (SubscriptionUser, error) {
+func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field string, value any) (SubscriptionUser, error) {
 	var user SubscriptionUser
 
 	var where string
 	switch field {
+	case "id":
+		where = "u.id = $1"
 	case "short_uuid":
 		where = "u.short_uuid = $1"
 	case "uuid":
-		where = "u.uuid = $1"
+		where = "u.uuid::text = $1 OR u.short_uuid = $1 OR u.username = $1"
 	case "username":
 		where = "u.username = $1"
 	default:
@@ -178,14 +207,14 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 	}
 
 	query := fmt.Sprintf(`
-		SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
+		SELECT u.id, u.uuid, u.short_uuid, u.username, u.status,
 			   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
 			   u.trojan_password, u.vless_uuid, u.ss_password,
 			   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
 			   u.hwid_device_limit, u.external_squad_uuid,
 			   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
 		FROM users u
-		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		LEFT JOIN user_traffic ut ON ut.id = u.id
 		WHERE %s
 		LIMIT 1
 	`, where)
@@ -641,14 +670,14 @@ func getUsersWithPagination(ctx context.Context, dbConn *sql.DB, start, size int
 	}
 
 	rows, err := dbConn.QueryContext(ctx, `
-		SELECT u.t_id, u.uuid, u.short_uuid, u.username, u.status,
+		SELECT u.id, u.uuid, u.short_uuid, u.username, u.status,
 			   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
 			   u.trojan_password, u.vless_uuid, u.ss_password,
 			   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
 			   u.hwid_device_limit, u.external_squad_uuid,
 			   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
 		FROM users u
-		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		LEFT JOIN user_traffic ut ON ut.id = u.id
 		ORDER BY u.created_at DESC
 		LIMIT $1 OFFSET $2
 	`, size, start)
@@ -971,6 +1000,12 @@ func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsPa
 }
 
 func formatTemplateValue(value string, user SubscriptionUser, _ SubscriptionSettingsParsed, subscriptionURL string) string {
+	shouldBase64 := false
+	if strings.HasPrefix(value, "exEncodeBase64:") {
+		shouldBase64 = true
+		value = strings.TrimPrefix(value, "exEncodeBase64:")
+	}
+
 	replacer := strings.NewReplacer(
 		"{USERNAME}", user.Username,
 		"{{username}}", user.Username,
@@ -979,7 +1014,12 @@ func formatTemplateValue(value string, user SubscriptionUser, _ SubscriptionSett
 		"{SUBSCRIPTION_URL}", subscriptionURL,
 		"{{subscriptionUrl}}", subscriptionURL,
 	)
-	return replacer.Replace(value)
+	res := replacer.Replace(value)
+
+	if shouldBase64 {
+		return "base64:" + base64.StdEncoding.EncodeToString([]byte(res))
+	}
+	return res
 }
 
 func getSubscriptionUserInfo(user SubscriptionUser) map[string]int64 {

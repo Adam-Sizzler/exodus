@@ -10,7 +10,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useUpdateConfigProfile = createMutationHook({
     endpoint: UpdateConfigProfileCommand.TSQ_url,
-    bodySchema: UpdateConfigProfileCommand.RequestSchema,
+    bodySchema: UpdateConfigProfileCommand.RequestBodySchema,
     responseSchema: UpdateConfigProfileCommand.ResponseSchema,
     requestMethod: UpdateConfigProfileCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -34,8 +34,7 @@ export const useUpdateConfigProfile = createMutationHook({
 
 export const useDeleteConfigProfile = createMutationHook({
     endpoint: DeleteConfigProfileCommand.TSQ_url,
-    responseSchema: DeleteConfigProfileCommand.ResponseSchema,
-    routeParamsSchema: DeleteConfigProfileCommand.RequestSchema,
+    routeParamsSchema: DeleteConfigProfileCommand.RequestParamSchema,
     requestMethod: DeleteConfigProfileCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -59,7 +58,7 @@ export const useDeleteConfigProfile = createMutationHook({
 export const useCreateConfigProfile = createMutationHook({
     endpoint: CreateConfigProfileCommand.TSQ_url,
     responseSchema: CreateConfigProfileCommand.ResponseSchema,
-    bodySchema: CreateConfigProfileCommand.RequestSchema,
+    bodySchema: CreateConfigProfileCommand.RequestBodySchema,
     requestMethod: CreateConfigProfileCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -82,7 +81,7 @@ export const useCreateConfigProfile = createMutationHook({
 
 export const useReorderConfigProfiles = createMutationHook({
     endpoint: ReorderConfigProfileCommand.TSQ_url,
-    bodySchema: ReorderConfigProfileCommand.RequestSchema,
+    bodySchema: ReorderConfigProfileCommand.RequestBodySchema,
     responseSchema: ReorderConfigProfileCommand.ResponseSchema,
     requestMethod: ReorderConfigProfileCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

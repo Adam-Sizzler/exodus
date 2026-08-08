@@ -306,6 +306,21 @@ func (s *UserService) BulkAllResetUsersTraffic(ctx context.Context) (int64, erro
 	return affectedRows, nil
 }
 
+func (s *UserService) ExtendUserExpirationDate(ctx context.Context, identifier string, extendDays int) error {
+	affectedRows, nodeUUIDs, err := s.repo.extendUsersExpirationByUUIDs(ctx, []string{identifier}, extendDays)
+	if err != nil {
+		return err
+	}
+	if affectedRows == 0 {
+		return errUserNotFound
+	}
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(true, nodeUUIDs...)
+	}
+	emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserModified, []string{identifier})
+	return nil
+}
+
 func (s *UserService) BulkExtendUsersExpirationDate(ctx context.Context, uuids []string, extendDays int) (int64, error) {
 	affectedRows, nodeUUIDs, err := s.repo.extendUsersExpirationByUUIDs(ctx, uuids, extendDays)
 	if err != nil {

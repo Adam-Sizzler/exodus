@@ -10,7 +10,6 @@ const DEFAULT_VISIBILITY: MRT_VisibilityState = {
     description: false,
     telegramId: false,
     email: false,
-    uuid: false,
     externalSquadUuid: false,
     vlessUuid: false,
     trojanPassword: false,
@@ -34,10 +33,11 @@ const DEFAULT_COLUMN_SIZE: MRT_ColumnSizingState = {
 
 export const useUsersTableStore = createMrtTableStore({
     name: 'x-rmnw-users-table',
-    version: 11,
+    version: 13,
     defaults: {
         columnVisibility: DEFAULT_VISIBILITY,
-        columnSize: DEFAULT_COLUMN_SIZE
+        columnSize: DEFAULT_COLUMN_SIZE,
+        sorting: [{ id: 'id', desc: true }]
     }
 })
 

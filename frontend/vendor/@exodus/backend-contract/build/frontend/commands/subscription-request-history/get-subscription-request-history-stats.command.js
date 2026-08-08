@@ -16,12 +16,11 @@ var GetSubscriptionRequestHistoryStatsCommand;
                 count: zod_1.z.number(),
             })),
             hourlyRequestStats: zod_1.z.array(zod_1.z.object({
-                dateTime: zod_1.z
-                    .string()
-                    .datetime()
+                dateTime: zod_1.z.iso.datetime()
                     .transform((str) => new Date(str)),
                 requestCount: zod_1.z.number(),
             })),
         }),
     });
+
 })(GetSubscriptionRequestHistoryStatsCommand || (exports.GetSubscriptionRequestHistoryStatsCommand = GetSubscriptionRequestHistoryStatsCommand = {}));

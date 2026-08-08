@@ -9,7 +9,7 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const usePasskeyRegistrationVerify = createMutationHook({
     endpoint: VerifyPasskeyRegistrationCommand.TSQ_url,
-    bodySchema: VerifyPasskeyRegistrationCommand.RequestSchema,
+    bodySchema: VerifyPasskeyRegistrationCommand.RequestBodySchema,
     responseSchema: VerifyPasskeyRegistrationCommand.ResponseSchema,
     requestMethod: VerifyPasskeyRegistrationCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
@@ -25,8 +25,7 @@ export const usePasskeyRegistrationVerify = createMutationHook({
 
 export const useDeletePasskey = createMutationHook({
     endpoint: DeletePasskeyCommand.TSQ_url,
-    bodySchema: DeletePasskeyCommand.RequestSchema,
-    responseSchema: DeletePasskeyCommand.ResponseSchema,
+    bodySchema: DeletePasskeyCommand.RequestBodySchema,
     requestMethod: DeletePasskeyCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {
@@ -41,7 +40,7 @@ export const useDeletePasskey = createMutationHook({
 
 export const useUpdatePasskey = createMutationHook({
     endpoint: UpdatePasskeyCommand.TSQ_url,
-    bodySchema: UpdatePasskeyCommand.RequestSchema,
+    bodySchema: UpdatePasskeyCommand.RequestBodySchema,
     responseSchema: UpdatePasskeyCommand.ResponseSchema,
     requestMethod: UpdatePasskeyCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

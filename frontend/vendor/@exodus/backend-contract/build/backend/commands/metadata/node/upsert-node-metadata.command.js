@@ -10,14 +10,15 @@ var UpsertNodeMetadataCommand;
     UpsertNodeMetadataCommand.TSQ_url = UpsertNodeMetadataCommand.url(':uuid');
     UpsertNodeMetadataCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.METADATA_ROUTES.NODE.UPSERT(':uuid'), 'put', 'Update or create Node Metadata', { scope: 'upsert-node', kind: 'write' });
     UpsertNodeMetadataCommand.RequestParamsSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+        uuid: zod_1.z.uuid(),
     });
     UpsertNodeMetadataCommand.RequestBodySchema = zod_1.z.object({
-        metadata: zod_1.z.object({}).passthrough(),
+        metadata: zod_1.z.looseObject({}),
     });
     UpsertNodeMetadataCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
-            metadata: zod_1.z.object({}).passthrough(),
+            metadata: zod_1.z.looseObject({}),
         }),
     });
+
 })(UpsertNodeMetadataCommand || (exports.UpsertNodeMetadataCommand = UpsertNodeMetadataCommand = {}));

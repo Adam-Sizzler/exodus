@@ -2,11 +2,10 @@ import type { editor } from 'monaco-editor'
 
 import { MonacoSetupSnippetsFeature } from '@features/dashboard/config-profiles/monaco-setup'
 import { Button, Code, Group, Paper, Stack, TextInput } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import { Editor, Monaco, useMonaco } from '@monaco-editor/react'
 import { CreateSnippetCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,11 +24,11 @@ export const CreateSnippetModal = () => {
     const monaco = useMonaco()
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
 
-    const createSnippetForm = useForm<CreateSnippetCommand.Request>({
+    const createSnippetForm = useForm<CreateSnippetCommand.RequestBody>({
         name: 'create-snippet-form',
         mode: 'uncontrolled',
         validateInputOnBlur: true,
-        validate: zodResolver(CreateSnippetCommand.RequestSchema),
+        validate: schemaResolver(CreateSnippetCommand.RequestBodySchema),
         initialValues: {
             name: '',
             snippet: []
@@ -52,7 +51,7 @@ export const CreateSnippetModal = () => {
         }
     })
 
-    const handleCreate = (values: CreateSnippetCommand.Request) => {
+    const handleCreate = (values: CreateSnippetCommand.RequestBody) => {
         if (!editorRef.current) return
 
         let currentValue = editorRef.current.getValue()

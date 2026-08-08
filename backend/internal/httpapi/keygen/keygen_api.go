@@ -68,6 +68,7 @@ func KeygenHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{
 				"pubKey":    payload,
+				"secretKey": payload,
 				"grpcToken": grpcToken,
 			},
 		})

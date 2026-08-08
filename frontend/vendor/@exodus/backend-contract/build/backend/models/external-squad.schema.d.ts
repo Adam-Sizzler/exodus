@@ -1,18 +1,14 @@
 import { z } from 'zod';
 export declare const ExternalSquadSchema: z.ZodObject<{
-    uuid: z.ZodString;
-    viewPosition: z.ZodNumber;
+    uuid: z.ZodUUID;
+    viewPosition: z.ZodInt;
     name: z.ZodString;
     info: z.ZodObject<{
         membersCount: z.ZodNumber;
-    }, "strip", z.ZodTypeAny, {
-        membersCount: number;
-    }, {
-        membersCount: number;
-    }>;
+    }, z.core.$strip>;
     templates: z.ZodArray<z.ZodObject<{
-        templateUuid: z.ZodString;
-        templateType: z.ZodNativeEnum<{
+        templateUuid: z.ZodUUID;
+        templateType: z.ZodEnum<{
             readonly XRAY_JSON: "XRAY_JSON";
             readonly XRAY_BASE64: "XRAY_BASE64";
             readonly MIHOMO: "MIHOMO";
@@ -20,178 +16,33 @@ export declare const ExternalSquadSchema: z.ZodObject<{
             readonly CLASH: "CLASH";
             readonly SINGBOX: "SINGBOX";
         }>;
-    }, "strip", z.ZodTypeAny, {
-        templateUuid: string;
-        templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-    }, {
-        templateUuid: string;
-        templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-    }>, "many">;
+    }, z.core.$strip>>;
     subscriptionSettings: z.ZodNullable<z.ZodObject<{
-        profileTitle: z.ZodOptional<z.ZodString>;
-        supportLink: z.ZodOptional<z.ZodString>;
-        profileUpdateInterval: z.ZodOptional<z.ZodNumber>;
-        isProfileWebpageUrlEnabled: z.ZodOptional<z.ZodBoolean>;
         serveJsonAtBaseSubscription: z.ZodOptional<z.ZodBoolean>;
         isShowCustomRemarks: z.ZodOptional<z.ZodBoolean>;
-        happAnnounce: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        happRouting: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         randomizeHosts: z.ZodOptional<z.ZodBoolean>;
-    }, "strip", z.ZodTypeAny, {
-        profileTitle?: string | undefined;
-        supportLink?: string | undefined;
-        profileUpdateInterval?: number | undefined;
-        isProfileWebpageUrlEnabled?: boolean | undefined;
-        serveJsonAtBaseSubscription?: boolean | undefined;
-        isShowCustomRemarks?: boolean | undefined;
-        happAnnounce?: string | null | undefined;
-        happRouting?: string | null | undefined;
-        randomizeHosts?: boolean | undefined;
-    }, {
-        profileTitle?: string | undefined;
-        supportLink?: string | undefined;
-        profileUpdateInterval?: number | undefined;
-        isProfileWebpageUrlEnabled?: boolean | undefined;
-        serveJsonAtBaseSubscription?: boolean | undefined;
-        isShowCustomRemarks?: boolean | undefined;
-        happAnnounce?: string | null | undefined;
-        happRouting?: string | null | undefined;
-        randomizeHosts?: boolean | undefined;
-    }>>;
+    }, z.core.$strip>>;
     hostOverrides: z.ZodNullable<z.ZodObject<{
         serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        vlessRouteId: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-    }, "strip", z.ZodTypeAny, {
-        serverDescription?: string | null | undefined;
-        vlessRouteId?: number | null | undefined;
-    }, {
-        serverDescription?: string | null | undefined;
-        vlessRouteId?: number | null | undefined;
-    }>>;
-    responseHeaders: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>;
+        vlessRouteId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    }, z.core.$strip>>;
+    responseHeadersAdd: z.ZodRecord<z.ZodString, z.ZodString>;
+    responseHeadersRemove: z.ZodArray<z.ZodString>;
     hwidSettings: z.ZodNullable<z.ZodObject<{
         enabled: z.ZodBoolean;
         fallbackDeviceLimit: z.ZodNumber;
         maxDevicesAnnounce: z.ZodNullable<z.ZodString>;
-    }, "strip", z.ZodTypeAny, {
-        enabled: boolean;
-        fallbackDeviceLimit: number;
-        maxDevicesAnnounce: string | null;
-    }, {
-        enabled: boolean;
-        fallbackDeviceLimit: number;
-        maxDevicesAnnounce: string | null;
-    }>>;
+    }, z.core.$strip>>;
     customRemarks: z.ZodNullable<z.ZodObject<{
-        expiredUsers: z.ZodArray<z.ZodString, "many">;
-        limitedUsers: z.ZodArray<z.ZodString, "many">;
-        disabledUsers: z.ZodArray<z.ZodString, "many">;
-        emptyHosts: z.ZodArray<z.ZodString, "many">;
-        HWIDMaxDevicesExceeded: z.ZodArray<z.ZodString, "many">;
-        HWIDNotSupported: z.ZodArray<z.ZodString, "many">;
-    }, "strip", z.ZodTypeAny, {
-        expiredUsers: string[];
-        limitedUsers: string[];
-        disabledUsers: string[];
-        emptyHosts: string[];
-        HWIDMaxDevicesExceeded: string[];
-        HWIDNotSupported: string[];
-    }, {
-        expiredUsers: string[];
-        limitedUsers: string[];
-        disabledUsers: string[];
-        emptyHosts: string[];
-        HWIDMaxDevicesExceeded: string[];
-        HWIDNotSupported: string[];
-    }>>;
-    subpageConfigUuid: z.ZodNullable<z.ZodString>;
-    createdAt: z.ZodEffects<z.ZodString, Date, string>;
-    updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-}, "strip", z.ZodTypeAny, {
-    uuid: string;
-    name: string;
-    createdAt: Date;
-    updatedAt: Date;
-    viewPosition: number;
-    customRemarks: {
-        expiredUsers: string[];
-        limitedUsers: string[];
-        disabledUsers: string[];
-        emptyHosts: string[];
-        HWIDMaxDevicesExceeded: string[];
-        HWIDNotSupported: string[];
-    } | null;
-    hwidSettings: {
-        enabled: boolean;
-        fallbackDeviceLimit: number;
-        maxDevicesAnnounce: string | null;
-    } | null;
-    info: {
-        membersCount: number;
-    };
-    templates: {
-        templateUuid: string;
-        templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-    }[];
-    subscriptionSettings: {
-        profileTitle?: string | undefined;
-        supportLink?: string | undefined;
-        profileUpdateInterval?: number | undefined;
-        isProfileWebpageUrlEnabled?: boolean | undefined;
-        serveJsonAtBaseSubscription?: boolean | undefined;
-        isShowCustomRemarks?: boolean | undefined;
-        happAnnounce?: string | null | undefined;
-        happRouting?: string | null | undefined;
-        randomizeHosts?: boolean | undefined;
-    } | null;
-    hostOverrides: {
-        serverDescription?: string | null | undefined;
-        vlessRouteId?: number | null | undefined;
-    } | null;
-    responseHeaders: Record<string, string> | null;
-    subpageConfigUuid: string | null;
-}, {
-    uuid: string;
-    name: string;
-    createdAt: string;
-    updatedAt: string;
-    viewPosition: number;
-    customRemarks: {
-        expiredUsers: string[];
-        limitedUsers: string[];
-        disabledUsers: string[];
-        emptyHosts: string[];
-        HWIDMaxDevicesExceeded: string[];
-        HWIDNotSupported: string[];
-    } | null;
-    hwidSettings: {
-        enabled: boolean;
-        fallbackDeviceLimit: number;
-        maxDevicesAnnounce: string | null;
-    } | null;
-    info: {
-        membersCount: number;
-    };
-    templates: {
-        templateUuid: string;
-        templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-    }[];
-    subscriptionSettings: {
-        profileTitle?: string | undefined;
-        supportLink?: string | undefined;
-        profileUpdateInterval?: number | undefined;
-        isProfileWebpageUrlEnabled?: boolean | undefined;
-        serveJsonAtBaseSubscription?: boolean | undefined;
-        isShowCustomRemarks?: boolean | undefined;
-        happAnnounce?: string | null | undefined;
-        happRouting?: string | null | undefined;
-        randomizeHosts?: boolean | undefined;
-    } | null;
-    hostOverrides: {
-        serverDescription?: string | null | undefined;
-        vlessRouteId?: number | null | undefined;
-    } | null;
-    responseHeaders: Record<string, string> | null;
-    subpageConfigUuid: string | null;
-}>;
+        expiredUsers: z.ZodArray<z.ZodString>;
+        limitedUsers: z.ZodArray<z.ZodString>;
+        disabledUsers: z.ZodArray<z.ZodString>;
+        emptyHosts: z.ZodArray<z.ZodString>;
+        HWIDMaxDevicesExceeded: z.ZodArray<z.ZodString>;
+        HWIDNotSupported: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>;
+    subpageConfigUuid: z.ZodNullable<z.ZodUUID>;
+    createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+    updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+}, z.core.$strip>;
 //# sourceMappingURL=external-squad.schema.d.ts.map

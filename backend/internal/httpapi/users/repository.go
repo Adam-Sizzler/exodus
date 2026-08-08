@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +23,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
-			u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+			u.id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 			u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
 			u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
 			u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
@@ -31,8 +32,8 @@ func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, e
 			COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 			ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
 		FROM users u
-		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
-		ORDER BY u.t_id DESC
+		LEFT JOIN user_traffic ut ON ut.id = u.id
+		ORDER BY u.id DESC
 	`)
 	if err != nil {
 		return nil, err
@@ -53,10 +54,15 @@ func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, e
 	return records, nil
 }
 
-func (r *UserRepository) getUserRecordByUUID(ctx context.Context, userUUID string) (userRecord, error) {
-	row := r.db.QueryRowContext(ctx, `
+func (r *UserRepository) getUserRecordByUUID(ctx context.Context, identifier string) (userRecord, error) {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return userRecord{}, errUserNotFound
+	}
+
+	query := `
 		SELECT
-			u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+			u.id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 			u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
 			u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
 			u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
@@ -65,9 +71,16 @@ func (r *UserRepository) getUserRecordByUUID(ctx context.Context, userUUID strin
 			COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 			ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
 		FROM users u
-		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
-		WHERE u.uuid = $1
-	`, userUUID)
+		LEFT JOIN user_traffic ut ON ut.id = u.id
+	`
+
+	var row *sql.Row
+	if idNum, err := strconv.ParseInt(identifier, 10, 64); err == nil {
+		row = r.db.QueryRowContext(ctx, query+` WHERE u.id = $1 OR u.uuid::text = $2 OR u.short_uuid = $2 OR u.username = $2`, idNum, identifier)
+	} else {
+		row = r.db.QueryRowContext(ctx, query+` WHERE u.uuid::text = $1 OR u.short_uuid = $1 OR u.username = $1`, identifier)
+	}
+
 	record, scanErr := scanUserRecord(row)
 	if errors.Is(scanErr, sql.ErrNoRows) {
 		return record, errUserNotFound
@@ -84,7 +97,7 @@ func (r *UserRepository) getUserRecordsByUUIDs(ctx context.Context, userUUIDs []
 
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
-			u.t_id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+			u.id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 			u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
 			u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
 			u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
@@ -93,7 +106,7 @@ func (r *UserRepository) getUserRecordsByUUIDs(ctx context.Context, userUUIDs []
 			COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 			ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
 		FROM users u
-		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		LEFT JOIN user_traffic ut ON ut.id = u.id
 		WHERE u.uuid = ANY($1)
 	`, clean)
 	if err != nil {
@@ -112,6 +125,27 @@ func (r *UserRepository) getUserRecordsByUUIDs(ctx context.Context, userUUIDs []
 		return nil, err
 	}
 	return records, nil
+}
+
+func (r *UserRepository) resolveUUIDsByUserIDs(ctx context.Context, userIDs []int64) ([]string, error) {
+	if len(userIDs) == 0 {
+		return []string{}, nil
+	}
+	rows, err := r.db.QueryContext(ctx, `SELECT uuid::text FROM users WHERE id = ANY($1)`, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	uuids := make([]string, 0, len(userIDs))
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		uuids = append(uuids, u)
+	}
+	return uuids, rows.Err()
 }
 
 func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
@@ -234,7 +268,7 @@ func (r *UserRepository) getUsersActiveInternalSquads(ctx context.Context, userU
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT u.uuid, s.uuid, s.name
 		FROM users u
-		INNER JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		INNER JOIN internal_squad_members ism ON ism.user_id = u.id
 		INNER JOIN internal_squads s ON s.uuid = ism.internal_squad_uuid
 		WHERE u.uuid = ANY($1)
 		ORDER BY s.view_position ASC, s.name ASC
@@ -292,11 +326,15 @@ func (r *UserRepository) replaceUserInternalSquadsTx(ctx context.Context, tx *sq
 		return err
 	}
 	for _, squadUUID := range dedupeStrings(squadUUIDs) {
+		clean := strings.TrimSpace(squadUUID)
+		if clean == "" {
+			continue
+		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO internal_squad_members (internal_squad_uuid, user_id)
-			VALUES ($1, $2)
+			VALUES ($1::uuid, $2)
 			ON CONFLICT (internal_squad_uuid, user_id) DO NOTHING
-		`, squadUUID, tID); err != nil {
+		`, clean, tID); err != nil {
 			return err
 		}
 	}
@@ -328,7 +366,7 @@ func (r *UserRepository) resolveUser(ctx context.Context, req resolveUserRequest
 		clause = "uuid = $1"
 		arg = strings.TrimSpace(*req.UUID)
 	case req.ID != nil:
-		clause = "t_id = $1"
+		clause = "id = $1"
 		arg = *req.ID
 	case req.ShortUUID != nil:
 		clause = "short_uuid = $1"
@@ -340,11 +378,12 @@ func (r *UserRepository) resolveUser(ctx context.Context, req resolveUserRequest
 		return response, fmt.Errorf("missing user lookup field")
 	}
 
+	var dummyUUID string
 	err := r.db.QueryRowContext(ctx, fmt.Sprintf(`
-		SELECT uuid, t_id, short_uuid, username
+		SELECT uuid, id, short_uuid, username
 		FROM users
 		WHERE %s
-	`, clause), arg).Scan(&response.UUID, &response.ID, &response.ShortUUID, &response.Username)
+	`, clause), arg).Scan(&dummyUUID, &response.ID, &response.ShortUUID, &response.Username)
 	if errors.Is(err, sql.ErrNoRows) {
 		return response, errUserNotFound
 	}
@@ -371,7 +410,7 @@ func (r *UserRepository) createUser(ctx context.Context, userUUID, shortUUID str
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, NULL, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 0, $22, $23
 		)
-		RETURNING t_id
+		RETURNING id
 	`,
 		userUUID,
 		shortUUID,
@@ -403,7 +442,7 @@ func (r *UserRepository) createUser(ctx context.Context, userUUID, shortUUID str
 
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO user_traffic (
-			t_id, used_traffic_bytes, lifetime_used_traffic_bytes, online_at,
+			id, used_traffic_bytes, lifetime_used_traffic_bytes, online_at,
 			last_connected_node_uuid, first_connected_at
 		) VALUES ($1, 0, 0, NULL, NULL, NULL)
 	`, tID); err != nil {
@@ -583,7 +622,7 @@ func (r *UserRepository) deleteUserRecord(ctx context.Context, userUUID string) 
 	}()
 
 	var tID int64
-	if err := tx.QueryRowContext(ctx, `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&tID); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE uuid = $1`, userUUID).Scan(&tID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errUserNotFound
 		}
@@ -693,7 +732,7 @@ func (r *UserRepository) deleteUsersByStatus(ctx context.Context, status string)
 	rows, queryErr := tx.QueryContext(ctx,
 		`SELECT DISTINCT cpitn.node_uuid
 		   FROM users u
-		   JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		   JOIN internal_squad_members ism ON ism.user_id = u.id
 		   JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		   JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		  WHERE u.status = $1`, status)
@@ -778,7 +817,7 @@ func (r *UserRepository) bulkUpdateUsersSquads(ctx context.Context, cleanUserUUI
 	}
 	nodeUUIDs := dedupeStrings(append(targets, squadTargets...))
 
-	rows, err := tx.QueryContext(ctx, `SELECT t_id FROM users WHERE uuid = ANY($1)`, cleanUserUUIDs)
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM users WHERE uuid = ANY($1)`, cleanUserUUIDs)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -802,8 +841,8 @@ func (r *UserRepository) bulkUpdateUsersSquads(ctx context.Context, cleanUserUUI
 			return 0, nil, err
 		}
 	}
-	if len(userIDs) > 0 {
-		if _, err := tx.ExecContext(ctx, `UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE t_id = ANY($1)`, userIDs); err != nil {
+	if len(cleanUserUUIDs) > 0 {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE uuid = ANY($1)`, cleanUserUUIDs); err != nil {
 			return 0, nil, err
 		}
 	}
@@ -828,22 +867,43 @@ func (r *UserRepository) bulkAllUpdateUsers(ctx context.Context, clauses []strin
 	return affectedRows, nil
 }
 
-func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, userUUID string) ([]userSubscriptionRequestHistoryRecord, error) {
-	var exists bool
-	if err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE uuid = $1)`, userUUID).Scan(&exists); err != nil {
-		return nil, err
+func (r *UserRepository) resolveUserFullDetailsByIdentifier(ctx context.Context, identifier string) (int64, string, error) {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return 0, "", errUserNotFound
 	}
-	if !exists {
-		return nil, errUserNotFound
+	var userID int64
+	var userUUID string
+	var err error
+	if idNum, parseErr := strconv.ParseInt(identifier, 10, 64); parseErr == nil {
+		err = r.db.QueryRowContext(ctx, `SELECT id, uuid::text FROM users WHERE id = $1 OR uuid::text = $2 OR short_uuid = $2 OR username = $2`, idNum, identifier).Scan(&userID, &userUUID)
+	} else {
+		err = r.db.QueryRowContext(ctx, `SELECT id, uuid::text FROM users WHERE uuid::text = $1 OR short_uuid = $1 OR username = $1`, identifier).Scan(&userID, &userUUID)
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", errUserNotFound
+	}
+	return userID, userUUID, err
+}
+
+func (r *UserRepository) resolveUserIDByIdentifier(ctx context.Context, identifier string) (int64, error) {
+	userID, _, err := r.resolveUserFullDetailsByIdentifier(ctx, identifier)
+	return userID, err
+}
+
+func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, userIdentifier string) ([]userSubscriptionRequestHistoryRecord, error) {
+	userID, err := r.resolveUserIDByIdentifier(ctx, userIdentifier)
+	if err != nil {
+		return nil, err
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, request_ip, user_agent, request_at
 		FROM user_subscription_request_history
-		WHERE user_id = (SELECT t_id FROM users WHERE uuid = $1)
+		WHERE user_id = $1
 		ORDER BY request_at DESC
 		LIMIT 24
-	`, userUUID)
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -865,13 +925,10 @@ func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, 
 	return records, nil
 }
 
-func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userUUID string) ([]userAccessibleNode, error) {
-	var userID int64
-	if err := r.db.QueryRowContext(ctx, `SELECT t_id FROM users WHERE uuid = $1`, userUUID).Scan(&userID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errUserNotFound
-		}
-		return nil, err
+func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userIdentifier string) (int64, string, []userAccessibleNode, error) {
+	userID, userUUID, err := r.resolveUserFullDetailsByIdentifier(ctx, userIdentifier)
+	if err != nil {
+		return 0, "", nil, err
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
@@ -898,7 +955,7 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userUUID st
 		ORDER BY n.view_position ASC, sq.view_position ASC, cpi.tag ASC
 	`, userID)
 	if err != nil {
-		return nil, err
+		return 0, "", nil, err
 	}
 	defer rows.Close()
 
@@ -909,7 +966,7 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userUUID st
 		var nodeUUID, nodeName, countryCode, profileUUID, profileName string
 		var squadUUID, squadName, inboundTag string
 		if scanErr := rows.Scan(&nodeUUID, &nodeName, &countryCode, &profileUUID, &profileName, &squadUUID, &squadName, &inboundTag); scanErr != nil {
-			return nil, scanErr
+			return 0, "", nil, scanErr
 		}
 
 		nodeIndex, ok := nodeIndexes[nodeUUID]
@@ -944,7 +1001,97 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userUUID st
 		)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return 0, "", nil, err
 	}
-	return activeNodes, nil
+	return userID, userUUID, activeNodes, nil
+}
+
+func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size int, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID string) ([]userRecord, int64, int64, error) {
+	var total int64
+	_ = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&total)
+
+	whereClauses := []string{"u.id > $1"}
+	args := []any{cursor}
+	argIdx := 2
+
+	if telegramID != "" {
+		if tid, err := strconv.ParseInt(telegramID, 10, 64); err == nil {
+			whereClauses = append(whereClauses, fmt.Sprintf("telegram_id = $%d", argIdx))
+			args = append(args, tid)
+			argIdx++
+		}
+	}
+	if email != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("email = $%d", argIdx))
+		args = append(args, email)
+		argIdx++
+	}
+	if tag != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("tag = $%d", argIdx))
+		args = append(args, tag)
+		argIdx++
+	}
+	if status != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, strings.ToUpper(status))
+		argIdx++
+	}
+	if trafficLimitStrategy != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("traffic_limit_strategy = $%d", argIdx))
+		args = append(args, strings.ToUpper(trafficLimitStrategy))
+		argIdx++
+	}
+	if externalSquadUUID != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("external_squad_uuid = $%d", argIdx))
+		args = append(args, externalSquadUUID)
+		argIdx++
+	}
+
+	whereStmt := strings.Join(whereClauses, " AND ")
+	args = append(args, size)
+	limitIdx := argIdx
+
+	query := fmt.Sprintf(`
+		SELECT
+			u.id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
+			u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
+			u.sub_revoked_at, u.trojan_password, u.vless_uuid, u.ss_password,
+			u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
+			u.description, u.tag, u.telegram_id, u.email, u.hwid_device_limit, u.external_squad_uuid,
+			u.last_triggered_threshold, u.created_at, u.updated_at,
+			COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
+			ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
+		FROM users u
+		LEFT JOIN user_traffic ut ON ut.id = u.id
+		WHERE %s
+		ORDER BY u.id ASC
+		LIMIT $%d
+	`, whereStmt, limitIdx)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer rows.Close()
+
+	records := make([]userRecord, 0)
+	var lastTID int64 = 0
+	for rows.Next() {
+		rec, scanErr := scanUserRecord(rows)
+		if scanErr != nil {
+			return nil, 0, 0, scanErr
+		}
+		records = append(records, rec)
+		lastTID = rec.TID
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, 0, err
+	}
+
+	var nextCursor int64 = 0
+	if len(records) == size {
+		nextCursor = lastTID
+	}
+
+	return records, nextCursor, total, nil
 }

@@ -9,20 +9,21 @@ var GetInternalSquadAccessibleNodesCommand;
     GetInternalSquadAccessibleNodesCommand.url = api_1.REST_API.INTERNAL_SQUADS.ACCESSIBLE_NODES;
     GetInternalSquadAccessibleNodesCommand.TSQ_url = GetInternalSquadAccessibleNodesCommand.url(':uuid');
     GetInternalSquadAccessibleNodesCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.ACCESSIBLE_NODES(':uuid'), 'get', 'Get internal squad accessible nodes', { scope: 'accessible-nodes', kind: 'read' });
-    GetInternalSquadAccessibleNodesCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    GetInternalSquadAccessibleNodesCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
     GetInternalSquadAccessibleNodesCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
-            squadUuid: zod_1.z.string().uuid(),
+            squadUuid: zod_1.z.uuid(),
             accessibleNodes: zod_1.z.array(zod_1.z.object({
-                uuid: zod_1.z.string().uuid(),
+                uuid: zod_1.z.uuid(),
                 nodeName: zod_1.z.string(),
                 countryCode: zod_1.z.string(),
-                configProfileUuid: zod_1.z.string().uuid(),
+                configProfileUuid: zod_1.z.uuid(),
                 configProfileName: zod_1.z.string(),
                 activeInbounds: zod_1.z.array(zod_1.z.string()),
             })),
         }),
     });
+
 })(GetInternalSquadAccessibleNodesCommand || (exports.GetInternalSquadAccessibleNodesCommand = GetInternalSquadAccessibleNodesCommand = {}));

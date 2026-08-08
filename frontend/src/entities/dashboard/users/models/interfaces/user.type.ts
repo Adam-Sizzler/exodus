@@ -1,3 +1,3 @@
-import { GetAllUsersCommand } from '@exodus/backend-contract'
+import { GetUsersCommand } from '@exodus/backend-contract'
 
-export type User = GetAllUsersCommand.Response['response']['users'][number]
+export type User = GetUsersCommand.Response['response']['users'][number]

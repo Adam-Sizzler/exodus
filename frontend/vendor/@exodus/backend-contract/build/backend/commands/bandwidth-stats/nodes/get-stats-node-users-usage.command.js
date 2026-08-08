@@ -9,13 +9,13 @@ var GetStatsNodeUsersUsageCommand;
     GetStatsNodeUsersUsageCommand.url = api_1.REST_API.BANDWIDTH_STATS.NODES.GET_USERS;
     GetStatsNodeUsersUsageCommand.TSQ_url = GetStatsNodeUsersUsageCommand.url(':uuid');
     GetStatsNodeUsersUsageCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.BANDWIDTH_STATS_ROUTES.NODES.GET_USERS(':uuid'), 'get', 'Get Node Users Usage by Node UUID', { scope: 'node-users-usage', kind: 'read' });
-    GetStatsNodeUsersUsageCommand.RequestQuerySchema = zod_1.z.object({
-        start: zod_1.z.string().date(),
-        end: zod_1.z.string().date(),
-        topUsersLimit: zod_1.z.coerce.number().min(1).default(100),
+    GetStatsNodeUsersUsageCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    GetStatsNodeUsersUsageCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    GetStatsNodeUsersUsageCommand.RequestQuerySchema = zod_1.z.object({
+        start: zod_1.z.iso.date().describe('Start date (YYYY-MM-DD)'),
+        end: zod_1.z.iso.date().describe('End date (YYYY-MM-DD)'),
+        topUsersLimit: zod_1.z.coerce.number().min(1).default(100),
     });
     GetStatsNodeUsersUsageCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
@@ -28,4 +28,5 @@ var GetStatsNodeUsersUsageCommand;
             })),
         }),
     });
+
 })(GetStatsNodeUsersUsageCommand || (exports.GetStatsNodeUsersUsageCommand = GetStatsNodeUsersUsageCommand = {}));

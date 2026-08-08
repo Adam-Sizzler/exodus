@@ -9,12 +9,12 @@ var UpdatePasskeyCommand;
     UpdatePasskeyCommand.url = api_1.REST_API.PASSKEYS.UPDATE_PASSKEY;
     UpdatePasskeyCommand.TSQ_url = UpdatePasskeyCommand.url;
     UpdatePasskeyCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.PASSKEYS_ROUTES.UPDATE_PASSKEY, 'patch', 'Update passkey', { scope: 'update', kind: 'write' });
-    UpdatePasskeyCommand.RequestSchema = zod_1.z.object({
+    UpdatePasskeyCommand.RequestBodySchema = zod_1.z.object({
         id: zod_1.z.string(),
         name: zod_1.z
             .string()
-            .min(2, 'Name must be at least 2 characters')
-            .max(30, 'Name must be less than 30 characters')
+            .min(2)
+            .max(30)
             .regex(/^[A-Za-z0-9_\s-]+$/, 'Name can only contain letters, numbers, underscores, dashes and spaces'),
     });
     UpdatePasskeyCommand.ResponseSchema = zod_1.z.object({
@@ -22,17 +22,16 @@ var UpdatePasskeyCommand;
             passkeys: zod_1.z.array(zod_1.z.object({
                 id: zod_1.z.string(),
                 name: zod_1.z.string(),
-                createdAt: zod_1.z
-                    .string()
-                    .datetime({ message: 'Invalid date format', offset: true, local: true })
+                createdAt: zod_1.z.iso
+                    .datetime({ offset: true, local: true })
                     .transform((str) => new Date(str))
                     .describe('Created date. Format: 2025-01-17T15:38:45.065Z'),
-                lastUsedAt: zod_1.z
-                    .string()
-                    .datetime({ message: 'Invalid date format', offset: true, local: true })
+                lastUsedAt: zod_1.z.iso
+                    .datetime({ offset: true, local: true })
                     .transform((str) => new Date(str))
                     .describe('Last used date. Format: 2025-01-17T15:38:45.065Z'),
             })),
         }),
     });
+
 })(UpdatePasskeyCommand || (exports.UpdatePasskeyCommand = UpdatePasskeyCommand = {}));

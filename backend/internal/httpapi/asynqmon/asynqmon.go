@@ -12,6 +12,10 @@ import (
 )
 
 func NewAsynqmon(cfg *config.BackendConfig) (http.Handler, error) {
+	return NewAsynqmonWithRootPath(cfg, "/api/backend-tools/queues")
+}
+
+func NewAsynqmonWithRootPath(cfg *config.BackendConfig, routePath string) (http.Handler, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
 	}
@@ -23,9 +27,9 @@ func NewAsynqmon(cfg *config.BackendConfig) (http.Handler, error) {
 		basePath = "/"
 	}
 
-	rootPath := "/api/queues"
+	rootPath := routePath
 	if basePath != "/" {
-		rootPath = basePath + "/api/queues"
+		rootPath = basePath + routePath
 	}
 
 	h := asynqmon.New(asynqmon.Options{

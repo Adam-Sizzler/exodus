@@ -16,4 +16,5 @@ var GetSubscriptionTemplatesCommand;
             templates: zod_1.z.array(models_1.SubscriptionTemplateSchema),
         }),
     });
+
 })(GetSubscriptionTemplatesCommand || (exports.GetSubscriptionTemplatesCommand = GetSubscriptionTemplatesCommand = {}));

@@ -15,6 +15,7 @@ import { GetInfraProvidersCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import { TbCloud, TbEdit, TbLink, TbServer, TbTrash } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { queryClient } from '@shared/api'
 import { QueryKeys, useDeleteInfraProvider } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -23,8 +24,6 @@ import { SingleRowOverflowList } from '@shared/ui/single-row-overflow-list'
 import { faviconResolver, formatCurrencyWithIntl } from '@shared/utils/misc'
 import { resolveCountryCode } from '@shared/utils/misc/resolve-country-code'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-
 interface IProps {
     providers: GetInfraProvidersCommand.Response['response']['providers']
     style: MantineStyleProp
@@ -32,7 +31,6 @@ interface IProps {
 
 export function MobileProvidersListWidget(props: IProps) {
     const { providers, style } = props
-    const openModalWithData = useModalsStoreOpenWithData()
     const { t } = useTranslation()
 
     const { mutate: deleteProvider } = useDeleteInfraProvider({
@@ -48,19 +46,16 @@ export function MobileProvidersListWidget(props: IProps) {
         }
     })
 
-    const handleOpenProvider = (
-        provider: GetInfraProvidersCommand.Response['response']['providers'][number]
-    ) => {
-        openModalWithData(MODALS.VIEW_INFRA_PROVIDER_DRAWER, provider)
-    }
-
     const handleDeleteProvider = (uuid: string) =>
         modals.openConfirmModal({
             title: t('common.confirm-action'),
             children: t('common.confirm-action-description'),
             labels: { confirm: t('common.delete'), cancel: t('common.cancel') },
             centered: true,
-            confirmProps: { color: 'red' },
+            confirmProps: { color: 'red', variant: 'soft' },
+            cancelProps: {
+                variant: 'subtle'
+            },
             onConfirm: () => deleteProvider({ route: { uuid } })
         })
 
@@ -136,7 +131,11 @@ export function MobileProvidersListWidget(props: IProps) {
                                 )}
                                 <ActionIcon
                                     color="blue"
-                                    onClick={() => handleOpenProvider(provider)}
+                                    onClick={() =>
+                                        showModal('infraBilling_viewInfraProviderModal', {
+                                            infraProvider: provider
+                                        })
+                                    }
                                     size="input-xs"
                                     variant="soft"
                                 >

@@ -1,5 +1,5 @@
 import { SimpleGrid } from '@mantine/core'
-import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { GetNodesCommand } from '@exodus/backend-contract'
 import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,7 @@ import { prettySiRealtimeBytesUtil } from '@shared/utils/bytes'
 
 interface IProps {
     isLoading: boolean
-    nodes: GetAllNodesCommand.Response['response'] | undefined
+    nodes: GetNodesCommand.Response['response'] | undefined
 }
 
 export function NodesRealtimeUsageMetrics(props: IProps) {

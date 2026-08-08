@@ -60,20 +60,8 @@ export default defineConfig({
                             test: /node_modules[\\/](react-icons|@lottiefiles[\\/]dotlottie-react)[\\/]/
                         },
                         {
-                            name: 'zod',
-                            test: /node_modules[\\/](axios|zod|zustand|xbytes|zod-to-json-schema)[\\/]/
-                        },
-                        {
                             name: 'utils',
-                            test: /node_modules[\\/](nanoid|ufo|consola|semver|is-svg|sax|jsonc-parser|json-edit-react|dayjs)[\\/]/
-                        },
-                        {
-                            name: 'mantine',
-                            test: /node_modules[\\/]@mantine[\\/](core|hooks|dates|nprogress|notifications|modals)[\\/]/
-                        },
-                        {
-                            name: 'exodus',
-                            test: /node_modules[\\/]@exodus[\\/](backend-contract|subscription-page-types)[\\/]/
+                            test: /node_modules[\\/](axios|zod|zustand|xbytes|zod-to-json-schema|nanoid|ufo|consola|semver|is-svg|sax|jsonc-parser|json-edit-react|dayjs)[\\/]/
                         },
                         {
                             name: 'i18n',
@@ -93,7 +81,7 @@ export default defineConfig({
                         },
                         {
                             name: 'dnd',
-                            test: /node_modules[\\/]@dnd-kit[\\/](core|sortable|utilities)[\\/]/
+                            test: /node_modules[\\/]@dnd-kit[\\/](abstract|dom|helpers|react)[\\/]/
                         },
                         {
                             name: 'mantinetable',

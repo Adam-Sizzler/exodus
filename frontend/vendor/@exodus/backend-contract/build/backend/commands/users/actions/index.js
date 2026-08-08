@@ -18,3 +18,4 @@ __exportStar(require("./disable-user.command"), exports);
 __exportStar(require("./enable-user.command"), exports);
 __exportStar(require("./reset-user-traffic.command"), exports);
 __exportStar(require("./revoke-user-subscription.command"), exports);
+__exportStar(require("./extend-user.command"), exports);

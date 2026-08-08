@@ -1,7 +1,6 @@
 import { Button, Group, NumberInput, px, Stack, Switch, Text, Textarea } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { UpdateSubscriptionSettingsCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'react-i18next'
 import { PiGear, PiIdentificationBadge } from 'react-icons/pi'
 import { TbDevices2 } from 'react-icons/tb'
@@ -21,10 +20,10 @@ export const SubscriptionHwidSettingsWidget = (props: IProps) => {
     const { subscriptionSettings } = props
     const { t } = useTranslation()
 
-    const form = useForm<UpdateSubscriptionSettingsCommand.Request>({
+    const form = useForm<UpdateSubscriptionSettingsCommand.RequestBody>({
         name: 'subscription-hwid-settings-form',
         mode: 'uncontrolled',
-        validate: zodResolver(UpdateSubscriptionSettingsCommand.RequestSchema),
+        validate: schemaResolver(UpdateSubscriptionSettingsCommand.RequestBodySchema),
         initialValues: {
             uuid: subscriptionSettings.uuid,
             hwidSettings: subscriptionSettings.hwidSettings!

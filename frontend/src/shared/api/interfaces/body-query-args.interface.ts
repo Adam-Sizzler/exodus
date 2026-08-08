@@ -15,9 +15,9 @@ import { z } from 'zod'
  * @template BodySchema - Zod schema for validating the request body
  */
 export interface CreateBodyQueryHookArgs<
-    ResponseSchema extends z.ZodType,
-    RequestQuerySchema extends z.ZodType,
-    RouteParamsSchema extends z.ZodType,
+    ResponseSchema extends z.ZodType<{ response: unknown }>,
+    RequestQuerySchema extends z.ZodType<Record<string, unknown>>,
+    RouteParamsSchema extends z.ZodType<Record<string, unknown>>,
     BodySchema extends z.ZodType
 > {
     /** API endpoint URL, can include route parameters (e.g. /api/users/:id) */

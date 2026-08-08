@@ -1,19 +1,4 @@
 export declare const CONTROLLERS_INFO: {
-    readonly AUTH: {
-        readonly tag: "Auth Controller";
-        readonly description: "Used to authenticate admin users.";
-        readonly resource: "auth";
-    };
-    readonly PASSKEYS: {
-        readonly tag: "Passkeys Controller";
-        readonly description: "Management of Passkeys.";
-        readonly resource: "passkeys";
-    };
-    readonly API_TOKENS: {
-        readonly tag: "API Tokens Controller";
-        readonly description: "Manage API tokens to use in your code. This controller can't be used with API token, only with Admin JWT token";
-        readonly resource: "api-tokens";
-    };
     readonly USERS: {
         readonly tag: "Users Controller";
         readonly description: "Manage users, change their status, reset traffic, etc.";
@@ -54,10 +39,10 @@ export declare const CONTROLLERS_INFO: {
         readonly description: "";
         readonly resource: "bandwidth-stats";
     };
-    readonly IP_CONTROL: {
-        readonly tag: "IP Management Controller";
-        readonly description: "Management of IP addresses and connections.";
-        readonly resource: "ip-control";
+    readonly CONNECTIONS: {
+        readonly tag: "Connections Controller";
+        readonly description: "Management of connections by user and node.";
+        readonly resource: "connections";
     };
     readonly CONFIG_PROFILES: {
         readonly tag: "Config Profiles Controller";
@@ -119,7 +104,7 @@ export declare const CONTROLLERS_INFO: {
         readonly description: "";
         readonly resource: "snippets";
     };
-    readonly EXODUS_SETTINGS: {
+    readonly REMNAAWAVE_SETTINGS: {
         readonly tag: "Exodus Settings Controller";
         readonly description: "";
         readonly resource: "exodus-settings";
@@ -133,6 +118,21 @@ export declare const CONTROLLERS_INFO: {
         readonly tag: "Metadata Controller";
         readonly description: "Manage arbitrary metadata for Users and Nodes.";
         readonly resource: "metadata";
+    };
+    readonly AUTH: {
+        readonly tag: "Auth Controller";
+        readonly description: "Used to authenticate admin users.";
+        readonly resource: "auth";
+    };
+    readonly PASSKEYS: {
+        readonly tag: "Passkeys Controller";
+        readonly description: "Management of Passkeys.";
+        readonly resource: "passkeys";
+    };
+    readonly API_TOKENS: {
+        readonly tag: "API Tokens Controller";
+        readonly description: "Manage API tokens to use in your code. This controller can't be used with API token, only with Admin JWT token";
+        readonly resource: "api-tokens";
     };
 };
 //# sourceMappingURL=controllers-info.d.ts.map

@@ -81,8 +81,21 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 
 		if strings.HasPrefix(path, "connection-keys/") {
 			userUUID := strings.TrimPrefix(path, "connection-keys/")
+			userUUID = strings.TrimSuffix(strings.TrimSpace(userUUID), "/raw")
 			handleGetConnectionKeysByUUID(w, r, db, cfg, userUUID)
 			return
+		}
+
+		path = strings.TrimSuffix(strings.TrimSpace(path), "/raw")
+
+		if strings.HasPrefix(path, "by-id/") {
+			path = strings.TrimPrefix(path, "by-id/")
+		} else if strings.HasPrefix(path, "by-uuid/") {
+			path = strings.TrimPrefix(path, "by-uuid/")
+		} else if strings.HasPrefix(path, "by-short-uuid/") {
+			path = strings.TrimPrefix(path, "by-short-uuid/")
+		} else if strings.HasPrefix(path, "by-username/") {
+			path = strings.TrimPrefix(path, "by-username/")
 		}
 
 		userUUID := path

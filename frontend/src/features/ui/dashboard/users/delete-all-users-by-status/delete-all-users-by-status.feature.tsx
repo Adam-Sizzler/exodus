@@ -18,7 +18,7 @@ export const DeleteAllUsersByStatusFeature = () => {
         mutationFns: {
             onMutate: () => {
                 const notificationId = notifications.show({
-                    title: t('delete-all-users-by-status.feature.processing'),
+                    title: t('common.processing'),
                     message: t('delete-all-users-by-status.feature.deleting-users'),
                     loading: true,
                     autoClose: false,
@@ -30,18 +30,13 @@ export const DeleteAllUsersByStatusFeature = () => {
 
                 return { notificationId }
             },
-            onSuccess: (data, _variables, context: unknown) => {
+            onSuccess: (_data, _variables, context: unknown) => {
                 if (context && typeof context === 'object' && 'notificationId' in context) {
                     notifications.update({
                         icon: <IconCheck size={18} />,
                         id: context.notificationId as string,
-                        title: t('delete-all-users-by-status.feature.success'),
-                        message: t(
-                            'delete-all-users-by-status.feature.deleted-data-affectedrows-users',
-                            {
-                                count: data.affectedRows
-                            }
-                        ),
+                        title: t('common.success'),
+                        message: t('common.operation-completed'),
                         color: 'teal',
                         loading: false,
                         autoClose: 2000

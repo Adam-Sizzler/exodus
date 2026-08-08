@@ -260,6 +260,25 @@ func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+func HTTPStatsHandler(rc *RouteCounter, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		stats := rc.GetStats(r.Context())
+		payload := map[string]any{
+			"response": stats,
+		}
+
+		if cfg != nil && cfg.Logger != nil {
+			cfg.Logger.Trace("System HTTP stats requested", "remote_addr", r.RemoteAddr, "total_requests", stats.Total)
+		}
+		shared.WriteJSON(w, http.StatusOK, payload)
+	}
+}
+
 func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -346,6 +365,66 @@ func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{
 				"lastSevenDays": stats,
+			},
+		})
+	}
+}
+
+func DigestHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+
+		startStr := strings.TrimSpace(r.URL.Query().Get("start"))
+		endStr := strings.TrimSpace(r.URL.Query().Get("end"))
+
+		now := time.Now().UTC()
+		start := now.AddDate(0, 0, -1)
+		end := now
+
+		if startStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, startStr); err == nil {
+				start = parsed.UTC()
+			}
+		}
+		if endStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, endStr); err == nil {
+				end = parsed.UTC()
+			}
+		}
+
+		ctx := r.Context()
+
+		var createdUsersCount int64
+		_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE created_at >= $1 AND created_at < $2`, start, end).Scan(&createdUsersCount)
+
+		var expiredUsersCount int64
+		_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE expire_at >= $1 AND expire_at < $2 AND status = 'EXPIRED'`, start, end).Scan(&expiredUsersCount)
+
+		var totalTrafficBytes int64
+		_ = db.QueryRowContext(ctx, `SELECT COALESCE(SUM(total_bytes), 0) FROM user_usage_history WHERE created_at >= $1 AND created_at < $2`, start, end).Scan(&totalTrafficBytes)
+
+		var createdUsersTrafficBytes int64
+		_ = db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(uuh.total_bytes), 0)
+			FROM user_usage_history uuh
+			JOIN users u ON uuh.user_id = u.id
+			WHERE uuh.created_at >= $1 AND uuh.created_at < $2
+			  AND u.created_at >= $1 AND u.created_at < $2
+		`, start, end).Scan(&createdUsersTrafficBytes)
+
+		var newHwidDevicesCount int64
+		_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE created_at >= $1 AND created_at < $2`, start, end).Scan(&newHwidDevicesCount)
+
+		shared.WriteJSON(w, http.StatusOK, map[string]any{
+			"response": map[string]any{
+				"createdUsersCount":        createdUsersCount,
+				"expiredUsersCount":        expiredUsersCount,
+				"totalTrafficBytes":        totalTrafficBytes,
+				"createdUsersTrafficBytes": createdUsersTrafficBytes,
+				"newHwidDevicesCount":      newHwidDevicesCount,
 			},
 		})
 	}

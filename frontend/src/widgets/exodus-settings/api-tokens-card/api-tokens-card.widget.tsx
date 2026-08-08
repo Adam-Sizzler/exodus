@@ -10,10 +10,9 @@ import {
     Transition
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { FindAllApiTokensCommand } from '@exodus/backend-contract'
+import { GetApiTokensCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
-import { PiBookOpenTextDuotone, PiEmpty } from 'react-icons/pi'
-import { SiSwagger } from 'react-icons/si'
+import { PiEmpty } from 'react-icons/pi'
 import { TbCookie, TbPlus, TbRefresh } from 'react-icons/tb'
 
 import { useGetApiTokens } from '@shared/api/hooks'
@@ -27,7 +26,7 @@ import { ApiTokenItem } from './api-token-item'
 import { CreateApiTokenContentWidget } from './modals/create-api-token-modal.widget'
 
 interface IProps {
-    apiTokensData: FindAllApiTokensCommand.Response['response']
+    apiTokensData: GetApiTokensCommand.Response['response']
 }
 
 export const ApiTokensCardWidget = (props: IProps) => {
@@ -106,37 +105,6 @@ export const ApiTokensCardWidget = (props: IProps) => {
                                 <TbRefresh size={24} />
                             </ActionIcon>
                         </Tooltip>
-
-                        {apiTokensData.docs.enabled && (
-                            <>
-                                {apiTokensData.docs.swaggerPath && (
-                                    <ActionIcon
-                                        color="cyan"
-                                        component="a"
-                                        href={withBasePath(apiTokensData.docs.swaggerPath!)}
-                                        rel="noopener noreferrer"
-                                        size="input-md"
-                                        target="_blank"
-                                        variant="soft"
-                                    >
-                                        <SiSwagger size={24} />
-                                    </ActionIcon>
-                                )}
-                                {apiTokensData.docs.scalarPath && (
-                                    <ActionIcon
-                                        color="cyan"
-                                        component="a"
-                                        href={withBasePath(apiTokensData.docs.scalarPath!)}
-                                        rel="noopener noreferrer"
-                                        size="input-md"
-                                        target="_blank"
-                                        variant="soft"
-                                    >
-                                        <PiBookOpenTextDuotone size={24} />
-                                    </ActionIcon>
-                                )}
-                            </>
-                        )}
                     </ActionIcon.Group>
 
                     <Tooltip label={t('common.create')}>

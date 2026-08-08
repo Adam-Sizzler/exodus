@@ -10,15 +10,16 @@ var CreateInternalSquadCommand;
     CreateInternalSquadCommand.url = api_1.REST_API.INTERNAL_SQUADS.CREATE;
     CreateInternalSquadCommand.TSQ_url = CreateInternalSquadCommand.url;
     CreateInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.CREATE, 'post', 'Create internal squad', { scope: 'create', kind: 'write' });
-    CreateInternalSquadCommand.RequestSchema = zod_1.z.object({
+    CreateInternalSquadCommand.RequestBodySchema = zod_1.z.object({
         name: zod_1.z
             .string()
-            .min(2, 'Name must be at least 2 characters')
-            .max(30, 'Name must be less than 30 characters')
+            .min(2)
+            .max(30)
             .regex(/^[A-Za-z0-9_\s-]+$/, 'Name can only contain letters, numbers, underscores, dashes and spaces'),
-        inbounds: zod_1.z.array(zod_1.z.string().uuid()),
+        inbounds: zod_1.z.array(zod_1.z.uuid()),
     });
     CreateInternalSquadCommand.ResponseSchema = zod_1.z.object({
         response: models_1.InternalSquadSchema,
     });
+
 })(CreateInternalSquadCommand || (exports.CreateInternalSquadCommand = CreateInternalSquadCommand = {}));

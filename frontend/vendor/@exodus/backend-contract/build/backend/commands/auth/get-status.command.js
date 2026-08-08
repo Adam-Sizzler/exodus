@@ -18,7 +18,7 @@ var GetStatusCommand;
                     enabled: zod_1.z.boolean(),
                 }),
                 oauth2: zod_1.z.object({
-                    providers: zod_1.z.record(zod_1.z.nativeEnum(constants_1.OAUTH2_PROVIDERS), zod_1.z.boolean()),
+                    providers: zod_1.z.record(zod_1.z.enum(constants_1.OAUTH2_PROVIDERS), zod_1.z.boolean()),
                 }),
                 password: zod_1.z.object({
                     enabled: zod_1.z.boolean(),
@@ -30,4 +30,5 @@ var GetStatusCommand;
             }),
         }),
     });
+
 })(GetStatusCommand || (exports.GetStatusCommand = GetStatusCommand = {}));

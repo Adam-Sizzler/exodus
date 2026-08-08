@@ -12,10 +12,9 @@ import {
     Text,
     Textarea
 } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { modals } from '@mantine/modals'
-import { BulkNodesUpdateCommand, GetAllNodesCommand } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
+import { BulkNodesUpdateCommand, GetNodesCommand } from '@exodus/backend-contract'
 import { motion } from 'motion/react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,7 +35,7 @@ import { LoaderModalShared } from '@shared/ui/loader-modal'
 import { SectionCard } from '@shared/ui/section-card'
 import { TagInputPill } from '@shared/ui/tag-input-pill'
 
-type NodeType = GetAllNodesCommand.Response['response'][number]
+type NodeType = GetNodesCommand.Response['response'][number]
 
 interface IProps {
     selectedRecords: NodeType[]
@@ -55,10 +54,10 @@ export const BulkUpdateNodesModalContent = (props: IProps) => {
 
     const uuids = selectedRecords.map((node) => node.uuid)
 
-    const form = useForm<BulkNodesUpdateCommand.Request>({
+    const form = useForm<BulkNodesUpdateCommand.RequestBody>({
         name: 'bulk-update-nodes-form',
         mode: 'uncontrolled',
-        validate: zodResolver(BulkNodesUpdateCommand.RequestSchema),
+        validate: schemaResolver(BulkNodesUpdateCommand.RequestBodySchema),
         initialValues: {
             uuids,
             fields: {

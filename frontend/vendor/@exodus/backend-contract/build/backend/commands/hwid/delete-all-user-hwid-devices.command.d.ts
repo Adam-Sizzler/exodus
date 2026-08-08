@@ -3,14 +3,9 @@ export declare namespace DeleteAllUserHwidDevicesCommand {
     const url: "/api/hwid/devices/delete-all";
     const TSQ_url: "/api/hwid/devices/delete-all";
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        userUuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        userUuid: string;
-    }, {
-        userUuid: string;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+    const RequestBodySchema: z.ZodObject<{
+        userId: z.ZodNumber;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             total: z.ZodNumber;
@@ -22,87 +17,12 @@ export declare namespace DeleteAllUserHwidDevicesCommand {
                 deviceModel: z.ZodNullable<z.ZodString>;
                 userAgent: z.ZodNullable<z.ZodString>;
                 requestIp: z.ZodNullable<z.ZodString>;
-                createdAt: z.ZodEffects<z.ZodString, Date, string>;
-                updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-            }, "strip", z.ZodTypeAny, {
-                hwid: string;
-                createdAt: Date;
-                updatedAt: Date;
-                userId: number;
-                platform: string | null;
-                osVersion: string | null;
-                deviceModel: string | null;
-                userAgent: string | null;
-                requestIp: string | null;
-            }, {
-                hwid: string;
-                createdAt: string;
-                updatedAt: string;
-                userId: number;
-                platform: string | null;
-                osVersion: string | null;
-                deviceModel: string | null;
-                userAgent: string | null;
-                requestIp: string | null;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            devices: {
-                hwid: string;
-                createdAt: Date;
-                updatedAt: Date;
-                userId: number;
-                platform: string | null;
-                osVersion: string | null;
-                deviceModel: string | null;
-                userAgent: string | null;
-                requestIp: string | null;
-            }[];
-            total: number;
-        }, {
-            devices: {
-                hwid: string;
-                createdAt: string;
-                updatedAt: string;
-                userId: number;
-                platform: string | null;
-                osVersion: string | null;
-                deviceModel: string | null;
-                userAgent: string | null;
-                requestIp: string | null;
-            }[];
-            total: number;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            devices: {
-                hwid: string;
-                createdAt: Date;
-                updatedAt: Date;
-                userId: number;
-                platform: string | null;
-                osVersion: string | null;
-                deviceModel: string | null;
-                userAgent: string | null;
-                requestIp: string | null;
-            }[];
-            total: number;
-        };
-    }, {
-        response: {
-            devices: {
-                hwid: string;
-                createdAt: string;
-                updatedAt: string;
-                userId: number;
-                platform: string | null;
-                osVersion: string | null;
-                deviceModel: string | null;
-                userAgent: string | null;
-                requestIp: string | null;
-            }[];
-            total: number;
-        };
-    }>;
+                createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+                updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=delete-all-user-hwid-devices.command.d.ts.map

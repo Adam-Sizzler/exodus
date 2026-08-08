@@ -66,11 +66,11 @@ func (s *Scheduler) findUsersForExpireNotifications(ctx context.Context) error {
 func (s *Scheduler) usersByExpireAt(ctx context.Context, start, end time.Time) ([]userNotificationRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
-			u.t_id, u.uuid::text, u.username, u.short_uuid, u.status,
+			u.id, u.uuid::text, u.username, u.short_uuid, u.status,
 			u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0),
 			u.expire_at, u.last_triggered_threshold, u.created_at
 		FROM users u
-		LEFT JOIN user_traffic ut ON ut.t_id = u.t_id
+		LEFT JOIN user_traffic ut ON ut.id = u.id
 		WHERE u.expire_at >= $1 AND u.expire_at < $2
 		ORDER BY u.created_at ASC
 	`, start, end)
@@ -174,17 +174,17 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 		WITH thresholds(pct) AS (VALUES %s),
 		candidates AS (
 			SELECT
-				u.t_id,
+				u.id,
 				MIN(u.created_at) AS created_at_for_order,
 				MAX(t.pct)::int AS new_threshold
 			FROM users u
-			INNER JOIN user_traffic ut ON ut.t_id = u.t_id
+			INNER JOIN user_traffic ut ON ut.id = u.id
 			INNER JOIN thresholds t
 				ON u.status = 'ACTIVE'
 				AND u.traffic_limit_bytes > 0
 				AND ut.used_traffic_bytes >= ((u.traffic_limit_bytes * t.pct::bigint) / 100)
 				AND u.last_triggered_threshold < t.pct
-			GROUP BY u.t_id
+			GROUP BY u.id
 			ORDER BY created_at_for_order
 			LIMIT 5000
 		)
@@ -192,15 +192,15 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 		SET last_triggered_threshold = c.new_threshold,
 		    updated_at = CURRENT_TIMESTAMP
 		FROM candidates c
-		WHERE u.t_id = c.t_id
+		WHERE u.id = c.id
 		RETURNING
-			u.t_id,
+			u.id,
 			u.uuid::text,
 			u.username,
 			u.short_uuid,
 			u.status,
 			u.traffic_limit_bytes,
-			COALESCE((SELECT ut.used_traffic_bytes FROM user_traffic ut WHERE ut.t_id = u.t_id), 0),
+			COALESCE((SELECT ut.used_traffic_bytes FROM user_traffic ut WHERE ut.id = u.id), 0),
 			u.expire_at,
 			u.last_triggered_threshold,
 			u.created_at
@@ -278,11 +278,11 @@ func (s *Scheduler) findNotConnectedUsersNotification(ctx context.Context) error
 func (s *Scheduler) notConnectedUsers(ctx context.Context, start, end time.Time) ([]userNotificationRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
-			u.t_id, u.uuid::text, u.username, u.short_uuid, u.status,
+			u.id, u.uuid::text, u.username, u.short_uuid, u.status,
 			u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0),
 			u.expire_at, u.last_triggered_threshold, u.created_at
 		FROM users u
-		INNER JOIN user_traffic ut ON ut.t_id = u.t_id
+		INNER JOIN user_traffic ut ON ut.id = u.id
 		WHERE u.status = 'ACTIVE'
 		  AND ut.first_connected_at IS NULL
 		  AND ut.online_at IS NULL

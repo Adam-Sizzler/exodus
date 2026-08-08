@@ -8,65 +8,13 @@ export declare namespace GetSubscriptionRequestHistoryStatsCommand {
             byParsedApp: z.ZodArray<z.ZodObject<{
                 app: z.ZodString;
                 count: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                count: number;
-                app: string;
-            }, {
-                count: number;
-                app: string;
-            }>, "many">;
+            }, z.core.$strip>>;
             hourlyRequestStats: z.ZodArray<z.ZodObject<{
-                dateTime: z.ZodEffects<z.ZodString, Date, string>;
+                dateTime: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
                 requestCount: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                dateTime: Date;
-                requestCount: number;
-            }, {
-                dateTime: string;
-                requestCount: number;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            byParsedApp: {
-                count: number;
-                app: string;
-            }[];
-            hourlyRequestStats: {
-                dateTime: Date;
-                requestCount: number;
-            }[];
-        }, {
-            byParsedApp: {
-                count: number;
-                app: string;
-            }[];
-            hourlyRequestStats: {
-                dateTime: string;
-                requestCount: number;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            byParsedApp: {
-                count: number;
-                app: string;
-            }[];
-            hourlyRequestStats: {
-                dateTime: Date;
-                requestCount: number;
-            }[];
-        };
-    }, {
-        response: {
-            byParsedApp: {
-                count: number;
-                app: string;
-            }[];
-            hourlyRequestStats: {
-                dateTime: string;
-                requestCount: number;
-            }[];
-        };
-    }>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-subscription-request-history-stats.command.d.ts.map

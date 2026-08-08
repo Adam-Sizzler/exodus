@@ -11,7 +11,7 @@ exports.NetworkInterfaceSchema = zod_1.z.object({
 });
 exports.NodeSystemInfoSchema = zod_1.z.object({
     arch: zod_1.z.string(),
-    cpus: zod_1.z.number().int(),
+    cpus: zod_1.z.int(),
     cpuModel: zod_1.z.string(),
     memoryTotal: zod_1.z.number(),
     hostname: zod_1.z.string(),

@@ -13,11 +13,11 @@ import {
     TbTable
 } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { useGetNodes, useRestartAllNodes } from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import { useNodesStoreActions } from '@entities/dashboard/nodes/nodes-store/nodes-store'
 import { NODES_VIEW_MODE } from '@entities/dashboard/view-preferences-store'
 
 interface IProps {
@@ -29,12 +29,6 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
     const { setViewMode, viewMode } = props
 
     const { t } = useTranslation()
-
-    const actions = useNodesStoreActions()
-
-    const handleCreate = () => {
-        actions.toggleCreateModal(true)
-    }
 
     const {
         isLoading: isGetNodesPending,
@@ -172,7 +166,12 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
             </ActionIconGroup>
             <ActionIconGroup>
                 <Tooltip label={t('nodes-header-action-buttons.feature.create-new-node')} withArrow>
-                    <ActionIcon color="teal" onClick={handleCreate} size="input-md" variant="soft">
+                    <ActionIcon
+                        color="teal"
+                        onClick={() => showModal('nodes_createNodeModal')}
+                        size="input-md"
+                        variant="soft"
+                    >
                         <TbPlus size="24px" />
                     </ActionIcon>
                 </Tooltip>

@@ -11,6 +11,8 @@ import { CompactLayout } from './layout-variants/compact.layout'
 import { MobileLayout } from './layout-variants/mobile.layout'
 import { SidebarLayout } from './layout-variants/sidebar.layout'
 
+import '@shared/_modals/modal-registry'
+
 export function MainLayout() {
     const layoutStyle = useLayoutStyle()
 

@@ -61,14 +61,14 @@ export function InternalSquadsGridWidget(props: IProps) {
 
     const handleDeleteInternalSquad = (internalSquadUuid: string) => {
         modals.openConfirmModal({
-            title: t('common.delete'),
+            title: t('common.confirm-action'),
             children: t('common.confirm-action-description'),
             labels: {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             centered: true,
             onConfirm: () => {
                 deleteInternalSquad({
@@ -89,8 +89,8 @@ export function InternalSquadsGridWidget(props: IProps) {
                 confirm: t('common.delete'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'red' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'red', variant: 'soft' },
             onConfirm: () => {
                 deleteUsersFromInternalSquad({
                     route: {
@@ -110,8 +110,8 @@ export function InternalSquadsGridWidget(props: IProps) {
                 confirm: t('common.add'),
                 cancel: t('common.cancel')
             },
-            cancelProps: { variant: 'subtle', color: 'gray' },
-            confirmProps: { color: 'teal' },
+            cancelProps: { variant: 'subtle' },
+            confirmProps: { color: 'teal', variant: 'soft' },
             onConfirm: () => {
                 addUsersToInternalSquad({
                     route: {

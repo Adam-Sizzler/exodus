@@ -9,7 +9,6 @@ exports.TorrentBlockerReportSchema = zod_1.z.object({
     userId: zod_1.z.number(),
     nodeId: zod_1.z.number(),
     user: extended_users_schema_1.ExtendedUsersSchema.pick({
-        uuid: true,
         username: true,
     }),
     node: nodes_schema_1.NodesSchema.pick({
@@ -22,13 +21,11 @@ exports.TorrentBlockerReportSchema = zod_1.z.object({
             blocked: zod_1.z.boolean(),
             ip: zod_1.z.string(),
             blockDuration: zod_1.z.number(),
-            willUnblockAt: zod_1.z
-                .string()
+            willUnblockAt: zod_1.z.iso
                 .datetime({ offset: true, local: true })
                 .transform((str) => new Date(str)),
             userId: zod_1.z.string(),
-            processedAt: zod_1.z
-                .string()
+            processedAt: zod_1.z.iso
                 .datetime({ offset: true, local: true })
                 .transform((str) => new Date(str)),
         }),
@@ -48,8 +45,5 @@ exports.TorrentBlockerReportSchema = zod_1.z.object({
             ts: zod_1.z.number(),
         }),
     }),
-    createdAt: zod_1.z
-        .string()
-        .datetime()
-        .transform((str) => new Date(str)),
+    createdAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
 });

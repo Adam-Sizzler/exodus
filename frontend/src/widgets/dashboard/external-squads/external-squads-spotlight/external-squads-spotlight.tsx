@@ -3,10 +3,9 @@ import { GetExternalSquadsCommand } from '@exodus/backend-contract'
 import { PiUsers } from 'react-icons/pi'
 import { TbWebhook } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { UniversalSpotlightContentShared } from '@shared/ui/universal-spotlight'
 import { formatInt } from '@shared/utils/misc'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     externalSquads: GetExternalSquadsCommand.Response['response']['externalSquads']
@@ -15,10 +14,10 @@ interface IProps {
 export const ExternalSquadsSpotlightWidget = (props: IProps) => {
     const { externalSquads } = props
 
-    const openModalWithData = useModalsStoreOpenWithData()
-
     const handleOpenEditModal = (uuid: string) => {
-        openModalWithData(MODALS.EXTERNAL_SQUAD_DRAWER, uuid)
+        showModal('externalSquads_externalSquadsDrawer', {
+            uuid: uuid
+        })
     }
 
     return (

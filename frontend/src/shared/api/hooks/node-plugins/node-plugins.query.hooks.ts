@@ -9,7 +9,7 @@ import { sToMs } from '@shared/utils/time-utils'
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 export const nodePluginsQueryKeys = createQueryKeys('nodePlugins', {
-    getNodePlugin: (route: GetNodePluginCommand.Request) => ({
+    getNodePlugin: (route: GetNodePluginCommand.RequestParam) => ({
         queryKey: [route]
     }),
     getNodePlugins: {
@@ -19,7 +19,7 @@ export const nodePluginsQueryKeys = createQueryKeys('nodePlugins', {
 
 export const useGetNodePlugin = createGetQueryHook({
     endpoint: GetNodePluginCommand.TSQ_url,
-    routeParamsSchema: GetNodePluginCommand.RequestSchema,
+    routeParamsSchema: GetNodePluginCommand.RequestParamSchema,
     responseSchema: GetNodePluginCommand.ResponseSchema,
     getQueryKey: ({ route }) => nodePluginsQueryKeys.getNodePlugin(route!).queryKey,
     rQueryParams: {

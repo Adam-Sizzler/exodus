@@ -9,12 +9,8 @@ var DeleteNodePluginCommand;
     DeleteNodePluginCommand.url = api_1.REST_API.NODE_PLUGINS.DELETE;
     DeleteNodePluginCommand.TSQ_url = DeleteNodePluginCommand.url(':uuid');
     DeleteNodePluginCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.DELETE(':uuid'), 'delete', 'Delete Node Plugin', { scope: 'delete', kind: 'write' });
-    DeleteNodePluginCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteNodePluginCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    DeleteNodePluginCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            isDeleted: zod_1.z.boolean(),
-        }),
-    });
+
 })(DeleteNodePluginCommand || (exports.DeleteNodePluginCommand = DeleteNodePluginCommand = {}));

@@ -4,142 +4,32 @@ export declare namespace GetStatsNodesUsageCommand {
     const TSQ_url: "/api/bandwidth-stats/nodes/";
     const endpointDetails: import("../../../constants").EndpointDetails;
     const RequestQuerySchema: z.ZodObject<{
-        start: z.ZodString;
-        end: z.ZodString;
-        topNodesLimit: z.ZodDefault<z.ZodNumber>;
-    }, "strip", z.ZodTypeAny, {
-        start: string;
-        end: string;
-        topNodesLimit: number;
-    }, {
-        start: string;
-        end: string;
-        topNodesLimit?: number | undefined;
-    }>;
-    type RequestQuery = z.infer<typeof RequestQuerySchema>;
+        start: z.ZodISODate;
+        end: z.ZodISODate;
+        topNodesLimit: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            categories: z.ZodArray<z.ZodString, "many">;
-            sparklineData: z.ZodArray<z.ZodNumber, "many">;
+            categories: z.ZodArray<z.ZodString>;
+            sparklineData: z.ZodArray<z.ZodNumber>;
             topNodes: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 color: z.ZodString;
                 name: z.ZodString;
                 countryCode: z.ZodString;
                 total: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }, {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }>, "many">;
+            }, z.core.$strip>>;
             series: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 name: z.ZodString;
                 color: z.ZodString;
                 countryCode: z.ZodString;
                 total: z.ZodNumber;
-                data: z.ZodArray<z.ZodNumber, "many">;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-                data: number[];
-            }, {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-                data: number[];
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            categories: string[];
-            sparklineData: number[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-            series: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-                data: number[];
-            }[];
-        }, {
-            categories: string[];
-            sparklineData: number[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-            series: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-                data: number[];
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            categories: string[];
-            sparklineData: number[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-            series: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-                data: number[];
-            }[];
-        };
-    }, {
-        response: {
-            categories: string[];
-            sparklineData: number[];
-            topNodes: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-            }[];
-            series: {
-                uuid: string;
-                name: string;
-                total: number;
-                countryCode: string;
-                color: string;
-                data: number[];
-            }[];
-        };
-    }>;
+                data: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestQuery = z.infer<typeof RequestQuerySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-stats-nodes-usage.command.d.ts.map

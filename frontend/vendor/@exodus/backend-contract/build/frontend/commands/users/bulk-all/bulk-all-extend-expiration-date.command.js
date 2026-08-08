@@ -9,12 +9,8 @@ var BulkAllExtendExpirationDateCommand;
     BulkAllExtendExpirationDateCommand.url = api_1.REST_API.USERS.BULK.ALL.EXTEND_EXPIRATION_DATE;
     BulkAllExtendExpirationDateCommand.TSQ_url = BulkAllExtendExpirationDateCommand.url;
     BulkAllExtendExpirationDateCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.ALL.EXTEND_EXPIRATION_DATE, 'post', 'Extend expiration date for all users by days', { scope: 'bulk-all-extend-expiration-date', kind: 'write' });
-    BulkAllExtendExpirationDateCommand.RequestSchema = zod_1.z.object({
-        extendDays: zod_1.z.number().int().min(1, 'Extend days must be greater than 0'),
+    BulkAllExtendExpirationDateCommand.RequestBodySchema = zod_1.z.object({
+        extendDays: zod_1.z.int().min(1),
     });
-    BulkAllExtendExpirationDateCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            eventSent: zod_1.z.boolean(),
-        }),
-    });
+
 })(BulkAllExtendExpirationDateCommand || (exports.BulkAllExtendExpirationDateCommand = BulkAllExtendExpirationDateCommand = {}));

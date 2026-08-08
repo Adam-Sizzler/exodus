@@ -1,14 +1,12 @@
 import type { IProps } from './interfaces/props.interface'
 
 import { Accordion, Badge, Divider, Group, Text, Tooltip } from '@mantine/core'
-import { modals } from '@mantine/modals'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PiCheckBold, PiCpu } from 'react-icons/pi'
 
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { showModal } from '@shared/_modals/show-modal'
 
-import { ActiveNodesListModalShared } from '../active-nodes-list-modal/active-nodes-list.modal.shared'
 import { VirtualizedInboundsListShared } from '../virtualized-inbounds-list/virtualized-inbounds-list.shared'
 import { AccordionControlShared } from './accordion-control.shared'
 
@@ -74,19 +72,9 @@ export const ConfigProfileCardShared = memo((props: IProps) => {
                                 e.stopPropagation()
                                 e.nativeEvent.stopImmediatePropagation()
 
-                                modals.open({
-                                    children: <ActiveNodesListModalShared nodes={profile.nodes} />,
-                                    title: (
-                                        <BaseOverlayHeader
-                                            iconColor="teal"
-                                            IconComponent={PiCpu}
-                                            iconVariant="soft"
-                                            title={`Active Nodes - ${profile.name}`}
-                                            titleOrder={5}
-                                        />
-                                    ),
-                                    size: 'lg',
-                                    centered: true
+                                showModal('configProfiles_activeNodesModal', {
+                                    nodes: profile.nodes,
+                                    profileName: profile.name
                                 })
                             }}
                             size="md"

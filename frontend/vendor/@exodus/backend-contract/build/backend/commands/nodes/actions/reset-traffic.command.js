@@ -9,12 +9,8 @@ var ResetNodeTrafficCommand;
     ResetNodeTrafficCommand.url = api_1.REST_API.NODES.ACTIONS.RESET_TRAFFIC;
     ResetNodeTrafficCommand.TSQ_url = ResetNodeTrafficCommand.url(':uuid');
     ResetNodeTrafficCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODES_ROUTES.ACTIONS.RESET_TRAFFIC(':uuid'), 'post', 'Reset Node Traffic', { scope: 'reset-traffic', kind: 'write' });
-    ResetNodeTrafficCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    ResetNodeTrafficCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    ResetNodeTrafficCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            eventSent: zod_1.z.boolean(),
-        }),
-    });
+
 })(ResetNodeTrafficCommand || (exports.ResetNodeTrafficCommand = ResetNodeTrafficCommand = {}));

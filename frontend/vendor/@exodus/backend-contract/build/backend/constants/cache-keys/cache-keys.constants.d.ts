@@ -13,6 +13,7 @@ export declare const CACHE_KEYS: {
     readonly NODE_XRAY_UPTIME: (uuid: string) => string;
     readonly RAW_INBOUND: (uuid: string) => string;
     readonly XRAY_JSON_TEMPLATE: (uuid: string) => string;
+    readonly EXTERNAL_SQUAD_TEMPLATE_NAME: (uuid: string, type: TSubscriptionTemplateType) => string;
 };
 export declare const CACHE_KEYS_TTL: {
     readonly EXODUS_SETTINGS: 86400;
@@ -23,6 +24,7 @@ export declare const CACHE_KEYS_TTL: {
     readonly NODE_XRAY_UPTIME: 16;
     readonly RAW_INBOUND: 3600;
     readonly XRAY_JSON_TEMPLATE: 3600;
+    readonly EXTERNAL_SQUAD_TEMPLATE_NAME: 3600;
 };
 export declare const INTERNAL_CACHE_KEYS: {
     readonly NODE_USER_USAGE_PREFIX: "node_user_usage:";
@@ -33,5 +35,11 @@ export declare const INTERNAL_CACHE_KEYS: {
 };
 export declare const INTERNAL_CACHE_KEYS_TTL: {
     readonly NODE_USER_USAGE: 10800;
+};
+export declare const EXPORT_TO_STREAM_KEYS: {
+    readonly PREFIX: "ioraw:";
+    readonly USER_USAGE: "export:user_usage";
+    readonly SUBSCRIPTION_REQUESTS: "export:subscription_requests";
+    readonly NODE_CONNECTIONS: "export:node_connections";
 };
 //# sourceMappingURL=cache-keys.constants.d.ts.map

@@ -3,141 +3,33 @@ export declare namespace CreateInfraProviderCommand {
     const url: "/api/infra-billing/providers";
     const TSQ_url: "/api/infra-billing/providers";
     const endpointDetails: import("../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
+    const RequestBodySchema: z.ZodObject<{
         name: z.ZodString;
-        faviconLink: z.ZodOptional<z.ZodString>;
-        loginUrl: z.ZodOptional<z.ZodString>;
-    }, "strip", z.ZodTypeAny, {
-        name: string;
-        faviconLink?: string | undefined;
-        loginUrl?: string | undefined;
-    }, {
-        name: string;
-        faviconLink?: string | undefined;
-        loginUrl?: string | undefined;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
+        faviconLink: z.ZodOptional<z.ZodURL>;
+        loginUrl: z.ZodOptional<z.ZodURL>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            uuid: z.ZodString;
+            uuid: z.ZodUUID;
             name: z.ZodString;
             faviconLink: z.ZodNullable<z.ZodString>;
             loginUrl: z.ZodNullable<z.ZodString>;
-            createdAt: z.ZodEffects<z.ZodString, Date, string>;
-            updatedAt: z.ZodEffects<z.ZodString, Date, string>;
+            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
             billingHistory: z.ZodObject<{
                 totalAmount: z.ZodNumber;
                 totalBills: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                totalAmount: number;
-                totalBills: number;
-            }, {
-                totalAmount: number;
-                totalBills: number;
-            }>;
+            }, z.core.$strip>;
             billingNodes: z.ZodArray<z.ZodObject<{
                 name: z.ZodString;
                 details: z.ZodNullable<z.ZodObject<{
-                    nodeUuid: z.ZodString;
+                    nodeUuid: z.ZodUUID;
                     countryCode: z.ZodString;
-                }, "strip", z.ZodTypeAny, {
-                    nodeUuid: string;
-                    countryCode: string;
-                }, {
-                    nodeUuid: string;
-                    countryCode: string;
-                }>>;
-            }, "strip", z.ZodTypeAny, {
-                name: string;
-                details: {
-                    nodeUuid: string;
-                    countryCode: string;
-                } | null;
-            }, {
-                name: string;
-                details: {
-                    nodeUuid: string;
-                    countryCode: string;
-                } | null;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            faviconLink: string | null;
-            loginUrl: string | null;
-            billingHistory: {
-                totalAmount: number;
-                totalBills: number;
-            };
-            billingNodes: {
-                name: string;
-                details: {
-                    nodeUuid: string;
-                    countryCode: string;
-                } | null;
-            }[];
-        }, {
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            faviconLink: string | null;
-            loginUrl: string | null;
-            billingHistory: {
-                totalAmount: number;
-                totalBills: number;
-            };
-            billingNodes: {
-                name: string;
-                details: {
-                    nodeUuid: string;
-                    countryCode: string;
-                } | null;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            uuid: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            faviconLink: string | null;
-            loginUrl: string | null;
-            billingHistory: {
-                totalAmount: number;
-                totalBills: number;
-            };
-            billingNodes: {
-                name: string;
-                details: {
-                    nodeUuid: string;
-                    countryCode: string;
-                } | null;
-            }[];
-        };
-    }, {
-        response: {
-            uuid: string;
-            name: string;
-            createdAt: string;
-            updatedAt: string;
-            faviconLink: string | null;
-            loginUrl: string | null;
-            billingHistory: {
-                totalAmount: number;
-                totalBills: number;
-            };
-            billingNodes: {
-                name: string;
-                details: {
-                    nodeUuid: string;
-                    countryCode: string;
-                } | null;
-            }[];
-        };
-    }>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=create-infra-provider.command.d.ts.map

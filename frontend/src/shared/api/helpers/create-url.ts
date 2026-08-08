@@ -24,8 +24,8 @@ import { withBasePath } from '@shared/constants/base-path'
  */
 export function createUrl(
     base: string,
-    queryParams?: Record<string, number | string | undefined>,
-    routeParams?: Record<string, number | string | undefined>
+    queryParams?: Record<string, unknown>,
+    routeParams?: Record<string, unknown>
 ) {
     const resolvedUrl = Object.entries(routeParams ?? {}).reduce(
         (acc, [key, value]) => acc.replaceAll(`:${key}`, String(value)),

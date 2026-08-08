@@ -1,27 +1,24 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
-import {
-    GetSubscriptionPageConfigCommand,
-    GetSubscriptionPageConfigsCommand
-} from '@exodus/backend-contract'
+import { GetSubpageConfigCommand, GetSubpageConfigsCommand } from '@exodus/backend-contract'
 
 import { sToMs } from '@shared/utils/time-utils'
 
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 export const subpageConfigsQueryKeys = createQueryKeys('subpageConfigs', {
-    getSubscriptionPageConfig: (route: GetSubscriptionPageConfigCommand.Request) => ({
+    getSubpageConfig: (route: GetSubpageConfigCommand.RequestParam) => ({
         queryKey: [route]
     }),
-    getSubscriptionPageConfigs: {
+    getSubpageConfigs: {
         queryKey: null
     }
 })
 
 export const useGetSubscriptionPageConfig = createGetQueryHook({
-    endpoint: GetSubscriptionPageConfigCommand.TSQ_url,
-    routeParamsSchema: GetSubscriptionPageConfigCommand.RequestSchema,
-    responseSchema: GetSubscriptionPageConfigCommand.ResponseSchema,
-    getQueryKey: ({ route }) => subpageConfigsQueryKeys.getSubscriptionPageConfig(route!).queryKey,
+    endpoint: GetSubpageConfigCommand.TSQ_url,
+    routeParamsSchema: GetSubpageConfigCommand.RequestParamSchema,
+    responseSchema: GetSubpageConfigCommand.ResponseSchema,
+    getQueryKey: ({ route }) => subpageConfigsQueryKeys.getSubpageConfig(route!).queryKey,
     rQueryParams: {
         refetchOnMount: false,
         staleTime: sToMs(5)
@@ -29,10 +26,10 @@ export const useGetSubscriptionPageConfig = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Subscription Page Config')
 })
 
-export const useGetSubscriptionPageConfigs = createGetQueryHook({
-    endpoint: GetSubscriptionPageConfigsCommand.TSQ_url,
-    responseSchema: GetSubscriptionPageConfigsCommand.ResponseSchema,
-    getQueryKey: () => subpageConfigsQueryKeys.getSubscriptionPageConfigs.queryKey,
+export const useGetSubpageConfigs = createGetQueryHook({
+    endpoint: GetSubpageConfigsCommand.TSQ_url,
+    responseSchema: GetSubpageConfigsCommand.ResponseSchema,
+    getQueryKey: () => subpageConfigsQueryKeys.getSubpageConfigs.queryKey,
     rQueryParams: {
         refetchOnMount: false,
         staleTime: sToMs(15)

@@ -1,8 +1,8 @@
-import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { GetNodesCommand } from '@exodus/backend-contract'
 
 export interface IProps {
-    fetchedNode?: GetAllNodesCommand.Response['response'][number] | undefined
-    node: GetAllNodesCommand.Response['response'][number]
+    fetchedNode?: GetNodesCommand.Response['response'][number] | undefined
+    node: GetNodesCommand.Response['response'][number]
     style?: React.CSSProperties
     withText?: boolean
 }

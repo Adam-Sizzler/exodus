@@ -1,24 +1,24 @@
 {
   "name": "@exodus/subscription-page-types",
-  "version": "0.4.0",
-  "public": true,
-  "license": "AGPL-3.0-only",
+  "version": "0.5.0",
   "description": "A types library for Exodus Subscription Page.",
-  "author": "EXODUS <github.com/exodus>",
+  "keywords": [],
   "homepage": "https://github.com/exodus",
+  "bugs": {
+    "url": "https://github.com/exodus/backend/issues"
+  },
+  "license": "AGPL-3.0-only",
+  "author": "EXODUS <github.com/exodus>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/exodus/backend.git"
   },
-  "bugs": {
-    "url": "https://github.com/exodus/backend/issues"
-  },
-  "main": "build/backend/index.js",
-  "browser": "build/frontend/index.js",
-  "types": "build/backend/index.d.ts",
   "files": [
     "build/**/*"
   ],
+  "main": "build/backend/index.js",
+  "browser": "build/frontend/index.js",
+  "types": "build/backend/index.d.ts",
   "scripts": {
     "clean": "rm -rf build",
     "build:backend": "tsc -p tsconfig.backend.json",
@@ -26,8 +26,8 @@
     "build": "npm run clean && npm run build:backend && npm run build:frontend",
     "prepublish": "npm run build"
   },
-  "keywords": [],
   "dependencies": {
-    "zod": "3.25.76"
-  }
+    "zod": "4.4.3"
+  },
+  "public": true
 }

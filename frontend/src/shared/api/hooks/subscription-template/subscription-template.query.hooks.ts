@@ -9,7 +9,7 @@ import { sToMs } from '@shared/utils/time-utils'
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 export const subscriptionTemplateQueryKeys = createQueryKeys('subscriptionTemplate', {
-    getSubscriptionTemplate: (route: GetSubscriptionTemplateCommand.Request) => ({
+    getSubscriptionTemplate: (route: GetSubscriptionTemplateCommand.RequestParam) => ({
         queryKey: [route]
     }),
     getSubscriptionTemplates: {
@@ -19,7 +19,7 @@ export const subscriptionTemplateQueryKeys = createQueryKeys('subscriptionTempla
 
 export const useGetSubscriptionTemplate = createGetQueryHook({
     endpoint: GetSubscriptionTemplateCommand.TSQ_url,
-    routeParamsSchema: GetSubscriptionTemplateCommand.RequestSchema,
+    routeParamsSchema: GetSubscriptionTemplateCommand.RequestParamSchema,
     responseSchema: GetSubscriptionTemplateCommand.ResponseSchema,
     getQueryKey: ({ route }) =>
         subscriptionTemplateQueryKeys.getSubscriptionTemplate(route!).queryKey,

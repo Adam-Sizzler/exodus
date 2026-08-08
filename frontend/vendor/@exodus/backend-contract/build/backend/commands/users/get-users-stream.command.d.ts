@@ -4,318 +4,79 @@ export declare namespace GetUsersStreamCommand {
     const TSQ_url: "/api/users/stream";
     const endpointDetails: import("../../constants").EndpointDetails;
     const RequestQuerySchema: z.ZodObject<{
-        cursor: z.ZodOptional<z.ZodString>;
-        size: z.ZodDefault<z.ZodNumber>;
-    }, "strip", z.ZodTypeAny, {
-        size: number;
-        cursor?: string | undefined;
-    }, {
-        size?: number | undefined;
-        cursor?: string | undefined;
-    }>;
-    type RequestQuery = z.infer<typeof RequestQuerySchema>;
+        cursor: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+        size: z.ZodDefault<z.ZodOptional<z.ZodCoercedNumber<unknown>>>;
+        status: z.ZodOptional<z.ZodEnum<{
+            readonly ACTIVE: "ACTIVE";
+            readonly DISABLED: "DISABLED";
+            readonly LIMITED: "LIMITED";
+            readonly EXPIRED: "EXPIRED";
+        }>>;
+        trafficLimitStrategy: z.ZodOptional<z.ZodEnum<{
+            readonly NO_RESET: "NO_RESET";
+            readonly DAY: "DAY";
+            readonly WEEK: "WEEK";
+            readonly MONTH: "MONTH";
+            readonly MONTH_ROLLING: "MONTH_ROLLING";
+        }>>;
+        telegramId: z.ZodOptional<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>;
+        email: z.ZodOptional<z.ZodEmail>;
+        tag: z.ZodOptional<z.ZodString>;
+        externalSquadUuid: z.ZodOptional<z.ZodUUID>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             users: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
                 id: z.ZodNumber;
                 shortUuid: z.ZodString;
                 username: z.ZodString;
-                status: z.ZodDefault<z.ZodNativeEnum<{
+                status: z.ZodEnum<{
                     readonly ACTIVE: "ACTIVE";
                     readonly DISABLED: "DISABLED";
                     readonly LIMITED: "LIMITED";
                     readonly EXPIRED: "EXPIRED";
-                }>>;
-                trafficLimitBytes: z.ZodDefault<z.ZodNumber>;
-                trafficLimitStrategy: z.ZodDefault<z.ZodNativeEnum<{
+                }>;
+                trafficLimitBytes: z.ZodNumber;
+                trafficLimitStrategy: z.ZodEnum<{
                     readonly NO_RESET: "NO_RESET";
                     readonly DAY: "DAY";
                     readonly WEEK: "WEEK";
                     readonly MONTH: "MONTH";
                     readonly MONTH_ROLLING: "MONTH_ROLLING";
-                }>>;
-                expireAt: z.ZodEffects<z.ZodString, Date, string>;
+                }>;
+                expireAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
                 telegramId: z.ZodNullable<z.ZodNumber>;
-                email: z.ZodNullable<z.ZodString>;
+                email: z.ZodNullable<z.ZodEmail>;
                 description: z.ZodNullable<z.ZodString>;
                 tag: z.ZodNullable<z.ZodString>;
-                hwidDeviceLimit: z.ZodNullable<z.ZodNumber>;
-                externalSquadUuid: z.ZodNullable<z.ZodString>;
+                hwidDeviceLimit: z.ZodNullable<z.ZodInt>;
+                externalSquadUuid: z.ZodNullable<z.ZodUUID>;
                 trojanPassword: z.ZodString;
-                vlessUuid: z.ZodString;
+                vlessUuid: z.ZodUUID;
                 ssPassword: z.ZodString;
-                lastTriggeredThreshold: z.ZodDefault<z.ZodNumber>;
-                subRevokedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                lastTrafficResetAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                createdAt: z.ZodEffects<z.ZodString, Date, string>;
-                updatedAt: z.ZodEffects<z.ZodString, Date, string>;
-            } & {
+                lastTriggeredThreshold: z.ZodInt;
+                subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
+                lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
+                createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+                updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
                 subscriptionUrl: z.ZodString;
                 activeInternalSquads: z.ZodArray<z.ZodObject<{
-                    uuid: z.ZodString;
+                    uuid: z.ZodUUID;
                     name: z.ZodString;
-                }, "strip", z.ZodTypeAny, {
-                    uuid: string;
-                    name: string;
-                }, {
-                    uuid: string;
-                    name: string;
-                }>, "many">;
+                }, z.core.$strip>>;
                 userTraffic: z.ZodObject<{
                     usedTrafficBytes: z.ZodNumber;
                     lifetimeUsedTrafficBytes: z.ZodNumber;
-                    onlineAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                    firstConnectedAt: z.ZodNullable<z.ZodEffects<z.ZodString, Date, string>>;
-                    lastConnectedNodeUuid: z.ZodNullable<z.ZodString>;
-                }, "strip", z.ZodTypeAny, {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: Date | null;
-                    firstConnectedAt: Date | null;
-                    lastConnectedNodeUuid: string | null;
-                }, {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: string | null;
-                    firstConnectedAt: string | null;
-                    lastConnectedNodeUuid: string | null;
-                }>;
-            }, "strip", z.ZodTypeAny, {
-                status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-                uuid: string;
-                expireAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                description: string | null;
-                username: string;
-                tag: string | null;
-                id: number;
-                shortUuid: string;
-                trafficLimitBytes: number;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                telegramId: number | null;
-                email: string | null;
-                hwidDeviceLimit: number | null;
-                externalSquadUuid: string | null;
-                trojanPassword: string;
-                vlessUuid: string;
-                ssPassword: string;
-                lastTriggeredThreshold: number;
-                subRevokedAt: Date | null;
-                lastTrafficResetAt: Date | null;
-                subscriptionUrl: string;
-                activeInternalSquads: {
-                    uuid: string;
-                    name: string;
-                }[];
-                userTraffic: {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: Date | null;
-                    firstConnectedAt: Date | null;
-                    lastConnectedNodeUuid: string | null;
-                };
-            }, {
-                uuid: string;
-                expireAt: string;
-                createdAt: string;
-                updatedAt: string;
-                description: string | null;
-                username: string;
-                tag: string | null;
-                id: number;
-                shortUuid: string;
-                telegramId: number | null;
-                email: string | null;
-                hwidDeviceLimit: number | null;
-                externalSquadUuid: string | null;
-                trojanPassword: string;
-                vlessUuid: string;
-                ssPassword: string;
-                subRevokedAt: string | null;
-                lastTrafficResetAt: string | null;
-                subscriptionUrl: string;
-                activeInternalSquads: {
-                    uuid: string;
-                    name: string;
-                }[];
-                userTraffic: {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: string | null;
-                    firstConnectedAt: string | null;
-                    lastConnectedNodeUuid: string | null;
-                };
-                status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
-                trafficLimitBytes?: number | undefined;
-                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
-                lastTriggeredThreshold?: number | undefined;
-            }>, "many">;
+                    onlineAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
+                    firstConnectedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
+                    lastConnectedNodeUuid: z.ZodNullable<z.ZodUUID>;
+                }, z.core.$strip>;
+            }, z.core.$strip>>;
             nextCursor: z.ZodNullable<z.ZodString>;
             hasMore: z.ZodBoolean;
-        }, "strip", z.ZodTypeAny, {
-            users: {
-                status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-                uuid: string;
-                expireAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                description: string | null;
-                username: string;
-                tag: string | null;
-                id: number;
-                shortUuid: string;
-                trafficLimitBytes: number;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                telegramId: number | null;
-                email: string | null;
-                hwidDeviceLimit: number | null;
-                externalSquadUuid: string | null;
-                trojanPassword: string;
-                vlessUuid: string;
-                ssPassword: string;
-                lastTriggeredThreshold: number;
-                subRevokedAt: Date | null;
-                lastTrafficResetAt: Date | null;
-                subscriptionUrl: string;
-                activeInternalSquads: {
-                    uuid: string;
-                    name: string;
-                }[];
-                userTraffic: {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: Date | null;
-                    firstConnectedAt: Date | null;
-                    lastConnectedNodeUuid: string | null;
-                };
-            }[];
-            nextCursor: string | null;
-            hasMore: boolean;
-        }, {
-            users: {
-                uuid: string;
-                expireAt: string;
-                createdAt: string;
-                updatedAt: string;
-                description: string | null;
-                username: string;
-                tag: string | null;
-                id: number;
-                shortUuid: string;
-                telegramId: number | null;
-                email: string | null;
-                hwidDeviceLimit: number | null;
-                externalSquadUuid: string | null;
-                trojanPassword: string;
-                vlessUuid: string;
-                ssPassword: string;
-                subRevokedAt: string | null;
-                lastTrafficResetAt: string | null;
-                subscriptionUrl: string;
-                activeInternalSquads: {
-                    uuid: string;
-                    name: string;
-                }[];
-                userTraffic: {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: string | null;
-                    firstConnectedAt: string | null;
-                    lastConnectedNodeUuid: string | null;
-                };
-                status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
-                trafficLimitBytes?: number | undefined;
-                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
-                lastTriggeredThreshold?: number | undefined;
-            }[];
-            nextCursor: string | null;
-            hasMore: boolean;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            users: {
-                status: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE";
-                uuid: string;
-                expireAt: Date;
-                createdAt: Date;
-                updatedAt: Date;
-                description: string | null;
-                username: string;
-                tag: string | null;
-                id: number;
-                shortUuid: string;
-                trafficLimitBytes: number;
-                trafficLimitStrategy: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING";
-                telegramId: number | null;
-                email: string | null;
-                hwidDeviceLimit: number | null;
-                externalSquadUuid: string | null;
-                trojanPassword: string;
-                vlessUuid: string;
-                ssPassword: string;
-                lastTriggeredThreshold: number;
-                subRevokedAt: Date | null;
-                lastTrafficResetAt: Date | null;
-                subscriptionUrl: string;
-                activeInternalSquads: {
-                    uuid: string;
-                    name: string;
-                }[];
-                userTraffic: {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: Date | null;
-                    firstConnectedAt: Date | null;
-                    lastConnectedNodeUuid: string | null;
-                };
-            }[];
-            nextCursor: string | null;
-            hasMore: boolean;
-        };
-    }, {
-        response: {
-            users: {
-                uuid: string;
-                expireAt: string;
-                createdAt: string;
-                updatedAt: string;
-                description: string | null;
-                username: string;
-                tag: string | null;
-                id: number;
-                shortUuid: string;
-                telegramId: number | null;
-                email: string | null;
-                hwidDeviceLimit: number | null;
-                externalSquadUuid: string | null;
-                trojanPassword: string;
-                vlessUuid: string;
-                ssPassword: string;
-                subRevokedAt: string | null;
-                lastTrafficResetAt: string | null;
-                subscriptionUrl: string;
-                activeInternalSquads: {
-                    uuid: string;
-                    name: string;
-                }[];
-                userTraffic: {
-                    usedTrafficBytes: number;
-                    lifetimeUsedTrafficBytes: number;
-                    onlineAt: string | null;
-                    firstConnectedAt: string | null;
-                    lastConnectedNodeUuid: string | null;
-                };
-                status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
-                trafficLimitBytes?: number | undefined;
-                trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
-                lastTriggeredThreshold?: number | undefined;
-            }[];
-            nextCursor: string | null;
-            hasMore: boolean;
-        };
-    }>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestQuery = z.infer<typeof RequestQuerySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-users-stream.command.d.ts.map

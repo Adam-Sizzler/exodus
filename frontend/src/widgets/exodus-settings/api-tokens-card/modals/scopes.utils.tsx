@@ -14,6 +14,7 @@ import {
     TbHexagon,
     TbKey,
     TbPackage,
+    TbRadar2,
     TbReportAnalytics,
     TbTags,
     TbWebhook
@@ -34,6 +35,7 @@ const RESOURCE_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
     'hwid-user-devices': TbDeviceAnalytics,
     'infra-billing': TbCreditCard,
     'internal-squads': TbCirclesRelation,
+    connections: TbRadar2,
     keygen: TbKey,
     metadata: TbTags,
     'node-plugins': TbPackage,

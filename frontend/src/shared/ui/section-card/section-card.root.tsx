@@ -4,6 +4,8 @@ import { Children, ReactNode, RefObject } from 'react'
 interface ISectionCardRootProps extends Omit<CardProps, 'children'> {
     children: ReactNode
     dividerOpacity?: number
+    onlyFirstDivider?: boolean
+    allDividers?: boolean
     gap?: MantineSpacing
     ref?: RefObject<HTMLDivElement | null>
 }
@@ -11,6 +13,8 @@ interface ISectionCardRootProps extends Omit<CardProps, 'children'> {
 export function SectionCardRoot({
     children,
     dividerOpacity = 0.3,
+    onlyFirstDivider = false,
+    allDividers = true,
     gap = 'md',
     p = 'md',
     radius = 'md',
@@ -20,15 +24,15 @@ export function SectionCardRoot({
 }: ISectionCardRootProps) {
     const childArray = Children.toArray(children).filter(Boolean)
 
-    const childrenWithDividers = childArray.reduce<ReactNode[]>((acc, child, index) => {
-        acc.push(child)
-
-        if (index < childArray.length - 1) {
-            acc.push(<Divider key={`divider-${index}`} style={{ opacity: dividerOpacity }} />)
+    const childrenWithDividers = childArray.flatMap((child, index) => {
+        if (onlyFirstDivider && index === 0 && childArray.length > 1) {
+            return [child, <Divider key={`divider-${index}`} style={{ opacity: dividerOpacity }} />]
         }
-
-        return acc
-    }, [])
+        if (allDividers && index < childArray.length - 1) {
+            return [child, <Divider key={`divider-${index}`} style={{ opacity: dividerOpacity }} />]
+        }
+        return [child]
+    })
 
     return (
         <Card

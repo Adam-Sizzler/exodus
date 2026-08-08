@@ -159,11 +159,7 @@
     padding: 12px 14px;
     border-radius: var(--mantine-radius-md);
     border: 1px solid rgb(245, 159, 11, 0.22);
-    background: linear-gradient(
-        135deg,
-        rgb(245, 159, 11, 0.1) 0%,
-        rgb(245, 159, 11, 0.02) 100%
-    );
+    background: linear-gradient(135deg, rgb(245, 159, 11, 0.1) 0%, rgb(245, 159, 11, 0.02) 100%);
     transition:
         border-color 150ms ease,
         background-color 150ms ease;

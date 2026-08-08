@@ -3,66 +3,28 @@ export declare namespace BulkAllUpdateUsersCommand {
     const url: "/api/users/bulk/all/update";
     const TSQ_url: "/api/users/bulk/all/update";
     const endpointDetails: import("../../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        status: z.ZodOptional<z.ZodDefault<z.ZodNativeEnum<{
+    const RequestBodySchema: z.ZodObject<{
+        status: z.ZodOptional<z.ZodEnum<{
             readonly ACTIVE: "ACTIVE";
             readonly DISABLED: "DISABLED";
             readonly LIMITED: "LIMITED";
             readonly EXPIRED: "EXPIRED";
-        }>>>;
+        }>>;
         trafficLimitBytes: z.ZodOptional<z.ZodNumber>;
-        trafficLimitStrategy: z.ZodOptional<z.ZodNativeEnum<{
+        trafficLimitStrategy: z.ZodOptional<z.ZodEnum<{
             readonly NO_RESET: "NO_RESET";
             readonly DAY: "DAY";
             readonly WEEK: "WEEK";
             readonly MONTH: "MONTH";
             readonly MONTH_ROLLING: "MONTH_ROLLING";
         }>>;
-        expireAt: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodString, Date, string>, Date, string>>;
+        expireAt: z.ZodOptional<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
         description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         telegramId: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-        email: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        email: z.ZodOptional<z.ZodNullable<z.ZodEmail>>;
         tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        hwidDeviceLimit: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-    }, "strip", z.ZodTypeAny, {
-        status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
-        expireAt?: Date | undefined;
-        description?: string | null | undefined;
-        tag?: string | null | undefined;
-        trafficLimitBytes?: number | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
-        telegramId?: number | null | undefined;
-        email?: string | null | undefined;
-        hwidDeviceLimit?: number | null | undefined;
-    }, {
-        status?: "DISABLED" | "LIMITED" | "EXPIRED" | "ACTIVE" | undefined;
-        expireAt?: string | undefined;
-        description?: string | null | undefined;
-        tag?: string | null | undefined;
-        trafficLimitBytes?: number | undefined;
-        trafficLimitStrategy?: "MONTH" | "NO_RESET" | "DAY" | "WEEK" | "MONTH_ROLLING" | undefined;
-        telegramId?: number | null | undefined;
-        email?: string | null | undefined;
-        hwidDeviceLimit?: number | null | undefined;
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
-    const ResponseSchema: z.ZodObject<{
-        response: z.ZodObject<{
-            eventSent: z.ZodBoolean;
-        }, "strip", z.ZodTypeAny, {
-            eventSent: boolean;
-        }, {
-            eventSent: boolean;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            eventSent: boolean;
-        };
-    }, {
-        response: {
-            eventSent: boolean;
-        };
-    }>;
-    type Response = z.infer<typeof ResponseSchema>;
+        hwidDeviceLimit: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    }, z.core.$strip>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
 }
 //# sourceMappingURL=bulk-all-update-users.command.d.ts.map

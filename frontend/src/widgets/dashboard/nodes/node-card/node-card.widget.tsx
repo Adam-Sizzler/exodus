@@ -1,5 +1,5 @@
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { OptimisticSortingPlugin } from '@dnd-kit/dom/sortable'
+import { useSortable } from '@dnd-kit/react/sortable'
 import { Avatar, Badge, Box, Flex, Progress, Stack, Text, Tooltip } from '@mantine/core'
 import { useClipboard } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
@@ -70,6 +70,7 @@ export const NodeCardWidget = memo((props: IProps) => {
     const {
         handleViewNode,
         node,
+        index,
         isDragOverlay = false,
         isMobile,
         disableReordering = false
@@ -77,13 +78,17 @@ export const NodeCardWidget = memo((props: IProps) => {
 
     const clipboard = useClipboard({ timeout: 500 })
 
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-        id: node.uuid
+    const sortable = useSortable({
+        id: node.uuid,
+        index,
+        disabled: isDragOverlay || disableReordering,
+        plugins: (defaults) => defaults.filter((plugin) => plugin !== OptimisticSortingPlugin)
     })
 
+    const isDragging = !isDragOverlay && sortable.isDragging
+    const { ref, handleRef } = sortable
+
     const style: CSSProperties = {
-        transform: CSS.Transform.toString(transform),
-        transition,
         opacity: isDragging ? 0 : 1,
         zIndex: isDragging ? 1000 : 'auto'
     }
@@ -176,9 +181,9 @@ export const NodeCardWidget = memo((props: IProps) => {
             className={clsx(classes.nodeRow, {
                 [classes.nodeRowDragging]: isDragging
             })}
-            data-dnd-overlay={isDragOverlay}
+            data-drag-overlay={isDragOverlay}
             onClick={() => handleViewNode(node.uuid)}
-            ref={isDragOverlay ? undefined : setNodeRef}
+            ref={isDragOverlay ? undefined : ref}
             style={{
                 ...style,
                 background: `linear-gradient(
@@ -192,11 +197,10 @@ export const NodeCardWidget = memo((props: IProps) => {
         >
             {!disableReordering && (
                 <Box
-                    {...(isDragOverlay ? {} : attributes)}
-                    {...(isDragOverlay ? {} : listeners)}
                     className={clsx(classes.dragHandle, {
                         [classes.dragHandleActive]: isDragging
                     })}
+                    ref={isDragOverlay ? undefined : handleRef}
                 >
                     <PiDotsSixVertical color="white" size="24px" />
                 </Box>

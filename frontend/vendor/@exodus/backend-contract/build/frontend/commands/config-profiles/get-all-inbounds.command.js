@@ -14,8 +14,9 @@ var GetAllInboundsCommand;
         response: zod_1.z.object({
             total: zod_1.z.number(),
             inbounds: zod_1.z.array(models_1.ConfigProfileInboundsSchema.extend({
-                activeSquads: zod_1.z.array(zod_1.z.string().uuid()),
+                activeSquads: zod_1.z.array(zod_1.z.uuid()),
             })),
         }),
     });
+
 })(GetAllInboundsCommand || (exports.GetAllInboundsCommand = GetAllInboundsCommand = {}));

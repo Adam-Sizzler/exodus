@@ -1,1 +1,1 @@
-{"version":3,"file":"metadata.d.ts","sourceRoot":"","sources":["../../../../api/controllers/metadata.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,mBAAmB,EAAG,UAAmB,CAAC;AAEvD,eAAO,MAAM,eAAe;;6BAER,MAAM;gCACH,MAAM;;;6BAGT,MAAM;gCACH,MAAM;;CAEnB,CAAC"}
+{"version":3,"file":"metadata.d.ts","sourceRoot":"","sources":["../../../../api/controllers/metadata.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,mBAAmB,EAAG,UAAmB,CAAC;AAEvD,eAAO,MAAM,eAAe;;+BAEN,MAAM;kCACH,MAAM;;;+BAGT,MAAM;kCACH,MAAM;;CAErB,CAAC"}

@@ -1,6 +1,6 @@
 import { createQueryKeys } from '@lukemorales/query-key-factory'
 import {
-    GetAllHwidDevicesCommand,
+    GetHwidDevicesCommand,
     GetHwidDevicesStatsCommand,
     GetTopUsersByHwidDevicesCommand,
     GetUserHwidDevicesCommand
@@ -12,10 +12,10 @@ import { sToMs } from '@shared/utils/time-utils'
 import { createGetQueryHook, errorHandler } from '../../tsq-helpers'
 
 export const hwidUserDevicesQueryKeys = createQueryKeys('hwid-user-devices', {
-    getUserHwidDevices: (route: GetUserHwidDevicesCommand.Request) => ({
+    getUserHwidDevices: (route: GetUserHwidDevicesCommand.RequestParam) => ({
         queryKey: [route]
     }),
-    getAllHwidDevices: (filters: GetAllHwidDevicesCommand.RequestQuery) => ({
+    getAllHwidDevices: (filters: GetHwidDevicesCommand.RequestQuery) => ({
         queryKey: [filters]
     }),
     getTopUsersByHwidDevices: (filters: GetTopUsersByHwidDevicesCommand.RequestQuery) => ({
@@ -32,7 +32,7 @@ const REFETCH_INTERVAL = 15_100
 export const useGetUserHwidDevices = createGetQueryHook({
     endpoint: GetUserHwidDevicesCommand.TSQ_url,
     responseSchema: GetUserHwidDevicesCommand.ResponseSchema,
-    routeParamsSchema: GetUserHwidDevicesCommand.RequestSchema,
+    routeParamsSchema: GetUserHwidDevicesCommand.RequestParamSchema,
     getQueryKey: ({ route }) => hwidUserDevicesQueryKeys.getUserHwidDevices(route!).queryKey,
     rQueryParams: {
         refetchInterval: sToMs(60)
@@ -40,10 +40,10 @@ export const useGetUserHwidDevices = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get User HWIDs and Devices')
 })
 
-export const useGetAllHwidDevices = createGetQueryHook({
-    endpoint: GetAllHwidDevicesCommand.TSQ_url,
-    responseSchema: GetAllHwidDevicesCommand.ResponseSchema,
-    requestQuerySchema: GetAllHwidDevicesCommand.RequestQuerySchema,
+export const useGetHwidDevices = createGetQueryHook({
+    endpoint: GetHwidDevicesCommand.TSQ_url,
+    responseSchema: GetHwidDevicesCommand.ResponseSchema,
+    requestQuerySchema: GetHwidDevicesCommand.RequestQuerySchema,
     getQueryKey: ({ query }) => hwidUserDevicesQueryKeys.getAllHwidDevices(query!).queryKey,
     rQueryParams: {
         staleTime: sToMs(20),

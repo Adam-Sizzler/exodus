@@ -3,176 +3,44 @@ export declare namespace PluginExecutorCommand {
     const url: "/api/node-plugins/executor";
     const TSQ_url: "/api/node-plugins/executor";
     const endpointDetails: import("../../constants").EndpointDetails;
-    const CommandSchema: z.ZodDiscriminatedUnion<"command", [z.ZodObject<{
+    const CommandSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
         command: z.ZodLiteral<"blockIps">;
         ips: z.ZodArray<z.ZodObject<{
-            ip: z.ZodString;
+            ip: z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>;
             timeout: z.ZodNumber;
-        }, "strip", z.ZodTypeAny, {
-            ip: string;
-            timeout: number;
-        }, {
-            ip: string;
-            timeout: number;
-        }>, "many">;
-    }, "strip", z.ZodTypeAny, {
-        ips: {
-            ip: string;
-            timeout: number;
-        }[];
-        command: "blockIps";
-    }, {
-        ips: {
-            ip: string;
-            timeout: number;
-        }[];
-        command: "blockIps";
-    }>, z.ZodObject<{
+        }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
         command: z.ZodLiteral<"unblockIps">;
-        ips: z.ZodArray<z.ZodString, "many">;
-    }, "strip", z.ZodTypeAny, {
-        ips: string[];
-        command: "unblockIps";
-    }, {
-        ips: string[];
-        command: "unblockIps";
-    }>, z.ZodObject<{
+        ips: z.ZodArray<z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>>;
+    }, z.core.$strip>, z.ZodObject<{
         command: z.ZodLiteral<"recreateTables">;
-    }, "strip", z.ZodTypeAny, {
-        command: "recreateTables";
-    }, {
-        command: "recreateTables";
-    }>]>;
-    const TargetNodesSchema: z.ZodDiscriminatedUnion<"target", [z.ZodObject<{
+    }, z.core.$strip>], "command">;
+    const TargetNodesSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
         target: z.ZodLiteral<"allNodes">;
-    }, "strip", z.ZodTypeAny, {
-        target: "allNodes";
-    }, {
-        target: "allNodes";
-    }>, z.ZodObject<{
+    }, z.core.$strip>, z.ZodObject<{
         target: z.ZodLiteral<"specificNodes">;
-        nodeUuids: z.ZodArray<z.ZodString, "many">;
-    }, "strip", z.ZodTypeAny, {
-        target: "specificNodes";
-        nodeUuids: string[];
-    }, {
-        target: "specificNodes";
-        nodeUuids: string[];
-    }>]>;
-    const RequestSchema: z.ZodObject<{
-        command: z.ZodDiscriminatedUnion<"command", [z.ZodObject<{
+        nodeUuids: z.ZodArray<z.ZodUUID>;
+    }, z.core.$strip>], "target">;
+    const RequestBodySchema: z.ZodObject<{
+        command: z.ZodDiscriminatedUnion<[z.ZodObject<{
             command: z.ZodLiteral<"blockIps">;
             ips: z.ZodArray<z.ZodObject<{
-                ip: z.ZodString;
+                ip: z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>;
                 timeout: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                ip: string;
-                timeout: number;
-            }, {
-                ip: string;
-                timeout: number;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            ips: {
-                ip: string;
-                timeout: number;
-            }[];
-            command: "blockIps";
-        }, {
-            ips: {
-                ip: string;
-                timeout: number;
-            }[];
-            command: "blockIps";
-        }>, z.ZodObject<{
+            }, z.core.$strip>>;
+        }, z.core.$strip>, z.ZodObject<{
             command: z.ZodLiteral<"unblockIps">;
-            ips: z.ZodArray<z.ZodString, "many">;
-        }, "strip", z.ZodTypeAny, {
-            ips: string[];
-            command: "unblockIps";
-        }, {
-            ips: string[];
-            command: "unblockIps";
-        }>, z.ZodObject<{
+            ips: z.ZodArray<z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>>;
+        }, z.core.$strip>, z.ZodObject<{
             command: z.ZodLiteral<"recreateTables">;
-        }, "strip", z.ZodTypeAny, {
-            command: "recreateTables";
-        }, {
-            command: "recreateTables";
-        }>]>;
-        targetNodes: z.ZodDiscriminatedUnion<"target", [z.ZodObject<{
+        }, z.core.$strip>], "command">;
+        targetNodes: z.ZodDiscriminatedUnion<[z.ZodObject<{
             target: z.ZodLiteral<"allNodes">;
-        }, "strip", z.ZodTypeAny, {
-            target: "allNodes";
-        }, {
-            target: "allNodes";
-        }>, z.ZodObject<{
+        }, z.core.$strip>, z.ZodObject<{
             target: z.ZodLiteral<"specificNodes">;
-            nodeUuids: z.ZodArray<z.ZodString, "many">;
-        }, "strip", z.ZodTypeAny, {
-            target: "specificNodes";
-            nodeUuids: string[];
-        }, {
-            target: "specificNodes";
-            nodeUuids: string[];
-        }>]>;
-    }, "strip", z.ZodTypeAny, {
-        targetNodes: {
-            target: "allNodes";
-        } | {
-            target: "specificNodes";
-            nodeUuids: string[];
-        };
-        command: {
-            ips: {
-                ip: string;
-                timeout: number;
-            }[];
-            command: "blockIps";
-        } | {
-            ips: string[];
-            command: "unblockIps";
-        } | {
-            command: "recreateTables";
-        };
-    }, {
-        targetNodes: {
-            target: "allNodes";
-        } | {
-            target: "specificNodes";
-            nodeUuids: string[];
-        };
-        command: {
-            ips: {
-                ip: string;
-                timeout: number;
-            }[];
-            command: "blockIps";
-        } | {
-            ips: string[];
-            command: "unblockIps";
-        } | {
-            command: "recreateTables";
-        };
-    }>;
-    type Request = z.infer<typeof RequestSchema>;
-    const ResponseSchema: z.ZodObject<{
-        response: z.ZodObject<{
-            eventSent: z.ZodBoolean;
-        }, "strip", z.ZodTypeAny, {
-            eventSent: boolean;
-        }, {
-            eventSent: boolean;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            eventSent: boolean;
-        };
-    }, {
-        response: {
-            eventSent: boolean;
-        };
-    }>;
-    type Response = z.infer<typeof ResponseSchema>;
+            nodeUuids: z.ZodArray<z.ZodUUID>;
+        }, z.core.$strip>], "target">;
+    }, z.core.$strip>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
 }
 //# sourceMappingURL=executor.command.d.ts.map

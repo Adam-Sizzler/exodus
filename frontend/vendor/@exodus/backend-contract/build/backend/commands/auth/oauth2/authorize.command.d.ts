@@ -3,8 +3,8 @@ export declare namespace OAuth2AuthorizeCommand {
     const url: "/api/auth/oauth2/authorize";
     const TSQ_url: "/api/auth/oauth2/authorize";
     const endpointDetails: import("../../../constants").EndpointDetails;
-    const RequestSchema: z.ZodObject<{
-        provider: z.ZodNativeEnum<{
+    const RequestBodySchema: z.ZodObject<{
+        provider: z.ZodEnum<{
             readonly TELEGRAM: "telegram";
             readonly GITHUB: "github";
             readonly POCKETID: "pocketid";
@@ -12,28 +12,13 @@ export declare namespace OAuth2AuthorizeCommand {
             readonly KEYCLOAK: "keycloak";
             readonly GENERIC: "generic";
         }>;
-    }, "strip", z.ZodTypeAny, {
-        provider: "telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic";
-    }, {
-        provider: "telegram" | "github" | "pocketid" | "yandex" | "keycloak" | "generic";
-    }>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            authorizationUrl: z.ZodNullable<z.ZodString>;
-        }, "strip", z.ZodTypeAny, {
-            authorizationUrl: string | null;
-        }, {
-            authorizationUrl: string | null;
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            authorizationUrl: string | null;
-        };
-    }, {
-        response: {
-            authorizationUrl: string | null;
-        };
-    }>;
+            authorizationUrl: z.ZodNullable<z.ZodURL>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=authorize.command.d.ts.map

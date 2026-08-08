@@ -8,7 +8,6 @@ import { CopyableAreaShared } from '@shared/ui/copyable-area/copyable-area'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 
 import { generateMlDsa65, generateMlKem768, generateX25519 } from './keypair-utils'
-import classes from './KeypairGenerator.module.css'
 
 const enum TabTypes {
     ML_DSA65 = 'ml-dsa65',
@@ -28,12 +27,10 @@ export const KeypairGeneratorWidget = () => {
     return (
         <Stack gap="lg">
             <Tabs
-                classNames={classes}
                 keepMounted
                 keepMountedMode="display-none"
                 onChange={(value) => value && setActiveTab(value as TabTypes)}
                 value={activeTab}
-                variant="unstyled"
             >
                 <Tabs.List grow mb="md">
                     <Tabs.Tab
@@ -77,7 +74,7 @@ export const KeypairGeneratorWidget = () => {
                                         value={keyPair.password}
                                     />
                                     <CopyableFieldShared
-                                        label="Prvate Key"
+                                        label="Private Key"
                                         value={keyPair.privateKey}
                                     />
                                 </Stack>

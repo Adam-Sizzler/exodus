@@ -1,29 +1,24 @@
-import { Button, Group } from '@mantine/core'
+import { DataTable, type DataTableSortStatus, useDataTableColumns } from '@kastov/mantine-datatable'
 import { useDebouncedValue } from '@mantine/hooks'
 import {
-    GetAllHostsCommand,
-    GetAllHostTagsCommand,
+    GetHostsCommand,
+    GetHostsTagsCommand,
     GetConfigProfilesCommand
 } from '@exodus/backend-contract'
-import get from 'lodash/get'
-import { DataTable, type DataTableSortStatus, useDataTableColumns } from 'mantine-datatable'
-import { memo, useCallback, useLayoutEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TbRestore } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import {
     useGetHosts,
     useGetInternalSquads,
     useGetNodes,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
-import { LoadingScreen } from '@shared/ui'
-import { preventBackScrollTables } from '@shared/utils/misc'
+import { usePreventTableBackScroll } from '@shared/hooks'
+import { DataTableControls, LoadingScreen, sortRecords } from '@shared/ui'
 import { sToMs } from '@shared/utils/time-utils'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
-
-import { ColumnsVisibilityPopover } from './columns-visibility-popover'
 import {
     type BooleanFilterValue,
     getHostColumnLabels,
@@ -36,21 +31,15 @@ import {
     type HostType
 } from './use-hosts-table-widget'
 
-function getHostSortValue(host: HostType, accessor: string): unknown {
-    return get(host, accessor)
-}
-
 interface IProps {
     configProfiles: GetConfigProfilesCommand.Response['response']['configProfiles'] | undefined
-    hosts: GetAllHostsCommand.Response['response'] | undefined
-    hostTags: GetAllHostTagsCommand.Response['response']['tags'] | undefined
+    hosts: GetHostsCommand.Response['response'] | undefined
+    hostTags: GetHostsTagsCommand.Response['response']['tags'] | undefined
     selectedHosts: string[]
     setSelectedHosts: React.Dispatch<React.SetStateAction<string[]>>
-    state: GetAllHostsCommand.Response['response']
+    state: GetHostsCommand.Response['response']
 }
 
-const PAGE_SIZE = 50
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 150, 200]
 const HOSTS_CACHE_KEY = 'hosts-datatable-hosts-v5'
 const DEFAULT_SORT_STATUS: DataTableSortStatus<HostType> = {
     columnAccessor: 'viewPosition',
@@ -61,8 +50,6 @@ export const HostsDataTableWidget = memo((props: IProps) => {
     const { configProfiles, hosts, selectedHosts, setSelectedHosts, state } = props
     const { t } = useTranslation()
 
-    const [pageSize, setPageSize] = useState(PAGE_SIZE)
-    const [page, setPage] = useState(1)
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus<HostType>>(DEFAULT_SORT_STATUS)
 
     const [textQueries, setTextQueries] = useState<Record<string, string>>({})
@@ -85,8 +72,6 @@ export const HostsDataTableWidget = memo((props: IProps) => {
     const { data: internalSquads } = useGetInternalSquads()
     const { data: subscriptionTemplates } = useGetSubscriptionTemplates()
 
-    const openModalWithData = useModalsStoreOpenWithData()
-
     useGetHosts({
         rQueryParams: {
             enabled: true,
@@ -94,17 +79,13 @@ export const HostsDataTableWidget = memo((props: IProps) => {
         }
     })
 
-    useLayoutEffect(() => {
-        document.body.addEventListener('wheel', preventBackScrollTables, {
-            passive: false
-        })
-        return () => {
-            document.body.removeEventListener('wheel', preventBackScrollTables)
-        }
-    }, [])
+    usePreventTableBackScroll()
 
     const handleViewHost = (hostUuid: string) => {
-        openModalWithData(MODALS.EDIT_HOST_MODAL, hosts!.find((host) => host.uuid === hostUuid)!)
+        if (!hosts) return
+        showModal('hosts_editHostDrawer', {
+            host: hosts.find((host) => host.uuid === hostUuid)!
+        })
     }
 
     const selectedRecords = useMemo(() => {
@@ -235,35 +216,8 @@ export const HostsDataTableWidget = memo((props: IProps) => {
             return sortStatus.direction === 'desc' ? [...filtered].reverse() : filtered
         }
 
-        const isDesc = sortStatus.direction === 'desc'
-        const sorted = [...filtered].sort((a, b) => {
-            const aVal = getHostSortValue(a, sortStatus.columnAccessor)
-            const bVal = getHostSortValue(b, sortStatus.columnAccessor)
-
-            if (aVal == null && bVal == null) return 0
-            if (aVal == null) return 1
-            if (bVal == null) return -1
-
-            let result: number
-            if (typeof aVal === 'string' && typeof bVal === 'string') {
-                result = aVal.toLowerCase().localeCompare(bVal.toLowerCase())
-            } else if (aVal < bVal) {
-                result = -1
-            } else if (aVal > bVal) {
-                result = 1
-            } else {
-                result = 0
-            }
-
-            return isDesc ? -result : result
-        })
-        return sorted
+        return sortRecords(filtered, sortStatus)
     }, [state, debouncedTextQueries, booleanFilters, selectFilters, selectedStatuses, sortStatus])
-
-    const handleChangePageSize = (newSize: number) => {
-        setPageSize(newSize)
-        setPage(1)
-    }
 
     if (!hosts || !configProfiles) {
         return <LoadingScreen height="60vh" />
@@ -282,73 +236,41 @@ export const HostsDataTableWidget = memo((props: IProps) => {
                     toggleable: true,
                     resizable: true
                 }}
+                height="65vh"
                 fetching={false}
                 highlightOnHover={true}
                 idAccessor="uuid"
-                onPageChange={setPage}
-                onRecordsPerPageChange={handleChangePageSize}
                 onSelectedRecordsChange={handleSelectedRecordsChange}
                 onSortStatusChange={setSortStatus}
-                page={page}
                 pinFirstColumn
                 pinLastColumn
-                records={filteredAndSortedHosts.slice((page - 1) * pageSize, page * pageSize)}
-                recordsPerPage={pageSize}
-                recordsPerPageOptions={PAGE_SIZE_OPTIONS}
+                records={filteredAndSortedHosts}
                 selectedRecords={selectedRecords}
                 sortStatus={sortStatus}
                 storeColumnsKey={HOSTS_CACHE_KEY}
                 striped
-                totalRecords={filteredAndSortedHosts.length}
-                withColumnBorders={false}
-                withRowBorders={true}
-                withTableBorder={true}
+                withColumnBorders
+                withRowBorders
+                withTableBorder
+                columnResizeMode="expand"
+                rowVirtualization={{
+                    fixedLayout: false,
+                    overscan: 25
+                }}
             />
-            <Group grow justify="space-between" mt="md">
-                <Group justify="right">
-                    <Button
-                        disabled={
-                            sortStatus.columnAccessor === DEFAULT_SORT_STATUS.columnAccessor &&
-                            sortStatus.direction === DEFAULT_SORT_STATUS.direction
-                        }
-                        leftSection={<TbRestore size={16} />}
-                        onClick={() => setSortStatus(DEFAULT_SORT_STATUS)}
-                        size="sm"
-                        variant="default"
-                    >
-                        {t('hosts-datatable.widget.reset-sort')}
-                    </Button>
-                    <Button
-                        leftSection={<TbRestore size={16} />}
-                        onClick={resetColumnsWidth}
-                        size="sm"
-                        variant="default"
-                    >
-                        {t('nodes-datatable.widget.column-width')}
-                    </Button>
-                    <Button
-                        leftSection={<TbRestore size={16} />}
-                        onClick={resetColumnsOrder}
-                        size="sm"
-                        variant="default"
-                    >
-                        {t('nodes-datatable.widget.column-order')}
-                    </Button>
-                    <Button
-                        leftSection={<TbRestore size={16} />}
-                        onClick={resetColumnsToggle}
-                        size="sm"
-                        variant="default"
-                    >
-                        {t('nodes-datatable.widget.column-toggle')}
-                    </Button>
-                    <ColumnsVisibilityPopover
-                        columnsToggle={columnsToggle}
-                        labelByAccessor={columnLabels}
-                        setColumnsToggle={setColumnsToggle}
-                    />
-                </Group>
-            </Group>
+            <DataTableControls
+                columnsToggle={columnsToggle}
+                labelByAccessor={columnLabels}
+                onResetColumnsOrder={resetColumnsOrder}
+                onResetColumnsToggle={resetColumnsToggle}
+                onResetColumnsWidth={resetColumnsWidth}
+                onResetSort={() => setSortStatus(DEFAULT_SORT_STATUS)}
+                setColumnsToggle={setColumnsToggle}
+                sortResetDisabled={
+                    sortStatus.columnAccessor === DEFAULT_SORT_STATUS.columnAccessor &&
+                    sortStatus.direction === DEFAULT_SORT_STATUS.direction
+                }
+            />
         </>
     )
 })

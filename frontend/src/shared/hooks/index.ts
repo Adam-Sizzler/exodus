@@ -1,5 +1,6 @@
 export { useAuth } from './use-auth'
 export { useIsMobile } from './use-is-mobile'
 export { usePreventBackNavigation } from './use-prevent-back-navigation'
+export { usePreventTableBackScroll } from './use-prevent-table-back-scroll'
 export { usePseudoFullscreen } from './use-pseudo-fullscreen'
 export type { UsePseudoFullscreenReturn } from './use-pseudo-fullscreen'

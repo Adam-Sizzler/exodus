@@ -86,7 +86,7 @@ func UpdateExpiredUsers(ctx context.Context, db *sql.DB) (StatusUpdateResult, er
 			SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
 			WHERE status IN ('ACTIVE', 'LIMITED')
 			  AND expire_at < CURRENT_TIMESTAMP
-			RETURNING t_id
+			RETURNING id
 		),
 		affected_total AS (
 			SELECT COUNT(*)::bigint AS total FROM affected_users
@@ -94,7 +94,7 @@ func UpdateExpiredUsers(ctx context.Context, db *sql.DB) (StatusUpdateResult, er
 		affected_nodes AS (
 			SELECT DISTINCT cpitn.node_uuid::text AS node_uuid
 			FROM affected_users au
-			JOIN internal_squad_members ism ON ism.user_id = au.t_id
+			JOIN internal_squad_members ism ON ism.user_id = au.id
 			JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 			JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		)
@@ -110,11 +110,11 @@ func UpdateExceededTrafficUsers(ctx context.Context, db *sql.DB) (StatusUpdateRe
 			UPDATE users AS u
 			SET status = 'LIMITED', updated_at = CURRENT_TIMESTAMP
 			FROM user_traffic AS ut
-			WHERE ut.t_id = u.t_id
+			WHERE ut.id = u.id
 			  AND u.status = 'ACTIVE'
 			  AND u.traffic_limit_bytes <> 0
 			  AND ut.used_traffic_bytes >= u.traffic_limit_bytes
-			RETURNING u.t_id
+			RETURNING u.id
 		),
 		affected_total AS (
 			SELECT COUNT(*)::bigint AS total FROM affected_users
@@ -122,7 +122,7 @@ func UpdateExceededTrafficUsers(ctx context.Context, db *sql.DB) (StatusUpdateRe
 		affected_nodes AS (
 			SELECT DISTINCT cpitn.node_uuid::text AS node_uuid
 			FROM affected_users au
-			JOIN internal_squad_members ism ON ism.user_id = au.t_id
+			JOIN internal_squad_members ism ON ism.user_id = au.id
 			JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 			JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		)
@@ -175,14 +175,14 @@ func ResetTrafficByStrategyAt(ctx context.Context, db *sql.DB, strategy string, 
 				          ) = EXTRACT(DAY FROM $6::timestamp)
 				      )
 				  )
-				RETURNING t_id
+				RETURNING id
 			),
 		reset_traffic AS (
-			INSERT INTO user_traffic (t_id, used_traffic_bytes, lifetime_used_traffic_bytes)
-			SELECT t_id, 0, 0 FROM affected_users
-			ON CONFLICT (t_id)
+			INSERT INTO user_traffic (id, used_traffic_bytes, lifetime_used_traffic_bytes)
+			SELECT id, 0, 0 FROM affected_users
+			ON CONFLICT (id)
 			DO UPDATE SET used_traffic_bytes = 0
-			RETURNING t_id
+			RETURNING id
 		)
 		SELECT COUNT(*)::bigint FROM reset_traffic
 	`, normalizedStrategy, boundary, normalizedStrategy, now, now, now).Scan(&result.Users)
@@ -250,7 +250,7 @@ func queryLimitedUserNodeUUIDsByStrategyTx(ctx context.Context, tx *sql.Tx, stra
 	rows, err := tx.QueryContext(ctx, `
 		SELECT DISTINCT cpitn.node_uuid::text AS node_uuid
 		FROM users u
-		JOIN internal_squad_members ism ON ism.user_id = u.t_id
+		JOIN internal_squad_members ism ON ism.user_id = u.id
 		JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'LIMITED'

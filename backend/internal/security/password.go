@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
-// This mirrors upstream Remnawave's own password scheme (see
+// This mirrors upstream Exodus's own password scheme (see
 // src/modules/auth/auth.service.ts: applySecretHmac + scrypt), ported
 // idiomatically to Go:
 //
@@ -37,7 +37,7 @@ const (
 	passwordKeyBytes  = 64
 
 	// scrypt cost parameters. N=16384, r=8, p=1 match Node's
-	// crypto.scrypt() defaults, which is what upstream Remnawave uses
+	// crypto.scrypt() defaults, which is what upstream Exodus uses
 	// (it never overrides them), so this preserves the same effective
 	// work factor as upstream rather than an arbitrary Go-side choice.
 	scryptN = 16384

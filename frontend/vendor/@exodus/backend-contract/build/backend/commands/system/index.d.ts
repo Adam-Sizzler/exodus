@@ -3,8 +3,10 @@ export * from './get-metadata.command';
 export * from './get-nodes-metrics.command';
 export * from './get-nodes-statistics';
 export * from './get-recap.command';
+export * from './get-stats-digest.command';
 export * from './get-exodus-health.command';
 export * from './get-stats.command';
 export * from './testers';
 export * from './tools';
+export * from './get-http-stats.command';
 //# sourceMappingURL=index.d.ts.map

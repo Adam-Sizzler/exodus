@@ -7,7 +7,8 @@ var GetSubscriptionByShortUuidCommand;
 (function (GetSubscriptionByShortUuidCommand) {
     GetSubscriptionByShortUuidCommand.url = api_1.REST_API.SUBSCRIPTION.GET;
     GetSubscriptionByShortUuidCommand.TSQ_url = GetSubscriptionByShortUuidCommand.url(':shortUuid');
-    GetSubscriptionByShortUuidCommand.RequestSchema = zod_1.z.object({
+    GetSubscriptionByShortUuidCommand.RequestParamSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
+
 })(GetSubscriptionByShortUuidCommand || (exports.GetSubscriptionByShortUuidCommand = GetSubscriptionByShortUuidCommand = {}));

@@ -9,12 +9,8 @@ var DeleteNodeCommand;
     DeleteNodeCommand.url = api_1.REST_API.NODES.DELETE;
     DeleteNodeCommand.TSQ_url = DeleteNodeCommand.url(':uuid');
     DeleteNodeCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODES_ROUTES.DELETE(':uuid'), 'delete', 'Delete a node', { scope: 'delete', kind: 'write' });
-    DeleteNodeCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteNodeCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    DeleteNodeCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            isDeleted: zod_1.z.boolean(),
-        }),
-    });
+
 })(DeleteNodeCommand || (exports.DeleteNodeCommand = DeleteNodeCommand = {}));

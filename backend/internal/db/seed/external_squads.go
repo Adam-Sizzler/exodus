@@ -17,13 +17,13 @@ func checkupExternalSquads(ctx context.Context, tx *sql.Tx, _ *config.BackendCon
 				WHEN subscription_settings::text IN ('{}', 'null', '[]') THEN NULL 
 				ELSE subscription_settings 
 			END,
-			host_overrides = CASE 
-				WHEN host_overrides::text IN ('{}', 'null', '[]') THEN NULL 
-				ELSE host_overrides 
+			response_headers_add = CASE 
+				WHEN response_headers_add IS NULL OR response_headers_add::text IN ('null', '[]') THEN '{}'::jsonb 
+				ELSE response_headers_add 
 			END,
-			response_headers = CASE 
-				WHEN response_headers::text IN ('{}', 'null', '[]') THEN NULL 
-				ELSE response_headers 
+			response_headers_remove = CASE 
+				WHEN response_headers_remove IS NULL THEN ARRAY[]::text[] 
+				ELSE response_headers_remove 
 			END,
 			hwid_settings = CASE 
 				WHEN hwid_settings::text IN ('{}', 'null', '[]') OR (hwid_settings IS NOT NULL AND jsonb_typeof(hwid_settings) != 'object') THEN NULL 
@@ -36,7 +36,8 @@ func checkupExternalSquads(ctx context.Context, tx *sql.Tx, _ *config.BackendCon
 		WHERE 
 			subscription_settings::text IN ('{}', 'null', '[]')
 			OR host_overrides::text IN ('{}', 'null', '[]')
-			OR response_headers::text IN ('{}', 'null', '[]')
+			OR response_headers_add IS NULL OR response_headers_add::text IN ('null', '[]')
+			OR response_headers_remove IS NULL
 			OR hwid_settings::text IN ('{}', 'null', '[]') OR (hwid_settings IS NOT NULL AND jsonb_typeof(hwid_settings) != 'object')
 			OR custom_remarks::text IN ('{}', 'null', '[]') OR (custom_remarks IS NOT NULL AND jsonb_typeof(custom_remarks) != 'object')
 	`)

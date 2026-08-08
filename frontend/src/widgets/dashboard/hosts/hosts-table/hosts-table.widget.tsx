@@ -1,19 +1,14 @@
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers'
+import { move } from '@dnd-kit/helpers'
 import {
-    closestCenter,
-    DndContext,
+    DragDropProvider,
     DragEndEvent,
+    DragOverEvent,
     DragOverlay,
-    DragStartEvent,
-    KeyboardSensor,
-    MouseSensor,
-    TouchSensor,
-    useSensor,
-    useSensors
-} from '@dnd-kit/core'
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+    DragStartEvent
+} from '@dnd-kit/react'
 import { Box, Container, Stack } from '@mantine/core'
-import { GetAllHostsCommand } from '@exodus/backend-contract'
+import { GetHostsCommand } from '@exodus/backend-contract'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { HostCardWidget } from '@widgets/dashboard/hosts/host-card'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -32,10 +27,19 @@ import classes from './hosts-table.module.css'
 import { IProps } from './interfaces'
 
 export const HostsTableWidget = memo((props: IProps) => {
-    const { configProfiles, handlers, hosts, selectedHosts, setSelectedHosts, state } = props
+    const {
+        configProfiles,
+        handlers,
+        hosts,
+        isDraggingRef,
+        selectedHosts,
+        setSelectedHosts,
+        state
+    } = props
     const [draggedHost, setDraggedHost] = useState<
-        GetAllHostsCommand.Response['response'][number] | null
+        GetHostsCommand.Response['response'][number] | null
     >(null)
+    const dragSnapshotRef = useRef<null | typeof state>(null)
 
     const [scrollMargin, setScrollMargin] = useState(0)
     const listRef = useRef<HTMLDivElement | null>(null)
@@ -66,61 +70,52 @@ export const HostsTableWidget = memo((props: IProps) => {
         getItemKey: (index) => visibleState[index].uuid
     })
 
-    const dataIds = useMemo(() => visibleState.map((host) => host.uuid), [visibleState])
-
     const nodesByUuid = useMemo(
         () => new Map((nodes ?? []).map((node) => [node.uuid, node] as const)),
         [nodes]
     )
 
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: {
-                distance: 5
-            }
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 250,
-                tolerance: 5
-            }
-        }),
-        useSensor(KeyboardSensor, {})
-    )
-
     const handleDragStart = useCallback(
         (event: DragStartEvent) => {
-            const draggedItem = state.find((item) => item.uuid === event.active.id)
+            isDraggingRef.current = true
+            dragSnapshotRef.current = state
+            const draggedItem = state.find((item) => item.uuid === event.operation.source?.id)
             setDraggedHost(draggedItem || null)
         },
-        [state]
+        [state, isDraggingRef]
+    )
+
+    const handleDragOver = useCallback(
+        (event: DragOverEvent) => {
+            handlers.setState((prev) => {
+                const ids = prev.map((host) => host.uuid)
+                const newIds = move(ids, event)
+                if (newIds === ids) return prev
+
+                const hostsByUuid = new Map(prev.map((host) => [host.uuid, host]))
+                return newIds.map((uuid) => hostsByUuid.get(uuid)!)
+            })
+        },
+        [handlers]
     )
 
     const handleDragEnd = useCallback(
         (event: DragEndEvent) => {
-            const { active, over } = event
+            isDraggingRef.current = false
+            setDraggedHost(null)
 
-            if (activeTag !== null || !over || active.id === over.id) {
-                setDraggedHost(null)
+            const snapshot = dragSnapshotRef.current
+            dragSnapshotRef.current = null
+
+            if (event.canceled) {
+                if (snapshot) handlers.setState(snapshot)
                 return
             }
 
-            const oldIndex = dataIds.indexOf(String(active.id))
-            const newIndex = dataIds.indexOf(String(over.id))
-
-            if (oldIndex !== -1 && newIndex !== -1) {
-                const newState = arrayMove(state, oldIndex, newIndex)
-                handlers.setState(newState)
-            }
-
-            setDraggedHost(null)
+            handlers.setState((prev) => [...prev])
         },
-        [dataIds, state, handlers, activeTag]
+        [handlers, isDraggingRef]
     )
-
-    const handleDragCancel = useCallback(() => {
-        setDraggedHost(null)
-    }, [])
 
     const toggleHostSelection = useCallback(
         (hostId: string) => {
@@ -142,13 +137,11 @@ export const HostsTableWidget = memo((props: IProps) => {
             <TagFilterBar activeTag={activeTag} items={hosts} onChange={setHostsActiveTag} />
 
             {hosts.length > 0 && (
-                <DndContext
-                    collisionDetection={closestCenter}
-                    modifiers={[restrictToVerticalAxis]}
-                    onDragCancel={handleDragCancel}
+                <DragDropProvider
+                    modifiers={[RestrictToVerticalAxis]}
                     onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
                     onDragStart={handleDragStart}
-                    sensors={sensors}
                 >
                     <div ref={listRef}>
                         <div
@@ -158,51 +151,50 @@ export const HostsTableWidget = memo((props: IProps) => {
                                 position: 'relative'
                             }}
                         >
-                            <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
-                                <Container fluid>
-                                    <Stack gap={0}>
-                                        {virtualizer.getVirtualItems().map((virtualItem) => {
-                                            const item = visibleState[virtualItem.index]
-                                            if (!item) return null
+                            <Container fluid>
+                                <Stack gap={0}>
+                                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                                        const item = visibleState[virtualItem.index]
+                                        if (!item) return null
 
-                                            return (
-                                                <Box
-                                                    data-index={virtualItem.index}
-                                                    key={item.uuid}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        marginLeft: isMobile ? '0px' : '16px',
-                                                        marginRight: isMobile ? '0px' : '16px',
-                                                        top: 0,
-                                                        left: 0,
-                                                        right: 0,
-                                                        transform: `translateY(${
-                                                            virtualItem.start -
-                                                            virtualizer.options.scrollMargin
-                                                        }px)`,
-                                                        willChange: 'transform'
-                                                    }}
-                                                >
-                                                    <div className={classes.hostFadeIn}>
-                                                        <HostCardWidget
-                                                            disableReordering={activeTag !== null}
-                                                            configProfiles={configProfiles}
-                                                            isSelected={selectedHosts.includes(
-                                                                item.uuid
-                                                            )}
-                                                            item={item}
-                                                            nodesByUuid={nodesByUuid}
-                                                            onSelect={() =>
-                                                                toggleHostSelection(item.uuid)
-                                                            }
-                                                        />
-                                                    </div>
-                                                </Box>
-                                            )
-                                        })}
-                                    </Stack>
-                                </Container>
-                            </SortableContext>
+                                        return (
+                                            <Box
+                                                data-index={virtualItem.index}
+                                                key={item.uuid}
+                                                style={{
+                                                    position: 'absolute',
+                                                    marginLeft: isMobile ? '0px' : '16px',
+                                                    marginRight: isMobile ? '0px' : '16px',
+                                                    top: 0,
+                                                    left: 0,
+                                                    right: 0,
+                                                    transform: `translateY(${
+                                                        virtualItem.start -
+                                                        virtualizer.options.scrollMargin
+                                                    }px)`,
+                                                    willChange: 'transform'
+                                                }}
+                                            >
+                                                <div className={classes.hostFadeIn}>
+                                                    <HostCardWidget
+                                                        disableReordering={activeTag !== null}
+                                                        configProfiles={configProfiles}
+                                                        index={virtualItem.index}
+                                                        isSelected={selectedHosts.includes(
+                                                            item.uuid
+                                                        )}
+                                                        item={item}
+                                                        nodesByUuid={nodesByUuid}
+                                                        onSelect={() =>
+                                                            toggleHostSelection(item.uuid)
+                                                        }
+                                                    />
+                                                </div>
+                                            </Box>
+                                        )
+                                    })}
+                                </Stack>
+                            </Container>
                         </div>
                     </div>
 
@@ -211,6 +203,7 @@ export const HostsTableWidget = memo((props: IProps) => {
                             <Container fluid pl={0} pr={0}>
                                 <HostCardWidget
                                     configProfiles={configProfiles}
+                                    index={0}
                                     isDragOverlay
                                     isSelected={selectedHosts.includes(draggedHost.uuid)}
                                     item={draggedHost}
@@ -220,7 +213,7 @@ export const HostsTableWidget = memo((props: IProps) => {
                             </Container>
                         )}
                     </DragOverlay>
-                </DndContext>
+                </DragDropProvider>
             )}
         </Stack>
     )

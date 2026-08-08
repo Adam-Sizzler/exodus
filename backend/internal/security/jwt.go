@@ -49,6 +49,28 @@ func SignAPITokenJWTWithLifetime(secret, uuid string, lifetime time.Duration) (s
 	return signJWT(secret, nil, uuid, "API", lifetime)
 }
 
+type OttJWTPayload struct {
+	Scope string `json:"scope"`
+	jwt.RegisteredClaims
+}
+
+func SignOttJWT(secret string) (string, error) {
+	if err := validateJWTSecret(secret); err != nil {
+		return "", err
+	}
+	now := time.Now().UTC()
+	claims := OttJWTPayload{
+		Scope: "ott",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "exodus",
+			ExpiresAt: jwt.NewNumericDate(now.Add(30 * time.Second)),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secret))
+}
+
 func ParseJWT(secret, rawToken string) (*JWTPayload, error) {
 	if err := validateJWTSecret(secret); err != nil {
 		return nil, err

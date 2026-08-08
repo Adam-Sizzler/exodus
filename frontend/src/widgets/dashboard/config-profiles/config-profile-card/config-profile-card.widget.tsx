@@ -8,6 +8,7 @@ import { PiCheck, PiCopy, PiCpu, PiPencil, PiTag, PiTrashDuotone } from 'react-i
 import { TbCheck, TbCpu2, TbDownload, TbEdit, TbEye } from 'react-icons/tb'
 import { generatePath, useNavigate } from 'react-router'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { useGetComputedConfigProfile } from '@shared/api/hooks/config-profiles/config-profiles.query.hooks'
 import { ROUTES } from '@shared/constants'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
@@ -15,8 +16,6 @@ import { EntityCardShared } from '@shared/ui/entity-card'
 import { SingboxLogo } from '@shared/ui/logos'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { formatInt } from '@shared/utils/misc'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     configProfile: GetConfigProfilesCommand.Response['response']['configProfiles'][number]
@@ -27,8 +26,6 @@ interface IProps {
 export function ConfigProfileCardWidget(props: IProps) {
     const { configProfile, handleDeleteConfigProfile, isDragOverlay = false } = props
     const { t } = useTranslation()
-
-    const openModalWithData = useModalsStoreOpenWithData()
 
     const navigate = useNavigate()
 
@@ -151,10 +148,9 @@ export function ConfigProfileCardWidget(props: IProps) {
                                     color="blue"
                                     leftSection={<PiTag size={12} />}
                                     onClick={() => {
-                                        openModalWithData(
-                                            MODALS.CONFIG_PROFILE_SHOW_INBOUNDS_DRAWER,
-                                            configProfile
-                                        )
+                                        showModal('configProfiles_configProfileInboundsDrawer', {
+                                            uuid: configProfile.uuid
+                                        })
                                     }}
                                     size="lg"
                                     style={{ cursor: 'pointer' }}
@@ -171,10 +167,10 @@ export function ConfigProfileCardWidget(props: IProps) {
                                     color={isActive ? 'teal' : 'gray'}
                                     leftSection={<PiCpu size={12} />}
                                     onClick={() => {
-                                        openModalWithData(
-                                            MODALS.CONFIG_PROFILES_SHOW_ACTIVE_NODE,
-                                            configProfile.nodes
-                                        )
+                                        showModal('configProfiles_activeNodesModal', {
+                                            nodes: configProfile.nodes,
+                                            profileName: configProfile.name
+                                        })
                                     }}
                                     size="lg"
                                     style={{
@@ -287,7 +283,8 @@ export function ConfigProfileCardWidget(props: IProps) {
                         <Menu.Item
                             leftSection={<PiPencil size={18} />}
                             onClick={() => {
-                                openModalWithData(MODALS.RENAME_SQUAD_OR_CONFIG_PROFILE_MODAL, {
+                                showModal('renameModal', {
+                                    renameFrom: 'configProfile',
                                     name: configProfile.name,
                                     uuid: configProfile.uuid
                                 })

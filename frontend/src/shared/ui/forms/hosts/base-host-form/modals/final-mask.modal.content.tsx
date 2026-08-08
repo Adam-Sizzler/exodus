@@ -28,7 +28,9 @@ const FINAL_MASK_PLACEHOLDER = {
 }
 interface IProps {
     form: UseFormReturnType<
-        CreateHostCommand.Request | UpdateHostCommand.Request | UpdateManyHostsCommand.Request
+        | CreateHostCommand.RequestBody
+        | UpdateHostCommand.RequestBody
+        | UpdateManyHostsCommand.RequestBody
     >
 }
 

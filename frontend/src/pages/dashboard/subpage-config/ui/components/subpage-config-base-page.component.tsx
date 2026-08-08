@@ -1,5 +1,5 @@
 import { SubpageConfigsHeaderActionButtonsFeature } from '@features/ui/dashboard/subpage-configs/header-action-buttons'
-import { GetSubscriptionPageConfigsCommand } from '@exodus/backend-contract'
+import { GetSubpageConfigsCommand } from '@exodus/backend-contract'
 import { SubpageConfigsGridWidget } from '@widgets/dashboard/subpage-configs/subpage-configs-grid/subpage-configs-grid.widget'
 import { SubpageConfigsSpotlightWidget } from '@widgets/dashboard/subpage-configs/subpage-configs-spotlight'
 import { motion } from 'motion/react'
@@ -7,10 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { TbFile } from 'react-icons/tb'
 
 import { Page, PageHeaderShared } from '@shared/ui'
-import { RenameModalShared } from '@shared/ui/modals/rename-modal.shared'
 
 interface Props {
-    configs: GetSubscriptionPageConfigsCommand.Response['response']['configs']
+    configs: GetSubpageConfigsCommand.Response['response']['configs']
 }
 
 export const SubpageConfigBasePageComponent = (props: Props) => {
@@ -34,8 +33,6 @@ export const SubpageConfigBasePageComponent = (props: Props) => {
             </motion.div>
 
             <SubpageConfigsSpotlightWidget configs={configs} />
-
-            <RenameModalShared key="rename-subpage-config-modal" renameFrom="subpageConfig" />
         </Page>
     )
 }

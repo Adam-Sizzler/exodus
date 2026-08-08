@@ -19,6 +19,6 @@ __exportStar(require("./bulk-actions"), exports);
 __exportStar(require("./create-internal-squad.command"), exports);
 __exportStar(require("./delete-internal-squad.command"), exports);
 __exportStar(require("./get-internal-squad-accessible-nodes.command"), exports);
-__exportStar(require("./get-internal-squad-by-uuid"), exports);
+__exportStar(require("./get-internal-squad.command"), exports);
 __exportStar(require("./get-internal-squads.command"), exports);
 __exportStar(require("./update-internal-squad.command"), exports);

@@ -7,8 +7,5 @@ exports.SubscriptionRequestHistorySchema = zod_1.z.object({
     userId: zod_1.z.number(),
     requestIp: zod_1.z.nullable(zod_1.z.string()),
     userAgent: zod_1.z.nullable(zod_1.z.string()),
-    requestAt: zod_1.z
-        .string()
-        .datetime()
-        .transform((str) => new Date(str)),
+    requestAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
 });

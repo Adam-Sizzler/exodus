@@ -122,3 +122,28 @@ func validateExtendDays(days int) error {
 	}
 	return nil
 }
+
+func handleExtendUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
+	var req struct {
+		Days       int `json:"days"`
+		ExtendDays int `json:"extendDays"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		return
+	}
+	days := req.Days
+	if days <= 0 {
+		days = req.ExtendDays
+	}
+	if err := validateExtendDays(days); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
+		return
+	}
+	err := service.ExtendUserExpirationDate(r.Context(), userUUID, days)
+	if err != nil {
+		handleUserActionError(w, err, service.cfg, "failed to extend user expiration date")
+		return
+	}
+	sendUpdatedUserResponse(w, r, service, userUUID)
+}

@@ -2,13 +2,19 @@ import { Badge, CopyButton, Group, Menu, Tooltip } from '@mantine/core'
 import { GetInternalSquadsCommand } from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import { PiCheck, PiCopy, PiPencil, PiTag, PiTrashDuotone, PiUsers } from 'react-icons/pi'
-import { TbCirclesRelation, TbServerCog, TbTag, TbUsersMinus, TbUsersPlus } from 'react-icons/tb'
+import {
+    TbChartArcs,
+    TbCirclesRelation,
+    TbServerCog,
+    TbTag,
+    TbUsersMinus,
+    TbUsersPlus
+} from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { WithDndSortable } from '@shared/hocs/with-dnd-sortable'
 import { EntityCardShared } from '@shared/ui/entity-card'
 import { formatInt } from '@shared/utils/misc'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 
 interface IProps {
     handleAddToUsers: (internalSquadUuid: string, internalSquadName: string) => void
@@ -28,14 +34,13 @@ export function InternalSquadCardWidget(props: IProps) {
     } = props
 
     const { t } = useTranslation()
-    const openModalWithData = useModalsStoreOpenWithData()
 
     const { membersCount } = internalSquad.info
     const { inboundsCount } = internalSquad.info
     const isActive = membersCount > 0
 
     const handleOpenInbounds = () => {
-        openModalWithData(MODALS.INTERNAL_SQUAD_SHOW_INBOUNDS, {
+        showModal('internalSquads_internalSquadsInboundsDrawer', {
             squadUuid: internalSquad.uuid
         })
     }
@@ -111,12 +116,23 @@ export function InternalSquadCardWidget(props: IProps) {
                         <Menu.Item
                             leftSection={<TbServerCog size={18} />}
                             onClick={() =>
-                                openModalWithData(MODALS.INTERNAL_SQUAD_ACCESSIBLE_NODES_DRAWER, {
-                                    squadUuid: internalSquad.uuid
+                                showModal('internalSquads_internalSquadAccessibleNodesDrawer', {
+                                    uuid: internalSquad.uuid
                                 })
                             }
                         >
                             {t('internal-squad-card.widget.available-nodes')}
+                        </Menu.Item>
+
+                        <Menu.Item
+                            leftSection={<TbChartArcs size={18} />}
+                            onClick={() =>
+                                showModal('internalSquads_internalSquadsUsageDrawer', {
+                                    squadUuid: internalSquad.uuid
+                                })
+                            }
+                        >
+                            {t('common.usage-stats')}
                         </Menu.Item>
 
                         <CopyButton timeout={2000} value={internalSquad.uuid}>
@@ -136,7 +152,8 @@ export function InternalSquadCardWidget(props: IProps) {
                         <Menu.Item
                             leftSection={<PiPencil size={18} />}
                             onClick={() =>
-                                openModalWithData(MODALS.RENAME_SQUAD_OR_CONFIG_PROFILE_MODAL, {
+                                showModal('renameModal', {
+                                    renameFrom: 'internalSquad',
                                     name: internalSquad.name,
                                     uuid: internalSquad.uuid
                                 })

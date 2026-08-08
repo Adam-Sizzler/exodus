@@ -4,50 +4,18 @@ export declare namespace UpsertNodeMetadataCommand {
     const TSQ_url: string;
     const endpointDetails: import("../../../constants").EndpointDetails;
     const RequestParamsSchema: z.ZodObject<{
-        uuid: z.ZodString;
-    }, "strip", z.ZodTypeAny, {
-        uuid: string;
-    }, {
-        uuid: string;
-    }>;
-    type RequestParams = z.infer<typeof RequestParamsSchema>;
+        uuid: z.ZodUUID;
+    }, z.core.$strip>;
     const RequestBodySchema: z.ZodObject<{
-        metadata: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
-    }, "strip", z.ZodTypeAny, {
-        metadata: {} & {
-            [k: string]: unknown;
-        };
-    }, {
-        metadata: {} & {
-            [k: string]: unknown;
-        };
-    }>;
-    type RequestBody = z.infer<typeof RequestBodySchema>;
+        metadata: z.ZodObject<{}, z.core.$loose>;
+    }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
-            metadata: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
-        }, "strip", z.ZodTypeAny, {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        }, {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        };
-    }, {
-        response: {
-            metadata: {} & {
-                [k: string]: unknown;
-            };
-        };
-    }>;
+            metadata: z.ZodObject<{}, z.core.$loose>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+    type RequestParams = z.infer<typeof RequestParamsSchema>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=upsert-node-metadata.command.d.ts.map

@@ -17,4 +17,5 @@ var GenerateX25519Command;
             })),
         }),
     });
+
 })(GenerateX25519Command || (exports.GenerateX25519Command = GenerateX25519Command = {}));

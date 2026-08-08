@@ -17,4 +17,4 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./create-snippet.command"), exports);
 __exportStar(require("./delete-snippet.command"), exports);
 __exportStar(require("./get-snippets.command"), exports);
-__exportStar(require("./update-snippets.command"), exports);
+__exportStar(require("./update-snippet.command"), exports);

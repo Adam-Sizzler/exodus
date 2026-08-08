@@ -104,10 +104,10 @@ func readOnlineStats(ctx context.Context, db *sql.DB) (onlineStats, error) {
 	stats := onlineStats{}
 	err := db.QueryRowContext(ctx, `
 		SELECT
-			COUNT(t_id) FILTER (WHERE online_at >= $1) AS online_now,
-			COUNT(t_id) FILTER (WHERE online_at >= $2) AS last_day,
-			COUNT(t_id) FILTER (WHERE online_at >= $3) AS last_week,
-			COUNT(t_id) FILTER (WHERE online_at IS NULL) AS never_online
+			COUNT(id) FILTER (WHERE online_at >= $1) AS online_now,
+			COUNT(id) FILTER (WHERE online_at >= $2) AS last_day,
+			COUNT(id) FILTER (WHERE online_at >= $3) AS last_week,
+			COUNT(id) FILTER (WHERE online_at IS NULL) AS never_online
 		FROM user_traffic
 	`, thresholdOnline, thresholdDay, thresholdWeek).Scan(
 		&stats.onlineNow,

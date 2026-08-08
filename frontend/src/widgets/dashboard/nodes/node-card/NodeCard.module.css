@@ -60,7 +60,7 @@
 }
 
 /* DragOverlay styles */
-.nodeRow[data-dnd-overlay='true'] {
+.nodeRow[data-drag-overlay='true'] {
     box-shadow: 0 12px 32px rgb(0, 0, 0, 0.2);
     border-color: light-dark(var(--mantine-color-blue-4), var(--mantine-color-blue-4));
     z-index: 9999;
@@ -69,7 +69,7 @@
 
 .desktopGrid {
     display: grid;
-    grid-template-columns: 5.5fr 2.5fr 2fr 2fr;
+    grid-template-columns: minmax(0, 5.5fr) minmax(0, 2.5fr) minmax(0, 2fr) minmax(0, 2fr);
     gap: var(--mantine-spacing-md);
     align-items: center;
 }
@@ -131,7 +131,7 @@
     color: var(--mantine-color-gray-3);
 }
 
-[data-mantine-color-scheme='dark'] .nodeRow[data-dnd-overlay='true'] {
+[data-mantine-color-scheme='dark'] .nodeRow[data-drag-overlay='true'] {
     border-color: var(--mantine-color-blue-4);
     box-shadow: 0 12px 32px rgb(0, 0, 0, 0.4);
     background: var(--mantine-color-dark-6);

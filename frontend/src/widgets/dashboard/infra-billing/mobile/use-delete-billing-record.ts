@@ -20,7 +20,10 @@ export function useDeleteBillingRecord(refetchRecords: () => void) {
             children: t('common.confirm-action-description'),
             labels: { confirm: t('common.delete'), cancel: t('common.cancel') },
             centered: true,
-            confirmProps: { color: 'red' },
+            confirmProps: { color: 'red', variant: 'soft' },
+            cancelProps: {
+                variant: 'subtle'
+            },
             onConfirm: () => deleteRecord({ route: { uuid } })
         })
 }

@@ -1,37 +1,18 @@
-import {
-    ActionIcon,
-    ActionIconGroup,
-    Button,
-    Group,
-    Modal,
-    Stack,
-    TextInput,
-    Tooltip
-} from '@mantine/core'
-import { useField } from '@mantine/form'
-import { useDisclosure } from '@mantine/hooks'
-import { CreateNodePluginCommand } from '@exodus/backend-contract'
+import { ActionIcon, ActionIconGroup, Group, Tooltip } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
-import { TbBook, TbPackage, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
-import { generatePath, useNavigate } from 'react-router'
+import { TbBook, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
+import { useNavigate } from 'react-router'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { queryClient } from '@shared/api'
-import { QueryKeys, useCreateNodePlugin, useGetNodePlugins } from '@shared/api/hooks'
-import { ROUTES } from '@shared/constants'
-import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
+import { QueryKeys, useGetNodePlugins } from '@shared/api/hooks'
 import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { HelpActionIconShared } from '@shared/ui/help-drawer'
-
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
+import { HelpActionIconShared } from '@shared/_modals/universal'
 
 export const NodePluginsHeaderActionButtonsFeature = () => {
     const { t } = useTranslation()
 
     const { isFetching } = useGetNodePlugins()
-
-    const openModalWithData = useModalsStoreOpenWithData()
-
-    const [opened, { open, close }] = useDisclosure(false)
     const navigate = useNavigate()
 
     const handleUpdate = async () => {
@@ -39,31 +20,6 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
             queryKey: QueryKeys.nodePlugins.getNodePlugins.queryKey
         })
     }
-
-    const nameField = useField<CreateNodePluginCommand.Request['name']>({
-        initialValue: '',
-        validateOnChange: true,
-        validate: (value) => {
-            const result = CreateNodePluginCommand.RequestSchema.safeParse({
-                name: value
-            })
-            return result.success ? null : result.error.errors[0]?.message
-        }
-    })
-    const { mutate: createNodePlugin, isPending } = useCreateNodePlugin({
-        mutationFns: {
-            onSuccess: (data) => {
-                close()
-                nameField.reset()
-                handleUpdate()
-                navigate(
-                    generatePath(ROUTES.DASHBOARD.MANAGEMENT.NODE_PLUGINS.NODE_PLUGIN_BY_UUID, {
-                        uuid: data.uuid
-                    })
-                )
-            }
-        }
-    })
 
     return (
         <Group grow preventGrowOverflow={false} wrap="wrap">
@@ -75,9 +31,7 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
                 <Tooltip label="Executor" withArrow>
                     <ActionIcon
                         color="grape"
-                        onClick={() =>
-                            openModalWithData(MODALS.NODE_PLUGIN_EXECUTOR_DRAWER, undefined)
-                        }
+                        onClick={() => showModal('nodePlugins_nodePluginExecutorDrawer')}
                         size="input-md"
                         variant="soft"
                     >
@@ -100,55 +54,22 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
             </ActionIconGroup>
 
             <ActionIconGroup>
-                <ActionIcon color="teal" onClick={open} size="input-md" variant="soft">
+                <ActionIcon
+                    color="teal"
+                    onClick={() =>
+                        showModal('createModal', {
+                            createFrom: 'nodePlugin',
+                            contentOptions: {
+                                navigate
+                            }
+                        })
+                    }
+                    size="input-md"
+                    variant="soft"
+                >
                     <TbPlus size="24px" />
                 </ActionIcon>
             </ActionIconGroup>
-
-            <Modal
-                centered
-                onClose={close}
-                opened={opened}
-                size="md"
-                title={
-                    <BaseOverlayHeader
-                        iconColor="teal"
-                        IconComponent={TbPackage}
-                        iconVariant="soft"
-                        title={t('common.create')}
-                    />
-                }
-            >
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault()
-                        createNodePlugin({
-                            variables: {
-                                name: nameField.getValue()
-                            }
-                        })
-                    }}
-                >
-                    <Stack gap="md">
-                        <TextInput
-                            data-autofocus
-                            label={t('common.name')}
-                            placeholder="My Node Plugin"
-                            required
-                            {...nameField.getInputProps()}
-                        />
-                        <Group justify="flex-end">
-                            <Button color="gray" onClick={close} variant="light">
-                                {t('common.cancel')}
-                            </Button>
-
-                            <Button color="teal" loading={isPending} type="submit">
-                                {t('common.create')}
-                            </Button>
-                        </Group>
-                    </Stack>
-                </form>
-            </Modal>
         </Group>
     )
 }

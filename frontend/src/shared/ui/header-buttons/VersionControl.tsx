@@ -27,7 +27,7 @@ export function VersionControl() {
             exodusMetadata.version
         )
 
-        return [isNewVersionAvailable, exodusMetadata.git.backend.branch === 'dev']
+        return [isNewVersionAvailable, exodusMetadata.git.backend.branch !== 'main']
     }, [exodusInfo.latestVersion, exodusMetadata])
 
     if (isLoading || !exodusMetadata) {

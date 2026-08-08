@@ -9,6 +9,8 @@ export declare const INTERNAL_SQUADS_ROUTES: {
     readonly BULK_ACTIONS: {
         readonly ADD_USERS: (uuid: string) => string;
         readonly REMOVE_USERS: (uuid: string) => string;
+        readonly ADD_MANY_USERS: (uuid: string) => string;
+        readonly REMOVE_MANY_USERS: (uuid: string) => string;
     };
     readonly ACTIONS: {
         readonly REORDER: "actions/reorder";

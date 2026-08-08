@@ -3,6 +3,7 @@ package subscriptionsettings
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -29,20 +30,46 @@ func SubscriptionSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.Han
 func handleGetSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	row := db.QueryRowContext(r.Context(), `
 		SELECT
-			uuid, profile_title, support_link, profile_update_interval,
-			address, port, api_schema, api_path,
-			happ_announce, happ_routing,
-			created_at, updated_at,
-			is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-			is_show_custom_remarks, custom_response_headers,
-			randomize_hosts, response_rules, hwid_settings, custom_remarks
+			uuid, address, port, api_schema, api_path,
+			serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+			custom_response_headers, randomize_hosts, response_rules, hwid_settings,
+			created_at, updated_at
 		FROM subscription_settings
 		ORDER BY created_at DESC
 		LIMIT 1`)
 	settings, err := ScanSubscriptionSettings(row)
 	if err != nil {
-		shared.SendError(w, http.StatusNotFound, "subscription settings not found", err, cfg)
-		return
+		if errors.Is(err, sql.ErrNoRows) {
+			_, _ = db.ExecContext(r.Context(), `
+				INSERT INTO subscription_settings (
+					uuid, address, port, api_schema, api_path,
+					serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+					custom_response_headers, randomize_hosts, response_rules, hwid_settings
+				) VALUES (
+					'00000000-0000-0000-0000-000000000000', '', 9263, 'grpc', '',
+					false, true, '{}'::jsonb,
+					'{"profile-title":"exEncodeBase64:exodus","support-url":"https://github.com","profile-update-interval":"12"}'::jsonb,
+					false, '[]'::jsonb, '{}'::jsonb
+				) ON CONFLICT DO NOTHING
+			`)
+			rowRetry := db.QueryRowContext(r.Context(), `
+				SELECT
+					uuid, address, port, api_schema, api_path,
+					serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+					custom_response_headers, randomize_hosts, response_rules, hwid_settings,
+					created_at, updated_at
+				FROM subscription_settings
+				ORDER BY created_at DESC
+				LIMIT 1`)
+			if sRetry, errRetry := ScanSubscriptionSettings(rowRetry); errRetry == nil {
+				settings = sRetry
+				err = nil
+			}
+		}
+		if err != nil {
+			shared.SendError(w, http.StatusNotFound, "subscription settings not found", err, cfg)
+			return
+		}
 	}
 
 	apiSettings, err := convertSubscriptionSettingsToAPI(settings)
@@ -70,6 +97,78 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Fetch current headers so we can update header keys inside custom_response_headers
+	var currentHeadersRaw sql.NullString
+	_ = db.QueryRowContext(r.Context(), `SELECT custom_response_headers::text FROM subscription_settings WHERE uuid = $1`, req.UUID).Scan(&currentHeadersRaw)
+	headersMap := make(map[string]string)
+	if currentHeadersRaw.Valid && currentHeadersRaw.String != "" {
+		_ = json.Unmarshal([]byte(currentHeadersRaw.String), &headersMap)
+	}
+
+	headersModified := false
+	if req.ProfileTitle != nil {
+		headersMap["profile-title"] = "exEncodeBase64:" + strings.TrimSpace(*req.ProfileTitle)
+		headersModified = true
+	}
+	if req.SupportLink != nil {
+		headersMap["support-url"] = strings.TrimSpace(*req.SupportLink)
+		headersModified = true
+	}
+	if req.ProfileUpdateInterval != nil {
+		headersMap["profile-update-interval"] = fmt.Sprintf("%d", *req.ProfileUpdateInterval)
+		headersModified = true
+	}
+	if req.IsProfileWebpageUrlEnabled != nil {
+		if *req.IsProfileWebpageUrlEnabled {
+			headersMap["profile-web-page-url"] = "{{SUBSCRIPTION_URL}}"
+		} else {
+			delete(headersMap, "profile-web-page-url")
+		}
+		headersModified = true
+	}
+	if set, val, err := parseOptionalString(req.HappAnnounce, 200); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	} else if set {
+		if val != "" {
+			headersMap["announce"] = "exEncodeBase64:" + val
+		} else {
+			delete(headersMap, "announce")
+		}
+		headersModified = true
+	}
+	if set, val, err := parseOptionalString(req.HappRouting, 0); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	} else if set {
+		if val != "" {
+			headersMap["routing"] = val
+		} else {
+			delete(headersMap, "routing")
+		}
+		headersModified = true
+	}
+
+	if set, val, err := parseOptionalHeaders(req.CustomResponseHeaders); err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
+		return
+	} else if set {
+		userHeaders := make(map[string]string)
+		if val != "" && val != "{}" && val != "null" {
+			var rawMap map[string]string
+			if err := json.Unmarshal([]byte(val), &rawMap); err == nil {
+				for k, v := range rawMap {
+					trimmedKey := strings.ToLower(strings.TrimSpace(k))
+					if trimmedKey != "" {
+						userHeaders[trimmedKey] = v
+					}
+				}
+			}
+		}
+		headersMap = userHeaders
+		headersModified = true
+	}
+
 	updates := []string{}
 	args := []any{}
 	idx := 1
@@ -79,17 +178,9 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 		idx++
 	}
 
-	if req.ProfileTitle != nil {
-		add("profile_title", strings.TrimSpace(*req.ProfileTitle))
-	}
-	if req.SupportLink != nil {
-		add("support_link", strings.TrimSpace(*req.SupportLink))
-	}
-	if req.ProfileUpdateInterval != nil {
-		add("profile_update_interval", *req.ProfileUpdateInterval)
-	}
-	if req.IsProfileWebpageUrlEnabled != nil {
-		add("is_profile_webpage_url_enabled", *req.IsProfileWebpageUrlEnabled)
+	if headersModified {
+		hBytes, _ := json.Marshal(headersMap)
+		add("custom_response_headers", string(hBytes))
 	}
 	if req.ServeJsonAtBaseSubscription != nil {
 		add("serve_json_at_base_subscription", *req.ServeJsonAtBaseSubscription)
@@ -99,19 +190,6 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 	}
 	if req.RandomizeHosts != nil {
 		add("randomize_hosts", *req.RandomizeHosts)
-	}
-
-	if set, val, err := parseOptionalString(req.HappAnnounce, 200); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		return
-	} else if set {
-		add("happ_announce", val)
-	}
-	if set, val, err := parseOptionalString(req.HappRouting, 0); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		return
-	} else if set {
-		add("happ_routing", val)
 	}
 
 	if set, val, err := parseOptionalJSONMap(req.CustomRemarks, true); err != nil {
@@ -135,13 +213,6 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 		add("hwid_settings", val)
 	}
 
-	if set, val, err := parseOptionalHeaders(req.CustomResponseHeaders); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		return
-	} else if set {
-		add("custom_response_headers", val)
-	}
-
 	if len(updates) == 0 {
 		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
 		return
@@ -154,13 +225,10 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 		UPDATE subscription_settings
 		SET %s
 		WHERE uuid = $%d
-		RETURNING uuid, profile_title, support_link, profile_update_interval,
-			address, port, api_schema, api_path,
-			happ_announce, happ_routing,
-			created_at, updated_at,
-			is_profile_webpage_url_enabled, serve_json_at_base_subscription,
-			is_show_custom_remarks, custom_response_headers,
-			randomize_hosts, response_rules, hwid_settings, custom_remarks
+		RETURNING uuid, address, port, api_schema, api_path,
+			serve_json_at_base_subscription, is_show_custom_remarks, custom_remarks,
+			custom_response_headers, randomize_hosts, response_rules, hwid_settings,
+			created_at, updated_at
 	`, strings.Join(updates, ", "), idx)
 	row := db.QueryRowContext(r.Context(), query, args...)
 	settings, err := ScanSubscriptionSettings(row)

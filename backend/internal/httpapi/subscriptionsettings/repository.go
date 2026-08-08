@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -130,49 +131,33 @@ func (s SubscriptionSettings) ProfileUpdateIntervalValue() int {
 func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, error) {
 	var s SubscriptionSettings
 	var (
-		profileTitle, supportLink, address, apiSchema, apiPath sql.NullString
-		happAnnounce, happRouting, customHeaders               sql.NullString
-		responseRules, hwidSettings, customRemarks            sql.NullString
-		profileUpdateInterval, port                             sql.NullInt64
-		isProfileWebpageURLEnabled, serveJSONAtBase             sql.NullBool
-		isShowCustomRemarks, randomizeHosts                    sql.NullBool
+		address, apiSchema, apiPath, customHeaders sql.NullString
+		responseRules, hwidSettings, customRemarks sql.NullString
+		port                                       sql.NullInt64
+		serveJSONAtBase                            sql.NullBool
+		isShowCustomRemarks, randomizeHosts       sql.NullBool
 	)
 
 	err := scanner.Scan(
 		&s.UUID,
-		&profileTitle,
-		&supportLink,
-		&profileUpdateInterval,
 		&address,
 		&port,
 		&apiSchema,
 		&apiPath,
-		&happAnnounce,
-		&happRouting,
-		&s.CreatedAt,
-		&s.UpdatedAt,
-		&isProfileWebpageURLEnabled,
 		&serveJSONAtBase,
 		&isShowCustomRemarks,
+		&customRemarks,
 		&customHeaders,
 		&randomizeHosts,
 		&responseRules,
 		&hwidSettings,
-		&customRemarks,
+		&s.CreatedAt,
+		&s.UpdatedAt,
 	)
 	if err != nil {
 		return s, err
 	}
 
-	if profileTitle.Valid {
-		s.ProfileTitle = profileTitle.String
-	}
-	if supportLink.Valid {
-		s.SupportLink = supportLink.String
-	}
-	if profileUpdateInterval.Valid {
-		s.ProfileUpdateInterval = int(profileUpdateInterval.Int64)
-	}
 	if address.Valid {
 		s.Address = address.String
 	}
@@ -185,20 +170,14 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 	if apiPath.Valid {
 		s.APIPath = apiPath.String
 	}
-	if happAnnounce.Valid {
-		s.HappAnnounce = happAnnounce.String
-	}
-	if happRouting.Valid {
-		s.HappRouting = happRouting.String
-	}
-	if isProfileWebpageURLEnabled.Valid {
-		s.IsProfileWebpageURLEnabled = isProfileWebpageURLEnabled.Bool
-	}
 	if serveJSONAtBase.Valid {
 		s.ServeJSONAtBaseSubscription = serveJSONAtBase.Bool
 	}
 	if isShowCustomRemarks.Valid {
 		s.IsShowCustomRemarks = isShowCustomRemarks.Bool
+	}
+	if customRemarks.Valid {
+		s.CustomRemarks = customRemarks.String
 	}
 	if customHeaders.Valid {
 		s.CustomResponseHeaders = customHeaders.String
@@ -212,8 +191,44 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 	if hwidSettings.Valid {
 		s.HWIDSettings = hwidSettings.String
 	}
-	if customRemarks.Valid {
-		s.CustomRemarks = customRemarks.String
+
+	// Default fallback values
+	s.ProfileTitle = "exodus"
+	s.SupportLink = "https://github.com"
+	s.ProfileUpdateInterval = 12
+
+	if s.CustomResponseHeaders != "" {
+		var headers map[string]string
+		if err := json.Unmarshal([]byte(s.CustomResponseHeaders), &headers); err == nil {
+			if title, ok := headers["profile-title"]; ok && title != "" {
+				cleanTitle := title
+				if strings.HasPrefix(cleanTitle, "exEncodeBase64:") {
+					cleanTitle = strings.TrimPrefix(cleanTitle, "exEncodeBase64:")
+				}
+				s.ProfileTitle = cleanTitle
+			}
+			if link, ok := headers["support-url"]; ok && link != "" {
+				s.SupportLink = link
+			}
+			if intervalStr, ok := headers["profile-update-interval"]; ok && intervalStr != "" {
+				if interval, err := strconv.Atoi(intervalStr); err == nil {
+					s.ProfileUpdateInterval = interval
+				}
+			}
+			if ann, ok := headers["announce"]; ok {
+				cleanAnn := ann
+				if strings.HasPrefix(cleanAnn, "exEncodeBase64:") {
+					cleanAnn = strings.TrimPrefix(cleanAnn, "exEncodeBase64:")
+				}
+				s.HappAnnounce = cleanAnn
+			}
+			if rout, ok := headers["routing"]; ok {
+				s.HappRouting = rout
+			}
+			if webURL, ok := headers["profile-web-page-url"]; ok && webURL != "" {
+				s.IsProfileWebpageURLEnabled = true
+			}
+		}
 	}
 
 	return s, nil

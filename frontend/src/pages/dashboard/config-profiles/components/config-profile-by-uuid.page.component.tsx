@@ -2,13 +2,13 @@ import { ActionIcon, Box, Drawer, Flex, Group, Transition } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { GetConfigProfileByUuidCommand, GetSnippetsCommand } from '@exodus/backend-contract'
 import { ConfigEditorWidget } from '@widgets/dashboard/config-profiles/config-editor/config-editor.widget'
-import { SnippetsDrawerWidget } from '@widgets/dashboard/config-profiles/snippets-drawer'
+import { SnippetsWidget } from '@widgets/dashboard/config-profiles/snippets-drawer/snippets.widget'
 import { useTranslation } from 'react-i18next'
 import { TbArrowBackUp, TbCode, TbFile } from 'react-icons/tb'
 import { useNavigate } from 'react-router'
 
+import { HelpActionIconShared } from '@shared/_modals/universal'
 import { ROUTES } from '@shared/constants'
-import { HelpActionIconShared } from '@shared/ui/help-drawer'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { Page } from '@shared/ui/page'
 import { PageHeaderShared } from '@shared/ui/page-header/page-header.shared'
@@ -84,7 +84,7 @@ export const ConfigProfileByUuidPageComponent = (props: Props) => {
                             }
                             withCloseButton={true}
                         >
-                            <SnippetsDrawerWidget />
+                            <SnippetsWidget />
                         </Drawer>
                     </>
                 ) : (
@@ -125,7 +125,7 @@ export const ConfigProfileByUuidPageComponent = (props: Props) => {
                                             pointerEvents: isOpen ? 'auto' : 'none'
                                         }}
                                     >
-                                        <SnippetsDrawerWidget />
+                                        <SnippetsWidget />
                                     </Box>
                                 )}
                             </Transition>

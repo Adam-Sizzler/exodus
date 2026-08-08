@@ -4,60 +4,69 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Oauth2SettingsSchema = void 0;
-const zod_1 = __importDefault(require("zod"));
-exports.Oauth2SettingsSchema = zod_1.default.object({
-    github: zod_1.default.object({
-        enabled: zod_1.default.boolean(),
-        clientId: zod_1.default.nullable(zod_1.default.string()),
-        clientSecret: zod_1.default.nullable(zod_1.default.string()),
-        allowedEmails: zod_1.default.array(zod_1.default.string()),
+const zod_1 = require("zod");
+exports.Oauth2SettingsSchema = (zod_1.z || zod_1.default.z || zod_1.default).object({
+    github: (zod_1.z || zod_1.default.z || zod_1.default).object({
+        enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        clientId: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientSecret: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        allowedEmails: (zod_1.z || zod_1.default.z || zod_1.default).array((zod_1.z || zod_1.default.z || zod_1.default).string()),
     }),
-    pocketid: zod_1.default.object({
-        enabled: zod_1.default.boolean(),
-        clientId: zod_1.default.nullable(zod_1.default.string()),
-        clientSecret: zod_1.default.nullable(zod_1.default.string()),
-        plainDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
+    pocketid: (zod_1.z || zod_1.default.z || zod_1.default).object({
+        enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        clientId: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientSecret: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        frontendDomain: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().refine((val) => {
             const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
             if (fqdnRegex.test(val)) {
                 return true;
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
         })),
-        allowedEmails: zod_1.default.array(zod_1.default.string()),
+        plainDomain: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().refine((val) => {
+            const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
+            if (fqdnRegex.test(val)) {
+                return true;
+            }
+            return false;
+        }, {
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+        })),
+        allowedEmails: (zod_1.z || zod_1.default.z || zod_1.default).array((zod_1.z || zod_1.default.z || zod_1.default).string()),
     }),
-    yandex: zod_1.default.object({
-        enabled: zod_1.default.boolean(),
-        clientId: zod_1.default.nullable(zod_1.default.string()),
-        clientSecret: zod_1.default.nullable(zod_1.default.string()),
-        allowedEmails: zod_1.default.array(zod_1.default.string()),
+    yandex: (zod_1.z || zod_1.default.z || zod_1.default).object({
+        enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        clientId: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientSecret: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        allowedEmails: (zod_1.z || zod_1.default.z || zod_1.default).array((zod_1.z || zod_1.default.z || zod_1.default).string()),
     }),
     keycloak: zod_1.default
         .object({
-        enabled: zod_1.default.boolean(),
-        realm: zod_1.default.nullable(zod_1.default.string()),
-        clientId: zod_1.default.nullable(zod_1.default.string()),
-        clientSecret: zod_1.default.nullable(zod_1.default.string()),
-        frontendDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
+        enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        realm: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientId: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientSecret: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        frontendDomain: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().refine((val) => {
             const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
             if (fqdnRegex.test(val)) {
                 return true;
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
         })),
-        keycloakDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
+        keycloakDomain: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().refine((val) => {
             const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
             if (fqdnRegex.test(val)) {
                 return true;
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
         })),
-        allowedEmails: zod_1.default.array(zod_1.default.string()),
+        allowedEmails: (zod_1.z || zod_1.default.z || zod_1.default).array((zod_1.z || zod_1.default.z || zod_1.default).string()),
     })
         .default({
         enabled: false,
@@ -70,13 +79,13 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
     }),
     generic: zod_1.default
         .object({
-        enabled: zod_1.default.boolean(),
-        clientId: zod_1.default.nullable(zod_1.default.string()),
-        clientSecret: zod_1.default.nullable(zod_1.default.string()),
-        withPkce: zod_1.default.boolean(),
-        authorizationUrl: zod_1.default.nullable(zod_1.default.string()),
-        tokenUrl: zod_1.default.nullable(zod_1.default.string()),
-        frontendDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
+        enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        clientId: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientSecret: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        withPkce: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        authorizationUrl: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        tokenUrl: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        frontendDomain: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().refine((val) => {
             if (val.startsWith('127.0.0.1') || val.startsWith('localhost')) {
                 return true;
             }
@@ -86,9 +95,9 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
         })),
-        allowedEmails: zod_1.default.array(zod_1.default.string()),
+        allowedEmails: (zod_1.z || zod_1.default.z || zod_1.default).array((zod_1.z || zod_1.default.z || zod_1.default).string()),
     })
         .default({
         enabled: false,
@@ -102,18 +111,18 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
     }),
     telegram: zod_1.default
         .object({
-        enabled: zod_1.default.boolean(),
-        clientId: zod_1.default.nullable(zod_1.default.string()),
-        clientSecret: zod_1.default.nullable(zod_1.default.string()),
-        allowedIds: zod_1.default.array(zod_1.default.string()),
-        frontendDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
+        enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
+        clientId: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        clientSecret: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        allowedIds: (zod_1.z || zod_1.default.z || zod_1.default).array((zod_1.z || zod_1.default.z || zod_1.default).string()),
+        frontendDomain: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().refine((val) => {
             const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
             if (fqdnRegex.test(val)) {
                 return true;
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
         })),
     })
         .default({

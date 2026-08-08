@@ -7,10 +7,10 @@ export declare namespace GetSubscriptionTemplatesCommand {
         response: z.ZodObject<{
             total: z.ZodNumber;
             templates: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodString;
+                uuid: z.ZodUUID;
                 viewPosition: z.ZodNumber;
                 name: z.ZodString;
-                templateType: z.ZodNativeEnum<{
+                templateType: z.ZodEnum<{
                     readonly XRAY_JSON: "XRAY_JSON";
                     readonly XRAY_BASE64: "XRAY_BASE64";
                     readonly MIHOMO: "MIHOMO";
@@ -20,67 +20,9 @@ export declare namespace GetSubscriptionTemplatesCommand {
                 }>;
                 templateJson: z.ZodNullable<z.ZodUnknown>;
                 encodedTemplateYaml: z.ZodNullable<z.ZodString>;
-            }, "strip", z.ZodTypeAny, {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-                encodedTemplateYaml: string | null;
-                templateJson?: unknown;
-            }, {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-                encodedTemplateYaml: string | null;
-                templateJson?: unknown;
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            total: number;
-            templates: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-                encodedTemplateYaml: string | null;
-                templateJson?: unknown;
-            }[];
-        }, {
-            total: number;
-            templates: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-                encodedTemplateYaml: string | null;
-                templateJson?: unknown;
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            total: number;
-            templates: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-                encodedTemplateYaml: string | null;
-                templateJson?: unknown;
-            }[];
-        };
-    }, {
-        response: {
-            total: number;
-            templates: {
-                uuid: string;
-                name: string;
-                viewPosition: number;
-                templateType: "STASH" | "SINGBOX" | "MIHOMO" | "XRAY_JSON" | "CLASH" | "XRAY_BASE64";
-                encodedTemplateYaml: string | null;
-                templateJson?: unknown;
-            }[];
-        };
-    }>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-templates.command.d.ts.map

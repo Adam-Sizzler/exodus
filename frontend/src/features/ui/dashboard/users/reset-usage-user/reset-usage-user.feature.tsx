@@ -6,17 +6,19 @@ import { PiClockCounterClockwiseDuotone } from 'react-icons/pi'
 import { queryClient } from '@shared/api'
 import { useResetUserTraffic, usersQueryKeys } from '@shared/api/hooks'
 
-import { IProps } from './interfaces'
+interface IProps {
+    userId: number
+}
 
 export function ResetUsageUserFeature(props: IProps) {
-    const { userUuid } = props
+    const { userId } = props
     const { t } = useTranslation()
 
     const { mutate: resetUserTraffic, isPending: isResetUserTrafficPending } = useResetUserTraffic({
         mutationFns: {
             onSuccess: (data) => {
                 queryClient.setQueryData(
-                    usersQueryKeys.getUserByUuid({ uuid: userUuid }).queryKey,
+                    usersQueryKeys.getUserById({ userId: userId }).queryKey,
                     data
                 )
             }
@@ -26,7 +28,7 @@ export function ResetUsageUserFeature(props: IProps) {
     const handleResetUsage = async () => {
         resetUserTraffic({
             route: {
-                uuid: userUuid
+                userId: userId
             }
         })
     }
@@ -38,6 +40,9 @@ export function ResetUsageUserFeature(props: IProps) {
             labels: { confirm: t('reset-usage-user.feature.reset'), cancel: t('common.cancel') },
             centered: true,
             confirmProps: { color: 'red', variant: 'soft' },
+            cancelProps: {
+                variant: 'subtle'
+            },
             onConfirm: () => handleResetUsage()
         })
 

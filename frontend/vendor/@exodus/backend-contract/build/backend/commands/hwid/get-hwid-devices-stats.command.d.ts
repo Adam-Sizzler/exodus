@@ -11,103 +11,15 @@ export declare namespace GetHwidDevicesStatsCommand {
                 byApp: z.ZodArray<z.ZodObject<{
                     app: z.ZodString;
                     count: z.ZodNumber;
-                }, "strip", z.ZodTypeAny, {
-                    count: number;
-                    app: string;
-                }, {
-                    count: number;
-                    app: string;
-                }>, "many">;
-            }, "strip", z.ZodTypeAny, {
-                platform: string;
-                count: number;
-                byApp: {
-                    count: number;
-                    app: string;
-                }[];
-            }, {
-                platform: string;
-                count: number;
-                byApp: {
-                    count: number;
-                    app: string;
-                }[];
-            }>, "many">;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
             stats: z.ZodObject<{
                 totalUniqueDevices: z.ZodNumber;
                 totalHwidDevices: z.ZodNumber;
                 averageHwidDevicesPerUser: z.ZodNumber;
-            }, "strip", z.ZodTypeAny, {
-                totalUniqueDevices: number;
-                totalHwidDevices: number;
-                averageHwidDevicesPerUser: number;
-            }, {
-                totalUniqueDevices: number;
-                totalHwidDevices: number;
-                averageHwidDevicesPerUser: number;
-            }>;
-        }, "strip", z.ZodTypeAny, {
-            stats: {
-                totalUniqueDevices: number;
-                totalHwidDevices: number;
-                averageHwidDevicesPerUser: number;
-            };
-            byPlatform: {
-                platform: string;
-                count: number;
-                byApp: {
-                    count: number;
-                    app: string;
-                }[];
-            }[];
-        }, {
-            stats: {
-                totalUniqueDevices: number;
-                totalHwidDevices: number;
-                averageHwidDevicesPerUser: number;
-            };
-            byPlatform: {
-                platform: string;
-                count: number;
-                byApp: {
-                    count: number;
-                    app: string;
-                }[];
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            stats: {
-                totalUniqueDevices: number;
-                totalHwidDevices: number;
-                averageHwidDevicesPerUser: number;
-            };
-            byPlatform: {
-                platform: string;
-                count: number;
-                byApp: {
-                    count: number;
-                    app: string;
-                }[];
-            }[];
-        };
-    }, {
-        response: {
-            stats: {
-                totalUniqueDevices: number;
-                totalHwidDevices: number;
-                averageHwidDevicesPerUser: number;
-            };
-            byPlatform: {
-                platform: string;
-                count: number;
-                byApp: {
-                    count: number;
-                    app: string;
-                }[];
-            }[];
-        };
-    }>;
+            }, z.core.$strip>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-hwid-devices-stats.command.d.ts.map

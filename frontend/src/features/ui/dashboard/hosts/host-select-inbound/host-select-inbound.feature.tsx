@@ -1,10 +1,9 @@
 import { ActionIcon, Box, Button, Group, Stack, Text } from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks'
-import { HostsConfigProfilesDrawer } from '@widgets/dashboard/hosts/hosts-config-profiles-drawer/hosts-config-profiles.drawer.widget'
 import cx from 'clsx'
 import { useTranslation } from 'react-i18next'
 import { TbFile, TbSettings } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { SingboxLogo } from '@shared/ui/logos'
 
 import classes from './host-select-inbound.module.css'
@@ -14,7 +13,6 @@ export function HostSelectInboundFeature(props: IProps) {
     const { activeConfigProfileInbound, activeConfigProfileUuid, configProfiles, onSaveInbound } =
         props
 
-    const [opened, handlers] = useDisclosure(false)
     const { t } = useTranslation()
 
     const activeProfile = configProfiles.find((profile) => profile.uuid === activeConfigProfileUuid)
@@ -39,7 +37,16 @@ export function HostSelectInboundFeature(props: IProps) {
                 />
                 <Box className={classes.glowEffect} />
 
-                <Box className={classes.content} onClick={handlers.open}>
+                <Box
+                    className={classes.content}
+                    onClick={() =>
+                        showModal('hosts_hostsConfigProfilesDrawer', {
+                            activeConfigProfileInbound: activeConfigProfileInbound || null,
+                            activeConfigProfileUuid: activeConfigProfileUuid || null,
+                            onSaveInbound: onSaveInbound
+                        })
+                    }
+                >
                     {activeProfile && activeInbound ? (
                         <Group gap="sm" justify="space-between" w="100%">
                             <Group gap="xs" miw={0} style={{ flex: 1 }}>
@@ -97,14 +104,6 @@ export function HostSelectInboundFeature(props: IProps) {
                     )}
                 </Box>
             </Box>
-
-            <HostsConfigProfilesDrawer
-                activeConfigProfileInbound={activeConfigProfileInbound || null}
-                activeConfigProfileUuid={activeConfigProfileUuid || null}
-                onClose={handlers.close}
-                onSaveInbound={onSaveInbound}
-                opened={opened}
-            />
         </Box>
     )
 }

@@ -26,22 +26,20 @@ import {
     TbTrash
 } from 'react-icons/tb'
 
-import { useBulkEnableHosts, useCreateHost, useGetHosts } from '@shared/api/hooks'
+import { showModal } from '@shared/_modals/show-modal'
+import { useBulkEnableHosts, useCreateHost, useGetHosts, useReorderHosts } from '@shared/api/hooks'
 import {
     useBulkDeleteHosts,
     useBulkDisableHosts
 } from '@shared/api/hooks/hosts/hosts.mutation.hooks'
 import { cloneString } from '@shared/utils/misc/clone-string'
 
-import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
 import { useHostsActiveTag } from '@entities/dashboard/view-preferences-store'
 
 import { IProps } from './interfaces/props.interface'
 
 export const MultiSelectHostsFeature = (props: IProps) => {
     const { configProfiles, hosts, moveSelected, selectedHosts, setSelectedHosts } = props
-
-    const openModalWithData = useModalsStoreOpenWithData()
 
     const { t } = useTranslation()
 
@@ -76,6 +74,7 @@ export const MultiSelectHostsFeature = (props: IProps) => {
         }
     })
     const { mutateAsync: createHost } = useCreateHost()
+    const { mutateAsync: reorderHosts } = useReorderHosts()
 
     const selectAllHosts = () => {
         setSelectedHosts(hosts?.map((host) => host.uuid) || [])
@@ -87,7 +86,7 @@ export const MultiSelectHostsFeature = (props: IProps) => {
 
     const deleteSelectedHosts = () => {
         modals.openConfirmModal({
-            title: t('common.delete'),
+            title: t('common.confirm-action'),
             centered: true,
             children: t('common.confirm-action-description'),
             labels: {
@@ -95,7 +94,11 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                 cancel: t('common.cancel')
             },
             confirmProps: {
-                color: 'red'
+                color: 'red',
+                variant: 'soft'
+            },
+            cancelProps: {
+                variant: 'subtle'
             },
             onConfirm: () => {
                 bulkDeleteHosts({ variables: { uuids: selectedHosts } })
@@ -154,9 +157,10 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                     })
                 }
 
-                await Promise.allSettled(
-                    cloneableHosts.map((host) =>
-                        createHost({
+                const cloneResults = await Promise.allSettled(
+                    cloneableHosts.map(async (host) => ({
+                        parentUuid: host.uuid,
+                        clone: await createHost({
                             variables: {
                                 ...host,
                                 remark: cloneString(host.remark),
@@ -167,8 +171,31 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                                 }
                             }
                         })
-                    )
+                    }))
                 )
+
+                const cloneUuidByParent = new Map<string, string>()
+                for (const result of cloneResults) {
+                    if (result.status === 'fulfilled' && result.value.clone) {
+                        cloneUuidByParent.set(result.value.parentUuid, result.value.clone.uuid)
+                    }
+                }
+
+                if (cloneUuidByParent.size > 0) {
+                    const orderedUuids = (hosts ?? []).flatMap((host) => {
+                        const cloneUuid = cloneUuidByParent.get(host.uuid)
+                        return cloneUuid ? [host.uuid, cloneUuid] : [host.uuid]
+                    })
+
+                    await reorderHosts({
+                        variables: {
+                            hosts: orderedUuids.map((uuid, index) => ({
+                                uuid,
+                                viewPosition: index
+                            }))
+                        }
+                    })
+                }
 
                 refetchHosts()
                 clearSelection()
@@ -205,14 +232,10 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                             <Stack>
                                 <Group justify="space-between">
                                     <Badge color="shaded-gray" size="lg" variant="soft">
-                                        {t('internal-squads.drawer.widget.selected')}:{' '}
-                                        {selectedHosts.length}
+                                        {t('common.selected', { count: selectedHosts.length })}
                                     </Badge>
                                     <Group gap={0} justify="flex-end">
-                                        <Tooltip
-                                            label={t('multi-select-hosts.feature.select-all')}
-                                            withArrow
-                                        >
+                                        <Tooltip label={t('common.select-all')} withArrow>
                                             <ActionIcon
                                                 color="gray"
                                                 onClick={selectAllHosts}
@@ -222,10 +245,7 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                                                 <TbSelectAll size={20} />
                                             </ActionIcon>
                                         </Tooltip>
-                                        <Tooltip
-                                            label={t('multi-select-hosts.feature.clear-selection')}
-                                            withArrow
-                                        >
+                                        <Tooltip label={t('common.clear-selection')} withArrow>
                                             <CloseButton onClick={clearSelection} />
                                         </Tooltip>
                                     </Group>
@@ -307,7 +327,7 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                                         fullWidth
                                         leftSection={<TbCategoryPlus size={18} />}
                                         onClick={() =>
-                                            openModalWithData(MODALS.EDIT_MANY_HOSTS_DRAWER, {
+                                            showModal('hosts_editManyHostsDrawer', {
                                                 uuids: selectedHosts
                                             })
                                         }

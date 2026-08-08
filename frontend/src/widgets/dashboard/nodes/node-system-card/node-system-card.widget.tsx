@@ -1,6 +1,6 @@
 import { ActionIcon, Badge, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { GetOneNodeCommand } from '@exodus/backend-contract'
+import { GetNodeCommand } from '@exodus/backend-contract'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -27,7 +27,7 @@ import { formatDurationUtil } from '@shared/utils/time-utils'
 import classes from './node-system-card.module.css'
 
 interface IProps {
-    node: GetOneNodeCommand.Response['response']
+    node: GetNodeCommand.Response['response']
 }
 
 export const NodeSystemCardWidget = memo((props: IProps) => {

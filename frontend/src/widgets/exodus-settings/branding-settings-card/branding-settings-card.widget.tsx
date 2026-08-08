@@ -10,13 +10,12 @@ import {
     Text,
     TextInput
 } from '@mantine/core'
-import { useForm } from '@mantine/form'
+import { useForm, schemaResolver } from '@mantine/form'
 import { modals } from '@mantine/modals'
 import {
     GetExodusSettingsCommand,
     UpdateExodusSettingsCommand
 } from '@exodus/backend-contract'
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useTranslation } from 'react-i18next'
 import { HiQuestionMarkCircle } from 'react-icons/hi'
 import { TbAlertCircle, TbLink, TbStar } from 'react-icons/tb'
@@ -39,7 +38,7 @@ export const BrandingSettingsCardWidget = (props: IProps) => {
     const { brandingSettings } = props
     const { t } = useTranslation()
 
-    const form = useForm<NonNullable<UpdateExodusSettingsCommand.Request>>({
+    const form = useForm<NonNullable<UpdateExodusSettingsCommand.RequestBody>>({
         name: 'branding-settings',
         mode: 'uncontrolled',
         onValuesChange: (values) => {
@@ -51,8 +50,8 @@ export const BrandingSettingsCardWidget = (props: IProps) => {
                 form.setFieldValue('brandingSettings.logoUrl', null)
             }
         },
-        validate: zodResolver(
-            UpdateExodusSettingsCommand.RequestSchema.pick({
+        validate: schemaResolver(
+            UpdateExodusSettingsCommand.RequestBodySchema.pick({
                 brandingSettings: true
             })
         ),

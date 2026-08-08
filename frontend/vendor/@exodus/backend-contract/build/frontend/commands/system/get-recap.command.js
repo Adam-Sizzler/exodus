@@ -24,10 +24,9 @@ var GetRecapCommand;
                 distinctCountries: zod_1.z.number(),
             }),
             version: zod_1.z.string(),
-            initDate: zod_1.z
-                .string()
-                .datetime({ local: true, offset: true })
+            initDate: zod_1.z.iso.datetime({ local: true, offset: true })
                 .transform((str) => new Date(str)),
         }),
     });
+
 })(GetRecapCommand || (exports.GetRecapCommand = GetRecapCommand = {}));

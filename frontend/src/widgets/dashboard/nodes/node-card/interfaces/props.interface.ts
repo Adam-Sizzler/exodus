@@ -1,9 +1,10 @@
-import { GetAllNodesCommand } from '@exodus/backend-contract'
+import { GetNodesCommand } from '@exodus/backend-contract'
 
 export interface IProps {
     disableReordering?: boolean
     handleViewNode: (nodeUuid: string) => void
+    index: number
     isDragOverlay?: boolean
     isMobile: boolean
-    node: GetAllNodesCommand.Response['response'][number]
+    node: GetNodesCommand.Response['response'][number]
 }

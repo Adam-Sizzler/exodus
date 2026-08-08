@@ -9,12 +9,8 @@ var DeleteInternalSquadCommand;
     DeleteInternalSquadCommand.url = api_1.REST_API.INTERNAL_SQUADS.DELETE;
     DeleteInternalSquadCommand.TSQ_url = DeleteInternalSquadCommand.url(':uuid');
     DeleteInternalSquadCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.INTERNAL_SQUADS_ROUTES.DELETE(':uuid'), 'delete', 'Delete internal squad', { scope: 'delete', kind: 'write' });
-    DeleteInternalSquadCommand.RequestSchema = zod_1.z.object({
-        uuid: zod_1.z.string().uuid(),
+    DeleteInternalSquadCommand.RequestParamSchema = zod_1.z.object({
+        uuid: zod_1.z.uuid(),
     });
-    DeleteInternalSquadCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            isDeleted: zod_1.z.boolean(),
-        }),
-    });
+
 })(DeleteInternalSquadCommand || (exports.DeleteInternalSquadCommand = DeleteInternalSquadCommand = {}));

@@ -8,16 +8,9 @@ var BulkRevokeUsersSubscriptionCommand;
 (function (BulkRevokeUsersSubscriptionCommand) {
     BulkRevokeUsersSubscriptionCommand.url = api_1.REST_API.USERS.BULK.REVOKE_SUBSCRIPTION;
     BulkRevokeUsersSubscriptionCommand.TSQ_url = BulkRevokeUsersSubscriptionCommand.url;
-    BulkRevokeUsersSubscriptionCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.REVOKE_SUBSCRIPTION, 'post', 'Revoke users subscription by User UUIDs', { scope: 'bulk-revoke-subscription', kind: 'write' });
-    BulkRevokeUsersSubscriptionCommand.RequestSchema = zod_1.z.object({
-        uuids: zod_1.z
-            .array(zod_1.z.string().uuid())
-            .min(1, 'Must be at least 1 user UUID')
-            .max(500, 'Maximum 500 user UUIDs'),
+    BulkRevokeUsersSubscriptionCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.USERS_ROUTES.BULK.REVOKE_SUBSCRIPTION, 'post', 'Revoke users subscription by User IDs', { scope: 'bulk-revoke-subscription', kind: 'write' });
+    BulkRevokeUsersSubscriptionCommand.RequestBodySchema = zod_1.z.object({
+        userIds: zod_1.z.array(zod_1.z.number()).min(1).max(500),
     });
-    BulkRevokeUsersSubscriptionCommand.ResponseSchema = zod_1.z.object({
-        response: zod_1.z.object({
-            affectedRows: zod_1.z.number(),
-        }),
-    });
+
 })(BulkRevokeUsersSubscriptionCommand || (exports.BulkRevokeUsersSubscriptionCommand = BulkRevokeUsersSubscriptionCommand = {}));

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router'
 
 import { ROUTES } from '@shared/constants'
 import { Page, PageHeaderShared } from '@shared/ui'
-import { HelpActionIconShared } from '@shared/ui/help-drawer'
+import { HelpActionIconShared } from '@shared/_modals/universal'
 
 interface Props {
     plugin: GetNodePluginCommand.Response['response']

@@ -15,139 +15,15 @@ export declare namespace GetNodesMetricsCommand {
                     tag: z.ZodString;
                     upload: z.ZodString;
                     download: z.ZodString;
-                }, "strip", z.ZodTypeAny, {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }, {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }>, "many">;
+                }, z.core.$strip>>;
                 outboundsStats: z.ZodArray<z.ZodObject<{
                     tag: z.ZodString;
                     upload: z.ZodString;
                     download: z.ZodString;
-                }, "strip", z.ZodTypeAny, {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }, {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }>, "many">;
-            }, "strip", z.ZodTypeAny, {
-                nodeUuid: string;
-                nodeName: string;
-                usersOnline: number;
-                providerName: string;
-                countryEmoji: string;
-                inboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-                outboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-            }, {
-                nodeUuid: string;
-                nodeName: string;
-                usersOnline: number;
-                providerName: string;
-                countryEmoji: string;
-                inboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-                outboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-            }>, "many">;
-        }, "strip", z.ZodTypeAny, {
-            nodes: {
-                nodeUuid: string;
-                nodeName: string;
-                usersOnline: number;
-                providerName: string;
-                countryEmoji: string;
-                inboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-                outboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-            }[];
-        }, {
-            nodes: {
-                nodeUuid: string;
-                nodeName: string;
-                usersOnline: number;
-                providerName: string;
-                countryEmoji: string;
-                inboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-                outboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-            }[];
-        }>;
-    }, "strip", z.ZodTypeAny, {
-        response: {
-            nodes: {
-                nodeUuid: string;
-                nodeName: string;
-                usersOnline: number;
-                providerName: string;
-                countryEmoji: string;
-                inboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-                outboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-            }[];
-        };
-    }, {
-        response: {
-            nodes: {
-                nodeUuid: string;
-                nodeName: string;
-                usersOnline: number;
-                providerName: string;
-                countryEmoji: string;
-                inboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-                outboundsStats: {
-                    tag: string;
-                    upload: string;
-                    download: string;
-                }[];
-            }[];
-        };
-    }>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-nodes-metrics.command.d.ts.map

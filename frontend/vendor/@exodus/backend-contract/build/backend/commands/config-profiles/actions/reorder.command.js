@@ -10,7 +10,7 @@ var ReorderConfigProfileCommand;
     ReorderConfigProfileCommand.url = api_1.REST_API.CONFIG_PROFILES.ACTIONS.REORDER;
     ReorderConfigProfileCommand.TSQ_url = ReorderConfigProfileCommand.url;
     ReorderConfigProfileCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.CONFIG_PROFILES_ROUTES.ACTIONS.REORDER, 'post', 'Reorder config profiles', { scope: 'reorder', kind: 'write' });
-    ReorderConfigProfileCommand.RequestSchema = zod_1.z.object({
+    ReorderConfigProfileCommand.RequestBodySchema = zod_1.z.object({
         items: zod_1.z.array(models_1.ConfigProfileSchema.pick({
             viewPosition: true,
             uuid: true,
@@ -22,4 +22,6 @@ var ReorderConfigProfileCommand;
             configProfiles: zod_1.z.array(models_1.ConfigProfileSchema),
         }),
     });
+
 })(ReorderConfigProfileCommand || (exports.ReorderConfigProfileCommand = ReorderConfigProfileCommand = {}));
+
