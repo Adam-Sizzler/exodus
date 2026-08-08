@@ -176,7 +176,6 @@ type updateUserRequest struct {
 
 type resolveUserRequest struct {
 	ID        *int64  `json:"id,omitempty"`
-	UUID      *string `json:"uuid,omitempty"`
 	ShortUUID *string `json:"shortUuid,omitempty"`
 	Username  *string `json:"username,omitempty"`
 }
@@ -188,25 +187,21 @@ type resolveUserResponse struct {
 }
 
 type bulkDeleteUsersRequest struct {
-	UserIDs []int64  `json:"userIds,omitempty"`
-	UUIDs   []string `json:"uuids,omitempty"`
+	UserIDs []int64 `json:"userIds,omitempty"`
 }
 
 type bulkExtendExpirationDateRequest struct {
-	UserIDs    []int64  `json:"userIds,omitempty"`
-	UUIDs      []string `json:"uuids,omitempty"`
-	ExtendDays int      `json:"extendDays"`
+	UserIDs    []int64 `json:"userIds,omitempty"`
+	ExtendDays int     `json:"extendDays"`
 }
 
 type bulkUpdateUsersRequest struct {
-	UserIDs []int64                `json:"userIds,omitempty"`
-	UUIDs   []string               `json:"uuids,omitempty"`
-	Fields  bulkUpdateUsersFields  `json:"fields"`
+	UserIDs []int64               `json:"userIds,omitempty"`
+	Fields  bulkUpdateUsersFields `json:"fields"`
 }
 
 type bulkUpdateUsersSquadsRequest struct {
 	UserIDs              []int64  `json:"userIds,omitempty"`
-	UUIDs                []string `json:"uuids,omitempty"`
 	ActiveInternalSquads []string `json:"activeInternalSquads"`
 }
 

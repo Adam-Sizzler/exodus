@@ -280,7 +280,7 @@ func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql
 	_ = db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM internal_squad_members WHERE internal_squad_uuid = $1`, squadUUID).Scan(&total)
 
 	rows, err := db.QueryContext(r.Context(), `
-		SELECT u.id, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total_bytes
+		SELECT u.id, COALESCE(SUM(nuh.total_bytes), 0) AS total_bytes
 		FROM internal_squad_members ism
 		JOIN users u ON ism.user_id = u.id
 		LEFT JOIN internal_squad_inbounds isi ON isi.internal_squad_uuid = ism.internal_squad_uuid
@@ -288,7 +288,7 @@ func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql
 		LEFT JOIN nodes n ON n.uuid = cpin.node_uuid
 		LEFT JOIN nodes_user_usage_history nuh ON nuh.user_id = u.id AND nuh.node_id = n.id
 		WHERE ism.internal_squad_uuid = $1 AND u.id > $2
-		GROUP BY u.id, u.username
+		GROUP BY u.id
 		HAVING COALESCE(SUM(nuh.total_bytes), 0) >= $3
 		ORDER BY u.id ASC
 		LIMIT $4
@@ -300,16 +300,15 @@ func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql
 	defer rows.Close()
 
 	type squadUserUsageItem struct {
-		ID         int64  `json:"id"`
-		Username   string `json:"username"`
-		TotalBytes int64  `json:"totalBytes"`
+		ID         int64 `json:"id"`
+		TotalBytes int64 `json:"totalBytes"`
 	}
 
 	users := make([]squadUserUsageItem, 0)
 	var lastID int64 = 0
 	for rows.Next() {
 		var item squadUserUsageItem
-		if scanErr := rows.Scan(&item.ID, &item.Username, &item.TotalBytes); scanErr != nil {
+		if scanErr := rows.Scan(&item.ID, &item.TotalBytes); scanErr != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to scan squad user usage item", scanErr, cfg)
 			return
 		}

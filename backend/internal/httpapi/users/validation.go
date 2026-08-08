@@ -90,8 +90,8 @@ func validateCreateUserRequest(req createUserRequest) error {
 }
 
 func validateUpdateUserRequest(req updateUserRequest) error {
-	if req.UUID == nil && req.Username == nil {
-		return fmt.Errorf("either uuid or username must be provided")
+	if req.ID == nil && req.UUID == nil && req.Username == nil {
+		return fmt.Errorf("either id, uuid or username must be provided")
 	}
 	if req.UUID != nil && strings.TrimSpace(*req.UUID) != "" {
 		if _, err := uuid.Parse(strings.TrimSpace(*req.UUID)); err != nil {

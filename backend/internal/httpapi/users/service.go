@@ -190,7 +190,7 @@ func (s *UserService) CreateUser(ctx context.Context, req createUserRequest) (us
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, req updateUserRequest) (userRecord, error) {
-	targetUUID, err := s.repo.resolveUserUUIDForUpdate(ctx, req.UUID, req.Username)
+	targetUUID, err := s.repo.resolveUserUUIDForUpdate(ctx, req.ID, req.UUID, req.Username)
 	if err != nil {
 		return userRecord{}, err
 	}
@@ -237,7 +237,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userUUID string) error {
 		return recordErr
 	}
 
-	internalSquadNodeUUIDs, err := s.repo.deleteUserRecord(ctx, userUUID)
+	internalSquadNodeUUIDs, err := s.repo.deleteUserRecord(ctx, record.UUID)
 	if err != nil {
 		return err
 	}
@@ -251,13 +251,13 @@ func (s *UserService) DeleteUser(ctx context.Context, userUUID string) error {
 	return nil
 }
 
-func (s *UserService) BulkDeleteUsers(ctx context.Context, req bulkDeleteUsersRequest) error {
-	notificationRecords, err := s.repo.getUserRecordsByUUIDs(ctx, req.UUIDs)
+func (s *UserService) BulkDeleteUsers(ctx context.Context, targets []string) error {
+	notificationRecords, err := s.repo.getUserRecordsByUUIDs(ctx, targets)
 	if err != nil {
 		return err
 	}
 
-	internalSquadNodeUUIDs, err := s.repo.deleteUsersRecord(ctx, req.UUIDs)
+	internalSquadNodeUUIDs, err := s.repo.deleteUsersRecord(ctx, targets)
 	if err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ func (s *UserService) BulkDeleteUsers(ctx context.Context, req bulkDeleteUsersRe
 	if len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
-	emitUsersNotificationFromRecords(ctx, s.repo, s.cfg, notifications.EventUserDeleted, req.UUIDs, notificationRecords)
+	emitUsersNotificationFromRecords(ctx, s.repo, s.cfg, notifications.EventUserDeleted, targets, notificationRecords)
 	return nil
 }
 

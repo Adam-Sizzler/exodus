@@ -10,20 +10,14 @@ import (
 	"exodus/internal/httpapi/shared"
 )
 
-func resolveBulkTargetUUIDs(ctx context.Context, repo *UserRepository, userIDs []int64, uuids []string) ([]string, error) {
-	if len(userIDs) > 0 {
-		if len(userIDs) > 500 {
-			return nil, fmt.Errorf("userIds cannot contain more than 500 items")
-		}
-		return repo.resolveUUIDsByUserIDs(ctx, userIDs)
+func resolveBulkTargetUUIDs(ctx context.Context, repo *UserRepository, userIDs []int64) ([]string, error) {
+	if len(userIDs) == 0 {
+		return nil, fmt.Errorf("userIds cannot be empty")
 	}
-	if len(uuids) > 0 {
-		if len(uuids) > 500 {
-			return nil, fmt.Errorf("uuids cannot contain more than 500 items")
-		}
-		return dedupeStrings(uuids), nil
+	if len(userIDs) > 500 {
+		return nil, fmt.Errorf("userIds cannot contain more than 500 items")
 	}
-	return nil, fmt.Errorf("userIds cannot be empty")
+	return repo.resolveUUIDsByUserIDs(ctx, userIDs)
 }
 
 func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, service *UserService) {
@@ -32,14 +26,13 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, service *User
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
-	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs, req.UUIDs)
+	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs)
 	if err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
 	}
-	req.UUIDs = targets
 
-	err = service.BulkDeleteUsers(r.Context(), req)
+	err = service.BulkDeleteUsers(r.Context(), targets)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to delete users", err, service.cfg)
 		return
@@ -54,7 +47,7 @@ func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, service
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
-	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs, req.UUIDs)
+	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs)
 	if err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
@@ -109,7 +102,7 @@ func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request,
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
-	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs, req.UUIDs)
+	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs)
 	if err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
@@ -154,7 +147,7 @@ func handleBulkUpdateUsers(w http.ResponseWriter, r *http.Request, service *User
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
-	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs, req.UUIDs)
+	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs)
 	if err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
@@ -179,7 +172,7 @@ func handleBulkUpdateUsersSquads(w http.ResponseWriter, r *http.Request, service
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
-	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs, req.UUIDs)
+	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs)
 	if err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return

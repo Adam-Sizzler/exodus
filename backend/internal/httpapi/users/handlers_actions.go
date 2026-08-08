@@ -18,9 +18,6 @@ type revokeUserSubscriptionRequest struct {
 	RevokeOnlyPasswords bool `json:"revokeOnlyPasswords"`
 }
 
-// resolveActionUserUUID mirrors upstream: these routes' contract param is always
-// numeric (numberParamSchema), so we resolve strictly by id — no uuid/short_uuid/
-// username fallback matching, matching getUserByUniqueFields({ id }) in Remnawave.
 func resolveActionUserUUID(w http.ResponseWriter, r *http.Request, service *UserService, identifier string) (string, bool) {
 	id, err := strconv.ParseInt(strings.TrimSpace(identifier), 10, 64)
 	if err != nil {

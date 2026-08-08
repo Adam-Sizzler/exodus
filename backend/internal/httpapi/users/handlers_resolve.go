@@ -35,9 +35,6 @@ func handleResolveUser(w http.ResponseWriter, r *http.Request, service *UserServ
 
 func validateResolveUserRequest(req resolveUserRequest) error {
 	provided := 0
-	if req.UUID != nil {
-		provided++
-	}
 	if req.ID != nil {
 		provided++
 	}
@@ -48,7 +45,7 @@ func validateResolveUserRequest(req resolveUserRequest) error {
 		provided++
 	}
 	if provided != 1 {
-		return fmt.Errorf("exactly one of uuid, id, shortUuid, or username must be provided")
+		return fmt.Errorf("exactly one of id, shortUuid, or username must be provided")
 	}
 	return nil
 }

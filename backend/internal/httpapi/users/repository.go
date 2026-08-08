@@ -54,11 +54,6 @@ func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, e
 	return records, nil
 }
 
-// getUserRecordByID resolves a user strictly by numeric primary key, matching
-// upstream Remnawave's getUserByUniqueFields({ id }) used for the by-id GET
-// route and all single-user actions (enable/disable/reset-traffic/revoke/extend),
-// whose contract param schema is numberParamSchema — always a number, never a
-// uuid/short_uuid/username. No fallback matching against other columns.
 func (r *UserRepository) getUserRecordByID(ctx context.Context, id int64) (userRecord, error) {
 	query := `
 		SELECT
@@ -369,12 +364,19 @@ func (r *UserRepository) replaceUserInternalSquadsTx(ctx context.Context, tx *sq
 	return nil
 }
 
-func (r *UserRepository) resolveUserUUIDForUpdate(ctx context.Context, userUUID *string, username *string) (string, error) {
+func (r *UserRepository) resolveUserUUIDForUpdate(ctx context.Context, id *int64, userUUID *string, username *string) (string, error) {
+	if id != nil {
+		record, err := r.getUserRecordByID(ctx, *id)
+		if err != nil {
+			return "", err
+		}
+		return record.UUID, nil
+	}
 	if userUUID != nil && strings.TrimSpace(*userUUID) != "" {
 		return strings.TrimSpace(*userUUID), nil
 	}
 	if username == nil || strings.TrimSpace(*username) == "" {
-		return "", fmt.Errorf("either uuid or username must be provided")
+		return "", fmt.Errorf("either id, uuid or username must be provided")
 	}
 
 	var resolved string
@@ -390,9 +392,6 @@ func (r *UserRepository) resolveUser(ctx context.Context, req resolveUserRequest
 	clause := ""
 	var arg any
 	switch {
-	case req.UUID != nil:
-		clause = "uuid = $1"
-		arg = strings.TrimSpace(*req.UUID)
 	case req.ID != nil:
 		clause = "id = $1"
 		arg = *req.ID
