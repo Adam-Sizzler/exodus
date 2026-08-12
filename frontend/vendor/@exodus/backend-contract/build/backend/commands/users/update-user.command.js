@@ -41,6 +41,13 @@ var UpdateUserCommand;
         telegramId: zod_1.z.number().nullish(),
         email: zod_1.z.email().nullish(),
         hwidDeviceLimit: zod_1.z.int().min(0).nullish(),
+        trojanPassword: zod_1.z.string().min(8).max(32).optional(),
+        vlessUuid: zod_1.z.uuid().optional(),
+        ssPassword: zod_1.z.string().min(8).max(32).optional(),
+        naivePassword: zod_1.z.string().min(8).max(32).optional(),
+        shadowtlsPassword: zod_1.z.string().min(8).max(32).optional(),
+        hysteria2Password: zod_1.z.string().min(8).max(32).optional(),
+        anytlsPassword: zod_1.z.string().min(8).max(32).optional(),
         activeInternalSquads: zod_1.z.array(zod_1.z.uuid()).optional(),
         externalSquadUuid: zod_1.z
             .optional(zod_1.z.nullable(zod_1.z.uuid()))

@@ -39,6 +39,10 @@ export declare namespace RevokeUserSubscriptionCommand {
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;

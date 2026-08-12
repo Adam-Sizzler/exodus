@@ -51,7 +51,7 @@ type testSRRMatcherRequest struct {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]any
-// @Router       /system/tools/generate-x25519 [get]
+// @Router       /system/tools/x25519/generate [get]
 func GenerateX25519Handler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -92,7 +92,7 @@ func GenerateX25519Handler(cfg *config.BackendConfig) http.HandlerFunc {
 // @Success      200   {object}  map[string]any
 // @Failure      400   {object}  shared.ErrorResponse
 // @Failure      500   {object}  shared.ErrorResponse
-// @Router       /system/tools/encrypt-happ-crypto-link [post]
+// @Router       /system/tools/happ/encrypt [post]
 func EncryptHappCryptoLinkHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -129,7 +129,7 @@ func EncryptHappCryptoLinkHandler(cfg *config.BackendConfig) http.HandlerFunc {
 // @Param        body  body      testSRRMatcherRequest  true  "Response rules"
 // @Success      200   {object}  map[string]any
 // @Failure      400   {object}  shared.ErrorResponse
-// @Router       /system/tools/test-srr-matcher [post]
+// @Router       /system/testers/srr-matcher [post]
 func TestSRRMatcherHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

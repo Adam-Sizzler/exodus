@@ -24,6 +24,13 @@ export declare namespace UpdateUserCommand {
         telegramId: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         email: z.ZodOptional<z.ZodNullable<z.ZodEmail>>;
         hwidDeviceLimit: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+        trojanPassword: z.ZodOptional<z.ZodString>;
+        vlessUuid: z.ZodOptional<z.ZodUUID>;
+        ssPassword: z.ZodOptional<z.ZodString>;
+        naivePassword: z.ZodOptional<z.ZodString>;
+        shadowtlsPassword: z.ZodOptional<z.ZodString>;
+        hysteria2Password: z.ZodOptional<z.ZodString>;
+        anytlsPassword: z.ZodOptional<z.ZodString>;
         activeInternalSquads: z.ZodOptional<z.ZodArray<z.ZodUUID>>;
         externalSquadUuid: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
     }, z.core.$strip>;
@@ -56,6 +63,10 @@ export declare namespace UpdateUserCommand {
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;

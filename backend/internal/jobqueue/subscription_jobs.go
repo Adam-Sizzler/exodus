@@ -30,9 +30,11 @@ type UpdateUserSubscriptionPayload struct {
 }
 
 type AddSubscriptionRequestRecordPayload struct {
-	UserID    int64  `json:"userId"`
-	RequestIP string `json:"requestIp"`
-	UserAgent string `json:"userAgent"`
+	UserID          int64   `json:"userId"`
+	SRRResponseType string  `json:"srrResponseType,omitempty"`
+	SRRRuleName     *string `json:"srrRuleName,omitempty"`
+	RequestIP       string  `json:"requestIp"`
+	UserAgent       string  `json:"userAgent"`
 }
 
 type UpsertHwidDevicePayload struct {
@@ -168,10 +170,14 @@ func addSubscriptionRequestRecord(ctx context.Context, db *sql.DB, payload AddSu
 	if payload.UserID <= 0 {
 		return nil
 	}
+	srrType := payload.SRRResponseType
+	if srrType == "" {
+		srrType = "UNKNOWN"
+	}
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
-		VALUES ($1, $2, $3)
-	`, payload.UserID, payload.RequestIP, payload.UserAgent); err != nil {
+		INSERT INTO user_subscription_request_history (user_id, srr_response_type, srr_rule_name, request_ip, user_agent)
+		VALUES ($1, $2, $3, $4, $5)
+	`, payload.UserID, srrType, payload.SRRRuleName, payload.RequestIP, payload.UserAgent); err != nil {
 		return err
 	}
 

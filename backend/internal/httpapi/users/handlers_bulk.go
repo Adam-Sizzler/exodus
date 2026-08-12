@@ -123,15 +123,13 @@ func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, service
 // @Tags         Users Bulk Actions Controller
 // @Accept       json
 // @Security     BearerAuth
-// @Param        body  body  object{status=string}  true  "Status to delete"
+// @Param        body  body  bulkDeleteUsersByStatusRequest  true  "Status to delete"
 // @Success      202
 // @Failure      400  {object}  shared.ErrorResponse
 // @Failure      500  {object}  shared.ErrorResponse
 // @Router       /users/bulk/delete-by-status [post]
 func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, service *UserService) {
-	var req struct {
-		Status string `json:"status"`
-	}
+	var req bulkDeleteUsersByStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return

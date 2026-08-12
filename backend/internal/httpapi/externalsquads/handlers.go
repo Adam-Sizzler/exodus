@@ -300,11 +300,7 @@ func handleCreateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 		shared.SendError(w, http.StatusInternalServerError, "failed to marshal headers add", err, cfg)
 		return
 	}
-	respHeadersRemove, err := marshalJSON(req.ResponseHeadersRemove)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to marshal headers remove", err, cfg)
-		return
-	}
+	respHeadersRemove := shared.PostgresTextArrayLiteral(req.ResponseHeadersRemove)
 	hwidSettings, err := marshalJSON(req.HWIDSettings)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to marshal hwid settings", err, cfg)
@@ -421,9 +417,10 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 	if req.ResponseHeadersRemove != nil {
 		if string(req.ResponseHeadersRemove) == "null" {
-			add("response_headers_remove", nil)
+			add("response_headers_remove", "{}")
 		} else {
-			add("response_headers_remove", string(req.ResponseHeadersRemove))
+			items := shared.ParsePgTextArray(string(req.ResponseHeadersRemove))
+			add("response_headers_remove", shared.PostgresTextArrayLiteral(items))
 		}
 	}
 	if req.HWIDSettings != nil {

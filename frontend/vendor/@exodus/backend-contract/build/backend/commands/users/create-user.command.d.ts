@@ -15,6 +15,10 @@ export declare namespace CreateUserCommand {
         trojanPassword: z.ZodOptional<z.ZodString>;
         vlessUuid: z.ZodOptional<z.ZodUUID>;
         ssPassword: z.ZodOptional<z.ZodString>;
+        naivePassword: z.ZodOptional<z.ZodString>;
+        shadowtlsPassword: z.ZodOptional<z.ZodString>;
+        hysteria2Password: z.ZodOptional<z.ZodString>;
+        anytlsPassword: z.ZodOptional<z.ZodString>;
         trafficLimitBytes: z.ZodOptional<z.ZodNumber>;
         trafficLimitStrategy: z.ZodOptional<z.ZodDefault<z.ZodEnum<{
             readonly NO_RESET: "NO_RESET";
@@ -63,6 +67,10 @@ export declare namespace CreateUserCommand {
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;

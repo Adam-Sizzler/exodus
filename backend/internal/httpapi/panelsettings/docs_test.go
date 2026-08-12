@@ -37,7 +37,6 @@ func TestDocsSwaggerHandlerServesSwaggerUI(t *testing.T) {
 
 func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 	cfg := &config.BackendConfig{}
-	cfg.Docs.IsEnabled = true
 
 	req := httptest.NewRequest(http.MethodGet, "/docs/openapi.json", nil)
 	rec := httptest.NewRecorder()

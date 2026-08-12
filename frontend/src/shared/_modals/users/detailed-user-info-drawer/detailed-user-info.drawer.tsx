@@ -250,39 +250,26 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                                     monospace
                                     value={user.ssPassword}
                                 />
-                                {(() => {
-                                    const protocolCredentials = user as typeof user & {
-                                        naivePassword?: string
-                                        shadowtlsPassword?: string
-                                        hysteria2Password?: string
-                                        anytlsPassword?: string
-                                    }
-
-                                    return (
-                                        <>
-                                            <CopyableDataListItem
-                                                label="Naive Password"
-                                                monospace
-                                                value={protocolCredentials.naivePassword}
-                                            />
-                                            <CopyableDataListItem
-                                                label="ShadowTLS Password"
-                                                monospace
-                                                value={protocolCredentials.shadowtlsPassword}
-                                            />
-                                            <CopyableDataListItem
-                                                label="Hysteria2 Password"
-                                                monospace
-                                                value={protocolCredentials.hysteria2Password}
-                                            />
-                                            <CopyableDataListItem
-                                                label="AnyTLS Password"
-                                                monospace
-                                                value={protocolCredentials.anytlsPassword}
-                                            />
-                                        </>
-                                    )
-                                })()}
+                                <CopyableDataListItem
+                                    label="Naive Password"
+                                    monospace
+                                    value={user.naivePassword}
+                                />
+                                <CopyableDataListItem
+                                    label="ShadowTLS Password"
+                                    monospace
+                                    value={user.shadowtlsPassword}
+                                />
+                                <CopyableDataListItem
+                                    label="Hysteria2 Password"
+                                    monospace
+                                    value={user.hysteria2Password}
+                                />
+                                <CopyableDataListItem
+                                    label="AnyTLS Password"
+                                    monospace
+                                    value={user.anytlsPassword}
+                                />
                                 <CopyableDataListItem
                                     label={t('detailed-user-info-drawer.widget.first-connected-at')}
                                     value={formatTimeUtil({

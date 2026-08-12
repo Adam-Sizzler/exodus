@@ -27,7 +27,8 @@ type ExternalSquadRecord struct {
 func getExternalSquads(ctx context.Context, db *sql.DB) ([]ExternalSquadRecord, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT uuid, view_position, name,
-			subscription_settings, host_overrides, response_headers_add, response_headers_remove,
+			subscription_settings, host_overrides, response_headers_add,
+			array_to_json(COALESCE(response_headers_remove, ARRAY[]::text[]))::text AS response_headers_remove,
 			hwid_settings, custom_remarks, subpage_config_uuid,
 			created_at, updated_at
 		FROM external_squads
@@ -53,7 +54,8 @@ func getExternalSquads(ctx context.Context, db *sql.DB) ([]ExternalSquadRecord, 
 func getExternalSquadByUUID(ctx context.Context, db *sql.DB, squadUUID string) (ExternalSquadRecord, error) {
 	row := db.QueryRowContext(ctx, `
 		SELECT uuid, view_position, name,
-			subscription_settings, host_overrides, response_headers_add, response_headers_remove,
+			subscription_settings, host_overrides, response_headers_add,
+			array_to_json(COALESCE(response_headers_remove, ARRAY[]::text[]))::text AS response_headers_remove,
 			hwid_settings, custom_remarks, subpage_config_uuid,
 			created_at, updated_at
 		FROM external_squads

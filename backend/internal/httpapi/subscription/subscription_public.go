@@ -16,6 +16,20 @@ import (
 	"exodus/internal/logger"
 )
 
+// SubscriptionPublicHandler godoc
+// @Summary      Public subscription render
+// @Description  Fetch subscription config (sing-box, xray, mihomo, base64) or user subscription info by short UUID
+// @Tags         [Public] Subscription Controller
+// @Produce      plain
+// @Produce      json
+// @Param        shortUuid  path      string  true  "User short UUID"
+// @Param        client     path      string  false "Client type (e.g. singbox, xray, mihomo, clash, outline)"
+// @Success      200        {object}  map[string]any
+// @Failure      404        {object}  shared.ErrorResponse
+// @Failure      500        {object}  shared.ErrorResponse
+// @Router       /sub/{shortUuid} [get]
+// @Router       /sub/{shortUuid}/{client} [get]
+// @Router       /sub/{shortUuid}/info [get]
 func SubscriptionPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -324,6 +338,19 @@ func (s *RenderService) CopyMap(src map[string]string) map[string]string {
 	return dst
 }
 
+// SubpageConfigPublicHandler godoc
+// @Summary      Get subpage config for user
+// @Description  Evaluate matching subscription page config template based on request headers and user settings
+// @Tags         [Public] Subscription Controller
+// @Accept       json
+// @Produce      json
+// @Param        shortUuid  path      string  true  "User short UUID"
+// @Param        body       body      object  false "Request headers mapping"
+// @Success      200        {object}  map[string]any
+// @Failure      400        {object}  shared.ErrorResponse
+// @Failure      404        {object}  shared.ErrorResponse
+// @Failure      500        {object}  shared.ErrorResponse
+// @Router       /subscriptions/subpage-config/{shortUuid} [post]
 func SubpageConfigPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

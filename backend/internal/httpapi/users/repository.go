@@ -911,7 +911,7 @@ func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, 
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, request_ip, user_agent, request_at
+		SELECT id, user_id, COALESCE(srr_response_type, 'UNKNOWN'), srr_rule_name, request_ip, user_agent, request_at
 		FROM user_subscription_request_history
 		WHERE user_id = $1
 		ORDER BY request_at DESC
@@ -926,7 +926,7 @@ func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, 
 	for rows.Next() {
 		var item userSubscriptionRequestHistoryRecord
 		var requestAt time.Time
-		if scanErr := rows.Scan(&item.ID, &item.UserID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
+		if scanErr := rows.Scan(&item.ID, &item.UserID, &item.SRRResponseType, &item.SRRRuleName, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
 			return nil, scanErr
 		}
 		item.RequestAt = requestAt.UTC().Format("2006-01-02T15:04:05.000Z")

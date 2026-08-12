@@ -17,6 +17,10 @@ func checkupExternalSquads(ctx context.Context, tx *sql.Tx, _ *config.BackendCon
 				WHEN subscription_settings::text IN ('{}', 'null', '[]') THEN NULL 
 				ELSE subscription_settings 
 			END,
+			host_overrides = CASE 
+				WHEN host_overrides::text IN ('{}', 'null', '[]') THEN NULL 
+				ELSE host_overrides 
+			END,
 			response_headers_add = CASE 
 				WHEN response_headers_add IS NULL OR response_headers_add::text IN ('null', '[]') THEN '{}'::jsonb 
 				ELSE response_headers_add 

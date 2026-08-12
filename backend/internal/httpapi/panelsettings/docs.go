@@ -54,27 +54,6 @@ var (
 	}
 )
 
-// buildDocsResponse builds the "docs" field for GET /api/tokens response.
-// When IS_DOCS_ENABLED=false all paths are null — the frontend hides the buttons.
-// When enabled, paths are prefixed with APP_PATH so the links work under any base path.
-func buildDocsResponse(cfg *config.BackendConfig) map[string]any {
-	if !cfg.Docs.IsEnabled {
-		return map[string]any{
-			"enabled":     false,
-			"scalarPath":  nil,
-			"swaggerPath": nil,
-		}
-	}
-
-	basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
-
-	return map[string]any{
-		"enabled":     true,
-		"scalarPath":  fmt.Sprintf("%s%s", basePath, cfg.Docs.ScalarPath),
-		"swaggerPath": fmt.Sprintf("%s%s", basePath, cfg.Docs.SwaggerPath),
-	}
-}
-
 // DocsScalarHandler serves the Scalar API reference UI.
 // Route: GET /scalar (or whatever SCALAR_PATH is set to, registered in router.go).
 func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {

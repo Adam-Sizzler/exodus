@@ -14,11 +14,13 @@ import (
 )
 
 type historyRecord struct {
-	ID        int64   `json:"id"`
-	UserID    int64   `json:"userId"`
-	RequestIP *string `json:"requestIp"`
-	UserAgent *string `json:"userAgent"`
-	RequestAt string  `json:"requestAt"`
+	ID              int64   `json:"id"`
+	UserID          int64   `json:"userId"`
+	SRRResponseType string  `json:"srrResponseType"`
+	SRRRuleName     *string `json:"srrRuleName"`
+	RequestIP       *string `json:"requestIp"`
+	UserAgent       *string `json:"userAgent"`
+	RequestAt       string  `json:"requestAt"`
 }
 
 type tableFilter struct {
@@ -54,11 +56,13 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 		start := parseInt(r.URL.Query().Get("start"), 0, 0, 1_000_000)
 		size := parseInt(r.URL.Query().Get("size"), 25, 1, 1000)
 		columns := map[string]string{
-			"id":        "id",
-			"userId":    "user_id",
-			"requestIp": "request_ip",
-			"userAgent": "user_agent",
-			"requestAt": "request_at",
+			"id":              "id",
+			"userId":          "user_id",
+			"srrResponseType": "srr_response_type",
+			"srrRuleName":     "srr_rule_name",
+			"requestIp":       "request_ip",
+			"userAgent":       "user_agent",
+			"requestAt":       "request_at",
 		}
 		whereSQL, whereArgs := buildTableWhereClause(r, columns)
 		orderSQL := buildTableOrderClause(r, columns, "request_at DESC")
@@ -72,7 +76,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 
 		args := append(append([]any{}, whereArgs...), start, size)
 		query := fmt.Sprintf(`
-			SELECT id, user_id, request_ip, user_agent, request_at
+			SELECT id, user_id, COALESCE(srr_response_type, 'UNKNOWN'), srr_rule_name, request_ip, user_agent, request_at
 			FROM user_subscription_request_history
 		`+whereSQL+orderSQL+` OFFSET $%d LIMIT $%d`, len(whereArgs)+1, len(whereArgs)+2)
 
@@ -87,7 +91,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 		for rows.Next() {
 			var item historyRecord
 			var requestAt sql.NullTime
-			if scanErr := rows.Scan(&item.ID, &item.UserID, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
+			if scanErr := rows.Scan(&item.ID, &item.UserID, &item.SRRResponseType, &item.SRRRuleName, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
 				shared.SendError(w, http.StatusInternalServerError, "failed to scan subscription request history", scanErr, cfg)
 				return
 			}

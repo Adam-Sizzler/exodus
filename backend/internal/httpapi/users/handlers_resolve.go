@@ -17,7 +17,7 @@ import (
 // @Produce      json
 // @Security     BearerAuth
 // @Param        body  body      resolveUserRequest  true  "Identifier to resolve"
-// @Success      200   {object}  object{response=resolveUserResponse}
+// @Success      200   {object}  ResolveUserResponseEnvelope
 // @Failure      400   {object}  shared.ErrorResponse
 // @Failure      404   {object}  shared.ErrorResponse
 // @Failure      500   {object}  shared.ErrorResponse

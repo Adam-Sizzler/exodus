@@ -243,7 +243,7 @@ func RecapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 // @Param        tz   query     string  false  "Timezone name (e.g. UTC, Europe/Moscow)"
 // @Success      200  {object}  map[string]any
 // @Failure      500  {object}  shared.ErrorResponse
-// @Router       /system/bandwidth-stats [get]
+// @Router       /system/stats/bandwidth [get]
 func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -303,7 +303,7 @@ func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]any
-// @Router       /system/http-stats [get]
+// @Router       /system/stats/http [get]
 func HTTPStatsHandler(rc *RouteCounter, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -370,7 +370,7 @@ func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]any
 // @Failure      500  {object}  shared.ErrorResponse
-// @Router       /system/nodes-stats [get]
+// @Router       /system/stats/nodes [get]
 func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -440,7 +440,7 @@ func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 // @Param        start  query     string  false  "Start timestamp (RFC3339)"
 // @Param        end    query     string  false  "End timestamp (RFC3339)"
 // @Success      200    {object}  map[string]any
-// @Router       /system/digest [get]
+// @Router       /system/stats/digest [get]
 func DigestHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -508,7 +508,7 @@ func DigestHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]any
-// @Router       /system/nodes-metrics [get]
+// @Router       /system/nodes/metrics [get]
 func NodesMetricsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

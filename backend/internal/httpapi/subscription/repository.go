@@ -109,16 +109,20 @@ func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID s
 	}
 
 	var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersAddJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
-	var responseHeadersRemove []string
+	var responseHeadersRemoveRaw sql.NullString
 
-	query := `SELECT subscription_settings, host_overrides, response_headers_add, response_headers_remove, hwid_settings, custom_remarks
+	query := `SELECT subscription_settings, host_overrides, response_headers_add,
+			  array_to_json(COALESCE(response_headers_remove, ARRAY[]::text[]))::text AS response_headers_remove,
+			  hwid_settings, custom_remarks
 			  FROM external_squads WHERE uuid = $1 LIMIT 1`
 	row := dbConn.QueryRowContext(ctx, query, squadUUID)
 
-	if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersAddJSON, &responseHeadersRemove, &hwidSettingsJSON, &customRemarksJSON); err != nil {
+	if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersAddJSON, &responseHeadersRemoveRaw, &hwidSettingsJSON, &customRemarksJSON); err != nil {
 		return nil, err
 	}
-	overrides.ResponseHeadersRemove = responseHeadersRemove
+	if responseHeadersRemoveRaw.Valid {
+		overrides.ResponseHeadersRemove = shared.ParsePgTextArray(responseHeadersRemoveRaw.String)
+	}
 
 	if subscriptionSettingsJSON.Valid && subscriptionSettingsJSON.String != "" {
 		var ss subscriptionsettings.SubscriptionSettings
@@ -593,8 +597,8 @@ func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID str
 		defer cancel()
 
 		_, _ = dbConn.ExecContext(jobCtx, `
-			INSERT INTO user_subscription_request_history (user_id, request_ip, user_agent)
-			VALUES ($1, $2, $3)
+			INSERT INTO user_subscription_request_history (user_id, srr_response_type, request_ip, user_agent)
+			VALUES ($1, 'UNKNOWN', $2, $3)
 		`, userID, requestIP, userAgent)
 
 		_, _ = dbConn.ExecContext(jobCtx, `
@@ -1074,4 +1078,8 @@ func firstHostTag(host SubscriptionHost) string {
 		return host.Remark
 	}
 	return host.Address
+}
+
+func parsePgTextArray(raw string) []string {
+	return shared.ParsePgTextArray(raw)
 }

@@ -405,6 +405,22 @@ func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql
 	})
 }
 
+// BandwidthStatsInternalSquadsHandler godoc
+// @Summary      Internal squads bandwidth statistics
+// @Description  Get user usage within internal squad, or user daily usage breakdown by squad nodes
+// @Tags         Internal Squads Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid    path      string  true   "Internal Squad UUID" format(uuid)
+// @Param        userId  path      int     false  "Numeric User ID"
+// @Param        start   query     string  false  "Start date (YYYY-MM-DD)"
+// @Param        end     query     string  false  "End date (YYYY-MM-DD)"
+// @Success      200     {object}  map[string]any
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /bandwidth-stats/internal-squads/{uuid}/usage [get]
+// @Router       /bandwidth-stats/internal-squads/{uuid}/users/{userId}/usage [get]
 func BandwidthStatsInternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/internal-squads")

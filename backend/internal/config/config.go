@@ -41,7 +41,6 @@ type PanelConfig struct {
 }
 
 type DocsConfig struct {
-	IsEnabled   bool
 	ScalarPath  string
 	SwaggerPath string
 }
@@ -175,7 +174,6 @@ var defaultConfig = BackendConfig{
 		AuthLifetimeHours: 12,
 	},
 	Docs: DocsConfig{
-		IsEnabled:   true,
 		ScalarPath:  "/api/backend-tools/scalar",
 		SwaggerPath: "/api/backend-tools/swagger",
 	},
@@ -319,9 +317,6 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		cfg.Panel.StaticDir = value
 	}
 
-	if value := envFirst("IS_DOCS_ENABLED"); value != "" {
-		cfg.Docs.IsEnabled = strings.EqualFold(strings.TrimSpace(value), "true")
-	}
 	if value := envFirst("SCALAR_PATH"); value != "" {
 		cfg.Docs.ScalarPath = strings.TrimSpace(value)
 	}

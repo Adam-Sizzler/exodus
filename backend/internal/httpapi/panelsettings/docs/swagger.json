@@ -426,6 +426,144 @@
                 }
             }
         },
+        "/bandwidth-stats/internal-squads/{uuid}/usage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get user usage within internal squad, or user daily usage breakdown by squad nodes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Internal squads bandwidth statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Internal Squad UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/bandwidth-stats/internal-squads/{uuid}/users/{userId}/usage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get user usage within internal squad, or user daily usage breakdown by squad nodes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Internal squads bandwidth statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Internal Squad UUID",
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Numeric User ID",
+                        "name": "userId",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/bandwidth-stats/nodes": {
             "get": {
                 "security": [
@@ -7085,6 +7223,141 @@
                 }
             }
         },
+        "/sub/{shortUuid}": {
+            "get": {
+                "description": "Fetch subscription config (sing-box, xray, mihomo, base64) or user subscription info by short UUID",
+                "produces": [
+                    "text/plain",
+                    "application/json"
+                ],
+                "tags": [
+                    "[Public] Subscription Controller"
+                ],
+                "summary": "Public subscription render",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User short UUID",
+                        "name": "shortUuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sub/{shortUuid}/info": {
+            "get": {
+                "description": "Fetch subscription config (sing-box, xray, mihomo, base64) or user subscription info by short UUID",
+                "produces": [
+                    "text/plain",
+                    "application/json"
+                ],
+                "tags": [
+                    "[Public] Subscription Controller"
+                ],
+                "summary": "Public subscription render",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User short UUID",
+                        "name": "shortUuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sub/{shortUuid}/{client}": {
+            "get": {
+                "description": "Fetch subscription config (sing-box, xray, mihomo, base64) or user subscription info by short UUID",
+                "produces": [
+                    "text/plain",
+                    "application/json"
+                ],
+                "tags": [
+                    "[Public] Subscription Controller"
+                ],
+                "summary": "Public subscription render",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User short UUID",
+                        "name": "shortUuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Client type (e.g. singbox, xray, mihomo, clash, outline)",
+                        "name": "client",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/subscription-connections": {
             "get": {
                 "security": [
@@ -8953,27 +9226,34 @@
                 }
             }
         },
-        "/system/bandwidth-stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
+        "/subscriptions/subpage-config/{shortUuid}": {
+            "post": {
+                "description": "Evaluate matching subscription page config template based on request headers and user settings",
+                "consumes": [
+                    "application/json"
                 ],
-                "description": "Get traffic usage comparisons for 2 days, 7 days, 30 days, calendar month, and year",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "System Controller"
+                    "[Public] Subscription Controller"
                 ],
-                "summary": "System bandwidth trends",
+                "summary": "Get subpage config for user",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Timezone name (e.g. UTC, Europe/Moscow)",
-                        "name": "tz",
-                        "in": "query"
+                        "description": "User short UUID",
+                        "name": "shortUuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request headers mapping",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -8982,52 +9262,24 @@
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/system/digest": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get user creations, expirations, HWID devices, and traffic within date range",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "System Controller"
-                ],
-                "summary": "System activity digest",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Start timestamp (RFC3339)",
-                        "name": "start",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "End timestamp (RFC3339)",
-                        "name": "end",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
                         }
                     }
                 }
@@ -9048,32 +9300,6 @@
                     "System Controller"
                 ],
                 "summary": "Go runtime health check",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/system/http-stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get HTTP traffic counters and request rate metrics",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "System Controller"
-                ],
-                "summary": "HTTP request metrics",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -9111,7 +9337,7 @@
                 }
             }
         },
-        "/system/nodes-metrics": {
+        "/system/nodes/metrics": {
             "get": {
                 "security": [
                     {
@@ -9132,38 +9358,6 @@
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/system/nodes-stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get 7-day daily traffic usage per node",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "System Controller"
-                ],
-                "summary": "Last 7 days node usage statistics",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -9233,7 +9427,191 @@
                 }
             }
         },
-        "/system/tools/encrypt-happ-crypto-link": {
+        "/system/stats/bandwidth": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get traffic usage comparisons for 2 days, 7 days, 30 days, calendar month, and year",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System Controller"
+                ],
+                "summary": "System bandwidth trends",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Timezone name (e.g. UTC, Europe/Moscow)",
+                        "name": "tz",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/stats/digest": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get user creations, expirations, HWID devices, and traffic within date range",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System Controller"
+                ],
+                "summary": "System activity digest",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start timestamp (RFC3339)",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End timestamp (RFC3339)",
+                        "name": "end",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/system/stats/http": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get HTTP traffic counters and request rate metrics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System Controller"
+                ],
+                "summary": "HTTP request metrics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/system/stats/nodes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get 7-day daily traffic usage per node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System Controller"
+                ],
+                "summary": "Last 7 days node usage statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/testers/srr-matcher": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Evaluate SRR rules against request headers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System Controller"
+                ],
+                "summary": "Test subscription response rules matcher",
+                "parameters": [
+                    {
+                        "description": "Response rules",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/system.testSRRMatcherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/tools/happ/encrypt": {
             "post": {
                 "security": [
                     {
@@ -9285,7 +9663,7 @@
                 }
             }
         },
-        "/system/tools/generate-x25519": {
+        "/system/tools/x25519/generate": {
             "get": {
                 "security": [
                     {
@@ -9306,52 +9684,6 @@
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/system/tools/test-srr-matcher": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Evaluate SRR rules against request headers",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "System Controller"
-                ],
-                "summary": "Test subscription response rules matcher",
-                "parameters": [
-                    {
-                        "description": "Response rules",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/system.testSRRMatcherRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -9931,12 +10263,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "status": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/users.bulkDeleteUsersByStatusRequest"
                         }
                     }
                 ],
@@ -10217,12 +10544,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "response": {
-                                    "$ref": "#/definitions/users.resolveUserResponse"
-                                }
-                            }
+                            "$ref": "#/definitions/users.ResolveUserResponseEnvelope"
                         }
                     },
                     "400": {
@@ -10643,12 +10965,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "days": {
-                                    "type": "integer"
-                                }
-                            }
+                            "$ref": "#/definitions/users.extendUserExpirationRequest"
                         }
                     }
                 ],
@@ -11298,6 +11615,14 @@
                 }
             }
         },
+        "users.ResolveUserResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "$ref": "#/definitions/users.resolveUserResponse"
+                }
+            }
+        },
         "users.UserAccessibleNodesResponse": {
             "type": "object",
             "properties": {
@@ -11449,6 +11774,14 @@
                     "type": "integer"
                 },
                 "trafficLimitStrategy": {
+                    "type": "string"
+                }
+            }
+        },
+        "users.bulkDeleteUsersByStatusRequest": {
+            "type": "object",
+            "properties": {
+                "status": {
                     "type": "string"
                 }
             }
@@ -11626,6 +11959,17 @@
                 },
                 "vlessUuid": {
                     "type": "string"
+                }
+            }
+        },
+        "users.extendUserExpirationRequest": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer"
+                },
+                "extendDays": {
+                    "type": "integer"
                 }
             }
         },
@@ -11889,6 +12233,12 @@
                     "type": "string"
                 },
                 "requestIp": {
+                    "type": "string"
+                },
+                "srrResponseType": {
+                    "type": "string"
+                },
+                "srrRuleName": {
                     "type": "string"
                 },
                 "userAgent": {

@@ -292,6 +292,11 @@ definitions:
       value:
         type: string
     type: object
+  users.ResolveUserResponseEnvelope:
+    properties:
+      response:
+        $ref: '#/definitions/users.resolveUserResponse'
+    type: object
   users.UserAccessibleNodesResponse:
     properties:
       activeNodes:
@@ -389,6 +394,11 @@ definitions:
       trafficLimitBytes:
         type: integer
       trafficLimitStrategy:
+        type: string
+    type: object
+  users.bulkDeleteUsersByStatusRequest:
+    properties:
+      status:
         type: string
     type: object
   users.bulkDeleteUsersRequest:
@@ -505,6 +515,13 @@ definitions:
         type: string
       vlessUuid:
         type: string
+    type: object
+  users.extendUserExpirationRequest:
+    properties:
+      days:
+        type: integer
+      extendDays:
+        type: integer
     type: object
   users.internalSquadResponse:
     properties:
@@ -677,6 +694,10 @@ definitions:
       requestAt:
         type: string
       requestIp:
+        type: string
+      srrResponseType:
+        type: string
+      srrRuleName:
         type: string
       userAgent:
         type: string
@@ -976,6 +997,98 @@ paths:
       summary: Get auth status
       tags:
       - Auth Controller
+  /bandwidth-stats/internal-squads/{uuid}/usage:
+    get:
+      description: Get user usage within internal squad, or user daily usage breakdown
+        by squad nodes
+      parameters:
+      - description: Internal Squad UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Internal squads bandwidth statistics
+      tags:
+      - Internal Squads Controller
+  /bandwidth-stats/internal-squads/{uuid}/users/{userId}/usage:
+    get:
+      description: Get user usage within internal squad, or user daily usage breakdown
+        by squad nodes
+      parameters:
+      - description: Internal Squad UUID
+        format: uuid
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Numeric User ID
+        in: path
+        name: userId
+        type: integer
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Internal squads bandwidth statistics
+      tags:
+      - Internal Squads Controller
   /bandwidth-stats/nodes:
     get:
       description: Get nodes overall usage, realtime metrics, or user usage breakdown
@@ -5284,6 +5397,100 @@ paths:
       summary: Bulk SRS rule list operations
       tags:
       - SRS Lists Controller
+  /sub/{shortUuid}:
+    get:
+      description: Fetch subscription config (sing-box, xray, mihomo, base64) or user
+        subscription info by short UUID
+      parameters:
+      - description: User short UUID
+        in: path
+        name: shortUuid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      summary: Public subscription render
+      tags:
+      - '[Public] Subscription Controller'
+  /sub/{shortUuid}/{client}:
+    get:
+      description: Fetch subscription config (sing-box, xray, mihomo, base64) or user
+        subscription info by short UUID
+      parameters:
+      - description: User short UUID
+        in: path
+        name: shortUuid
+        required: true
+        type: string
+      - description: Client type (e.g. singbox, xray, mihomo, clash, outline)
+        in: path
+        name: client
+        type: string
+      produces:
+      - text/plain
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      summary: Public subscription render
+      tags:
+      - '[Public] Subscription Controller'
+  /sub/{shortUuid}/info:
+    get:
+      description: Fetch subscription config (sing-box, xray, mihomo, base64) or user
+        subscription info by short UUID
+      parameters:
+      - description: User short UUID
+        in: path
+        name: shortUuid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      summary: Public subscription render
+      tags:
+      - '[Public] Subscription Controller'
   /subscription-connections:
     get:
       consumes:
@@ -6483,15 +6690,23 @@ paths:
       summary: Get user subscription by identifier
       tags:
       - '[Protected] Subscriptions Controller'
-  /system/bandwidth-stats:
-    get:
-      description: Get traffic usage comparisons for 2 days, 7 days, 30 days, calendar
-        month, and year
+  /subscriptions/subpage-config/{shortUuid}:
+    post:
+      consumes:
+      - application/json
+      description: Evaluate matching subscription page config template based on request
+        headers and user settings
       parameters:
-      - description: Timezone name (e.g. UTC, Europe/Moscow)
-        in: query
-        name: tz
+      - description: User short UUID
+        in: path
+        name: shortUuid
+        required: true
         type: string
+      - description: Request headers mapping
+        in: body
+        name: body
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -6500,41 +6715,21 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: System bandwidth trends
+      summary: Get subpage config for user
       tags:
-      - System Controller
-  /system/digest:
-    get:
-      description: Get user creations, expirations, HWID devices, and traffic within
-        date range
-      parameters:
-      - description: Start timestamp (RFC3339)
-        in: query
-        name: start
-        type: string
-      - description: End timestamp (RFC3339)
-        in: query
-        name: end
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: System activity digest
-      tags:
-      - System Controller
+      - '[Public] Subscription Controller'
   /system/health:
     get:
       description: Get Go goroutines, memory allocation, and CPU metrics
@@ -6549,22 +6744,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Go runtime health check
-      tags:
-      - System Controller
-  /system/http-stats:
-    get:
-      description: Get HTTP traffic counters and request rate metrics
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: HTTP request metrics
       tags:
       - System Controller
   /system/metadata:
@@ -6584,7 +6763,7 @@ paths:
       summary: System metadata
       tags:
       - System Controller
-  /system/nodes-metrics:
+  /system/nodes/metrics:
     get:
       description: Query Prometheus metrics for all online nodes
       produces:
@@ -6598,26 +6777,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Live node metrics via Prometheus
-      tags:
-      - System Controller
-  /system/nodes-stats:
-    get:
-      description: Get 7-day daily traffic usage per node
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Last 7 days node usage statistics
       tags:
       - System Controller
   /system/recap:
@@ -6662,7 +6821,124 @@ paths:
       summary: System statistics
       tags:
       - System Controller
-  /system/tools/encrypt-happ-crypto-link:
+  /system/stats/bandwidth:
+    get:
+      description: Get traffic usage comparisons for 2 days, 7 days, 30 days, calendar
+        month, and year
+      parameters:
+      - description: Timezone name (e.g. UTC, Europe/Moscow)
+        in: query
+        name: tz
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: System bandwidth trends
+      tags:
+      - System Controller
+  /system/stats/digest:
+    get:
+      description: Get user creations, expirations, HWID devices, and traffic within
+        date range
+      parameters:
+      - description: Start timestamp (RFC3339)
+        in: query
+        name: start
+        type: string
+      - description: End timestamp (RFC3339)
+        in: query
+        name: end
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: System activity digest
+      tags:
+      - System Controller
+  /system/stats/http:
+    get:
+      description: Get HTTP traffic counters and request rate metrics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: HTTP request metrics
+      tags:
+      - System Controller
+  /system/stats/nodes:
+    get:
+      description: Get 7-day daily traffic usage per node
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Last 7 days node usage statistics
+      tags:
+      - System Controller
+  /system/testers/srr-matcher:
+    post:
+      consumes:
+      - application/json
+      description: Evaluate SRR rules against request headers
+      parameters:
+      - description: Response rules
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/system.testSRRMatcherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test subscription response rules matcher
+      tags:
+      - System Controller
+  /system/tools/happ/encrypt:
     post:
       consumes:
       - application/json
@@ -6695,7 +6971,7 @@ paths:
       summary: Encrypt Happ crypto link
       tags:
       - System Controller
-  /system/tools/generate-x25519:
+  /system/tools/x25519/generate:
     get:
       description: Generate a batch of 30 X25519 keypairs for VLESS/Reality or WireGuard
         configs
@@ -6710,35 +6986,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Generate x25519 keypairs
-      tags:
-      - System Controller
-  /system/tools/test-srr-matcher:
-    post:
-      consumes:
-      - application/json
-      description: Evaluate SRR rules against request headers
-      parameters:
-      - description: Response rules
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/system.testSRRMatcherRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Test subscription response rules matcher
       tags:
       - System Controller
   /tokens:
@@ -7167,10 +7414,7 @@ paths:
         name: body
         required: true
         schema:
-          properties:
-            days:
-              type: integer
-          type: object
+          $ref: '#/definitions/users.extendUserExpirationRequest'
       produces:
       - application/json
       responses:
@@ -7411,10 +7655,7 @@ paths:
         name: body
         required: true
         schema:
-          properties:
-            status:
-              type: string
-          type: object
+          $ref: '#/definitions/users.bulkDeleteUsersByStatusRequest'
       responses:
         "202":
           description: Accepted
@@ -7589,10 +7830,7 @@ paths:
         "200":
           description: OK
           schema:
-            properties:
-              response:
-                $ref: '#/definitions/users.resolveUserResponse'
-            type: object
+            $ref: '#/definitions/users.ResolveUserResponseEnvelope'
         "400":
           description: Bad Request
           schema:

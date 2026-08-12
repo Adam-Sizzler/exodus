@@ -45,6 +45,10 @@ export declare const ExodusWebhookUserEvents: z.ZodObject<{
         trojanPassword: z.ZodString;
         vlessUuid: z.ZodUUID;
         ssPassword: z.ZodString;
+        naivePassword: z.ZodString;
+        shadowtlsPassword: z.ZodString;
+        hysteria2Password: z.ZodString;
+        anytlsPassword: z.ZodString;
         lastTriggeredThreshold: z.ZodInt;
         subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
         lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
@@ -104,6 +108,10 @@ export declare const ExodusWebhookUserHwidDevicesEvents: z.ZodObject<{
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
@@ -411,6 +419,10 @@ export declare const ExodusWebhookTorrentBlockerEvents: z.ZodObject<{
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
@@ -502,6 +514,10 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
         trojanPassword: z.ZodString;
         vlessUuid: z.ZodUUID;
         ssPassword: z.ZodString;
+        naivePassword: z.ZodString;
+        shadowtlsPassword: z.ZodString;
+        hysteria2Password: z.ZodString;
+        anytlsPassword: z.ZodString;
         lastTriggeredThreshold: z.ZodInt;
         subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
         lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
@@ -560,6 +576,10 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
@@ -862,6 +882,10 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
             trojanPassword: z.ZodString;
             vlessUuid: z.ZodUUID;
             ssPassword: z.ZodString;
+            naivePassword: z.ZodString;
+            shadowtlsPassword: z.ZodString;
+            hysteria2Password: z.ZodString;
+            anytlsPassword: z.ZodString;
             lastTriggeredThreshold: z.ZodInt;
             subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
             lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;

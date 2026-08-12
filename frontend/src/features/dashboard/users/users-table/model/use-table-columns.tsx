@@ -500,9 +500,7 @@ export const useUserTableColumns = (
             {
                 accessorKey: 'naivePassword',
                 header: 'Naive Password',
-                accessorFn: (originalRow) =>
-                    (originalRow as typeof originalRow & { naivePassword?: string })
-                        .naivePassword ?? '',
+                accessorFn: (originalRow) => originalRow.naivePassword ?? '',
                 minSize: 400,
                 maxSize: 800,
                 enableColumnFilterModes: false,
@@ -513,9 +511,7 @@ export const useUserTableColumns = (
             {
                 accessorKey: 'shadowtlsPassword',
                 header: 'ShadowTLS Password',
-                accessorFn: (originalRow) =>
-                    (originalRow as typeof originalRow & { shadowtlsPassword?: string })
-                        .shadowtlsPassword ?? '',
+                accessorFn: (originalRow) => originalRow.shadowtlsPassword ?? '',
                 minSize: 400,
                 maxSize: 800,
                 enableColumnFilterModes: false,
@@ -526,9 +522,7 @@ export const useUserTableColumns = (
             {
                 accessorKey: 'hysteria2Password',
                 header: 'Hysteria2 Password',
-                accessorFn: (originalRow) =>
-                    (originalRow as typeof originalRow & { hysteria2Password?: string })
-                        .hysteria2Password ?? '',
+                accessorFn: (originalRow) => originalRow.hysteria2Password ?? '',
                 minSize: 400,
                 maxSize: 800,
                 enableColumnFilterModes: false,
@@ -539,9 +533,7 @@ export const useUserTableColumns = (
             {
                 accessorKey: 'anytlsPassword',
                 header: 'AnyTLS Password',
-                accessorFn: (originalRow) =>
-                    (originalRow as typeof originalRow & { anytlsPassword?: string })
-                        .anytlsPassword ?? '',
+                accessorFn: (originalRow) => originalRow.anytlsPassword ?? '',
                 minSize: 400,
                 maxSize: 800,
                 enableColumnFilterModes: false,

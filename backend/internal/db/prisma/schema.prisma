@@ -560,9 +560,13 @@ model UserSubscriptionRequestHistory {
   userId    BigInt   @map("user_id")
   requestIp String?  @map("request_ip")
   userAgent String?  @map("user_agent")
+
+  srrRuleName     String? @map("srr_rule_name")
+  srrResponseType String  @default("UNKNOWN") @map("srr_response_type")
+
   requestAt DateTime @default(dbgenerated("now()")) @map("request_at")
 
-  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_subscription_request_history")

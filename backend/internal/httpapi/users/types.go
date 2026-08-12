@@ -126,11 +126,13 @@ type UserSubscriptionRequestHistoryResponseEnvelope struct {
 }
 
 type userSubscriptionRequestHistoryRecord struct {
-	ID        int64   `json:"id"`
-	UserID    int64   `json:"userId"`
-	RequestIP *string `json:"requestIp"`
-	UserAgent *string `json:"userAgent"`
-	RequestAt string  `json:"requestAt"`
+	ID              int64   `json:"id"`
+	UserID          int64   `json:"userId"`
+	SRRResponseType string  `json:"srrResponseType"`
+	SRRRuleName     *string `json:"srrRuleName"`
+	RequestIP       *string `json:"requestIp"`
+	UserAgent       *string `json:"userAgent"`
+	RequestAt       string  `json:"requestAt"`
 }
 
 type userAccessibleNode struct {
@@ -242,12 +244,25 @@ type resolveUserResponse struct {
 	Username  string `json:"username"`
 }
 
+type ResolveUserResponseEnvelope struct {
+	Response resolveUserResponse `json:"response"`
+}
+
 type bulkDeleteUsersRequest struct {
 	UserIDs []int64 `json:"userIds,omitempty"`
 }
 
 type bulkRevokeUsersSubscriptionRequest struct {
 	UserIDs []int64 `json:"userIds,omitempty"`
+}
+
+type extendUserExpirationRequest struct {
+	Days       int `json:"days,omitempty"`
+	ExtendDays int `json:"extendDays,omitempty"`
+}
+
+type bulkDeleteUsersByStatusRequest struct {
+	Status string `json:"status"`
 }
 
 type bulkExtendExpirationDateRequest struct {

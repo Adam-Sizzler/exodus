@@ -212,18 +212,15 @@ func validateExtendDays(days int) error {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        userId  path      int                    true  "Numeric User ID"
-// @Param        body    body      object{days=int}       true  "Number of days to extend"
+// @Param        userId  path      int                          true  "Numeric User ID"
+// @Param        body    body      extendUserExpirationRequest  true  "Number of days to extend"
 // @Success      200     {object}  UserResponseEnvelope
 // @Failure      400     {object}  shared.ErrorResponse
 // @Failure      404     {object}  shared.ErrorResponse
 // @Failure      500     {object}  shared.ErrorResponse
 // @Router       /users/{userId}/actions/extend [post]
 func handleExtendUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
-	var req struct {
-		Days       int `json:"days"`
-		ExtendDays int `json:"extendDays"`
-	}
+	var req extendUserExpirationRequest
 	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
 	if !ok {
 		return
