@@ -14,6 +14,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// SubscriptionSettingsHandler godoc
+// @Summary      Manage subscription settings
+// @Description  Get or update global subscription page and protocol settings
+// @Tags         Subscription Settings Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Subscription settings fields to patch"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-settings [get]
+// @Router       /subscription-settings [patch]
 func SubscriptionSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -106,48 +119,6 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 	}
 
 	headersModified := false
-	if req.ProfileTitle != nil {
-		headersMap["profile-title"] = "exEncodeBase64:" + strings.TrimSpace(*req.ProfileTitle)
-		headersModified = true
-	}
-	if req.SupportLink != nil {
-		headersMap["support-url"] = strings.TrimSpace(*req.SupportLink)
-		headersModified = true
-	}
-	if req.ProfileUpdateInterval != nil {
-		headersMap["profile-update-interval"] = fmt.Sprintf("%d", *req.ProfileUpdateInterval)
-		headersModified = true
-	}
-	if req.IsProfileWebpageUrlEnabled != nil {
-		if *req.IsProfileWebpageUrlEnabled {
-			headersMap["profile-web-page-url"] = "{{SUBSCRIPTION_URL}}"
-		} else {
-			delete(headersMap, "profile-web-page-url")
-		}
-		headersModified = true
-	}
-	if set, val, err := parseOptionalString(req.HappAnnounce, 200); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		return
-	} else if set {
-		if val != "" {
-			headersMap["announce"] = "exEncodeBase64:" + val
-		} else {
-			delete(headersMap, "announce")
-		}
-		headersModified = true
-	}
-	if set, val, err := parseOptionalString(req.HappRouting, 0); err != nil {
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
-		return
-	} else if set {
-		if val != "" {
-			headersMap["routing"] = val
-		} else {
-			delete(headersMap, "routing")
-		}
-		headersModified = true
-	}
 
 	if set, val, err := parseOptionalHeaders(req.CustomResponseHeaders); err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)

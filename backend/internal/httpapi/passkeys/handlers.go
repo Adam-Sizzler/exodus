@@ -17,6 +17,23 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
+// PasskeysHandler godoc
+// @Summary      Manage passkeys
+// @Description  List, rename, or delete (204) registered passkeys for current admin
+// @Tags         Passkeys Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Passkey update/delete payload"
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      401   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /passkeys [get]
+// @Router       /passkeys [patch]
+// @Router       /passkeys [delete]
 func PasskeysHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/passkeys" && r.URL.Path != "/api/passkeys/" {
@@ -143,14 +160,19 @@ func handleDeletePasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 		return
 	}
 
-	items, err := listPasskeysForAdmin(r.Context(), db, adminUUID)
-	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch passkeys", err, cfg)
-		return
-	}
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"passkeys": items}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
+// RegistrationOptionsHandler godoc
+// @Summary      Passkey registration options
+// @Description  Generate WebAuthn registration credential creation options for current admin
+// @Tags         Passkeys Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      401  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /passkeys/registration/options [get]
 func RegistrationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -201,6 +223,20 @@ func RegistrationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.Hand
 	}
 }
 
+// VerifyRegistrationHandler godoc
+// @Summary      Verify passkey registration
+// @Description  Complete WebAuthn registration and store new passkey credential
+// @Tags         Passkeys Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  true  "WebAuthn credential creation response"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      401   {object}  shared.ErrorResponse
+// @Failure      403   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /passkeys/registration/verify [post]
 func VerifyRegistrationHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -273,6 +309,15 @@ func VerifyRegistrationHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 	}
 }
 
+// AuthenticationOptionsHandler godoc
+// @Summary      Passkey authentication options
+// @Description  Generate WebAuthn login assertion options
+// @Tags         Passkeys Controller
+// @Produce      json
+// @Success      200  {object}  map[string]any
+// @Failure      403  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /auth/passkey/authentication/options [get]
 func AuthenticationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -313,6 +358,18 @@ func AuthenticationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.Ha
 	}
 }
 
+// VerifyAuthenticationHandler godoc
+// @Summary      Verify passkey authentication
+// @Description  Complete WebAuthn login assertion and receive admin JWT
+// @Tags         Passkeys Controller
+// @Accept       json
+// @Produce      json
+// @Param        body  body      object  true  "WebAuthn assertion response"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      403   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /auth/passkey/authentication/verify [post]
 func VerifyAuthenticationHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

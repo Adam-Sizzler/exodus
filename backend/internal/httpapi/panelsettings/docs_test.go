@@ -60,8 +60,10 @@ func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 	if spec.Info.Title != "Exodus API" {
 		t.Fatalf("title got %q, want Exodus API", spec.Info.Title)
 	}
-	if _, exists := spec.Paths["/api/exodus-settings"]; !exists {
-		t.Fatal("expected /api/exodus-settings path")
+	if _, exists := spec.Paths["/exodus-settings"]; !exists {
+		if _, exists2 := spec.Paths["/api/exodus-settings"]; !exists2 {
+			t.Fatal("expected /exodus-settings or /api/exodus-settings path")
+		}
 	}
 	for path := range spec.Paths {
 		if strings.Contains(path, "ip-control") || strings.Contains(path, "torrent-blocker") {

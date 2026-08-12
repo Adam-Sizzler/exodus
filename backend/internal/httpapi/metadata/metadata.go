@@ -18,10 +18,40 @@ type metadataRequest struct {
 	Metadata map[string]any `json:"metadata"`
 }
 
+// UserHandler godoc
+// @Summary      User custom metadata
+// @Description  Get or update arbitrary key-value metadata for user by numeric user ID
+// @Tags         Metadata Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId  path      int              true   "Numeric User ID"
+// @Param        body    body      metadataRequest  false  "Metadata JSON object"
+// @Success      200     {object}  map[string]any
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /metadata/user/{userId} [get]
+// @Router       /metadata/user/{userId} [put]
 func UserHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return entityHandler(db, cfg, "user")
 }
 
+// NodeHandler godoc
+// @Summary      Node custom metadata
+// @Description  Get or update arbitrary key-value metadata for node by UUID
+// @Tags         Metadata Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string           true   "Node UUID" format(uuid)
+// @Param        body  body      metadataRequest  false  "Metadata JSON object"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /metadata/node/{uuid} [get]
+// @Router       /metadata/node/{uuid} [put]
 func NodeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return entityHandler(db, cfg, "node")
 }

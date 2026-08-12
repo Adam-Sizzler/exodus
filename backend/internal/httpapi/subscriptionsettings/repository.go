@@ -37,15 +37,9 @@ type SubscriptionSettings struct {
 
 type SubscriptionSettingsAPI struct {
 	UUID                        string            `json:"uuid"`
-	ProfileTitle                string            `json:"profileTitle"`
-	SupportLink                 string            `json:"supportLink"`
-	ProfileUpdateInterval       int               `json:"profileUpdateInterval"`
-	IsProfileWebpageUrlEnabled  bool              `json:"isProfileWebpageUrlEnabled"`
 	ServeJsonAtBaseSubscription bool              `json:"serveJsonAtBaseSubscription"`
 	IsShowCustomRemarks         bool              `json:"isShowCustomRemarks"`
 	CustomRemarks               map[string]any    `json:"customRemarks"`
-	HappAnnounce                *string           `json:"happAnnounce"`
-	HappRouting                 *string           `json:"happRouting"`
 	CustomResponseHeaders       map[string]string `json:"customResponseHeaders"`
 	RandomizeHosts              bool              `json:"randomizeHosts"`
 	ResponseRules               map[string]any    `json:"responseRules"`
@@ -56,13 +50,7 @@ type SubscriptionSettingsAPI struct {
 
 type SubscriptionSettingsUpdateRequestAPI struct {
 	UUID                        string           `json:"uuid"`
-	ProfileTitle                *string          `json:"profileTitle,omitempty"`
-	SupportLink                 *string          `json:"supportLink,omitempty"`
-	ProfileUpdateInterval       *int             `json:"profileUpdateInterval,omitempty"`
-	IsProfileWebpageUrlEnabled  *bool            `json:"isProfileWebpageUrlEnabled,omitempty"`
 	ServeJsonAtBaseSubscription *bool            `json:"serveJsonAtBaseSubscription,omitempty"`
-	HappAnnounce                *json.RawMessage `json:"happAnnounce,omitempty"`
-	HappRouting                 *json.RawMessage `json:"happRouting,omitempty"`
 	IsShowCustomRemarks         *bool            `json:"isShowCustomRemarks,omitempty"`
 	CustomRemarks               *json.RawMessage `json:"customRemarks,omitempty"`
 	CustomResponseHeaders       *json.RawMessage `json:"customResponseHeaders,omitempty"`
@@ -252,28 +240,11 @@ func convertSubscriptionSettingsToAPI(settings SubscriptionSettings) (Subscripti
 		return SubscriptionSettingsAPI{}, err
 	}
 
-	var happAnnounce *string
-	if strings.TrimSpace(settings.HappAnnounce) != "" {
-		val := settings.HappAnnounce
-		happAnnounce = &val
-	}
-	var happRouting *string
-	if strings.TrimSpace(settings.HappRouting) != "" {
-		val := settings.HappRouting
-		happRouting = &val
-	}
-
 	return SubscriptionSettingsAPI{
 		UUID:                        settings.UUID,
-		ProfileTitle:                settings.ProfileTitle,
-		SupportLink:                 settings.SupportLink,
-		ProfileUpdateInterval:       settings.ProfileUpdateInterval,
-		IsProfileWebpageUrlEnabled:  settings.IsProfileWebpageURLEnabled,
 		ServeJsonAtBaseSubscription: settings.ServeJSONAtBaseSubscription,
 		IsShowCustomRemarks:         settings.IsShowCustomRemarks,
 		CustomRemarks:               customRemarks,
-		HappAnnounce:                happAnnounce,
-		HappRouting:                 happRouting,
 		CustomResponseHeaders:       customHeaders,
 		RandomizeHosts:              settings.RandomizeHosts,
 		ResponseRules:               responseRules,
@@ -284,34 +255,7 @@ func convertSubscriptionSettingsToAPI(settings SubscriptionSettings) (Subscripti
 }
 
 func validateSubscriptionSettingsUpdate(req SubscriptionSettingsUpdateRequestAPI) error {
-	if req.ProfileTitle != nil && strings.TrimSpace(*req.ProfileTitle) == "" {
-		return fmt.Errorf("profileTitle cannot be empty")
-	}
-	if req.SupportLink != nil && strings.TrimSpace(*req.SupportLink) == "" {
-		return fmt.Errorf("supportLink cannot be empty")
-	}
-	if req.ProfileUpdateInterval != nil && *req.ProfileUpdateInterval <= 0 {
-		return fmt.Errorf("profileUpdateInterval must be greater than 0")
-	}
 	return nil
-}
-
-func parseOptionalString(raw *json.RawMessage, maxLen int) (bool, string, error) {
-	if raw == nil {
-		return false, "", nil
-	}
-
-	var str string
-	if err := json.Unmarshal(*raw, &str); err != nil {
-		return false, "", fmt.Errorf("must be a string")
-	}
-
-	str = strings.TrimSpace(str)
-	if maxLen > 0 && len(str) > maxLen {
-		return false, "", fmt.Errorf("length must not exceed %d characters", maxLen)
-	}
-
-	return true, str, nil
 }
 
 func parseOptionalJSONMap(raw *json.RawMessage, allowEmpty bool) (bool, string, error) {

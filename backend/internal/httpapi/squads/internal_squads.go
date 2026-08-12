@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
@@ -14,6 +15,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// InternalSquadsHandler godoc
+// @Summary      Manage internal squads
+// @Description  List, create (201), or update internal squads
+// @Tags         Internal Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Squad parameters"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /internal-squads [get]
+// @Router       /internal-squads [post]
+// @Router       /internal-squads [patch]
 func InternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
@@ -31,6 +47,18 @@ func InternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+// InternalSquadsReorderHandler godoc
+// @Summary      Reorder internal squads
+// @Description  Update view position of internal squads
+// @Tags         Internal Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Reorder payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /internal-squads/actions/reorder [post]
 func InternalSquadsReorderHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
@@ -43,6 +71,23 @@ func InternalSquadsReorderHandler(db *sql.DB, cfg *config.BackendConfig) http.Ha
 	}
 }
 
+// InternalSquadByUUIDHandler godoc
+// @Summary      Internal squad by UUID
+// @Description  Get or delete internal squad by UUID, or batch add/remove users
+// @Tags         Internal Squads Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "Squad UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      202
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /internal-squads/{uuid} [get]
+// @Router       /internal-squads/{uuid} [delete]
+// @Router       /internal-squads/{uuid}/bulk-actions/add-many-users [post]
+// @Router       /internal-squads/{uuid}/bulk-actions/remove-many-users [post]
 func InternalSquadByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
@@ -228,6 +273,19 @@ func handleBulkRemoveManyUsersFromInternalSquad(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// InboundAssignmentsHandler godoc
+// @Summary      Manage inbound assignments
+// @Description  Get or assign inbounds to squads and nodes
+// @Tags         Internal Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Inbound assignments payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /inbound-assignments [get]
+// @Router       /inbound-assignments [post]
 func InboundAssignmentsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
@@ -243,6 +301,15 @@ func InboundAssignmentsHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 	}
 }
 
+// ConfigProfilesWithInboundsHandler godoc
+// @Summary      Config profiles with inbounds
+// @Description  Get list of configuration profiles with embedded inbounds for squad assignment
+// @Tags         Internal Squads Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /config-profiles-with-inbounds [get]
 func ConfigProfilesWithInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewSquadRepository(db)
 	service := NewSquadService(repo, cfg)
@@ -354,7 +421,11 @@ func BandwidthStatsInternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) 
 			return
 		}
 		if len(parts) == 4 && parts[1] == "users" && parts[3] == "usage" {
-			userID, _ := strconv.ParseInt(parts[2], 10, 64)
+			userID, parseErr := strconv.ParseInt(parts[2], 10, 64)
+			if parseErr != nil {
+				shared.SendError(w, http.StatusBadRequest, "userId must be numeric", parseErr, cfg)
+				return
+			}
 			handleGetInternalSquadUserUsage(w, r, db, cfg, squadUUID, userID)
 			return
 		}
@@ -364,10 +435,127 @@ func BandwidthStatsInternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) 
 }
 
 func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, squadUUID string, userID int64) {
+	q := r.URL.Query()
+	startStr := q.Get("start")
+	endStr := q.Get("end")
+	startDate, err := time.Parse("2006-01-02", startStr)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "start must be a valid date (YYYY-MM-DD)", err, cfg)
+		return
+	}
+	endDate, err := time.Parse("2006-01-02", endStr)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, "end must be a valid date (YYYY-MM-DD)", err, cfg)
+		return
+	}
+	if endDate.Before(startDate) {
+		shared.SendError(w, http.StatusBadRequest, "end must not be before start", nil, cfg)
+		return
+	}
+
+	var squadExists bool
+	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM internal_squads WHERE uuid = $1)`, squadUUID).Scan(&squadExists); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squad", err, cfg)
+		return
+	}
+	if !squadExists {
+		shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+		return
+	}
+
+	type dayNode struct {
+		UUID       string `json:"uuid"`
+		TotalBytes int64  `json:"totalBytes"`
+	}
+	type dayUsage struct {
+		Date  string    `json:"date"`
+		Nodes []dayNode `json:"nodes"`
+	}
+
+	dates := make([]string, 0)
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		dates = append(dates, d.Format("2006-01-02"))
+	}
+
+	nodeRows, err := db.QueryContext(r.Context(), `
+		SELECT DISTINCT n.id, n.uuid
+		FROM internal_squad_inbounds isi
+		JOIN config_profile_inbounds_to_nodes cpin ON cpin.config_profile_inbound_uuid = isi.inbound_uuid
+		JOIN nodes n ON n.uuid = cpin.node_uuid
+		WHERE isi.internal_squad_uuid = $1
+	`, squadUUID)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad nodes", err, cfg)
+		return
+	}
+
+	nodeUUIDByID := make(map[int64]string)
+	nodeIDs := make([]string, 0)
+	for nodeRows.Next() {
+		var id int64
+		var nodeUUID string
+		if scanErr := nodeRows.Scan(&id, &nodeUUID); scanErr != nil {
+			nodeRows.Close()
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan squad node", scanErr, cfg)
+			return
+		}
+		nodeUUIDByID[id] = nodeUUID
+		nodeIDs = append(nodeIDs, strconv.FormatInt(id, 10))
+	}
+	nodeRows.Close()
+	if err := nodeRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad nodes", err, cfg)
+		return
+	}
+
+	byDate := make(map[string][]dayNode)
+	if len(nodeIDs) > 0 {
+		nodeIDsLiteral := "{" + strings.Join(nodeIDs, ",") + "}"
+		usageRows, err := db.QueryContext(r.Context(), `
+			SELECT nuh.created_at, nuh.node_id, COALESCE(SUM(nuh.total_bytes), 0) AS total_bytes
+			FROM nodes_user_usage_history nuh
+			WHERE nuh.user_id = $1 AND nuh.node_id = ANY($2::bigint[]) AND nuh.created_at >= $3 AND nuh.created_at <= $4
+			GROUP BY nuh.created_at, nuh.node_id
+		`, userID, nodeIDsLiteral, startDate, endDate)
+		if err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user squad daily usage", err, cfg)
+			return
+		}
+		for usageRows.Next() {
+			var createdAt time.Time
+			var nodeID, totalBytes int64
+			if scanErr := usageRows.Scan(&createdAt, &nodeID, &totalBytes); scanErr != nil {
+				usageRows.Close()
+				shared.SendError(w, http.StatusInternalServerError, "failed to scan user squad daily usage", scanErr, cfg)
+				return
+			}
+			nodeUUID, ok := nodeUUIDByID[nodeID]
+			if !ok {
+				continue
+			}
+			dateKey := createdAt.UTC().Format("2006-01-02")
+			byDate[dateKey] = append(byDate[dateKey], dayNode{UUID: nodeUUID, TotalBytes: totalBytes})
+		}
+		if err := usageRows.Err(); err != nil {
+			usageRows.Close()
+			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user squad daily usage", err, cfg)
+			return
+		}
+		usageRows.Close()
+	}
+
+	days := make([]dayUsage, 0, len(dates))
+	for _, date := range dates {
+		nodes := byDate[date]
+		if nodes == nil {
+			nodes = []dayNode{}
+		}
+		days = append(days, dayUsage{Date: date, Nodes: nodes})
+	}
+
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
-			"categories": []string{},
-			"data":       []int64{},
+			"days": days,
 		},
 	})
 }

@@ -152,6 +152,8 @@ func UsersBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			handleBulkDeleteUsersByStatus(w, r, service)
 		case "reset-traffic":
 			handleBulkResetUsersTraffic(w, r, service)
+		case "revoke-subscription":
+			handleBulkRevokeUsersSubscription(w, r, service)
 		case "update":
 			handleBulkUpdateUsers(w, r, service)
 		case "update-squads":
@@ -170,6 +172,15 @@ func UsersBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// UsersTagsHandler godoc
+// @Summary      Get users tags
+// @Description  Get all unique user tags
+// @Tags         Users Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  UserTagsResponseEnvelope
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/tags [get]
 func UsersTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewUserRepository(db)
 	service := NewUserService(repo, cfg)

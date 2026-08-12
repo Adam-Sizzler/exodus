@@ -68,6 +68,63 @@ type userAPI struct {
 	UserTraffic            userTrafficResponse     `json:"userTraffic"`
 }
 
+// UserResponseEnvelope wraps single user response.
+type UserResponseEnvelope struct {
+	Response userAPI `json:"response"`
+}
+
+// UsersListResponse wraps paginated user list.
+type UsersListResponse struct {
+	Users []userAPI `json:"users"`
+	Total int       `json:"total"`
+}
+
+// UsersListResponseEnvelope wraps UsersListResponse.
+type UsersListResponseEnvelope struct {
+	Response UsersListResponse `json:"response"`
+}
+
+// UsersStreamResponse wraps streaming users response.
+type UsersStreamResponse struct {
+	Users      []userAPI `json:"users"`
+	Total      int       `json:"total"`
+	NextCursor *int64    `json:"nextCursor"`
+}
+
+// UsersStreamResponseEnvelope wraps UsersStreamResponse.
+type UsersStreamResponseEnvelope struct {
+	Response UsersStreamResponse `json:"response"`
+}
+
+// UserTagsResponseEnvelope wraps user tags response.
+type UserTagsResponseEnvelope struct {
+	Response struct {
+		Tags []string `json:"tags"`
+	} `json:"response"`
+}
+
+// UserAccessibleNodesResponse wraps accessible nodes for a user.
+type UserAccessibleNodesResponse struct {
+	UserID      int64                `json:"userId"`
+	ActiveNodes []userAccessibleNode `json:"activeNodes"`
+}
+
+// UserAccessibleNodesResponseEnvelope wraps UserAccessibleNodesResponse.
+type UserAccessibleNodesResponseEnvelope struct {
+	Response UserAccessibleNodesResponse `json:"response"`
+}
+
+// UserSubscriptionRequestHistoryResponse wraps request history for a user.
+type UserSubscriptionRequestHistoryResponse struct {
+	Records []userSubscriptionRequestHistoryRecord `json:"records"`
+	Total   int                                    `json:"total"`
+}
+
+// UserSubscriptionRequestHistoryResponseEnvelope wraps UserSubscriptionRequestHistoryResponse.
+type UserSubscriptionRequestHistoryResponseEnvelope struct {
+	Response UserSubscriptionRequestHistoryResponse `json:"response"`
+}
+
 type userSubscriptionRequestHistoryRecord struct {
 	ID        int64   `json:"id"`
 	UserID    int64   `json:"userId"`
@@ -125,7 +182,6 @@ type userRecord struct {
 }
 
 type createUserRequest struct {
-	UUID                 *string  `json:"uuid,omitempty"`
 	Username             string   `json:"username"`
 	Status               *string  `json:"status,omitempty"`
 	ShortUUID            *string  `json:"shortUuid,omitempty"`
@@ -187,6 +243,10 @@ type resolveUserResponse struct {
 }
 
 type bulkDeleteUsersRequest struct {
+	UserIDs []int64 `json:"userIds,omitempty"`
+}
+
+type bulkRevokeUsersSubscriptionRequest struct {
 	UserIDs []int64 `json:"userIds,omitempty"`
 }
 

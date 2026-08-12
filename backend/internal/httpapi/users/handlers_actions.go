@@ -32,6 +32,18 @@ func resolveActionUserUUID(w http.ResponseWriter, r *http.Request, service *User
 	return record.UUID, true
 }
 
+// handleEnableUser godoc
+// @Summary      Enable user
+// @Description  Set user status to ACTIVE
+// @Tags         Users Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId  path      int  true  "Numeric User ID"
+// @Success      200     {object}  UserResponseEnvelope
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /users/{userId}/actions/enable [post]
 func handleEnableUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
 	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
 	if !ok {
@@ -45,6 +57,18 @@ func handleEnableUser(w http.ResponseWriter, r *http.Request, service *UserServi
 	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
+// handleDisableUser godoc
+// @Summary      Disable user
+// @Description  Set user status to DISABLED
+// @Tags         Users Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId  path      int  true  "Numeric User ID"
+// @Success      200     {object}  UserResponseEnvelope
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /users/{userId}/actions/disable [post]
 func handleDisableUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
 	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
 	if !ok {
@@ -58,6 +82,18 @@ func handleDisableUser(w http.ResponseWriter, r *http.Request, service *UserServ
 	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
+// handleResetUserTraffic godoc
+// @Summary      Reset user traffic
+// @Description  Reset used traffic to 0 for single user
+// @Tags         Users Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId  path      int  true  "Numeric User ID"
+// @Success      200     {object}  UserResponseEnvelope
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /users/{userId}/actions/reset-traffic [post]
 func handleResetUserTraffic(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
 	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
 	if !ok {
@@ -71,6 +107,20 @@ func handleResetUserTraffic(w http.ResponseWriter, r *http.Request, service *Use
 	sendUpdatedUserResponse(w, r, service, resolvedUUID)
 }
 
+// handleRevokeUserSubscription godoc
+// @Summary      Revoke user subscription
+// @Description  Regenerate subscription credentials and optionally short UUID
+// @Tags         Users Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId  path      int                            true   "Numeric User ID"
+// @Param        body    body      revokeUserSubscriptionRequest  false  "Revocation options"
+// @Success      200     {object}  UserResponseEnvelope
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /users/{userId}/actions/revoke [post]
 func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
 	resolvedUUID, ok := resolveActionUserUUID(w, r, service, userUUID)
 	if !ok {
@@ -155,6 +205,20 @@ func validateExtendDays(days int) error {
 	return nil
 }
 
+// handleExtendUser godoc
+// @Summary      Extend user expiration date
+// @Description  Extend expireAt for a single user by specified days
+// @Tags         Users Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId  path      int                    true  "Numeric User ID"
+// @Param        body    body      object{days=int}       true  "Number of days to extend"
+// @Success      200     {object}  UserResponseEnvelope
+// @Failure      400     {object}  shared.ErrorResponse
+// @Failure      404     {object}  shared.ErrorResponse
+// @Failure      500     {object}  shared.ErrorResponse
+// @Router       /users/{userId}/actions/extend [post]
 func handleExtendUser(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
 	var req struct {
 		Days       int `json:"days"`

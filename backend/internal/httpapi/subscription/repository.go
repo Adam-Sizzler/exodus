@@ -108,15 +108,17 @@ func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID s
 		Templates: make(map[string]string),
 	}
 
-	var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
+	var subscriptionSettingsJSON, hostOverridesJSON, responseHeadersAddJSON, hwidSettingsJSON, customRemarksJSON sql.NullString
+	var responseHeadersRemove []string
 
-	query := `SELECT subscription_settings, host_overrides, response_headers, hwid_settings, custom_remarks
+	query := `SELECT subscription_settings, host_overrides, response_headers_add, response_headers_remove, hwid_settings, custom_remarks
 			  FROM external_squads WHERE uuid = $1 LIMIT 1`
 	row := dbConn.QueryRowContext(ctx, query, squadUUID)
 
-	if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersJSON, &hwidSettingsJSON, &customRemarksJSON); err != nil {
+	if err := row.Scan(&subscriptionSettingsJSON, &hostOverridesJSON, &responseHeadersAddJSON, &responseHeadersRemove, &hwidSettingsJSON, &customRemarksJSON); err != nil {
 		return nil, err
 	}
+	overrides.ResponseHeadersRemove = responseHeadersRemove
 
 	if subscriptionSettingsJSON.Valid && subscriptionSettingsJSON.String != "" {
 		var ss subscriptionsettings.SubscriptionSettings
@@ -132,11 +134,11 @@ func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID s
 			log.Debug("Loaded host_overrides override", "count", len(ho))
 		}
 	}
-	if responseHeadersJSON.Valid && responseHeadersJSON.String != "" {
+	if responseHeadersAddJSON.Valid && responseHeadersAddJSON.String != "" {
 		var rh map[string]string
-		if err := json.Unmarshal([]byte(responseHeadersJSON.String), &rh); err == nil {
+		if err := json.Unmarshal([]byte(responseHeadersAddJSON.String), &rh); err == nil {
 			overrides.ResponseHeaders = rh
-			log.Debug("Loaded response_headers override")
+			log.Debug("Loaded response_headers_add override")
 		}
 	}
 	if hwidSettingsJSON.Valid && hwidSettingsJSON.String != "" {
@@ -179,6 +181,10 @@ func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID s
 
 func getSubscriptionUserByShortUUID(ctx context.Context, dbConn *sql.DB, shortUUID string) (SubscriptionUser, error) {
 	return getSubscriptionUserByField(ctx, dbConn, "short_uuid", shortUUID)
+}
+
+func getSubscriptionUserByID(ctx context.Context, dbConn *sql.DB, userID int64) (SubscriptionUser, error) {
+	return getSubscriptionUserByField(ctx, dbConn, "id", userID)
 }
 
 func getSubscriptionUserByUUID(ctx context.Context, dbConn *sql.DB, userUUID string) (SubscriptionUser, error) {
@@ -995,6 +1001,9 @@ func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsPa
 	}
 	for k, v := range settings.ResponseHeaders {
 		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
+	}
+	for _, k := range settings.ResponseHeadersRemove {
+		delete(headers, k)
 	}
 	return headers
 }

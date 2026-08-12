@@ -11,6 +11,24 @@ import (
 	"exodus/internal/httpapi/shared"
 )
 
+// NodesHandler godoc
+// @Summary      Get nodes bandwidth stats
+// @Description  Get nodes overall usage, realtime metrics, or user usage breakdown per node
+// @Tags         Bandwidth Stats Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        start          query     string  false  "Start date (YYYY-MM-DD)"
+// @Param        end            query     string  false  "End date (YYYY-MM-DD)"
+// @Param        topNodesLimit  query     int     false  "Limit top nodes (default 20)"
+// @Param        nodeUuid       path      string  false  "Node UUID for GET /bandwidth-stats/nodes/{nodeUuid}/users" format(uuid)
+// @Success      200            {object}  map[string]any
+// @Failure      400            {object}  shared.ErrorResponse
+// @Failure      500            {object}  shared.ErrorResponse
+// @Router       /bandwidth-stats/nodes [get]
+// @Router       /bandwidth-stats/nodes/realtime [get]
+// @Router       /bandwidth-stats/nodes/{nodeUuid}/users [get]
+// @Router       /bandwidth-stats/nodes/usage [post]
+// @Router       /bandwidth-stats/nodes/users [post]
 func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/nodes")
@@ -56,6 +74,21 @@ func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// UsersHandler godoc
+// @Summary      Get user bandwidth stats
+// @Description  Get daily bandwidth usage and top connected nodes for a specific user ID
+// @Tags         Bandwidth Stats Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId         path      int     true   "Numeric User ID"
+// @Param        start          query     string  false  "Start date (YYYY-MM-DD)"
+// @Param        end            query     string  false  "End date (YYYY-MM-DD)"
+// @Param        topNodesLimit  query     int     false  "Limit top nodes (default 20)"
+// @Success      200            {object}  map[string]any
+// @Failure      400            {object}  shared.ErrorResponse
+// @Failure      404            {object}  shared.ErrorResponse
+// @Failure      500            {object}  shared.ErrorResponse
+// @Router       /bandwidth-stats/users/{userId} [get]
 func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -71,7 +104,13 @@ func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		handleGetUserUsage(w, r, db, cfg, path)
+		userID, parseErr := strconv.ParseInt(path, 10, 64)
+		if parseErr != nil {
+			shared.SendError(w, http.StatusBadRequest, "userId must be numeric", parseErr, cfg)
+			return
+		}
+
+		handleGetUserUsage(w, r, db, cfg, userID)
 	}
 }
 
@@ -466,26 +505,20 @@ LIMIT $4
 	})
 }
 
-func handleGetUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID string) {
+func handleGetUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userID int64) {
 	startDate, endDate, dates, ok := parseDateRange(w, r)
 	if !ok {
 		return
 	}
 	topLimit := parsePositiveIntWithDefault(r.URL.Query().Get("topNodesLimit"), 20)
 
-	var userID int64
-	var err error
-	if idNum, parseErr := strconv.ParseInt(userUUID, 10, 64); parseErr == nil {
-		err = db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE id = $1 OR uuid::text = $2 OR short_uuid = $2 OR username = $2`, idNum, userUUID).Scan(&userID)
-	} else {
-		err = db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE uuid::text = $1 OR short_uuid = $1 OR username = $1`, userUUID).Scan(&userID)
-	}
-	if err != nil {
-		if err == sql.ErrNoRows {
-			shared.WriteJSONError(w, http.StatusNotFound, "user not found")
-			return
-		}
+	var userExists bool
+	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&userExists); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		return
+	}
+	if !userExists {
+		shared.WriteJSONError(w, http.StatusNotFound, "user not found")
 		return
 	}
 
@@ -630,45 +663,100 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 	}
 
 	if len(req.NodesUUIDs) == 0 {
-		shared.WriteJSON(w, http.StatusOK, map[string]any{"response": []any{}})
+		shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"nodes": []any{}}})
 		return
 	}
 
+	nodeRows, err := db.QueryContext(r.Context(), `
+		SELECT id, uuid FROM nodes WHERE uuid = ANY($1::uuid[])
+	`, pgDateArrayLiteral(req.NodesUUIDs))
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		return
+	}
+
+	type nodeUsageUser struct {
+		ID         int64 `json:"id"`
+		TotalBytes int64 `json:"totalBytes"`
+	}
+	type nodeUsageItem struct {
+		UUID  string          `json:"uuid"`
+		Users []nodeUsageUser `json:"users"`
+	}
+
+	nodeUUIDByID := make(map[int64]string)
+	nodeIDs := make([]int64, 0)
+	for nodeRows.Next() {
+		var id int64
+		var nodeUUID string
+		if scanErr := nodeRows.Scan(&id, &nodeUUID); scanErr != nil {
+			nodeRows.Close()
+			shared.SendError(w, http.StatusInternalServerError, "failed to scan node", scanErr, cfg)
+			return
+		}
+		nodeUUIDByID[id] = nodeUUID
+		nodeIDs = append(nodeIDs, id)
+	}
+	nodeRows.Close()
+	if err := nodeRows.Err(); err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		return
+	}
+
+	nodesByUUID := make(map[string]*nodeUsageItem, len(nodeIDs))
+	orderedUUIDs := make([]string, 0, len(nodeIDs))
+	for _, id := range nodeIDs {
+		nodeUUID := nodeUUIDByID[id]
+		nodesByUUID[nodeUUID] = &nodeUsageItem{UUID: nodeUUID, Users: []nodeUsageUser{}}
+		orderedUUIDs = append(orderedUUIDs, nodeUUID)
+	}
+
+	if len(nodeIDs) == 0 {
+		shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"nodes": []any{}}})
+		return
+	}
+
+	nodeIDStrs := make([]string, 0, len(nodeIDs))
+	for _, id := range nodeIDs {
+		nodeIDStrs = append(nodeIDStrs, strconv.FormatInt(id, 10))
+	}
+	nodeIDsLiteral := "{" + strings.Join(nodeIDStrs, ",") + "}"
+
 	rows, err := db.QueryContext(r.Context(), `
-		SELECT u.id, u.username, COALESCE(SUM(nuh.total_bytes), 0) AS total_bytes
+		SELECT nuh.node_id, nuh.user_id, COALESCE(SUM(nuh.total_bytes), 0) AS total_bytes
 		FROM nodes_user_usage_history nuh
-		JOIN nodes n ON nuh.node_id = n.id
-		JOIN users u ON nuh.user_id = u.id
-		WHERE n.uuid = ANY($1::text[]) AND nuh.created_at >= $2 AND nuh.created_at <= $3
-		GROUP BY u.id, u.username
-		HAVING SUM(nuh.total_bytes) >= $4
-		ORDER BY total_bytes DESC
-	`, pgDateArrayLiteral(req.NodesUUIDs), startDate, endDate, minTotalBytes)
+		WHERE nuh.node_id = ANY($1::bigint[]) AND nuh.created_at >= $2 AND nuh.created_at <= $3
+		GROUP BY nuh.node_id, nuh.user_id
+		HAVING COALESCE(SUM(nuh.total_bytes), 0) >= $4
+	`, nodeIDsLiteral, startDate, endDate, minTotalBytes)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
 		return
 	}
 	defer rows.Close()
 
-	type nodeUserUsageItem struct {
-		UserID     int64  `json:"userId"`
-		Username   string `json:"username"`
-		TotalBytes int64  `json:"totalBytes"`
-	}
-
-	items := make([]nodeUserUsageItem, 0)
 	for rows.Next() {
-		var item nodeUserUsageItem
-		if scanErr := rows.Scan(&item.UserID, &item.Username, &item.TotalBytes); scanErr != nil {
+		var nodeID, userID, totalBytes int64
+		if scanErr := rows.Scan(&nodeID, &userID, &totalBytes); scanErr != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to scan node user usage item", scanErr, cfg)
 			return
 		}
-		items = append(items, item)
+		nodeUUID, ok := nodeUUIDByID[nodeID]
+		if !ok {
+			continue
+		}
+		item := nodesByUUID[nodeUUID]
+		item.Users = append(item.Users, nodeUsageUser{ID: userID, TotalBytes: totalBytes})
 	}
 	if err := rows.Err(); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node user usage items", err, cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": items})
+	nodes := make([]nodeUsageItem, 0, len(orderedUUIDs))
+	for _, nodeUUID := range orderedUUIDs {
+		nodes = append(nodes, *nodesByUUID[nodeUUID])
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"nodes": nodes}})
 }

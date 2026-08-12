@@ -145,7 +145,7 @@ func (s *UserService) RevokeUserSubscription(ctx context.Context, userUUID strin
 }
 
 func (s *UserService) CreateUser(ctx context.Context, req createUserRequest) (userRecord, error) {
-	userUUID := coalesceUUID(req.UUID)
+	userUUID := coalesceUUID(nil)
 	shortUUID := coalesceShortUUID(req.ShortUUID, s.cfg)
 	credentials, err := newUserProtocolCredentials(
 		req.TrojanPassword,

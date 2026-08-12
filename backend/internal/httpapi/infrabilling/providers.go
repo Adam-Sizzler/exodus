@@ -69,6 +69,25 @@ func (field *optionalString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ProvidersHandler godoc
+// @Summary      Manage infrastructure billing providers
+// @Description  List, create (201), update, get by UUID, or delete (204) cloud/hosting providers
+// @Tags         Infra Billing Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Provider payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /infra-billing/providers [get]
+// @Router       /infra-billing/providers [post]
+// @Router       /infra-billing/providers [patch]
+// @Router       /infra-billing/providers/{uuid} [get]
+// @Router       /infra-billing/providers/{uuid} [delete]
 func ProvidersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		providerUUID := uuidFromPath(r.URL.Path, "/api/infra-billing/providers")

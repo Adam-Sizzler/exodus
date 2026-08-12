@@ -15,6 +15,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// SubscriptionPageConfigsHandler godoc
+// @Summary      Manage subscription page configs
+// @Description  List, create (201), or update subscription page configs
+// @Tags         Subscription Page Configs Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Subscription page config parameters"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-page-configs [get]
+// @Router       /subscription-page-configs [post]
+// @Router       /subscription-page-configs [patch]
 func SubscriptionPageConfigsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -30,6 +45,19 @@ func SubscriptionPageConfigsHandler(db *sql.DB, cfg *config.BackendConfig) http.
 	}
 }
 
+// SubscriptionPageConfigsActionsHandler godoc
+// @Summary      Subscription page config actions
+// @Description  Reorder or clone subscription page configurations
+// @Tags         Subscription Page Configs Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Action payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-page-configs/actions/reorder [post]
+// @Router       /subscription-page-configs/actions/clone [post]
 func SubscriptionPageConfigsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -50,6 +78,20 @@ func SubscriptionPageConfigsActionsHandler(db *sql.DB, cfg *config.BackendConfig
 	}
 }
 
+// SubscriptionPageConfigByUUIDHandler godoc
+// @Summary      Subscription page config by UUID
+// @Description  Get details or delete subscription page configuration by UUID
+// @Tags         Subscription Page Configs Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "Configuration UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-page-configs/{uuid} [get]
+// @Router       /subscription-page-configs/{uuid} [delete]
 func SubscriptionPageConfigByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uuidStr := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, subpageConfigsBasePath+"/"))
@@ -327,9 +369,7 @@ func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{
-		"response": subpageConfigDeleteResponse{IsDeleted: true},
-	})
+	w.WriteHeader(http.StatusNoContent)
 	emitSubpageConfigChanged(ctx, cfg, "deleted", SubscriptionPageConfig{UUID: uuidStr}, nil)
 	if len(targetNodeUUIDs) == 0 {
 		return

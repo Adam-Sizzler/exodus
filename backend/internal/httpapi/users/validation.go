@@ -59,11 +59,6 @@ func validateCreateUserRequest(req createUserRequest) error {
 	if err := validateUUIDListAllowEmpty(req.ActiveInternalSquads); err != nil {
 		return err
 	}
-	if req.UUID != nil && strings.TrimSpace(*req.UUID) != "" {
-		if _, err := uuid.Parse(strings.TrimSpace(*req.UUID)); err != nil {
-			return fmt.Errorf("invalid uuid")
-		}
-	}
 	if req.VlessUUID != nil && strings.TrimSpace(*req.VlessUUID) != "" {
 		if _, err := uuid.Parse(strings.TrimSpace(*req.VlessUUID)); err != nil {
 			return fmt.Errorf("invalid vlessUuid")

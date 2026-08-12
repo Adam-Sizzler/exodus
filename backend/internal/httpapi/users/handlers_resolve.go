@@ -9,6 +9,19 @@ import (
 	"exodus/internal/httpapi/shared"
 )
 
+// handleResolveUser godoc
+// @Summary      Resolve a user
+// @Description  Resolve user basic info by ID, shortUUID, or username
+// @Tags         Users Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      resolveUserRequest  true  "Identifier to resolve"
+// @Success      200   {object}  object{response=resolveUserResponse}
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /users/resolve [post]
 func handleResolveUser(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req resolveUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

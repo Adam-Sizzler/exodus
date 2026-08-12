@@ -7,7 +7,13 @@ import (
 	"time"
 )
 
-// HealthHandler handles backend liveness checks.
+// HealthHandler godoc
+// @Summary      Backend health check
+// @Description  Simple liveness and health probe for load balancers and container orchestrators
+// @Tags         Health
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Router       /health [get]
 func HealthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

@@ -11,7 +11,17 @@ import (
 	"exodus/internal/httpapi/shared"
 )
 
-// SubscriptionsHandler handles GET /api/subscriptions
+// SubscriptionsHandler godoc
+// @Summary      Get all subscriptions
+// @Description  Get paginated subscription info for users
+// @Tags         [Protected] Subscriptions Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        start  query     int  false  "Pagination start index"
+// @Param        size   query     int  false  "Page size (1-500, default 25)"
+// @Success      200    {object}  map[string]any
+// @Failure      500    {object}  shared.ErrorResponse
+// @Router       /subscriptions [get]
 func SubscriptionsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	renderService := NewRenderService(db, backgroundDB, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +37,9 @@ func SubscriptionsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) h
 		}
 		if size <= 0 {
 			size = 25
+		}
+		if size > 500 {
+			size = 500
 		}
 
 		ctx := r.Context()
@@ -64,7 +77,23 @@ func SubscriptionsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) h
 	}
 }
 
-// SubscriptionByUUIDHandler handles GET /api/subscriptions/:uuid and GET /api/subscriptions/connection-keys/:uuid
+// SubscriptionByUUIDHandler godoc
+// @Summary      Get user subscription by identifier
+// @Description  Get subscription details or connection keys by ID, short UUID, or username
+// @Tags         [Protected] Subscriptions Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        userId     path      int     false  "Numeric User ID (for /subscriptions/by-id/{userId} and /subscriptions/connection-keys/{userId})"
+// @Param        shortUuid  path      string  false  "Short UUID (for /subscriptions/by-short-uuid/{shortUuid})"
+// @Param        username   path      string  false  "Username (for /subscriptions/by-username/{username})"
+// @Success      200        {object}  map[string]any
+// @Failure      400        {object}  shared.ErrorResponse
+// @Failure      404        {object}  shared.ErrorResponse
+// @Failure      500        {object}  shared.ErrorResponse
+// @Router       /subscriptions/by-id/{userId} [get]
+// @Router       /subscriptions/by-short-uuid/{shortUuid} [get]
+// @Router       /subscriptions/by-username/{username} [get]
+// @Router       /subscriptions/connection-keys/{userId} [get]
 func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	renderService := NewRenderService(db, backgroundDB, cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -80,28 +109,41 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 		}
 
 		if strings.HasPrefix(path, "connection-keys/") {
-			userUUID := strings.TrimPrefix(path, "connection-keys/")
-			userUUID = strings.TrimSuffix(strings.TrimSpace(userUUID), "/raw")
-			handleGetConnectionKeysByUUID(w, r, db, cfg, userUUID)
+			identifier := strings.TrimPrefix(path, "connection-keys/")
+			identifier = strings.TrimSuffix(strings.TrimSpace(identifier), "/raw")
+			userID, parseErr := strconv.ParseInt(identifier, 10, 64)
+			if parseErr != nil {
+				shared.SendError(w, http.StatusBadRequest, "userId must be numeric", parseErr, cfg)
+				return
+			}
+			handleGetConnectionKeysByUserID(w, r, db, cfg, userID)
 			return
 		}
 
 		path = strings.TrimSuffix(strings.TrimSpace(path), "/raw")
-
-		if strings.HasPrefix(path, "by-id/") {
-			path = strings.TrimPrefix(path, "by-id/")
-		} else if strings.HasPrefix(path, "by-uuid/") {
-			path = strings.TrimPrefix(path, "by-uuid/")
-		} else if strings.HasPrefix(path, "by-short-uuid/") {
-			path = strings.TrimPrefix(path, "by-short-uuid/")
-		} else if strings.HasPrefix(path, "by-username/") {
-			path = strings.TrimPrefix(path, "by-username/")
-		}
-
-		userUUID := path
 		ctx := r.Context()
 
-		user, err := getSubscriptionUserByUUID(ctx, db, userUUID)
+		var user SubscriptionUser
+		var err error
+		switch {
+		case strings.HasPrefix(path, "by-id/"):
+			identifier := strings.TrimPrefix(path, "by-id/")
+			var userID int64
+			userID, err = strconv.ParseInt(identifier, 10, 64)
+			if err != nil {
+				shared.SendError(w, http.StatusBadRequest, "userId must be numeric", err, cfg)
+				return
+			}
+			user, err = getSubscriptionUserByID(ctx, db, userID)
+		case strings.HasPrefix(path, "by-short-uuid/"):
+			identifier := strings.TrimPrefix(path, "by-short-uuid/")
+			user, err = getSubscriptionUserByShortUUID(ctx, db, identifier)
+		case strings.HasPrefix(path, "by-username/"):
+			identifier := strings.TrimPrefix(path, "by-username/")
+			user, err = getSubscriptionUserByUsername(ctx, db, identifier)
+		default:
+			user, err = getSubscriptionUserByUUID(ctx, db, path)
+		}
 		if err != nil {
 			if errorsIsNoRows(err) {
 				shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
@@ -132,9 +174,9 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 	}
 }
 
-func handleGetConnectionKeysByUUID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userUUID string) {
+func handleGetConnectionKeysByUserID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, userID int64) {
 	ctx := r.Context()
-	user, err := getSubscriptionUserByUUID(ctx, db, userUUID)
+	user, err := getSubscriptionUserByID(ctx, db, userID)
 	if err != nil {
 		if errorsIsNoRows(err) {
 			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)

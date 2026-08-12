@@ -16,6 +16,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// SubscriptionTemplatesHandler godoc
+// @Summary      Manage subscription templates
+// @Description  List, create (201), or update subscription templates
+// @Tags         Subscription Template Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Subscription template creation/update fields"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-templates [get]
+// @Router       /subscription-templates [post]
+// @Router       /subscription-templates [patch]
 func SubscriptionTemplatesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -31,6 +46,18 @@ func SubscriptionTemplatesHandler(db *sql.DB, cfg *config.BackendConfig) http.Ha
 	}
 }
 
+// SubscriptionTemplatesActionsHandler godoc
+// @Summary      Subscription template actions
+// @Description  Reorder subscription templates
+// @Tags         Subscription Template Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Reorder payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-templates/actions/reorder [post]
 func SubscriptionTemplatesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -49,6 +76,20 @@ func SubscriptionTemplatesActionsHandler(db *sql.DB, cfg *config.BackendConfig) 
 	}
 }
 
+// SubscriptionTemplateByUUIDHandler godoc
+// @Summary      Subscription template by UUID
+// @Description  Get details or delete subscription template by UUID
+// @Tags         Subscription Template Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "Template UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /subscription-templates/{uuid} [get]
+// @Router       /subscription-templates/{uuid} [delete]
 func SubscriptionTemplateByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uuidStr := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, subscriptionTemplatesBasePath+"/"))
@@ -368,9 +409,7 @@ func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{
-		"response": subscriptionTemplateDeleteResponse{IsDeleted: true},
-	})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleReorderSubscriptionTemplates(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, cfg *config.BackendConfig) {

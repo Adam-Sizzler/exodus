@@ -14,6 +14,27 @@ import (
 	"github.com/google/uuid"
 )
 
+// Handler godoc
+// @Summary      Manage node plugins
+// @Description  List, create (201), update, delete (204) node plugins or reorder
+// @Tags         Node Plugins Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  false  "Node plugin UUID" format(uuid)
+// @Param        body  body      object  false  "Node plugin payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /node-plugins [get]
+// @Router       /node-plugins [post]
+// @Router       /node-plugins [patch]
+// @Router       /node-plugins/{uuid} [get]
+// @Router       /node-plugins/{uuid} [delete]
+// @Router       /node-plugins/actions/reorder [post]
 func Handler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/node-plugins")

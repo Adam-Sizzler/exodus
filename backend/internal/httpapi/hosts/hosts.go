@@ -11,6 +11,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// HostsHandler godoc
+// @Summary      Manage hosts
+// @Description  List, create (201), or update hosts
+// @Tags         Hosts Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Host create/update fields"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /hosts [get]
+// @Router       /hosts [post]
+// @Router       /hosts [patch]
 func HostsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
@@ -28,6 +43,20 @@ func HostsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// HostByUUIDHandler godoc
+// @Summary      Host by UUID
+// @Description  Get or delete host by UUID
+// @Tags         Hosts Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "Host UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /hosts/{uuid} [get]
+// @Router       /hosts/{uuid} [delete]
 func HostByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
@@ -62,6 +91,18 @@ func HostByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// HostsActionsHandler godoc
+// @Summary      Host actions
+// @Description  Reorder hosts
+// @Tags         Hosts Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Action payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /hosts/actions/reorder [post]
 func HostsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
@@ -81,6 +122,24 @@ func HostsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 	}
 }
 
+// HostsBulkHandler godoc
+// @Summary      Bulk host operations
+// @Description  Execute bulk enable, disable, delete, set-inbound, set-port, or bulk update on hosts
+// @Tags         Hosts Bulk Actions Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Bulk payload"
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /hosts/bulk/enable [post]
+// @Router       /hosts/bulk/disable [post]
+// @Router       /hosts/bulk/delete [post]
+// @Router       /hosts/bulk/set-inbound [post]
+// @Router       /hosts/bulk/set-port [post]
+// @Router       /hosts/bulk/update [patch]
 func HostsBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
@@ -133,6 +192,15 @@ func HostsBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// HostsTagsHandler godoc
+// @Summary      List host tags
+// @Description  Get all unique tags assigned to hosts
+// @Tags         Hosts Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /hosts/tags [get]
 func HostsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)

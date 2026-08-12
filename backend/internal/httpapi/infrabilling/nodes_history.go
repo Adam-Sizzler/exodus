@@ -76,6 +76,23 @@ type createBillingHistoryRequest struct {
 	BilledAt     string  `json:"billedAt"`
 }
 
+// BillingNodesHandler godoc
+// @Summary      Manage infrastructure billing nodes
+// @Description  List, attach (201), update, or detach (204) server nodes to billing providers
+// @Tags         Infra Billing Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Billing node payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /infra-billing/nodes [get]
+// @Router       /infra-billing/nodes [post]
+// @Router       /infra-billing/nodes [patch]
+// @Router       /infra-billing/nodes/{uuid} [delete]
 func BillingNodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -93,6 +110,24 @@ func BillingNodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 	}
 }
 
+// BillingHistoryHandler godoc
+// @Summary      Manage infrastructure billing history
+// @Description  List, create (201), or delete (204) billing invoice records
+// @Tags         Infra Billing Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        start  query     int     false  "Offset"
+// @Param        size   query     int     false  "Limit"
+// @Param        body   body      object  false  "Billing history payload"
+// @Success      200    {object}  map[string]any
+// @Success      201    {object}  map[string]any
+// @Success      204
+// @Failure      400    {object}  shared.ErrorResponse
+// @Failure      500    {object}  shared.ErrorResponse
+// @Router       /infra-billing/history [get]
+// @Router       /infra-billing/history [post]
+// @Router       /infra-billing/history/{uuid} [delete]
 func BillingHistoryHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -193,7 +228,7 @@ func handleDeleteBillingNode(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 
-	writeBillingNodesResponse(w, r, db, cfg, http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleCreateBillingHistory(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
@@ -239,7 +274,7 @@ func handleDeleteBillingHistory(w http.ResponseWriter, r *http.Request, db *sql.
 		return
 	}
 
-	writeBillingHistoryResponse(w, r, db, cfg, http.StatusOK, 0, 50)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeBillingNodesResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, status int) {

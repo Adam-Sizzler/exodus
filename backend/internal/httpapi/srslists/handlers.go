@@ -17,6 +17,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// SRSListsHandler godoc
+// @Summary      Manage SRS rule lists
+// @Description  List, create (201), or update sing-box binary rule-set lists
+// @Tags         SRS Lists Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "SRS rule list payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /srs-lists [get]
+// @Router       /srs-lists [post]
+// @Router       /srs-lists [patch]
 func SRSListsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -32,6 +47,20 @@ func SRSListsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// SRSListByUUIDHandler godoc
+// @Summary      SRS rule list by UUID
+// @Description  Get or delete SRS rule list by UUID
+// @Tags         SRS Lists Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "SRS rule list UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /srs-lists/{uuid} [get]
+// @Router       /srs-lists/{uuid} [delete]
 func SRSListByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		uuidStr := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/srs-lists/"))
@@ -55,6 +84,20 @@ func SRSListByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 	}
 }
 
+// SRSListsActionsHandler godoc
+// @Summary      SRS rule list actions
+// @Description  Reorder, check or trigger subscription node sync for SRS rule lists
+// @Tags         SRS Lists Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Action payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /srs-lists/actions/reorder [post]
+// @Router       /srs-lists/actions/check [post]
+// @Router       /srs-lists/actions/sync [post]
 func SRSListsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -76,6 +119,22 @@ func SRSListsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 	}
 }
 
+// SRSListsBulkHandler godoc
+// @Summary      Bulk SRS rule list operations
+// @Description  Bulk delete, enable, disable, or update download interval for SRS lists
+// @Tags         SRS Lists Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Bulk payload"
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /srs-lists/bulk/delete [post]
+// @Router       /srs-lists/bulk/enable [post]
+// @Router       /srs-lists/bulk/disable [post]
+// @Router       /srs-lists/bulk/set-interval [post]
 func SRSListsBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

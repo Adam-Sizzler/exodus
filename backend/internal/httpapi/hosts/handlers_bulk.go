@@ -50,7 +50,7 @@ func handleBulkUpdateHosts(w http.ResponseWriter, r *http.Request, service *Host
 		return
 	}
 
-	handleGetHosts(w, r, service)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleReorderHosts(w http.ResponseWriter, r *http.Request, service *HostService) {
@@ -96,7 +96,7 @@ func handleBulkEnableHosts(w http.ResponseWriter, r *http.Request, service *Host
 		return
 	}
 
-	handleGetHosts(w, r, service)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleBulkDisableHosts(w http.ResponseWriter, r *http.Request, service *HostService) {
@@ -116,7 +116,7 @@ func handleBulkDisableHosts(w http.ResponseWriter, r *http.Request, service *Hos
 		return
 	}
 
-	handleGetHosts(w, r, service)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleBulkDeleteHosts(w http.ResponseWriter, r *http.Request, service *HostService) {
@@ -136,7 +136,7 @@ func handleBulkDeleteHosts(w http.ResponseWriter, r *http.Request, service *Host
 		return
 	}
 
-	handleGetHosts(w, r, service)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleBulkSetInbound(w http.ResponseWriter, r *http.Request, service *HostService) {

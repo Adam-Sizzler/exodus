@@ -49,10 +49,6 @@ type subpageConfigUpdateRequest struct {
 	Config *json.RawMessage `json:"config,omitempty"`
 }
 
-type subpageConfigDeleteResponse struct {
-	IsDeleted bool `json:"isDeleted"`
-}
-
 type subpageConfigReorderItem struct {
 	UUID         string `json:"uuid"`
 	ViewPosition int    `json:"viewPosition"`

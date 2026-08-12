@@ -20,6 +20,17 @@ func resolveBulkTargetUUIDs(ctx context.Context, repo *UserRepository, userIDs [
 	return repo.resolveUUIDsByUserIDs(ctx, userIDs)
 }
 
+// handleBulkDeleteUsers godoc
+// @Summary      Bulk delete users by IDs
+// @Description  Delete multiple users by their IDs
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkDeleteUsersRequest  true  "User IDs to delete"
+// @Success      204
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/delete [post]
 func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkDeleteUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -41,6 +52,51 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, service *User
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleBulkRevokeUsersSubscription godoc
+// @Summary      Bulk revoke users subscription
+// @Description  Revoke subscriptions for multiple users
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkRevokeUsersSubscriptionRequest  true  "User IDs to revoke"
+// @Success      202
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/revoke-subscription [post]
+func handleBulkRevokeUsersSubscription(w http.ResponseWriter, r *http.Request, service *UserService) {
+	var req bulkRevokeUsersSubscriptionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		return
+	}
+	targets, err := resolveBulkTargetUUIDs(r.Context(), service.repo, req.UserIDs)
+	if err != nil {
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
+		return
+	}
+
+	// handled one by one, same as upstream Exodus's bulkRevokeUsersSubscription
+	for _, targetUUID := range targets {
+		if err := service.RevokeUserSubscription(r.Context(), targetUUID, revokeUserSubscriptionRequest{}); err != nil {
+			shared.SendError(w, http.StatusInternalServerError, "failed to revoke users subscription", err, service.cfg)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// handleBulkResetUsersTraffic godoc
+// @Summary      Bulk reset users traffic
+// @Description  Reset used traffic to 0 for specified users
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkDeleteUsersRequest  true  "User IDs to reset"
+// @Success      202
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/reset-traffic [post]
 func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkDeleteUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -53,15 +109,25 @@ func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, service
 		return
 	}
 
-	affectedRows, err := service.BulkResetUsersTraffic(r.Context(), targets)
-	if err != nil {
+	if _, err := service.BulkResetUsersTraffic(r.Context(), targets); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to reset users traffic", err, service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
+// handleBulkDeleteUsersByStatus godoc
+// @Summary      Bulk delete users by status
+// @Description  Delete all users having a specific status
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  object{status=string}  true  "Status to delete"
+// @Success      202
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/delete-by-status [post]
 func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req struct {
 		Status string `json:"status"`
@@ -77,25 +143,42 @@ func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, servi
 		return
 	}
 
-	affectedRows, err := service.BulkDeleteUsersByStatus(r.Context(), status)
-	if err != nil {
+	if _, err := service.BulkDeleteUsersByStatus(r.Context(), status); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to delete users by status", err, service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
+// handleBulkAllResetUsersTraffic godoc
+// @Summary      Reset traffic for all users
+// @Description  Reset used traffic to 0 for all users in the system
+// @Tags         Users Bulk Actions Controller
+// @Security     BearerAuth
+// @Success      202
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/all/reset-traffic [post]
 func handleBulkAllResetUsersTraffic(w http.ResponseWriter, r *http.Request, service *UserService) {
-	affectedRows, err := service.BulkAllResetUsersTraffic(r.Context())
-	if err != nil {
+	if _, err := service.BulkAllResetUsersTraffic(r.Context()); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to reset all users traffic", err, service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": affectedRows > 0}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
+// handleBulkExtendUsersExpirationDate godoc
+// @Summary      Bulk extend users expiration date
+// @Description  Add days to expireAt for specified users
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkExtendExpirationDateRequest  true  "User IDs and extension days"
+// @Success      204
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/extend-expiration-date [post]
 func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkExtendExpirationDateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -121,6 +204,17 @@ func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleBulkAllExtendUsersExpirationDate godoc
+// @Summary      Extend expiration date for all users
+// @Description  Add days to expireAt for all users in the system
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkAllExtendExpirationDateRequest  true  "Extension days"
+// @Success      202
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/all/extend-expiration-date [post]
 func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkAllExtendExpirationDateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -132,15 +226,25 @@ func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	affectedRows, err := service.BulkAllExtendUsersExpirationDate(r.Context(), req.ExtendDays)
-	if err != nil {
+	if _, err := service.BulkAllExtendUsersExpirationDate(r.Context(), req.ExtendDays); err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to extend all users expiration date", err, service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": affectedRows > 0}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
+// handleBulkUpdateUsers godoc
+// @Summary      Bulk update users
+// @Description  Update fields for multiple users
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkUpdateUsersRequest  true  "User IDs and fields to update"
+// @Success      202
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/update [post]
 func handleBulkUpdateUsers(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkUpdateUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -157,15 +261,25 @@ func handleBulkUpdateUsers(w http.ResponseWriter, r *http.Request, service *User
 		return
 	}
 
-	affectedRows, err := service.BulkUpdateUsers(r.Context(), targets, req.Fields)
-	if err != nil {
+	if _, err := service.BulkUpdateUsers(r.Context(), targets, req.Fields); err != nil {
 		handleUserWriteError(w, err, service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"affectedRows": affectedRows}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
+// handleBulkUpdateUsersSquads godoc
+// @Summary      Bulk update users squads
+// @Description  Assign internal squads for multiple users
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkUpdateUsersSquadsRequest  true  "User IDs and internal squad UUIDs"
+// @Success      204
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/update-squads [post]
 func handleBulkUpdateUsersSquads(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkUpdateUsersSquadsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -191,6 +305,17 @@ func handleBulkUpdateUsersSquads(w http.ResponseWriter, r *http.Request, service
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleBulkAllUpdateUsers godoc
+// @Summary      Update all users
+// @Description  Update fields for all users in the system
+// @Tags         Users Bulk Actions Controller
+// @Accept       json
+// @Security     BearerAuth
+// @Param        body  body  bulkAllUpdateUsersRequest  true  "Fields to update across all users"
+// @Success      202
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /users/bulk/all/update [post]
 func handleBulkAllUpdateUsers(w http.ResponseWriter, r *http.Request, service *UserService) {
 	var req bulkAllUpdateUsersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -202,11 +327,10 @@ func handleBulkAllUpdateUsers(w http.ResponseWriter, r *http.Request, service *U
 		return
 	}
 
-	affectedRows, err := service.BulkAllUpdateUsers(r.Context(), req)
-	if err != nil {
+	if _, err := service.BulkAllUpdateUsers(r.Context(), req); err != nil {
 		handleUserWriteError(w, err, service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": affectedRows > 0}})
+	w.WriteHeader(http.StatusAccepted)
 }

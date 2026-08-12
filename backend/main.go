@@ -1,3 +1,57 @@
+// @title                       Exodus API
+// @version                     3.0.0
+// @description                 Exodus dashboard and node-management API.
+// @license.name                AGPL-3.0
+// @BasePath                    /api
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+//
+// @tag.name Users Controller
+// @tag.description Manage users, change their status, reset traffic, etc.
+// @tag.name Users Bulk Actions Controller
+// @tag.description Bulk actions with users.
+// @tag.name HWID User Devices Controller
+// @tag.name [Protected] Subscriptions Controller
+// @tag.description Methods of this controller are protected with auth, most of them is returning the same informations as public Subscription Controller.
+// @tag.name Nodes Controller
+// @tag.name Node Plugins Controller
+// @tag.name Bandwidth Stats Controller
+// @tag.name Connections Controller
+// @tag.description Management of connections by user and node.
+// @tag.name Config Profiles Controller
+// @tag.description Management of Config Profiles.
+// @tag.name Snippets Controller
+// @tag.name Internal Squads Controller
+// @tag.description Management of Internal Squads.
+// @tag.name External Squads Controller
+// @tag.description Management of External Squads.
+// @tag.name Hosts Controller
+// @tag.name Hosts Bulk Actions Controller
+// @tag.name Subscription Template Controller
+// @tag.name Subscription Settings Controller
+// @tag.name Subscription Page Configs Controller
+// @tag.name Subscription Request History Controller
+// @tag.name Infra Billing Controller
+// @tag.name System Controller
+// @tag.name Keygen Controller
+// @tag.description Generation of SECRET_KEY for Exodus Node.
+// @tag.name Metadata Controller
+// @tag.description Manage arbitrary metadata for Users and Nodes.
+// @tag.name Auth Controller
+// @tag.description Used to authenticate admin users.
+// @tag.name Passkeys Controller
+// @tag.description Management of Passkeys.
+// @tag.name API Tokens Controller
+// @tag.description Manage API tokens to use in your code. This controller can't be used with API token, only with Admin JWT token.
+// @tag.name Exodus Settings Controller
+// @tag.name SRS Lists Controller
+// @tag.description Management of SRS rule-set lists.
+// @tag.name Health
+// @tag.description Health check.
+//
+//go:generate swag init --generalInfo main.go --dir . --output internal/httpapi/panelsettings/docs --outputTypes json,yaml --parseDependency --parseInternal
+
 package main
 
 import (

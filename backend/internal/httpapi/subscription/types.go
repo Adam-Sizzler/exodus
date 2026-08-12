@@ -30,12 +30,13 @@ var defaultResponseType = responseTypeXrayBase64
 const defaultSubpageConfigUUID = "00000000-0000-0000-0000-000000000000"
 
 type ExternalSquadOverrides struct {
-	SubscriptionSettings *subscriptionsettings.SubscriptionSettings `json:"subscription_settings"`
-	HostOverrides        map[string]HostOverride                    `json:"host_overrides"`
-	ResponseHeaders      map[string]string                          `json:"response_headers"`
-	HwidSettings         *HwidSettings                              `json:"hwid_settings"`
-	CustomRemarks        *CustomRemarks                             `json:"custom_remarks"`
-	Templates            map[string]string
+	SubscriptionSettings  *subscriptionsettings.SubscriptionSettings `json:"subscription_settings"`
+	HostOverrides         map[string]HostOverride                    `json:"host_overrides"`
+	ResponseHeaders       map[string]string                          `json:"response_headers_add"`
+	ResponseHeadersRemove []string                                   `json:"response_headers_remove"`
+	HwidSettings          *HwidSettings                              `json:"hwid_settings"`
+	CustomRemarks         *CustomRemarks                             `json:"custom_remarks"`
+	Templates             map[string]string
 }
 
 type HwidSettingsInput struct {
@@ -66,6 +67,7 @@ type SubscriptionSettingsParsed struct {
 
 	HostOverrides         map[string]HostOverride
 	ResponseHeaders       map[string]string
+	ResponseHeadersRemove []string
 	CustomResponseHeaders map[string]string
 	ResponseRules         *subscriptionresponserules.Config
 	HwidSettings          HwidSettings
@@ -291,4 +293,3 @@ func matchResponseRules(rules *subscriptionresponserules.Config, headers http.He
 func detectClientType(userAgent string) string {
 	return inferPlatformFromUserAgent(userAgent)
 }
-

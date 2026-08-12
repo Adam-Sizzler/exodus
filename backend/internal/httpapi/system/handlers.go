@@ -12,6 +12,14 @@ import (
 	"exodus/internal/httpapi/shared"
 )
 
+// MetadataHandler godoc
+// @Summary      System metadata
+// @Description  Get panel and backend version, build timestamp, commit SHAs, and repo URL
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Router       /system/metadata [get]
 func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -65,6 +73,15 @@ func MetadataHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// StatsHandler godoc
+// @Summary      System statistics
+// @Description  Get CPU, memory, uptime, user counts, online node stats, and traffic totals
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /system/stats [get]
 func StatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -137,6 +154,15 @@ func StatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// RecapHandler godoc
+// @Summary      System monthly and lifetime recap
+// @Description  Get aggregated month and lifetime summary of users, nodes, and traffic
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /system/recap [get]
 func RecapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -208,6 +234,16 @@ func RecapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// BandwidthStatsHandler godoc
+// @Summary      System bandwidth trends
+// @Description  Get traffic usage comparisons for 2 days, 7 days, 30 days, calendar month, and year
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        tz   query     string  false  "Timezone name (e.g. UTC, Europe/Moscow)"
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /system/bandwidth-stats [get]
 func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -260,6 +296,14 @@ func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+// HTTPStatsHandler godoc
+// @Summary      HTTP request metrics
+// @Description  Get HTTP traffic counters and request rate metrics
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Router       /system/http-stats [get]
 func HTTPStatsHandler(rc *RouteCounter, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -279,6 +323,14 @@ func HTTPStatsHandler(rc *RouteCounter, cfg *config.BackendConfig) http.HandlerF
 	}
 }
 
+// HealthHandler godoc
+// @Summary      Go runtime health check
+// @Description  Get Go goroutines, memory allocation, and CPU metrics
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Router       /system/health [get]
 func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -310,6 +362,15 @@ func HealthHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// NodesStatsHandler godoc
+// @Summary      Last 7 days node usage statistics
+// @Description  Get 7-day daily traffic usage per node
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /system/nodes-stats [get]
 func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -370,6 +431,16 @@ func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// DigestHandler godoc
+// @Summary      System activity digest
+// @Description  Get user creations, expirations, HWID devices, and traffic within date range
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        start  query     string  false  "Start timestamp (RFC3339)"
+// @Param        end    query     string  false  "End timestamp (RFC3339)"
+// @Success      200    {object}  map[string]any
+// @Router       /system/digest [get]
 func DigestHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -430,6 +501,14 @@ func DigestHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// NodesMetricsHandler godoc
+// @Summary      Live node metrics via Prometheus
+// @Description  Query Prometheus metrics for all online nodes
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Router       /system/nodes-metrics [get]
 func NodesMetricsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

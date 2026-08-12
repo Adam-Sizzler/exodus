@@ -31,7 +31,7 @@ func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, servi
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, service *NodeService) {
@@ -97,7 +97,7 @@ func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, service *Node
 		}
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, service *NodeService) {
@@ -121,5 +121,5 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, service *Nod
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusNoContent)
 }

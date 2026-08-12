@@ -894,33 +894,19 @@ func (r *UserRepository) bulkAllUpdateUsers(ctx context.Context, clauses []strin
 	return affectedRows, nil
 }
 
-func (r *UserRepository) resolveUserFullDetailsByIdentifier(ctx context.Context, identifier string) (int64, string, error) {
-	identifier = strings.TrimSpace(identifier)
-	if identifier == "" {
-		return 0, "", errUserNotFound
+func (r *UserRepository) confirmUserExistsByID(ctx context.Context, userID int64) error {
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&exists); err != nil {
+		return err
 	}
-	var userID int64
-	var userUUID string
-	var err error
-	if idNum, parseErr := strconv.ParseInt(identifier, 10, 64); parseErr == nil {
-		err = r.db.QueryRowContext(ctx, `SELECT id, uuid::text FROM users WHERE id = $1 OR uuid::text = $2 OR short_uuid = $2 OR username = $2`, idNum, identifier).Scan(&userID, &userUUID)
-	} else {
-		err = r.db.QueryRowContext(ctx, `SELECT id, uuid::text FROM users WHERE uuid::text = $1 OR short_uuid = $1 OR username = $1`, identifier).Scan(&userID, &userUUID)
+	if !exists {
+		return errUserNotFound
 	}
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, "", errUserNotFound
-	}
-	return userID, userUUID, err
+	return nil
 }
 
-func (r *UserRepository) resolveUserIDByIdentifier(ctx context.Context, identifier string) (int64, error) {
-	userID, _, err := r.resolveUserFullDetailsByIdentifier(ctx, identifier)
-	return userID, err
-}
-
-func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, userIdentifier string) ([]userSubscriptionRequestHistoryRecord, error) {
-	userID, err := r.resolveUserIDByIdentifier(ctx, userIdentifier)
-	if err != nil {
+func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, userID int64) ([]userSubscriptionRequestHistoryRecord, error) {
+	if err := r.confirmUserExistsByID(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -952,10 +938,9 @@ func (r *UserRepository) getUserSubscriptionRequestHistory(ctx context.Context, 
 	return records, nil
 }
 
-func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userIdentifier string) (int64, string, []userAccessibleNode, error) {
-	userID, userUUID, err := r.resolveUserFullDetailsByIdentifier(ctx, userIdentifier)
-	if err != nil {
-		return 0, "", nil, err
+func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userID int64) ([]userAccessibleNode, error) {
+	if err := r.confirmUserExistsByID(ctx, userID); err != nil {
+		return nil, err
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
@@ -982,7 +967,7 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userIdentif
 		ORDER BY n.view_position ASC, sq.view_position ASC, cpi.tag ASC
 	`, userID)
 	if err != nil {
-		return 0, "", nil, err
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -993,7 +978,7 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userIdentif
 		var nodeUUID, nodeName, countryCode, profileUUID, profileName string
 		var squadUUID, squadName, inboundTag string
 		if scanErr := rows.Scan(&nodeUUID, &nodeName, &countryCode, &profileUUID, &profileName, &squadUUID, &squadName, &inboundTag); scanErr != nil {
-			return 0, "", nil, scanErr
+			return nil, scanErr
 		}
 
 		nodeIndex, ok := nodeIndexes[nodeUUID]
@@ -1028,9 +1013,9 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userIdentif
 		)
 	}
 	if err := rows.Err(); err != nil {
-		return 0, "", nil, err
+		return nil, err
 	}
-	return userID, userUUID, activeNodes, nil
+	return activeNodes, nil
 }
 
 func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size int, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID string) ([]userRecord, int64, int64, error) {

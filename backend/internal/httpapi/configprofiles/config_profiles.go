@@ -11,6 +11,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// ConfigProfilesHandler godoc
+// @Summary      Manage configuration profiles
+// @Description  List, create (201), or update sing-box/xray configuration profiles
+// @Tags         Config Profiles Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Configuration profile payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /config-profiles [get]
+// @Router       /config-profiles [post]
+// @Router       /config-profiles [patch]
 func ConfigProfilesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
@@ -28,6 +43,22 @@ func ConfigProfilesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+// ConfigProfileByUUIDHandler godoc
+// @Summary      Config profile by UUID
+// @Description  Get, delete (204) config profile, or get profile inbounds / computed config
+// @Tags         Config Profiles Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "Configuration profile UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /config-profiles/{uuid} [get]
+// @Router       /config-profiles/{uuid} [delete]
+// @Router       /config-profiles/{uuid}/inbounds [get]
+// @Router       /config-profiles/{uuid}/computed-config [get]
 func ConfigProfileByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
@@ -81,6 +112,18 @@ func ConfigProfileByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.Hand
 	}
 }
 
+// ConfigProfilesActionsHandler godoc
+// @Summary      Config profile actions
+// @Description  Reorder configuration profiles
+// @Tags         Config Profiles Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Reorder payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /config-profiles/actions/reorder [post]
 func ConfigProfilesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
@@ -100,6 +143,15 @@ func ConfigProfilesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.Ha
 	}
 }
 
+// ConfigProfilesInboundsHandler godoc
+// @Summary      List all config profile inbounds
+// @Description  Get all inbounds across configuration profiles
+// @Tags         Config Profiles Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /config-profiles/inbounds [get]
 func ConfigProfilesInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)
@@ -112,6 +164,26 @@ func ConfigProfilesInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.H
 	}
 }
 
+// ConfigProfileSnippetsHandler godoc
+// @Summary      Manage config profile snippets
+// @Description  List, create (201), update, or delete configuration snippets
+// @Tags         Snippets Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Snippet payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /config-profiles/snippets [get]
+// @Router       /config-profiles/snippets [post]
+// @Router       /config-profiles/snippets [patch]
+// @Router       /snippets [get]
+// @Router       /snippets [post]
+// @Router       /snippets [patch]
+// @Router       /snippets [delete]
 func ConfigProfileSnippetsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewConfigProfileRepository(db)
 	service := NewConfigProfileService(repo, cfg)

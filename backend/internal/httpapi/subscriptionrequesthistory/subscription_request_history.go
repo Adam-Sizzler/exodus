@@ -31,6 +31,19 @@ type tableSorting struct {
 	Desc bool   `json:"desc"`
 }
 
+// SubscriptionRequestHistoryHandler godoc
+// @Summary      Get subscription request history
+// @Description  Get paginated global subscription request history
+// @Tags         Subscription Request History Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        start    query     int     false  "Pagination start index"
+// @Param        size     query     int     false  "Page size (1-1000, default 25)"
+// @Param        filters  query     string  false  "JSON table filters"
+// @Param        sorting  query     string  false  "JSON table sorting"
+// @Success      200      {object}  map[string]any
+// @Failure      500      {object}  shared.ErrorResponse
+// @Router       /subscription-request-history [get]
 func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -39,7 +52,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 		}
 
 		start := parseInt(r.URL.Query().Get("start"), 0, 0, 1_000_000)
-		size := parseInt(r.URL.Query().Get("size"), 25, 1, 500)
+		size := parseInt(r.URL.Query().Get("size"), 25, 1, 1000)
 		columns := map[string]string{
 			"id":        "id",
 			"userId":    "user_id",
@@ -97,6 +110,15 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 	}
 }
 
+// SubscriptionRequestHistoryStatsHandler godoc
+// @Summary      Get subscription request history stats
+// @Description  Get client app breakdown and hourly distribution for the last 48 hours
+// @Tags         Subscription Request History Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /subscription-request-history/stats [get]
 func SubscriptionRequestHistoryStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

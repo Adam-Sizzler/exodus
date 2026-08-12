@@ -391,7 +391,7 @@ func handleDeleteConfigProfileSnippet(w http.ResponseWriter, r *http.Request, se
 		return
 	}
 
-	writeConfigProfileSnippetsResponse(w, r, service, http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeConfigProfileSnippetsResponse(w http.ResponseWriter, r *http.Request, service *ConfigProfileService, status int) {

@@ -15,6 +15,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// ExternalSquadsHandler godoc
+// @Summary      Manage external squads
+// @Description  List, create (201), or update external squads
+// @Tags         External Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "External squad create/update payload"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /external-squads [get]
+// @Router       /external-squads [post]
+// @Router       /external-squads [patch]
 func ExternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -30,6 +45,20 @@ func ExternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+// ExternalSquadByUUIDHandler godoc
+// @Summary      External squad by UUID
+// @Description  Get, update, or delete external squad by UUID
+// @Tags         External Squads Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Param        uuid  path      string  true  "External squad UUID" format(uuid)
+// @Success      200   {object}  map[string]any
+// @Success      204
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      404   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /external-squads/{uuid} [get]
+// @Router       /external-squads/{uuid} [delete]
 func ExternalSquadByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimSpace(trimExternalSquadsPath(r.URL.Path))
@@ -99,6 +128,18 @@ func trimExternalSquadsPath(p string) string {
 	return strings.TrimPrefix(p, "/")
 }
 
+// ExternalSquadsReorderHandler godoc
+// @Summary      Reorder external squads
+// @Description  Update view position of external squads
+// @Tags         External Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Reorder payload"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /external-squads/actions/reorder [post]
 func ExternalSquadsReorderHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -540,7 +581,7 @@ func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, d
 	}
 
 	cfg.Logger.Info("Users added to external squad", "squad_uuid", squadUUID, "affected_rows", affected)
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, squadUUID string) {
@@ -604,9 +645,5 @@ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Reque
 
 	cfg.Logger.Info("Users removed from external squad", "squad_uuid", squadUUID, "affected_rows", affected)
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{
-		"response": map[string]any{
-			"eventSent": true,
-		},
-	})
+	w.WriteHeader(http.StatusAccepted)
 }

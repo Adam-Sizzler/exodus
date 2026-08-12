@@ -47,10 +47,6 @@ type subscriptionTemplateUpdateRequest struct {
 	EncodedTemplateYML *string          `json:"encodedTemplateYaml,omitempty"`
 }
 
-type subscriptionTemplateDeleteResponse struct {
-	IsDeleted bool `json:"isDeleted"`
-}
-
 type subscriptionTemplateReorderItem struct {
 	UUID         string `json:"uuid"`
 	ViewPosition int    `json:"viewPosition"`

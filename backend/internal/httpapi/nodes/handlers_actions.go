@@ -53,7 +53,7 @@ func handleRestartNode(w http.ResponseWriter, r *http.Request, service *NodeServ
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func handleResetNodeTraffic(w http.ResponseWriter, r *http.Request, service *NodeService, nodeUUID string) {
@@ -67,7 +67,7 @@ func handleResetNodeTraffic(w http.ResponseWriter, r *http.Request, service *Nod
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, service *NodeService) {
@@ -86,7 +86,7 @@ func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, service *Node
 		shared.SendError(w, http.StatusInternalServerError, "failed to restart all nodes", err, service.cfg)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"eventSent": true}})
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func decodeOptionalRestartNodesRequest(r *http.Request) (restartAllNodesRequest, error) {

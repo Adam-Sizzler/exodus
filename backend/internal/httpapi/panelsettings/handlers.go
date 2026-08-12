@@ -126,6 +126,20 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 	}
 }
 
+// PanelAPITokensHandler godoc
+// @Summary      Manage API tokens
+// @Description  List or create (201) scoped panel API tokens
+// @Tags         API Tokens Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "API token creation parameters"
+// @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /tokens [get]
+// @Router       /tokens [post]
 func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -206,6 +220,14 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+// PanelAPITokenScopesHandler godoc
+// @Summary      Get available API token scopes
+// @Description  Get list of all supported permission scopes for panel tokens
+// @Tags         API Tokens Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Router       /tokens/scopes [get]
 func PanelAPITokenScopesHandler(_ *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -221,6 +243,15 @@ func PanelAPITokenScopesHandler(_ *sql.DB, cfg *config.BackendConfig) http.Handl
 	}
 }
 
+// PanelAPITokensOttHandler godoc
+// @Summary      Issue One-Time Token (OTT)
+// @Description  Issue short-lived token for internal utilities and redirects
+// @Tags         API Tokens Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /tokens/ott [post]
 func PanelAPITokensOttHandler(_ *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -244,6 +275,17 @@ func PanelAPITokensOttHandler(_ *sql.DB, cfg *config.BackendConfig) http.Handler
 	}
 }
 
+// PanelAPITokenByUUIDHandler godoc
+// @Summary      Delete API token
+// @Description  Revoke API token by token UUID
+// @Tags         API Tokens Controller
+// @Security     BearerAuth
+// @Param        uuid  path  string  true  "Token UUID" format(uuid)
+// @Success      204
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      404  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /tokens/{uuid} [delete]
 func PanelAPITokenByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenUUID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tokens/"))
@@ -283,10 +325,23 @@ func PanelAPITokenByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.Hand
 			return
 		}
 
-		shared.WriteJSON(w, http.StatusOK, map[string]any{"response": true})
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
+// ExodusSettingsHandler godoc
+// @Summary      Manage Exodus panel settings
+// @Description  Get or update Exodus panel branding, passkey, oauth2, and password policies
+// @Tags         Exodus Settings Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object  false  "Settings payload to update"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /exodus-settings [get]
+// @Router       /exodus-settings [patch]
 func ExodusSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

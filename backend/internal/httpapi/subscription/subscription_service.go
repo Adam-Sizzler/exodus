@@ -65,6 +65,9 @@ func applyExternalSquadOverrides(base SubscriptionSettingsParsed, overrides *Ext
 			base.ResponseHeaders[k] = v
 		}
 	}
+	if len(overrides.ResponseHeadersRemove) > 0 {
+		base.ResponseHeadersRemove = append(base.ResponseHeadersRemove, overrides.ResponseHeadersRemove...)
+	}
 
 	if overrides.HwidSettings != nil {
 		base.HwidSettings = *overrides.HwidSettings
@@ -77,23 +80,12 @@ func applyExternalSquadOverrides(base SubscriptionSettingsParsed, overrides *Ext
 	return base
 }
 
+// mergeSubscriptionSettings applies a squad-level subscription_settings override onto the
+// base settings. Matches upstream EXodus's ExternalSquadSubscriptionSettingsSchema, which
+// only picks serveJsonAtBaseSubscription/isShowCustomRemarks/randomizeHosts — everything else
+// (profile title, announce, routing, support link, update interval, webpage url) is squad-level
+// customized exclusively via responseHeadersAdd/responseHeadersRemove, not via this struct.
 func mergeSubscriptionSettings(base, squad subscriptionsettings.SubscriptionSettings) subscriptionsettings.SubscriptionSettings {
-	if strings.TrimSpace(squad.ProfileTitle) != "" {
-		base.ProfileTitle = squad.ProfileTitle
-	}
-	if strings.TrimSpace(squad.SupportLink) != "" {
-		base.SupportLink = squad.SupportLink
-	}
-	if squad.ProfileUpdateInterval > 0 {
-		base.ProfileUpdateInterval = squad.ProfileUpdateInterval
-	}
-	if strings.TrimSpace(squad.HappAnnounce) != "" {
-		base.HappAnnounce = squad.HappAnnounce
-	}
-	if strings.TrimSpace(squad.HappRouting) != "" {
-		base.HappRouting = squad.HappRouting
-	}
-	base.IsProfileWebpageURLEnabled = squad.IsProfileWebpageURLEnabled
 	base.ServeJSONAtBaseSubscription = squad.ServeJSONAtBaseSubscription
 	base.IsShowCustomRemarks = squad.IsShowCustomRemarks
 	base.RandomizeHosts = squad.RandomizeHosts

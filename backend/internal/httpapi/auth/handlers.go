@@ -19,6 +19,14 @@ import (
 
 var errAdminAlreadyConfigured = errors.New("admin already configured")
 
+// AuthBootstrapHandler godoc
+// @Summary      Get auth bootstrap data
+// @Description  Get initial branding, password settings and whether an admin is configured
+// @Tags         Auth Controller
+// @Produce      json
+// @Success      200  {object}  BootstrapResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /auth/bootstrap [get]
 func AuthBootstrapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -42,6 +50,14 @@ func AuthBootstrapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 	}
 }
 
+// AuthStatusHandler godoc
+// @Summary      Get auth status
+// @Description  Get available authentication methods, registration status and branding
+// @Tags         Auth Controller
+// @Produce      json
+// @Success      200  {object}  map[string]any
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /auth/status [get]
 func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -106,6 +122,19 @@ func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// AuthLoginCompatHandler godoc
+// @Summary      Login admin
+// @Description  Authenticate admin with username and password
+// @Tags         Auth Controller
+// @Accept       json
+// @Produce      json
+// @Param        body  body      LoginRequest  true  "Credentials"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      403   {object}  shared.ErrorResponse
+// @Failure      429   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /auth/login [post]
 func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -176,20 +205,24 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			LIMIT 1
 		`, username)
 
-		if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
+		scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role)
+		if scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
 			cfg.Logger.Error("Failed to read admin credentials", "error", scanErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
 
-		hashToVerify := storedPasswordHash
-		if adminUUID == "" {
-			hashToVerify = getDummyPasswordHash(cfg.JWT.AuthSecret)
+		if errors.Is(scanErr, sql.ErrNoRows) {
+			cfg.Logger.Warn("Auth login failed: user not found", "username", username, "remote_addr", r.RemoteAddr)
+			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "invalid_credentials", r)
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
+			return
 		}
-		if adminUUID == "" || !security.VerifyPassword(password, cfg.JWT.AuthSecret, hashToVerify) {
-			cfg.Logger.Warn("Auth login failed: invalid credentials", "username", username, "remote_addr", r.RemoteAddr)
+
+		if !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
+			cfg.Logger.Warn("Auth login failed: wrong password", "username", username, "remote_addr", r.RemoteAddr)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
-			shared.WriteJSONError(w, http.StatusForbidden, "invalid username or password")
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
 			return
 		}
 
@@ -200,9 +233,8 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			return
 		}
 		globalLoginRateLimiter.reset(rateLimitKey)
-		cfg.Logger.Info("Auth login success", "username", username, "remote_addr", r.RemoteAddr)
+		cfg.Logger.Info("Auth login success", "username", username, "admin_uuid", adminUUID, "remote_addr", r.RemoteAddr)
 		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
-
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
@@ -213,7 +245,19 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 	}
 }
 
-func AuthRegisterCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+// AuthRegisterHandler godoc
+// @Summary      Register admin
+// @Description  Register initial admin account when none exists
+// @Tags         Auth Controller
+// @Accept       json
+// @Produce      json
+// @Param        body  body      LoginRequest  true  "Registration payload"
+// @Success      201   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      403   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /auth/register [post]
+func AuthRegisterHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -279,6 +323,22 @@ func AuthRegisterCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 	}
 }
 
+func AuthRegisterCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return AuthRegisterHandler(db, cfg)
+}
+
+// AuthSetupHandler godoc
+// @Summary      Setup admin
+// @Description  Set up first admin account
+// @Tags         Auth Controller
+// @Accept       json
+// @Produce      json
+// @Param        body  body      SetupRequest  true  "Admin setup payload"
+// @Success      201   {object}  LoginResponse
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      409   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /auth/setup [post]
 func AuthSetupHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -389,15 +449,20 @@ func AuthLoginHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			LIMIT 1
 		`, username)
 
-		if scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role); scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
+		scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role)
+		if scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
 			cfg.Logger.Error("Failed to read admin credentials", "error", scanErr)
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
 			return
 		}
 
-		if adminUUID == "" || !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
-			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
-			shared.WriteJSONError(w, http.StatusUnauthorized, "invalid username or password")
+		if errors.Is(scanErr, sql.ErrNoRows) {
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
+			return
+		}
+
+		if !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
 			return
 		}
 
@@ -408,7 +473,6 @@ func AuthLoginHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
 		brandingSettings, passwordSettings, _, _, err := getBootstrapData(db)
@@ -428,11 +492,21 @@ func AuthLoginHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			ExpiresAt:        expiresAt,
 			BrandingSettings: brandingSettings,
 			PasswordSettings: passwordSettings,
-			Message:          "login successful",
+			Message:          "logged in",
 		})
 	}
 }
 
+// AuthMeHandler godoc
+// @Summary      Get current session
+// @Description  Get authenticated admin user profile and settings
+// @Tags         Auth Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  LoginResponse
+// @Failure      401  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /auth/me [get]
 func AuthMeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -486,6 +560,14 @@ func AuthMeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// AuthLogoutHandler godoc
+// @Summary      Logout admin
+// @Description  Clear admin session cookie
+// @Tags         Auth Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]string
+// @Router       /auth/logout [post]
 func AuthLogoutHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -509,6 +591,17 @@ func AuthLogoutHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// OAuth2AuthorizeHandler godoc
+// @Summary      Authorize OAuth2
+// @Description  Get authorization URL for third-party OAuth2 provider
+// @Tags         Auth Controller
+// @Accept       json
+// @Produce      json
+// @Param        body  body      oauthAuthorizeRequest  true  "OAuth2 provider"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /auth/oauth2/authorize [post]
 func OAuth2AuthorizeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

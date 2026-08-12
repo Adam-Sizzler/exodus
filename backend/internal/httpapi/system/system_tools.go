@@ -44,6 +44,14 @@ type testSRRMatcherRequest struct {
 	ResponseRules subscriptionresponserules.Config `json:"responseRules"`
 }
 
+// GenerateX25519Handler godoc
+// @Summary      Generate x25519 keypairs
+// @Description  Generate a batch of 30 X25519 keypairs for VLESS/Reality or WireGuard configs
+// @Tags         System Controller
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Router       /system/tools/generate-x25519 [get]
 func GenerateX25519Handler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -73,6 +81,18 @@ func GenerateX25519Handler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// EncryptHappCryptoLinkHandler godoc
+// @Summary      Encrypt Happ crypto link
+// @Description  Encrypt subscription link with Happ v4 public key
+// @Tags         System Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      encryptHappRequest  true  "Link to encrypt"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Failure      500   {object}  shared.ErrorResponse
+// @Router       /system/tools/encrypt-happ-crypto-link [post]
 func EncryptHappCryptoLinkHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -99,6 +119,17 @@ func EncryptHappCryptoLinkHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
+// TestSRRMatcherHandler godoc
+// @Summary      Test subscription response rules matcher
+// @Description  Evaluate SRR rules against request headers
+// @Tags         System Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      testSRRMatcherRequest  true  "Response rules"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  shared.ErrorResponse
+// @Router       /system/tools/test-srr-matcher [post]
 func TestSRRMatcherHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
