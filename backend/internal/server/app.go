@@ -694,14 +694,6 @@ func writeSubscriptionResponse(w http.ResponseWriter, r *http.Request, headers h
 		}
 	}
 
-	if w.Header().Get("Content-Encoding") == "" && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		if compressed, isCompressed, err := CompressPayloadIfLarge(payload); err == nil && isCompressed {
-			payload = compressed
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Set("Vary", "Accept-Encoding")
-		}
-	}
-
 	w.WriteHeader(http.StatusOK)
 	if r.Method != http.MethodHead {
 		_, _ = w.Write(payload)
