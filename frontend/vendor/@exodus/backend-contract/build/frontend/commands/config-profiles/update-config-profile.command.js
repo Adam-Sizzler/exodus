@@ -23,5 +23,4 @@ var UpdateConfigProfileCommand;
     UpdateConfigProfileCommand.ResponseSchema = zod_1.z.object({
         response: models_1.ConfigProfileSchema,
     });
-
 })(UpdateConfigProfileCommand || (exports.UpdateConfigProfileCommand = UpdateConfigProfileCommand = {}));

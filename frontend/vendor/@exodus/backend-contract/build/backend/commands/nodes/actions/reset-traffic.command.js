@@ -12,5 +12,4 @@ var ResetNodeTrafficCommand;
     ResetNodeTrafficCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(ResetNodeTrafficCommand || (exports.ResetNodeTrafficCommand = ResetNodeTrafficCommand = {}));

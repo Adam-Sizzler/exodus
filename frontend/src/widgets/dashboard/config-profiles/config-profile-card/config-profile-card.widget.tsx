@@ -192,7 +192,7 @@ export function ConfigProfileCardWidget(props: IProps) {
                         leftSection={<TbEdit size={16} />}
                         onClick={handleEditConfigProfile}
                     >
-                        {t('config-profiles-grid.widget.xray-config')}
+                        {t('config-profiles-grid.widget.singbox-config')}
                     </EntityCardShared.Button>
                     <EntityCardShared.Menu>
                         <Menu.Item

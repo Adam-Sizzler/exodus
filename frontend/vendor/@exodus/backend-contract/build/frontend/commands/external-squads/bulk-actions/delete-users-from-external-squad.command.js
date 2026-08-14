@@ -12,5 +12,4 @@ var DeleteUsersFromExternalSquadCommand;
     DeleteUsersFromExternalSquadCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid().describe('UUID of the external squad'),
     });
-
 })(DeleteUsersFromExternalSquadCommand || (exports.DeleteUsersFromExternalSquadCommand = DeleteUsersFromExternalSquadCommand = {}));

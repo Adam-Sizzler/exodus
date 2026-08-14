@@ -17,5 +17,4 @@ var VerifyPasskeyAuthenticationCommand;
             accessToken: zod_1.z.string(),
         }),
     });
-
 })(VerifyPasskeyAuthenticationCommand || (exports.VerifyPasskeyAuthenticationCommand = VerifyPasskeyAuthenticationCommand = {}));

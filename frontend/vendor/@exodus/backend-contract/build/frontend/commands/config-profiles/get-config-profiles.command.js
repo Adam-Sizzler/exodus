@@ -16,5 +16,4 @@ var GetConfigProfilesCommand;
             configProfiles: zod_1.z.array(models_1.ConfigProfileSchema),
         }),
     });
-
 })(GetConfigProfilesCommand || (exports.GetConfigProfilesCommand = GetConfigProfilesCommand = {}));

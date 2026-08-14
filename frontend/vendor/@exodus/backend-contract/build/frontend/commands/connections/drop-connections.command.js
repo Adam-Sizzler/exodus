@@ -40,5 +40,4 @@ var DropConnectionsCommand;
         dropBy: DropConnectionsCommand.DropBySchema,
         targetNodes: DropConnectionsCommand.TargetNodesSchema,
     });
-
 })(DropConnectionsCommand || (exports.DropConnectionsCommand = DropConnectionsCommand = {}));

@@ -14,5 +14,4 @@ var GetSubscriptionByShortUuidByClientTypeCommand;
             error: 'Invalid client type.'
         }),
     });
-
 })(GetSubscriptionByShortUuidByClientTypeCommand || (exports.GetSubscriptionByShortUuidByClientTypeCommand = GetSubscriptionByShortUuidByClientTypeCommand = {}));

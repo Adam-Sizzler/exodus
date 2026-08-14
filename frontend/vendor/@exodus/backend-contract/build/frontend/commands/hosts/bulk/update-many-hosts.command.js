@@ -15,5 +15,4 @@ var UpdateManyHostsCommand;
         .extend({
         uuids: zod_1.z.array(zod_1.z.uuid()).min(1),
     });
-
 })(UpdateManyHostsCommand || (exports.UpdateManyHostsCommand = UpdateManyHostsCommand = {}));

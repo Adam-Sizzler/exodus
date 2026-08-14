@@ -10,5 +10,4 @@ var GetSubscriptionByShortUuidCommand;
     GetSubscriptionByShortUuidCommand.RequestParamSchema = zod_1.z.object({
         shortUuid: zod_1.z.string(),
     });
-
 })(GetSubscriptionByShortUuidCommand || (exports.GetSubscriptionByShortUuidCommand = GetSubscriptionByShortUuidCommand = {}));

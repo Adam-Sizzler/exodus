@@ -12,5 +12,4 @@ var AddUsersToExternalSquadCommand;
     AddUsersToExternalSquadCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid().describe('UUID of the external squad'),
     });
-
 })(AddUsersToExternalSquadCommand || (exports.AddUsersToExternalSquadCommand = AddUsersToExternalSquadCommand = {}));

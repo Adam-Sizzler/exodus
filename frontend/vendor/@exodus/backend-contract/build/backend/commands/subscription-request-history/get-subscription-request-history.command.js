@@ -17,5 +17,4 @@ var GetSubscriptionRequestHistoryCommand;
             total: zod_1.z.number(),
         }),
     });
-
 })(GetSubscriptionRequestHistoryCommand || (exports.GetSubscriptionRequestHistoryCommand = GetSubscriptionRequestHistoryCommand = {}));

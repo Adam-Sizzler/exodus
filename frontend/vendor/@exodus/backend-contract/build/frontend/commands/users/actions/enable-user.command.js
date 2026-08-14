@@ -15,5 +15,4 @@ var EnableUserCommand;
         userId: models_1.numberParamSchema,
     });
     EnableUserCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(EnableUserCommand || (exports.EnableUserCommand = EnableUserCommand = {}));

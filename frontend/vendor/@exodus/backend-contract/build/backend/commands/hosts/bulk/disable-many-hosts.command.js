@@ -12,5 +12,4 @@ var BulkDisableHostsCommand;
     BulkDisableHostsCommand.RequestBodySchema = zod_1.z.object({
         uuids: zod_1.z.array(zod_1.z.uuid()),
     });
-
 })(BulkDisableHostsCommand || (exports.BulkDisableHostsCommand = BulkDisableHostsCommand = {}));

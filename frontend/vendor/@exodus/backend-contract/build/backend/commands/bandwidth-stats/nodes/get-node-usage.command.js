@@ -35,5 +35,4 @@ var GetNodeUsageCommand;
             })),
         }),
     });
-
 })(GetNodeUsageCommand || (exports.GetNodeUsageCommand = GetNodeUsageCommand = {}));

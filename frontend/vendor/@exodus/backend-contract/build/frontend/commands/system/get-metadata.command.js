@@ -29,5 +29,4 @@ var GetMetadataCommand;
             }),
         }),
     });
-
 })(GetMetadataCommand || (exports.GetMetadataCommand = GetMetadataCommand = {}));

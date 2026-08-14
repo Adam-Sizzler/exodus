@@ -20,10 +20,11 @@ var GetUserSubscriptionRequestHistoryCommand;
                 id: zod_1.z.number(),
                 userId: zod_1.z.number(),
                 requestAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
+                srrResponseType: zod_1.z.string(),
                 requestIp: zod_1.z.string().optional().nullable(),
                 userAgent: zod_1.z.string().optional().nullable(),
+                srrRuleName: zod_1.z.string().optional().nullable(),
             })),
         }),
     });
-
 })(GetUserSubscriptionRequestHistoryCommand || (exports.GetUserSubscriptionRequestHistoryCommand = GetUserSubscriptionRequestHistoryCommand = {}));

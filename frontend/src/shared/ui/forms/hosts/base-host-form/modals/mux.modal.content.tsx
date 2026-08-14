@@ -46,10 +46,19 @@ const MUX_PLACEHOLDER_BY_CORE: Record<MuxCore, string> = {
     XRAY: BASIC_XRAY_MUX_PARAMS
 }
 
-const MUX_DOCS_BY_CORE: Record<MuxCore, string> = {
-    CLASH: 'https://wiki.metacubex.one/en/config/proxies/',
-    SINGBOX: 'https://sing-box.sagernet.org/configuration/shared/multiplex/',
-    XRAY: 'https://xtls.github.io/ru/config/outbound.html#muxobject'
+const MUX_DOCS_BY_CORE: Record<MuxCore, { labelKey: string; url: string }> = {
+    CLASH: {
+        labelKey: 'base-host-form.mihomo-documentation',
+        url: 'https://wiki.metacubex.one/en/config/proxies/'
+    },
+    SINGBOX: {
+        labelKey: 'base-host-form.singbox-documentation',
+        url: 'https://sing-box.sagernet.org/configuration/shared/multiplex/'
+    },
+    XRAY: {
+        labelKey: 'base-host-form.xtls-documentation',
+        url: 'https://xtls.github.io/ru/config/outbound.html#muxobject'
+    }
 }
 
 export const MuxModalContent = ({ form }: IProps) => {
@@ -119,11 +128,11 @@ export const MuxModalContent = ({ form }: IProps) => {
                 <Text c="dimmed" size="sm">
                     {t('base-host-form.for-more-information-refer-to')}{' '}
                     <Anchor
-                        href={MUX_DOCS_BY_CORE[activeCore]}
+                        href={MUX_DOCS_BY_CORE[activeCore].url}
                         rel="noopener noreferrer"
                         target="_blank"
                     >
-                        {t('base-host-form.xtls-documentation')}
+                        {t(MUX_DOCS_BY_CORE[activeCore].labelKey as never)}
                     </Anchor>
                     .
                 </Text>

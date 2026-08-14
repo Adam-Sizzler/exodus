@@ -13,5 +13,4 @@ var BulkDeleteUsersByStatusCommand;
     BulkDeleteUsersByStatusCommand.RequestBodySchema = zod_1.z.object({
         status: models_1.UsersSchema.shape.status,
     });
-
 })(BulkDeleteUsersByStatusCommand || (exports.BulkDeleteUsersByStatusCommand = BulkDeleteUsersByStatusCommand = {}));

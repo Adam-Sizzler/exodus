@@ -21,5 +21,4 @@ var GetSubpageConfigByShortUuidCommand;
             webpageAllowed: zod_1.z.boolean(),
         }),
     });
-
 })(GetSubpageConfigByShortUuidCommand || (exports.GetSubpageConfigByShortUuidCommand = GetSubpageConfigByShortUuidCommand = {}));

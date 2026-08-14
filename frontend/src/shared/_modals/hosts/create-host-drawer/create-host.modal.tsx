@@ -55,6 +55,14 @@ export const CreateHostDrawer = NiceModal.create(() => {
             port: 0,
             remark: '',
             address: '',
+            xhttpExtraParams: '',
+            muxParams: '',
+            singboxMuxParams: '',
+            clashMuxParams: '',
+            singboxCustomParams: '',
+            mihomoCustomParams: '',
+            sockoptParams: '',
+            finalMask: '',
             inbound: {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''

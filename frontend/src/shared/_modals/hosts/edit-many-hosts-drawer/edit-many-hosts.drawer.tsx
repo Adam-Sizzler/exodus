@@ -21,7 +21,7 @@ import {
 } from '@shared/api/hooks'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { parseJsonField } from '@shared/utils/misc'
+import { parseJsonField, parseYamlField } from '@shared/utils/misc'
 
 interface IProps {
     uuids: string[]
@@ -113,6 +113,12 @@ export const EditManyHostsDrawer = NiceModal.create((props: IProps) => {
         }
         const valuesAny = values as any
         const dirtyValuesAny = dirtyValues as any
+        if (form.isDirty('singboxMuxParams' as never)) {
+            dirtyValuesAny.singboxMuxParams = parseJsonField(valuesAny.singboxMuxParams)
+        }
+        if (form.isDirty('clashMuxParams' as never)) {
+            dirtyValuesAny.clashMuxParams = parseYamlField(valuesAny.clashMuxParams)
+        }
         if (form.isDirty('singboxCustomParams' as never)) {
             dirtyValuesAny.singboxCustomParams = parseJsonField(valuesAny.singboxCustomParams)
         }

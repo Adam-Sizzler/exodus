@@ -1,4 +1,4 @@
-import z from 'zod';
+import { z } from 'zod';
 declare const HostSelectorSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
     type: z.ZodLiteral<"uuids">;
     values: z.ZodArray<z.ZodUUID>;

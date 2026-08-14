@@ -17,5 +17,4 @@ var GetHwidDevicesCommand;
             total: zod_1.z.number(),
         }),
     });
-
 })(GetHwidDevicesCommand || (exports.GetHwidDevicesCommand = GetHwidDevicesCommand = {}));

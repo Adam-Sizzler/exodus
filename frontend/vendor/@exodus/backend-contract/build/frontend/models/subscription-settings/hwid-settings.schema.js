@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HwidSettingsSchema = void 0;
-const zod_1 = require("zod");
-exports.HwidSettingsSchema = (zod_1.z || zod_1.default.z || zod_1.default).object({
-    enabled: (zod_1.z || zod_1.default.z || zod_1.default).boolean(),
-    fallbackDeviceLimit: (zod_1.z || zod_1.default.z || zod_1.default).number(),
-    maxDevicesAnnounce: (zod_1.z || zod_1.default.z || zod_1.default).nullable((zod_1.z || zod_1.default.z || zod_1.default).string().max(200)),
+const zod_1 = __importDefault(require("zod"));
+exports.HwidSettingsSchema = zod_1.default.object({
+    enabled: zod_1.default.boolean(),
+    fallbackDeviceLimit: zod_1.default.number(),
+    maxDevicesAnnounce: zod_1.default.nullable(zod_1.default.string().max(200)),
 });

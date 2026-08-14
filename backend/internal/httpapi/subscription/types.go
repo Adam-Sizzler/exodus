@@ -98,6 +98,12 @@ type SubscriptionUser struct {
 	TrafficLimitBytes    int64
 	TrafficLimitStrategy string
 	ExpireAt             time.Time
+	LastTrafficResetAt   *time.Time
+	CreatedAt            time.Time
+	Description          *string
+	Tag                  *string
+	TelegramID           *int64
+	Email                *string
 	TrojanPassword       string
 	VlessUUID            string
 	SSPassword           string

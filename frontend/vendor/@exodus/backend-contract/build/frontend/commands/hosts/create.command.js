@@ -27,8 +27,14 @@ var CreateHostCommand;
         securityLayer: zod_1.z.optional(zod_1.z.enum(constants_1.SECURITY_LAYERS).default(constants_1.SECURITY_LAYERS.DEFAULT)),
         xhttpExtraParams: zod_1.z.unknown().nullish(),
         muxParams: zod_1.z.unknown().nullish(),
+        singboxMuxParams: zod_1.z.unknown().nullish(),
+        clashMuxParams: zod_1.z.string().nullish(),
+        singboxCustomParams: zod_1.z.unknown().nullish(),
+        mihomoCustomParams: zod_1.z.string().nullish(),
         sockoptParams: zod_1.z.unknown().nullish(),
         finalMask: zod_1.z.unknown().nullish(),
+        overrideProtocolCredential: zod_1.z.optional(zod_1.z.boolean().default(false)),
+        protocolCredential: zod_1.z.string().nullish(),
         serverDescription: zod_1.z.string().max(30).nullish(),
         tags: zod_1.z.optional(zod_1.z
             .array(zod_1.z
@@ -55,5 +61,4 @@ var CreateHostCommand;
             .describe('Optional. Subscription types from which the host will be excluded from.'),
     });
     CreateHostCommand.ResponseSchema = host_response_1.HostResponseSchema;
-
 })(CreateHostCommand || (exports.CreateHostCommand = CreateHostCommand = {}));

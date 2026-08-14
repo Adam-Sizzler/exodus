@@ -22,6 +22,4 @@ var ReorderConfigProfileCommand;
             configProfiles: zod_1.z.array(models_1.ConfigProfileSchema),
         }),
     });
-
 })(ReorderConfigProfileCommand || (exports.ReorderConfigProfileCommand = ReorderConfigProfileCommand = {}));
-

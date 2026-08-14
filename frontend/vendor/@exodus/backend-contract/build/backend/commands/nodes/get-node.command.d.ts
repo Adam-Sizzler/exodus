@@ -9,6 +9,7 @@ export declare namespace GetNodeCommand {
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             uuid: z.ZodUUID;
+            id: z.ZodNumber;
             name: z.ZodString;
             address: z.ZodString;
             port: z.ZodNullable<z.ZodInt>;
@@ -81,7 +82,7 @@ export declare namespace GetNodeCommand {
                 }, z.core.$strip>;
             }, z.core.$strip>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, z.core.$strip>>;
             singboxUptime: z.ZodNumber;

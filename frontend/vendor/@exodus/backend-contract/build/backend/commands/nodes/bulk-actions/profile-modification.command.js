@@ -16,5 +16,4 @@ var BulkNodesProfileModificationCommand;
             activeInbounds: zod_1.z.array(zod_1.z.uuid()).min(1),
         }),
     });
-
 })(BulkNodesProfileModificationCommand || (exports.BulkNodesProfileModificationCommand = BulkNodesProfileModificationCommand = {}));

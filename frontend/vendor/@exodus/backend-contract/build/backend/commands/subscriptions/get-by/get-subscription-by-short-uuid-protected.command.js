@@ -16,5 +16,4 @@ var GetSubscriptionByShortUuidProtectedCommand;
     GetSubscriptionByShortUuidProtectedCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionInfoSchema,
     });
-
 })(GetSubscriptionByShortUuidProtectedCommand || (exports.GetSubscriptionByShortUuidProtectedCommand = GetSubscriptionByShortUuidProtectedCommand = {}));

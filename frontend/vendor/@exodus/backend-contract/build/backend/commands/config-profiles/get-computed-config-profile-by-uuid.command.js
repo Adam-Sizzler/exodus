@@ -16,5 +16,4 @@ var GetComputedConfigProfileByUuidCommand;
     GetComputedConfigProfileByUuidCommand.ResponseSchema = zod_1.z.object({
         response: models_1.ConfigProfileSchema,
     });
-
 })(GetComputedConfigProfileByUuidCommand || (exports.GetComputedConfigProfileByUuidCommand = GetComputedConfigProfileByUuidCommand = {}));

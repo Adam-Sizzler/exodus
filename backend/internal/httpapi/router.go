@@ -196,11 +196,6 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/keygen", keygen.KeygenHandler(db, cfg))
 	mux.HandleFunc("/api/keygen/", keygen.KeygenHandler(db, cfg))
 
-	if asynqmonHandler, err := asynqmon.NewAsynqmon(cfg); err == nil {
-		mux.Handle("/api/queues/static/", asynqmonHandler)
-		mux.Handle("/api/queues/", auth.RequireAdminRoleHandler(asynqmonHandler))
-		mux.Handle("/api/queues", auth.RequireAdminRoleHandler(asynqmonHandler))
-	}
 	mux.HandleFunc("/api/passkeys/registration/options", passkeys.RegistrationOptionsHandler(db, cfg))
 	mux.HandleFunc("/api/passkeys/registration/verify", passkeys.VerifyRegistrationHandler(db, cfg))
 	mux.HandleFunc("/api/passkeys", passkeys.PasskeysHandler(db, cfg))

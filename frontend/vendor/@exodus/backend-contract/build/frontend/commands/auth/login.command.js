@@ -18,5 +18,4 @@ var LoginCommand;
             accessToken: zod_1.z.string(),
         }),
     });
-
 })(LoginCommand || (exports.LoginCommand = LoginCommand = {}));

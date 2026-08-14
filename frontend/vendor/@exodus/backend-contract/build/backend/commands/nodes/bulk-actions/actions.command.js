@@ -13,5 +13,4 @@ var BulkNodesActionsCommand;
         uuids: zod_1.z.array(zod_1.z.uuid()).min(1),
         action: zod_1.z.enum(constants_1.NODES_BULK_ACTIONS),
     });
-
 })(BulkNodesActionsCommand || (exports.BulkNodesActionsCommand = BulkNodesActionsCommand = {}));

@@ -48,5 +48,4 @@ var CreateNodeCommand;
         note: zod_1.z.optional(zod_1.z.string().max(255, 'Note must be less than 255 characters')),
     });
     CreateNodeCommand.ResponseSchema = node_response_1.NodeResponseSchema;
-
 })(CreateNodeCommand || (exports.CreateNodeCommand = CreateNodeCommand = {}));

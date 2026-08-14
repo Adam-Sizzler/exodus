@@ -18,5 +18,4 @@ var ConnectionsByUserCommand;
             jobId: zod_1.z.string(),
         }),
     });
-
 })(ConnectionsByUserCommand || (exports.ConnectionsByUserCommand = ConnectionsByUserCommand = {}));

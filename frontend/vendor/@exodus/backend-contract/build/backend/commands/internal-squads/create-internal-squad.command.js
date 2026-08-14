@@ -21,5 +21,4 @@ var CreateInternalSquadCommand;
     CreateInternalSquadCommand.ResponseSchema = zod_1.z.object({
         response: models_1.InternalSquadSchema,
     });
-
 })(CreateInternalSquadCommand || (exports.CreateInternalSquadCommand = CreateInternalSquadCommand = {}));

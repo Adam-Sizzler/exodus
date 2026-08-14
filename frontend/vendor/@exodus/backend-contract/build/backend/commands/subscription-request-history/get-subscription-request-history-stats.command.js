@@ -22,5 +22,4 @@ var GetSubscriptionRequestHistoryStatsCommand;
             })),
         }),
     });
-
 })(GetSubscriptionRequestHistoryStatsCommand || (exports.GetSubscriptionRequestHistoryStatsCommand = GetSubscriptionRequestHistoryStatsCommand = {}));

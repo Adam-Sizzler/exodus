@@ -14,5 +14,4 @@ var DisableNodeCommand;
         uuid: zod_1.z.uuid(),
     });
     DisableNodeCommand.ResponseSchema = node_response_1.NodeResponseSchema;
-
 })(DisableNodeCommand || (exports.DisableNodeCommand = DisableNodeCommand = {}));

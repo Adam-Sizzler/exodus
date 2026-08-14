@@ -34,5 +34,4 @@ var BulkNodesUpdateCommand;
             note: zod_1.z.optional(zod_1.z.string().max(255).nullable()),
         }),
     });
-
 })(BulkNodesUpdateCommand || (exports.BulkNodesUpdateCommand = BulkNodesUpdateCommand = {}));

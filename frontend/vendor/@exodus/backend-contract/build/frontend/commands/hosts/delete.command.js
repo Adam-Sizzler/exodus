@@ -12,5 +12,4 @@ var DeleteHostCommand;
     DeleteHostCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteHostCommand || (exports.DeleteHostCommand = DeleteHostCommand = {}));

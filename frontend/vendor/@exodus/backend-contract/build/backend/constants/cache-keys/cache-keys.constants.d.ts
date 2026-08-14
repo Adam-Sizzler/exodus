@@ -10,7 +10,7 @@ export declare const CACHE_KEYS: {
     readonly NODE_SYSTEM_STATS: (uuid: string) => string;
     readonly NODE_USERS_ONLINE: (uuid: string) => string;
     readonly NODE_VERSIONS: (uuid: string) => string;
-    readonly NODE_XRAY_UPTIME: (uuid: string) => string;
+    readonly NODE_SINGBOX_UPTIME: (uuid: string) => string;
     readonly RAW_INBOUND: (uuid: string) => string;
     readonly XRAY_JSON_TEMPLATE: (uuid: string) => string;
     readonly EXTERNAL_SQUAD_TEMPLATE_NAME: (uuid: string, type: TSubscriptionTemplateType) => string;
@@ -21,7 +21,7 @@ export declare const CACHE_KEYS_TTL: {
     readonly SUBSCRIPTION_SETTINGS: 3600;
     readonly NODE_SYSTEM_STATS: 30;
     readonly NODE_USERS_ONLINE: 16;
-    readonly NODE_XRAY_UPTIME: 16;
+    readonly NODE_SINGBOX_UPTIME: 16;
     readonly RAW_INBOUND: 3600;
     readonly XRAY_JSON_TEMPLATE: 3600;
     readonly EXTERNAL_SQUAD_TEMPLATE_NAME: 3600;

@@ -29,6 +29,10 @@ export declare namespace UpdateManyHostsCommand {
         }>>>;
         xhttpExtraParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
         muxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        singboxMuxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        clashMuxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        singboxCustomParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        mihomoCustomParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         sockoptParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
         finalMask: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
         inbound: z.ZodOptional<z.ZodOptional<z.ZodObject<{
@@ -39,6 +43,8 @@ export declare namespace UpdateManyHostsCommand {
         isHidden: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
         overrideSniFromAddress: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
         keepSniBlank: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        overrideProtocolCredential: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        protocolCredential: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         vlessRouteId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodInt>>>;
         pinnedPeerCertSha256: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         verifyPeerCertByName: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;

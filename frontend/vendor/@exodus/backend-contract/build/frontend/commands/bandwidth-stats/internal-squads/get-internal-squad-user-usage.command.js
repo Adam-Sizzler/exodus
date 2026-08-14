@@ -31,5 +31,4 @@ var GetInternalSquadUserUsageCommand;
             })),
         }),
     });
-
 })(GetInternalSquadUserUsageCommand || (exports.GetInternalSquadUserUsageCommand = GetInternalSquadUserUsageCommand = {}));

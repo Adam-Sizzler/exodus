@@ -4,10 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResponseRuleModificationsSchema = exports.ResponseRuleEncryptionSchema = void 0;
-const zod_1 = require("zod");
-exports.ResponseRuleEncryptionSchema = (zod_1.z || zod_1.default.z || zod_1.default).object({
-    method: (zod_1.z || zod_1.default.z || zod_1.default).enum(['age1', 'age1pq1']),
-    key: (zod_1.z || zod_1.default.z || zod_1.default).string(),
+const zod_1 = __importDefault(require("zod"));
+exports.ResponseRuleEncryptionSchema = zod_1.default.object({
+    method: zod_1.default.enum(['age1', 'age1pq1']),
+    key: zod_1.default.string(),
 });
 exports.ResponseRuleModificationsSchema = zod_1.default
     .object({
@@ -21,7 +21,7 @@ exports.ResponseRuleModificationsSchema = zod_1.default
             title: 'Header Key',
             markdownDescription: 'Key of the response header. Must comply with RFC 7230.',
         }),
-        value: (zod_1.z || zod_1.default.z || zod_1.default).string().min(1).meta({
+        value: zod_1.default.string().min(1).meta({
             title: 'Header Value',
             markdownDescription: 'Value of the response header.',
         }),
@@ -46,7 +46,7 @@ exports.ResponseRuleModificationsSchema = zod_1.default
         markdownDescription: 'Array of headers to be added when the rule is matched.',
     })
         .optional(),
-    applyHeadersToEnd: (zod_1.z || zod_1.default.z || zod_1.default).boolean().optional().meta({
+    applyHeadersToEnd: zod_1.default.boolean().optional().meta({
         title: 'Apply Headers to End',
         markdownDescription: 'By default, headers are added when forming the response. In some cases, headers set in SRR may be overridden by headers from other parts of the system. If you set this flag to **true**, headers from SRR will be added at the very end, just before the response is sent. In this case, SRR headers may override headers from other sections.',
     }),
@@ -58,16 +58,16 @@ exports.ResponseRuleModificationsSchema = zod_1.default
         title: 'Subscription Template',
         markdownDescription: 'Override the subscription template with the given name. If not provided, the default subscription template will be used. If the template name is not found, the default subscription template for this type will be used. **This modification have higher priority than settings from External Squads.**',
     }),
-    ignoreHostXrayJsonTemplate: (zod_1.z || zod_1.default.z || zod_1.default).boolean().optional().meta({
+    ignoreHostXrayJsonTemplate: zod_1.default.boolean().optional().meta({
         title: 'Ignore Host Xray Json Template',
         markdownDescription: "Each Host may have its own Xray Json Template. If you set this flag to **true**, the Xray Json Template defined by the SRR will be used. **The Host's Xray Json Template will be ignored.**",
     }),
-    ignoreServeJsonAtBaseSubscription: (zod_1.z || zod_1.default.z || zod_1.default).boolean().optional().meta({
+    ignoreServeJsonAtBaseSubscription: zod_1.default.boolean().optional().meta({
         title: 'Ignore Serve Json at Base Subscription',
         markdownDescription: 'If you set this flag to **true**, the **Serve JSON at Base Subscription** setting will be ignored (set to **false**).',
     }),
     additionalExtendedClientsRegex: zod_1.default
-        .array((zod_1.z || zod_1.default.z || zod_1.default).string().min(1))
+        .array(zod_1.default.string().min(1))
         .optional()
         .meta({
         markdownDescription: 'Additional regex patterns to match extended clients. Matched clients will receive `serverDescription` in the subscription response.\n\n' +
@@ -81,7 +81,7 @@ exports.ResponseRuleModificationsSchema = zod_1.default
             '- `^INCY/`\n\n' +
             '**Example:** `["^MyClient/", "^CustomApp\\\\/v2"]`',
     }),
-    disableHwidCheck: (zod_1.z || zod_1.default.z || zod_1.default).boolean().optional().meta({
+    disableHwidCheck: zod_1.default.boolean().optional().meta({
         title: 'Disable HWID Check',
         markdownDescription: 'If you set this flag to **true**, the HWID check will be disabled. **This modification have higher priority than settings from Subscription Settings.**',
     }),

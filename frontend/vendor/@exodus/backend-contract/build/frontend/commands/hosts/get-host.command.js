@@ -14,5 +14,4 @@ var GetHostCommand;
         uuid: zod_1.z.uuid(),
     });
     GetHostCommand.ResponseSchema = host_response_1.HostResponseSchema;
-
 })(GetHostCommand || (exports.GetHostCommand = GetHostCommand = {}));

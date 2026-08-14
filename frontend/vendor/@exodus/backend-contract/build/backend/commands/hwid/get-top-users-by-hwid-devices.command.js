@@ -31,5 +31,4 @@ var GetTopUsersByHwidDevicesCommand;
             total: zod_1.z.number(),
         }),
     });
-
 })(GetTopUsersByHwidDevicesCommand || (exports.GetTopUsersByHwidDevicesCommand = GetTopUsersByHwidDevicesCommand = {}));

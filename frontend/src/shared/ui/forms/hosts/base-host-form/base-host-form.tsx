@@ -1099,7 +1099,7 @@ export const BaseHostForm = <
                                     <SectionCard.Section>
                                         <BaseOverlayHeader
                                             iconColor="violet"
-                                            IconComponent={SingboxLogo}
+                                            IconComponent={XrayLogo}
                                             iconVariant="soft"
                                             title={t('base-host-form.xray-json-and-raw')}
                                             titleOrder={5}
@@ -1123,7 +1123,7 @@ export const BaseHostForm = <
                                                 )}
                                                 key={form.key('xrayJsonTemplateUuid')}
                                                 label={t('base-host-form.xray-json-template')}
-                                                leftSection={<SingboxLogo size={16} />}
+                                                leftSection={<XrayLogo size={16} />}
                                                 placeholder={t(
                                                     'base-host-form.select-a-xray-json-template'
                                                 )}

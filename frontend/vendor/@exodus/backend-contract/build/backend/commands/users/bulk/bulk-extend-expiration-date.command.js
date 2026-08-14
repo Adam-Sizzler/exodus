@@ -13,5 +13,4 @@ var BulkExtendExpirationDateCommand;
         userIds: zod_1.z.array(zod_1.z.number()).min(1).max(500),
         extendDays: zod_1.z.int().min(1).max(9999),
     });
-
 })(BulkExtendExpirationDateCommand || (exports.BulkExtendExpirationDateCommand = BulkExtendExpirationDateCommand = {}));

@@ -118,5 +118,4 @@ var CreateUserCommand;
             .describe('Optional. External squad UUID.'),
     });
     CreateUserCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(CreateUserCommand || (exports.CreateUserCommand = CreateUserCommand = {}));

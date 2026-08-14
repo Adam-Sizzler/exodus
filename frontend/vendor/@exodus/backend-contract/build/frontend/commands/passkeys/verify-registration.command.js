@@ -17,5 +17,4 @@ var VerifyPasskeyRegistrationCommand;
             verified: zod_1.z.boolean(),
         }),
     });
-
 })(VerifyPasskeyRegistrationCommand || (exports.VerifyPasskeyRegistrationCommand = VerifyPasskeyRegistrationCommand = {}));

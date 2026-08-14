@@ -1,7 +1,7 @@
 {
   "constants": {
     "dashboard": "Dashboard",
-    "config": "Xray Config",
+    "config": "Singbox Config",
     "home": "Home",
     "hosts": "Hosts",
     "nodes": "Nodes",
@@ -125,7 +125,7 @@
       "failed-to-save-invalid-json": "Failed to save, invalid JSON.",
       "error": "Error",
       "save-anyway": "Save anyway",
-      "save-anyway-description": "Are you sure you want to save invalid Xray config? This action\n                                    can lead to unexpected behavior. Continue only if you know what\n                                    you are doing.",
+      "save-anyway-description": "Are you sure you want to save invalid Singbox config? This action\n                                    can lead to unexpected behavior. Continue only if you know what\n                                    you are doing.",
       "load-from-github": "Load from GitHub",
       "tools": "Tools",
       "copy-all-content": "Copy all content",
@@ -199,9 +199,9 @@
       "restart-all-nodes": "Restart all nodes",
       "search-nodes": "Search nodes",
       "force-restart": "Force restart",
-      "force-restart-description": "will guarantee that all nodes will fully restart Xray Core.",
+      "force-restart-description": "will guarantee that all nodes will fully restart Singbox Core.",
       "graceful-restart": "Graceful restart",
-      "graceful-restart-description-1": "will send a request to all nodes to restart Xray, but request can be unfulfilled if the node hash is the same as the current one. This is the default option.",
+      "graceful-restart-description-1": "will send a request to all nodes to restart Singbox, but request can be unfulfilled if the node hash is the same as the current one. This is the default option.",
       "force": "Force",
       "graceful": "Graceful"
     }
@@ -252,13 +252,13 @@
       "remark-description-line-2": "The remark will be displayed in the list of available servers in the end client.",
       "inbound": "Inbound",
       "inbound-line-1": "It is necessary to select an inbound to which a host will be bound.",
-      "inbound-line-2": "The list of inbounds is derived from the \"Xray Config\".",
+      "inbound-line-2": "The list of inbounds is derived from the \"Singbox Config\".",
       "address-and-port": "Address and port",
       "address-and-port-line-1": "In most cases the IP/domain name should point to one of the connected nodes.",
       "address-and-port-line-2": "The port must be open and accessible for incoming connections.",
-      "address-and-port-line-3": "Usually the port should match the inbound port from the Xray configuration.",
+      "address-and-port-line-3": "Usually the port should match the inbound port from the Singbox configuration.",
       "advanced-settings": "\"Advanced Settings\" are additional parameters that can be used to further customize the host.",
-      "advanced-settings-2": "Anything specified in \"Advanced Settings\" will take a higher priority than what is specified in the Xray configuration."
+      "advanced-settings-2": "Anything specified in \"Advanced Settings\" will take a higher priority than what is specified in the Singbox configuration."
     }
   },
   "remark-info": {
@@ -418,6 +418,9 @@
     "please-ensure-you-provide-a-valid-json-mux-object": "Please ensure you provide a valid JSON MUX object.",
     "for-more-information-refer-to": "For more information, refer to",
     "xtls-documentation": "XTLS documentation",
+    "singbox-documentation": "Sing-box documentation",
+    "mihomo-documentation": "Mihomo documentation",
+    "custom-params-description": "Provide valid {{format}} for custom parameters for the {{core}} core.",
     "final-mask-description": "The finalMask override allows you to fine-tune the finalMask in cases where the server-side and client-side finalMask configurations need to differ.<br/><br/>FinalMask will only be applied to Xray-JSON and Base64 client output formats.<br/><br/>Make sure to review the <anchor>Xray documentation</anchor>.",
     "paste-default-mux-params": "Paste default Mux Params",
     "please-ensure-you-provide-a-valid-json-sockopt-object": "Please ensure you provide a valid JSON Sockopt object.",
@@ -834,11 +837,11 @@
   "active-sessions-drawer": {
     "widget": {
       "requirements": "Requirements",
-      "warning-activity": "An IP address will be shown when <highlight>Xray-Core</highlight> considers the <highlight>connection still open</highlight>. This may result in some displayed IP addresses that are no longer actually connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
+      "warning-activity": "An IP address will be shown when <highlight>Singbox-Core</highlight> considers the <highlight>connection still open</highlight>. This may result in some displayed IP addresses that are no longer actually connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
       "warning-version": "Exodus Node version <highlight>{{version}}</highlight> or higher",
       "warning-docker": "Add the following to <highlight>docker-compose.yml</highlight> of Exodus Node (/opt/remnanode)",
       "warning-patience": "Fetching data may take some time, do not close this window!",
-      "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> operations to gRPC API of <highlight>Xray-Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
+      "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> operations to gRPC API of <highlight>Singbox-Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
       "get-data": "Get Data",
       "fetching": "Fetching active sessions...",
       "progress": "Completed {{completed}} of {{total}} nodes",
@@ -1064,9 +1067,8 @@
       "nodes": "Nodes",
       "download": "Download",
       "quick-view": "Quick view",
-      "edit-xray-config": "Edit Xray Config",
-      "xray-config": "Xray Config",
-      "edit-singbox-config": "Singbox Config"
+      "edit-singbox-config": "Edit Singbox Config",
+      "singbox-config": "Singbox Config"
     }
   },
   "config-profiles-header": {
@@ -1384,7 +1386,7 @@
     "feature": {
       "create-config-profile": "Create Config Profile",
       "create-a-new-config-profile-by-entering-a-name-below": "Create a new config profile by entering a name below.",
-      "you-can-customize-xray-config-after-creation": "You can customize XRay config after creation.",
+      "you-can-customize-singbox-config-after-creation": "You can customize Singbox config after creation.",
       "profile-name": "Profile Name",
       "enter-profile-name": "Enter profile name"
     }
@@ -1392,8 +1394,8 @@
   "restart-node-button": {
     "feature": {
       "restart": "Restart",
-      "restart-description-line-1": "ensures that the node completely restarts the Xray core. It is recommended option.",
-      "restart-description-line-2": "will send a request to this node to restart Xray, but request can be unfulfilled if the node hash is the same as the current one."
+      "restart-description-line-1": "ensures that the node completely restarts the Singbox core. It is recommended option.",
+      "restart-description-line-2": "will send a request to this node to restart Singbox, but request can be unfulfilled if the node hash is the same as the current one."
     }
   },
   "node-details-card": {
@@ -1406,7 +1408,6 @@
       "enable-node": "Enable Node",
       "disable-node": "Disable Node",
       "config-profile-or-inbounds-is-missing": "Config profile or inbounds is missing",
-      "xray-core-version": "Xray Core Version",
       "exodus-node-version": "Node version, @exodus/node",
       "singbox-core-version": "Singbox Core Version"
     }
@@ -1454,7 +1455,6 @@
     "card": {
       "stats": "Stats",
       "traffic-refill-in-days": "Traffic refill in (days):",
-      "represents-the-uptime-of-the-xray-core": "Represents the uptime of the Xray Core",
       "represents-the-uptime-of-the-singbox-core": "Represents the uptime of the Singbox Core",
       "represents-the-uptime-of-the-subscription-node-container": "Represents the subscription node container uptime"
     }
@@ -1608,7 +1608,6 @@
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Establishing mTLS connection...",
-    "xray-core-is-up-and-running": "Xray Core is up and running!",
     "exodus-will-try-to-reconnect-shortly": "Exodus will try to reconnect shortly...",
     "no-errros-so-far": "No errros so far",
     "last-error-message": "Last error message",
@@ -1883,7 +1882,6 @@
     "traffic-used": "Traffic Used",
     "config-profile": "Config Profile",
     "inbounds": "Inbounds",
-    "xray-v": "Xray V.",
     "node-v": "Node V.",
     "provider": "Provider",
     "tags": "Tags",

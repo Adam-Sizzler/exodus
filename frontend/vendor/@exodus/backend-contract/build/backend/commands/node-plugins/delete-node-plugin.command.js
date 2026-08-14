@@ -12,5 +12,4 @@ var DeleteNodePluginCommand;
     DeleteNodePluginCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteNodePluginCommand || (exports.DeleteNodePluginCommand = DeleteNodePluginCommand = {}));

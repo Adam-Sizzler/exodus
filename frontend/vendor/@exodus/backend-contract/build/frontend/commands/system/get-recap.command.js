@@ -28,5 +28,4 @@ var GetRecapCommand;
                 .transform((str) => new Date(str)),
         }),
     });
-
 })(GetRecapCommand || (exports.GetRecapCommand = GetRecapCommand = {}));

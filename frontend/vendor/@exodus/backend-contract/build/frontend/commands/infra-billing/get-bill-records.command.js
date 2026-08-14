@@ -28,5 +28,4 @@ var GetInfraBillingRecordsCommand;
             total: zod_1.z.number(),
         }),
     });
-
 })(GetInfraBillingRecordsCommand || (exports.GetInfraBillingRecordsCommand = GetInfraBillingRecordsCommand = {}));

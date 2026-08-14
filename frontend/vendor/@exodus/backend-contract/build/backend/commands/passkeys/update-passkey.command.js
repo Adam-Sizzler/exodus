@@ -33,5 +33,4 @@ var UpdatePasskeyCommand;
             })),
         }),
     });
-
 })(UpdatePasskeyCommand || (exports.UpdatePasskeyCommand = UpdatePasskeyCommand = {}));

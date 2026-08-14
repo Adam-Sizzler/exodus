@@ -18,5 +18,4 @@ var ExtendUserCommand;
         days: zod_1.z.number().min(1).describe('The number of days to extend the expiration date.'),
     });
     ExtendUserCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(ExtendUserCommand || (exports.ExtendUserCommand = ExtendUserCommand = {}));

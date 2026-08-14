@@ -17,5 +17,4 @@ var OAuth2AuthorizeCommand;
             authorizationUrl: zod_1.z.nullable(zod_1.z.url()),
         }),
     });
-
 })(OAuth2AuthorizeCommand || (exports.OAuth2AuthorizeCommand = OAuth2AuthorizeCommand = {}));

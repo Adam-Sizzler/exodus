@@ -21,5 +21,4 @@ var GetInboundsByProfileUuidCommand;
             })),
         }),
     });
-
 })(GetInboundsByProfileUuidCommand || (exports.GetInboundsByProfileUuidCommand = GetInboundsByProfileUuidCommand = {}));

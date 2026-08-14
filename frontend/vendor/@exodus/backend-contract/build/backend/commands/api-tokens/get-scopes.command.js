@@ -27,5 +27,4 @@ var GetApiTokenScopesCommand;
             resources: zod_1.z.array(GetApiTokenScopesCommand.ResourceScopesSchema),
         }),
     });
-
 })(GetApiTokenScopesCommand || (exports.GetApiTokenScopesCommand = GetApiTokenScopesCommand = {}));

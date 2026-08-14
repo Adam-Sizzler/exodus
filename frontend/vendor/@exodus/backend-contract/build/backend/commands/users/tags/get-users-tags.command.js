@@ -14,5 +14,4 @@ var GetUsersTagsCommand;
             tags: zod_1.z.array(zod_1.z.string()),
         }),
     });
-
 })(GetUsersTagsCommand || (exports.GetUsersTagsCommand = GetUsersTagsCommand = {}));

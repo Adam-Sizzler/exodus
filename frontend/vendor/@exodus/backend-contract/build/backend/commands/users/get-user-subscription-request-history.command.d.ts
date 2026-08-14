@@ -13,8 +13,10 @@ export declare namespace GetUserSubscriptionRequestHistoryCommand {
                 id: z.ZodNumber;
                 userId: z.ZodNumber;
                 requestAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
+                srrResponseType: z.ZodString;
                 requestIp: z.ZodNullable<z.ZodOptional<z.ZodString>>;
                 userAgent: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+                srrRuleName: z.ZodNullable<z.ZodOptional<z.ZodString>>;
             }, z.core.$strip>>;
         }, z.core.$strip>;
     }, z.core.$strip>;

@@ -32,5 +32,4 @@ var CreateInfraBillingNodeCommand;
             }),
         }),
     });
-
 })(CreateInfraBillingNodeCommand || (exports.CreateInfraBillingNodeCommand = CreateInfraBillingNodeCommand = {}));

@@ -57,5 +57,4 @@ var UpdateUserCommand;
         error: 'At least one of username, id must be provided',
     });
     UpdateUserCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(UpdateUserCommand || (exports.UpdateUserCommand = UpdateUserCommand = {}));

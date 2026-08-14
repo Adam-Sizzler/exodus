@@ -49,7 +49,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, [])
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             if (!token) {
                 setIsAuthenticated(false)
                 setIsInitialized(true)

@@ -22,6 +22,4 @@ var ReorderNodePluginCommand;
             nodePlugins: zod_1.z.array(models_1.NodePluginSchema),
         }),
     });
-
 })(ReorderNodePluginCommand || (exports.ReorderNodePluginCommand = ReorderNodePluginCommand = {}));
-

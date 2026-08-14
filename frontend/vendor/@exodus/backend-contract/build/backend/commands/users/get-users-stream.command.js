@@ -48,5 +48,4 @@ var GetUsersStreamCommand;
             hasMore: zod_1.z.boolean().describe('Whether there are more results to fetch'),
         }),
     });
-
 })(GetUsersStreamCommand || (exports.GetUsersStreamCommand = GetUsersStreamCommand = {}));

@@ -18,5 +18,4 @@ var GetUserMetadataCommand;
             metadata: zod_1.z.looseObject({}),
         }),
     });
-
 })(GetUserMetadataCommand || (exports.GetUserMetadataCommand = GetUserMetadataCommand = {}));

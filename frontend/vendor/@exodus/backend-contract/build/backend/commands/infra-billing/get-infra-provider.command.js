@@ -16,5 +16,4 @@ var GetInfraProviderCommand;
     GetInfraProviderCommand.ResponseSchema = zod_1.z.object({
         response: models_1.InfraProviderSchema,
     });
-
 })(GetInfraProviderCommand || (exports.GetInfraProviderCommand = GetInfraProviderCommand = {}));

@@ -25,6 +25,8 @@ export declare const ExodusSubscriptionRequestStreamMessageSchema: z.ZodObject<{
     requestAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
     requestIp: z.ZodOptional<z.ZodString>;
     userAgent: z.ZodOptional<z.ZodString>;
+    srrRuleName: z.ZodOptional<z.ZodString>;
+    srrResponseType: z.ZodString;
 }, z.core.$strip>;
 export type TExodusSubscriptionRequestStreamMessage = z.infer<typeof ExodusSubscriptionRequestStreamMessageSchema>;
 export declare const NODE_CONNECTIONS_STREAM_MESSAGE_VERSION = "1";

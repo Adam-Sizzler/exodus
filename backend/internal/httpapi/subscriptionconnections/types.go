@@ -52,6 +52,7 @@ type providerResponse struct {
 }
 
 type nodeAPI struct {
+	ID                      int64      `json:"id"`
 	UUID                    string     `json:"uuid"`
 	Name                    string     `json:"name"`
 	Address                 string     `json:"address"`

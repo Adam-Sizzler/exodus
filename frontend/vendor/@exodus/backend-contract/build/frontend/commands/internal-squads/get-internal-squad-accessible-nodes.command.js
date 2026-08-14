@@ -25,5 +25,4 @@ var GetInternalSquadAccessibleNodesCommand;
             })),
         }),
     });
-
 })(GetInternalSquadAccessibleNodesCommand || (exports.GetInternalSquadAccessibleNodesCommand = GetInternalSquadAccessibleNodesCommand = {}));

@@ -21,6 +21,7 @@
     "serve": "NODE_ENV=production tsc && vite build && vite preview --port 3333",
     "serve:dev": "tsc && vite build && vite preview --port 3333",
     "typecheck": "tsc --noEmit",
+    "build:contract": "npm --prefix vendor/@exodus/backend-contract run build",
     "generate-pwa-assets": "pwa-assets-generator --preset minimal-2023 public/favicons/logo.svg",
     "toc": "i18next-resources-for-ts toc -i ./public/locales/en -o @types/resources.ts",
     "crowdin:download": "crowdin download translations --language=af --branch=dev",

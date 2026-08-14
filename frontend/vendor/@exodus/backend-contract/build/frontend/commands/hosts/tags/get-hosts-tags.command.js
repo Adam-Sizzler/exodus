@@ -14,5 +14,4 @@ var GetHostsTagsCommand;
             tags: zod_1.z.array(zod_1.z.string()),
         }),
     });
-
 })(GetHostsTagsCommand || (exports.GetHostsTagsCommand = GetHostsTagsCommand = {}));

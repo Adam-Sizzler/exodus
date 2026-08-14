@@ -429,9 +429,9 @@ export declare const ERRORS: {
         readonly message: "Bulk disable hosts error";
         readonly httpCode: 500;
     };
-    readonly BULK_DELETE_USERS_BY_UUID_ERROR: {
+    readonly BULK_DELETE_USERS_BY_USER_IDS_ERROR: {
         readonly code: "A084";
-        readonly message: "Bulk delete users by UUID error";
+        readonly message: "Bulk delete users by user IDs error";
         readonly httpCode: 500;
     };
     readonly BULK_REVOKE_USERS_SUBSCRIPTION_ERROR: {
@@ -1133,6 +1133,11 @@ export declare const ERRORS: {
         readonly code: "A222";
         readonly message: "Invalid node plugin config";
         readonly httpCode: 400;
+        readonly withMessage: (message: string) => {
+            code: string;
+            message: string;
+            httpCode: number;
+        };
     };
     readonly NODE_PLUGIN_NAME_ALREADY_EXISTS: {
         readonly code: "A223";

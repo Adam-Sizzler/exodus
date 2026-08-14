@@ -20,5 +20,4 @@ var CreateApiTokenCommand;
             token: zod_1.z.string(),
         }),
     });
-
 })(CreateApiTokenCommand || (exports.CreateApiTokenCommand = CreateApiTokenCommand = {}));

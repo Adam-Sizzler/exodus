@@ -43,5 +43,4 @@ var ConnectionsByUserResultCommand;
                 .nullable(),
         }),
     });
-
 })(ConnectionsByUserResultCommand || (exports.ConnectionsByUserResultCommand = ConnectionsByUserResultCommand = {}));

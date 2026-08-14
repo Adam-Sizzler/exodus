@@ -12,5 +12,4 @@ var BulkDeleteHostsCommand;
     BulkDeleteHostsCommand.RequestBodySchema = zod_1.z.object({
         uuids: zod_1.z.array(zod_1.z.uuid()),
     });
-
 })(BulkDeleteHostsCommand || (exports.BulkDeleteHostsCommand = BulkDeleteHostsCommand = {}));

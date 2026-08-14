@@ -14,5 +14,4 @@ var GetUserByShortUuidCommand;
         shortUuid: zod_1.z.string(),
     });
     GetUserByShortUuidCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(GetUserByShortUuidCommand || (exports.GetUserByShortUuidCommand = GetUserByShortUuidCommand = {}));

@@ -19,36 +19,46 @@ const generateDefaultConfig = () => {
 
     return {
         log: {
-            loglevel: 'info'
+            level: 'info'
+        },
+        dns: {
+            servers: [
+                {
+                    tag: 'dns-remote',
+                    type: 'udp',
+                    server: '1.1.1.1',
+                    detour: 'direct'
+                }
+            ]
         },
         inbounds: [
             {
-                tag: `Shadowsocks_${randomNumber}`,
-                port: 1234,
-                protocol: 'shadowsocks',
-                settings: {
-                    clients: [],
-                    method: 'chacha20-ietf-poly1305',
-                    network: 'tcp,udp'
-                },
-                sniffing: {
-                    enabled: true,
-                    destOverride: ['http', 'tls', 'quic']
-                }
+                type: 'shadowsocks',
+                tag: `ss-in-${randomNumber}`,
+                listen: '127.0.0.1',
+                listen_port: 2080,
+                method: 'chacha20-ietf-poly1305'
+            },
+            {
+                type: 'trojan',
+                tag: `trojan-in-${randomNumber}`,
+                listen: '127.0.0.1',
+                listen_port: 2443,
+                users: []
             }
         ],
         outbounds: [
             {
-                protocol: 'freedom',
-                tag: 'DIRECT'
+                type: 'direct',
+                tag: 'direct'
             },
             {
-                protocol: 'blackhole',
-                tag: 'BLOCK'
+                type: 'block',
+                tag: 'block'
             }
         ],
-        routing: {
-            rules: []
+        route: {
+            final: 'direct'
         }
     }
 }
@@ -107,7 +117,7 @@ export const CreateConfigProfileContent = (props: IProps) => {
                     <br />
 
                     {t(
-                        'config-profiles-header-action-buttons.feature.you-can-customize-xray-config-after-creation'
+                        'config-profiles-header-action-buttons.feature.you-can-customize-singbox-config-after-creation'
                     )}
                 </Text>
                 <TextInput

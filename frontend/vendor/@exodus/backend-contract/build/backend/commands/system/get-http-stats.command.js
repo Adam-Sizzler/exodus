@@ -19,5 +19,4 @@ var GetHttpStatsCommand;
             total: zod_1.z.int32().nonnegative(),
         }),
     });
-
 })(GetHttpStatsCommand || (exports.GetHttpStatsCommand = GetHttpStatsCommand = {}));

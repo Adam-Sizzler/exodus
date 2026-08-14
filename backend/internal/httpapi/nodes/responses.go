@@ -34,6 +34,9 @@ func buildNodeResponses(ctx context.Context, repo *NodeRepository, cfg *config.B
 	for _, record := range records {
 		hot := hotCache[record.UUID]
 		var item nodeAPI
+		if record.ID != nil {
+			item.ID = *record.ID
+		}
 		item.UUID = record.UUID
 		item.Name = record.Name
 		item.Address = record.Address

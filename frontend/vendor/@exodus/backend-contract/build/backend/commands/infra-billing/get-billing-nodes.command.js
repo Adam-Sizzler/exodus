@@ -23,5 +23,4 @@ var GetInfraBillingNodesCommand;
             }),
         }),
     });
-
 })(GetInfraBillingNodesCommand || (exports.GetInfraBillingNodesCommand = GetInfraBillingNodesCommand = {}));

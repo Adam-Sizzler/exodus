@@ -21,5 +21,4 @@ var RegisterCommand;
             accessToken: zod_1.z.string(),
         }),
     });
-
 })(RegisterCommand || (exports.RegisterCommand = RegisterCommand = {}));

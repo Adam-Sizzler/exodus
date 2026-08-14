@@ -70,4 +70,3 @@ export declare namespace GetExodusSettingsCommand {
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-exodus-settings.command.d.ts.map
-export import GetExodusSettingsCommand = GetExodusSettingsCommand;

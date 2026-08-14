@@ -18,5 +18,4 @@ var GetSubpageConfigCommand;
             config: zod_1.z.unknown(),
         }),
     });
-
 })(GetSubpageConfigCommand || (exports.GetSubpageConfigCommand = GetSubpageConfigCommand = {}));

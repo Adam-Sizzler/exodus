@@ -31,5 +31,4 @@ var BulkAllUpdateUsersCommand;
             .nullable()),
         hwidDeviceLimit: zod_1.z.int().min(0).nullish(),
     });
-
 })(BulkAllUpdateUsersCommand || (exports.BulkAllUpdateUsersCommand = BulkAllUpdateUsersCommand = {}));

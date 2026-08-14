@@ -16,5 +16,4 @@ var GetExternalSquadsCommand;
             externalSquads: zod_1.z.array(models_1.ExternalSquadSchema),
         }),
     });
-
 })(GetExternalSquadsCommand || (exports.GetExternalSquadsCommand = GetExternalSquadsCommand = {}));

@@ -14,5 +14,4 @@ var GetUserByUsernameCommand;
         username: zod_1.z.string(),
     });
     GetUserByUsernameCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(GetUserByUsernameCommand || (exports.GetUserByUsernameCommand = GetUserByUsernameCommand = {}));

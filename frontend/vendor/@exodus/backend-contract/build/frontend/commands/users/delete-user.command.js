@@ -13,5 +13,4 @@ var DeleteUserCommand;
     DeleteUserCommand.RequestParamSchema = zod_1.z.object({
         userId: models_1.numberParamSchema,
     });
-
 })(DeleteUserCommand || (exports.DeleteUserCommand = DeleteUserCommand = {}));

@@ -16,5 +16,4 @@ var GetSubscriptionTemplateCommand;
     GetSubscriptionTemplateCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionTemplateSchema,
     });
-
 })(GetSubscriptionTemplateCommand || (exports.GetSubscriptionTemplateCommand = GetSubscriptionTemplateCommand = {}));

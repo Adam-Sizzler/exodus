@@ -14,5 +14,4 @@ var GetNodeSecretKeyCommand;
             secretKey: zod_1.z.string(),
         }),
     });
-
 })(GetNodeSecretKeyCommand || (exports.GetNodeSecretKeyCommand = GetNodeSecretKeyCommand = {}));

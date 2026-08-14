@@ -12,5 +12,4 @@ var DeleteInfraProviderCommand;
     DeleteInfraProviderCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteInfraProviderCommand || (exports.DeleteInfraProviderCommand = DeleteInfraProviderCommand = {}));

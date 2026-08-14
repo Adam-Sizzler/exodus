@@ -1,23 +1,25 @@
 package panelsettings
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"exodus/internal/config"
-	"exodus/internal/httpapi/auth"
+	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/security"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
-	BackendToolsAuthCookieName = "exodus_tools_session"
+	BackendToolsAuthCookieName = "ex-tools"
 	BackendToolsJWTIssuer      = "exodus"
 	BackendToolsJWTScopeAccess = "access"
 	BackendToolsJWTScopeOtt    = "ott"
-	BackendToolsJWTLifetime    = 24 * time.Hour
+	BackendToolsJWTLifetime = 2 * time.Hour
 )
 
 type ToolsClaims struct {
@@ -29,12 +31,14 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			secret := cfg.JWT.AuthSecret
+			if err := security.ValidateJWTSecret(secret); err != nil {
+				shared.WriteJSONError(w, http.StatusForbidden, "forbidden")
+				return
+			}
 
-			// 1. Check for ?ott= in query params
 			ott := r.URL.Query().Get("ott")
 			if ott != "" {
 				if verifyToolsJWT(ott, secret, BackendToolsJWTScopeOtt) {
-					// Issue 24h tools access cookie
 					accessToken, err := signToolsAccessJWT(secret)
 					if err == nil {
 						cookiePath := "/api/backend-tools"
@@ -47,13 +51,12 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 							Value:    accessToken,
 							Path:     cookiePath,
 							HttpOnly: true,
-							Secure:   false,
+							Secure:   middleware.IsSecureRequest(r, cfg),
 							SameSite: http.SameSiteLaxMode,
 							MaxAge:   int(BackendToolsJWTLifetime.Seconds()),
 						})
 					}
 
-					// Redirect back to current path without the ?ott param, preserving full original path
 					basePath := ""
 					if cfg != nil && cfg.Panel.BasePath != "" && cfg.Panel.BasePath != "/" {
 						basePath = strings.TrimRight(cfg.Panel.BasePath, "/")
@@ -78,17 +81,9 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 				return
 			}
 
-			// 2. Check for backend tools cookie
+			// 2. Check for backend tools cookie (ex-tools)
 			if cookie, err := r.Cookie(BackendToolsAuthCookieName); err == nil && cookie.Value != "" {
 				if verifyToolsJWT(cookie.Value, secret, BackendToolsJWTScopeAccess) {
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			// 3. Fallback: Allow if already authenticated as Admin via main session cookie / Bearer
-			if principal, ok := auth.CurrentAuthPrincipal(r.Context()); ok && principal != nil {
-				if principal.Role == "ADMIN" {
 					next.ServeHTTP(w, r)
 					return
 				}
@@ -115,8 +110,11 @@ func signToolsAccessJWT(secret string) (string, error) {
 
 func verifyToolsJWT(rawToken, secret, expectedScope string) bool {
 	token, err := jwt.ParseWithClaims(rawToken, &ToolsClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected jwt signing method: %v", t.Header["alg"])
+		}
 		return []byte(secret), nil
-	})
+	}, jwt.WithIssuer(BackendToolsJWTIssuer))
 	if err != nil || !token.Valid {
 		return false
 	}

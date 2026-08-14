@@ -22,6 +22,4 @@ var ReorderSubpageConfigsCommand;
             configs: zod_1.z.array(models_1.SubscriptionPageConfigSchema),
         }),
     });
-
 })(ReorderSubpageConfigsCommand || (exports.ReorderSubpageConfigsCommand = ReorderSubpageConfigsCommand = {}));
-

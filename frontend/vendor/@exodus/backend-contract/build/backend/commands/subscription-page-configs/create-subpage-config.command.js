@@ -20,5 +20,4 @@ var CreateSubpageConfigCommand;
     CreateSubpageConfigCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionPageConfigSchema,
     });
-
 })(CreateSubpageConfigCommand || (exports.CreateSubpageConfigCommand = CreateSubpageConfigCommand = {}));

@@ -12,5 +12,4 @@ var DeleteApiTokenCommand;
     DeleteApiTokenCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid().describe('UUID of the API token'),
     });
-
 })(DeleteApiTokenCommand || (exports.DeleteApiTokenCommand = DeleteApiTokenCommand = {}));

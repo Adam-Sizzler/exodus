@@ -29,5 +29,4 @@ var UpdateInfraBillingNodeCommand;
             }),
         }),
     });
-
 })(UpdateInfraBillingNodeCommand || (exports.UpdateInfraBillingNodeCommand = UpdateInfraBillingNodeCommand = {}));

@@ -400,9 +400,9 @@ exports.ERRORS = {
         message: 'Bulk disable hosts error',
         httpCode: 500,
     },
-    BULK_DELETE_USERS_BY_UUID_ERROR: {
+    BULK_DELETE_USERS_BY_USER_IDS_ERROR: {
         code: 'A084',
-        message: 'Bulk delete users by UUID error',
+        message: 'Bulk delete users by user IDs error',
         httpCode: 500,
     },
     BULK_REVOKE_USERS_SUBSCRIPTION_ERROR: {
@@ -1104,6 +1104,11 @@ exports.ERRORS = {
         code: 'A222',
         message: 'Invalid node plugin config',
         httpCode: 400,
+        withMessage: (message) => ({
+            code: 'A222',
+            message,
+            httpCode: 400,
+        }),
     },
     NODE_PLUGIN_NAME_ALREADY_EXISTS: {
         code: 'A223',

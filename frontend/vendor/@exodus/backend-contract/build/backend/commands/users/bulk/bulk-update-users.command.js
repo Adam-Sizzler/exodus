@@ -36,5 +36,4 @@ var BulkUpdateUsersCommand;
             externalSquadUuid: zod_1.z.uuid().nullish().describe('Optional. External squad UUID.'),
         }),
     });
-
 })(BulkUpdateUsersCommand || (exports.BulkUpdateUsersCommand = BulkUpdateUsersCommand = {}));

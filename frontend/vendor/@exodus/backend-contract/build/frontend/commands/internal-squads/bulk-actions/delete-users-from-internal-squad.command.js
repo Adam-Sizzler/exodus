@@ -12,5 +12,4 @@ var DeleteUsersFromInternalSquadCommand;
     DeleteUsersFromInternalSquadCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteUsersFromInternalSquadCommand || (exports.DeleteUsersFromInternalSquadCommand = DeleteUsersFromInternalSquadCommand = {}));

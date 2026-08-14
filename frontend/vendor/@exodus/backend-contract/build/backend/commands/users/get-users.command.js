@@ -20,5 +20,4 @@ var GetUsersCommand;
             total: zod_1.z.number(),
         }),
     });
-
 })(GetUsersCommand || (exports.GetUsersCommand = GetUsersCommand = {}));

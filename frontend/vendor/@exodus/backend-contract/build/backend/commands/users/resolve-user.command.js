@@ -28,5 +28,4 @@ var ResolveUserCommand;
             shortUuid: zod_1.z.string(),
         }),
     });
-
 })(ResolveUserCommand || (exports.ResolveUserCommand = ResolveUserCommand = {}));

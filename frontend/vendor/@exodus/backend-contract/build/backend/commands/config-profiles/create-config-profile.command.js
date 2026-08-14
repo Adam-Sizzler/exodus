@@ -21,5 +21,4 @@ var CreateConfigProfileCommand;
     CreateConfigProfileCommand.ResponseSchema = zod_1.z.object({
         response: models_1.ConfigProfileSchema,
     });
-
 })(CreateConfigProfileCommand || (exports.CreateConfigProfileCommand = CreateConfigProfileCommand = {}));

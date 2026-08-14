@@ -7,12 +7,15 @@ import {
     UpdateManyHostsCommand
 } from '@exodus/backend-contract'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export const CUSTOM_PARAMS_MODAL_ID = 'custom-params-modal'
 
 interface IProps {
     form: UseFormReturnType<
-        CreateHostCommand.Request | UpdateHostCommand.Request | UpdateManyHostsCommand.Request
+        | CreateHostCommand.RequestBody
+        | UpdateHostCommand.RequestBody
+        | UpdateManyHostsCommand.RequestBody
     >
 }
 
@@ -29,6 +32,7 @@ const CUSTOM_FIELD_BY_CORE: Record<CustomCore, 'singboxCustomParams' | 'mihomoCu
 }
 
 export const CustomParamsModalContent = ({ form }: IProps) => {
+    const { t } = useTranslation()
     const [activeCore, setActiveCore] = useState<CustomCore>('SINGBOX')
     const activeField = CUSTOM_FIELD_BY_CORE[activeCore]
     const isYamlCore = activeCore === 'MIHOMO'
@@ -60,19 +64,22 @@ export const CustomParamsModalContent = ({ form }: IProps) => {
                     label: option.label,
                     value: option.value
                 }))}
-                label="Core"
+                label={t('base-host-form.mux-core')}
                 onChange={(next) => setActiveCore((next as CustomCore) || 'SINGBOX')}
                 value={activeCore}
             />
 
             <Stack gap={0}>
                 <Text c="dimmed" size="sm">
-                    Provide valid {isYamlCore ? 'YAML' : 'JSON'} for custom parameters for the {activeCore} core.
+                    {t('base-host-form.custom-params-description' as never, {
+                        format: isYamlCore ? 'YAML' : 'JSON',
+                        core: activeCore
+                    })}
                 </Text>
             </Stack>
 
             <Button onClick={() => modals.close(CUSTOM_PARAMS_MODAL_ID)} variant="soft">
-                Close
+                {t('common.close')}
             </Button>
 
             {isYamlCore ? (
@@ -95,7 +102,7 @@ export const CustomParamsModalContent = ({ form }: IProps) => {
                     onBlur={inputProps.onBlur}
                     onChange={handleChange}
                     placeholder={`{\n  "packet_encoding": "xudp"\n}`}
-                    validationError="Invalid JSON"
+                    validationError={t('base-host-form.invalid-json')}
                     value={value}
                 />
             )}

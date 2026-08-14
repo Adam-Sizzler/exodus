@@ -7,6 +7,7 @@ const infra_provider_schema_1 = require("./infra-provider.schema");
 const node_system_schema_1 = require("./node-system.schema");
 exports.NodesSchema = zod_1.z.object({
     uuid: zod_1.z.uuid(),
+    id: zod_1.z.number(),
     name: zod_1.z.string(),
     address: zod_1.z.string(),
     port: zod_1.z.nullable(zod_1.z.int()),
@@ -14,8 +15,7 @@ exports.NodesSchema = zod_1.z.object({
     isConnected: zod_1.z.boolean(),
     isDisabled: zod_1.z.boolean(),
     isConnecting: zod_1.z.boolean(),
-    lastStatusChange: zod_1.z.nullable(zod_1.z.iso.datetime()
-        .transform((str) => new Date(str))),
+    lastStatusChange: zod_1.z.nullable(zod_1.z.iso.datetime().transform((str) => new Date(str))),
     lastStatusMessage: zod_1.z.nullable(zod_1.z.string()),
     isTrafficTrackingActive: zod_1.z.boolean(),
     trafficResetDay: zod_1.z.nullable(zod_1.z.int()),
@@ -27,10 +27,8 @@ exports.NodesSchema = zod_1.z.object({
     consumptionMultiplier: zod_1.z.number(),
     nodeConsumptionMultiplier: zod_1.z.number(),
     tags: zod_1.z.array(zod_1.z.string()),
-    createdAt: zod_1.z.iso.datetime()
-        .transform((str) => new Date(str)),
-    updatedAt: zod_1.z.iso.datetime()
-        .transform((str) => new Date(str)),
+    createdAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
+    updatedAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
     configProfile: zod_1.z.object({
         activeConfigProfileUuid: zod_1.z.nullable(zod_1.z.uuid()),
         activeInbounds: zod_1.z.array(config_profile_inbounds_schema_1.ConfigProfileInboundsSchema),
@@ -40,7 +38,7 @@ exports.NodesSchema = zod_1.z.object({
     activePluginUuid: zod_1.z.nullable(zod_1.z.uuid()),
     system: zod_1.z.nullable(node_system_schema_1.NodeSystemSchema),
     versions: zod_1.z.nullable(zod_1.z.object({
-        singbox: zod_1.z.string().optional(),
+        singbox: zod_1.z.string(),
         node: zod_1.z.string(),
     })),
     singboxUptime: zod_1.z.number(),

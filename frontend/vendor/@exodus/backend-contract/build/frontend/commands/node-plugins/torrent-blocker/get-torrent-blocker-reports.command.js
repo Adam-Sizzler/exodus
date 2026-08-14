@@ -17,5 +17,4 @@ var GetTorrentBlockerReportsCommand;
             total: zod_1.z.number(),
         }),
     });
-
 })(GetTorrentBlockerReportsCommand || (exports.GetTorrentBlockerReportsCommand = GetTorrentBlockerReportsCommand = {}));

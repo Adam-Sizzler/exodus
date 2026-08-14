@@ -5,7 +5,7 @@ import { PiTag } from 'react-icons/pi'
 import { TbChevronRight, TbCirclesRelation } from 'react-icons/tb'
 
 import { CountryFlag } from '@shared/ui/get-country-flag'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { SectionCard } from '@shared/ui/section-card'
 
 type ActiveNode = GetUserAccessibleNodesCommand.Response['response']['activeNodes'][number]
@@ -51,7 +51,7 @@ const renderTreeNode = ({ node, expanded, hasChildren, elementProps }: RenderTre
             {meta?.kind === 'node' && (
                 <Group gap={4} style={{ flexShrink: 0 }} wrap="nowrap">
                     <span style={{ margin: '0 6px', opacity: 0.5 }}>›</span>
-                    <XrayLogo size={14} />
+                    <SingboxLogo size={14} />
                     <Text c="dimmed" size="xs">
                         {meta.configProfileName}
                     </Text>

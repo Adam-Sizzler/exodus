@@ -17,5 +17,4 @@ var GetNodeMetadataCommand;
             metadata: zod_1.z.looseObject({}),
         }),
     });
-
 })(GetNodeMetadataCommand || (exports.GetNodeMetadataCommand = GetNodeMetadataCommand = {}));

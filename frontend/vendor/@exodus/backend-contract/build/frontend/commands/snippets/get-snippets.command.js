@@ -19,5 +19,4 @@ var GetSnippetsCommand;
             snippets: zod_1.z.array(models_1.SnippetsSchema),
         }),
     });
-
 })(GetSnippetsCommand || (exports.GetSnippetsCommand = GetSnippetsCommand = {}));

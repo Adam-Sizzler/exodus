@@ -16,5 +16,4 @@ var GetSubpageConfigsCommand;
             configs: zod_1.z.array(models_1.SubscriptionPageConfigSchema),
         }),
     });
-
 })(GetSubpageConfigsCommand || (exports.GetSubpageConfigsCommand = GetSubpageConfigsCommand = {}));

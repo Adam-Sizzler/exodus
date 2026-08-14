@@ -19,5 +19,4 @@ var GetUserHwidDevicesCommand;
             devices: zod_1.z.array(models_1.HwidUserDeviceSchema),
         }),
     });
-
 })(GetUserHwidDevicesCommand || (exports.GetUserHwidDevicesCommand = GetUserHwidDevicesCommand = {}));

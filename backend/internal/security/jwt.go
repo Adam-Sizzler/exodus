@@ -131,6 +131,13 @@ func signJWT(secret string, username *string, uuid, role string, lifetime time.D
 	return signed, expiresAt.Unix(), nil
 }
 
+// ValidateJWTSecret is the exported form of validateJWTSecret, for callers outside
+// this package that sign/verify JWTs directly (e.g. panelsettings.ToolsAuthMiddleware)
+// instead of going through this package's Sign*/Parse* helpers.
+func ValidateJWTSecret(secret string) error {
+	return validateJWTSecret(secret)
+}
+
 func validateJWTSecret(secret string) error {
 	secret = strings.TrimSpace(secret)
 	if secret == "" {

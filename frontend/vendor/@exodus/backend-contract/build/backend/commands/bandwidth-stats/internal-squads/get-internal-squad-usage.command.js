@@ -47,5 +47,4 @@ var GetInternalSquadUsageCommand;
             hasMore: zod_1.z.boolean().describe('Whether there are more results to fetch'),
         }),
     });
-
 })(GetInternalSquadUsageCommand || (exports.GetInternalSquadUsageCommand = GetInternalSquadUsageCommand = {}));

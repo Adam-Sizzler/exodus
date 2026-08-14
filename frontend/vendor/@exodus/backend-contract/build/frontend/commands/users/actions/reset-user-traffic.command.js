@@ -15,5 +15,4 @@ var ResetUserTrafficCommand;
         userId: models_1.numberParamSchema,
     });
     ResetUserTrafficCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(ResetUserTrafficCommand || (exports.ResetUserTrafficCommand = ResetUserTrafficCommand = {}));

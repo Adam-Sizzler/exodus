@@ -38,7 +38,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 		cfg.Logger.Warn("Panel UI index not found; static UI disabled", "path", indexPath, "error", err)
 	}
 
-	mux.Handle("/", panelRequestHandler(panelBasePath, uiDir, staticFS, apiHandler, cfg.Docs.SwaggerPath, cfg.Docs.ScalarPath))
+	mux.Handle("/", panelRequestHandler(panelBasePath, uiDir, staticFS, apiHandler))
 
 	server := &http.Server{
 		Addr:    addr,
@@ -63,7 +63,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 	}
 }
 
-func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler http.Handler, docsSwaggerPath, docsScalarPath string) http.Handler {
+func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler http.Handler) http.Handler {
 	indexPath := filepath.Join(uiDir, "index.html")
 	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
 	if panelBasePathNoTrailing == "" {
@@ -87,14 +87,6 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler http.
 		if strings.HasPrefix(relativePath, "api/") {
 			apiReq := r.Clone(r.Context())
 			apiReq.URL.Path = "/" + relativePath
-			apiReq.URL.RawPath = ""
-			apiHandler.ServeHTTP(w, apiReq)
-			return
-		}
-
-		if docsAPIPath, ok := docsAPIRequestPath(relativePath, docsSwaggerPath, docsScalarPath); ok {
-			apiReq := r.Clone(r.Context())
-			apiReq.URL.Path = docsAPIPath
 			apiReq.URL.RawPath = ""
 			apiHandler.ServeHTTP(w, apiReq)
 			return
@@ -129,25 +121,4 @@ func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler http.
 
 		static.ServePanelIndex(w, indexPath, panelBasePath, panelBasePathNoTrailing)
 	})
-}
-
-func docsAPIRequestPath(relativePath, docsSwaggerPath, docsScalarPath string) (string, bool) {
-	relativePath = strings.Trim(relativePath, "/")
-
-	for _, docsPath := range []string{docsScalarPath, docsSwaggerPath} {
-		docsRel := strings.Trim(docsPath, "/")
-		if docsRel == "" {
-			continue
-		}
-
-		if relativePath == docsRel {
-			return "/" + docsRel, true
-		}
-
-		if openAPIPath := docsRel + "/openapi.json"; relativePath == openAPIPath {
-			return "/" + openAPIPath, true
-		}
-	}
-
-	return "", false
 }

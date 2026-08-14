@@ -21,6 +21,4 @@ var ReorderHostsCommand;
             isUpdated: zod_1.z.boolean(),
         }),
     });
-
 })(ReorderHostsCommand || (exports.ReorderHostsCommand = ReorderHostsCommand = {}));
-

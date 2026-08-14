@@ -8,5 +8,4 @@ var TruncateTorrentBlockerReportsCommand;
     TruncateTorrentBlockerReportsCommand.url = api_1.REST_API.NODE_PLUGINS.TORRENT_BLOCKER.TRUNCATE_REPORTS;
     TruncateTorrentBlockerReportsCommand.TSQ_url = TruncateTorrentBlockerReportsCommand.url;
     TruncateTorrentBlockerReportsCommand.endpointDetails = (0, constants_1.getEndpointDetails)(api_1.NODE_PLUGINS_ROUTES.TORRENT_BLOCKER.TRUNCATE_REPORTS, 'delete', 'Truncate Torrent Blocker Reports', { scope: 'truncate', kind: 'write' });
-
 })(TruncateTorrentBlockerReportsCommand || (exports.TruncateTorrentBlockerReportsCommand = TruncateTorrentBlockerReportsCommand = {}));

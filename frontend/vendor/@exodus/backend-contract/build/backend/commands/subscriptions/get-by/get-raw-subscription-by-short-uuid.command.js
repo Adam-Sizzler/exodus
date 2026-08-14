@@ -41,5 +41,4 @@ var GetRawSubscriptionByShortUuidCommand;
             resolvedProxyConfigs: zod_1.z.array(models_1.ResolvedProxyConfigSchema),
         }),
     });
-
 })(GetRawSubscriptionByShortUuidCommand || (exports.GetRawSubscriptionByShortUuidCommand = GetRawSubscriptionByShortUuidCommand = {}));

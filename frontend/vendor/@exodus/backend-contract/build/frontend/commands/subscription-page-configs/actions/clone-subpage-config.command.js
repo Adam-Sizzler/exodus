@@ -18,5 +18,4 @@ var CloneSubpageConfigCommand;
             config: zod_1.z.unknown(),
         }),
     });
-
 })(CloneSubpageConfigCommand || (exports.CloneSubpageConfigCommand = CloneSubpageConfigCommand = {}));

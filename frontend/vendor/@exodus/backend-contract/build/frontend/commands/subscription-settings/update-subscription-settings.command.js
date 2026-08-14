@@ -25,5 +25,4 @@ var UpdateSubscriptionSettingsCommand;
     UpdateSubscriptionSettingsCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionSettingsSchema,
     });
-
 })(UpdateSubscriptionSettingsCommand || (exports.UpdateSubscriptionSettingsCommand = UpdateSubscriptionSettingsCommand = {}));

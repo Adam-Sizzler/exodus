@@ -16,5 +16,4 @@ var GetHostsCommand;
     GetHostsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.array(models_1.HostsSchema),
     });
-
 })(GetHostsCommand || (exports.GetHostsCommand = GetHostsCommand = {}));

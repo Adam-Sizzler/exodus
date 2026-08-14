@@ -30,5 +30,4 @@ var GetStatusCommand;
             }),
         }),
     });
-
 })(GetStatusCommand || (exports.GetStatusCommand = GetStatusCommand = {}));

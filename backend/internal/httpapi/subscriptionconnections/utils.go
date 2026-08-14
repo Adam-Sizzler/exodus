@@ -112,6 +112,9 @@ func buildNodeResponses(records []nodeRecord, providersMap map[string]*providerR
 		record = applySubNodeRuntimeSnapshot(record)
 
 		var item nodeAPI
+		if record.ID != nil {
+			item.ID = *record.ID
+		}
 		item.UUID = record.UUID
 		item.Name = record.Name
 		item.Address = record.Address

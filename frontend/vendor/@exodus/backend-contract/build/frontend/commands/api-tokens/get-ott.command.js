@@ -14,5 +14,4 @@ var GetOttCommand;
             ott: zod_1.z.string(),
         }),
     });
-
 })(GetOttCommand || (exports.GetOttCommand = GetOttCommand = {}));

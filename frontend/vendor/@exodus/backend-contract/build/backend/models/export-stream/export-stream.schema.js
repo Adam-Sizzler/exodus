@@ -4,13 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExodusNodeConnectionsStreamMessageSchema = exports.NodeConnectionUserSchema = exports.NODE_CONNECTIONS_STREAM_MESSAGE_VERSION = exports.ExodusSubscriptionRequestStreamMessageSchema = exports.SUBSCRIPTION_REQUEST_STREAM_MESSAGE_VERSION = exports.ExodusUserUsageStreamMessageSchema = exports.UserUsageStreamRecordSchema = exports.USER_USAGE_STREAM_MESSAGE_VERSION = void 0;
-const zod_1 = require("zod");
+const zod_1 = __importDefault(require("zod"));
 const USER_USAGE_STREAM_KEY = 'ioraw:export:user_usage';
 const SUBSCRIPTION_REQUESTS_STREAM_KEY = 'ioraw:export:subscription_requests';
 const NODE_CONNECTIONS_STREAM_KEY = 'ioraw:export:node_connections';
 exports.USER_USAGE_STREAM_MESSAGE_VERSION = '1';
-exports.UserUsageStreamRecordSchema = (zod_1.z || zod_1.default.z || zod_1.default).object({
-    userId: (zod_1.z || zod_1.default.z || zod_1.default).string().regex(/^\d+$/).describe('User ID (bigint as string).'),
+exports.UserUsageStreamRecordSchema = zod_1.default.object({
+    userId: zod_1.default.string().regex(/^\d+$/).describe('User ID (bigint as string).'),
     totalBytes: zod_1.default
         .string()
         .regex(/^\d+$/)
@@ -18,12 +18,12 @@ exports.UserUsageStreamRecordSchema = (zod_1.z || zod_1.default.z || zod_1.defau
 });
 exports.ExodusUserUsageStreamMessageSchema = zod_1.default
     .object({
-    v: (zod_1.z || zod_1.default.z || zod_1.default).literal(exports.USER_USAGE_STREAM_MESSAGE_VERSION).describe('Message schema version.'),
+    v: zod_1.default.literal(exports.USER_USAGE_STREAM_MESSAGE_VERSION).describe('Message schema version.'),
     nodeId: zod_1.default
         .string()
         .regex(/^\d+$/)
         .describe('Node ID the batch belongs to (bigint as string).'),
-    ts: (zod_1.z || zod_1.default.z || zod_1.default).iso
+    ts: zod_1.default.iso
         .datetime()
         .transform((str) => new Date(str))
         .describe('Time the batch was exported (ISO 8601, UTC).'),
@@ -34,7 +34,7 @@ exports.ExodusUserUsageStreamMessageSchema = zod_1.default
         const [userId, totalBytes] = pair.split(':');
         return { userId, totalBytes };
     }))
-        .pipe((zod_1.z || zod_1.default.z || zod_1.default).array(exports.UserUsageStreamRecordSchema))
+        .pipe(zod_1.default.array(exports.UserUsageStreamRecordSchema))
         .describe('User traffic deltas: "userId:totalBytes" pairs separated by ";".'),
 })
     .meta({
@@ -50,23 +50,25 @@ exports.ExodusSubscriptionRequestStreamMessageSchema = zod_1.default
         .string()
         .regex(/^\d+$/)
         .describe('ID of the user who requested the subscription (bigint as string).'),
-    requestAt: (zod_1.z || zod_1.default.z || zod_1.default).iso
+    requestAt: zod_1.default.iso
         .datetime()
         .transform((str) => new Date(str))
         .describe('Time of the subscription request (ISO 8601, UTC).'),
-    requestIp: (zod_1.z || zod_1.default.z || zod_1.default).string().optional().describe('Client IP address, omitted if unknown.'),
-    userAgent: (zod_1.z || zod_1.default.z || zod_1.default).string().optional().describe('Client User-Agent, omitted if unknown.'),
+    requestIp: zod_1.default.string().optional().describe('Client IP address, omitted if unknown.'),
+    userAgent: zod_1.default.string().optional().describe('Client User-Agent, omitted if unknown.'),
+    srrRuleName: zod_1.default.string().optional().describe('SRR rule name, omitted if unknown.'),
+    srrResponseType: zod_1.default.string().describe('SRR response type.'),
 })
     .meta({
     description: `A single message of the "${SUBSCRIPTION_REQUESTS_STREAM_KEY}" Redis Stream (EXPORT_TO_STREAM_ENABLED).`,
 });
 exports.NODE_CONNECTIONS_STREAM_MESSAGE_VERSION = '1';
-exports.NodeConnectionUserSchema = (zod_1.z || zod_1.default.z || zod_1.default).object({
-    userId: (zod_1.z || zod_1.default.z || zod_1.default).string().regex(/^\d+$/).describe('User ID (bigint as string).'),
+exports.NodeConnectionUserSchema = zod_1.default.object({
+    userId: zod_1.default.string().regex(/^\d+$/).describe('User ID (bigint as string).'),
     ips: zod_1.default
-        .array((zod_1.z || zod_1.default.z || zod_1.default).object({
-        ip: (zod_1.z || zod_1.default.z || zod_1.default).string().describe('Client IP address.'),
-        lastSeen: (zod_1.z || zod_1.default.z || zod_1.default).iso
+        .array(zod_1.default.object({
+        ip: zod_1.default.string().describe('Client IP address.'),
+        lastSeen: zod_1.default.iso
             .datetime()
             .transform((str) => new Date(str))
             .describe('Last time this IP was seen on the node (ISO 8601, UTC).'),
@@ -75,12 +77,12 @@ exports.NodeConnectionUserSchema = (zod_1.z || zod_1.default.z || zod_1.default)
 });
 exports.ExodusNodeConnectionsStreamMessageSchema = zod_1.default
     .object({
-    v: (zod_1.z || zod_1.default.z || zod_1.default).literal(exports.NODE_CONNECTIONS_STREAM_MESSAGE_VERSION).describe('Message schema version.'),
+    v: zod_1.default.literal(exports.NODE_CONNECTIONS_STREAM_MESSAGE_VERSION).describe('Message schema version.'),
     nodeId: zod_1.default
         .string()
         .regex(/^\d+$/)
         .describe('Node ID the snapshot belongs to (bigint as string).'),
-    ts: (zod_1.z || zod_1.default.z || zod_1.default).iso
+    ts: zod_1.default.iso
         .datetime()
         .transform((str) => new Date(str))
         .describe('Time the snapshot was exported (ISO 8601, UTC).'),
@@ -92,10 +94,10 @@ exports.ExodusNodeConnectionsStreamMessageSchema = zod_1.default
         }
         catch {
             ctx.addIssue({ code: 'custom', message: 'users must be a valid JSON array' });
-            return (zod_1.z || zod_1.default.z || zod_1.default).NEVER;
+            return zod_1.default.NEVER;
         }
     })
-        .pipe((zod_1.z || zod_1.default.z || zod_1.default).array(exports.NodeConnectionUserSchema))
+        .pipe(zod_1.default.array(exports.NodeConnectionUserSchema))
         .describe([
         'JSON-encoded array of users connected to the node with their IPs.',
         'Example:',

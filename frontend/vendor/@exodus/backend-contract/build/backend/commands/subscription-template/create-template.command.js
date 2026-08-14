@@ -21,5 +21,4 @@ var CreateSubscriptionTemplateCommand;
     CreateSubscriptionTemplateCommand.ResponseSchema = zod_1.z.object({
         response: models_1.SubscriptionTemplateSchema,
     });
-
 })(CreateSubscriptionTemplateCommand || (exports.CreateSubscriptionTemplateCommand = CreateSubscriptionTemplateCommand = {}));

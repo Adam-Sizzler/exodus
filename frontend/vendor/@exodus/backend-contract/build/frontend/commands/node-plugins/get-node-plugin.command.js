@@ -18,5 +18,4 @@ var GetNodePluginCommand;
             pluginConfig: zod_1.z.unknown(),
         }),
     });
-
 })(GetNodePluginCommand || (exports.GetNodePluginCommand = GetNodePluginCommand = {}));

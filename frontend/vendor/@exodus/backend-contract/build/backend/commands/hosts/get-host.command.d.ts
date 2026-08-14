@@ -33,6 +33,10 @@ export declare namespace GetHostCommand {
             }>>;
             xhttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
+            singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
+            clashMuxParams: z.ZodNullable<z.ZodString>;
+            singboxCustomParams: z.ZodNullable<z.ZodUnknown>;
+            mihomoCustomParams: z.ZodNullable<z.ZodString>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             finalMask: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
@@ -44,6 +48,8 @@ export declare namespace GetHostCommand {
             isHidden: z.ZodDefault<z.ZodBoolean>;
             overrideSniFromAddress: z.ZodDefault<z.ZodBoolean>;
             keepSniBlank: z.ZodDefault<z.ZodBoolean>;
+            overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
+            protocolCredential: z.ZodNullable<z.ZodString>;
             vlessRouteId: z.ZodNullable<z.ZodInt>;
             pinnedPeerCertSha256: z.ZodNullable<z.ZodString>;
             verifyPeerCertByName: z.ZodNullable<z.ZodString>;

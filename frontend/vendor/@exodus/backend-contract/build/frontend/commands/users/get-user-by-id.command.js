@@ -15,5 +15,4 @@ var GetUserByIdCommand;
         userId: models_1.numberParamSchema,
     });
     GetUserByIdCommand.ResponseSchema = user_response_1.UserResponseSchema;
-
 })(GetUserByIdCommand || (exports.GetUserByIdCommand = GetUserByIdCommand = {}));

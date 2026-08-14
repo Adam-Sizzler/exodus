@@ -25,5 +25,4 @@ var GetPasskeysCommand;
             })),
         }),
     });
-
 })(GetPasskeysCommand || (exports.GetPasskeysCommand = GetPasskeysCommand = {}));

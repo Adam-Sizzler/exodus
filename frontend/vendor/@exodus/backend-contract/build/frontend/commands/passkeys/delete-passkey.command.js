@@ -12,5 +12,4 @@ var DeletePasskeyCommand;
     DeletePasskeyCommand.RequestBodySchema = zod_1.z.object({
         id: zod_1.z.string(),
     });
-
 })(DeletePasskeyCommand || (exports.DeletePasskeyCommand = DeletePasskeyCommand = {}));

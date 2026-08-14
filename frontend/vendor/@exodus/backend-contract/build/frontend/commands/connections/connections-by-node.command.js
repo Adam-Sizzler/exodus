@@ -17,5 +17,4 @@ var ConnectionsByNodeCommand;
             jobId: zod_1.z.string(),
         }),
     });
-
 })(ConnectionsByNodeCommand || (exports.ConnectionsByNodeCommand = ConnectionsByNodeCommand = {}));

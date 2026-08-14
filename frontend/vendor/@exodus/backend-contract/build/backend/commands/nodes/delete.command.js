@@ -12,5 +12,4 @@ var DeleteNodeCommand;
     DeleteNodeCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteNodeCommand || (exports.DeleteNodeCommand = DeleteNodeCommand = {}));

@@ -125,7 +125,7 @@
       "failed-to-save-invalid-json": "Не удалось сохранить, невалидный JSON.",
       "error": "Ошибка",
       "save-anyway": "Все равно сохранить",
-      "save-anyway-description": "Вы уверены, что хотите сохранить невалидную конфигурацию xRay? Это действие\n                                    может привести к неожиданному поведению. Продолжите только если вы знаете, что\n                                    делаете.",
+      "save-anyway-description": "Вы уверены, что хотите сохранить невалидную конфигурацию Singbox? Это действие\n                                    может привести к неожиданному поведению. Продолжите только если вы знаете, что\n                                    делаете.",
       "load-from-github": "Скачать с Github",
       "tools": "Инструменты",
       "copy-all-content": "Скопировать все содержимое",
@@ -199,9 +199,9 @@
       "restart-all-nodes": "Перезапустить все ноды",
       "search-nodes": "Поиск нод...",
       "force-restart": "Принудительный перезапуск",
-      "force-restart-description": "гарантирует, что все ноды полностью перезапустит Xray Core.",
+      "force-restart-description": "гарантирует, что все ноды полностью перезапустит Singbox Core.",
       "graceful-restart": "Плавный перезапуск",
-      "graceful-restart-description-1": "отправит запрос на все ноды для перезапуска Xray, но запрос может быть невыполнен, если хэш на ноде совпадает с текущим. Это опция по умолчанию.",
+      "graceful-restart-description-1": "отправит запрос на все ноды для перезапуска Singbox, но запрос может быть невыполнен, если хэш на ноде совпадает с текущим. Это опция по умолчанию.",
       "force": "Принудительный",
       "graceful": "Плавный"
     }
@@ -256,9 +256,9 @@
       "address-and-port": "Адрес и порт",
       "address-and-port-line-1": "В большинстве случаев, IP/домен должен указывать на одну из подключенных нод.",
       "address-and-port-line-2": "Порт должен быть открытым и доступным для входящих соединений.",
-      "address-and-port-line-3": "Обычно порт должен соотвествовать порту инбаунда из конфигурации Xray.",
+      "address-and-port-line-3": "Обычно порт должен соотвествовать порту инбаунда из конфигурации Singbox.",
       "advanced-settings": "\"Расширенные настройки\" – это дополнительные параметры, которые могут быть использованы для более тонкой настройки хоста.",
-      "advanced-settings-2": "Все, что указано в \"Расширенных настройках\" имеет более высокий приоритет чем настройки, указанные в конфигурации Xray."
+      "advanced-settings-2": "Все, что указано в \"Расширенных настройках\" имеет более высокий приоритет чем настройки, указанные в конфигурации Singbox."
     }
   },
   "remark-info": {
@@ -418,6 +418,9 @@
     "please-ensure-you-provide-a-valid-json-mux-object": "Убедитесь, что вы предоставили правильный объект JSON MUX.",
     "for-more-information-refer-to": "За дополнительной информацией обратитесь к",
     "xtls-documentation": "документации XTLS",
+    "singbox-documentation": "документации Sing-box",
+    "mihomo-documentation": "документации Mihomo",
+    "custom-params-description": "Укажите корректный {{format}} для кастомных параметров ядра {{core}}.",
     "final-mask-description": "Переопределение finalMask позволяет точно настроить finalMask в случаях, когда конфигурации finalMask на стороне сервера и клиента должны отличаться.<br/><br/>FinalMask применяется только к форматам вывода клиента Xray-JSON и Base64.<br/><br/>Обязательно ознакомьтесь с <anchor>документацией Xray</anchor>.",
     "paste-default-mux-params": "Вставить пример MUX",
     "please-ensure-you-provide-a-valid-json-sockopt-object": "Убедитесь, что вы предоставили правильный объект JSON Sockopt.",
@@ -834,11 +837,11 @@
   "active-sessions-drawer": {
     "widget": {
       "requirements": "Условия",
-      "warning-activity": "IP адрес будет показан, когда <highlight>Xray-Core</highlight> считает подключение <highlight>еще действительным</highlight>. Это может привести к отображению IP адресов, которые в настоящий момент не подключены. Используйте значок <highlight>часов</highlight> для отслеживания последней активности данного IP.",
+      "warning-activity": "IP адрес будет показан, когда <highlight>Singbox-Core</highlight> считает подключение <highlight>еще действительным</highlight>. Это может привести к отображению IP адресов, которые в настоящий момент не подключены. Используйте значок <highlight>часов</highlight> для отслеживания последней активности данного IP.",
       "warning-version": "Версия Exodus Node <highlight>{{version}}</highlight> или выше",
       "warning-docker": "</highlight>Добавьте эти строки к <highlight>docker-compose.yml</highlight> Exodus Node (/opt/remnanode)",
       "warning-patience": "Получение данных может занять некоторое время, не закрывайте это окно!",
-      "warning-n-plus-one": "<highlight>Пожалуйста, обратите внимание</highlight>: данный запрос выполняет <highlight>N+1</highlight> операциий к gRPC API <highlight>Xray-Core</highlight> так как API не предоставляет методов для массового получения данных. <highlight>N</highlight> — количество пользователей онлайн на данной ноде.",
+      "warning-n-plus-one": "<highlight>Пожалуйста, обратите внимание</highlight>: данный запрос выполняет <highlight>N+1</highlight> операциий к gRPC API <highlight>Singbox-Core</highlight> так как API не предоставляет методов для массового получения данных. <highlight>N</highlight> — количество пользователей онлайн на данной ноде.",
       "get-data": "Получить данные",
       "fetching": "Получение активных сессий...",
       "progress": "Опрошено {{completed}} из {{total}} нод",
@@ -1064,9 +1067,8 @@
       "nodes": "Ноды",
       "download": "Скачать",
       "quick-view": "Быстрый просмотр",
-      "edit-xray-config": "Изменить конфиг Xray",
-      "xray-config": "Конфиг. Xray",
-      "edit-singbox-config": "Singbox Конфиг"
+      "edit-singbox-config": "Изменить конфиг Singbox",
+      "singbox-config": "Конфиг. Singbox"
     }
   },
   "config-profiles-header": {
@@ -1384,7 +1386,7 @@
     "feature": {
       "create-config-profile": "Создать профиль",
       "create-a-new-config-profile-by-entering-a-name-below": "Создайте новый профиль, введя имя ниже.",
-      "you-can-customize-xray-config-after-creation": "Вы можете настроить конфигурацию XRay после создания.",
+      "you-can-customize-singbox-config-after-creation": "Вы можете настроить конфигурацию Singbox после создания.",
       "profile-name": "Имя профиля",
       "enter-profile-name": "Введите имя профиля"
     }
@@ -1392,8 +1394,8 @@
   "restart-node-button": {
     "feature": {
       "restart": "Перезапустить",
-      "restart-description-line-1": "гарантирует перезапуск ядра Xray на ноде. Рекомендуется использовать данный вариант.",
-      "restart-description-line-2": "будет отправлен запрос этой ноде для перезапуска Xray, но запрос может быть невыполнен, если хэш узла совпадает с текущим."
+      "restart-description-line-1": "гарантирует перезапуск ядра Singbox на ноде. Рекомендуется использовать данный вариант.",
+      "restart-description-line-2": "будет отправлен запрос этой ноде для перезапуска Singbox, но запрос может быть невыполнен, если хэш узла совпадает с текущим."
     }
   },
   "node-details-card": {
@@ -1406,7 +1408,6 @@
       "enable-node": "Включить ноды",
       "disable-node": "Выключить ноду",
       "config-profile-or-inbounds-is-missing": "Профиль или инбаунд не выбран",
-      "xray-core-version": "Версия ядра Xray",
       "exodus-node-version": "Версия модуля @exodus/node",
       "singbox-core-version": "Версия ядра Singbox"
     }
@@ -1454,7 +1455,6 @@
     "card": {
       "stats": "Статистика",
       "traffic-refill-in-days": "Сброс трафика (дней):",
-      "represents-the-uptime-of-the-xray-core": "Отражает время работы ядра Xray",
       "represents-the-uptime-of-the-singbox-core": "Отражает время работы ядра Singbox",
       "represents-the-uptime-of-the-subscription-node-container": "Отражает время работы контейнера ноды подписки"
     }
@@ -1608,7 +1608,6 @@
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Установка mTLS соединения...",
-    "xray-core-is-up-and-running": "Ядро Xray запущено и работает!",
     "exodus-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться...",
     "no-errros-so-far": "Пока никаких ошибок нет",
     "last-error-message": "Последнее сообщение об ошибке",
@@ -1883,7 +1882,6 @@
     "traffic-used": "Польз. трафик",
     "config-profile": "Профиль",
     "inbounds": "Инбаунды",
-    "xray-v": "вер. Xray",
     "node-v": "вер. Ноды",
     "provider": "Провайдер",
     "tags": "Теги",

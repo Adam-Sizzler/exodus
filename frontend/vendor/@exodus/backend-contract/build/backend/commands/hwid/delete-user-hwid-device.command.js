@@ -20,5 +20,4 @@ var DeleteUserHwidDeviceCommand;
             devices: zod_1.z.array(models_1.HwidUserDeviceSchema),
         }),
     });
-
 })(DeleteUserHwidDeviceCommand || (exports.DeleteUserHwidDeviceCommand = DeleteUserHwidDeviceCommand = {}));

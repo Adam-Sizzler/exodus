@@ -1,7 +1,7 @@
 {
   "constants": {
     "dashboard": "داشبورد",
-    "config": "Xray کانفیگ",
+    "config": "پیکربندی Singbox",
     "home": "خانه",
     "hosts": "هاست‌ها",
     "nodes": "نودها",
@@ -198,9 +198,9 @@
       "restart-all-nodes": "ریستارت کردن تمامی نودها",
       "search-nodes": "جست‌وجوی نودها",
       "force-restart": "ری‌استارت اجباری",
-      "force-restart-description": "با این روش همه نودها هسته Xray را به صورت اجباری ری‌استارت خواهند کرد",
+      "force-restart-description": "با این روش همه نودها هسته Singbox را به صورت اجباری ری‌استارت خواهند کرد",
       "graceful-restart": "راه‌اندازی مجدد آرام",
-      "graceful-restart-description-1": "با این روش درخواست ری‌استارت هسته به همه نودها ارسال خواهد شد اما درصورت یکسان بودن هش نود با هش فعلی ممکن است درخواست اجرا نشود. این، حالت پیشفرض ری‌استارت است",
+      "graceful-restart-description-1": "با این روش درخواست ری‌استارت هسته Singbox به همه نودها ارسال خواهد شد اما درصورت یکسان بودن هش نود با هش فعلی ممکن است درخواست اجرا نشود. این، حالت پیشفرض ری‌استارت است",
       "force": "اجباری",
       "graceful": "آرام"
     }
@@ -251,13 +251,13 @@
       "remark-description-line-2": "ریمارک در فهرست سرورهای موجود در کلاینت نمایش داده خواهد شد.",
       "inbound": "اینباند",
       "inbound-line-1": "لازم است یکی از اینباندها انتخاب شود که هاست خاصی به آن متصل خواهد شد.",
-      "inbound-line-2": "فهرست اینباندها در بخش «کانفیگ Xray» تشکیل می‌شود.",
+      "inbound-line-2": "فهرست اینباندها در بخش «کانفیگ Singbox» تشکیل می‌شود.",
       "address-and-port": "آدرس و پورت",
       "address-and-port-line-1": "در بیشتر موارد، IP/دامنه باید به یکی از نودهای متصل اشاره کند.",
       "address-and-port-line-2": "پورت باید باز و برای اتصالات ورودی قابل دسترسی باشد.",
-      "address-and-port-line-3": "معمولاً پورت باید با پورت اینباند از تنظیمات Xray مطابقت داشته باشد.",
+      "address-and-port-line-3": "معمولاً پورت باید با پورت اینباند از تنظیمات Singbox مطابقت داشته باشد.",
       "advanced-settings": "«تنظیمات پیشرفته» تنظیمات اضافی هستند که می‌توانند برای سفارشی‌سازی بیشتر هاست استفاده شوند.",
-      "advanced-settings-2": "هر چیزی که در «تنظیمات پیشرفته» مشخص شود، اولویت بالاتری نسبت به تنظیمات مشخص‌شده در کانفیگ Xray دارد."
+      "advanced-settings-2": "هر چیزی که در «تنظیمات پیشرفته» مشخص شود، اولویت بالاتری نسبت به تنظیمات مشخص‌شده در کانفیگ Singbox دارد."
     }
   },
   "remark-info": {
@@ -814,11 +814,11 @@
   "active-sessions-drawer": {
     "widget": {
       "requirements": "پیش‌نیازها",
-      "warning-activity": "An IP address will be shown when <highlight>Xray-Core</highlight> considers the <highlight>connection still open</highlight>. This may result in some displayed IP addresses that are no longer actually connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
+      "warning-activity": "An IP address will be shown when <highlight>Singbox-Core</highlight> considers the <highlight>connection still open</highlight>. This may result in some displayed IP addresses that are no longer actually connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
       "warning-version": "نود Exodus نسخه <highlight>{{version}}</highlight> یا بالاتر",
       "warning-docker": "مقادیر زیر را به <highlight>docker-compose.yml</highlight> نود (در /opt/remnanode) اضافه کنید",
       "warning-patience": "دریافت اطلاعات ممکن است زمانبر باشد، این پنجره را نبندید!",
-      "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> operations to gRPC API of <highlight>Xray-Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
+      "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> operations to gRPC API of <highlight>Singbox-Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
       "get-data": "دریافت اطلاعات",
       "fetching": "درحال دریافت نشست‌های فعال ...",
       "progress": "{{completed}} تا از {{total}} نود تکمیل شده",
@@ -1044,9 +1044,9 @@
       "nodes": "نودها",
       "download": "دانلود",
       "quick-view": "نمای سریع",
-      "edit-xray-config": "ویرایش پیکربندی Xray",
-      "xray-config": "Xray کانفیگ",
-      "edit-singbox-config": "پیکربندی Singbox"
+      "edit-xray-config": "ویرایش پیکربندی Singbox",
+      "xray-config": "Singbox",
+      "edit-singbox-config": "Singbox"
     }
   },
   "config-profiles-header": {
@@ -1364,7 +1364,7 @@
     "feature": {
       "create-config-profile": "ساخت پروفایل پیکربندی",
       "create-a-new-config-profile-by-entering-a-name-below": "برای ایجاد پروفایل پیکربندی جدید اسم آن را وارد کنید",
-      "you-can-customize-xray-config-after-creation": "کانفیگ Xray را می‌توانید بعد از ایجاد شخصی‌سازی کنید",
+      "you-can-customize-singbox-config-after-creation": "کانفیگ Singbox را می‌توانید بعد از ایجاد شخصی‌سازی کنید",
       "profile-name": "نام پروفایل",
       "enter-profile-name": "نام پروفایل را وارد کنید"
     }
@@ -1372,8 +1372,8 @@
   "restart-node-button": {
     "feature": {
       "restart": "راه‌اندازی مجدد",
-      "restart-description-line-1": "ensures that the node completely restarts the Xray core. It is recommended option.",
-      "restart-description-line-2": "will send a request to this node to restart Xray, but request can be unfulfilled if the node hash is the same as the current one."
+      "restart-description-line-1": "ensures that the node completely restarts the Singbox core. It is recommended option.",
+      "restart-description-line-2": "will send a request to this node to restart Singbox, but request can be unfulfilled if the node hash is the same as the current one."
     }
   },
   "node-details-card": {
@@ -1386,7 +1386,6 @@
       "enable-node": "فعالسازی نود",
       "disable-node": "غیرفعالسازی نود",
       "config-profile-or-inbounds-is-missing": "پروفایل پیکربندی یا اینباند وجود ندارد",
-      "xray-core-version": "نسخه هسته Xray",
       "exodus-node-version": "نسخه نود، @exodus/node",
       "singbox-core-version": "نسخه هسته Singbox"
     }
@@ -1434,7 +1433,6 @@
     "card": {
       "stats": "آمار",
       "traffic-refill-in-days": "شارژ ترافیک در (روز):",
-      "represents-the-uptime-of-the-xray-core": "نشان‌دهنده آپتایم هسته Xray",
       "represents-the-uptime-of-the-singbox-core": "نشان‌دهنده آپتایم هسته Singbox",
       "represents-the-uptime-of-the-subscription-node-container": "نشان‌دهنده زمان کارکرد کانتینر نود اشتراک"
     }
@@ -1588,7 +1586,6 @@
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "درحال برقراری اتصال mTLS",
-    "xray-core-is-up-and-running": "هسته Xray درحال اجرا می‌باشد!",
     "exodus-will-try-to-reconnect-shortly": "به زودی Exodus برای اتصال مجدد تلاش خواهد کرد",
     "no-errros-so-far": "تا کنون خطایی وجود نداشته است",
     "last-error-message": "آخرین پیام خطا",
@@ -1863,7 +1860,6 @@
     "traffic-used": "ترافیک استفاده‌شده",
     "config-profile": "پروفایل پیکربندی",
     "inbounds": "اینباندها",
-    "xray-v": "نسخه هسته Xray",
     "node-v": "نسخه نود",
     "provider": "ارائه‌دهنده",
     "tags": "برچسب‌ها",

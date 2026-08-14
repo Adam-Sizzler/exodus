@@ -1,6 +1,7 @@
 import { z } from 'zod';
 export declare const NodesSchema: z.ZodObject<{
     uuid: z.ZodUUID;
+    id: z.ZodNumber;
     name: z.ZodString;
     address: z.ZodString;
     port: z.ZodNullable<z.ZodInt>;
@@ -73,7 +74,7 @@ export declare const NodesSchema: z.ZodObject<{
         }, z.core.$strip>;
     }, z.core.$strip>>;
     versions: z.ZodNullable<z.ZodObject<{
-        xray: z.ZodString;
+        singbox: z.ZodString;
         node: z.ZodString;
     }, z.core.$strip>>;
     singboxUptime: z.ZodNumber;

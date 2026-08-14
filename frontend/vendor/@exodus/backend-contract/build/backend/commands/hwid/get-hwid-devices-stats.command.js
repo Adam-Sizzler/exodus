@@ -26,5 +26,4 @@ var GetHwidDevicesStatsCommand;
             }),
         }),
     });
-
 })(GetHwidDevicesStatsCommand || (exports.GetHwidDevicesStatsCommand = GetHwidDevicesStatsCommand = {}));

@@ -158,6 +158,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
     timestamp: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
     data: z.ZodObject<{
         uuid: z.ZodUUID;
+        id: z.ZodNumber;
         name: z.ZodString;
         address: z.ZodString;
         port: z.ZodNullable<z.ZodInt>;
@@ -230,7 +231,7 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
             }, z.core.$strip>;
         }, z.core.$strip>>;
         versions: z.ZodNullable<z.ZodObject<{
-            xray: z.ZodString;
+            singbox: z.ZodString;
             node: z.ZodString;
         }, z.core.$strip>>;
         singboxUptime: z.ZodNumber;
@@ -312,6 +313,7 @@ export declare const ExodusWebhookTorrentBlockerEvents: z.ZodObject<{
     data: z.ZodObject<{
         node: z.ZodObject<{
             uuid: z.ZodUUID;
+            id: z.ZodNumber;
             name: z.ZodString;
             address: z.ZodString;
             port: z.ZodNullable<z.ZodInt>;
@@ -384,7 +386,7 @@ export declare const ExodusWebhookTorrentBlockerEvents: z.ZodObject<{
                 }, z.core.$strip>;
             }, z.core.$strip>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, z.core.$strip>>;
             singboxUptime: z.ZodNumber;
@@ -625,6 +627,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
     timestamp: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
     data: z.ZodObject<{
         uuid: z.ZodUUID;
+        id: z.ZodNumber;
         name: z.ZodString;
         address: z.ZodString;
         port: z.ZodNullable<z.ZodInt>;
@@ -697,7 +700,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
             }, z.core.$strip>;
         }, z.core.$strip>>;
         versions: z.ZodNullable<z.ZodObject<{
-            xray: z.ZodString;
+            singbox: z.ZodString;
             node: z.ZodString;
         }, z.core.$strip>>;
         singboxUptime: z.ZodNumber;
@@ -775,6 +778,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
     data: z.ZodObject<{
         node: z.ZodObject<{
             uuid: z.ZodUUID;
+            id: z.ZodNumber;
             name: z.ZodString;
             address: z.ZodString;
             port: z.ZodNullable<z.ZodInt>;
@@ -847,7 +851,7 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
                 }, z.core.$strip>;
             }, z.core.$strip>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, z.core.$strip>>;
             singboxUptime: z.ZodNumber;

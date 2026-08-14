@@ -15,5 +15,4 @@ var AddManyUsersToInternalSquadCommand;
     AddManyUsersToInternalSquadCommand.RequestBodySchema = zod_1.z.object({
         userIds: zod_1.z.array(zod_1.z.number()).min(1).max(1000),
     });
-
 })(AddManyUsersToInternalSquadCommand || (exports.AddManyUsersToInternalSquadCommand = AddManyUsersToInternalSquadCommand = {}));

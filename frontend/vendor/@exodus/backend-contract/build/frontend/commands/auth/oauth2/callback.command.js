@@ -19,5 +19,4 @@ var OAuth2CallbackCommand;
             accessToken: zod_1.z.string(),
         }),
     });
-
 })(OAuth2CallbackCommand || (exports.OAuth2CallbackCommand = OAuth2CallbackCommand = {}));

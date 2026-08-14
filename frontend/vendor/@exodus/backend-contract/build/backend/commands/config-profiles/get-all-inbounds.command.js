@@ -18,5 +18,4 @@ var GetAllInboundsCommand;
             })),
         }),
     });
-
 })(GetAllInboundsCommand || (exports.GetAllInboundsCommand = GetAllInboundsCommand = {}));

@@ -13,5 +13,4 @@ var BulkUpdateUsersSquadsCommand;
         userIds: zod_1.z.array(zod_1.z.number()).min(1).max(500),
         activeInternalSquads: zod_1.z.array(zod_1.z.uuid()),
     });
-
 })(BulkUpdateUsersSquadsCommand || (exports.BulkUpdateUsersSquadsCommand = BulkUpdateUsersSquadsCommand = {}));

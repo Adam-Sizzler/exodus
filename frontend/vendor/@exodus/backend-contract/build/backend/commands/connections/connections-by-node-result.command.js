@@ -36,5 +36,4 @@ var ConnectionsByNodeResultCommand;
                 .nullable(),
         }),
     });
-
 })(ConnectionsByNodeResultCommand || (exports.ConnectionsByNodeResultCommand = ConnectionsByNodeResultCommand = {}));

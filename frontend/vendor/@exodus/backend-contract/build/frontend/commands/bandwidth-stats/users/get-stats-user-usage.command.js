@@ -39,5 +39,4 @@ var GetStatsUserUsageCommand;
             })),
         }),
     });
-
 })(GetStatsUserUsageCommand || (exports.GetStatsUserUsageCommand = GetStatsUserUsageCommand = {}));

@@ -11,53 +11,137 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/middleware"
+	"exodus/internal/jobqueue"
 	"exodus/internal/notifications"
 	"exodus/internal/security"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // --- Login brute-force rate limiting -------------------------------------
 const (
-	loginRateLimitWindow      = 5 * time.Minute
-	loginRateLimitMaxAttempts = 10
+	AuthRateLimitWindow      = 60 * time.Second
+	AuthRateLimitMaxAttempts = 5
+	AuthFailedLoginDelay     = 5 * time.Second
 )
 
-type loginRateLimiter struct {
-	mu       sync.Mutex
-	attempts map[string][]time.Time
+type AuthRateLimiter struct {
+	mu        sync.Mutex
+	attempts  map[string][]time.Time
+	redis     *redis.Client
+	redisOnce sync.Once
 }
 
-var globalLoginRateLimiter = &loginRateLimiter{attempts: make(map[string][]time.Time)}
+var globalAuthRateLimiter = &AuthRateLimiter{
+	attempts: make(map[string][]time.Time),
+}
 
-func (l *loginRateLimiter) allow(key string) bool {
-	now := time.Now()
+func (l *AuthRateLimiter) getRedis(cfg *config.BackendConfig) *redis.Client {
+	l.redisOnce.Do(func() {
+		if cfg != nil {
+			client, err := jobqueue.NewRedisClient(cfg)
+			if err == nil {
+				l.redis = client
+			}
+		}
+	})
+	return l.redis
+}
+
+func (l *AuthRateLimiter) Allow(ctx context.Context, ip string, cfg *config.BackendConfig) (allowed bool, remaining int, retryAfter time.Duration) {
+	if ip == "" {
+		return true, AuthRateLimitMaxAttempts, 0
+	}
+
+	redisClient := l.getRedis(cfg)
+	if redisClient != nil {
+		key := "ratelimit:auth:login:" + ip
+		val, err := redisClient.Get(ctx, key).Int()
+		if err == nil && val >= AuthRateLimitMaxAttempts {
+			ttl, _ := redisClient.TTL(ctx, key).Result()
+			if ttl <= 0 {
+				ttl = AuthRateLimitWindow
+			}
+			return false, 0, ttl
+		}
+		if err == nil {
+			rem := AuthRateLimitMaxAttempts - val
+			if rem < 0 {
+				rem = 0
+			}
+			return true, rem, 0
+		}
+	}
+
+	// Fallback to in-memory sliding window
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	cutoff := now.Add(-loginRateLimitWindow)
-	existing := l.attempts[key]
+	now := time.Now()
+	cutoff := now.Add(-AuthRateLimitWindow)
+	existing := l.attempts[ip]
 	kept := existing[:0]
 	for _, t := range existing {
 		if t.After(cutoff) {
 			kept = append(kept, t)
 		}
 	}
+	l.attempts[ip] = kept
 
-	if len(kept) >= loginRateLimitMaxAttempts {
-		l.attempts[key] = kept
-		return false
+	if len(kept) >= AuthRateLimitMaxAttempts {
+		oldest := kept[0]
+		retry := AuthRateLimitWindow - now.Sub(oldest)
+		if retry <= 0 {
+			retry = time.Second
+		}
+		return false, 0, retry
 	}
 
-	l.attempts[key] = append(kept, now)
-	return true
+	remaining = AuthRateLimitMaxAttempts - len(kept)
+	return true, remaining, 0
 }
 
-func (l *loginRateLimiter) reset(key string) {
+func (l *AuthRateLimiter) RecordFailedAttempt(ctx context.Context, ip string, cfg *config.BackendConfig) {
+	if ip == "" {
+		return
+	}
+
+	redisClient := l.getRedis(cfg)
+	if redisClient != nil {
+		key := "ratelimit:auth:login:" + ip
+		pipe := redisClient.Pipeline()
+		pipe.Incr(ctx, key)
+		pipe.Expire(ctx, key, AuthRateLimitWindow)
+		_, _ = pipe.Exec(ctx)
+	}
+
+	// Also record in-memory fallback
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	delete(l.attempts, key)
+	l.attempts[ip] = append(l.attempts[ip], time.Now())
 }
 
-func loginRateLimitKey(r *http.Request) string {
+func (l *AuthRateLimiter) Reset(ctx context.Context, ip string, cfg *config.BackendConfig) {
+	if ip == "" {
+		return
+	}
+
+	redisClient := l.getRedis(cfg)
+	if redisClient != nil {
+		key := "ratelimit:auth:login:" + ip
+		_ = redisClient.Del(ctx, key).Err()
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.attempts, ip)
+}
+
+func loginRateLimitKey(r *http.Request, cfg *config.BackendConfig) string {
+	ip := middleware.GetClientIP(r, cfg)
+	if ip != "" {
+		return ip
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil || host == "" {
 		return r.RemoteAddr

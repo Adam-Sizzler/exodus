@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +38,8 @@ func AuthBootstrapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 
 		brandingSettings, passwordSettings, defaultUsername, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
-			cfg.Logger.Error("Failed to load auth bootstrap data", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load auth bootstrap data")
+			cfg.Logger.Error("Failed to read auth bootstrap data", "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to get auth bootstrap")
 			return
 		}
 
@@ -51,11 +53,11 @@ func AuthBootstrapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 }
 
 // AuthStatusHandler godoc
-// @Summary      Get auth status
-// @Description  Get available authentication methods, registration status and branding
+// @Summary      Get auth methods status
+// @Description  Get enabled status for password, passkey and OAuth2 authentication methods
 // @Tags         Auth Controller
 // @Produce      json
-// @Success      200  {object}  map[string]any
+// @Success      200  {object}  AuthStatusResponse
 // @Failure      500  {object}  shared.ErrorResponse
 // @Router       /auth/status [get]
 func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
@@ -75,6 +77,7 @@ func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		title, _ := brandingSettings["title"].(string)
 		logoURL, _ := brandingSettings["logoUrl"].(string)
+
 		if hasAdmin {
 			passkeyEnabled, oauth2Providers := getAuthMethodsStatus(db)
 			passwordEnabled := resolvePasswordAuthEnabled(
@@ -122,17 +125,16 @@ func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
-// AuthLoginCompatHandler godoc
-// @Summary      Login admin
+// AuthLoginHandler godoc
+// @Summary      Admin login
 // @Description  Authenticate admin with username and password
 // @Tags         Auth Controller
 // @Accept       json
 // @Produce      json
-// @Param        body  body      LoginRequest  true  "Credentials"
-// @Success      200   {object}  map[string]any
+// @Param        body  body      LoginRequest  true  "Admin login credentials"
+// @Success      200   {object}  LoginResponse
 // @Failure      400   {object}  shared.ErrorResponse
 // @Failure      403   {object}  shared.ErrorResponse
-// @Failure      429   {object}  shared.ErrorResponse
 // @Failure      500   {object}  shared.ErrorResponse
 // @Router       /auth/login [post]
 func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
@@ -142,16 +144,24 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			return
 		}
 
-		rateLimitKey := loginRateLimitKey(r)
-		if !globalLoginRateLimiter.allow(rateLimitKey) {
-			cfg.Logger.Warn("Auth login rate limited", "remote_addr", r.RemoteAddr)
+		rateLimitKey := loginRateLimitKey(r, cfg)
+		allowed, _, retryAfter := globalAuthRateLimiter.Allow(r.Context(), rateLimitKey, cfg)
+		if !allowed {
+			retrySeconds := int(math.Ceil(retryAfter.Seconds()))
+			if retrySeconds <= 0 {
+				retrySeconds = int(AuthRateLimitWindow.Seconds())
+			}
+			w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
+			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(AuthRateLimitMaxAttempts))
+			w.Header().Set("X-RateLimit-Remaining", "0")
+			cfg.Logger.Warn("Auth login rate limited", "client_ip", rateLimitKey, "retry_after", retrySeconds)
 			shared.WriteJSONError(w, http.StatusTooManyRequests, "too many login attempts, please try again later")
 			return
 		}
 
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			cfg.Logger.Warn("Auth login decode failed", "error", err, "remote_addr", r.RemoteAddr)
+			cfg.Logger.Warn("Auth login decode failed", "error", err, "client_ip", rateLimitKey)
 			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
 			return
 		}
@@ -162,7 +172,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
 			return
 		}
-		cfg.Logger.Trace("Auth login attempt", "username", username, "remote_addr", r.RemoteAddr)
+		cfg.Logger.Trace("Auth login attempt", "username", username, "client_ip", rateLimitKey)
 
 		_, passwordSettings, _, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
@@ -172,7 +182,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		}
 
 		if !hasAdmin {
-			cfg.Logger.Warn("Auth login blocked: no admin configured", "username", username, "remote_addr", r.RemoteAddr)
+			cfg.Logger.Warn("Auth login blocked: no admin configured", "username", username, "client_ip", rateLimitKey)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "no_admin_configured", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
 			return
@@ -186,7 +196,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			cfg,
 		)
 		if !passwordEnabled {
-			cfg.Logger.Warn("Auth login blocked: password auth disabled", "username", username, "remote_addr", r.RemoteAddr)
+			cfg.Logger.Warn("Auth login blocked: password auth disabled", "username", username, "client_ip", rateLimitKey)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "password_auth_disabled", r)
 			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
 			return
@@ -213,15 +223,28 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		}
 
 		if errors.Is(scanErr, sql.ErrNoRows) {
-			cfg.Logger.Warn("Auth login failed: user not found", "username", username, "remote_addr", r.RemoteAddr)
+			_ = security.VerifyPassword(password, cfg.JWT.AuthSecret, getDummyPasswordHash(cfg.JWT.AuthSecret))
+			globalAuthRateLimiter.RecordFailedAttempt(r.Context(), rateLimitKey, cfg)
+			cfg.Logger.Warn("Auth login failed: user not found", "username", username, "client_ip", rateLimitKey)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "invalid_credentials", r)
+			select {
+			case <-time.After(AuthFailedLoginDelay):
+			case <-r.Context().Done():
+				return
+			}
 			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
 			return
 		}
 
 		if !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
-			cfg.Logger.Warn("Auth login failed: wrong password", "username", username, "remote_addr", r.RemoteAddr)
+			globalAuthRateLimiter.RecordFailedAttempt(r.Context(), rateLimitKey, cfg)
+			cfg.Logger.Warn("Auth login failed: wrong password", "username", username, "client_ip", rateLimitKey)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, adminUUID, password, "invalid_credentials", r)
+			select {
+			case <-time.After(AuthFailedLoginDelay):
+			case <-r.Context().Done():
+				return
+			}
 			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
 			return
 		}
@@ -232,8 +255,8 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
 			return
 		}
-		globalLoginRateLimiter.reset(rateLimitKey)
-		cfg.Logger.Info("Auth login success", "username", username, "admin_uuid", adminUUID, "remote_addr", r.RemoteAddr)
+		globalAuthRateLimiter.Reset(r.Context(), rateLimitKey, cfg)
+		cfg.Logger.Info("Auth login success", "username", username, "admin_uuid", adminUUID, "client_ip", rateLimitKey)
 		emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, username, adminUUID, "", "", r)
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
 
@@ -417,84 +440,7 @@ func AuthSetupHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 }
 
 func AuthLoginHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-
-		var req LoginRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
-			return
-		}
-
-		username := strings.TrimSpace(req.Username)
-		password := req.Password
-		if username == "" || password == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
-			return
-		}
-
-		var (
-			adminUUID          string
-			storedPasswordHash string
-			role               string
-		)
-
-		row := db.QueryRow(`
-			SELECT uuid, password_hash, role
-			FROM admin
-			WHERE username = $1
-			LIMIT 1
-		`, username)
-
-		scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role)
-		if scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
-			cfg.Logger.Error("Failed to read admin credentials", "error", scanErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
-			return
-		}
-
-		if errors.Is(scanErr, sql.ErrNoRows) {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
-			return
-		}
-
-		if !security.VerifyPassword(password, cfg.JWT.AuthSecret, storedPasswordHash) {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
-			return
-		}
-
-		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, role)
-		if err != nil {
-			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
-			return
-		}
-
-		setAuthCookie(w, r, cfg, accessToken, expiresAt)
-
-		brandingSettings, passwordSettings, _, _, err := getBootstrapData(db)
-		if err != nil {
-			cfg.Logger.Warn("Failed to include bootstrap settings in login response", "error", err)
-			brandingSettings = defaultBrandingSettings()
-			passwordSettings = defaultPasswordSettings()
-		}
-
-		shared.WriteJSON(w, http.StatusOK, LoginResponse{
-			Admin: AuthAdminInfo{
-				UUID:              adminUUID,
-				Username:          username,
-				Role:              strings.ToUpper(role),
-				SessionTTLMinutes: AuthTTLMinutes(),
-			},
-			ExpiresAt:        expiresAt,
-			BrandingSettings: brandingSettings,
-			PasswordSettings: passwordSettings,
-			Message:          "logged in",
-		})
-	}
+	return AuthLoginCompatHandler(db, cfg)
 }
 
 // AuthMeHandler godoc
@@ -587,6 +533,24 @@ func AuthLogoutHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			MaxAge:   -1,
 		})
 
+		// Also clear the backend-tools access cookie (issued via ?ott= exchange,
+		// see panelsettings.ToolsAuthMiddleware / BackendToolsAuthCookieName).
+		// It carries its own JWT lifetime (2h) independent from the main session,
+		// so clear it here upon explicit server logout.
+		toolsCookiePath := "/api/backend-tools"
+		if cfg.Panel.BasePath != "" && cfg.Panel.BasePath != "/" {
+			toolsCookiePath = strings.TrimRight(cfg.Panel.BasePath, "/") + "/api/backend-tools"
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "ex-tools",
+			Value:    "",
+			Path:     toolsCookiePath,
+			Expires:  time.Unix(0, 0).UTC(),
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Secure:   secureCookie,
+			MaxAge:   -1,
+		})
 		shared.WriteJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 	}
 }

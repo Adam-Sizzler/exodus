@@ -179,7 +179,17 @@ func (l *Logger) withContext(role, service string) *Logger {
 	if l == nil {
 		return nil
 	}
-	clone := *l
+	l.mu.Lock()
+	clone := Logger{
+		base:     l.base,
+		writer:   l.writer,
+		level:    l.level,
+		format:   l.format,
+		timezone: l.timezone,
+		role:     l.role,
+		service:  l.service,
+	}
+	l.mu.Unlock()
 	if strings.TrimSpace(role) != "" {
 		clone.role = cleanContext(role, l.role)
 	}

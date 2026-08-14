@@ -1,4 +1,4 @@
-export declare const BACKEND_TOOLS_AUTH_COOKIE_NAME = "rx-tools";
+export declare const BACKEND_TOOLS_AUTH_COOKIE_NAME = "ex-tools";
 export declare const BACKEND_TOOLS_JWT_ISSUER = "Exodus";
 export declare const BACKEND_TOOLS_JWT_LIFETIME_HOURS = 2;
 export declare const BACKEND_TOOLS_JWT_SCOPES: {

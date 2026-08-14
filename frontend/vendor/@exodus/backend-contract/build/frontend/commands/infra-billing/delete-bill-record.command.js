@@ -12,5 +12,4 @@ var DeleteInfraBillingRecordCommand;
     DeleteInfraBillingRecordCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteInfraBillingRecordCommand || (exports.DeleteInfraBillingRecordCommand = DeleteInfraBillingRecordCommand = {}));

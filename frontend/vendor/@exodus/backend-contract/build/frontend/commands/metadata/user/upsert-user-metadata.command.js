@@ -20,5 +20,4 @@ var UpsertUserMetadataCommand;
             metadata: zod_1.z.looseObject({}),
         }),
     });
-
 })(UpsertUserMetadataCommand || (exports.UpsertUserMetadataCommand = UpsertUserMetadataCommand = {}));

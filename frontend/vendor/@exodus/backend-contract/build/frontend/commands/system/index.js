@@ -25,3 +25,4 @@ __exportStar(require("./get-stats.command"), exports);
 __exportStar(require("./testers"), exports);
 __exportStar(require("./tools"), exports);
 __exportStar(require("./get-http-stats.command"), exports);
+__exportStar(require("./get-configuration.command"), exports);

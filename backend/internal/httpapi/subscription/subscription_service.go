@@ -236,7 +236,7 @@ func (s *RenderService) RenderUserSubscription(
 		contentType = "text/plain; charset=utf-8"
 	}
 
-	responseHeaders := buildResponseHeaders(user, settings, contentType)
+	responseHeaders := buildResponseHeaders(ctx, s.db, user, settings, contentType)
 	return []byte(outputContent), contentType, responseHeaders, nil
 }
 

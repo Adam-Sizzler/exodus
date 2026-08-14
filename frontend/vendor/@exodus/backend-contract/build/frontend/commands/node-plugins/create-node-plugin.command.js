@@ -20,5 +20,4 @@ var CreateNodePluginCommand;
     CreateNodePluginCommand.ResponseSchema = zod_1.z.object({
         response: models_1.NodePluginSchema,
     });
-
 })(CreateNodePluginCommand || (exports.CreateNodePluginCommand = CreateNodePluginCommand = {}));

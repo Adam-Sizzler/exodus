@@ -20,5 +20,4 @@ var GetConnectionKeysByUserIdCommand;
             disabledKeys: zod_1.z.array(zod_1.z.string()),
         }),
     });
-
 })(GetConnectionKeysByUserIdCommand || (exports.GetConnectionKeysByUserIdCommand = GetConnectionKeysByUserIdCommand = {}));

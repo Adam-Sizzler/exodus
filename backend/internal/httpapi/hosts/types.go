@@ -121,7 +121,7 @@ type HostAPI struct {
 	Fingerprint                *string     `json:"fingerprint"`
 	IsDisabled                 bool        `json:"isDisabled"`
 	SecurityLayer              string      `json:"securityLayer"`
-	XHTTPExtraParams           interface{} `json:"xHttpExtraParams"`
+	XHTTPExtraParams           interface{} `json:"xhttpExtraParams"`
 	MuxParams                  interface{} `json:"muxParams"`
 	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
 	ClashMuxParams             *string     `json:"clashMuxParams"`
@@ -161,7 +161,7 @@ type HostCreateRequestAPI struct {
 	Fingerprint                *string          `json:"fingerprint,omitempty"`
 	IsDisabled                 *bool            `json:"isDisabled,omitempty"`
 	SecurityLayer              *string          `json:"securityLayer,omitempty"`
-	XHTTPExtraParams           *json.RawMessage `json:"xHttpExtraParams,omitempty"`
+	XHTTPExtraParams           *json.RawMessage `json:"xhttpExtraParams,omitempty"`
 	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
 	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             *string          `json:"clashMuxParams,omitempty"`
@@ -205,7 +205,7 @@ type hostUpdateFields struct {
 	Fingerprint                OptionalString `json:"fingerprint,omitempty"`
 	IsDisabled                 *bool          `json:"isDisabled,omitempty"`
 	SecurityLayer              *string        `json:"securityLayer,omitempty"`
-	XHTTPExtraParams           OptionalJSON   `json:"xHttpExtraParams,omitempty"`
+	XHTTPExtraParams           OptionalJSON   `json:"xhttpExtraParams,omitempty"`
 	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
 	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
 	ClashMuxParams             OptionalString `json:"clashMuxParams,omitempty"`

@@ -12,5 +12,4 @@ var DeleteConfigProfileCommand;
     DeleteConfigProfileCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid().describe('UUID of the config profile'),
     });
-
 })(DeleteConfigProfileCommand || (exports.DeleteConfigProfileCommand = DeleteConfigProfileCommand = {}));

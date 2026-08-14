@@ -8,8 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
+	"net/url"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -219,6 +223,7 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 	query := fmt.Sprintf(`
 		SELECT u.id, u.uuid, u.short_uuid, u.username, u.status,
 			   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
+			   u.last_traffic_reset_at, u.created_at, u.description, u.tag, u.telegram_id, u.email,
 			   u.trojan_password, u.vless_uuid, u.ss_password,
 			   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
 			   u.hwid_device_limit, u.external_squad_uuid,
@@ -231,6 +236,9 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 
 	row := dbConn.QueryRowContext(ctx, query, value)
 
+	var lastTrafficReset sql.NullTime
+	var description, tag, email sql.NullString
+	var telegramID sql.NullInt64
 	var hwidDeviceLimit sql.NullInt64
 	var externalSquadUUID sql.NullString
 	var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
@@ -243,6 +251,12 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 		&user.TrafficLimitBytes,
 		&user.TrafficLimitStrategy,
 		&user.ExpireAt,
+		&lastTrafficReset,
+		&user.CreatedAt,
+		&description,
+		&tag,
+		&telegramID,
+		&email,
 		&user.TrojanPassword,
 		&user.VlessUUID,
 		&user.SSPassword,
@@ -258,6 +272,21 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 		return user, err
 	}
 
+	if lastTrafficReset.Valid {
+		user.LastTrafficResetAt = &lastTrafficReset.Time
+	}
+	if description.Valid {
+		user.Description = &description.String
+	}
+	if tag.Valid {
+		user.Tag = &tag.String
+	}
+	if telegramID.Valid {
+		user.TelegramID = &telegramID.Int64
+	}
+	if email.Valid {
+		user.Email = &email.String
+	}
 	if hwidDeviceLimit.Valid {
 		v := int(hwidDeviceLimit.Int64)
 		user.HwidDeviceLimit = &v
@@ -939,23 +968,87 @@ func applyHostOverrides(hosts []SubscriptionHost, overrides map[string]HostOverr
 	return result
 }
 
-func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
-	headers := make(map[string]string)
-	headers["content-disposition"] = fmt.Sprintf("attachment; filename=%s", user.Username)
+func resolveSubscriptionBaseFromNode(ctx context.Context, dbConn *sql.DB) string {
+	if dbConn == nil {
+		return ""
+	}
+
+	var domain sql.NullString
+	var apiPath sql.NullString
+	row := dbConn.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(NULLIF(BTRIM(public_domain), ''), NULLIF(BTRIM(address), '')) AS domain,
+			COALESCE(NULLIF(BTRIM(api_path), ''), '/') AS api_path
+		FROM sub_nodes
+		ORDER BY is_disabled ASC, view_position ASC, created_at ASC
+		LIMIT 1
+	`)
+
+	scanErr := row.Scan(&domain, &apiPath)
+	if errors.Is(scanErr, sql.ErrNoRows) || scanErr != nil || !domain.Valid {
+		return ""
+	}
+
+	nodeDomain := strings.TrimSpace(strings.Split(domain.String, ",")[0])
+	if nodeDomain == "" {
+		return ""
+	}
+
+	if !strings.Contains(nodeDomain, "://") {
+		nodeDomain = "https://" + nodeDomain
+	}
+
+	parsedDomain, parseErr := url.Parse(nodeDomain)
+	if parseErr != nil || strings.TrimSpace(parsedDomain.Host) == "" {
+		return ""
+	}
+
+	parsedDomain.Path = ""
+	parsedDomain.RawQuery = ""
+	parsedDomain.Fragment = ""
+	parsedDomain.User = nil
+
+	base := strings.TrimRight(parsedDomain.String(), "/")
+	path := normalizeSubscriptionAPIPath(apiPath.String)
+	return base + path
+}
+
+func normalizeSubscriptionAPIPath(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" || trimmed == "/" {
+		return "/"
+	}
+
+	return "/" + strings.Trim(trimmed, "/") + "/"
+}
+
+func resolveSubscriptionURL(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, settings SubscriptionSettingsParsed) string {
+	if dbConn != nil {
+		if base := resolveSubscriptionBaseFromNode(ctx, dbConn); base != "" {
+			return base + user.ShortUUID
+		}
+	}
 
 	domain := strings.TrimSpace(settings.Raw.Address)
 	if domain == "" {
 		domain = "panel.exodus.dev"
 	}
 	scheme := strings.TrimSpace(settings.Raw.APISchema)
-	if scheme == "" {
+	if scheme != "http" && scheme != "https" {
 		scheme = "https"
 	}
 	apiPath := strings.Trim(strings.TrimSpace(settings.Raw.APIPath), "/")
 	if apiPath == "" {
 		apiPath = "api/sub"
 	}
-	subscriptionURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+}
+
+func buildResponseHeaders(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
+	headers := make(map[string]string)
+	headers["content-disposition"] = fmt.Sprintf("attachment; filename=%s", user.Username)
+
+	subscriptionURL := resolveSubscriptionURL(ctx, dbConn, user, settings)
 
 	title := settings.Raw.ProfileTitle
 	if title == "" {
@@ -1012,22 +1105,155 @@ func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsPa
 	return headers
 }
 
-func formatTemplateValue(value string, user SubscriptionUser, _ SubscriptionSettingsParsed, subscriptionURL string) string {
+var templateRegex = regexp.MustCompile(`\{\{(\w+)(?::([^{}]*))?\}\}`)
+
+func parseTemplateArgs(rawArgs string) map[string]string {
+	args := make(map[string]string)
+	for _, pair := range strings.Split(rawArgs, "|") {
+		if idx := strings.Index(pair, "="); idx != -1 {
+			args[strings.TrimSpace(pair[:idx])] = pair[idx+1:]
+		}
+	}
+	return args
+}
+
+func formatTemplateValue(value string, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) string {
 	shouldBase64 := false
 	if strings.HasPrefix(value, "exEncodeBase64:") {
 		shouldBase64 = true
 		value = strings.TrimPrefix(value, "exEncodeBase64:")
+	} else if strings.HasPrefix(value, "rwEncodeBase64:") {
+		shouldBase64 = true
+		value = strings.TrimPrefix(value, "rwEncodeBase64:")
 	}
 
-	replacer := strings.NewReplacer(
-		"{USERNAME}", user.Username,
-		"{{username}}", user.Username,
-		"{SHORT_UUID}", user.ShortUUID,
-		"{{shortUuid}}", user.ShortUUID,
-		"{SUBSCRIPTION_URL}", subscriptionURL,
-		"{{subscriptionUrl}}", subscriptionURL,
-	)
-	res := replacer.Replace(value)
+	trafficLeft := int64(0)
+	if user.TrafficLimitBytes > 0 {
+		if user.TrafficLimitBytes > user.UsedTrafficBytes {
+			trafficLeft = user.TrafficLimitBytes - user.UsedTrafficBytes
+		}
+	}
+
+	daysLeft := int64(0)
+	if !user.ExpireAt.IsZero() && user.ExpireAt.After(time.Now()) {
+		daysLeft = int64(math.Max(0, time.Until(user.ExpireAt).Hours()/24))
+	}
+
+	lastResetUnix := int64(0)
+	if user.LastTrafficResetAt != nil && !user.LastTrafficResetAt.IsZero() {
+		lastResetUnix = user.LastTrafficResetAt.Unix()
+	}
+
+	createdAtUnix := int64(0)
+	if !user.CreatedAt.IsZero() {
+		createdAtUnix = user.CreatedAt.Unix()
+	}
+
+	expireUnix := int64(0)
+	if !user.ExpireAt.IsZero() {
+		expireUnix = user.ExpireAt.Unix()
+	}
+
+	email := ""
+	if user.Email != nil {
+		email = *user.Email
+	}
+
+	tag := ""
+	if user.Tag != nil {
+		tag = *user.Tag
+	}
+
+	telegramID := ""
+	if user.TelegramID != nil {
+		telegramID = strconv.FormatInt(*user.TelegramID, 10)
+	}
+
+	description := ""
+	if user.Description != nil {
+		description = *user.Description
+	}
+
+	hwidLimit := 0
+	if user.HwidDeviceLimit != nil {
+		hwidLimit = *user.HwidDeviceLimit
+	} else {
+		hwidLimit = settings.HwidSettings.FallbackDeviceLimit
+	}
+
+	userStatusLabel := ""
+	if len(user.Status) > 0 {
+		userStatusLabel = strings.ToUpper(user.Status[:1]) + strings.ToLower(user.Status[1:])
+	}
+
+	res := templateRegex.ReplaceAllStringFunc(value, func(match string) string {
+		submatches := templateRegex.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+		key := submatches[1]
+		var args map[string]string
+		if len(submatches) >= 3 && submatches[2] != "" {
+			args = parseTemplateArgs(submatches[2])
+		} else {
+			args = make(map[string]string)
+		}
+
+		switch key {
+		case "DAYS_LEFT":
+			return strconv.FormatInt(daysLeft, 10)
+		case "TRAFFIC_USED":
+			return prettifyBytes(user.UsedTrafficBytes)
+		case "TRAFFIC_LEFT":
+			return prettifyBytes(trafficLeft)
+		case "TOTAL_TRAFFIC":
+			return prettifyBytes(user.TrafficLimitBytes)
+		case "STATUS":
+			if val, ok := args[user.Status]; ok {
+				return val
+			}
+			return userStatusLabel
+		case "USERNAME":
+			return user.Username
+		case "EMAIL":
+			return email
+		case "TELEGRAM_ID":
+			return telegramID
+		case "SUBSCRIPTION_URL":
+			return subscriptionURL
+		case "TAG":
+			return tag
+		case "EXPIRE_UNIX":
+			return strconv.FormatInt(expireUnix, 10)
+		case "SHORT_UUID":
+			return user.ShortUUID
+		case "ID":
+			return strconv.FormatInt(user.TID, 10)
+		case "TRAFFIC_USED_BYTES":
+			return strconv.FormatInt(user.UsedTrafficBytes, 10)
+		case "TRAFFIC_LEFT_BYTES":
+			return strconv.FormatInt(trafficLeft, 10)
+		case "TOTAL_TRAFFIC_BYTES":
+			return strconv.FormatInt(user.TrafficLimitBytes, 10)
+		case "RESET_STRATEGY":
+			if val, ok := args[user.TrafficLimitStrategy]; ok {
+				return val
+			}
+			return user.TrafficLimitStrategy
+		case "LIFETIME_USED_BYTES":
+			return strconv.FormatInt(user.LifetimeUsedBytes, 10)
+		case "CREATED_AT_UNIX":
+			return strconv.FormatInt(createdAtUnix, 10)
+		case "LAST_TRAFFIC_RESET_AT_UNIX":
+			return strconv.FormatInt(lastResetUnix, 10)
+		case "SS_HWID_LIMIT":
+			return strconv.Itoa(hwidLimit)
+		case "DESCRIPTION":
+			return description
+		default:
+			return match
+		}
+	})
 
 	if shouldBase64 {
 		return "base64:" + base64.StdEncoding.EncodeToString([]byte(res))

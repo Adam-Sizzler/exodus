@@ -20,7 +20,6 @@ type BackendConfig struct {
 	Log           LogConfig
 	EXODUS        EXODUSConfig
 	Panel         PanelConfig
-	Docs          DocsConfig
 	Metrics       MetricsConfig
 	Notifications NotificationsConfig
 	Scheduler     SchedulerConfig
@@ -38,11 +37,6 @@ type PanelConfig struct {
 	AppPort           int
 	ShortUUIDLength   int
 	trustedProxyNets  []*net.IPNet
-}
-
-type DocsConfig struct {
-	ScalarPath  string
-	SwaggerPath string
 }
 
 type CORSConfig struct {
@@ -172,10 +166,6 @@ var defaultConfig = BackendConfig{
 	},
 	JWT: JWTConfig{
 		AuthLifetimeHours: 12,
-	},
-	Docs: DocsConfig{
-		ScalarPath:  "/api/backend-tools/scalar",
-		SwaggerPath: "/api/backend-tools/swagger",
 	},
 	Metrics: MetricsConfig{
 		Address:         "0.0.0.0",
@@ -315,13 +305,6 @@ func applyEnvOverrides(cfg *BackendConfig) {
 	}
 	if value := envFirst("PANEL_STATIC_DIR", "EXODUS_STATIC_DIR"); value != "" {
 		cfg.Panel.StaticDir = value
-	}
-
-	if value := envFirst("SCALAR_PATH"); value != "" {
-		cfg.Docs.ScalarPath = strings.TrimSpace(value)
-	}
-	if value := envFirst("SWAGGER_PATH"); value != "" {
-		cfg.Docs.SwaggerPath = strings.TrimSpace(value)
 	}
 
 	if value := envFirst("METRICS_ADDRESS"); value != "" {
@@ -617,12 +600,6 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
 	}
 	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
-	// Docs paths are endpoint mount paths, not application base paths. They must
-	// stay without a trailing slash; otherwise net/http treats e.g. "/docs/" as a
-	// subtree route and emits a root-relative redirect to "/docs/" for requests
-	// to "/docs", which drops APP_PATH behind a reverse proxy.
-	cfg.Docs.ScalarPath = normalizeRoutePath(cfg.Docs.ScalarPath)
-	cfg.Docs.SwaggerPath = normalizeRoutePath(cfg.Docs.SwaggerPath)
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
 		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
 	}
@@ -795,22 +772,6 @@ func normalizeBasePath(input string) string {
 	}
 
 	return "/" + cleaned + "/"
-}
-
-// normalizeRoutePath normalizes a single endpoint mount path (e.g. docs paths)
-// without a trailing slash, unlike normalizeBasePath.
-func normalizeRoutePath(input string) string {
-	trimmed := strings.TrimSpace(input)
-	if trimmed == "" || trimmed == "/" {
-		return "/"
-	}
-
-	cleaned := strings.Trim(trimmed, "/")
-	if cleaned == "" {
-		return "/"
-	}
-
-	return "/" + cleaned
 }
 
 func envFirst(keys ...string) string {

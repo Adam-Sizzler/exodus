@@ -16,5 +16,4 @@ var DeleteSnippetCommand;
             .max(255, 'Name must be less than 255 characters')
             .regex(/^[A-Za-z0-9_\s-]+$/, 'Name can only contain letters, numbers, underscores, dashes and spaces'),
     });
-
 })(DeleteSnippetCommand || (exports.DeleteSnippetCommand = DeleteSnippetCommand = {}));

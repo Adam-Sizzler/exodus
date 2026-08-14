@@ -20,7 +20,7 @@ import { TbChevronRight, TbLink, TbLock } from 'react-icons/tb'
 
 import { showModal } from '@shared/_modals/show-modal'
 import { CountryFlag } from '@shared/ui/get-country-flag'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { SectionCard } from '@shared/ui/section-card'
 
 type TopologyConfigProfile = GetConfigProfilesCommand.Response['response']['configProfiles'][number]
@@ -168,7 +168,7 @@ export function NodeInboundsHostsTree(props: IProps) {
 
                 {meta?.kind === 'node' && <CountryFlag countryCode={meta.countryCode} />}
 
-                {meta?.kind === 'profile' && <XrayLogo size={14} />}
+                {meta?.kind === 'profile' && <SingboxLogo size={14} />}
 
                 {meta?.kind === 'inbound' && (
                     <PiTag size={14} style={{ flexShrink: 0, opacity: 0.6 }} />

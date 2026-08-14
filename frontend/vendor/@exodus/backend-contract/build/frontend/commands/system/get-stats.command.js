@@ -41,5 +41,4 @@ var GetStatsCommand;
             }),
         }),
     });
-
 })(GetStatsCommand || (exports.GetStatsCommand = GetStatsCommand = {}));

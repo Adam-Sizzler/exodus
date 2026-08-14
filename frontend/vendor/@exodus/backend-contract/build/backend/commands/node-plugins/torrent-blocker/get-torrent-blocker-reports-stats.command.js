@@ -32,5 +32,4 @@ var GetTorrentBlockerReportsStatsCommand;
             })),
         }),
     });
-
 })(GetTorrentBlockerReportsStatsCommand || (exports.GetTorrentBlockerReportsStatsCommand = GetTorrentBlockerReportsStatsCommand = {}));

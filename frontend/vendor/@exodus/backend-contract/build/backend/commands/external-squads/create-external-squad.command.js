@@ -20,5 +20,4 @@ var CreateExternalSquadCommand;
     CreateExternalSquadCommand.ResponseSchema = zod_1.z.object({
         response: models_1.ExternalSquadSchema,
     });
-
 })(CreateExternalSquadCommand || (exports.CreateExternalSquadCommand = CreateExternalSquadCommand = {}));

@@ -17,6 +17,7 @@ exports.SYSTEM_ROUTES = {
     },
     HEALTH: 'health',
     METADATA: 'metadata',
+    CONFIGURATION: 'configuration',
     TESTERS: {
         SRR_MATCHER: 'testers/srr-matcher',
     },

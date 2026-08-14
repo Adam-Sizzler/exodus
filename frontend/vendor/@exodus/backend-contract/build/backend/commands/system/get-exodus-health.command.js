@@ -28,20 +28,25 @@ var GetExodusHealthCommand;
                 name: zod_1.z.string().optional(),
                 startedAt: zod_1.z.string().optional(),
                 uptimeSeconds: zod_1.z.number().optional(),
-                runtime: zod_1.z.object({
+                runtime: zod_1.z
+                    .object({
                     language: zod_1.z.string().optional(),
                     version: zod_1.z.string().optional(),
                     goos: zod_1.z.string().optional(),
                     goarch: zod_1.z.string().optional(),
-                }).optional(),
-                cpu: zod_1.z.object({
+                })
+                    .optional(),
+                cpu: zod_1.z
+                    .object({
                     cores: zod_1.z.number().optional(),
                     gomaxprocs: zod_1.z.number().optional(),
                     processPercent: zod_1.z.number().optional(),
                     processCpuSeconds: zod_1.z.number().optional(),
                     processCpuPercentMode: zod_1.z.string().optional(),
-                }).optional(),
-                memory: zod_1.z.object({
+                })
+                    .optional(),
+                memory: zod_1.z
+                    .object({
                     rssBytes: zod_1.z.number().optional(),
                     allocBytes: zod_1.z.number().optional(),
                     totalAllocBytes: zod_1.z.number().optional(),
@@ -54,8 +59,10 @@ var GetExodusHealthCommand;
                     stackInuseBytes: zod_1.z.number().optional(),
                     otherSysBytes: zod_1.z.number().optional(),
                     heapUsedPercent: zod_1.z.number().optional(),
-                }).optional(),
-                gc: zod_1.z.object({
+                })
+                    .optional(),
+                gc: zod_1.z
+                    .object({
                     numGc: zod_1.z.number().optional(),
                     pauseTotalNs: zod_1.z.number().optional(),
                     lastPauseNs: zod_1.z.number().optional(),
@@ -64,22 +71,28 @@ var GetExodusHealthCommand;
                     pauseP99Ms: zod_1.z.number().optional(),
                     pauseP99Source: zod_1.z.string().optional(),
                     gogc: zod_1.z.number().optional(),
-                }).optional(),
-                scheduler: zod_1.z.object({
+                })
+                    .optional(),
+                scheduler: zod_1.z
+                    .object({
                     goroutines: zod_1.z.number().optional(),
                     cgoCalls: zod_1.z.number().optional(),
                     schedulerDelayMs: zod_1.z.number().optional(),
                     schedulerP99Ms: zod_1.z.number().optional(),
                     schedulerLatencySource: zod_1.z.string().optional(),
-                }).optional(),
-                process: zod_1.z.object({
+                })
+                    .optional(),
+                process: zod_1.z
+                    .object({
                     openFileDescriptors: zod_1.z.number().optional(),
                     threads: zod_1.z.number().optional(),
-                }).optional(),
+                })
+                    .optional(),
                 collectedAt: zod_1.z.string().optional(),
                 collectedAtUnix: zod_1.z.number().optional(),
             })),
-            runtimeSummary: zod_1.z.object({
+            runtimeSummary: zod_1.z
+                .object({
                 totalProcesses: zod_1.z.number().optional(),
                 startedAt: zod_1.z.string().optional(),
                 uptimeSeconds: zod_1.z.number().optional(),
@@ -89,10 +102,8 @@ var GetExodusHealthCommand;
                 averageGoroutines: zod_1.z.number().optional(),
                 averageSchedulerDelayMs: zod_1.z.number().optional(),
                 averageSchedulerP99Ms: zod_1.z.number().optional(),
-            }).optional(),
+            })
+                .optional(),
         }),
     });
-
 })(GetExodusHealthCommand || (exports.GetExodusHealthCommand = GetExodusHealthCommand = {}));
-
-exports.GetExodusHealthCommand = exports.GetExodusHealthCommand;

@@ -12,5 +12,4 @@ var DeleteSubpageConfigCommand;
     DeleteSubpageConfigCommand.RequestParamSchema = zod_1.z.object({
         uuid: zod_1.z.uuid(),
     });
-
 })(DeleteSubpageConfigCommand || (exports.DeleteSubpageConfigCommand = DeleteSubpageConfigCommand = {}));

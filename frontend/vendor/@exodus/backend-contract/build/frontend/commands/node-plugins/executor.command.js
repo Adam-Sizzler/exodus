@@ -50,5 +50,4 @@ var PluginExecutorCommand;
         command: PluginExecutorCommand.CommandSchema,
         targetNodes: PluginExecutorCommand.TargetNodesSchema,
     });
-
 })(PluginExecutorCommand || (exports.PluginExecutorCommand = PluginExecutorCommand = {}));

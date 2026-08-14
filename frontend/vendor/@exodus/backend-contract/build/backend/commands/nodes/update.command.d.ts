@@ -28,6 +28,7 @@ export declare namespace UpdateNodeCommand {
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             uuid: z.ZodUUID;
+            id: z.ZodNumber;
             name: z.ZodString;
             address: z.ZodString;
             port: z.ZodNullable<z.ZodInt>;
@@ -100,7 +101,7 @@ export declare namespace UpdateNodeCommand {
                 }, z.core.$strip>;
             }, z.core.$strip>>;
             versions: z.ZodNullable<z.ZodObject<{
-                xray: z.ZodString;
+                singbox: z.ZodString;
                 node: z.ZodString;
             }, z.core.$strip>>;
             singboxUptime: z.ZodNumber;
@@ -109,6 +110,7 @@ export declare namespace UpdateNodeCommand {
         }, z.core.$strip>;
     }, z.core.$strip>;
     type RequestBody = z.infer<typeof RequestBodySchema>;
+    type Request = RequestBody;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=update.command.d.ts.map

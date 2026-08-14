@@ -29,5 +29,4 @@ var GetUserAccessibleNodesCommand;
             })),
         }),
     });
-
 })(GetUserAccessibleNodesCommand || (exports.GetUserAccessibleNodesCommand = GetUserAccessibleNodesCommand = {}));

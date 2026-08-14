@@ -12,5 +12,4 @@ var BulkAllExtendExpirationDateCommand;
     BulkAllExtendExpirationDateCommand.RequestBodySchema = zod_1.z.object({
         extendDays: zod_1.z.int().min(1),
     });
-
 })(BulkAllExtendExpirationDateCommand || (exports.BulkAllExtendExpirationDateCommand = BulkAllExtendExpirationDateCommand = {}));

@@ -15,5 +15,4 @@ var GetApiTokensCommand;
             tokens: zod_1.z.array(api_tokens_schema_1.ApiTokensSchema),
         }),
     });
-
 })(GetApiTokensCommand || (exports.GetApiTokensCommand = GetApiTokensCommand = {}));

@@ -12,5 +12,4 @@ var BulkDeleteUsersCommand;
     BulkDeleteUsersCommand.RequestBodySchema = zod_1.z.object({
         userIds: zod_1.z.array(zod_1.z.number()).min(1).max(500),
     });
-
 })(BulkDeleteUsersCommand || (exports.BulkDeleteUsersCommand = BulkDeleteUsersCommand = {}));

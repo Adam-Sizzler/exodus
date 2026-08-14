@@ -313,8 +313,8 @@ func (s *RenderService) GetSubscriptionTemplateByName(ctx context.Context, name 
 	return getSubscriptionTemplateByName(ctx, s.db, name)
 }
 
-func (s *RenderService) BuildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
-	return buildResponseHeaders(user, settings, contentType)
+func (s *RenderService) BuildResponseHeaders(ctx context.Context, user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
+	return buildResponseHeaders(ctx, s.db, user, settings, contentType)
 }
 
 func (s *RenderService) MatchResponseRules(rules *subscriptionresponserules.Config, header http.Header) string {

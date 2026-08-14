@@ -14,6 +14,7 @@ export declare const SYSTEM_ROUTES: {
     };
     readonly HEALTH: "health";
     readonly METADATA: "metadata";
+    readonly CONFIGURATION: "configuration";
     readonly TESTERS: {
         readonly SRR_MATCHER: "testers/srr-matcher";
     };

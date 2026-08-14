@@ -125,6 +125,7 @@ export declare const REST_API: {
     readonly SYSTEM: {
         readonly HEALTH: "/api/system/health";
         readonly METADATA: "/api/system/metadata";
+        readonly CONFIGURATION: "/api/system/configuration";
         readonly STATS: {
             readonly SYSTEM_STATS: "/api/system/stats";
             readonly BANDWIDTH_STATS: "/api/system/stats/bandwidth";
@@ -245,7 +246,7 @@ export declare const REST_API: {
             readonly REORDER: "/api/external-squads/actions/reorder";
         };
     };
-    readonly REMNAAWAVE_SETTINGS: {
+    readonly EXODUS_SETTINGS: {
         readonly GET: "/api/exodus-settings/";
         readonly UPDATE: "/api/exodus-settings/";
     };

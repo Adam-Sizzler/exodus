@@ -30,5 +30,4 @@ var GetNodesMetricsCommand;
             })),
         }),
     });
-
 })(GetNodesMetricsCommand || (exports.GetNodesMetricsCommand = GetNodesMetricsCommand = {}));

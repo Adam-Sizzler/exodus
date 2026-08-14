@@ -22,6 +22,4 @@ var ReorderInternalSquadCommand;
             internalSquads: zod_1.z.array(models_1.InternalSquadSchema),
         }),
     });
-
 })(ReorderInternalSquadCommand || (exports.ReorderInternalSquadCommand = ReorderInternalSquadCommand = {}));
-

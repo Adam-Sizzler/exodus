@@ -12,5 +12,4 @@ var GetPasskeyRegistrationOptionsCommand;
     GetPasskeyRegistrationOptionsCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.unknown(),
     });
-
 })(GetPasskeyRegistrationOptionsCommand || (exports.GetPasskeyRegistrationOptionsCommand = GetPasskeyRegistrationOptionsCommand = {}));

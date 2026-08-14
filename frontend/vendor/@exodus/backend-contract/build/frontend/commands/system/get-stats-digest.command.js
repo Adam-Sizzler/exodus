@@ -32,5 +32,4 @@ var GetStatsDigestCommand;
             }),
         }),
     });
-
 })(GetStatsDigestCommand || (exports.GetStatsDigestCommand = GetStatsDigestCommand = {}));
