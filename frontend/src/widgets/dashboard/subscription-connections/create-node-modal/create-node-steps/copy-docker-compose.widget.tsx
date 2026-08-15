@@ -32,7 +32,7 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IP
     const subPort = 3010
     const grpcPort = port ?? 2222
 
-    const composeBase = `services:\n  exodus-sub:\n    container_name: exodus-sub\n    hostname: exodus-sub\n    image: ghcr.io/Adam-Sizzler/exodus-sub:latest\n    restart: always\n    environment:\n      - APP_PORT_SUB=${subPort}\n      - SUB_GRPC_ADDRESS=0.0.0.0\n      - SUB_GRPC_PORT=${grpcPort}\n      - SUB_PATH=${grpcPath}`
+    const composeBase = `services:\n  exodus-sub:\n    container_name: exodus-sub\n    hostname: exodus-sub\n    image: ghcr.io/Adam-Sizzler/exodus-sub:latest\n    restart: always\n    environment:\n      - SUB_APP_PORT=${subPort}\n      - SUB_GRPC_ADDRESS=0.0.0.0\n      - SUB_GRPC_PORT=${grpcPort}\n      - SUB_APP_PATH=${grpcPath}`
 
     const composeAuth =
         apiSchema === 'tls'
@@ -58,7 +58,7 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IP
                 {apiSchema === 'tls' ? 'gRPC + TLS + token' : 'gRPC + mTLS'}
             </Badge>
             <Badge color="gray" variant="soft">
-                SUB_PATH={grpcPath}
+                SUB_APP_PATH={grpcPath}
             </Badge>
             {apiSchema === 'tls' ? (
                 <Badge color="gray" variant="soft">
