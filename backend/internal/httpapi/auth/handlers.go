@@ -600,7 +600,7 @@ func OAuth2AuthorizeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			return
 		}
 		codeVerifier := ""
-		authURL, err := buildAuthorizationURL(provider, providerSettings, cfg.Panel.BasePath, state, &codeVerifier)
+		authURL, err := buildAuthorizationURL(provider, providerSettings, cfg.Panel.Trimmed(), state, &codeVerifier)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "OAuth2 authorize error", err, cfg)
 			return
@@ -651,7 +651,7 @@ func OAuth2CallbackHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
 			return
 		}
-		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, cfg.Panel.BasePath, strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
+		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, cfg.Panel.Trimmed(), strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
 		if err != nil {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "callback_error", r)
 			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
