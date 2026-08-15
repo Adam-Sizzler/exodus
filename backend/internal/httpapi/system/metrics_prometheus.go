@@ -455,7 +455,7 @@ func fetchPrometheusMetricsText(cfg *config.BackendConfig) (string, error) {
 	}
 
 	client := &http.Client{Timeout: 8 * time.Second}
-	path := metricsPath(cfg.Panel.BasePath)
+	path := cfg.Panel.Trimmed() + "/metrics"
 	url := fmt.Sprintf("http://%s:%d%s", host, port, path)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -623,17 +623,6 @@ func canonicalNodeMetricName(metricName string) string {
 	default:
 		return ""
 	}
-}
-
-func metricsPath(basePath string) string {
-	trimmed := strings.TrimRight(strings.TrimSpace(basePath), "/")
-	if trimmed == "" || trimmed == "/" {
-		return "/metrics"
-	}
-	if !strings.HasPrefix(trimmed, "/") {
-		trimmed = "/" + trimmed
-	}
-	return trimmed + "/metrics"
 }
 
 func writePrometheusMetricLine(builder *strings.Builder, metricName string, labels map[string]string, value string) {

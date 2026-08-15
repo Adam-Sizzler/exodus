@@ -265,11 +265,9 @@ jobs:
             ${{ env.CHANGELOG }}
 
             Latest Docker image:
-            #- `${{ env.REGISTRY_IMAGE }}:latest`
             - `${{ env.GHCR_IMAGE }}:latest`
 
             Docker images:
-            #- `${{ env.REGISTRY_IMAGE }}:${{ steps.tag.outputs.tag }}`
             - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
 
   send-finish-tg-msg:
