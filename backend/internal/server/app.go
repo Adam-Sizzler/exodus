@@ -505,7 +505,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Value:    sessionToken,
 		HttpOnly: true,
 		Secure:   true,
-		Path:     a.cfg.WithSlash(),
+		Path:     a.cfg.Backend.WithSlash(),
 		MaxAge:   1800,
 	})
 
@@ -529,7 +529,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		settings.MetaDescription,
 		string(panelData),
 	)
-	rendered = prefixAssetsInHTML(rendered, a.cfg.Trimmed())
+	rendered = prefixAssetsInHTML(rendered, a.cfg.Backend.Trimmed())
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if r.Method != http.MethodHead {
@@ -591,11 +591,11 @@ func (a *App) verifySessionCookie(r *http.Request) (security.Claims, error) {
 }
 
 func (a *App) applyCustomPrefix(requestPath string) (string, bool) {
-	if !a.cfg.IsCustom() {
+	if !a.cfg.Backend.IsCustom() {
 		return requestPath, true
 	}
 
-	prefix := a.cfg.Trimmed()
+	prefix := a.cfg.Backend.Trimmed()
 	if requestPath == prefix {
 		return "/", true
 	}

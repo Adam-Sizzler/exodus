@@ -122,7 +122,7 @@ func TestApp_ApplyCustomPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			app := &App{cfg: config.Config{SubPath: tt.subPath}}
+			app := &App{cfg: config.Config{Backend: config.BackendConfig{BasePath: tt.subPath}, SubPath: tt.subPath}}
 			route, ok := app.applyCustomPrefix(tt.requestPath)
 			if ok != tt.wantOK {
 				t.Errorf("applyCustomPrefix() ok = %v, want %v", ok, tt.wantOK)

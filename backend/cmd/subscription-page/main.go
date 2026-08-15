@@ -46,10 +46,10 @@ func main() {
 		return
 	}
 
-	if !cfg.IsCustom() {
+	if !cfg.Backend.IsCustom() {
 		bootstrapLogger.Info("[CONFIG] SUB_APP_PATH: not set")
 	} else {
-		bootstrapLogger.Info("[CONFIG] SUB_APP_PATH: " + cfg.Trimmed())
+		bootstrapLogger.Info("[CONFIG] SUB_APP_PATH: " + cfg.Backend.Trimmed())
 	}
 
 	resolvedVersion := resolveNodeVersion(cfg.AppVersion)

@@ -17,7 +17,13 @@ const (
 	DefaultGRPCPort    = 2222
 )
 
+type BackendConfig struct {
+	BasePath string
+	AppPort  string
+}
+
 type Config struct {
+	Backend                         BackendConfig
 	AppPort                         string
 	SubPath                         string
 	CaddyAuthAPIToken               string
@@ -112,8 +118,13 @@ func Load() (Config, error) {
 	pathPrefix := normalizeBasePath(rawPath)
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
+	port := getEnvOrDefault("SUB_APP_PORT", DefaultPort)
 	cfg := Config{
-		AppPort:                         getEnvOrDefault("SUB_APP_PORT", DefaultPort),
+		Backend: BackendConfig{
+			BasePath: pathPrefix,
+			AppPort:  port,
+		},
+		AppPort:                         port,
 		SubPath:                         pathPrefix,
 		CaddyAuthAPIToken:               os.Getenv("CADDY_AUTH_API_TOKEN"),
 		CloudflareZeroTrustClientID:     os.Getenv("CLOUDFLARE_ZERO_TRUST_CLIENT_ID"),
@@ -238,23 +249,23 @@ func validateBasePath(input string) error {
 	return nil
 }
 
-// Trimmed returns SubPath without trailing slash (e.g. "/subscription" or "" for root "/").
-func (c Config) Trimmed() string {
-	normalized := normalizeBasePath(c.SubPath)
+// Trimmed returns BasePath without trailing slash (e.g. "/subscription" or "" for root "/").
+func (b BackendConfig) Trimmed() string {
+	normalized := normalizeBasePath(b.BasePath)
 	if normalized == "/" {
 		return ""
 	}
 	return strings.TrimSuffix(normalized, "/")
 }
 
-// IsCustom reports whether a custom non-root SubPath is configured.
-func (c Config) IsCustom() bool {
-	return c.Trimmed() != ""
+// IsCustom reports whether a custom non-root BasePath is configured.
+func (b BackendConfig) IsCustom() bool {
+	return b.Trimmed() != ""
 }
 
-// WithSlash returns SubPath with leading and trailing slashes (e.g. "/subscription/" or "/" for root).
-func (c Config) WithSlash() string {
-	return normalizeBasePath(c.SubPath)
+// WithSlash returns BasePath with leading and trailing slashes (e.g. "/subscription/" or "/" for root).
+func (b BackendConfig) WithSlash() string {
+	return normalizeBasePath(b.BasePath)
 }
 
 func normalizeBasePath(input string) string {

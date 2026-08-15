@@ -49,14 +49,14 @@ func TestConfigSubPathMethods(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := Config{SubPath: tt.subPath}
-			if got := cfg.Trimmed(); got != tt.wantTrimmed {
+			b := BackendConfig{BasePath: tt.subPath}
+			if got := b.Trimmed(); got != tt.wantTrimmed {
 				t.Errorf("Trimmed() = %q, want %q", got, tt.wantTrimmed)
 			}
-			if got := cfg.IsCustom(); got != tt.wantIsCustom {
+			if got := b.IsCustom(); got != tt.wantIsCustom {
 				t.Errorf("IsCustom() = %v, want %v", got, tt.wantIsCustom)
 			}
-			if got := cfg.WithSlash(); got != tt.wantWithSlash {
+			if got := b.WithSlash(); got != tt.wantWithSlash {
 				t.Errorf("WithSlash() = %q, want %q", got, tt.wantWithSlash)
 			}
 		})

@@ -58,7 +58,7 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterNodeServiceServer(grpcServer, nodeService)
 
-	pathPrefix := cfg.Trimmed()
+	pathPrefix := cfg.Backend.Trimmed()
 	if pathPrefix != "" {
 		log.Info("[CONFIG] gRPC path prefix: " + pathPrefix)
 	}
