@@ -73,7 +73,7 @@ func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
 
 func isPublicPath(path string, cfg *config.BackendConfig) bool {
 	if cfg != nil {
-		path = strings.TrimPrefix(path, cfg.Panel.Trimmed())
+		path = strings.TrimPrefix(path, cfg.Backend.Trimmed())
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path

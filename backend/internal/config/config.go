@@ -20,7 +20,7 @@ type BackendConfig struct {
 	Logger        *logger.Logger
 	Log           LogConfig
 	EXODUS        EXODUSConfig
-	Panel         PanelConfig
+	Backend       BackendAppConfig
 	Metrics       MetricsConfig
 	Notifications NotificationsConfig
 	Scheduler     SchedulerConfig
@@ -30,7 +30,7 @@ type BackendConfig struct {
 	CORS          CORSConfig
 }
 
-type PanelConfig struct {
+type BackendAppConfig struct {
 	StaticDir         string
 	BasePath          string
 	AllowInsecureHTTP bool
@@ -39,6 +39,8 @@ type PanelConfig struct {
 	ShortUUIDLength   int
 	trustedProxyNets  []*net.IPNet
 }
+
+type PanelConfig = BackendAppConfig
 
 type CORSConfig struct {
 	AllowedOrigins []string
@@ -156,7 +158,7 @@ var defaultConfig = BackendConfig{
 		ExportToStreamEnabled:        false,
 		ExportToStreamMaxLen:         3000,
 	},
-	Panel: PanelConfig{
+	Backend: BackendAppConfig{
 		StaticDir:         "/opt/app/ui",
 		BasePath:          "/",
 		AllowInsecureHTTP: false,
@@ -209,9 +211,9 @@ func LoadConfig() (BackendConfig, error) {
 		return cfg, err
 	}
 
-	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
-		cfg.Logger.Warn("Invalid app port, using default", "port", cfg.Panel.AppPort, "default", defaultConfig.Panel.AppPort)
-		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
+	if cfg.Backend.AppPort < 1 || cfg.Backend.AppPort > 65535 {
+		cfg.Logger.Warn("Invalid app port, using default", "port", cfg.Backend.AppPort, "default", defaultConfig.Backend.AppPort)
+		cfg.Backend.AppPort = defaultConfig.Backend.AppPort
 	}
 	if cfg.Metrics.Port < 1 || cfg.Metrics.Port > 65535 {
 		cfg.Logger.Warn("Invalid metrics port, using default", "port", cfg.Metrics.Port, "default", defaultConfig.Metrics.Port)
@@ -291,23 +293,23 @@ func applyEnvOverrides(cfg *BackendConfig) {
 
 	if value := envFirst("APP_PORT"); value != "" {
 		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 && parsed <= 65535 {
-			cfg.Panel.AppPort = parsed
+			cfg.Backend.AppPort = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid APP_PORT value, ignoring", "value", value)
 		}
 	}
 	if value := envFirst("SHORT_UUID_LENGTH"); value != "" {
 		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 16 && parsed <= 64 {
-			cfg.Panel.ShortUUIDLength = parsed
+			cfg.Backend.ShortUUIDLength = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid SHORT_UUID_LENGTH value (must be 16-64), ignoring", "value", value)
 		}
 	}
 	if value := envFirst("APP_PATH"); value != "" {
-		cfg.Panel.BasePath = value
+		cfg.Backend.BasePath = value
 	}
 	if value := envFirst("PANEL_STATIC_DIR", "EXODUS_STATIC_DIR"); value != "" {
-		cfg.Panel.StaticDir = value
+		cfg.Backend.StaticDir = value
 	}
 
 	if value := envFirst("METRICS_ADDRESS"); value != "" {
@@ -336,14 +338,14 @@ func applyEnvOverrides(cfg *BackendConfig) {
 
 	if value := envFirst("EXODUS_ALLOW_INSECURE_HTTP"); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
-			cfg.Panel.AllowInsecureHTTP = parsed
+			cfg.Backend.AllowInsecureHTTP = parsed
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid EXODUS_ALLOW_INSECURE_HTTP value, ignoring", "value", value)
 		}
 	}
 
 	if value := envFirst("EXODUS_TRUSTED_PROXIES"); value != "" {
-		cfg.Panel.TrustedProxies = splitCSV(value)
+		cfg.Backend.TrustedProxies = splitCSV(value)
 	}
 
 	if value := envFirst("DATABASE_URL"); value != "" {
@@ -615,18 +617,18 @@ func normalizePanelConfig(cfg *BackendConfig) error {
 		return nil
 	}
 
-	if strings.TrimSpace(cfg.Panel.StaticDir) == "" {
-		cfg.Panel.StaticDir = defaultConfig.Panel.StaticDir
+	if strings.TrimSpace(cfg.Backend.StaticDir) == "" {
+		cfg.Backend.StaticDir = defaultConfig.Backend.StaticDir
 	}
-	if strings.TrimSpace(cfg.Panel.BasePath) == "" {
-		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
+	if strings.TrimSpace(cfg.Backend.BasePath) == "" {
+		cfg.Backend.BasePath = defaultConfig.Backend.BasePath
 	}
-	if err := validateBasePath(cfg.Panel.BasePath); err != nil {
+	if err := validateBasePath(cfg.Backend.BasePath); err != nil {
 		return err
 	}
-	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
-	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
-		cfg.Panel.AppPort = defaultConfig.Panel.AppPort
+	cfg.Backend.BasePath = normalizeBasePath(cfg.Backend.BasePath)
+	if cfg.Backend.AppPort < 1 || cfg.Backend.AppPort > 65535 {
+		cfg.Backend.AppPort = defaultConfig.Backend.AppPort
 	}
 	if strings.TrimSpace(cfg.Metrics.Address) == "" {
 		cfg.Metrics.Address = defaultConfig.Metrics.Address
@@ -638,11 +640,11 @@ func normalizePanelConfig(cfg *BackendConfig) error {
 		cfg.Metrics.CacheTTLSeconds = defaultConfig.Metrics.CacheTTLSeconds
 	}
 
-	proxyNets, invalid := parseTrustedProxies(cfg.Panel.TrustedProxies)
+	proxyNets, invalid := parseTrustedProxies(cfg.Backend.TrustedProxies)
 	if len(invalid) > 0 && cfg.Logger != nil {
 		cfg.Logger.Warn("Invalid trusted proxy CIDR entries ignored", "entries", invalid)
 	}
-	cfg.Panel.trustedProxyNets = proxyNets
+	cfg.Backend.trustedProxyNets = proxyNets
 	return nil
 }
 
@@ -808,7 +810,7 @@ func (p PanelConfig) IsTrustedProxy(ip net.IP) bool {
 }
 
 // Trimmed returns BasePath without trailing slash (e.g. "/exodus_path" or "" for root "/").
-func (p PanelConfig) Trimmed() string {
+func (p BackendAppConfig) Trimmed() string {
 	normalized := normalizeBasePath(p.BasePath)
 	if normalized == "/" {
 		return ""
@@ -817,12 +819,12 @@ func (p PanelConfig) Trimmed() string {
 }
 
 // IsCustom reports whether a custom non-root BasePath is configured.
-func (p PanelConfig) IsCustom() bool {
+func (p BackendAppConfig) IsCustom() bool {
 	return p.Trimmed() != ""
 }
 
 // WithSlash returns BasePath with leading and trailing slashes (e.g. "/exodus_path/" or "/" for root).
-func (p PanelConfig) WithSlash() string {
+func (p BackendAppConfig) WithSlash() string {
 	return normalizeBasePath(p.BasePath)
 }
 

@@ -71,8 +71,8 @@ func (s *UserService) ResetUserTraffic(ctx context.Context, userUUID string) err
 
 func (s *UserService) RevokeUserSubscription(ctx context.Context, userUUID string, req revokeUserSubscriptionRequest) error {
 	shortUUIDLength := 16
-	if s != nil && s.cfg != nil && s.cfg.Panel.ShortUUIDLength >= 16 {
-		shortUUIDLength = s.cfg.Panel.ShortUUIDLength
+	if s != nil && s.cfg != nil && s.cfg.Backend.ShortUUIDLength >= 16 {
+		shortUUIDLength = s.cfg.Backend.ShortUUIDLength
 	}
 	shortUUID := generateSubscriptionShortUUID(shortUUIDLength)
 	credentials, err := newUserProtocolCredentials(nil, nil, nil, nil, nil, nil, nil)

@@ -455,7 +455,7 @@ func fetchPrometheusMetricsText(cfg *config.BackendConfig) (string, error) {
 	}
 
 	client := &http.Client{Timeout: 8 * time.Second}
-	path := cfg.Panel.Trimmed() + "/metrics"
+	path := cfg.Backend.Trimmed() + "/metrics"
 	url := fmt.Sprintf("http://%s:%d%s", host, port, path)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)

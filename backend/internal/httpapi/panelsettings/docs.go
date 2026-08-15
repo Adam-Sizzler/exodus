@@ -64,7 +64,7 @@ func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
 
 		basePath := ""
 		if cfg != nil {
-			basePath = cfg.Panel.Trimmed()
+			basePath = cfg.Backend.Trimmed()
 		}
 		specURL := fmt.Sprintf("%s/api/backend-tools/scalar/openapi.json", basePath)
 		apiBasePath := basePath + "/api"
@@ -121,7 +121,7 @@ func DocsSwaggerHandler(cfg *config.BackendConfig) http.HandlerFunc {
 
 		basePath := ""
 		if cfg != nil {
-			basePath = cfg.Panel.Trimmed()
+			basePath = cfg.Backend.Trimmed()
 		}
 		specURL := fmt.Sprintf("%s/api/backend-tools/swagger/openapi.json", basePath)
 
@@ -184,7 +184,7 @@ func buildExodusOpenAPISpec(cfg *config.BackendConfig) ([]byte, error) {
 
 	apiBasePath := "/api"
 	if cfg != nil {
-		apiBasePath = cfg.Panel.Trimmed() + "/api"
+		apiBasePath = cfg.Backend.Trimmed() + "/api"
 	}
 	doc["basePath"] = apiBasePath
 	doc["servers"] = []map[string]any{

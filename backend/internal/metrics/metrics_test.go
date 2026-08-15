@@ -12,8 +12,8 @@ import (
 func TestMetricsMuxEndpoints(t *testing.T) {
 	t.Run("root base path", func(t *testing.T) {
 		cfg := &config.BackendConfig{}
-		cfg.Panel.BasePath = "/"
-		prefix := cfg.Panel.Trimmed()
+		cfg.Backend.BasePath = "/"
+		prefix := cfg.Backend.Trimmed()
 
 		mux := http.NewServeMux()
 		mux.HandleFunc(prefix+"/health", health.HealthHandler())
@@ -29,8 +29,8 @@ func TestMetricsMuxEndpoints(t *testing.T) {
 
 	t.Run("custom base path", func(t *testing.T) {
 		cfg := &config.BackendConfig{}
-		cfg.Panel.BasePath = "/exodus_path/"
-		prefix := cfg.Panel.Trimmed()
+		cfg.Backend.BasePath = "/exodus_path/"
+		prefix := cfg.Backend.Trimmed()
 
 		mux := http.NewServeMux()
 		mux.HandleFunc(prefix+"/health", health.HealthHandler())

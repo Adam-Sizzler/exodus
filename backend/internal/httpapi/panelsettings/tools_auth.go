@@ -41,7 +41,7 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 				if verifyToolsJWT(ott, secret, BackendToolsJWTScopeOtt) {
 					accessToken, err := signToolsAccessJWT(secret)
 					if err == nil {
-						cookiePath := cfg.Panel.Trimmed() + "/api/backend-tools"
+						cookiePath := cfg.Backend.Trimmed() + "/api/backend-tools"
 
 						http.SetCookie(w, &http.Cookie{
 							Name:     BackendToolsAuthCookieName,
@@ -56,7 +56,7 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 
 					basePath := ""
 					if cfg != nil {
-						basePath = cfg.Panel.Trimmed()
+						basePath = cfg.Backend.Trimmed()
 					}
 
 					redirectPath := r.URL.Path

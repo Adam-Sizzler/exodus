@@ -97,7 +97,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 			return
 		}
 		useTLS = true
-		if sm.cfg != nil && sm.cfg.Panel.AllowInsecureHTTP {
+		if sm.cfg != nil && sm.cfg.Backend.AllowInsecureHTTP {
 			skipVerify = true
 			sm.cfg.Logger.Warn("Subscription TLS verification is disabled by EXODUS_ALLOW_INSECURE_HTTP", "node", state.nodeName)
 		}

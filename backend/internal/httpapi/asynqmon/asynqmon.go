@@ -21,7 +21,7 @@ func NewAsynqmonWithRootPath(cfg *config.BackendConfig, routePath string) (http.
 
 	redisOpt := jobqueue.BuildAsynqRedisOpt(cfg)
 
-	basePath := cfg.Panel.Trimmed()
+	basePath := cfg.Backend.Trimmed()
 	rootPath := routePath
 	if basePath != "" {
 		rootPath = basePath + routePath

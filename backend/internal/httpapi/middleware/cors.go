@@ -16,7 +16,7 @@ var (
 // WithCORS adds CORS headers and Server header to all responses.
 func WithCORS(cfg *config.BackendConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cfg != nil && !cfg.Panel.AllowInsecureHTTP && !IsSecureRequest(r, cfg) && !isHealthPath(r.URL.Path) {
+		if cfg != nil && !cfg.Backend.AllowInsecureHTTP && !IsSecureRequest(r, cfg) && !isHealthPath(r.URL.Path) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUpgradeRequired)
 			_, _ = w.Write([]byte(`{"error":"https_required","message":"panel requires HTTPS"}`))
@@ -118,7 +118,7 @@ func IsSecureRequest(r *http.Request, cfg *config.BackendConfig) bool {
 	if remoteIP != nil && remoteIP.IsLoopback() {
 		return true
 	}
-	if remoteIP == nil || !cfg.Panel.IsTrustedProxy(remoteIP) {
+	if remoteIP == nil || !cfg.Backend.IsTrustedProxy(remoteIP) {
 		return false
 	}
 

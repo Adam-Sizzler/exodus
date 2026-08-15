@@ -13,7 +13,7 @@ import (
 
 func TestDocsSwaggerHandlerServesSwaggerUI(t *testing.T) {
 	cfg := &config.BackendConfig{}
-	cfg.Panel.BasePath = "/exodus_path"
+	cfg.Backend.BasePath = "/exodus_path"
 
 	req := httptest.NewRequest(http.MethodGet, "/api/backend-tools/swagger", nil)
 	rec := httptest.NewRecorder()
@@ -37,7 +37,7 @@ func TestDocsSwaggerHandlerServesSwaggerUI(t *testing.T) {
 
 func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 	cfg := &config.BackendConfig{}
-	cfg.Panel.BasePath = "/panel"
+	cfg.Backend.BasePath = "/panel"
 
 	req := httptest.NewRequest(http.MethodGet, "/docs/openapi.json", nil)
 	rec := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 
 func TestDocsScalarHandlerCustomBasePath(t *testing.T) {
 	cfg := &config.BackendConfig{}
-	cfg.Panel.BasePath = "/panel"
+	cfg.Backend.BasePath = "/panel"
 
 	req := httptest.NewRequest(http.MethodGet, "/api/backend-tools/scalar", nil)
 	rec := httptest.NewRecorder()
@@ -106,7 +106,7 @@ func TestDocsScalarHandlerCustomBasePath(t *testing.T) {
 func TestToolsAuthMiddlewareWithOTT(t *testing.T) {
 	cfg := &config.BackendConfig{}
 	cfg.JWT.AuthSecret = "test_auth_secret_1234567890123456"
-	cfg.Panel.BasePath = "/exodus_path"
+	cfg.Backend.BasePath = "/exodus_path"
 
 	ott, err := security.SignOttJWT(cfg.JWT.AuthSecret)
 	if err != nil {

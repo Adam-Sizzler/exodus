@@ -102,7 +102,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 			return
 		}
 		useTLS = true
-		if nm.cfg != nil && nm.cfg.Panel.AllowInsecureHTTP {
+		if nm.cfg != nil && nm.cfg.Backend.AllowInsecureHTTP {
 			skipVerify = true
 			nm.cfg.Logger.Warn("Node TLS verification is disabled by EXODUS_ALLOW_INSECURE_HTTP", "node", state.nodeName)
 		}

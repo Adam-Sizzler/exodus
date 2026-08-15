@@ -56,7 +56,7 @@ func TestPanelConfigMethods(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := PanelConfig{BasePath: tt.basePath}
+			p := BackendAppConfig{BasePath: tt.basePath}
 			if got := p.Trimmed(); got != tt.wantTrimmed {
 				t.Errorf("Trimmed() = %q, want %q", got, tt.wantTrimmed)
 			}

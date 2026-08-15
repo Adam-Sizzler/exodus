@@ -32,7 +32,7 @@ func StartMetricsServer(ctx context.Context, pools *exodusdb.Pools, cfg *config.
 	healthHandler := health.HealthHandler()
 
 	mux := http.NewServeMux()
-	prefix := cfg.Panel.Trimmed()
+	prefix := cfg.Backend.Trimmed()
 	mux.Handle(prefix+"/metrics", metricsHandler)
 	mux.HandleFunc(prefix+"/health", healthHandler)
 	mux.HandleFunc(prefix+"/api/health", healthHandler)

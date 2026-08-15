@@ -75,7 +75,7 @@ func normalizeUsersSubscriptionAPIPath(value string) string {
 
 func resolveUsersSubscriptionBaseFallback(r *http.Request, cfg *config.BackendConfig) string {
 	scheme := "https"
-	if cfg != nil && cfg.Panel.AllowInsecureHTTP {
+	if cfg != nil && cfg.Backend.AllowInsecureHTTP {
 		scheme = "http"
 	}
 	return scheme + "://" + r.Host + "/"

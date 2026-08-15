@@ -21,9 +21,9 @@ import (
 func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Panel.AppPort)
-	panelBasePath := cfg.Panel.BasePath
-	panelBasePathNoTrailing := cfg.Panel.Trimmed()
+	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Backend.AppPort)
+	panelBasePath := cfg.Backend.BasePath
+	panelBasePathNoTrailing := cfg.Backend.Trimmed()
 	if panelBasePathNoTrailing == "" {
 		panelBasePathNoTrailing = "/"
 	}
@@ -31,7 +31,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 	apiHandler := NewAPIHandler(pools, cfg)
 
 	mux := http.NewServeMux()
-	uiDir := cfg.Panel.StaticDir
+	uiDir := cfg.Backend.StaticDir
 	indexPath := filepath.Join(uiDir, "index.html")
 	staticFS := http.FileServer(http.Dir(uiDir))
 	if _, err := os.Stat(indexPath); err != nil {

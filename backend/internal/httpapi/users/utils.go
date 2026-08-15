@@ -261,8 +261,8 @@ func coalesceShortUUID(value *string, cfg *config.BackendConfig) string {
 		return strings.TrimSpace(*value)
 	}
 	length := 16
-	if cfg != nil && cfg.Panel.ShortUUIDLength >= 16 {
-		length = cfg.Panel.ShortUUIDLength
+	if cfg != nil && cfg.Backend.ShortUUIDLength >= 16 {
+		length = cfg.Backend.ShortUUIDLength
 	}
 	return generateSubscriptionShortUUID(length)
 }
