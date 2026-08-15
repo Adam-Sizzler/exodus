@@ -13,23 +13,23 @@ func TestLoadNodeConfigTokenMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadNodeConfig() error = %v", err)
 	}
-	if cfg.Exodus.MTLSConfig != nil {
-		t.Fatalf("MTLSConfig = %#v, want nil in token mode", cfg.Exodus.MTLSConfig)
+	if cfg.Backend.MTLSConfig != nil {
+		t.Fatalf("MTLSConfig = %#v, want nil in token mode", cfg.Backend.MTLSConfig)
 	}
-	if !cfg.Exodus.RequireGRPCToken {
+	if !cfg.Backend.RequireGRPCToken {
 		t.Fatalf("RequireGRPCToken = false, want true")
 	}
-	if cfg.Exodus.GRPCToken != "1234567890abcdef" {
-		t.Fatalf("GRPCToken = %q", cfg.Exodus.GRPCToken)
+	if cfg.Backend.GRPCToken != "1234567890abcdef" {
+		t.Fatalf("GRPCToken = %q", cfg.Backend.GRPCToken)
 	}
-	if cfg.Exodus.Trimmed() != "/node" {
-		t.Fatalf("Trimmed() = %q, want /node", cfg.Exodus.Trimmed())
+	if cfg.Backend.Trimmed() != "/node" {
+		t.Fatalf("Trimmed() = %q, want /node", cfg.Backend.Trimmed())
 	}
-	if !cfg.Exodus.IsCustom() {
+	if !cfg.Backend.IsCustom() {
 		t.Fatalf("IsCustom() = false, want true")
 	}
-	if cfg.Exodus.WithSlash() != "/node/" {
-		t.Fatalf("WithSlash() = %q, want /node/", cfg.Exodus.WithSlash())
+	if cfg.Backend.WithSlash() != "/node/" {
+		t.Fatalf("WithSlash() = %q, want /node/", cfg.Backend.WithSlash())
 	}
 	if cfg.Log.LogLevel != "info" {
 		t.Fatalf("LogLevel = %q, want info because LOG_LEVEL/EXODUS_LOG_LEVEL are ignored", cfg.Log.LogLevel)
@@ -83,7 +83,7 @@ func TestConfigPathMethods(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := ExodusConfig{GrpcPath: tt.grpcPath}
+			cfg := BackendConfig{GrpcPath: tt.grpcPath}
 			if got := cfg.Trimmed(); got != tt.wantTrimmed {
 				t.Errorf("Trimmed() = %q, want %q", got, tt.wantTrimmed)
 			}

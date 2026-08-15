@@ -12,7 +12,7 @@ import (
 // NodeConfig holds the configuration settings for the node.
 type NodeConfig struct {
 	Log             LogConfig
-	Exodus          ExodusConfig
+	Backend         BackendConfig
 	CoreAPIGRPCPort int
 	Logger          *Logger
 }
@@ -21,7 +21,7 @@ type LogConfig struct {
 	LogLevel string
 }
 
-type ExodusConfig struct {
+type BackendConfig struct {
 	GrpcAddress      string
 	GrpcPort         int
 	GrpcPath         string
@@ -29,6 +29,8 @@ type ExodusConfig struct {
 	RequireGRPCToken bool
 	MTLSConfig       *MTLSConfig
 }
+
+type ExodusConfig = BackendConfig
 
 const (
 	FixedSingboxDir          = "/app/singbox/"
@@ -53,7 +55,7 @@ var defaultConfig = NodeConfig{
 	Log: LogConfig{
 		LogLevel: DefaultNodeLogLevel,
 	},
-	Exodus: ExodusConfig{
+	Backend: BackendConfig{
 		GrpcAddress: DefaultNodeGRPCAddress,
 		GrpcPort:    DefaultNodeGRPCPort,
 		GrpcPath:    DefaultNodeGRPCPath,
@@ -75,7 +77,7 @@ func LoadNodeConfig() (NodeConfig, error) {
 	}
 
 	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_ADDRESS")); value != "" {
-		cfg.Exodus.GrpcAddress = value
+		cfg.Backend.GrpcAddress = value
 	}
 
 	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_PORT")); value != "" {
@@ -83,23 +85,23 @@ func LoadNodeConfig() (NodeConfig, error) {
 		if err != nil || port < 1 || port > 65535 {
 			return cfg, fmt.Errorf("invalid NODE_GRPC_PORT value: %q", value)
 		}
-		cfg.Exodus.GrpcPort = port
+		cfg.Backend.GrpcPort = port
 	}
 
 	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_PATH")); value != "" {
 		if err := validateBasePath(value); err != nil {
 			return cfg, err
 		}
-		cfg.Exodus.GrpcPath = normalizeBasePath(value)
+		cfg.Backend.GrpcPath = normalizeBasePath(value)
 	}
 
 	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_TOKEN")); value != "" {
-		cfg.Exodus.GRPCToken = value
+		cfg.Backend.GRPCToken = value
 	}
 
 	nodePayload, err := ParseNodePayloadFromSecret()
 	if err == nil {
-		cfg.Exodus.MTLSConfig = &MTLSConfig{
+		cfg.Backend.MTLSConfig = &MTLSConfig{
 			Cert:   nodePayload.NodeCertPem,
 			Key:    nodePayload.NodeKeyPem,
 			CACert: nodePayload.CaCertPem,
@@ -108,27 +110,27 @@ func LoadNodeConfig() (NodeConfig, error) {
 		return cfg, err
 	}
 
-	cfg.Exodus.RequireGRPCToken = cfg.Exodus.MTLSConfig == nil
-	if cfg.Exodus.GRPCToken != "" {
-		if len(cfg.Exodus.GRPCToken) < 16 {
+	cfg.Backend.RequireGRPCToken = cfg.Backend.MTLSConfig == nil
+	if cfg.Backend.GRPCToken != "" {
+		if len(cfg.Backend.GRPCToken) < 16 {
 			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be at least 16 characters")
 		}
-		if len(cfg.Exodus.GRPCToken) > 512 {
+		if len(cfg.Backend.GRPCToken) > 512 {
 			return cfg, fmt.Errorf("NODE_GRPC_TOKEN must be less than 512 characters")
 		}
 	}
-	if cfg.Exodus.RequireGRPCToken && cfg.Exodus.GRPCToken == "" {
+	if cfg.Backend.RequireGRPCToken && cfg.Backend.GRPCToken == "" {
 		return cfg, fmt.Errorf("NODE_GRPC_TOKEN is required when SECRET_KEY is not provided")
 	}
 
 	cfg.Logger = NewExodusLogger(os.Stderr, cfg.Log.LogLevel)
 	cfg.Logger.WithContext("ConfigService").Debug(
 		"Node configuration validated",
-		"address", cfg.Exodus.GrpcAddress,
-		"port", cfg.Exodus.GrpcPort,
-		"path", cfg.Exodus.GrpcPath,
-		"mtls_enabled", cfg.Exodus.MTLSConfig != nil,
-		"token_required", cfg.Exodus.RequireGRPCToken,
+		"address", cfg.Backend.GrpcAddress,
+		"port", cfg.Backend.GrpcPort,
+		"path", cfg.Backend.GrpcPath,
+		"mtls_enabled", cfg.Backend.MTLSConfig != nil,
+		"token_required", cfg.Backend.RequireGRPCToken,
 	)
 	return cfg, nil
 }
@@ -160,8 +162,8 @@ func validateBasePath(input string) error {
 }
 
 // Trimmed returns GrpcPath without trailing slash (e.g. "/node" or "" for root "/").
-func (e ExodusConfig) Trimmed() string {
-	normalized := normalizeBasePath(e.GrpcPath)
+func (b BackendConfig) Trimmed() string {
+	normalized := normalizeBasePath(b.GrpcPath)
 	if normalized == "/" {
 		return ""
 	}
@@ -169,13 +171,13 @@ func (e ExodusConfig) Trimmed() string {
 }
 
 // IsCustom reports whether a custom non-root GrpcPath is configured.
-func (e ExodusConfig) IsCustom() bool {
-	return e.Trimmed() != ""
+func (b BackendConfig) IsCustom() bool {
+	return b.Trimmed() != ""
 }
 
 // WithSlash returns GrpcPath with leading and trailing slashes (e.g. "/node/" or "/" for root).
-func (e ExodusConfig) WithSlash() string {
-	return normalizeBasePath(e.GrpcPath)
+func (b BackendConfig) WithSlash() string {
+	return normalizeBasePath(b.GrpcPath)
 }
 
 func normalizeBasePath(input string) string {

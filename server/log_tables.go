@@ -18,8 +18,8 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 	port := config.DefaultNodeGRPCPort
 	pathPrefix := "/"
 	if cfg != nil {
-		port = cfg.Exodus.GrpcPort
-		pathPrefix = cfg.Exodus.WithSlash()
+		port = cfg.Backend.GrpcPort
+		pathPrefix = cfg.Backend.WithSlash()
 	}
 
 	return renderGroupedLogTable(

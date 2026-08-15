@@ -39,7 +39,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	}
 	log := cfg.LoggerFor("GrpcServer")
 
-	expectedToken := strings.TrimSpace(cfg.Exodus.GRPCToken)
+	expectedToken := strings.TrimSpace(cfg.Backend.GRPCToken)
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
 		grpcPathValidationUnaryInterceptor(),
 		grpcUnaryRequestLogger(log),
@@ -48,7 +48,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		grpcPathValidationStreamInterceptor(),
 		grpcStreamRequestLogger(log),
 	}
-	if cfg.Exodus.RequireGRPCToken {
+	if cfg.Backend.RequireGRPCToken {
 		if expectedToken == "" {
 			return fmt.Errorf("NODE_GRPC_TOKEN is required")
 		}
@@ -66,18 +66,18 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	)
 
 	var tlsConfig *tls.Config
-	if cfg.Exodus.MTLSConfig != nil {
+	if cfg.Backend.MTLSConfig != nil {
 		log.Debug("Configuring mTLS for gRPC server")
 		cert, err := tls.X509KeyPair(
-			[]byte(cfg.Exodus.MTLSConfig.Cert),
-			[]byte(cfg.Exodus.MTLSConfig.Key),
+			[]byte(cfg.Backend.MTLSConfig.Cert),
+			[]byte(cfg.Backend.MTLSConfig.Key),
 		)
 		if err != nil {
 			log.Error("Failed to load server certificate", "error", err)
 			return err
 		}
 		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM([]byte(cfg.Exodus.MTLSConfig.CACert)) {
+		if !caCertPool.AppendCertsFromPEM([]byte(cfg.Backend.MTLSConfig.CACert)) {
 			log.Error("Failed to parse CA certificate")
 			return fmt.Errorf("failed to parse CA certificate")
 		}
@@ -89,8 +89,8 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		}
 		log.Info("mTLS enabled for gRPC server")
 	} else {
-		if cfg.Exodus.GrpcAddress != "127.0.0.1" && cfg.Exodus.GrpcAddress != "localhost" {
-			log.Warn("Insecure gRPC on non-local address", "address", cfg.Exodus.GrpcAddress)
+		if cfg.Backend.GrpcAddress != "127.0.0.1" && cfg.Backend.GrpcAddress != "localhost" {
+			log.Warn("Insecure gRPC on non-local address", "address", cfg.Backend.GrpcAddress)
 		}
 		log.Debug("Using h2c gRPC server (for reverse proxy TLS termination)")
 	}
@@ -98,7 +98,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterNodeServiceServer(grpcServer, nodeServer)
 
-	pathPrefix := cfg.Exodus.Trimmed()
+	pathPrefix := cfg.Backend.Trimmed()
 	if pathPrefix != "" {
 		log.Info("gRPC path prefix configured", "prefix", pathPrefix)
 	}
@@ -128,7 +128,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		grpcServer.ServeHTTP(w, r)
 	})
 
-	addr := fmt.Sprintf("%s:%d", cfg.Exodus.GrpcAddress, cfg.Exodus.GrpcPort)
+	addr := fmt.Sprintf("%s:%d", cfg.Backend.GrpcAddress, cfg.Backend.GrpcPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Error("Failed to start listener", "error", err)
