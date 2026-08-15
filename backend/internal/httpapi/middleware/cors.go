@@ -173,5 +173,5 @@ func parseForwardedProto(forwarded string) string {
 }
 
 func isHealthPath(path string) bool {
-	return path == "/api/health"
+	return path == "/health" || path == "/api/health"
 }
