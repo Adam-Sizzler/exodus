@@ -18,11 +18,10 @@ RUN go mod download
 WORKDIR /opt/app
 COPY backend/ ./backend/
 
-ARG VERSION
 ARG SUB_APP_VERSION
 WORKDIR /opt/app/backend
 RUN set -eu; \
-    version="${SUB_APP_VERSION:-${VERSION:-unknown}}"; \
+    version="${SUB_APP_VERSION:-unknown}"; \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -X main.buildVersion=${version}" -o /opt/app/subscription-page ./cmd/subscription-page
 
 FROM alpine:3.23

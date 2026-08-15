@@ -105,15 +105,15 @@ Please fix your .env file and restart the application.`, err.Error())
 }
 
 func Load() (Config, error) {
-	rawPath := firstEnv("CUSTOM_SUB_PREFIX", "SUB_PATH", "SUB_GRPC_PATH")
+	rawPath := os.Getenv("SUB_APP_PATH")
 	if err := validateSubPath(rawPath); err != nil {
-		return Config{}, NewEnvError("SUB_PATH", err.Error())
+		return Config{}, NewEnvError("SUB_APP_PATH", err.Error())
 	}
 	pathPrefix := normalizePathPrefix(rawPath)
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
 	cfg := Config{
-		AppPort:                         getEnvOrDefault("APP_PORT_SUB", DefaultPort),
+		AppPort:                         getEnvOrDefault("SUB_APP_PORT", DefaultPort),
 		SubPath:                         pathPrefix,
 		CaddyAuthAPIToken:               os.Getenv("CADDY_AUTH_API_TOKEN"),
 		CloudflareZeroTrustClientID:     os.Getenv("CLOUDFLARE_ZERO_TRUST_CLIENT_ID"),
@@ -122,7 +122,7 @@ func Load() (Config, error) {
 		GRPCAddress:                     getEnvOrDefault("SUB_GRPC_ADDRESS", DefaultGRPCAddress),
 		GRPCPath:                        pathPrefix,
 		GRPCToken:                       grpcToken,
-		AppVersion:                      strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
+		AppVersion:                      strings.TrimSpace(os.Getenv("SUB_APP_VERSION")),
 		TrustProxy:                      getEnvOrDefault("TRUST_PROXY", "1"),
 	}
 
