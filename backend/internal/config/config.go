@@ -186,28 +186,6 @@ func getEnvOrDefault(key, fallback string) string {
 	return value
 }
 
-func firstEnv(keys ...string) string {
-	for _, key := range keys {
-		value, ok := lookupEnvTrimmed(key)
-		if ok {
-			return value
-		}
-	}
-	return ""
-}
-
-func lookupEnvTrimmed(key string) (string, bool) {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		return "", false
-	}
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return "", false
-	}
-	return trimmed, true
-}
-
 func parsePort(raw string, fallback int) (int, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {

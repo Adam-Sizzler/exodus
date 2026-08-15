@@ -227,15 +227,6 @@ func closeConnection(w http.ResponseWriter) {
 	panic(http.ErrAbortHandler)
 }
 
-func cookiePathForPrefix(prefix string) string {
-	trimmed := strings.Trim(prefix, "/")
-	if trimmed == "" {
-		return "/"
-	}
-
-	return "/" + trimmed + "/"
-}
-
 func prefixAssetsInHTML(content, prefix string) string {
 	trimmed := strings.Trim(prefix, "/")
 	if trimmed == "" {

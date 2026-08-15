@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 )
 
@@ -18,8 +19,8 @@ type NodePayload struct {
 }
 
 func ParseNodePayloadFromSecret() (NodePayload, error) {
-	secret, ok := lookupEnvTrimmed("SUB_SECRET_KEY")
-	if !ok {
+	secret := strings.TrimSpace(os.Getenv("SUB_SECRET_KEY"))
+	if secret == "" {
 		return NodePayload{}, ErrSecretKeyNotSet
 	}
 
