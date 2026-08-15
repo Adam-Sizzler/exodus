@@ -46,10 +46,10 @@ func main() {
 		return
 	}
 
-	if cfg.SubPath == "" {
+	if !cfg.IsCustomSubPath() {
 		bootstrapLogger.Info("[CONFIG] CUSTOM_SUB_PREFIX: not set")
 	} else {
-		bootstrapLogger.Info("[CONFIG] CUSTOM_SUB_PREFIX: " + cfg.SubPath)
+		bootstrapLogger.Info("[CONFIG] CUSTOM_SUB_PREFIX: " + cfg.SubPathTrimmed())
 	}
 
 	resolvedVersion := resolveNodeVersion(cfg.AppVersion)

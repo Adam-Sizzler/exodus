@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -104,7 +105,11 @@ Please fix your .env file and restart the application.`, err.Error())
 }
 
 func Load() (Config, error) {
-	pathPrefix := normalizePathPrefix(firstEnv("SUB_GRPC_PATH", "SUB_PATH"))
+	rawPath := firstEnv("CUSTOM_SUB_PREFIX", "SUB_PATH", "SUB_GRPC_PATH")
+	if err := validateSubPath(rawPath); err != nil {
+		return Config{}, NewEnvError("SUB_PATH", err.Error())
+	}
+	pathPrefix := normalizePathPrefix(rawPath)
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
 	cfg := Config{
@@ -117,8 +122,8 @@ func Load() (Config, error) {
 		GRPCAddress:                     getEnvOrDefault("SUB_GRPC_ADDRESS", DefaultGRPCAddress),
 		GRPCPath:                        pathPrefix,
 		GRPCToken:                       grpcToken,
-		AppVersion: strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
-		TrustProxy: getEnvOrDefault("TRUST_PROXY", "1"),
+		AppVersion:                      strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
+		TrustProxy:                      getEnvOrDefault("TRUST_PROXY", "1"),
 	}
 
 	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultGRPCPort)
@@ -238,4 +243,49 @@ func parseBool(raw string, fallback bool) bool {
 		return fallback
 	}
 	return b
+}
+
+var validSubPathRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-\/]*$`)
+
+func validateSubPath(input string) error {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" || trimmed == "/" {
+		return nil
+	}
+	if strings.Contains(trimmed, "..") {
+		return fmt.Errorf("invalid path prefix %q: directory traversal is not allowed", input)
+	}
+	if strings.ContainsAny(trimmed, "?#\\ \t\r\n") {
+		return fmt.Errorf("invalid path prefix %q: contains illegal characters (spaces, query/fragment markers, or backslashes)", input)
+	}
+	if !validSubPathRegex.MatchString(trimmed) {
+		return fmt.Errorf("invalid path prefix %q: must contain only alphanumeric characters, hyphens, underscores, and slashes", input)
+	}
+	return nil
+}
+
+// SubPathTrimmed returns SubPath without trailing slash (e.g. "/subscription" or "" for root "/").
+func (c Config) SubPathTrimmed() string {
+	trimmed := strings.TrimRight(strings.TrimSpace(c.SubPath), "/")
+	if trimmed == "" || trimmed == "/" {
+		return ""
+	}
+	if !strings.HasPrefix(trimmed, "/") {
+		trimmed = "/" + trimmed
+	}
+	return trimmed
+}
+
+// IsCustomSubPath reports whether a custom non-root SubPath is configured.
+func (c Config) IsCustomSubPath() bool {
+	return c.SubPathTrimmed() != ""
+}
+
+// SubPathWithSlash returns SubPath with leading and trailing slashes (e.g. "/subscription/" or "/").
+func (c Config) SubPathWithSlash() string {
+	trimmed := c.SubPathTrimmed()
+	if trimmed == "" {
+		return "/"
+	}
+	return trimmed + "/"
 }

@@ -33,7 +33,7 @@ const (
 
 var (
 	appConfigPaths = map[string]struct{}{
-		"/assets/app-config.json":    {},
+		"/assets/app-config.json": {},
 	}
 
 	allowedClientTypes = map[string]struct{}{
@@ -506,7 +506,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Value:    sessionToken,
 		HttpOnly: true,
 		Secure:   true,
-		Path:     cookiePathForPrefix(a.cfg.SubPath),
+		Path:     a.cfg.SubPathWithSlash(),
 		MaxAge:   1800,
 	})
 
@@ -578,31 +578,20 @@ func (a *App) verifySessionCookie(r *http.Request) (security.Claims, error) {
 }
 
 func (a *App) applyCustomPrefix(requestPath string) (string, bool) {
-	if a.cfg.SubPath == "" {
+	if !a.cfg.IsCustomSubPath() {
 		return requestPath, true
 	}
 
-	if requestPath == "/assets" ||
-		requestPath == "/locales" ||
-		strings.HasPrefix(requestPath, "/assets/") ||
-		strings.HasPrefix(requestPath, "/locales/") {
-		return requestPath, true
-	}
-
-	prefix := a.cfg.SubPath
+	prefix := a.cfg.SubPathTrimmed()
 	if requestPath == prefix {
 		return "/", true
 	}
 
-	if !strings.HasPrefix(requestPath, prefix+"/") {
-		segments := splitSegments(requestPath)
-		if len(segments) == 1 || len(segments) == 2 {
-			return requestPath, true
-		}
-		return "", false
+	if strings.HasPrefix(requestPath, prefix+"/") {
+		return strings.TrimPrefix(requestPath, prefix), true
 	}
 
-	return strings.TrimPrefix(requestPath, prefix), true
+	return "", false
 }
 
 func (a *App) isAppConfigPath(requestPath string) bool {

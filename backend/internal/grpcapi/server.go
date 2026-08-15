@@ -18,8 +18,8 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/srslists"
 
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
-	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/codes"
+	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/peer"
 )
 

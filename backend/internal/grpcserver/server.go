@@ -19,8 +19,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/codes"
+	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -58,10 +58,8 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterNodeServiceServer(grpcServer, nodeService)
 
-	pathPrefix := "/" + strings.Trim(strings.TrimSpace(cfg.GRPCPath), "/")
-	if pathPrefix == "/" {
-		pathPrefix = ""
-	} else {
+	pathPrefix := cfg.SubPathTrimmed()
+	if pathPrefix != "" {
 		log.Info("[CONFIG] gRPC path prefix: " + pathPrefix)
 	}
 

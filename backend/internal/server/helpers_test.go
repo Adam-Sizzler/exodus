@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 	"testing"
+
+	"github.com/exodus/subscription-page/backend/internal/config"
 )
 
 func TestGetRealIP_TrustProxy(t *testing.T) {
@@ -68,6 +70,65 @@ func TestGetRealIP_TrustProxy(t *testing.T) {
 			ip := getRealIP(req, tt.trustProxy)
 			if ip != tt.expectedIP {
 				t.Errorf("expected %s, got %s", tt.expectedIP, ip)
+			}
+		})
+	}
+}
+
+func TestApp_ApplyCustomPrefix(t *testing.T) {
+	tests := []struct {
+		name        string
+		subPath     string
+		requestPath string
+		wantRoute   string
+		wantOK      bool
+	}{
+		{
+			name:        "root prefix passes path as is",
+			subPath:     "",
+			requestPath: "/tbJZ7vCY0JLLx4bH",
+			wantRoute:   "/tbJZ7vCY0JLLx4bH",
+			wantOK:      true,
+		},
+		{
+			name:        "custom prefix matching request",
+			subPath:     "/subscription",
+			requestPath: "/subscription/tbJZ7vCY0JLLx4bH",
+			wantRoute:   "/tbJZ7vCY0JLLx4bH",
+			wantOK:      true,
+		},
+		{
+			name:        "custom prefix with client type",
+			subPath:     "/subscription",
+			requestPath: "/subscription/tbJZ7vCY0JLLx4bH/clash",
+			wantRoute:   "/tbJZ7vCY0JLLx4bH/clash",
+			wantOK:      true,
+		},
+		{
+			name:        "custom prefix exact match",
+			subPath:     "/subscription",
+			requestPath: "/subscription",
+			wantRoute:   "/",
+			wantOK:      true,
+		},
+		{
+			name:        "root request when custom prefix is configured (no dual-path fallback)",
+			subPath:     "/subscription",
+			requestPath: "/tbJZ7vCY0JLLx4bH",
+			wantRoute:   "",
+			wantOK:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := &App{cfg: config.Config{SubPath: tt.subPath}}
+			route, ok := app.applyCustomPrefix(tt.requestPath)
+			if ok != tt.wantOK {
+				t.Errorf("applyCustomPrefix() ok = %v, want %v", ok, tt.wantOK)
+			}
+			if route != tt.wantRoute {
+				t.Errorf("applyCustomPrefix() route = %q, want %q", route, tt.wantRoute)
 			}
 		})
 	}
