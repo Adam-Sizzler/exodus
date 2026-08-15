@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -506,7 +505,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		Value:    sessionToken,
 		HttpOnly: true,
 		Secure:   true,
-		Path:     a.cfg.SubPathWithSlash(),
+		Path:     a.cfg.WithSlash(),
 		MaxAge:   1800,
 	})
 
@@ -519,7 +518,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 
 	indexHTML, err := os.ReadFile(filepath.Join(a.assetsPath, "index.html"))
 	if err != nil {
-		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to read frontend index.html: %v", err)
+		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to read index.html: %v", err)
 		closeConnection(w)
 		return
 	}
@@ -528,13 +527,27 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		string(indexHTML),
 		settings.MetaTitle,
 		settings.MetaDescription,
-		base64.StdEncoding.EncodeToString(panelData),
+		string(panelData),
 	)
-	rendered = prefixAssetsInHTML(rendered, a.cfg.SubPath)
+	rendered = prefixAssetsInHTML(rendered, a.cfg.Trimmed())
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
 	if r.Method != http.MethodHead {
 		_, _ = io.WriteString(w, rendered)
+	}
+}
+
+func (a *App) returnIndex(w http.ResponseWriter, r *http.Request) {
+	indexHTML, err := os.ReadFile(filepath.Join(a.assetsPath, "index.html"))
+	if err != nil {
+		logger.WithContext("RootService").Errorf("Error in returnIndex: failed to read index.html: %v", err)
+		closeConnection(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(indexHTML)
 	}
 }
 
@@ -578,11 +591,11 @@ func (a *App) verifySessionCookie(r *http.Request) (security.Claims, error) {
 }
 
 func (a *App) applyCustomPrefix(requestPath string) (string, bool) {
-	if !a.cfg.IsCustomSubPath() {
+	if !a.cfg.IsCustom() {
 		return requestPath, true
 	}
 
-	prefix := a.cfg.SubPathTrimmed()
+	prefix := a.cfg.Trimmed()
 	if requestPath == prefix {
 		return "/", true
 	}

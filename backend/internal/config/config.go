@@ -106,10 +106,10 @@ Please fix your .env file and restart the application.`, err.Error())
 
 func Load() (Config, error) {
 	rawPath := os.Getenv("SUB_APP_PATH")
-	if err := validateSubPath(rawPath); err != nil {
+	if err := validateBasePath(rawPath); err != nil {
 		return Config{}, NewEnvError("SUB_APP_PATH", err.Error())
 	}
-	pathPrefix := normalizePathPrefix(rawPath)
+	pathPrefix := normalizeBasePath(rawPath)
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
 	cfg := Config{
@@ -144,31 +144,35 @@ func Load() (Config, error) {
 	}
 
 	cfg.RequireGRPCToken = cfg.MTLSConfig == nil
-	if cfg.GRPCToken != "" {
-		if len(cfg.GRPCToken) < 16 {
-			return cfg, NewEnvError("SUB_GRPC_TOKEN", "Must be at least 16 characters. Dashboard → Subscription → Nodes → Current node → gRPC Token (SUB_GRPC_TOKEN) or Secret Key (SUB_SECRET_KEY).")
-		}
-		if len(cfg.GRPCToken) > 512 {
-			return cfg, NewEnvError("SUB_GRPC_TOKEN", "Must be less than 512 characters.")
-		}
-	}
 	if cfg.RequireGRPCToken && cfg.GRPCToken == "" {
-		return cfg, NewEnvError("SUB_GRPC_TOKEN", "Required when SUB_SECRET_KEY is not provided. Dashboard → Subscription → Nodes → Current node → gRPC Token (SUB_GRPC_TOKEN) or Secret Key (SUB_SECRET_KEY).")
+		return cfg, NewEnvError("SUB_GRPC_TOKEN", "gRPC token is required when mTLS secret key is not configured.")
 	}
 
-	seed := strings.TrimSpace(os.Getenv("INTERNAL_JWT_SECRET"))
-	if seed == "" {
-		seed = strings.TrimSpace(os.Getenv("SUB_SECRET_KEY"))
+	if cfg.CaddyAuthAPIToken != "" {
+		cfg.SessionSecret = deriveSessionSecret(cfg.CaddyAuthAPIToken)
+		return cfg, nil
 	}
-	if seed == "" {
-		seed = cfg.GRPCToken
+
+	if cfg.CloudflareZeroTrustClientID != "" && cfg.CloudflareZeroTrustClientSecret != "" {
+		cfg.SessionSecret = deriveSessionSecret(cfg.CloudflareZeroTrustClientID + ":" + cfg.CloudflareZeroTrustClientSecret)
+		return cfg, nil
 	}
-	cfg.SessionSecret = deriveSessionSecret(seed)
+
+	secretKey := os.Getenv("INTERNAL_JWT_SECRET")
+	if secretKey == "" {
+		return cfg, NewEnvError("INTERNAL_JWT_SECRET", "Missing session authentication secret.")
+	}
+	cfg.SessionSecret = secretKey
+
 	return cfg, nil
 }
 
 func (c Config) IsDevelopment() bool {
 	return strings.EqualFold(c.NodeEnv, "development")
+}
+
+func (c Config) IsProduction() bool {
+	return !c.IsDevelopment()
 }
 
 func DisplayPrefix(prefix string) string {
@@ -198,14 +202,6 @@ func parsePort(raw string, fallback int) (int, error) {
 	return port, nil
 }
 
-func normalizePathPrefix(raw string) string {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" || trimmed == "/" {
-		return ""
-	}
-	return "/" + strings.Trim(trimmed, "/")
-}
-
 func deriveSessionSecret(apiToken string) string {
 	hash := sha256.Sum256([]byte(strings.TrimSpace(apiToken)))
 	return hex.EncodeToString(hash[:])
@@ -223,9 +219,9 @@ func parseBool(raw string, fallback bool) bool {
 	return b
 }
 
-var validSubPathRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-\/]*$`)
+var validBasePathRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-\/]*$`)
 
-func validateSubPath(input string) error {
+func validateBasePath(input string) error {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" || trimmed == "/" {
 		return nil
@@ -236,34 +232,35 @@ func validateSubPath(input string) error {
 	if strings.ContainsAny(trimmed, "?#\\ \t\r\n") {
 		return fmt.Errorf("invalid path prefix %q: contains illegal characters (spaces, query/fragment markers, or backslashes)", input)
 	}
-	if !validSubPathRegex.MatchString(trimmed) {
+	if !validBasePathRegex.MatchString(trimmed) {
 		return fmt.Errorf("invalid path prefix %q: must contain only alphanumeric characters, hyphens, underscores, and slashes", input)
 	}
 	return nil
 }
 
-// SubPathTrimmed returns SubPath without trailing slash (e.g. "/subscription" or "" for root "/").
-func (c Config) SubPathTrimmed() string {
-	trimmed := strings.TrimRight(strings.TrimSpace(c.SubPath), "/")
-	if trimmed == "" || trimmed == "/" {
+// Trimmed returns SubPath without trailing slash (e.g. "/subscription" or "" for root "/").
+func (c Config) Trimmed() string {
+	normalized := normalizeBasePath(c.SubPath)
+	if normalized == "/" {
 		return ""
 	}
-	if !strings.HasPrefix(trimmed, "/") {
-		trimmed = "/" + trimmed
-	}
-	return trimmed
+	return strings.TrimSuffix(normalized, "/")
 }
 
-// IsCustomSubPath reports whether a custom non-root SubPath is configured.
-func (c Config) IsCustomSubPath() bool {
-	return c.SubPathTrimmed() != ""
+// IsCustom reports whether a custom non-root SubPath is configured.
+func (c Config) IsCustom() bool {
+	return c.Trimmed() != ""
 }
 
-// SubPathWithSlash returns SubPath with leading and trailing slashes (e.g. "/subscription/" or "/").
-func (c Config) SubPathWithSlash() string {
-	trimmed := c.SubPathTrimmed()
-	if trimmed == "" {
+// WithSlash returns SubPath with leading and trailing slashes (e.g. "/subscription/" or "/" for root).
+func (c Config) WithSlash() string {
+	return normalizeBasePath(c.SubPath)
+}
+
+func normalizeBasePath(input string) string {
+	cleaned := strings.Trim(strings.TrimSpace(input), "/")
+	if cleaned == "" {
 		return "/"
 	}
-	return trimmed + "/"
+	return "/" + cleaned + "/"
 }

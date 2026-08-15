@@ -50,20 +50,20 @@ func TestConfigSubPathMethods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := Config{SubPath: tt.subPath}
-			if got := cfg.SubPathTrimmed(); got != tt.wantTrimmed {
-				t.Errorf("SubPathTrimmed() = %q, want %q", got, tt.wantTrimmed)
+			if got := cfg.Trimmed(); got != tt.wantTrimmed {
+				t.Errorf("Trimmed() = %q, want %q", got, tt.wantTrimmed)
 			}
-			if got := cfg.IsCustomSubPath(); got != tt.wantIsCustom {
-				t.Errorf("IsCustomSubPath() = %v, want %v", got, tt.wantIsCustom)
+			if got := cfg.IsCustom(); got != tt.wantIsCustom {
+				t.Errorf("IsCustom() = %v, want %v", got, tt.wantIsCustom)
 			}
-			if got := cfg.SubPathWithSlash(); got != tt.wantWithSlash {
-				t.Errorf("SubPathWithSlash() = %q, want %q", got, tt.wantWithSlash)
+			if got := cfg.WithSlash(); got != tt.wantWithSlash {
+				t.Errorf("WithSlash() = %q, want %q", got, tt.wantWithSlash)
 			}
 		})
 	}
 }
 
-func TestValidateSubPath(t *testing.T) {
+func TestValidateBasePath(t *testing.T) {
 	valid := []string{
 		"/",
 		"",
@@ -74,7 +74,7 @@ func TestValidateSubPath(t *testing.T) {
 	}
 
 	for _, path := range valid {
-		if err := validateSubPath(path); err != nil {
+		if err := validateBasePath(path); err != nil {
 			t.Errorf("expected valid for %q, got error: %v", path, err)
 		}
 	}
@@ -89,7 +89,7 @@ func TestValidateSubPath(t *testing.T) {
 	}
 
 	for _, path := range invalid {
-		if err := validateSubPath(path); err == nil {
+		if err := validateBasePath(path); err == nil {
 			t.Errorf("expected invalid for %q, got nil error", path)
 		}
 	}
