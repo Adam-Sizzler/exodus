@@ -111,10 +111,16 @@ type SubscriptionUser struct {
 	ShadowtlsPassword    string
 	Hysteria2Password    string
 	AnytlsPassword       string
-	HwidDeviceLimit      *int
-	ExternalSquadUUID    *string
-	UsedTrafficBytes     int64
-	LifetimeUsedBytes    int64
+	HwidDeviceLimit        *int
+	ExternalSquadUUID      *string
+	SubRevokedAt           *time.Time
+	UpdatedAt              time.Time
+	LastTriggeredThreshold int
+	OnlineAt               *time.Time
+	FirstConnectedAt       *time.Time
+	LastConnectedNodeUUID  *string
+	UsedTrafficBytes       int64
+	LifetimeUsedBytes      int64
 }
 
 type SubscriptionHost struct {
@@ -151,6 +157,8 @@ type SubscriptionHost struct {
 	OverrideSNIFromAddress       bool
 	ConfigProfileUUID            *string
 	ConfigProfileInboundUUID     *string
+	PinnedPeerCertSha256         *string
+	VerifyPeerCertByName         *string
 
 	InboundTag      *string
 	InboundType     *string
@@ -199,13 +207,6 @@ type SubscriptionInfoResponse struct {
 	Links           []string             `json:"links"`
 	SSConfLinks     map[string]string    `json:"ssConfLinks"`
 	SubscriptionURL string               `json:"subscriptionUrl"`
-}
-
-type RawSubscriptionResponse struct {
-	User              map[string]interface{} `json:"user"`
-	ConvertedUserInfo map[string]interface{} `json:"convertedUserInfo"`
-	RawHosts          []RawHost              `json:"rawHosts"`
-	Headers           map[string]string      `json:"headers"`
 }
 
 type SubscriptionHeaders struct {

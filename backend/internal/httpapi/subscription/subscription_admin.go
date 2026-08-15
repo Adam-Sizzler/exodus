@@ -3,6 +3,7 @@ package subscription
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -120,6 +121,7 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 			return
 		}
 
+		isRaw := strings.HasSuffix(strings.TrimSpace(path), "/raw")
 		path = strings.TrimSuffix(strings.TrimSpace(path), "/raw")
 		ctx := r.Context()
 
@@ -159,6 +161,36 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 			return
 		}
 
+		if isRaw {
+			withDisabledHosts := r.URL.Query().Get("withDisabledHosts") == "true"
+			hosts, err := getHostsForUserWithOptions(ctx, db, user, withDisabledHosts, true)
+			if err != nil {
+				shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+				return
+			}
+
+			domain := strings.TrimSpace(settings.Raw.Address)
+			if domain == "" {
+				domain = r.Host
+			}
+			scheme := strings.TrimSpace(settings.Raw.APISchema)
+			if scheme == "" {
+				scheme = "https"
+			}
+			apiPath := strings.Trim(strings.TrimSpace(settings.Raw.APIPath), "/")
+			if apiPath == "" {
+				apiPath = "api/sub"
+			}
+			subURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+
+			rawResponse := buildRawSubscriptionResponse(ctx, db, user, settings, hosts, subURL)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"response": rawResponse,
+			})
+			return
+		}
+
 		hosts, err := getHostsForUser(ctx, db, user)
 		if err != nil {
 			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
@@ -186,31 +218,26 @@ func handleGetConnectionKeysByUserID(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
-	enabledKeys := []string{}
-	hiddenKeys := []string{}
-	disabledKeys := []string{}
+	hosts, err := getHostsForUserWithOptions(ctx, db, user, true, true)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+		return
+	}
 
-	if user.VlessUUID != "" {
-		enabledKeys = append(enabledKeys, "vless")
+	var enabledHosts, disabledHosts, hiddenHosts []SubscriptionHost
+	for _, h := range hosts {
+		if h.IsDisabled && !h.IsHidden {
+			disabledHosts = append(disabledHosts, h)
+		} else if h.IsHidden && !h.IsDisabled {
+			hiddenHosts = append(hiddenHosts, h)
+		} else if !h.IsDisabled && !h.IsHidden {
+			enabledHosts = append(enabledHosts, h)
+		}
 	}
-	if user.SSPassword != "" {
-		enabledKeys = append(enabledKeys, "shadowsocks")
-	}
-	if user.TrojanPassword != "" {
-		enabledKeys = append(enabledKeys, "trojan")
-	}
-	if user.NaivePassword != "" {
-		enabledKeys = append(enabledKeys, "naive")
-	}
-	if user.ShadowtlsPassword != "" {
-		enabledKeys = append(enabledKeys, "shadowtls")
-	}
-	if user.Hysteria2Password != "" {
-		enabledKeys = append(enabledKeys, "hysteria2")
-	}
-	if user.AnytlsPassword != "" {
-		enabledKeys = append(enabledKeys, "anytls")
-	}
+
+	enabledKeys, _ := buildSubscriptionLinks(enabledHosts, user)
+	disabledKeys, _ := buildSubscriptionLinks(disabledHosts, user)
+	hiddenKeys, _ := buildSubscriptionLinks(hiddenHosts, user)
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{

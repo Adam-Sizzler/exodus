@@ -541,8 +541,11 @@ func generatePKCEPair() (string, string, error) {
 }
 
 func oauthRedirectURI(frontendDomain, basePath, provider string) string {
-	base := strings.TrimRight(strings.TrimSpace(basePath), "/")
-	return "https://" + strings.TrimRight(frontendDomain, "/") + base + "/oauth2/callback/" + provider
+	base := strings.TrimSuffix(strings.TrimSpace(basePath), "/")
+	if base == "/" {
+		base = ""
+	}
+	return "https://" + strings.TrimSuffix(frontendDomain, "/") + base + "/oauth2/callback/" + provider
 }
 
 func isEmailAllowed(email string, allowed []string) bool {

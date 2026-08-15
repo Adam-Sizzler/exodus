@@ -760,20 +760,6 @@ func postgresSocketDatabaseURL(socketDir string) string {
 	return dsn.String()
 }
 
-func normalizeBasePath(input string) string {
-	trimmed := strings.TrimSpace(input)
-	if trimmed == "" || trimmed == "/" {
-		return "/"
-	}
-
-	cleaned := strings.Trim(trimmed, "/")
-	if cleaned == "" {
-		return "/"
-	}
-
-	return "/" + cleaned + "/"
-}
-
 func envFirst(keys ...string) string {
 	for _, key := range keys {
 		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
@@ -793,4 +779,31 @@ func (p PanelConfig) IsTrustedProxy(ip net.IP) bool {
 		}
 	}
 	return false
+}
+
+// Trimmed returns BasePath without trailing slash (e.g. "/exodus_path" or "" for root "/").
+func (p PanelConfig) Trimmed() string {
+	normalized := normalizeBasePath(p.BasePath)
+	if normalized == "/" {
+		return ""
+	}
+	return strings.TrimSuffix(normalized, "/")
+}
+
+// IsCustom reports whether a custom non-root BasePath is configured.
+func (p PanelConfig) IsCustom() bool {
+	return p.Trimmed() != ""
+}
+
+// WithSlash returns BasePath with leading and trailing slashes (e.g. "/exodus_path/" or "/" for root).
+func (p PanelConfig) WithSlash() string {
+	return normalizeBasePath(p.BasePath)
+}
+
+func normalizeBasePath(input string) string {
+	cleaned := strings.Trim(strings.TrimSpace(input), "/")
+	if cleaned == "" {
+		return "/"
+	}
+	return "/" + cleaned + "/"
 }

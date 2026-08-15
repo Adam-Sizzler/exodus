@@ -63,8 +63,12 @@ func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
+		basePath := ""
+		if cfg != nil {
+			basePath = cfg.Panel.Trimmed()
+		}
 		specURL := fmt.Sprintf("%s/api/backend-tools/scalar/openapi.json", basePath)
+		apiBasePath := basePath + "/api"
 
 		html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -90,12 +94,18 @@ func DocsScalarHandler(cfg *config.BackendConfig) http.HandlerFunc {
       "defaultHttpClient": {
         "targetKey": "js",
         "clientKey": "axios"
-      }
+      },
+      "servers": [
+        {
+          "url": "%s",
+          "description": "API Server"
+        }
+      ]
     }'
   ></script>
   <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
 </body>
-</html>`, specURL)
+</html>`, specURL, apiBasePath)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -110,7 +120,10 @@ func DocsSwaggerHandler(cfg *config.BackendConfig) http.HandlerFunc {
 			return
 		}
 
-		basePath := strings.TrimRight(cfg.Panel.BasePath, "/")
+		basePath := ""
+		if cfg != nil {
+			basePath = cfg.Panel.Trimmed()
+		}
 		specURL := fmt.Sprintf("%s/api/backend-tools/swagger/openapi.json", basePath)
 
 		html := fmt.Sprintf(`<!DOCTYPE html>
@@ -146,7 +159,7 @@ func DocsSwaggerHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
-func DocsOpenAPIHandler(_ *config.BackendConfig) http.HandlerFunc {
+func DocsOpenAPIHandler(cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -154,7 +167,7 @@ func DocsOpenAPIHandler(_ *config.BackendConfig) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		spec, err := exodusOpenAPISpec()
+		spec, err := buildExodusOpenAPISpec(cfg)
 		if err != nil {
 			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to prepare openapi spec")
 			return
@@ -164,17 +177,19 @@ func DocsOpenAPIHandler(_ *config.BackendConfig) http.HandlerFunc {
 	}
 }
 
-func exodusOpenAPISpec() ([]byte, error) {
-	exodusOpenAPIOnce.Do(func() {
-		exodusOpenAPIBytes, exodusOpenAPIErr = buildExodusOpenAPISpec()
-	})
-	return exodusOpenAPIBytes, exodusOpenAPIErr
-}
-
-func buildExodusOpenAPISpec() ([]byte, error) {
+func buildExodusOpenAPISpec(cfg *config.BackendConfig) ([]byte, error) {
 	var doc map[string]any
 	if err := json.Unmarshal(openapiJSON, &doc); err != nil {
 		return nil, err
+	}
+
+	apiBasePath := "/api"
+	if cfg != nil && cfg.Panel.IsCustom() {
+		apiBasePath = cfg.Panel.Trimmed() + "/api"
+	}
+	doc["basePath"] = apiBasePath
+	doc["servers"] = []map[string]any{
+		{"url": apiBasePath, "description": "API Server"},
 	}
 
 	if paths, ok := doc["paths"].(map[string]any); ok {

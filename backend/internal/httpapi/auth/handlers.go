@@ -537,10 +537,7 @@ func AuthLogoutHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		// see panelsettings.ToolsAuthMiddleware / BackendToolsAuthCookieName).
 		// It carries its own JWT lifetime (2h) independent from the main session,
 		// so clear it here upon explicit server logout.
-		toolsCookiePath := "/api/backend-tools"
-		if cfg.Panel.BasePath != "" && cfg.Panel.BasePath != "/" {
-			toolsCookiePath = strings.TrimRight(cfg.Panel.BasePath, "/") + "/api/backend-tools"
-		}
+		toolsCookiePath := cfg.Panel.Trimmed() + "/api/backend-tools"
 		http.SetCookie(w, &http.Cookie{
 			Name:     "ex-tools",
 			Value:    "",

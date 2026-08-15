@@ -37,6 +37,7 @@ func TestDocsSwaggerHandlerServesSwaggerUI(t *testing.T) {
 
 func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 	cfg := &config.BackendConfig{}
+	cfg.Panel.BasePath = "/panel"
 
 	req := httptest.NewRequest(http.MethodGet, "/docs/openapi.json", nil)
 	rec := httptest.NewRecorder()
@@ -51,6 +52,10 @@ func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 		Info struct {
 			Title string `json:"title"`
 		} `json:"info"`
+		BasePath string `json:"basePath"`
+		Servers  []struct {
+			URL string `json:"url"`
+		} `json:"servers"`
 		Paths map[string]any `json:"paths"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &spec); err != nil {
@@ -58,6 +63,12 @@ func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 	}
 	if spec.Info.Title != "Exodus API" {
 		t.Fatalf("title got %q, want Exodus API", spec.Info.Title)
+	}
+	if spec.BasePath != "/panel/api" {
+		t.Fatalf("basePath got %q, want /panel/api", spec.BasePath)
+	}
+	if len(spec.Servers) == 0 || spec.Servers[0].URL != "/panel/api" {
+		t.Fatalf("servers url got %+v, want /panel/api", spec.Servers)
 	}
 	if _, exists := spec.Paths["/exodus-settings"]; !exists {
 		if _, exists2 := spec.Paths["/api/exodus-settings"]; !exists2 {
@@ -68,6 +79,27 @@ func TestDocsOpenAPIHandlerServesExodusSpec(t *testing.T) {
 		if strings.Contains(path, "ip-control") || strings.Contains(path, "torrent-blocker") {
 			t.Fatalf("unexpected unsupported path in openapi spec: %s", path)
 		}
+	}
+}
+
+func TestDocsScalarHandlerCustomBasePath(t *testing.T) {
+	cfg := &config.BackendConfig{}
+	cfg.Panel.BasePath = "/panel"
+
+	req := httptest.NewRequest(http.MethodGet, "/api/backend-tools/scalar", nil)
+	rec := httptest.NewRecorder()
+
+	DocsScalarHandler(cfg)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status got %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"/panel/api/backend-tools/scalar/openapi.json"`) {
+		t.Fatalf("expected data-url with /panel prefix, got %s", body)
+	}
+	if !strings.Contains(body, `"/panel/api"`) {
+		t.Fatalf("expected server url with /panel/api, got %s", body)
 	}
 }
 

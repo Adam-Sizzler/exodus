@@ -59,7 +59,7 @@ func RenderPanelIndex(page string, basePathWithSlash, basePath string) string {
 		page = injected + page
 	}
 
-	basePrefix := strings.TrimRight(basePathWithSlash, "/")
+	basePrefix := strings.TrimSuffix(basePathWithSlash, "/")
 
 	page = strings.ReplaceAll(page, "%BASE_URL%", basePrefix)
 

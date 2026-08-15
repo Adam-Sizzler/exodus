@@ -23,7 +23,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 
 	addr := fmt.Sprintf("%s:%d", cfg.EXODUS.Address, cfg.Panel.AppPort)
 	panelBasePath := cfg.Panel.BasePath
-	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
+	panelBasePathNoTrailing := cfg.Panel.Trimmed()
 	if panelBasePathNoTrailing == "" {
 		panelBasePathNoTrailing = "/"
 	}
@@ -38,7 +38,7 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 		cfg.Logger.Warn("Panel UI index not found; static UI disabled", "path", indexPath, "error", err)
 	}
 
-	mux.Handle("/", panelRequestHandler(panelBasePath, uiDir, staticFS, apiHandler))
+	mux.Handle("/", panelRequestHandler(panelBasePath, panelBasePathNoTrailing, uiDir, staticFS, apiHandler))
 
 	server := &http.Server{
 		Addr:    addr,
@@ -63,12 +63,8 @@ func StartWebServer(ctx context.Context, pools *db.Pools, cfg *config.BackendCon
 	}
 }
 
-func panelRequestHandler(panelBasePath, uiDir string, staticFS, apiHandler http.Handler) http.Handler {
+func panelRequestHandler(panelBasePath, panelBasePathNoTrailing, uiDir string, staticFS, apiHandler http.Handler) http.Handler {
 	indexPath := filepath.Join(uiDir, "index.html")
-	panelBasePathNoTrailing := strings.TrimSuffix(panelBasePath, "/")
-	if panelBasePathNoTrailing == "" {
-		panelBasePathNoTrailing = "/"
-	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestPath := r.URL.Path

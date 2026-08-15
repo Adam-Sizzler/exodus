@@ -800,3 +800,102 @@ func assertStringPtr(t *testing.T, field string, got *string, want string) {
 		t.Fatalf("unexpected %s: got %q, want %q", field, *got, want)
 	}
 }
+
+func TestBuildSubscriptionLinksAndResolvedProxies(t *testing.T) {
+	user := SubscriptionUser{
+		TID:               1,
+		UUID:              "11111111-1111-1111-1111-111111111111",
+		ShortUUID:         "testuser",
+		Username:          "testuser",
+		Status:            "ACTIVE",
+		TrafficLimitBytes: 107374182400,
+		VlessUUID:         "22222222-2222-2222-2222-222222222222",
+		TrojanPassword:    "trojan-pass",
+		SSPassword:        "ss-pass",
+		Hysteria2Password: "hy2-pass",
+		AnytlsPassword:    "anytls-pass",
+		UsedTrafficBytes:  1024,
+		LifetimeUsedBytes: 2048,
+	}
+
+	inboundTypeVless := "vless"
+	inboundTypeTrojan := "trojan"
+	inboundTypeSS := "shadowsocks"
+	inboundTypeHy2 := "hysteria2"
+	sni := "example.com"
+	networkWs := "ws"
+	pathWs := "/ws"
+
+	hosts := []SubscriptionHost{
+		{
+			UUID:           "host-1",
+			Remark:         "🇸🇪 Sweden VLESS",
+			Address:        "se.example.com",
+			Port:           443,
+			InboundType:    &inboundTypeVless,
+			InboundNetwork: &networkWs,
+			Path:           &pathWs,
+			SNI:            &sni,
+			SecurityLayer:  "TLS",
+		},
+		{
+			UUID:          "host-2",
+			Remark:        "🇩🇪 Germany Trojan",
+			Address:       "de.example.com",
+			Port:          443,
+			InboundType:   &inboundTypeTrojan,
+			SNI:           &sni,
+			SecurityLayer: "TLS",
+		},
+		{
+			UUID:        "host-3",
+			Remark:      "🇺🇸 US Shadowsocks",
+			Address:     "us.example.com",
+			Port:        8388,
+			InboundType: &inboundTypeSS,
+		},
+		{
+			UUID:        "host-4",
+			Remark:      "🇫🇷 France Hy2",
+			Address:     "fr.example.com",
+			Port:        443,
+			InboundType: &inboundTypeHy2,
+			SNI:         &sni,
+		},
+	}
+
+	links, _ := buildSubscriptionLinks(hosts, user)
+	if len(links) != 4 {
+		t.Fatalf("expected 4 links, got %d", len(links))
+	}
+	if !strings.HasPrefix(links[0], "vless://") {
+		t.Fatalf("expected vless link, got %s", links[0])
+	}
+	if !strings.HasPrefix(links[1], "trojan://") {
+		t.Fatalf("expected trojan link, got %s", links[1])
+	}
+	if !strings.HasPrefix(links[2], "ss://") {
+		t.Fatalf("expected ss link, got %s", links[2])
+	}
+	if !strings.HasPrefix(links[3], "hysteria2://") {
+		t.Fatalf("expected hysteria2 link, got %s", links[3])
+	}
+
+	resolved := buildResolvedProxyConfigs(hosts, user)
+	if len(resolved) != 4 {
+		t.Fatalf("expected 4 resolved proxy configs, got %d", len(resolved))
+	}
+	if resolved[0].Protocol != "vless" || resolved[0].Transport != "ws" {
+		t.Fatalf("unexpected resolved proxy: %+v", resolved[0])
+	}
+	if resolved[1].Protocol != "trojan" {
+		t.Fatalf("unexpected resolved proxy: %+v", resolved[1])
+	}
+	if resolved[2].Protocol != "shadowsocks" {
+		t.Fatalf("unexpected resolved proxy: %+v", resolved[2])
+	}
+	if resolved[3].Protocol != "hysteria" {
+		t.Fatalf("unexpected resolved proxy: %+v", resolved[3])
+	}
+}
+

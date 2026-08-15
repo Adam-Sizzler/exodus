@@ -32,30 +32,10 @@ func StartMetricsServer(ctx context.Context, pools *exodusdb.Pools, cfg *config.
 	healthHandler := health.HealthHandler()
 
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", metricsHandler)
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/api/health", healthHandler)
-	registered := map[string]struct{}{
-		"/metrics":    {},
-		"/health":     {},
-		"/api/health": {},
-	}
-	for _, path := range []string{cfg.Panel.BasePath, strings.TrimSuffix(cfg.Panel.BasePath, "/")} {
-		normalized := strings.TrimSpace(path)
-		if normalized == "" || normalized == "/" {
-			continue
-		}
-		endpointMetrics := strings.TrimSuffix(normalized, "/") + "/metrics"
-		if _, exists := registered[endpointMetrics]; !exists {
-			registered[endpointMetrics] = struct{}{}
-			mux.Handle(endpointMetrics, metricsHandler)
-		}
-		endpointHealth := strings.TrimSuffix(normalized, "/") + "/health"
-		if _, exists := registered[endpointHealth]; !exists {
-			registered[endpointHealth] = struct{}{}
-			mux.HandleFunc(endpointHealth, healthHandler)
-		}
-	}
+	prefix := cfg.Panel.Trimmed()
+	mux.Handle(prefix+"/metrics", metricsHandler)
+	mux.HandleFunc(prefix+"/health", healthHandler)
+	mux.HandleFunc(prefix+"/api/health", healthHandler)
 
 	authHandler := middleware.WithMetricsBasicAuth(cfg, mux)
 	server := &http.Server{

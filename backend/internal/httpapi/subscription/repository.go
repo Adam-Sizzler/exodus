@@ -223,11 +223,13 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 	query := fmt.Sprintf(`
 		SELECT u.id, u.uuid, u.short_uuid, u.username, u.status,
 			   u.traffic_limit_bytes, u.traffic_limit_strategy, u.expire_at,
-			   u.last_traffic_reset_at, u.created_at, u.description, u.tag, u.telegram_id, u.email,
+			   u.last_traffic_reset_at, u.created_at, u.updated_at, u.sub_revoked_at,
+			   u.last_triggered_threshold, u.description, u.tag, u.telegram_id, u.email,
 			   u.trojan_password, u.vless_uuid, u.ss_password,
 			   u.naive_password, u.shadowtls_password, u.hysteria2_password, u.anytls_password,
 			   u.hwid_device_limit, u.external_squad_uuid,
-			   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0)
+			   COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
+			   ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
 		FROM users u
 		LEFT JOIN user_traffic ut ON ut.id = u.id
 		WHERE %s
@@ -236,10 +238,12 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 
 	row := dbConn.QueryRowContext(ctx, query, value)
 
-	var lastTrafficReset sql.NullTime
-	var description, tag, email sql.NullString
+	var lastTrafficReset, subRevokedAt, onlineAt, firstConnectedAt sql.NullTime
+	var updatedAt sql.NullTime
+	var description, tag, email, lastConnectedNodeUUID sql.NullString
 	var telegramID sql.NullInt64
 	var hwidDeviceLimit sql.NullInt64
+	var lastTriggeredThreshold sql.NullInt64
 	var externalSquadUUID sql.NullString
 	var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
 	if err := row.Scan(
@@ -253,6 +257,9 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 		&user.ExpireAt,
 		&lastTrafficReset,
 		&user.CreatedAt,
+		&updatedAt,
+		&subRevokedAt,
+		&lastTriggeredThreshold,
 		&description,
 		&tag,
 		&telegramID,
@@ -268,12 +275,35 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 		&externalSquadUUID,
 		&user.UsedTrafficBytes,
 		&user.LifetimeUsedBytes,
+		&onlineAt,
+		&lastConnectedNodeUUID,
+		&firstConnectedAt,
 	); err != nil {
 		return user, err
 	}
 
 	if lastTrafficReset.Valid {
 		user.LastTrafficResetAt = &lastTrafficReset.Time
+	}
+	if subRevokedAt.Valid {
+		user.SubRevokedAt = &subRevokedAt.Time
+	}
+	if updatedAt.Valid {
+		user.UpdatedAt = updatedAt.Time
+	} else {
+		user.UpdatedAt = user.CreatedAt
+	}
+	if lastTriggeredThreshold.Valid {
+		user.LastTriggeredThreshold = int(lastTriggeredThreshold.Int64)
+	}
+	if onlineAt.Valid {
+		user.OnlineAt = &onlineAt.Time
+	}
+	if firstConnectedAt.Valid {
+		user.FirstConnectedAt = &firstConnectedAt.Time
+	}
+	if lastConnectedNodeUUID.Valid {
+		user.LastConnectedNodeUUID = &lastConnectedNodeUUID.String
 	}
 	if description.Valid {
 		user.Description = &description.String
@@ -304,7 +334,19 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 }
 
 func getHostsForUser(ctx context.Context, dbConn *sql.DB, user SubscriptionUser) ([]SubscriptionHost, error) {
-	rows, err := dbConn.QueryContext(ctx, `
+	return getHostsForUserWithOptions(ctx, dbConn, user, false, false)
+}
+
+func getHostsForUserWithOptions(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, withDisabled, withHidden bool) ([]SubscriptionHost, error) {
+	whereClause := "ism.user_id = $1 AND ihe.host_uuid IS NULL"
+	if !withDisabled {
+		whereClause += " AND NOT COALESCE(h.is_disabled, false)"
+	}
+	if !withHidden {
+		whereClause += " AND NOT COALESCE(h.is_hidden, false)"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
 			   h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
 			   h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.is_disabled,
@@ -312,6 +354,7 @@ func getHostsForUser(ctx context.Context, dbConn *sql.DB, user SubscriptionUser)
 			   h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
 			   h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
 			   h.config_profile_uuid, h.config_profile_inbound_uuid,
+			   h.pinned_peer_cert_sha256, h.verify_peer_cert_by_name,
 			   cpi.tag, cpi.type, cpi.network, cpi.security, cpi.port, cpi.raw_inbound
 		FROM internal_squad_members ism
 		JOIN internal_squad_inbounds isi ON ism.internal_squad_uuid = isi.internal_squad_uuid
@@ -319,9 +362,11 @@ func getHostsForUser(ctx context.Context, dbConn *sql.DB, user SubscriptionUser)
 		JOIN hosts h ON h.config_profile_inbound_uuid = cpi.uuid
 		LEFT JOIN internal_squad_host_exclusions ihe
 			ON ihe.host_uuid = h.uuid AND ihe.squad_uuid = ism.internal_squad_uuid
-		WHERE ism.user_id = $1 AND ihe.host_uuid IS NULL AND NOT COALESCE(h.is_disabled, false) AND NOT COALESCE(h.is_hidden, false)
+		WHERE %s
 		ORDER BY h.view_position ASC, h.remark ASC
-	`, user.TID)
+	`, whereClause)
+
+	rows, err := dbConn.QueryContext(ctx, query, user.TID)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +392,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
 	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, singboxCustomParams, mihomoCustomParams, sockoptParams, serverDescription, protocolCredential sql.NullString
-	var xrayJSONTemplateUUID, mihomoIPVersion, configProfileUUID, configProfileInboundUUID sql.NullString
+	var xrayJSONTemplateUUID, mihomoIPVersion, configProfileUUID, configProfileInboundUUID, pinnedPeerCertSha256, verifyPeerCertByName sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
@@ -388,6 +433,8 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&overrideSNIFromAddress,
 		&configProfileUUID,
 		&configProfileInboundUUID,
+		&pinnedPeerCertSha256,
+		&verifyPeerCertByName,
 		&inboundTag,
 		&inboundType,
 		&inboundNetwork,
@@ -397,6 +444,13 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	)
 	if err != nil {
 		return h, err
+	}
+
+	if pinnedPeerCertSha256.Valid {
+		h.PinnedPeerCertSha256 = &pinnedPeerCertSha256.String
+	}
+	if verifyPeerCertByName.Valid {
+		h.VerifyPeerCertByName = &verifyPeerCertByName.String
 	}
 
 	if viewPosition.Valid {
@@ -1299,13 +1353,3 @@ func getSubscriptionRefillDate(strategy string) string {
 	}
 }
 
-func firstHostTag(host SubscriptionHost) string {
-	if host.Remark != "" {
-		return host.Remark
-	}
-	return host.Address
-}
-
-func parsePgTextArray(raw string) []string {
-	return shared.ParsePgTextArray(raw)
-}

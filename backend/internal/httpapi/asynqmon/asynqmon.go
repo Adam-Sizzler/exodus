@@ -3,7 +3,6 @@ package asynqmon
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"exodus/internal/config"
 	"exodus/internal/jobqueue"
@@ -22,13 +21,9 @@ func NewAsynqmonWithRootPath(cfg *config.BackendConfig, routePath string) (http.
 
 	redisOpt := jobqueue.BuildAsynqRedisOpt(cfg)
 
-	basePath := strings.TrimSuffix(cfg.Panel.BasePath, "/")
-	if basePath == "" {
-		basePath = "/"
-	}
-
+	basePath := cfg.Panel.Trimmed()
 	rootPath := routePath
-	if basePath != "/" {
+	if basePath != "" {
 		rootPath = basePath + routePath
 	}
 
@@ -37,7 +32,7 @@ func NewAsynqmonWithRootPath(cfg *config.BackendConfig, routePath string) (http.
 		RedisConnOpt: redisOpt,
 	})
 
-	if basePath == "/" {
+	if basePath == "" {
 		return h, nil
 	}
 

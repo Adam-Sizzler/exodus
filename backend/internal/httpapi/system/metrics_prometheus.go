@@ -455,46 +455,34 @@ func fetchPrometheusMetricsText(cfg *config.BackendConfig) (string, error) {
 	}
 
 	client := &http.Client{Timeout: 8 * time.Second}
-	paths := metricsCandidatePaths(cfg.Panel.BasePath)
-	var lastErr error
+	path := metricsPath(cfg.Panel.BasePath)
+	url := fmt.Sprintf("http://%s:%d%s", host, port, path)
 
-	for _, path := range paths {
-		url := fmt.Sprintf("http://%s:%d%s", host, port, path)
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		metricsUser := strings.TrimSpace(cfg.Metrics.User)
-		metricsPass := strings.TrimSpace(cfg.Metrics.Pass)
-		if metricsUser != "" || metricsPass != "" {
-			req.SetBasicAuth(metricsUser, metricsPass)
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		body, readErr := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		if readErr != nil {
-			lastErr = readErr
-			continue
-		}
-		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("metrics endpoint %s returned status %d", url, resp.StatusCode)
-			continue
-		}
-
-		return string(body), nil
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	metricsUser := strings.TrimSpace(cfg.Metrics.User)
+	metricsPass := strings.TrimSpace(cfg.Metrics.Pass)
+	if metricsUser != "" || metricsPass != "" {
+		req.SetBasicAuth(metricsUser, metricsPass)
 	}
 
-	if lastErr == nil {
-		lastErr = fmt.Errorf("metrics endpoint is unavailable")
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
 	}
-	return "", lastErr
+	defer resp.Body.Close()
+
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return "", readErr
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("metrics endpoint %s returned status %d", url, resp.StatusCode)
+	}
+
+	return string(body), nil
 }
 
 func parsePrometheusText(text string) []prometheusSample {
@@ -637,21 +625,15 @@ func canonicalNodeMetricName(metricName string) string {
 	}
 }
 
-func metricsCandidatePaths(basePath string) []string {
-	paths := []string{"/metrics"}
-	normalized := strings.TrimSpace(basePath)
-	if normalized == "" {
-		return paths
-	}
-	trimmed := strings.TrimSuffix(normalized, "/")
+func metricsPath(basePath string) string {
+	trimmed := strings.TrimRight(strings.TrimSpace(basePath), "/")
 	if trimmed == "" || trimmed == "/" {
-		return paths
+		return "/metrics"
 	}
-	candidate := trimmed + "/metrics"
-	if candidate != "/metrics" {
-		paths = append(paths, candidate)
+	if !strings.HasPrefix(trimmed, "/") {
+		trimmed = "/" + trimmed
 	}
-	return paths
+	return trimmed + "/metrics"
 }
 
 func writePrometheusMetricLine(builder *strings.Builder, metricName string, labels map[string]string, value string) {

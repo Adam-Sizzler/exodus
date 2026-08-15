@@ -42,6 +42,10 @@ func buildRawHost(host SubscriptionHost) RawHost {
 	}
 }
 
+func encodeRemark(remark string) string {
+	return url.PathEscape(remark)
+}
+
 func buildSubscriptionLinks(hosts []SubscriptionHost, user SubscriptionUser) ([]string, map[string]string) {
 	links := []string{}
 	ssConfLinks := map[string]string{}
@@ -58,7 +62,7 @@ func buildSubscriptionLinks(hosts []SubscriptionHost, user SubscriptionUser) ([]
 			}
 			encoded := base64.RawURLEncoding.EncodeToString([]byte(remark))
 			domain := host.Address
-			ssConfLinks[remark] = fmt.Sprintf("ssconf://%s/%s/ss/%s#%s", domain, user.ShortUUID, encoded, url.QueryEscape(remark))
+			ssConfLinks[remark] = fmt.Sprintf("ssconf://%s/%s/ss/%s#%s", domain, user.ShortUUID, encoded, encodeRemark(remark))
 		}
 	}
 	return links, ssConfLinks
@@ -76,6 +80,12 @@ func buildHostLink(host SubscriptionHost, user SubscriptionUser) (string, string
 		return buildTrojanLink(host, user), protocol
 	case "shadowsocks", "ss":
 		return buildShadowsocksLink(host, user), protocol
+	case "hysteria2", "hy2", "hysteria":
+		return buildHysteria2Link(host, user), protocol
+	case "anytls":
+		return buildAnytlsLink(host, user), protocol
+	case "tuic":
+		return buildTuicLink(host, user), protocol
 	case "vmess":
 		return buildVmessLink(host, user), protocol
 	default:
@@ -98,28 +108,27 @@ func normalizedHostProtocol(host SubscriptionHost) string {
 }
 
 func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) string {
-	if host.OverrideProtocolCredential && host.ProtocolCredential != nil {
-		if credential := strings.TrimSpace(*host.ProtocolCredential); credential != "" {
-			return credential
-		}
+	if host.OverrideProtocolCredential && host.ProtocolCredential != nil && *host.ProtocolCredential != "" {
+		return *host.ProtocolCredential
 	}
-	switch normalizedHostProtocol(host) {
+	protocol := normalizedHostProtocol(host)
+	switch protocol {
 	case "vless", "vmess":
-		return strings.TrimSpace(user.VlessUUID)
+		return user.VlessUUID
 	case "trojan", "tuic":
-		return strings.TrimSpace(user.TrojanPassword)
+		return user.TrojanPassword
+	case "shadowsocks", "ss":
+		return user.SSPassword
+	case "hysteria2", "hy2", "hysteria":
+		return user.Hysteria2Password
 	case "anytls":
-		return strings.TrimSpace(user.AnytlsPassword)
+		return user.AnytlsPassword
 	case "naive":
-		return strings.TrimSpace(user.NaivePassword)
-	case "shadowsocks":
-		return strings.TrimSpace(user.SSPassword)
+		return user.NaivePassword
 	case "shadowtls":
-		return strings.TrimSpace(user.ShadowtlsPassword)
-	case "hysteria", "hysteria2":
-		return strings.TrimSpace(user.Hysteria2Password)
+		return user.ShadowtlsPassword
 	default:
-		return ""
+		return user.VlessUUID
 	}
 }
 
@@ -139,7 +148,7 @@ func buildVlessLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("vless://%s@%s:%d?%s#%s", credential, host.Address, host.Port, params.Encode(), url.QueryEscape(remark))
+	return fmt.Sprintf("vless://%s@%s:%d?%s#%s", credential, host.Address, host.Port, params.Encode(), encodeRemark(remark))
 }
 
 func buildTrojanLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -153,7 +162,7 @@ func buildTrojanLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("trojan://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, params.Encode(), url.QueryEscape(remark))
+	return fmt.Sprintf("trojan://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, params.Encode(), encodeRemark(remark))
 }
 
 func buildShadowsocksLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -171,7 +180,86 @@ func buildShadowsocksLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("ss://%s@%s:%d#%s", encoded, host.Address, host.Port, url.QueryEscape(remark))
+	return fmt.Sprintf("ss://%s@%s:%d#%s", encoded, host.Address, host.Port, encodeRemark(remark))
+}
+
+func buildHysteria2Link(host SubscriptionHost, user SubscriptionUser) string {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
+		return ""
+	}
+	params := url.Values{}
+	sni := ""
+	if host.SNI != nil {
+		sni = *host.SNI
+	}
+	if sni == "" && host.OverrideSNIFromAddress {
+		sni = host.Address
+	}
+	if sni != "" {
+		params.Set("sni", sni)
+	}
+	if host.ALPN != nil && *host.ALPN != "" {
+		params.Set("alpn", *host.ALPN)
+	}
+	remark := host.Remark
+	if remark == "" {
+		remark = host.Address
+	}
+	query := params.Encode()
+	if query != "" {
+		return fmt.Sprintf("hysteria2://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, query, encodeRemark(remark))
+	}
+	return fmt.Sprintf("hysteria2://%s@%s:%d#%s", url.QueryEscape(credential), host.Address, host.Port, encodeRemark(remark))
+}
+
+func buildAnytlsLink(host SubscriptionHost, user SubscriptionUser) string {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
+		return ""
+	}
+	params := url.Values{}
+	applyTransportParams(&params, host)
+	remark := host.Remark
+	if remark == "" {
+		remark = host.Address
+	}
+	query := params.Encode()
+	if query != "" {
+		return fmt.Sprintf("anytls://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, query, encodeRemark(remark))
+	}
+	return fmt.Sprintf("anytls://%s@%s:%d#%s", url.QueryEscape(credential), host.Address, host.Port, encodeRemark(remark))
+}
+
+func buildTuicLink(host SubscriptionHost, user SubscriptionUser) string {
+	credential := effectiveProtocolCredential(host, user)
+	if credential == "" {
+		return ""
+	}
+	uuidStr := user.VlessUUID
+	params := url.Values{}
+	sni := ""
+	if host.SNI != nil {
+		sni = *host.SNI
+	}
+	if sni == "" && host.OverrideSNIFromAddress {
+		sni = host.Address
+	}
+	if sni != "" {
+		params.Set("sni", sni)
+	}
+	if host.ALPN != nil && *host.ALPN != "" {
+		params.Set("alpn", *host.ALPN)
+	}
+	remark := host.Remark
+	if remark == "" {
+		remark = host.Address
+	}
+	query := params.Encode()
+	if query != "" {
+		return fmt.Sprintf("tuic://%s:%s@%s:%d?%s#%s", uuidStr, credential, host.Address, host.Port, query, encodeRemark(remark))
+	}
+	return fmt.Sprintf("tuic://%s:%s@%s:%d#%s", uuidStr, credential, host.Address, host.Port, encodeRemark(remark))
 }
 
 func buildVmessLink(_ SubscriptionHost, _ SubscriptionUser) string {

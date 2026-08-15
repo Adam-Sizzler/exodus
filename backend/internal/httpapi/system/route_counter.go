@@ -238,8 +238,8 @@ func Middleware(rc *RouteCounter) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
 			if rc != nil && rc.cfg != nil {
-				basePath := strings.TrimRight(rc.cfg.Panel.BasePath, "/")
-				if basePath != "" && basePath != "/" && strings.HasPrefix(path, basePath) {
+				basePath := rc.cfg.Panel.Trimmed()
+				if basePath != "" && strings.HasPrefix(path, basePath) {
 					path = strings.TrimPrefix(path, basePath)
 				}
 			}
