@@ -32,9 +32,8 @@ type Config struct {
 	RequireGRPCToken bool
 	MTLSConfig       *MTLSConfig
 
-	AppVersion                      string
-	MarzbanLegacyDropRevokedSubscriptions bool
-	TrustProxy                      string
+	AppVersion string
+	TrustProxy string
 }
 
 type MTLSConfig struct {
@@ -118,9 +117,8 @@ func Load() (Config, error) {
 		GRPCAddress:                     getEnvOrDefault("SUB_GRPC_ADDRESS", DefaultGRPCAddress),
 		GRPCPath:                        pathPrefix,
 		GRPCToken:                       grpcToken,
-		AppVersion:                      strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
-		MarzbanLegacyDropRevokedSubscriptions: parseBool(os.Getenv("MARZBAN_LEGACY_DROP_REVOKED_SUBSCRIPTIONS"), false),
-		TrustProxy:                      getEnvOrDefault("TRUST_PROXY", "1"),
+		AppVersion: strings.TrimSpace(firstEnv("SUB_APP_VERSION", "APP_VERSION")),
+		TrustProxy: getEnvOrDefault("TRUST_PROXY", "1"),
 	}
 
 	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultGRPCPort)
@@ -153,7 +151,10 @@ func Load() (Config, error) {
 		return cfg, NewEnvError("SUB_GRPC_TOKEN", "Required when SUB_SECRET_KEY is not provided. Dashboard → Subscription → Nodes → Current node → gRPC Token (SUB_GRPC_TOKEN) or Secret Key (SUB_SECRET_KEY).")
 	}
 
-	seed := strings.TrimSpace(os.Getenv("SUB_SECRET_KEY"))
+	seed := strings.TrimSpace(os.Getenv("INTERNAL_JWT_SECRET"))
+	if seed == "" {
+		seed = strings.TrimSpace(os.Getenv("SUB_SECRET_KEY"))
+	}
 	if seed == "" {
 		seed = cfg.GRPCToken
 	}

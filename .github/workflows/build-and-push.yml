@@ -69,11 +69,6 @@ jobs:
             type=ref,event=tag
             type=raw,value=latest
 
-      - name: Resolve build metadata
-        id: build_meta
-        run: |
-          echo "version=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
-
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -84,8 +79,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=${{ steps.build_meta.outputs.version }}
-            SUB_APP_VERSION=${{ steps.build_meta.outputs.version }}
+            VERSION=${{ github.ref_name }}
+            SUB_APP_VERSION=${{ github.ref_name }}
 
   send-telegram-message:
     name: Send Telegram message

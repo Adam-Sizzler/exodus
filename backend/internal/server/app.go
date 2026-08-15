@@ -355,6 +355,8 @@ func (a *App) serveStatic(w http.ResponseWriter, r *http.Request, requestPath st
 		return
 	}
 
+	w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+
 	if a.cfg.SubPath != "" && strings.HasSuffix(cleanFullPath, ".js") {
 		content, readErr := os.ReadFile(cleanFullPath)
 		if readErr == nil {
@@ -372,7 +374,20 @@ func (a *App) serveStatic(w http.ResponseWriter, r *http.Request, requestPath st
 		}
 	}
 
-	http.ServeFile(w, r, cleanFullPath)
+	http.ServeFile(&staticResponseWriter{w}, r, cleanFullPath)
+}
+
+// staticResponseWriter strips ETag/Last-Modified that http.ServeFile/
+// ServeContent would otherwise set, matching the upstream sirv static
+// server (maxAge: 604800, immutable: true, etag: false).
+type staticResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *staticResponseWriter) WriteHeader(statusCode int) {
+	w.Header().Del("Etag")
+	w.Header().Del("Last-Modified")
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (a *App) proxySubscription(
@@ -385,7 +400,7 @@ func (a *App) proxySubscription(
 		ShortUuid:  shortUUID,
 		ClientType: clientType,
 		ClientIp:   clientIP,
-		Headers:    toProtoHeaders(r.Header),
+		Headers:    toProtoHeaders(filterForwardHeaders(r.Header)),
 	})
 	if err != nil {
 		logger.WithContext("RootService").Errorf("Error in GetSubscription Request: %v", err)
@@ -428,7 +443,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 	subpageEnvelopeRaw, err := a.requestJSON(r.Context(), &proto.SubscriptionBridgeRequest{
 		Operation: bridgeOperationSubpageByShortUUID,
 		ShortUuid: shortUUID,
-		Headers:   toProtoHeaders(r.Header),
+		Headers:   toProtoHeaders(filterForwardHeaders(r.Header)),
 	})
 	if err != nil {
 		logger.WithContext("RootService").Errorf("Error in GetSubpageConfig Request: %v", err)
@@ -441,16 +456,6 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		logger.WithContext("RootService").Errorf("Error in returnWebpage: failed to parse subscription info: %v", err)
 		closeConnection(w)
 		return
-	}
-
-	if a.cfg.MarzbanLegacyDropRevokedSubscriptions {
-		if respMap, ok := subscriptionData["response"].(map[string]any); ok {
-			if revokedAt, exists := respMap["subRevokedAt"]; exists && revokedAt != nil {
-				logger.WithContext("RootService").Info("Marzban legacy subscription is revoked, dropping connection.")
-				closeConnection(w)
-				return
-			}
-		}
 	}
 
 	var subpageEnvelope subpageConfigByShortEnvelope
