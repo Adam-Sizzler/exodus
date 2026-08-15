@@ -22,10 +22,109 @@ func TestLoadNodeConfigTokenMode(t *testing.T) {
 	if cfg.Exodus.GRPCToken != "1234567890abcdef" {
 		t.Fatalf("GRPCToken = %q", cfg.Exodus.GRPCToken)
 	}
-	if cfg.Exodus.GrpcPath != "node" {
-		t.Fatalf("GrpcPath = %q, want node", cfg.Exodus.GrpcPath)
+	if cfg.Exodus.Trimmed() != "/node" {
+		t.Fatalf("Trimmed() = %q, want /node", cfg.Exodus.Trimmed())
+	}
+	if !cfg.Exodus.IsCustom() {
+		t.Fatalf("IsCustom() = false, want true")
+	}
+	if cfg.Exodus.WithSlash() != "/node/" {
+		t.Fatalf("WithSlash() = %q, want /node/", cfg.Exodus.WithSlash())
 	}
 	if cfg.Log.LogLevel != "info" {
 		t.Fatalf("LogLevel = %q, want info because LOG_LEVEL/EXODUS_LOG_LEVEL are ignored", cfg.Log.LogLevel)
+	}
+}
+
+func TestConfigPathMethods(t *testing.T) {
+	tests := []struct {
+		name          string
+		grpcPath      string
+		wantTrimmed   string
+		wantIsCustom  bool
+		wantWithSlash string
+	}{
+		{
+			name:          "root slash",
+			grpcPath:      "/",
+			wantTrimmed:   "",
+			wantIsCustom:  false,
+			wantWithSlash: "/",
+		},
+		{
+			name:          "empty string",
+			grpcPath:      "",
+			wantTrimmed:   "",
+			wantIsCustom:  false,
+			wantWithSlash: "/",
+		},
+		{
+			name:          "custom path with trailing slash",
+			grpcPath:      "/node/",
+			wantTrimmed:   "/node",
+			wantIsCustom:  true,
+			wantWithSlash: "/node/",
+		},
+		{
+			name:          "custom path without trailing slash",
+			grpcPath:      "/node",
+			wantTrimmed:   "/node",
+			wantIsCustom:  true,
+			wantWithSlash: "/node/",
+		},
+		{
+			name:          "custom path without leading slash",
+			grpcPath:      "node",
+			wantTrimmed:   "/node",
+			wantIsCustom:  true,
+			wantWithSlash: "/node/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := ExodusConfig{GrpcPath: tt.grpcPath}
+			if got := cfg.Trimmed(); got != tt.wantTrimmed {
+				t.Errorf("Trimmed() = %q, want %q", got, tt.wantTrimmed)
+			}
+			if got := cfg.IsCustom(); got != tt.wantIsCustom {
+				t.Errorf("IsCustom() = %v, want %v", got, tt.wantIsCustom)
+			}
+			if got := cfg.WithSlash(); got != tt.wantWithSlash {
+				t.Errorf("WithSlash() = %q, want %q", got, tt.wantWithSlash)
+			}
+		})
+	}
+}
+
+func TestValidateBasePath(t *testing.T) {
+	valid := []string{
+		"/",
+		"",
+		"/node",
+		"/node/",
+		"/custom-node_123/v1",
+		"node",
+	}
+
+	for _, path := range valid {
+		if err := validateBasePath(path); err != nil {
+			t.Errorf("expected valid for %q, got error: %v", path, err)
+		}
+	}
+
+	invalid := []string{
+		"/../escape",
+		"/node?query=1",
+		"/node#hash",
+		"/node with space",
+		"/node\\backslash",
+		"/node;injection",
+	}
+
+	for _, path := range invalid {
+		if err := validateBasePath(path); err == nil {
+			t.Errorf("expected invalid for %q, got nil error", path)
+		}
 	}
 }

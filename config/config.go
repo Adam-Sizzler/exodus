@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -73,11 +74,11 @@ func LoadNodeConfig() (NodeConfig, error) {
 		}
 	}
 
-	if value := firstEnv("NODE_GRPC_ADDRESS"); value != "" {
+	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_ADDRESS")); value != "" {
 		cfg.Exodus.GrpcAddress = value
 	}
 
-	if value := firstEnv("NODE_GRPC_PORT"); value != "" {
+	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_PORT")); value != "" {
 		port, err := strconv.Atoi(value)
 		if err != nil || port < 1 || port > 65535 {
 			return cfg, fmt.Errorf("invalid NODE_GRPC_PORT value: %q", value)
@@ -85,10 +86,14 @@ func LoadNodeConfig() (NodeConfig, error) {
 		cfg.Exodus.GrpcPort = port
 	}
 
-	if value := firstEnv("NODE_GRPC_PATH"); value != "" {
-		cfg.Exodus.GrpcPath = strings.Trim(value, "/")
+	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_PATH")); value != "" {
+		if err := validateBasePath(value); err != nil {
+			return cfg, err
+		}
+		cfg.Exodus.GrpcPath = normalizeBasePath(value)
 	}
-	if value := firstEnv("NODE_GRPC_TOKEN"); value != "" {
+
+	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_TOKEN")); value != "" {
 		cfg.Exodus.GRPCToken = value
 	}
 
@@ -135,24 +140,48 @@ func (cfg *NodeConfig) LoggerFor(context string) *Logger {
 	return cfg.Logger.WithContext(context)
 }
 
-func firstEnv(keys ...string) string {
-	for _, key := range keys {
-		value, ok := lookupEnvTrimmed(key)
-		if ok {
-			return value
-		}
+var validBasePathRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-\/]*$`)
+
+func validateBasePath(input string) error {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" || trimmed == "/" {
+		return nil
 	}
-	return ""
+	if strings.Contains(trimmed, "..") {
+		return fmt.Errorf("invalid NODE_GRPC_PATH %q: directory traversal is not allowed", input)
+	}
+	if strings.ContainsAny(trimmed, "?#\\ \t\r\n") {
+		return fmt.Errorf("invalid NODE_GRPC_PATH %q: contains illegal characters (spaces, query/fragment markers, or backslashes)", input)
+	}
+	if !validBasePathRegex.MatchString(trimmed) {
+		return fmt.Errorf("invalid NODE_GRPC_PATH %q: must contain only alphanumeric characters, hyphens, underscores, and slashes", input)
+	}
+	return nil
 }
 
-func lookupEnvTrimmed(key string) (string, bool) {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		return "", false
+// Trimmed returns GrpcPath without trailing slash (e.g. "/node" or "" for root "/").
+func (e ExodusConfig) Trimmed() string {
+	normalized := normalizeBasePath(e.GrpcPath)
+	if normalized == "/" {
+		return ""
 	}
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return "", false
+	return strings.TrimSuffix(normalized, "/")
+}
+
+// IsCustom reports whether a custom non-root GrpcPath is configured.
+func (e ExodusConfig) IsCustom() bool {
+	return e.Trimmed() != ""
+}
+
+// WithSlash returns GrpcPath with leading and trailing slashes (e.g. "/node/" or "/" for root).
+func (e ExodusConfig) WithSlash() string {
+	return normalizeBasePath(e.GrpcPath)
+}
+
+func normalizeBasePath(input string) string {
+	cleaned := strings.Trim(strings.TrimSpace(input), "/")
+	if cleaned == "" {
+		return "/"
 	}
-	return trimmed, true
+	return "/" + cleaned + "/"
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -19,8 +20,8 @@ type NodePayload struct {
 }
 
 func ParseNodePayloadFromSecret() (NodePayload, error) {
-	secret, ok := lookupEnvTrimmed("SECRET_KEY")
-	if !ok {
+	secret := strings.TrimSpace(os.Getenv("SECRET_KEY"))
+	if secret == "" {
 		return NodePayload{}, ErrSecretKeyNotSet
 	}
 	secret = strings.Trim(secret, "\"'")

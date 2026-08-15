@@ -98,9 +98,8 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterNodeServiceServer(grpcServer, nodeServer)
 
-	var pathPrefix string
-	if cfg.Exodus.GrpcPath != "" {
-		pathPrefix = "/" + strings.Trim(cfg.Exodus.GrpcPath, "/")
+	pathPrefix := cfg.Exodus.Trimmed()
+	if pathPrefix != "" {
 		log.Info("gRPC path prefix configured", "prefix", pathPrefix)
 	}
 

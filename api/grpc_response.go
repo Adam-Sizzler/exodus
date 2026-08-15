@@ -36,8 +36,8 @@ type Service struct {
 	logger *config.Logger
 	api    *sdk.API
 
-	apiAddress    string
-	apiPort       int
+	apiAddress string
+	apiPort    int
 
 	coreStateMu   sync.RWMutex
 	coreOnline    bool
