@@ -13,19 +13,19 @@ import (
 )
 
 const (
-	UsersUpdateUsageQueue     = "USERS_UPDATE_USERS_USAGE_QUEUE"
-	UsersWatchdogQueue        = "USERS_WATCHDOG_QUEUE"
-	UsersResetTrafficQueue    = "USERS_RESET_USER_TRAFFIC_QUEUE"
-	UsersSerialOpsQueue       = "USERS_SERIAL_OPERATIONS_QUEUE"
-	SquadsActionsQueue        = "SQUADS_ACTIONS_QUEUE"
-	UserEventsQueue           = "USER_EVENTS_QUEUE"
+	UsersUpdateUsageQueue  = "USERS_UPDATE_USERS_USAGE_QUEUE"
+	UsersWatchdogQueue     = "USERS_WATCHDOG_QUEUE"
+	UsersResetTrafficQueue = "USERS_RESET_USER_TRAFFIC_QUEUE"
+	UsersSerialOpsQueue    = "USERS_SERIAL_OPERATIONS_QUEUE"
+	SquadsActionsQueue     = "SQUADS_ACTIONS_QUEUE"
+	UserEventsQueue        = "USER_EVENTS_QUEUE"
 
-	JobUpdateUserUsage        = "update_user_usage"
-	JobWatchdogReview         = "watchdog_review"
-	JobResetUserTraffic       = "reset_user_traffic"
-	JobSerialOperation        = "serial_operation"
-	JobSquadAction            = "squad_action"
-	JobUserEvent              = "user_event"
+	JobUpdateUserUsage  = "update_user_usage"
+	JobWatchdogReview   = "watchdog_review"
+	JobResetUserTraffic = "reset_user_traffic"
+	JobSerialOperation  = "serial_operation"
+	JobSquadAction      = "squad_action"
+	JobUserEvent        = "user_event"
 )
 
 type MiscQueuesDispatcher struct {

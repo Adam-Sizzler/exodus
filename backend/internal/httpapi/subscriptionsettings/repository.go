@@ -123,7 +123,7 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 		responseRules, hwidSettings, customRemarks sql.NullString
 		port                                       sql.NullInt64
 		serveJSONAtBase                            sql.NullBool
-		isShowCustomRemarks, randomizeHosts       sql.NullBool
+		isShowCustomRemarks, randomizeHosts        sql.NullBool
 	)
 
 	err := scanner.Scan(

@@ -19,7 +19,7 @@ const (
 	BackendToolsJWTIssuer      = "exodus"
 	BackendToolsJWTScopeAccess = "access"
 	BackendToolsJWTScopeOtt    = "ott"
-	BackendToolsJWTLifetime = 2 * time.Hour
+	BackendToolsJWTLifetime    = 2 * time.Hour
 )
 
 type ToolsClaims struct {

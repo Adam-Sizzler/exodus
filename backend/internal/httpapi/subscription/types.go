@@ -90,27 +90,27 @@ type CustomRemarks struct {
 }
 
 type SubscriptionUser struct {
-	TID                  int64
-	UUID                 string
-	ShortUUID            string
-	Username             string
-	Status               string
-	TrafficLimitBytes    int64
-	TrafficLimitStrategy string
-	ExpireAt             time.Time
-	LastTrafficResetAt   *time.Time
-	CreatedAt            time.Time
-	Description          *string
-	Tag                  *string
-	TelegramID           *int64
-	Email                *string
-	TrojanPassword       string
-	VlessUUID            string
-	SSPassword           string
-	NaivePassword        string
-	ShadowtlsPassword    string
-	Hysteria2Password    string
-	AnytlsPassword       string
+	TID                    int64
+	UUID                   string
+	ShortUUID              string
+	Username               string
+	Status                 string
+	TrafficLimitBytes      int64
+	TrafficLimitStrategy   string
+	ExpireAt               time.Time
+	LastTrafficResetAt     *time.Time
+	CreatedAt              time.Time
+	Description            *string
+	Tag                    *string
+	TelegramID             *int64
+	Email                  *string
+	TrojanPassword         string
+	VlessUUID              string
+	SSPassword             string
+	NaivePassword          string
+	ShadowtlsPassword      string
+	Hysteria2Password      string
+	AnytlsPassword         string
 	HwidDeviceLimit        *int
 	ExternalSquadUUID      *string
 	SubRevokedAt           *time.Time

@@ -259,21 +259,21 @@ func apiTokenScopeForRequest(method, requestPath string) (resource, endpointScop
 
 	switch {
 	case strings.HasPrefix(trimmed, "hosts/") || trimmed == "hosts":
-		return genericCRUDScope("hosts", method, clean, "/api/hosts", "hosts")
+		return genericCRUDScope("hosts", method, clean, "/api/hosts")
 	case strings.HasPrefix(trimmed, "internal-squads/") || trimmed == "internal-squads":
-		return genericCRUDScope("internal_squads", method, clean, "/api/internal-squads", "internalsquads")
+		return genericCRUDScope("internal_squads", method, clean, "/api/internal-squads")
 	case strings.HasPrefix(trimmed, "subscription-templates/") || trimmed == "subscription-templates":
-		return genericCRUDScope("subscription_templates", method, clean, "/api/subscription-templates", "subscriptiontemplates")
+		return genericCRUDScope("subscription_templates", method, clean, "/api/subscription-templates")
 	case strings.HasPrefix(trimmed, "system/metadata") || trimmed == "system/metadata":
-		return genericCRUDScope("system_metadata", method, clean, "/api/system/metadata", "systemmetadata")
+		return genericCRUDScope("system_metadata", method, clean, "/api/system/metadata")
 	case strings.HasPrefix(trimmed, "nodes/") || trimmed == "nodes":
-		return genericCRUDScope("nodes", method, clean, "/api/nodes", "nodes")
+		return genericCRUDScope("nodes", method, clean, "/api/nodes")
 	case strings.HasPrefix(trimmed, "config-profiles/") || trimmed == "config-profiles":
-		return genericCRUDScope("config_profiles", method, clean, "/api/config-profiles", "configprofiles")
+		return genericCRUDScope("config_profiles", method, clean, "/api/config-profiles")
 	case strings.HasPrefix(trimmed, "subscription-connections/") || trimmed == "subscription-connections":
-		return genericCRUDScope("subscription_connections", method, clean, "/api/subscription-connections", "subscriptionconnections")
+		return genericCRUDScope("subscription_connections", method, clean, "/api/subscription-connections")
 	case strings.HasPrefix(trimmed, "squads/") || trimmed == "squads":
-		return genericCRUDScope("squads", method, clean, "/api/squads", "squads")
+		return genericCRUDScope("squads", method, clean, "/api/squads")
 	default:
 		return "", "", ""
 	}
@@ -290,7 +290,7 @@ func crudEndpointScope(resource, method, kind string) (string, string, string) {
 	}
 }
 
-func genericCRUDScope(resource, method, requestPath, collectionPath, kind string) (string, string, string) {
+func genericCRUDScope(resource, method, requestPath, collectionPath string) (string, string, string) {
 	if requestPath == collectionPath || requestPath == collectionPath+"/" {
 		return crudEndpointScope(resource, method, "collection")
 	}

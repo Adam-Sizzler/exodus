@@ -25,20 +25,20 @@ func buildRawHost(host SubscriptionHost) RawHost {
 		protocol = *host.InboundType
 	}
 	return RawHost{
-		UUID:          host.UUID,
-		Remark:        host.Remark,
-		Address:       host.Address,
-		Port:          host.Port,
-		Protocol:      protocol,
-		Network:       host.InboundNetwork,
-		Security:      host.InboundSecurity,
-		Path:          host.Path,
-		SNI:           host.SNI,
-		Host:          host.Host,
-		ALPN:          host.ALPN,
-		Fingerprint:   host.Fingerprint,
-		IsDisabled:    host.IsDisabled,
-		IsHidden:      host.IsHidden,
+		UUID:        host.UUID,
+		Remark:      host.Remark,
+		Address:     host.Address,
+		Port:        host.Port,
+		Protocol:    protocol,
+		Network:     host.InboundNetwork,
+		Security:    host.InboundSecurity,
+		Path:        host.Path,
+		SNI:         host.SNI,
+		Host:        host.Host,
+		ALPN:        host.ALPN,
+		Fingerprint: host.Fingerprint,
+		IsDisabled:  host.IsDisabled,
+		IsHidden:    host.IsHidden,
 	}
 }
 

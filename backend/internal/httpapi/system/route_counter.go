@@ -238,10 +238,7 @@ func Middleware(rc *RouteCounter) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
 			if rc != nil && rc.cfg != nil {
-				basePath := rc.cfg.Panel.Trimmed()
-				if basePath != "" && strings.HasPrefix(path, basePath) {
-					path = strings.TrimPrefix(path, basePath)
-				}
+				path = strings.TrimPrefix(path, rc.cfg.Panel.Trimmed())
 			}
 			if !strings.HasPrefix(path, "/") {
 				path = "/" + path

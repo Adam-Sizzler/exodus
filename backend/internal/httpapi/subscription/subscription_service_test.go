@@ -898,4 +898,3 @@ func TestBuildSubscriptionLinksAndResolvedProxies(t *testing.T) {
 		t.Fatalf("unexpected resolved proxy: %+v", resolved[3])
 	}
 }
-

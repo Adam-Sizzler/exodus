@@ -8,7 +8,6 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/db"
-	"exodus/internal/jobqueue"
 	"exodus/internal/httpapi/asynqmon"
 	"exodus/internal/httpapi/auth"
 	"exodus/internal/httpapi/bandwidthstats"
@@ -35,6 +34,7 @@ import (
 	"exodus/internal/httpapi/subscriptiontemplate"
 	"exodus/internal/httpapi/system"
 	"exodus/internal/httpapi/users"
+	"exodus/internal/jobqueue"
 )
 
 func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
@@ -72,11 +72,8 @@ func NewAPIHandler(pools *db.Pools, cfg *config.BackendConfig) http.Handler {
 }
 
 func isPublicPath(path string, cfg *config.BackendConfig) bool {
-	if cfg != nil && cfg.Panel.IsCustom() {
-		basePath := cfg.Panel.Trimmed()
-		if strings.HasPrefix(path, basePath) {
-			path = strings.TrimPrefix(path, basePath)
-		}
+	if cfg != nil {
+		path = strings.TrimPrefix(path, cfg.Panel.Trimmed())
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path

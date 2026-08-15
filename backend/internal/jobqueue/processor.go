@@ -210,7 +210,7 @@ func (p *Processor) Enqueue(ctx context.Context, queue string, name string, payl
 	}
 	if taskID != "" {
 		opts = append(opts, asynq.TaskID(taskID))
- 	}
+	}
 
 	if options.Delay > 0 {
 		opts = append(opts, asynq.ProcessIn(options.Delay))

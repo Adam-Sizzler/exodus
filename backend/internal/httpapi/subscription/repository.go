@@ -1352,4 +1352,3 @@ func getSubscriptionRefillDate(strategy string) string {
 		return ""
 	}
 }
-

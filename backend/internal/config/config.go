@@ -106,8 +106,8 @@ type EXODUSConfig struct {
 }
 
 type DatabaseConfig struct {
-	URL                string
-	Socket             string
+	URL    string
+	Socket string
 }
 
 type RedisConfig struct {

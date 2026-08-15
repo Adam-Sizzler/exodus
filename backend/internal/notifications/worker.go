@@ -29,19 +29,19 @@ func NewWorker(cfg *config.BackendConfig) (*Worker, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
 	}
-	
+
 	client, err := jobqueue.NewRedisClient(cfg)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	processor := jobqueue.NewProcessor(client, cfg)
 	worker := &Worker{
 		processor: processor,
 		cfg:       cfg,
 		notifier:  New(cfg),
 	}
-	
+
 	err = processor.RegisterQueue(jobqueue.QueueOptions{
 		Name:              webhookQueueName,
 		Concurrency:       100,
@@ -68,7 +68,7 @@ func NewWorker(cfg *config.BackendConfig) (*Worker, error) {
 		processor.Close()
 		return nil, err
 	}
-	
+
 	return worker, nil
 }
 

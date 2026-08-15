@@ -50,7 +50,7 @@ func NewNodeMonitor(db *sql.DB, cfg *config.BackendConfig) *NodeMonitor {
 		deployNow:         make(chan deployRequest, 1),
 		metricsByNodeUUID: make(map[string]*NodeMetricsSnapshot),
 		hotCache:          nodehotcache.Default(cfg),
-		failedCheckCount: make(map[string]int),
+		failedCheckCount:  make(map[string]int),
 	}
 }
 

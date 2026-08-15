@@ -121,7 +121,7 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 	if local.Weekday() == time.Monday && local.Hour() == 0 && local.Minute() == 15 && s.shouldRun("trafficResetWeek", local.Format("2006-01-02")) {
 		s.runJob(ctx, "trafficResetWeek", s.trafficResetWeek)
 	}
-	
+
 	if local.Day() == 1 && local.Hour() == 0 && local.Minute() == 20 && s.shouldRun("trafficResetMonth", local.Format("2006-01")) {
 		s.runJob(ctx, "trafficResetMonth", s.trafficResetMonth)
 	}

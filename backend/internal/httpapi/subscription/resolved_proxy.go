@@ -9,19 +9,19 @@ import (
 )
 
 type ResolvedProxyConfig struct {
-	FinalRemark     string                 `json:"finalRemark"`
-	Address         string                 `json:"address"`
-	Port            int                    `json:"port"`
-	Protocol        string                 `json:"protocol"`
-	ProtocolOptions map[string]any         `json:"protocolOptions"`
-	Transport       string                 `json:"transport"`
-	TransportOptions map[string]any        `json:"transportOptions"`
-	Security        string                 `json:"security"`
-	SecurityOptions map[string]any         `json:"securityOptions,omitempty"`
-	StreamOverrides map[string]any         `json:"streamOverrides"`
-	Mux             any                    `json:"mux"`
-	ClientOverrides map[string]any         `json:"clientOverrides"`
-	Metadata        ProxyEntryMetadata     `json:"metadata"`
+	FinalRemark      string             `json:"finalRemark"`
+	Address          string             `json:"address"`
+	Port             int                `json:"port"`
+	Protocol         string             `json:"protocol"`
+	ProtocolOptions  map[string]any     `json:"protocolOptions"`
+	Transport        string             `json:"transport"`
+	TransportOptions map[string]any     `json:"transportOptions"`
+	Security         string             `json:"security"`
+	SecurityOptions  map[string]any     `json:"securityOptions,omitempty"`
+	StreamOverrides  map[string]any     `json:"streamOverrides"`
+	Mux              any                `json:"mux"`
+	ClientOverrides  map[string]any     `json:"clientOverrides"`
+	Metadata         ProxyEntryMetadata `json:"metadata"`
 }
 
 type ProxyEntryMetadata struct {
@@ -248,15 +248,15 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser) *Res
 	}
 
 	return &ResolvedProxyConfig{
-		FinalRemark:     remark,
-		Address:         host.Address,
-		Port:            host.Port,
-		Protocol:        protoKey,
-		ProtocolOptions: protocolOptions,
-		Transport:       transport,
+		FinalRemark:      remark,
+		Address:          host.Address,
+		Port:             host.Port,
+		Protocol:         protoKey,
+		ProtocolOptions:  protocolOptions,
+		Transport:        transport,
 		TransportOptions: transportOptions,
-		Security:        security,
-		SecurityOptions: securityOptions,
+		Security:         security,
+		SecurityOptions:  securityOptions,
 		StreamOverrides: map[string]any{
 			"finalMask": nil,
 			"sockopt":   sockoptMap,
@@ -458,4 +458,3 @@ func buildRawSubscriptionResponse(
 		ResolvedProxyConfigs: resolvedProxies,
 	}
 }
-

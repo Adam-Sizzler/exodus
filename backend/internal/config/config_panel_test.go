@@ -4,52 +4,52 @@ import "testing"
 
 func TestPanelConfigMethods(t *testing.T) {
 	tests := []struct {
-		name         string
-		basePath     string
-		wantTrimmed  string
-		wantIsCustom bool
+		name          string
+		basePath      string
+		wantTrimmed   string
+		wantIsCustom  bool
 		wantWithSlash string
 	}{
 		{
-			name:         "root slash",
-			basePath:     "/",
-			wantTrimmed:  "",
-			wantIsCustom: false,
+			name:          "root slash",
+			basePath:      "/",
+			wantTrimmed:   "",
+			wantIsCustom:  false,
 			wantWithSlash: "/",
 		},
 		{
-			name:         "empty string",
-			basePath:     "",
-			wantTrimmed:  "",
-			wantIsCustom: false,
+			name:          "empty string",
+			basePath:      "",
+			wantTrimmed:   "",
+			wantIsCustom:  false,
 			wantWithSlash: "/",
 		},
 		{
-			name:         "custom path with trailing slash",
-			basePath:     "/exodus_path/",
-			wantTrimmed:  "/exodus_path",
-			wantIsCustom: true,
+			name:          "custom path with trailing slash",
+			basePath:      "/exodus_path/",
+			wantTrimmed:   "/exodus_path",
+			wantIsCustom:  true,
 			wantWithSlash: "/exodus_path/",
 		},
 		{
-			name:         "custom path without trailing slash",
-			basePath:     "/exodus_path",
-			wantTrimmed:  "/exodus_path",
-			wantIsCustom: true,
+			name:          "custom path without trailing slash",
+			basePath:      "/exodus_path",
+			wantTrimmed:   "/exodus_path",
+			wantIsCustom:  true,
 			wantWithSlash: "/exodus_path/",
 		},
 		{
-			name:         "custom path without leading slash",
-			basePath:     "panel",
-			wantTrimmed:  "/panel",
-			wantIsCustom: true,
+			name:          "custom path without leading slash",
+			basePath:      "panel",
+			wantTrimmed:   "/panel",
+			wantIsCustom:  true,
 			wantWithSlash: "/panel/",
 		},
 		{
-			name:         "nested custom path",
-			basePath:     "/admin/panel/",
-			wantTrimmed:  "/admin/panel",
-			wantIsCustom: true,
+			name:          "nested custom path",
+			basePath:      "/admin/panel/",
+			wantTrimmed:   "/admin/panel",
+			wantIsCustom:  true,
 			wantWithSlash: "/admin/panel/",
 		},
 	}
@@ -103,4 +103,3 @@ func TestValidateBasePath(t *testing.T) {
 		}
 	}
 }
-
