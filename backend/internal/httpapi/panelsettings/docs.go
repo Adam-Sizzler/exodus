@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 
 	"exodus/internal/config"
@@ -28,7 +27,7 @@ var (
 		{"name": "[Public] Subscription Controller", "description": "Public subscription endpoints for clients to fetch configs and user details."},
 		{"name": "[Protected] Subscriptions Controller", "description": "Protected endpoints for subscription management."},
 		{"name": "Nodes Controller", "description": "Manage nodes, change their status, restart, etc."},
-		{"name": "Node Plugins Controller", "description": "Manage node plugins, torrent blocker, etc."},
+		{"name": "Node Plugins Controller", "description": "Manage node plugins."},
 		{"name": "Bandwidth Stats Controller", "description": "View bandwidth statistics for users and nodes."},
 		{"name": "Connections Controller", "description": "Manage connections, connection profiles, etc."},
 		{"name": "Config Profiles Controller", "description": "Management of Config Profiles."},
@@ -184,20 +183,12 @@ func buildExodusOpenAPISpec(cfg *config.BackendConfig) ([]byte, error) {
 	}
 
 	apiBasePath := "/api"
-	if cfg != nil && cfg.Panel.IsCustom() {
+	if cfg != nil {
 		apiBasePath = cfg.Panel.Trimmed() + "/api"
 	}
 	doc["basePath"] = apiBasePath
 	doc["servers"] = []map[string]any{
 		{"url": apiBasePath, "description": "API Server"},
-	}
-
-	if paths, ok := doc["paths"].(map[string]any); ok {
-		for path := range paths {
-			if strings.HasPrefix(path, "/api/ip-control/") || strings.HasPrefix(path, "/api/node-plugins/torrent-blocker") {
-				delete(paths, path)
-			}
-		}
 	}
 
 	if info, ok := doc["info"].(map[string]any); ok {
@@ -209,34 +200,5 @@ func buildExodusOpenAPISpec(cfg *config.BackendConfig) ([]byte, error) {
 
 	doc["tags"] = defaultControllerTags
 
-	if components, ok := doc["components"].(map[string]any); ok {
-		if schemas, ok := components["schemas"].(map[string]any); ok {
-			for name := range schemas {
-				lower := strings.ToLower(name)
-				if strings.Contains(lower, "torrentblocker") || strings.Contains(lower, "ipcontrol") {
-					delete(schemas, name)
-				}
-			}
-		}
-	}
-
-	spec, err := json.Marshal(doc)
-	if err != nil {
-		return nil, err
-	}
-
-	replacer := strings.NewReplacer(
-		"exodusSettings", "ExodusSettings",
-		"Getexodus", "GetExodus",
-		"Updateexodus", "UpdateExodus",
-		"exodus Settings Controller", "Exodus Settings Controller",
-		"exodus settings", "Exodus settings",
-		"exodus Node", "Exodus Node",
-		"exodus Information", "Exodus Information",
-		"exodus Health", "Exodus Health",
-		"exodus health", "Exodus health",
-		"exodus API", "Exodus API",
-	)
-
-	return []byte(replacer.Replace(string(spec))), nil
+	return json.Marshal(doc)
 }

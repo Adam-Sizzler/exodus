@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -204,7 +205,9 @@ func LoadConfig() (BackendConfig, error) {
 
 	applyEnvOverrides(&cfg)
 	loadNotificationsYAMLConfig(&cfg)
-	normalizePanelConfig(&cfg)
+	if err := normalizePanelConfig(&cfg); err != nil {
+		return cfg, err
+	}
 
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
 		cfg.Logger.Warn("Invalid app port, using default", "port", cfg.Panel.AppPort, "default", defaultConfig.Panel.AppPort)
@@ -588,9 +591,28 @@ func (c NotificationsConfig) EventChannelEnabled(eventName, channel string) bool
 	}
 }
 
-func normalizePanelConfig(cfg *BackendConfig) {
+var validBasePathRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-\/]*$`)
+
+func validateBasePath(input string) error {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" || trimmed == "/" {
+		return nil
+	}
+	if strings.Contains(trimmed, "..") {
+		return fmt.Errorf("invalid BasePath %q: directory traversal is not allowed", input)
+	}
+	if strings.ContainsAny(trimmed, "?#\\ \t\r\n") {
+		return fmt.Errorf("invalid BasePath %q: contains illegal characters (spaces, query/fragment markers, or backslashes)", input)
+	}
+	if !validBasePathRegex.MatchString(trimmed) {
+		return fmt.Errorf("invalid BasePath %q: must contain only alphanumeric characters, hyphens, underscores, and slashes", input)
+	}
+	return nil
+}
+
+func normalizePanelConfig(cfg *BackendConfig) error {
 	if cfg == nil {
-		return
+		return nil
 	}
 
 	if strings.TrimSpace(cfg.Panel.StaticDir) == "" {
@@ -598,6 +620,9 @@ func normalizePanelConfig(cfg *BackendConfig) {
 	}
 	if strings.TrimSpace(cfg.Panel.BasePath) == "" {
 		cfg.Panel.BasePath = defaultConfig.Panel.BasePath
+	}
+	if err := validateBasePath(cfg.Panel.BasePath); err != nil {
+		return err
 	}
 	cfg.Panel.BasePath = normalizeBasePath(cfg.Panel.BasePath)
 	if cfg.Panel.AppPort < 1 || cfg.Panel.AppPort > 65535 {
@@ -618,6 +643,7 @@ func normalizePanelConfig(cfg *BackendConfig) {
 		cfg.Logger.Warn("Invalid trusted proxy CIDR entries ignored", "entries", invalid)
 	}
 	cfg.Panel.trustedProxyNets = proxyNets
+	return nil
 }
 
 func parseTrustedProxies(entries []string) ([]*net.IPNet, []string) {

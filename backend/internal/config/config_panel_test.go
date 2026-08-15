@@ -69,3 +69,38 @@ func TestPanelConfigMethods(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateBasePath(t *testing.T) {
+	valid := []string{
+		"/",
+		"",
+		"/panel",
+		"/panel/",
+		"/exodus_path",
+		"/exodus-path_123/sub",
+		"custom-panel",
+	}
+
+	for _, path := range valid {
+		if err := validateBasePath(path); err != nil {
+			t.Errorf("expected valid for %q, got error: %v", path, err)
+		}
+	}
+
+	invalid := []string{
+		"/../escape",
+		"/panel?query=1",
+		"/panel#hash",
+		"/panel with space",
+		"/panel\\backslash",
+		"/panel;injection",
+		"/panel<script>",
+	}
+
+	for _, path := range invalid {
+		if err := validateBasePath(path); err == nil {
+			t.Errorf("expected invalid for %q, got nil error", path)
+		}
+	}
+}
+
