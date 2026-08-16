@@ -3,13 +3,13 @@ package subscriptionnodes
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
 	"strings"
 	"sync"
 	"time"
 
 	"exodus/internal/nodes/grpcauth"
 	"exodus/internal/proto"
+	"exodus/internal/scheduler"
 
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -40,11 +40,8 @@ type subNodeState struct {
 }
 
 func (sm *SubNodeMonitor) monitorNode(state *subNodeState) {
-	const (
-		minBackoff = 2 * time.Second
-		maxBackoff = 60 * time.Second
-	)
-	backoff := minBackoff
+	reconnectInterval := scheduler.SubNodeReconnectInterval
+	attempts := 0
 
 	for {
 		if state.ctx.Err() != nil {
@@ -52,32 +49,43 @@ func (sm *SubNodeMonitor) monitorNode(state *subNodeState) {
 			return
 		}
 
-		sm.connectAndStream(state)
+		connected := sm.connectAndStream(state)
 		if state.ctx.Err() != nil {
 			sm.cfg.Logger.Debug("Subscription node monitor stopped", "node", state.nodeName)
 			return
 		}
 
-		wait := subWithJitter(backoff, 0.2)
-		timer := time.NewTimer(wait)
+		if connected {
+			attempts = 0
+		}
+
+		attempts++
+
+		sm.cfg.Logger.Warn(
+			"Subscription node disconnected, scheduling reconnect",
+			"node", state.nodeName,
+			"address", state.address,
+			"port", state.port,
+			"attempt", attempts,
+			"wait", reconnectInterval.String(),
+		)
+
+		timer := time.NewTimer(reconnectInterval)
 		select {
 		case <-state.ctx.Done():
 			timer.Stop()
+			sm.cfg.Logger.Debug("Subscription node monitor stopped", "node", state.nodeName)
 			return
 		case <-timer.C:
-		}
-
-		if backoff < maxBackoff {
-			backoff = subMinDuration(maxBackoff, backoff*2)
 		}
 	}
 }
 
-func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
+func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) bool {
 	state.mutex.Lock()
 	if state.isConnecting {
 		state.mutex.Unlock()
-		return
+		return false
 	}
 	state.isConnecting = true
 	state.mutex.Unlock()
@@ -94,7 +102,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 			state.mutex.Lock()
 			state.isConnecting = false
 			state.mutex.Unlock()
-			return
+			return false
 		}
 		useTLS = true
 		if sm.cfg != nil && sm.cfg.Backend.AllowInsecureHTTP {
@@ -113,7 +121,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	conn, err := grpc.NewClient(urlTarget, opts...)
@@ -123,7 +131,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	streamCtx, streamCancel := context.WithCancel(state.ctx)
@@ -138,7 +146,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	state.mutex.Lock()
@@ -161,7 +169,7 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 	}); err != nil {
 		sm.cfg.Logger.Warn("Failed to send subscription stream config", "node", state.nodeName, "error", err)
 		sm.handleDisconnect(state, fmt.Sprintf("Config failed: %v", err))
-		return
+		return false
 	}
 
 	go sm.watchStreamHeartbeat(state, generation, subNodeStreamIdleTimeout, subNodeStreamWatchInterval)
@@ -169,18 +177,19 @@ func (sm *SubNodeMonitor) connectAndStream(state *subNodeState) {
 	sm.pushAssignedSubpageConfig(state)
 
 	sm.updateConnectionStatus(state.nodeName, true, false, "Connected")
-	sm.cfg.Logger.Info("Subscription node connected", "node", state.nodeName)
+	sm.cfg.Logger.Info("Subscription node connected", "node", state.nodeName, "address", state.address, "port", state.port)
 
 	sm.receiveStream(state)
+	return true
 }
 
 func (sm *SubNodeMonitor) watchStreamHeartbeat(
 	state *subNodeState,
 	generation uint64,
 	idleTimeout time.Duration,
-	pollInterval time.Duration,
+	watchInterval time.Duration,
 ) {
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(watchInterval)
 	defer ticker.Stop()
 
 	for {
@@ -188,42 +197,39 @@ func (sm *SubNodeMonitor) watchStreamHeartbeat(
 		case <-state.ctx.Done():
 			return
 		case <-ticker.C:
-		}
+			state.mutex.RLock()
+			currentGeneration := state.streamGeneration
+			lastResponse := state.lastResponseAt
+			isConnected := state.isConnected
+			state.mutex.RUnlock()
 
-		state.mutex.RLock()
-		currentGeneration := state.streamGeneration
-		lastResponseAt := state.lastResponseAt
-		streamCancel := state.streamCancel
-		nodeName := state.nodeName
-		isConnected := state.isConnected
-		state.mutex.RUnlock()
+			if currentGeneration != generation || !isConnected {
+				return
+			}
 
-		if currentGeneration != generation || !isConnected || streamCancel == nil {
-			return
+			if !lastResponse.IsZero() && time.Since(lastResponse) > idleTimeout {
+				if sm != nil && sm.cfg != nil {
+					sm.cfg.Logger.Warn(
+						"Subscription stream idle timeout exceeded, restarting stream",
+						"node", state.nodeName,
+						"idle_for", time.Since(lastResponse).String(),
+						"timeout", idleTimeout.String(),
+					)
+				}
+				sm.handleDisconnect(state, "Stream idle timeout")
+				return
+			}
 		}
-		if lastResponseAt.IsZero() || time.Since(lastResponseAt) <= idleTimeout {
-			continue
-		}
-
-		if sm.cfg != nil {
-			sm.cfg.Logger.Warn(
-				"Subscription node stream heartbeat timed out",
-				"node", nodeName,
-				"idle_for", time.Since(lastResponseAt).Round(time.Second),
-			)
-		}
-		streamCancel()
-		return
 	}
 }
 
 func (sm *SubNodeMonitor) sendNodeRequest(state *subNodeState, req *proto.NodeDataRequest) error {
 	state.mutex.RLock()
 	stream := state.stream
-	connected := state.isConnected
 	state.mutex.RUnlock()
-	if !connected || stream == nil {
-		return fmt.Errorf("stream is not connected")
+
+	if stream == nil {
+		return fmt.Errorf("stream is closed")
 	}
 
 	return stream.Send(req)
@@ -231,9 +237,7 @@ func (sm *SubNodeMonitor) sendNodeRequest(state *subNodeState, req *proto.NodeDa
 
 func (sm *SubNodeMonitor) markStreamActivity(state *subNodeState) {
 	state.mutex.Lock()
-	if state.stream != nil {
-		state.lastResponseAt = time.Now()
-	}
+	state.lastResponseAt = time.Now()
 	state.mutex.Unlock()
 }
 
@@ -263,27 +267,4 @@ func normalizeAssignedSubpageConfigUUID(value string) string {
 		return ""
 	}
 	return trimmed
-}
-
-func subWithJitter(base time.Duration, factor float64) time.Duration {
-	if base <= 0 || factor <= 0 {
-		return base
-	}
-	delta := int64(float64(base) * factor)
-	if delta <= 0 {
-		return base
-	}
-	offset := rand.Int64N(2*delta+1) - delta
-	result := base + time.Duration(offset)
-	if result <= 0 {
-		return base
-	}
-	return result
-}
-
-func subMinDuration(a, b time.Duration) time.Duration {
-	if a <= b {
-		return a
-	}
-	return b
 }

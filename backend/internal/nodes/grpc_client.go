@@ -3,13 +3,13 @@ package users
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
 	"strings"
 	"sync"
 	"time"
 
 	"exodus/internal/nodes/grpcauth"
 	"exodus/internal/proto"
+	scheduler "exodus/internal/scheduler"
 
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -37,11 +37,8 @@ type nodeState struct {
 
 // monitorNode monitors a single node with reconnection logic.
 func (nm *NodeMonitor) monitorNode(state *nodeState) {
-	const (
-		minBackoff = 2 * time.Second
-		maxBackoff = 60 * time.Second
-	)
-	backoff := minBackoff
+	reconnectInterval := scheduler.NodeReconnectInterval
+	attempts := 0
 
 	for {
 		if state.ctx.Err() != nil {
@@ -49,16 +46,28 @@ func (nm *NodeMonitor) monitorNode(state *nodeState) {
 			return
 		}
 
-		nm.connectAndStream(state)
+		connected := nm.connectAndStream(state)
 		if state.ctx.Err() != nil {
 			nm.cfg.Logger.Debug("Node monitor stopped", "node", state.nodeName)
 			return
 		}
 
-		wait := withJitter(backoff, 0.2)
-		nm.cfg.Logger.Debug("Scheduling node reconnect", "node", state.nodeName, "wait", wait.String())
+		if connected {
+			attempts = 0
+		}
 
-		timer := time.NewTimer(wait)
+		attempts++
+
+		nm.cfg.Logger.Warn(
+			"Node disconnected, scheduling reconnect",
+			"node", state.nodeName,
+			"address", state.address,
+			"port", state.port,
+			"attempt", attempts,
+			"wait", reconnectInterval.String(),
+		)
+
+		timer := time.NewTimer(reconnectInterval)
 		select {
 		case <-state.ctx.Done():
 			timer.Stop()
@@ -66,19 +75,15 @@ func (nm *NodeMonitor) monitorNode(state *nodeState) {
 			return
 		case <-timer.C:
 		}
-
-		if backoff < maxBackoff {
-			backoff = minDuration(maxBackoff, backoff*2)
-		}
 	}
 }
 
-// connectAndStream establishes connection and starts streaming.
-func (nm *NodeMonitor) connectAndStream(state *nodeState) {
+// connectAndStream establishes connection and starts streaming. Returns true if connection was established.
+func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 	state.mutex.Lock()
 	if state.isConnecting {
 		state.mutex.Unlock()
-		return
+		return false
 	}
 	state.isConnecting = true
 	state.mutex.Unlock()
@@ -99,7 +104,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 			state.mutex.Lock()
 			state.isConnecting = false
 			state.mutex.Unlock()
-			return
+			return false
 		}
 		useTLS = true
 		if nm.cfg != nil && nm.cfg.Backend.AllowInsecureHTTP {
@@ -126,7 +131,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.UseCompressor("gzip")))
@@ -137,7 +142,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	client := proto.NewNodeServiceClient(conn)
@@ -150,7 +155,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	if err := stream.Send(&proto.NodeDataRequest{
@@ -166,7 +171,7 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
-		return
+		return false
 	}
 
 	state.mutex.Lock()
@@ -180,10 +185,11 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) {
 
 	nm.updateConnectionStatus(state.nodeName, false, true, "")
 
-	nm.cfg.Logger.Info("Node control-plane connected", "node", state.nodeName)
+	nm.cfg.Logger.Info("Node control-plane connected", "node", state.nodeName, "address", state.address, "port", state.port)
 	nm.RequestDeploy(true, state.nodeUUID)
 
 	nm.receiveStream(state)
+	return true
 }
 
 func normalizeNodeSchema(value string) string {
@@ -204,27 +210,4 @@ func normalizeNodePath(value string) string {
 		return ""
 	}
 	return "/" + strings.Trim(trimmed, "/")
-}
-
-func withJitter(base time.Duration, factor float64) time.Duration {
-	if base <= 0 || factor <= 0 {
-		return base
-	}
-	delta := int64(float64(base) * factor)
-	if delta <= 0 {
-		return base
-	}
-	offset := rand.Int64N(2*delta+1) - delta
-	result := base + time.Duration(offset)
-	if result <= 0 {
-		return base
-	}
-	return result
-}
-
-func minDuration(a, b time.Duration) time.Duration {
-	if a <= b {
-		return a
-	}
-	return b
 }

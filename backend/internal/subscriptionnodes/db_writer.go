@@ -47,6 +47,9 @@ func (sm *SubNodeMonitor) loadActiveNodes() ([]dbSubNode, error) {
 }
 
 func (sm *SubNodeMonitor) updateConnectionStatus(nodeName string, isConnected, isConnecting bool, message string) {
+	if sm == nil || sm.db == nil {
+		return
+	}
 	var (
 		currentConnected  bool
 		currentConnecting bool
@@ -55,7 +58,7 @@ func (sm *SubNodeMonitor) updateConnectionStatus(nodeName string, isConnected, i
 	err := sm.db.QueryRow(`SELECT is_connected, is_connecting, last_status_message FROM sub_nodes WHERE name = $1`, nodeName).
 		Scan(&currentConnected, &currentConnecting, &currentMessage)
 	if err != nil {
-		if err != sql.ErrNoRows {
+		if err != sql.ErrNoRows && sm.cfg != nil && sm.cfg.Logger != nil {
 			sm.cfg.Logger.Warn("Failed to query subscription node status", "node", nodeName, "error", err)
 		}
 		return

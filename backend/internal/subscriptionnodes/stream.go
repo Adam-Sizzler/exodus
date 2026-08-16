@@ -389,7 +389,9 @@ func (sm *SubNodeMonitor) handleDisconnect(state *subNodeState, reason string) {
 
 	if wasConnected {
 		sm.updateConnectionStatus(state.nodeName, false, false, reason)
-		sm.cfg.Logger.Info("Subscription node disconnected", "node", state.nodeName, "reason", reason)
+		if sm != nil && sm.cfg != nil {
+			sm.cfg.Logger.Info("Subscription node disconnected", "node", state.nodeName, "reason", reason)
+		}
 	}
 }
 
