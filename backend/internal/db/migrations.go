@@ -221,9 +221,7 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		case errors.Is(err, sql.ErrNoRows):
 			// apply
 		default:
-			if err != nil {
-				return fmt.Errorf("check migration %s: %w", name, err)
-			}
+			return fmt.Errorf("check migration %s: %w", name, err)
 		}
 
 		fmt.Printf("Applying migration: %s\n", name)
