@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -515,6 +516,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		closeConnection(w)
 		return
 	}
+	panelDataBase64 := base64.StdEncoding.EncodeToString(panelData)
 
 	indexHTML, err := os.ReadFile(filepath.Join(a.assetsPath, "index.html"))
 	if err != nil {
@@ -527,7 +529,7 @@ func (a *App) returnWebpage(clientIP, shortUUID string, w http.ResponseWriter, r
 		string(indexHTML),
 		settings.MetaTitle,
 		settings.MetaDescription,
-		string(panelData),
+		panelDataBase64,
 	)
 	rendered = prefixAssetsInHTML(rendered, a.cfg.Backend.Trimmed())
 
