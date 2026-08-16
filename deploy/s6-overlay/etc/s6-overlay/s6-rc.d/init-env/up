@@ -1,2 +1,2 @@
 #!/bin/sh
-mkdir -p /run /opt/app/singbox /var/log/singbox /opt/app/logs
+mkdir -p /run /opt/app/singbox /var/log/singbox
