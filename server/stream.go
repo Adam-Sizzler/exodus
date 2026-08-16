@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const defaultStreamInterval = 20 * time.Second
+const defaultStreamInterval = 15 * time.Second
 
 // StreamNodeData handles bidirectional streaming for node data.
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
