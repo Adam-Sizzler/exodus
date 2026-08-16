@@ -1,7 +1,4 @@
 #!/command/with-contenv sh
 
-if [ ! -f /opt/app/singbox/config.json ]; then
-    exec /bin/sleep 3600
-fi
-
+exec 2>&1
 exec /usr/local/bin/sing-box run -c /opt/app/singbox/config.json
