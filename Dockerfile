@@ -77,7 +77,9 @@ RUN chmod -R +x /etc/s6-overlay && \
     mkdir -p /run /opt/app/singbox /var/log/singbox /usr/local/share/asn && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/slogs && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/serrors && \
-    chmod +x /usr/local/bin/slogs /usr/local/bin/serrors
+    chmod +x /usr/local/bin/slogs /usr/local/bin/serrors && \
+    ln -s /usr/local/bin/slogs /usr/local/bin/xlogs && \
+    ln -s /usr/local/bin/serrors /usr/local/bin/xerrors
 
 ENV S6_VERBOSITY=1
 
