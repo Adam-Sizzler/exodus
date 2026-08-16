@@ -14,7 +14,7 @@ import (
 const (
 	DefaultPort        = "3010"
 	DefaultGRPCAddress = "0.0.0.0"
-	DefaultGRPCPort    = 2222
+	DefaultGRPCPort    = 3011
 )
 
 type BackendConfig struct {
