@@ -1,8 +1,5 @@
 services:
   exodus-subscription:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: ghcr.io/adam-sizzler/exodus-subscription:latest
     container_name: exodus-subscription
     hostname: exodus-subscription
