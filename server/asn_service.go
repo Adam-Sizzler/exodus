@@ -125,7 +125,8 @@ func (s *AsnLmdbService) openDB() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, err := os.Stat(s.dbPath); os.IsNotExist(err) {
+	stat, err := os.Stat(s.dbPath)
+	if err != nil {
 		s.isAvailable = false
 		return fmt.Errorf("lmdb path does not exist: %s", s.dbPath)
 	}
@@ -137,10 +138,22 @@ func (s *AsnLmdbService) openDB() error {
 	}
 
 	_ = env.SetMaxDBs(10)
-	if err := env.Open(s.dbPath, lmdb.Readonly, 0644); err != nil {
-		env.Close()
-		s.isAvailable = false
-		return fmt.Errorf("open lmdb env at %s: %w", s.dbPath, err)
+	var flags uint = lmdb.Readonly
+	if !stat.IsDir() {
+		flags |= lmdb.NoSubdir
+	}
+
+	if err := env.Open(s.dbPath, flags, 0644); err != nil {
+		// Try alternate flag mode if first open attempt failed
+		altFlags := uint(lmdb.Readonly)
+		if (flags & lmdb.NoSubdir) == 0 {
+			altFlags |= lmdb.NoSubdir
+		}
+		if retryErr := env.Open(s.dbPath, altFlags, 0644); retryErr != nil {
+			env.Close()
+			s.isAvailable = false
+			return fmt.Errorf("open lmdb env at %s: %w", s.dbPath, err)
+		}
 	}
 
 	if s.env != nil {
