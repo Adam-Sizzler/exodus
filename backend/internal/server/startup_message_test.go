@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetStartMessageMatchesExodusStyle(t *testing.T) {
-	message := GetStartMessage("v1.2.3", config.Config{AppPort: "3010", GRPCPort: 2222, SubPath: "/subscription"})
+	message := GetStartMessage("v1.2.3", config.Config{AppPort: 3010, GRPCPort: 3011, SubPath: "/subscription"})
 	if !strings.Contains(message, "Exodus Subscription Page v1.2.3") {
 		t.Fatalf("missing title: %s", message)
 	}

@@ -23,7 +23,7 @@ func GetStartMessage(version string, cfg config.Config) string {
 				"Community → https://t.me/exodus",
 			},
 			{
-				"HTTP Port → " + strings.TrimSpace(cfg.AppPort),
+				"HTTP Port → " + strconv.Itoa(cfg.AppPort),
 				"gRPC Port → " + strconv.Itoa(cfg.GRPCPort),
 				"Path Prefix → " + config.DisplayPrefix(cfg.SubPath),
 			},

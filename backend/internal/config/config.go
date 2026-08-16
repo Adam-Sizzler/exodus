@@ -12,19 +12,21 @@ import (
 )
 
 const (
-	DefaultPort        = "3010"
-	DefaultGRPCAddress = "0.0.0.0"
-	DefaultGRPCPort    = 3011
+	DefaultSubAppPort     = 3010
+	DefaultSubGRPCAddress = "0.0.0.0"
+	DefaultSubGRPCPort    = 3011
+	DefaultSubAppPath     = "/subscription"
+	DefaultTrustProxy     = "1"
 )
 
 type BackendConfig struct {
 	BasePath string
-	AppPort  string
+	AppPort  int
 }
 
 type Config struct {
 	Backend                         BackendConfig
-	AppPort                         string
+	AppPort                         int
 	SubPath                         string
 	CaddyAuthAPIToken               string
 	CloudflareZeroTrustClientID     string
@@ -118,30 +120,33 @@ func Load() (Config, error) {
 	pathPrefix := normalizeBasePath(rawPath)
 	grpcToken := strings.TrimSpace(os.Getenv("SUB_GRPC_TOKEN"))
 
-	port := getEnvOrDefault("SUB_APP_PORT", DefaultPort)
+	appPort, err := parsePort(os.Getenv("SUB_APP_PORT"), DefaultSubAppPort)
+	if err != nil {
+		return Config{}, err
+	}
+	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultSubGRPCPort)
+	if err != nil {
+		return Config{}, err
+	}
+
 	cfg := Config{
 		Backend: BackendConfig{
 			BasePath: pathPrefix,
-			AppPort:  port,
+			AppPort:  appPort,
 		},
-		AppPort:                         port,
+		AppPort:                         appPort,
+		GRPCPort:                        grpcPort,
 		SubPath:                         pathPrefix,
 		CaddyAuthAPIToken:               os.Getenv("CADDY_AUTH_API_TOKEN"),
 		CloudflareZeroTrustClientID:     os.Getenv("CLOUDFLARE_ZERO_TRUST_CLIENT_ID"),
 		CloudflareZeroTrustClientSecret: os.Getenv("CLOUDFLARE_ZERO_TRUST_CLIENT_SECRET"),
 		NodeEnv:                         strings.TrimSpace(os.Getenv("NODE_ENV")),
-		GRPCAddress:                     getEnvOrDefault("SUB_GRPC_ADDRESS", DefaultGRPCAddress),
+		GRPCAddress:                     getEnvOrDefault("SUB_GRPC_ADDRESS", DefaultSubGRPCAddress),
 		GRPCPath:                        pathPrefix,
 		GRPCToken:                       grpcToken,
 		AppVersion:                      strings.TrimSpace(os.Getenv("SUB_APP_VERSION")),
-		TrustProxy:                      getEnvOrDefault("TRUST_PROXY", "1"),
+		TrustProxy:                      getEnvOrDefault("TRUST_PROXY", DefaultTrustProxy),
 	}
-
-	grpcPort, err := parsePort(os.Getenv("SUB_GRPC_PORT"), DefaultGRPCPort)
-	if err != nil {
-		return cfg, err
-	}
-	cfg.GRPCPort = grpcPort
 
 	payload, err := ParseNodePayloadFromSecret()
 	if err == nil {

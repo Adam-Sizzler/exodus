@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -63,7 +64,7 @@ func main() {
 	}
 
 	httpServer := &http.Server{
-		Addr:              ":" + cfg.AppPort,
+		Addr:              fmt.Sprintf(":%d", cfg.AppPort),
 		Handler:           application,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
