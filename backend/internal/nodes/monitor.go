@@ -10,6 +10,7 @@ import (
 	"exodus/internal/config"
 	"exodus/internal/db"
 	"exodus/internal/nodehotcache"
+	"exodus/internal/scheduler"
 )
 
 // NodeMonitor dynamically manages node monitoring with status tracking.
@@ -77,7 +78,7 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 	nm.syncNodes()
 
 	// Periodic sync every 30 seconds
-	syncTicker := time.NewTicker(30 * time.Second)
+	syncTicker := time.NewTicker(scheduler.RecordNodeUsageInterval)
 	defer syncTicker.Stop()
 
 	for {

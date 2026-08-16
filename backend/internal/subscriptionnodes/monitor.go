@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"exodus/internal/config"
+	"exodus/internal/scheduler"
 )
 
 type SubNodeMonitor struct {
@@ -57,7 +58,8 @@ func (sm *SubNodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 	sm.cfg.Logger.Trace("Subscription monitor initial sync")
 	sm.syncNodes()
 
-	syncTicker := time.NewTicker(30 * time.Second)
+	// Periodic sync every 30 seconds
+	syncTicker := time.NewTicker(scheduler.RecordNodeUsageInterval)
 	defer syncTicker.Stop()
 
 	for {

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+
+	"exodus/internal/scheduler"
 )
 
 var (
@@ -12,11 +14,16 @@ var (
 	globalMonitor   *NodeMonitor
 )
 
+func init() {
+	scheduler.SetNodeDeployCallback(RequestNodeDeploy)
+}
+
 // RegisterGlobalNodeMonitor stores a global reference for API-triggered syncs.
 func RegisterGlobalNodeMonitor(nm *NodeMonitor) {
 	globalMonitorMu.Lock()
 	globalMonitor = nm
 	globalMonitorMu.Unlock()
+	scheduler.SetNodeDeployCallback(RequestNodeDeploy)
 }
 
 // RequestNodeSync triggers an immediate sync if a monitor is registered.

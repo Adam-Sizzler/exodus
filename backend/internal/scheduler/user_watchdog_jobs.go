@@ -1,4 +1,4 @@
-package userwatchdog
+package scheduler
 
 import (
 	"context"
@@ -6,76 +6,59 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"exodus/internal/config"
-	monitor "exodus/internal/nodes"
 )
 
-const (
-	expiredUsersInterval  = 30 * time.Second
-	exceededUsersInterval = 45 * time.Second
+var (
+	nodeDeployMu       sync.RWMutex
+	nodeDeployCallback func(restart bool, nodeUUIDs ...string)
 )
+
+// SetNodeDeployCallback registers a callback to trigger node deploy on user state changes.
+func SetNodeDeployCallback(cb func(restart bool, nodeUUIDs ...string)) {
+	nodeDeployMu.Lock()
+	defer nodeDeployMu.Unlock()
+	nodeDeployCallback = cb
+}
+
+func triggerNodeDeploy(restart bool, nodeUUIDs ...string) {
+	nodeDeployMu.RLock()
+	cb := nodeDeployCallback
+	nodeDeployMu.RUnlock()
+	if cb != nil && len(nodeUUIDs) > 0 {
+		cb(restart, nodeUUIDs...)
+	}
+}
 
 type StatusUpdateResult struct {
 	Users     int64
 	NodeUUIDs []string
 }
 
-func Start(ctx context.Context, wg *sync.WaitGroup, db *sql.DB, cfg *config.BackendConfig) {
-	if db == nil || cfg == nil {
-		return
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		cfg.Logger.Info("User status watchdog started", "expired_interval", expiredUsersInterval.String(), "exceeded_interval", exceededUsersInterval.String())
-		runExpiredUsersReview(ctx, db, cfg)
-		runExceededUsersReview(ctx, db, cfg)
-
-		expiredTicker := time.NewTicker(expiredUsersInterval)
-		defer expiredTicker.Stop()
-		exceededTicker := time.NewTicker(exceededUsersInterval)
-		defer exceededTicker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				cfg.Logger.Info("User status watchdog stopped")
-				return
-			case <-expiredTicker.C:
-				runExpiredUsersReview(ctx, db, cfg)
-			case <-exceededTicker.C:
-				runExceededUsersReview(ctx, db, cfg)
-			}
-		}
-	}()
+func (s *Scheduler) runExpiredUsersReview(ctx context.Context) error {
+	result, err := UpdateExpiredUsers(ctx, s.db)
+	s.handleStatusUpdateResult("expired", result, err)
+	return err
 }
 
-func runExpiredUsersReview(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) {
-	result, err := UpdateExpiredUsers(ctx, db)
-	handleStatusUpdateResult(cfg, "expired", result, err)
+func (s *Scheduler) runExceededUsersReview(ctx context.Context) error {
+	result, err := UpdateExceededTrafficUsers(ctx, s.db)
+	s.handleStatusUpdateResult("limited", result, err)
+	return err
 }
 
-func runExceededUsersReview(ctx context.Context, db *sql.DB, cfg *config.BackendConfig) {
-	result, err := UpdateExceededTrafficUsers(ctx, db)
-	handleStatusUpdateResult(cfg, "limited", result, err)
-}
-
-func handleStatusUpdateResult(cfg *config.BackendConfig, statusName string, result StatusUpdateResult, err error) {
+func (s *Scheduler) handleStatusUpdateResult(statusName string, result StatusUpdateResult, err error) {
 	if err != nil {
-		cfg.Logger.Warn("User status review failed", "status", statusName, "error", err)
+		s.cfg.Logger.Warn("User status review failed", "status", statusName, "error", err)
 		return
 	}
 	if result.Users == 0 {
-		cfg.Logger.Debug("User status review found no users", "status", statusName)
+		s.cfg.Logger.Debug("User status review found no users", "status", statusName)
 		return
 	}
 
-	cfg.Logger.Info("User status review updated users", "status", statusName, "users", result.Users, "node_targets", len(result.NodeUUIDs))
+	s.cfg.Logger.Info("User status review updated users", "status", statusName, "users", result.Users, "node_targets", len(result.NodeUUIDs))
 	if len(result.NodeUUIDs) > 0 {
-		monitor.RequestNodeDeploy(true, result.NodeUUIDs...)
+		triggerNodeDeploy(true, result.NodeUUIDs...)
 	}
 }
 

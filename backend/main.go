@@ -79,7 +79,6 @@ import (
 	"exodus/internal/redisqueue"
 	"exodus/internal/scheduler"
 	"exodus/internal/subscriptionnodes"
-	"exodus/internal/userwatchdog"
 )
 
 func main() {
@@ -163,7 +162,6 @@ func main() {
 	go nodeMonitor.Start(ctx, &wg)
 	go subNodeMonitor.Start(ctx, &wg)
 	notifications.StartDispatcher(ctx, &wg, pools.Background, &cfg)
-	userwatchdog.Start(ctx, &wg, pools.Background, &cfg)
 	scheduler.Start(ctx, &wg, pools.Background, &cfg)
 	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, pools.Background, &cfg); err != nil {
 		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("Subscription job queue disabled", "error", err)

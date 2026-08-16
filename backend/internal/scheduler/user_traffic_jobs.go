@@ -3,9 +3,7 @@ package scheduler
 import (
 	"context"
 
-	monitor "exodus/internal/nodes"
 	"exodus/internal/srslists"
-	"exodus/internal/userwatchdog"
 )
 
 // trafficResetDay resets traffic for users with strategy=DAY.
@@ -33,7 +31,7 @@ func (s *Scheduler) trafficResetMonth(ctx context.Context) error {
 }
 
 func (s *Scheduler) trafficResetByStrategy(ctx context.Context, strategy string) error {
-	result, err := userwatchdog.ResetTrafficByStrategy(ctx, s.db, strategy)
+	result, err := ResetTrafficByStrategy(ctx, s.db, strategy)
 	if err != nil {
 		return err
 	}
@@ -43,7 +41,7 @@ func (s *Scheduler) trafficResetByStrategy(ctx context.Context, strategy string)
 	}
 	s.cfg.Logger.Info("Traffic reset completed", "strategy", strategy, "users", result.Users, "node_targets", len(result.NodeUUIDs))
 	if len(result.NodeUUIDs) > 0 {
-		monitor.RequestNodeDeploy(true, result.NodeUUIDs...)
+		triggerNodeDeploy(true, result.NodeUUIDs...)
 	}
 	return nil
 }
