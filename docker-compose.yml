@@ -1,0 +1,27 @@
+services:
+  exodus-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${EXODUS_NODE_VERSION:-2.7.4}
+    image: ghcr.io/adam-sizzler/exodus-node:latest
+    container_name: exodus-node
+    hostname: exodus-node
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    env_file:
+      - .env
+    volumes:
+      - haproxy-socket:/var/run/haproxy
+      - haproxy-data:/opt/app/haproxy/data
+
+volumes:
+  haproxy-socket:
+    name: haproxy-socket
+    external: true
+  haproxy-data:
+    name: haproxy-data
+    external: true
