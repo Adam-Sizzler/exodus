@@ -25,7 +25,7 @@ const (
 var subNodeVersionPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]+)?$`)
 
 const (
-	subNodeStreamInterval      = 20 * time.Second
+	subNodeStreamInterval      = 15 * time.Second
 	subNodeStreamIdleTimeout   = 75 * time.Second
 	subNodeStreamWatchInterval = 5 * time.Second
 )

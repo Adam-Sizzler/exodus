@@ -526,7 +526,7 @@ func (sm *SubNodeMonitor) deployToConnectedNodes(requestedNodeUUIDs []string) {
 		}
 
 		err := sm.sendNodeRequest(state, &proto.NodeDataRequest{
-			Request: &proto.NodeDataRequest_Config{Config: &proto.StreamConfig{IntervalSeconds: 20}},
+			Request: &proto.NodeDataRequest_Config{Config: &proto.StreamConfig{IntervalSeconds: 15}},
 		})
 		if err != nil {
 			sm.cfg.Logger.Warn("Failed to push subscription config over stream", "node", nodeName, "error", err)
