@@ -1,6 +1,6 @@
 # Exodus Node
 
-`exodus-node` - легкая gRPC-нода для панели Exodus. Она запускает sing-box под `supervisord`, отдает панели статистику через gRPC, принимает задачи деплоя sing-box config, обновляет runtime cache HAProxy users при включенном модуле.
+`exodus-node` - легковесная gRPC-нода для панели Exodus. Она запускает sing-box под `s6-overlay`, отдает панели статистику через gRPC, принимает задачи деплоя конфигурации sing-box, а также обновляет runtime cache пользователей HAProxy при включенном модуле.
 
 Это не старый HTTP `v2ray-stat` API. Управление пользователями внутри ядра отключено: пользователи и конфиги собираются на стороне панели, а нода применяет готовый sing-box JSON.
 
@@ -11,9 +11,10 @@
 - подключается к sing-box `experimental.v2ray_api` на `127.0.0.1:10085`;
 - стримит inbound/outbound/user traffic stats в панель;
 - добавляет/обновляет `experimental.v2ray_api` в полученном sing-box config;
-- пишет config в `/app/singbox/config.json`;
-- перезагружает sing-box через `supervisorctl signal HUP`;
-- обновляет `/app/haproxy/data/users.csv` и reload users через HAProxy runtime socket.
+- пишет config в `/opt/app/singbox/config.json`;
+- управляет жизненным циклом sing-box через супервизор `s6-overlay` (`s6-svc`);
+- обновляет `/opt/app/haproxy/data/users.csv` и reload users через HAProxy runtime socket;
+- предоставляет утилиты `slogs` (полный живой лог) и `serrors` (фильтр ошибок и предупреждений).
 
 ## Структура
 
@@ -25,7 +26,7 @@ server/                    NodeService handlers, deploy, stream, HAProxy
 api/                       facade над sing-box stats API
 sdk/                       sing-box v2ray_api gRPC client
 proto/                     Exodus node gRPC contract
-deploy/                    supervisord, entrypoint, default sing-box config
+deploy/                    s6-overlay сервисы и конфигурация
 Dockerfile                 multi-stage image: Go node + custom sing-box
 ```
 
@@ -59,14 +60,12 @@ NODE_GRPC_TOKEN=<grpc-token-from-panel>
 Основные настройки:
 
 ```env
+LOG_LEVEL=info
 NODE_GRPC_ADDRESS=0.0.0.0
 NODE_GRPC_PORT=2222
 NODE_GRPC_PATH=/node/
-NODE_ENV=production
-SINGBOX_VERSION=v1.13.5
+SINGBOX_API_PORT=10085
 ```
-
-`NODE_ENV=development` всегда включает `debug`, во всех остальных режимах по умолчанию используется `info`. Старые переменные `LOG_LEVEL`, `EXODUS_LOG_LEVEL` и `LOG_MODE` больше не читаются из runtime-env. Формат строк: timestamp `YYYY-MM-DD HH:mm:ss.SSS`, уровень Nest-style (`LOG`, `WARN`, `ERROR`, `DEBUG`) и контекст сервиса в квадратных скобках.
 
 ## Сборка
 
