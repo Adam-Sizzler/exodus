@@ -312,7 +312,10 @@ func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
 		urlStr = DefaultAsnReleaseURL
 	}
 
-	targetDir := filepath.Dir(s.dbPath)
+	targetDir := s.dbPath
+	if strings.HasSuffix(targetDir, "asn-prefixes.lmdb") {
+		targetDir = filepath.Dir(targetDir)
+	}
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("create asn dir: %w", err)
 	}
