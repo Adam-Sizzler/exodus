@@ -256,6 +256,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 						TotalBytes:   effectiveBytes,
 						HistoryBytes: rawBytes,
 					})
+					nm.cfg.Logger.Trace("Recorded user traffic delta", "node", nodeName, "user", username, "bytes", rawBytes, "effective_bytes", effectiveBytes)
 
 					if !firstConnectedByID[userID] {
 						firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
