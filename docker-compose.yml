@@ -1,17 +1,15 @@
 services:
-  exodus-subscription-page:
+  exodus-subscription:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ghcr.io/adam-sizzler/exodus-subscription:latest
+    container_name: exodus-subscription
+    hostname: exodus-subscription
+    restart: always
     env_file:
-      - ./.env
-    environment:
-      - SUB_APP_PORT=${SUB_APP_PORT:-3010}
-      - SUB_APP_PATH=${SUB_APP_PATH:-/}
-      - SUB_GRPC_ADDRESS=${SUB_GRPC_ADDRESS:-0.0.0.0}
-      - SUB_GRPC_PORT=${SUB_GRPC_PORT:-2222}
-      - SUB_SRS_DIR=${SUB_SRS_DIR:-/opt/app/ruleset}
-      - SUB_GRPC_TOKEN=${SUB_GRPC_TOKEN:-}
-      - SUB_SECRET_KEY=${SUB_SECRET_KEY:-}
+      - .env
     ports:
-      - '127.0.0.1:3010:3010'
+      - '127.0.0.1:${SUB_APP_PORT:-3333}:${SUB_APP_PORT:-3333}'
+      - '127.0.0.1:${SUB_GRPC_PORT:-3334}:${SUB_GRPC_PORT:-3334}'
+
