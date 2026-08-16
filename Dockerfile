@@ -76,7 +76,7 @@ RUN chmod -R +x /etc/s6-overlay && \
     chmod +x /opt/app/exodus-node && \
     mkdir -p /run /opt/app/singbox /var/log/singbox /usr/local/share/asn && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/slogs && \
-    printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/serrors && \
+    printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current | grep -E -i "error|fatal|warn|panic"\n' > /usr/local/bin/serrors && \
     chmod +x /usr/local/bin/slogs /usr/local/bin/serrors
 
 ENV S6_VERBOSITY=1
