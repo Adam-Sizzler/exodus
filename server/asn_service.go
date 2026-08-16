@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"exodus-node/config"
 
@@ -78,11 +79,46 @@ func NewAsnLmdbService(cfg *config.NodeConfig) *AsnLmdbService {
 		}
 	} else {
 		if service.logger != nil {
-			service.logger.Warn(fmt.Sprintf("ASN LMDB database not found at %s — ASN lookup disabled (graceful degradation)", service.dbPath))
+			service.logger.Info(fmt.Sprintf("ASN LMDB database not found at %s — downloading dataset in background...", service.dbPath))
 		}
+		go func() {
+			if err := service.FetchAndLoadDataset(DefaultAsnReleaseURL); err != nil {
+				if service.logger != nil {
+					service.logger.Warn(fmt.Sprintf("Failed to download initial ASN dataset: %v — ASN lookup disabled (graceful degradation)", err))
+				}
+			} else {
+				if service.logger != nil {
+					service.logger.Info("[OK] ASN LMDB database downloaded and loaded successfully: " + service.dbPath)
+				}
+			}
+		}()
 	}
 
+	go service.startPeriodicUpdater()
+
 	return service
+}
+
+func (s *AsnLmdbService) startPeriodicUpdater() {
+	ticker := time.NewTicker(7 * 24 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.stopChan:
+			return
+		case <-ticker.C:
+			if err := s.FetchAndLoadDataset(DefaultAsnReleaseURL); err != nil {
+				if s.logger != nil {
+					s.logger.Warn(fmt.Sprintf("Periodic ASN dataset update failed: %v", err))
+				}
+			} else {
+				if s.logger != nil {
+					s.logger.Info("[OK] Periodic ASN dataset updated successfully")
+				}
+			}
+		}
+	}
 }
 
 func (s *AsnLmdbService) openDB() error {
@@ -246,41 +282,30 @@ func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
 		return fmt.Errorf("create asn dir: %w", err)
 	}
 
-	tmpFile, err := os.CreateTemp("", "asn-dl-*.tar.gz")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-
 	if s.logger != nil {
 		s.logger.Info("Downloading ASN dataset from " + urlStr + "...")
 	}
 
-	cmd := exec.Command("curl", "-fsSL", "--retry", "3", "--retry-delay", "5", "-o", tmpFile.Name(), urlStr)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("curl download failed: %w", err)
-	}
-
-	// Extract tar.gz into targetDir
-	if err := extractTarGz(tmpFile.Name(), targetDir); err != nil {
-		return fmt.Errorf("extract dataset tar.gz: %w", err)
-	}
-
-	// Re-open LMDB database
-	return s.openDB()
-}
-
-func extractTarGz(srcPath, destDir string) error {
-	f, err := os.Open(srcPath)
+	client := &http.Client{Timeout: 120 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("create http request: %w", err)
 	}
-	defer f.Close()
+	req.Header.Set("User-Agent", "exodus-node/asn-updater")
 
-	gr, err := gzip.NewReader(f)
+	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("http get %s failed: %w", urlStr, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("http get %s returned status %d", urlStr, resp.StatusCode)
+	}
+
+	gr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read gzip stream: %w", err)
 	}
 	defer gr.Close()
 
@@ -291,10 +316,10 @@ func extractTarGz(srcPath, destDir string) error {
 			break
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("read tar entry: %w", err)
 		}
 
-		targetPath := filepath.Join(destDir, filepath.Base(header.Name))
+		targetPath := filepath.Join(targetDir, filepath.Base(header.Name))
 		if header.Typeflag == tar.TypeDir {
 			_ = os.MkdirAll(targetPath, 0755)
 			continue
@@ -303,16 +328,18 @@ func extractTarGz(srcPath, destDir string) error {
 		_ = os.MkdirAll(filepath.Dir(targetPath), 0755)
 		out, err := os.Create(targetPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("create file %s: %w", targetPath, err)
 		}
 
-		_, err = io.Copy(out, tr)
-		out.Close()
-		if err != nil {
-			return err
+		if _, err := io.Copy(out, tr); err != nil {
+			out.Close()
+			return fmt.Errorf("write file %s: %w", targetPath, err)
 		}
+		out.Close()
 	}
-	return nil
+
+	// Re-open LMDB database
+	return s.openDB()
 }
 
 func encodeOrderedBinaryNumberKey(n uint32) []byte {

@@ -69,12 +69,6 @@ RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/downlo
       -o /usr/local/bin/sing-box && \
     chmod +x /usr/local/bin/sing-box
 
-RUN mkdir -p /usr/local/share/asn && \
-    curl -fL "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz" \
-      -o /tmp/asn-prefixes-lmdb.tar.gz && \
-    tar -xzf /tmp/asn-prefixes-lmdb.tar.gz -C /usr/local/share/asn && \
-    rm -f /tmp/asn-prefixes-lmdb.tar.gz
-
 WORKDIR /app
 
 COPY --from=builder /build/exodus-node-app /app/exodus-node
