@@ -48,35 +48,48 @@ RUN set -eu; \
         -o /build/exodus-node-app \
         .
 
-FROM alpine:3.23
+FROM golang:1.25.12-alpine AS singbox
 
 ARG SINGBOX_VERSION=v1.13.13
-ARG S6_OVERLAY_VERSION=3.2.0.2
-
-ENV SINGBOX_VERSION=${SINGBOX_VERSION}
-
-RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl xz
-
-# Install s6-overlay
-RUN S6_ARCH="$(uname -m)" && \
-    curl -sSL -o /tmp/s6-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" && \
-    curl -sSL -o /tmp/s6-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" && \
-    xz -dc /tmp/s6-noarch.tar.xz | tar -C / -xpf - && \
-    xz -dc /tmp/s6-arch.tar.xz | tar -C / -xpf - && \
-    rm -f /tmp/s6-noarch.tar.xz /tmp/s6-arch.tar.xz
+ARG ASN_LMDB_URL=https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz
 
 RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
-      -o /usr/local/bin/sing-box && \
-    chmod +x /usr/local/bin/sing-box
+        -o /usr/local/bin/sing-box \
+    && chmod +x /usr/local/bin/sing-box \
+    && mkdir -p /usr/local/share/asn \
+    && curl -fL "${ASN_LMDB_URL}" -o /tmp/asn-prefixes-lmdb.tar.gz \
+    && tar -xzf /tmp/asn-prefixes-lmdb.tar.gz -C /usr/local/share/asn \
+    && rm -f /tmp/asn-prefixes-lmdb.tar.gz
+
+FROM golang:1.25.12-alpine
+
+ARG S6_OVERLAY_VERSION=3.2.0.2
+
+LABEL org.opencontainers.image.title="Exodus Node" \
+      org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
+      org.opencontainers.image.url="https://github.com/exodus/node" \
+      org.opencontainers.image.source="https://github.com/exodus/node" \
+      org.opencontainers.image.vendor="Exodus" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.documentation="https://docs.exodus.dev"
 
 WORKDIR /app
 
 COPY --from=builder /build/exodus-node-app /app/exodus-node
+COPY --from=singbox /usr/local/bin/sing-box /usr/local/bin/sing-box
+COPY --from=singbox /usr/local/share/asn /usr/local/share/asn
+
 COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
-RUN chmod -R +x /etc/s6-overlay && \
-    chmod +x /app/exodus-node && \
-    mkdir -p /run /app/singbox /app/logs
+RUN S6_ARCH="$(uname -m)" \
+    && curl -sSL -o /tmp/s6-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
+    && curl -sSL -o /tmp/s6-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
+    && xz -dc /tmp/s6-noarch.tar.xz | tar -C / -xpf - \
+    && xz -dc /tmp/s6-arch.tar.xz | tar -C / -xpf - \
+    && rm -f /tmp/s6-noarch.tar.xz /tmp/s6-arch.tar.xz \
+    && chmod -R +x /etc/s6-overlay \
+    && chmod +x /app/exodus-node \
+    && mkdir -p /run /app/singbox /app/logs
 
 ENTRYPOINT ["/init"]
 

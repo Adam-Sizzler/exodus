@@ -23,10 +23,9 @@ import (
 )
 
 const (
-	DefaultAsnLmdbPath    = "/usr/local/share/asn"
-	FallbackAsnLmdbPath   = "/var/lib/exodus-node/asn"
-	DefaultAsnReleaseURL  = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz"
-	DefaultAsnJSONRelease = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes.json"
+	DefaultAsnLmdbPath   = "/usr/local/share/asn"
+	FallbackAsnLmdbPath  = "/var/lib/exodus-node/asn"
+	DefaultAsnReleaseURL = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz"
 )
 
 // AsnPrefixes represents the IPv4 and IPv6 subnets associated with an ASN.
