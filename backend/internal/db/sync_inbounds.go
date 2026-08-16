@@ -72,11 +72,15 @@ func parseConfigInbounds(profileUUID string, configJSON json.RawMessage) ([]Conf
 		}
 
 		tag, _ := inboundMap["tag"].(string)
-		if strings.TrimSpace(tag) == "" {
-			continue
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			return nil, fmt.Errorf("all inbounds must have a non-empty tag")
+		}
+		if strings.Contains(tag, ",") {
+			return nil, fmt.Errorf("character ',' is not allowed in inbound tag %q", tag)
 		}
 		if _, ok := seenTags[tag]; ok {
-			continue
+			return nil, fmt.Errorf("duplicate inbound tag %q found. All inbound tags must be unique", tag)
 		}
 		seenTags[tag] = struct{}{}
 
@@ -121,12 +125,29 @@ func SyncConfigProfileInboundsTx(ctx context.Context, tx *sql.Tx, profileUUID st
 		return 0, err
 	}
 
+	rows, err := tx.QueryContext(ctx, `
+		SELECT uuid, tag FROM config_profile_inbounds WHERE profile_uuid = $1
+	`, profileUUID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	existingByTag := make(map[string]string)
+	for rows.Next() {
+		var existingUUID, existingTag string
+		if err := rows.Scan(&existingUUID, &existingTag); err != nil {
+			return 0, err
+		}
+		existingByTag[existingTag] = existingUUID
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
 	currentTags := make([]string, 0, len(inbounds))
 	for _, inbound := range inbounds {
 		currentTags = append(currentTags, inbound.Tag)
-	}
-
-	for _, inbound := range inbounds {
 		var networkVal, securityVal, portVal any
 		if inbound.Network != nil {
 			networkVal = *inbound.Network
@@ -138,19 +159,26 @@ func SyncConfigProfileInboundsTx(ctx context.Context, tx *sql.Tx, profileUUID st
 			portVal = *inbound.Port
 		}
 
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO config_profile_inbounds (
-				uuid, profile_uuid, tag, type, network, security, port, raw_inbound
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (tag) DO UPDATE SET
-				profile_uuid = EXCLUDED.profile_uuid,
-				type         = EXCLUDED.type,
-				network      = EXCLUDED.network,
-				security     = EXCLUDED.security,
-				port         = EXCLUDED.port,
-				raw_inbound  = EXCLUDED.raw_inbound
-		`, inbound.UUID, inbound.ProfileUUID, inbound.Tag, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound); err != nil {
-			return 0, err
+		if existingUUID, exists := existingByTag[inbound.Tag]; exists {
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE config_profile_inbounds SET
+					type        = $1,
+					network     = $2,
+					security    = $3,
+					port        = $4,
+					raw_inbound = $5
+				WHERE uuid = $6 AND profile_uuid = $7
+			`, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound, existingUUID, profileUUID); err != nil {
+				return 0, err
+			}
+		} else {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO config_profile_inbounds (
+					uuid, profile_uuid, tag, type, network, security, port, raw_inbound
+				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			`, inbound.UUID, inbound.ProfileUUID, inbound.Tag, inbound.Type, networkVal, securityVal, portVal, inbound.RawInbound); err != nil {
+				return 0, err
+			}
 		}
 	}
 

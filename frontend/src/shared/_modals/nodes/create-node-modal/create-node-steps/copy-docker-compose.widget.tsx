@@ -32,7 +32,7 @@ export const CopyDockerComposeWidget = ({ port }: IProps) => {
         soft: 1048576
         hard: 1048576
     environment:
-      - NODE_PORT=${port ?? 2222}
+      - NODE_GRPC_PORT=${port ?? 2222}
       - SECRET_KEY="${secretKey?.secretKey.trimEnd() ?? ''}"`
     }
 

@@ -21,7 +21,7 @@ func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, service *Co
 		return
 	}
 
-	response, err := buildConfigProfileResponses(service, records)
+	response, err := buildConfigProfileResponses(r.Context(), service, records)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build config profiles response", err, service.cfg)
 		return
@@ -46,7 +46,7 @@ func handleGetConfigProfile(w http.ResponseWriter, r *http.Request, service *Con
 		return
 	}
 
-	response, err := buildConfigProfileResponses(service, []configProfileRecord{record})
+	response, err := buildConfigProfileResponses(r.Context(), service, []configProfileRecord{record})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, service.cfg)
 		return
@@ -127,7 +127,7 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, service *
 		return
 	}
 
-	response, err := buildConfigProfileResponses(service, []configProfileRecord{result})
+	response, err := buildConfigProfileResponses(r.Context(), service, []configProfileRecord{result})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, service.cfg)
 		return
@@ -156,7 +156,7 @@ func handleUpdateConfigProfile(w http.ResponseWriter, r *http.Request, service *
 		return
 	}
 
-	response, err := buildConfigProfileResponses(service, []configProfileRecord{result})
+	response, err := buildConfigProfileResponses(r.Context(), service, []configProfileRecord{result})
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, service.cfg)
 		return
@@ -203,8 +203,15 @@ func handleConfigProfileWriteError(w http.ResponseWriter, err error, cfg *config
 	switch {
 	case errors.Is(err, errConfigProfileNotFound):
 		shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
-	case strings.Contains(err.Error(), "no fields to update"):
-		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+	case strings.Contains(err.Error(), "no fields to update"),
+		strings.Contains(err.Error(), "duplicate inbound tag"),
+		strings.Contains(err.Error(), "all inbounds must have a non-empty tag"),
+		strings.Contains(err.Error(), "is not allowed in inbound tag"),
+		strings.Contains(err.Error(), "must be between 2 and 30 characters"),
+		strings.Contains(err.Error(), "config must be valid JSON"),
+		strings.Contains(err.Error(), "inbounds must be an array"),
+		strings.Contains(err.Error(), "failed to parse config JSON"):
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 	default:
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -234,17 +241,17 @@ func handleConfigProfileWriteError(w http.ResponseWriter, err error, cfg *config
 	}
 }
 
-func buildConfigProfileResponses(service *ConfigProfileService, records []configProfileRecord) ([]ConfigProfile, error) {
+func buildConfigProfileResponses(ctx context.Context, service *ConfigProfileService, records []configProfileRecord) ([]ConfigProfile, error) {
 	profileUUIDs := make([]string, 0, len(records))
 	for _, record := range records {
 		profileUUIDs = append(profileUUIDs, record.UUID)
 	}
 
-	inboundsMap, err := service.repo.getConfigProfileInboundsMap(rContext(service), profileUUIDs)
+	inboundsMap, err := service.repo.getConfigProfileInboundsMap(ctx, profileUUIDs)
 	if err != nil {
 		return nil, err
 	}
-	nodesMap, err := service.repo.getConfigProfileNodesMap(rContext(service), profileUUIDs)
+	nodesMap, err := service.repo.getConfigProfileNodesMap(ctx, profileUUIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -272,12 +279,6 @@ func buildConfigProfileResponses(service *ConfigProfileService, records []config
 		})
 	}
 	return response, nil
-}
-
-func rContext(s *ConfigProfileService) interface {
-	context.Context
-} {
-	return context.Background()
 }
 
 func handleGetConfigProfileSnippets(w http.ResponseWriter, r *http.Request, service *ConfigProfileService) {
