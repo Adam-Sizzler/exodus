@@ -34,10 +34,26 @@ RUN set -eu; \
         -o /build/exodus-node-app \
         .
 
-FROM alpine:3.23
+FROM alpine:3.23 AS singbox
 
 ARG SINGBOX_VERSION=v1.13.13
+
+RUN apk update && apk add --no-cache ca-certificates curl \
+    && curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
+        -o /usr/local/bin/sing-box \
+    && chmod +x /usr/local/bin/sing-box
+
+FROM alpine:3.23
+
 ARG S6_OVERLAY_VERSION=3.2.0.2
+
+LABEL org.opencontainers.image.title="Exodus Node" \
+      org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
+      org.opencontainers.image.url="https://github.com/exodus/node" \
+      org.opencontainers.image.source="https://github.com/exodus/node" \
+      org.opencontainers.image.vendor="Exodus" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.documentation="https://docs.exodus.dev"
 
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl xz
 
@@ -49,13 +65,11 @@ RUN S6_ARCH="$(uname -m)" && \
     xz -dc /tmp/s6-arch.tar.xz | tar -C / -xpf - && \
     rm -f /tmp/s6-noarch.tar.xz /tmp/s6-arch.tar.xz
 
-RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
-      -o /usr/local/bin/sing-box && \
-    chmod +x /usr/local/bin/sing-box
-
 WORKDIR /opt/app
 
 COPY --from=builder /build/exodus-node-app /opt/app/exodus-node
+COPY --from=singbox /usr/local/bin/sing-box /usr/local/bin/sing-box
+
 COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
 RUN chmod -R +x /etc/s6-overlay && \
@@ -64,14 +78,6 @@ RUN chmod -R +x /etc/s6-overlay && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/slogs && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/serrors && \
     chmod +x /usr/local/bin/slogs /usr/local/bin/serrors
-
-LABEL org.opencontainers.image.title="Exodus Node" \
-      org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
-      org.opencontainers.image.url="https://github.com/exodus/node" \
-      org.opencontainers.image.source="https://github.com/exodus/node" \
-      org.opencontainers.image.vendor="Exodus" \
-      org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.documentation="https://docs.exodus.dev"
 
 ENV S6_VERBOSITY=1
 
