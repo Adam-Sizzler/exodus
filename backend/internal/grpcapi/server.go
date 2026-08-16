@@ -84,7 +84,7 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 		log.Warn("Panel stream disconnected", logger.String("remoteAddr", remoteAddr))
 	}()
 
-	intervalSeconds := 20
+	intervalSeconds := 15
 	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
 	defer ticker.Stop()
 
