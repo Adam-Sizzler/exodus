@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,8 +23,8 @@ import (
 )
 
 const (
-	DefaultAsnLmdbPath    = "/usr/local/share/asn/asn-prefixes.lmdb"
-	FallbackAsnLmdbPath   = "/var/lib/exodus-node/asn/asn-prefixes.lmdb"
+	DefaultAsnLmdbPath    = "/usr/local/share/asn"
+	FallbackAsnLmdbPath   = "/var/lib/exodus-node/asn"
 	DefaultAsnReleaseURL  = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz"
 	DefaultAsnJSONRelease = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes.json"
 )
@@ -125,10 +126,30 @@ func (s *AsnLmdbService) openDB() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	stat, err := os.Stat(s.dbPath)
+	targetPath := s.dbPath
+	if _, err := os.Stat(targetPath); err != nil {
+		if strings.HasSuffix(targetPath, "asn-prefixes.lmdb") {
+			parent := filepath.Dir(targetPath)
+			if _, parentErr := os.Stat(filepath.Join(parent, "data.mdb")); parentErr == nil {
+				targetPath = parent
+			}
+		}
+	} else {
+		// If path is a directory containing data.mdb, open directory
+		if stat, err := os.Stat(filepath.Join(targetPath, "data.mdb")); err == nil && !stat.IsDir() {
+			// directory contains data.mdb
+		} else if strings.HasSuffix(targetPath, "asn-prefixes.lmdb") {
+			parent := filepath.Dir(targetPath)
+			if _, parentErr := os.Stat(filepath.Join(parent, "data.mdb")); parentErr == nil {
+				targetPath = parent
+			}
+		}
+	}
+
+	stat, err := os.Stat(targetPath)
 	if err != nil {
 		s.isAvailable = false
-		return fmt.Errorf("lmdb path does not exist: %s", s.dbPath)
+		return fmt.Errorf("lmdb path does not exist: %s", targetPath)
 	}
 
 	env, err := lmdb.NewEnv()
@@ -143,16 +164,16 @@ func (s *AsnLmdbService) openDB() error {
 		flags |= lmdb.NoSubdir
 	}
 
-	if err := env.Open(s.dbPath, flags, 0644); err != nil {
+	if err := env.Open(targetPath, flags, 0644); err != nil {
 		// Try alternate flag mode if first open attempt failed
 		altFlags := uint(lmdb.Readonly)
 		if (flags & lmdb.NoSubdir) == 0 {
 			altFlags |= lmdb.NoSubdir
 		}
-		if retryErr := env.Open(s.dbPath, altFlags, 0644); retryErr != nil {
+		if retryErr := env.Open(targetPath, altFlags, 0644); retryErr != nil {
 			env.Close()
 			s.isAvailable = false
-			return fmt.Errorf("open lmdb env at %s: %w", s.dbPath, err)
+			return fmt.Errorf("open lmdb env at %s: %w", targetPath, err)
 		}
 	}
 
@@ -161,6 +182,7 @@ func (s *AsnLmdbService) openDB() error {
 	}
 	s.env = env
 	s.isAvailable = true
+	s.dbPath = targetPath
 	return nil
 }
 
