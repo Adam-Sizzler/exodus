@@ -226,62 +226,70 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 	coreError := ""
 	singboxUptimeSeconds := int64(0)
 
-	api := s.getAPI()
-	if api == nil || api.Stats == nil {
-		coreStatus = "error"
-		coreError = "core SDK is not initialized"
-		s.logger.Warn("Core stats are unavailable", "error", coreError)
+	if !s.IsCoreOnline() {
+		s.logger.Debug("Core is not marked online; returning degraded stats", "status", "stopped")
+		coreStatus = "stopped"
+		s.coreStateMu.RLock()
+		coreError = s.lifecycleErr
+		s.coreStateMu.RUnlock()
 	} else {
-		stats, err := api.Stats.QueryStats(ctx, sdk.QueryOptions{
-			Patterns: []string{
-				`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-				`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-				`^user>>>.*>>>traffic>>>(?:uplink|downlink)$`,
-			},
-			Regexp: true,
-			Reset:  true,
-		})
-		if err != nil {
+		api := s.getAPI()
+		if api == nil || api.Stats == nil {
 			coreStatus = "error"
-			// Prefer the stored lifecycle error (e.g. "SPAWN_ERROR: singbox")
-			// over the transient "connection refused" produced on every stats
-			// tick while the core is down. The stored error is the root cause;
-			// "connection refused" is just the symptom of it.
-			s.coreStateMu.RLock()
-			stored := s.lifecycleErr
-			s.coreStateMu.RUnlock()
-			if stored != "" {
-				coreError = stored
-			} else {
-				coreError = fmt.Sprintf("query core stats: %v", err)
-			}
-			s.logCoreStatsFailure("Core stats query failed; returning degraded stats", err)
+			coreError = "core SDK is not initialized"
+			s.logger.Warn("Core stats are unavailable", "error", coreError)
 		} else {
-			for _, item := range stats {
-				s.logger.Trace("Processing core stat", "name", item.Name, "value", item.Value)
-				result.Stat = append(result.Stat, Stat{
-					Name:  item.Name,
-					Value: strconv.FormatInt(item.Value, 10),
-				})
-			}
-		}
-
-		if coreStatus == "running" {
-			sysStats, sysErr := api.Stats.GetSysStats(ctx)
-			if sysErr != nil {
+			stats, err := api.Stats.QueryStats(ctx, sdk.QueryOptions{
+				Patterns: []string{
+					`^inbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+					`^outbound>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+					`^user>>>.*>>>traffic>>>(?:uplink|downlink)$`,
+				},
+				Regexp: true,
+				Reset:  true,
+			})
+			if err != nil {
 				coreStatus = "error"
+				// Prefer the stored lifecycle error (e.g. "SPAWN_ERROR: singbox")
+				// over the transient "connection refused" produced on every stats
+				// tick while the core is down. The stored error is the root cause;
+				// "connection refused" is just the symptom of it.
 				s.coreStateMu.RLock()
 				stored := s.lifecycleErr
 				s.coreStateMu.RUnlock()
 				if stored != "" {
 					coreError = stored
 				} else {
-					coreError = fmt.Sprintf("query core sys stats: %v", sysErr)
+					coreError = fmt.Sprintf("query core stats: %v", err)
 				}
-				s.logCoreStatsFailure("Core sys stats query failed; returning degraded stats", sysErr)
-			} else if sysStats != nil {
-				singboxUptimeSeconds = int64(sysStats.Uptime)
-				s.MarkCoreOnline()
+				s.logCoreStatsFailure("Core stats query failed; returning degraded stats", err)
+			} else {
+				for _, item := range stats {
+					s.logger.Trace("Processing core stat", "name", item.Name, "value", item.Value)
+					result.Stat = append(result.Stat, Stat{
+						Name:  item.Name,
+						Value: strconv.FormatInt(item.Value, 10),
+					})
+				}
+			}
+
+			if coreStatus == "running" {
+				sysStats, sysErr := api.Stats.GetSysStats(ctx)
+				if sysErr != nil {
+					coreStatus = "error"
+					s.coreStateMu.RLock()
+					stored := s.lifecycleErr
+					s.coreStateMu.RUnlock()
+					if stored != "" {
+						coreError = stored
+					} else {
+						coreError = fmt.Sprintf("query core sys stats: %v", sysErr)
+					}
+					s.logCoreStatsFailure("Core sys stats query failed; returning degraded stats", sysErr)
+				} else if sysStats != nil {
+					singboxUptimeSeconds = int64(sysStats.Uptime)
+					s.MarkCoreOnline()
+				}
 			}
 		}
 	}
