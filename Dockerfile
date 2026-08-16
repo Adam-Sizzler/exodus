@@ -1,5 +1,5 @@
 # Multistage build for exodus-node (Go) + sing-box core (with v2ray_api) + s6-overlay.
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.12-alpine AS builder
 
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
