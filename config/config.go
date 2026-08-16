@@ -33,8 +33,8 @@ type BackendConfig struct {
 type ExodusConfig = BackendConfig
 
 const (
-	FixedSingboxDir          = "/app/singbox/"
-	FixedSingboxConfigPath   = "/app/singbox/config.json"
+	FixedSingboxDir          = "/opt/app/singbox/"
+	FixedSingboxConfigPath   = "/opt/app/singbox/config.json"
 	FixedCoreType            = "singbox"
 	FixedCoreAPIAddress      = "127.0.0.1"
 	FixedCoreAPIGRPCPort     = 10085

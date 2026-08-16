@@ -4,9 +4,6 @@ FROM golang:1.25.12-alpine AS builder
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
 ARG VERSION=unknown
-ARG REVISION=unknown
-ARG BUILD_TAGS=none
-ARG CGO_ENABLED_STATUS=enabled
 
 WORKDIR /build
 
@@ -17,7 +14,6 @@ COPY . ./
 
 RUN set -eu; \
     version="${VERSION}"; \
-    revision="${REVISION}"; \
     if [ -z "${version}" ] || [ "${version}" = "unknown" ]; then \
         version="$(git describe --tags --abbrev=0 2>/dev/null || true)"; \
     fi; \
@@ -27,24 +23,14 @@ RUN set -eu; \
     if [ -z "${version}" ]; then \
         version="unknown"; \
     fi; \
-    if [ -z "${revision}" ] || [ "${revision}" = "unknown" ]; then \
-        revision="$(git rev-parse HEAD 2>/dev/null || true)"; \
-    fi; \
-    if [ -z "${revision}" ]; then \
-        revision="unknown"; \
-    fi; \
     CGO_ENABLED=1 \
     GOOS=linux \
     GOARCH=amd64 \
     go build \
-        -tags "${BUILD_TAGS}" \
         -trimpath \
         -buildvcs=true \
         -ldflags="-s -w \
-                -X exodus-node/constant.Version=${version} \
-                -X exodus-node/constant.Revision=${revision} \
-                -X exodus-node/constant.BuildTags=${BUILD_TAGS} \
-                -X exodus-node/constant.CgoEnabled=${CGO_ENABLED_STATUS}" \
+                -X exodus-node/constant.Version=${version}" \
         -o /build/exodus-node-app \
         .
 
@@ -67,14 +53,17 @@ RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/downlo
       -o /usr/local/bin/sing-box && \
     chmod +x /usr/local/bin/sing-box
 
-WORKDIR /app
+WORKDIR /opt/app
 
-COPY --from=builder /build/exodus-node-app /app/exodus-node
+COPY --from=builder /build/exodus-node-app /opt/app/exodus-node
 COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
 RUN chmod -R +x /etc/s6-overlay && \
-    chmod +x /app/exodus-node && \
-    mkdir -p /run /app/singbox /app/logs /usr/local/share/asn
+    chmod +x /opt/app/exodus-node && \
+    mkdir -p /run /opt/app/singbox /opt/app/logs /var/log/singbox /usr/local/share/asn && \
+    printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/slogs && \
+    printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/serrors && \
+    chmod +x /usr/local/bin/slogs /usr/local/bin/serrors
 
 LABEL org.opencontainers.image.title="Exodus Node" \
       org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
@@ -84,6 +73,8 @@ LABEL org.opencontainers.image.title="Exodus Node" \
       org.opencontainers.image.licenses="AGPL-3.0" \
       org.opencontainers.image.documentation="https://docs.exodus.dev"
 
+ENV S6_VERBOSITY=1
+
 ENTRYPOINT ["/init"]
 
-CMD ["/command/with-contenv", "/app/exodus-node"]
+CMD ["/command/with-contenv", "/opt/app/exodus-node"]

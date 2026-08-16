@@ -1,2 +1,2 @@
-#!/bin/sh
-exec s6-log -b n0 s5242880 /app/logs/singbox
+#!/command/with-contenv sh
+exec /command/s6-log -b n0 s10485760 /var/log/singbox

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const haproxyUsersFilePath = "/app/haproxy/data/users.csv"
+const haproxyUsersFilePath = "/opt/app/haproxy/data/users.csv"
 
 func applyHaproxyModule(modules DeployModulesPayload) (bool, error) {
 	if !modules.HaproxyEnabled {
