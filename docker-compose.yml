@@ -12,5 +12,3 @@ services:
     ports:
       - '127.0.0.1:${SUB_APP_PORT:-3010}:${SUB_APP_PORT:-3010}'
       - '127.0.0.1:${SUB_GRPC_PORT:-3011}:${SUB_GRPC_PORT:-3011}'
-
-
