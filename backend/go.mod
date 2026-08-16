@@ -12,6 +12,7 @@ require (
 	github.com/iancoleman/orderedmap v0.3.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
+	github.com/netresearch/go-cron v0.15.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.55.0
 	github.com/redis/go-redis/v9 v9.14.1
@@ -28,7 +29,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/netresearch/go-cron v0.15.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
