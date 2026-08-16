@@ -48,20 +48,19 @@ RUN set -eu; \
         -o /build/exodus-node-app \
         .
 
-FROM golang:1.25.12-alpine AS singbox
+FROM alpine:3.23 AS singbox
 
 ARG SINGBOX_VERSION=v1.13.13
 ARG ASN_LMDB_URL=https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz
 
-RUN curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
-        -o /usr/local/bin/sing-box \
+RUN mkdir -p /usr/local/bin /usr/local/share/asn \
+    && wget -qO /usr/local/bin/sing-box "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
     && chmod +x /usr/local/bin/sing-box \
-    && mkdir -p /usr/local/share/asn \
-    && curl -fL "${ASN_LMDB_URL}" -o /tmp/asn-prefixes-lmdb.tar.gz \
+    && wget -qO /tmp/asn-prefixes-lmdb.tar.gz "${ASN_LMDB_URL}" \
     && tar -xzf /tmp/asn-prefixes-lmdb.tar.gz -C /usr/local/share/asn \
     && rm -f /tmp/asn-prefixes-lmdb.tar.gz
 
-FROM golang:1.25.12-alpine
+FROM alpine:3.23
 
 ARG S6_OVERLAY_VERSION=3.2.0.2
 
@@ -82,8 +81,8 @@ COPY --from=singbox /usr/local/share/asn /usr/local/share/asn
 COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
 RUN S6_ARCH="$(uname -m)" \
-    && curl -sSL -o /tmp/s6-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
-    && curl -sSL -o /tmp/s6-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
+    && wget -qO /tmp/s6-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
+    && wget -qO /tmp/s6-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
     && xz -dc /tmp/s6-noarch.tar.xz | tar -C / -xpf - \
     && xz -dc /tmp/s6-arch.tar.xz | tar -C / -xpf - \
     && rm -f /tmp/s6-noarch.tar.xz /tmp/s6-arch.tar.xz \
