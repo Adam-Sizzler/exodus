@@ -29,7 +29,7 @@ services:
       - 127.0.0.1:3000:${APP_PORT:-3000}
       - 127.0.0.1:3001:${METRICS_PORT:-3001}
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:${METRICS_PORT:-3001}/health']
+      test: ['CMD-SHELL', 'path=$$(echo "$${APP_PATH:-}" | sed "s|/*$$||"); curl -f "http://localhost:$${METRICS_PORT:-3001}$${path}/health"']
       interval: 30s
       timeout: 5s
       retries: 3
