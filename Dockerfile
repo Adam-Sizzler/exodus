@@ -53,14 +53,6 @@ FROM alpine:3.23
 ARG SINGBOX_VERSION=v1.13.13
 ARG S6_OVERLAY_VERSION=3.2.0.2
 
-LABEL org.opencontainers.image.title="Exodus Node" \
-      org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
-      org.opencontainers.image.url="https://github.com/exodus/node" \
-      org.opencontainers.image.source="https://github.com/exodus/node" \
-      org.opencontainers.image.vendor="Exodus" \
-      org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.documentation="https://docs.exodus.dev"
-
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl xz
 
 # Install s6-overlay
@@ -83,6 +75,14 @@ COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 RUN chmod -R +x /etc/s6-overlay && \
     chmod +x /app/exodus-node && \
     mkdir -p /run /app/singbox /app/logs /usr/local/share/asn
+
+LABEL org.opencontainers.image.title="Exodus Node" \
+      org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
+      org.opencontainers.image.url="https://github.com/exodus/node" \
+      org.opencontainers.image.source="https://github.com/exodus/node" \
+      org.opencontainers.image.vendor="Exodus" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.documentation="https://docs.exodus.dev"
 
 ENTRYPOINT ["/init"]
 
