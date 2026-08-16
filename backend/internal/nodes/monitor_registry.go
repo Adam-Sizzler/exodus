@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -56,7 +57,7 @@ func RequestNodePluginExecutor(command json.RawMessage, nodeUUIDs ...string) err
 	if nm == nil {
 		return fmt.Errorf("node monitor is not ready")
 	}
-	return nm.ExecuteNodePluginCommand(nil, command, nodeUUIDs)
+	return nm.ExecuteNodePluginCommand(context.Background(), command, nodeUUIDs)
 }
 
 // GetNodeMetricsSnapshot returns current per-node traffic metrics snapshots.

@@ -38,19 +38,6 @@ func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isCo
 		msgStr = currentMessage.String
 	}
 
-	nm.statusLock.Lock()
-	if isConnected {
-		nm.failedCheckCount[nodeName] = 0
-	} else {
-		nm.failedCheckCount[nodeName]++
-		if currentConnected && nm.failedCheckCount[nodeName] < 2 {
-			nm.statusLock.Unlock()
-			nm.cfg.Logger.Debug("Node health check attempt failed, retrying before declaring lost", "node", nodeName, "attempt", nm.failedCheckCount[nodeName], "message", message)
-			return
-		}
-	}
-	nm.statusLock.Unlock()
-
 	if currentConnected == isConnected && currentConnecting == isConnecting && msgStr == message {
 		if !isConnected {
 			_ = nm.clearDisconnectedNodeRuntimeFields(context.Background(), nodeUUID)

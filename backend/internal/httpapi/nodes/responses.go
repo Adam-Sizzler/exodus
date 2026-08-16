@@ -85,6 +85,9 @@ func buildNodeResponses(ctx context.Context, repo *NodeRepository, cfg *config.B
 			item.CPUModel = nil
 			item.TotalRAM = nil
 			item.System = nil
+			item.SingboxVersion = nil
+			item.NodeVersion = nil
+			item.Versions = nil
 		}
 		item.CreatedAt = record.CreatedAt
 		item.UpdatedAt = record.UpdatedAt

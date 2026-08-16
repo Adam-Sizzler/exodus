@@ -160,6 +160,16 @@ func buildNodeResponses(records []nodeRecord, providersMap map[string]*providerR
 }
 
 func applySubNodeRuntimeSnapshot(record nodeRecord) nodeRecord {
+	if !record.IsConnected || record.IsConnecting || record.IsDisabled {
+		record.SingboxVersion = nil
+		record.NodeVersion = nil
+		record.SingboxUptime = ""
+		record.CPUCount = nil
+		record.CPUModel = nil
+		record.TotalRAM = nil
+		return record
+	}
+
 	snapshot, ok := monitor.GetSubNodeRuntimeSnapshot(record.Name)
 	if !ok {
 		return record

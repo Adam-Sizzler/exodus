@@ -21,7 +21,9 @@ const (
 	singboxUptimePrefix = "node_singbox_uptime:"
 	usersOnlinePrefix   = "node_users_online:"
 
+	systemInfoTTL    = 30 * time.Second
 	systemStatsTTL   = 30 * time.Second
+	versionsTTL      = 30 * time.Second
 	singboxUptimeTTL = 16 * time.Second
 	usersOnlineTTL   = 16 * time.Second
 )
@@ -143,7 +145,7 @@ func (c *Cache) GetMany(ctx context.Context, uuids []string) (map[string]HotCach
 }
 
 func (c *Cache) SetSystemInfo(ctx context.Context, uuid string, info json.RawMessage) error {
-	return c.setJSON(ctx, key(systemInfoPrefix, uuid), info, 0)
+	return c.setJSON(ctx, key(systemInfoPrefix, uuid), info, systemInfoTTL)
 }
 
 func (c *Cache) SetSystemStats(ctx context.Context, uuid string, stats json.RawMessage) error {
@@ -161,7 +163,7 @@ func (c *Cache) SetVersions(ctx context.Context, uuid, singbox, node string) err
 	if err != nil {
 		return err
 	}
-	return c.client.Set(ctx, key(versionsPrefix, uuid), payload, 0).Err()
+	return c.client.Set(ctx, key(versionsPrefix, uuid), payload, versionsTTL).Err()
 }
 
 func (c *Cache) SetUptime(ctx context.Context, uuid string, seconds int64) error {
@@ -196,8 +198,10 @@ func (c *Cache) DeleteTransient(ctx context.Context, uuid string) error {
 		return nil
 	}
 	return c.client.Del(ctx,
+		key(systemInfoPrefix, uuid),
 		key(systemStatsPrefix, uuid),
 		key(usersOnlinePrefix, uuid),
+		key(versionsPrefix, uuid),
 		key(singboxUptimePrefix, uuid),
 	).Err()
 }
