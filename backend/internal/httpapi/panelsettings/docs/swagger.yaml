@@ -28,6 +28,50 @@ definitions:
       username:
         type: string
     type: object
+  auth.AuthStatusBranding:
+    properties:
+      logoUrl:
+        type: string
+      title:
+        type: string
+    type: object
+  auth.AuthStatusData:
+    properties:
+      authentication:
+        $ref: '#/definitions/auth.AuthStatusMethods'
+      branding:
+        $ref: '#/definitions/auth.AuthStatusBranding'
+      isLoginAllowed:
+        type: boolean
+      isRegisterAllowed:
+        type: boolean
+    type: object
+  auth.AuthStatusFeature:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  auth.AuthStatusMethods:
+    properties:
+      oauth2:
+        $ref: '#/definitions/auth.AuthStatusOAuth2'
+      passkey:
+        $ref: '#/definitions/auth.AuthStatusFeature'
+      password:
+        $ref: '#/definitions/auth.AuthStatusFeature'
+    type: object
+  auth.AuthStatusOAuth2:
+    properties:
+      providers:
+        items:
+          type: string
+        type: array
+    type: object
+  auth.AuthStatusResponse:
+    properties:
+      response:
+        $ref: '#/definitions/auth.AuthStatusData'
+    type: object
   auth.BootstrapResponse:
     properties:
       branding_settings:
@@ -749,7 +793,7 @@ paths:
       - application/json
       description: Authenticate admin with username and password
       parameters:
-      - description: Credentials
+      - description: Admin login credentials
         in: body
         name: body
         required: true
@@ -761,8 +805,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
@@ -771,15 +814,11 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/shared.ErrorResponse'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/shared.ErrorResponse'
-      summary: Login admin
+      summary: Admin login
       tags:
       - Auth Controller
   /auth/logout:
@@ -981,20 +1020,20 @@ paths:
       - Auth Controller
   /auth/status:
     get:
-      description: Get available authentication methods, registration status and branding
+      description: Get enabled status for password, passkey and OAuth2 authentication
+        methods
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/auth.AuthStatusResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/shared.ErrorResponse'
-      summary: Get auth status
+      summary: Get auth methods status
       tags:
       - Auth Controller
   /bandwidth-stats/internal-squads/{uuid}/usage:

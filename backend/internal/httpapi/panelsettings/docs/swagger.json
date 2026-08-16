@@ -49,10 +49,10 @@
                 "tags": [
                     "Auth Controller"
                 ],
-                "summary": "Login admin",
+                "summary": "Admin login",
                 "parameters": [
                     {
-                        "description": "Credentials",
+                        "description": "Admin login credentials",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -65,8 +65,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
@@ -77,12 +76,6 @@
                     },
                     "403": {
                         "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/shared.ErrorResponse"
                         }
@@ -401,20 +394,19 @@
         },
         "/auth/status": {
             "get": {
-                "description": "Get available authentication methods, registration status and branding",
+                "description": "Get enabled status for password, passkey and OAuth2 authentication methods",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth Controller"
                 ],
-                "summary": "Get auth status",
+                "summary": "Get auth methods status",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/auth.AuthStatusResponse"
                         }
                     },
                     "500": {
@@ -11206,6 +11198,75 @@
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "auth.AuthStatusBranding": {
+            "type": "object",
+            "properties": {
+                "logoUrl": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.AuthStatusData": {
+            "type": "object",
+            "properties": {
+                "authentication": {
+                    "$ref": "#/definitions/auth.AuthStatusMethods"
+                },
+                "branding": {
+                    "$ref": "#/definitions/auth.AuthStatusBranding"
+                },
+                "isLoginAllowed": {
+                    "type": "boolean"
+                },
+                "isRegisterAllowed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "auth.AuthStatusFeature": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "auth.AuthStatusMethods": {
+            "type": "object",
+            "properties": {
+                "oauth2": {
+                    "$ref": "#/definitions/auth.AuthStatusOAuth2"
+                },
+                "passkey": {
+                    "$ref": "#/definitions/auth.AuthStatusFeature"
+                },
+                "password": {
+                    "$ref": "#/definitions/auth.AuthStatusFeature"
+                }
+            }
+        },
+        "auth.AuthStatusOAuth2": {
+            "type": "object",
+            "properties": {
+                "providers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "auth.AuthStatusResponse": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "$ref": "#/definitions/auth.AuthStatusData"
                 }
             }
         },

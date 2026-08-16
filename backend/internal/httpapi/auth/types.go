@@ -49,6 +49,36 @@ type BootstrapResponse struct {
 	HasAdminConfigured bool           `json:"has_admin_configured"`
 }
 
+type AuthStatusResponse struct {
+	Response AuthStatusData `json:"response"`
+}
+
+type AuthStatusData struct {
+	IsLoginAllowed    bool               `json:"isLoginAllowed"`
+	IsRegisterAllowed bool               `json:"isRegisterAllowed"`
+	Authentication    *AuthStatusMethods `json:"authentication"`
+	Branding          AuthStatusBranding `json:"branding"`
+}
+
+type AuthStatusMethods struct {
+	Passkey  AuthStatusFeature `json:"passkey"`
+	OAuth2   AuthStatusOAuth2  `json:"oauth2"`
+	Password AuthStatusFeature `json:"password"`
+}
+
+type AuthStatusFeature struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AuthStatusOAuth2 struct {
+	Providers []string `json:"providers"`
+}
+
+type AuthStatusBranding struct {
+	Title   *string `json:"title"`
+	LogoURL *string `json:"logoUrl"`
+}
+
 type oauthStateEntry struct {
 	State        string
 	CodeVerifier string
