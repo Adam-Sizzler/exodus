@@ -1,6 +1,7 @@
 package configprofiles
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -45,6 +46,14 @@ func validateConfigStructure(configRaw json.RawMessage) error {
 	if err := json.Unmarshal(configRaw, &parsed); err != nil {
 		return fmt.Errorf("config must be valid JSON")
 	}
+	outboundsRaw, ok := parsed["outbounds"]
+	if !ok {
+		return fmt.Errorf("Config doesn't have outbounds.")
+	}
+	outboundsArray, ok := outboundsRaw.([]any)
+	if !ok || len(outboundsArray) == 0 {
+		return fmt.Errorf("Config doesn't have outbounds.")
+	}
 	inboundsRaw, ok := parsed["inbounds"]
 	if !ok {
 		return nil
@@ -71,7 +80,49 @@ func validateConfigStructure(configRaw json.RawMessage) error {
 			return fmt.Errorf("duplicate inbound tag %q found. All inbound tags must be unique", tag)
 		}
 		seenTags[tag] = struct{}{}
+
+		if err := validateShadowsocksInbound(inboundMap); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func validateShadowsocksInbound(inboundMap map[string]any) error {
+	inboundType, _ := inboundMap["type"].(string)
+	if inboundType == "" {
+		inboundType, _ = inboundMap["protocol"].(string)
+	}
+	inboundType = strings.ToLower(strings.TrimSpace(inboundType))
+	if inboundType != "shadowsocks" && inboundType != "ss" {
+		return nil
+	}
+
+	method, _ := inboundMap["method"].(string)
+	password, _ := inboundMap["password"].(string)
+
+	if settings, ok := inboundMap["settings"].(map[string]any); ok {
+		if m, ok := settings["method"].(string); ok && strings.TrimSpace(m) != "" {
+			method = m
+		}
+		if p, ok := settings["password"].(string); ok && strings.TrimSpace(p) != "" {
+			password = p
+		}
+	}
+
+	method = strings.TrimSpace(method)
+	password = strings.TrimSpace(password)
+
+	if strings.HasPrefix(method, "2022-blake3-") {
+		if password == "" {
+			return fmt.Errorf("Shadowsocks password is required for 2022-blake3-* methods. (inbound → settings → password – generate with: openssl rand -base64 32)")
+		}
+		decoded, err := base64.StdEncoding.DecodeString(password)
+		if err != nil || len(decoded) != 32 {
+			return fmt.Errorf("Shadowsocks password for %q must be a base64 string that decodes to exactly 32 bytes. (inbound → settings → password – generate with: openssl rand -base64 32)", method)
+		}
+	}
+
 	return nil
 }
 

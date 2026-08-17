@@ -2,14 +2,17 @@ package subscription
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
 )
 
+var hwidHeaderRegex = regexp.MustCompile(`^[a-zA-Z0-9=-]{10,64}$`)
+
 func extractHwidHeaders(r *http.Request) *HwidHeaders {
 	hwid := firstNonEmptyHeaderValue(r, "X-HWID", "X-Hwid", "Hwid", "X-HWID-Device-ID")
-	if hwid == nil {
+	if hwid == nil || !hwidHeaderRegex.MatchString(*hwid) {
 		return nil
 	}
 	userAgent := firstNonEmptyHeader(r, "User-Agent", "X-HWID-User-Agent")

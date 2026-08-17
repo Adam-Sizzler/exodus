@@ -369,7 +369,7 @@ func SubpageConfigPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendCon
 			RequestHeaders map[string]string `json:"requestHeaders"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		if req.RequestHeaders == nil || len(req.RequestHeaders) == 0 {
+		if len(req.RequestHeaders) == 0 {
 			req.RequestHeaders = make(map[string]string)
 			for k, v := range r.Header {
 				if len(v) > 0 {

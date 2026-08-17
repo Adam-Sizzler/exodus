@@ -37,7 +37,13 @@ export function RestartNodeButtonFeature(props: IProps) {
                     <TbReload size="1rem" />
                 )
             }
-            onClick={() => restartNode({})}
+            onClick={() =>
+                restartNode({
+                    variables: {
+                        forceRestart: true
+                    }
+                })
+            }
         >
             {t('restart-node-button.feature.restart')}
         </Menu.Item>

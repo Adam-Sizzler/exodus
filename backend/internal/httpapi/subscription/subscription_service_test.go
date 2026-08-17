@@ -681,6 +681,22 @@ func TestExtractHwidHeadersRequiresHwid(t *testing.T) {
 	}
 }
 
+func TestExtractHwidHeadersRejectsInvalidFormat(t *testing.T) {
+	invalidCases := []string{
+		"short",                     // < 10 chars
+		"invalid_char_with_underscore", // underscore is not allowed
+		"invalid!@#$%",
+		"this-hwid-is-way-too-long-exceeding-the-maximum-sixty-four-characters-limit-allowed-by-regex",
+	}
+	for _, tc := range invalidCases {
+		req := httptest.NewRequest("GET", "/api/sub/short", nil)
+		req.Header.Set("X-HWID", tc)
+		if got := extractHwidHeaders(req); got != nil {
+			t.Fatalf("expected nil for invalid HWID %q, got %#v", tc, got)
+		}
+	}
+}
+
 func TestExtractSyntheticHwidHeadersFromV2rayNUserAgent(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/sub/short", nil)
 	req.Header.Set("User-Agent", "v2rayN/7.16.4")
@@ -694,6 +710,9 @@ func TestExtractSyntheticHwidHeadersFromV2rayNUserAgent(t *testing.T) {
 	}
 	if _, err := uuid.Parse(got.Hwid); err != nil {
 		t.Fatalf("unexpected synthetic hwid: %q", got.Hwid)
+	}
+	if !hwidHeaderRegex.MatchString(got.Hwid) {
+		t.Fatalf("synthetic hwid %q does not match hwidHeaderRegex", got.Hwid)
 	}
 	assertStringPtr(t, "platform", got.Platform, "windows")
 	assertStringPtr(t, "device model", got.DeviceModel, "unknown")

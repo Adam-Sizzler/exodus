@@ -13,11 +13,14 @@ func TestValidateConfigStructure(t *testing.T) {
 		errContains string
 	}{
 		{
-			name: "valid config with unique inbounds",
+			name: "valid config with unique inbounds and outbounds",
 			configJSON: `{
 				"inbounds": [
 					{"type": "shadowsocks", "tag": "ss-in-1", "listen_port": 2080},
 					{"type": "trojan", "tag": "trojan-1", "listen_port": 2443}
+				],
+				"outbounds": [
+					{"type": "direct", "tag": "direct"}
 				]
 			}`,
 			wantErr: false,
@@ -28,6 +31,9 @@ func TestValidateConfigStructure(t *testing.T) {
 				"inbounds": [
 					{"type": "shadowsocks", "tag": "ss-in-1", "listen_port": 2080},
 					{"type": "trojan", "tag": "ss-in-1", "listen_port": 2443}
+				],
+				"outbounds": [
+					{"type": "direct", "tag": "direct"}
 				]
 			}`,
 			wantErr:     true,
@@ -38,6 +44,9 @@ func TestValidateConfigStructure(t *testing.T) {
 			configJSON: `{
 				"inbounds": [
 					{"type": "shadowsocks", "tag": "   ", "listen_port": 2080}
+				],
+				"outbounds": [
+					{"type": "direct", "tag": "direct"}
 				]
 			}`,
 			wantErr:     true,
@@ -48,17 +57,75 @@ func TestValidateConfigStructure(t *testing.T) {
 			configJSON: `{
 				"inbounds": [
 					{"type": "shadowsocks", "tag": "ss,in,1", "listen_port": 2080}
+				],
+				"outbounds": [
+					{"type": "direct", "tag": "direct"}
 				]
 			}`,
 			wantErr:     true,
 			errContains: "character ',' is not allowed in inbound tag",
 		},
 		{
-			name: "valid config without inbounds array",
+			name: "invalid config without outbounds array",
 			configJSON: `{
 				"log": {"level": "info"}
 			}`,
+			wantErr:     true,
+			errContains: "Config doesn't have outbounds.",
+		},
+		{
+			name: "invalid config with empty outbounds array",
+			configJSON: `{
+				"outbounds": []
+			}`,
+			wantErr:     true,
+			errContains: "Config doesn't have outbounds.",
+		},
+		{
+			name: "valid config with valid SS 2022 32-byte password",
+			configJSON: `{
+				"inbounds": [
+					{
+						"type": "shadowsocks",
+						"tag": "ss-2022",
+						"method": "2022-blake3-aes-256-gcm",
+						"password": "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
+					}
+				],
+				"outbounds": [{"type": "direct", "tag": "direct"}]
+			}`,
 			wantErr: false,
+		},
+		{
+			name: "invalid config with SS 2022 missing password",
+			configJSON: `{
+				"inbounds": [
+					{
+						"type": "shadowsocks",
+						"tag": "ss-2022",
+						"method": "2022-blake3-aes-256-gcm"
+					}
+				],
+				"outbounds": [{"type": "direct", "tag": "direct"}]
+			}`,
+			wantErr:     true,
+			errContains: "Shadowsocks password is required for 2022-blake3-* methods",
+		},
+		{
+			name: "invalid config with SS 2022 invalid key length",
+			configJSON: `{
+				"inbounds": [
+					{
+						"type": "shadowsocks",
+						"tag": "ss-2022",
+						"method": "2022-blake3-aes-256-gcm",
+						"password": "c2hvcnQ="
+					}
+				],
+				"outbounds": [{"type": "direct", "tag": "direct"}]
+			}`,
+			wantErr:     true,
+			errContains: "must be a base64 string that decodes to exactly 32 bytes",
 		},
 	}
 
