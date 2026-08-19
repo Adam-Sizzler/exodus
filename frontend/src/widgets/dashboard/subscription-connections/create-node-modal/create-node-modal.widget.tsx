@@ -12,7 +12,7 @@ import {
     SubscriptionConnectionKeygenResponse,
     createSubscriptionConnectionSchema,
     useCreateSubscriptionConnection,
-    useGetSubscriptionConnectionsPubKey
+    useGetSubscriptionConnectionsSecretKey
 } from '@shared/api/hooks'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
@@ -29,7 +29,7 @@ export const CreateNodeModalWidget = () => {
     const [creationCredentials, setCreationCredentials] =
         useState<SubscriptionConnectionKeygenResponse>()
 
-    const { refetch: refetchPubKey } = useGetSubscriptionConnectionsPubKey({
+    const { refetch: refetchSecretKey } = useGetSubscriptionConnectionsSecretKey({
         rQueryParams: {
             enabled: false
         }
@@ -99,7 +99,7 @@ export const CreateNodeModalWidget = () => {
         let isCurrent = true
         setCreationCredentials(undefined)
 
-        void refetchPubKey().then((result) => {
+        void refetchSecretKey().then((result) => {
             if (isCurrent && result.data) {
                 setCreationCredentials(result.data)
             }
@@ -108,7 +108,7 @@ export const CreateNodeModalWidget = () => {
         return () => {
             isCurrent = false
         }
-    }, [isModalOpen, refetchPubKey])
+    }, [isModalOpen, refetchSecretKey])
 
     useEffect(() => {
         if (form.getValues().port) {
@@ -191,7 +191,7 @@ export const CreateNodeModalWidget = () => {
                             <CreateNodeStep1Connection
                                 form={form}
                                 onNext={() => setActiveStep(1)}
-                                pubKey={creationCredentials}
+                                secretKey={creationCredentials}
                             />
                         </div>
                     )}
@@ -212,7 +212,7 @@ export const CreateNodeModalWidget = () => {
                                 onCreate={handleCreateNode}
                                 onPrev={() => setActiveStep(0)}
                                 port={selectedPort}
-                                pubKey={creationCredentials}
+                                secretKey={creationCredentials}
                             />
                         </div>
                     )}

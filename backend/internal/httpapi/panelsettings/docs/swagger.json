@@ -4556,8 +4556,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/keygen.KeygenResponse"
                         }
                     },
                     "500": {
@@ -11496,6 +11495,25 @@
                 },
                 "userId": {
                     "type": "integer"
+                }
+            }
+        },
+        "keygen.KeygenPayload": {
+            "type": "object",
+            "properties": {
+                "grpcToken": {
+                    "type": "string"
+                },
+                "secretKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "keygen.KeygenResponse": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "$ref": "#/definitions/keygen.KeygenPayload"
                 }
             }
         },

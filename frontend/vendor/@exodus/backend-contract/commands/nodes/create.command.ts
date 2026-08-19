@@ -18,6 +18,9 @@ export namespace CreateNodeCommand {
         name: z.string().min(3).max(30),
         address: z.string().min(2),
         port: z.int().min(1).max(65535).optional(),
+        apiSchema: z.enum(['mtls', 'tls']).default('mtls'),
+        apiPath: z.string().default('/'),
+        grpcAuthToken: z.string().optional(),
         proxyUrl: z
             .string()
             .regex(

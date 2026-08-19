@@ -46,16 +46,13 @@ func validateConfigStructure(configRaw json.RawMessage) error {
 	if err := json.Unmarshal(configRaw, &parsed); err != nil {
 		return fmt.Errorf("config must be valid JSON")
 	}
-	outboundsRaw, ok := parsed["outbounds"]
-	if !ok {
-		return fmt.Errorf("Config doesn't have outbounds.")
-	}
-	outboundsArray, ok := outboundsRaw.([]any)
-	if !ok || len(outboundsArray) == 0 {
-		return fmt.Errorf("Config doesn't have outbounds.")
+	if outboundsRaw, ok := parsed["outbounds"]; ok && outboundsRaw != nil {
+		if _, ok := outboundsRaw.([]any); !ok {
+			return fmt.Errorf("outbounds must be an array")
+		}
 	}
 	inboundsRaw, ok := parsed["inbounds"]
-	if !ok {
+	if !ok || inboundsRaw == nil {
 		return nil
 	}
 	inboundsArray, ok := inboundsRaw.([]any)

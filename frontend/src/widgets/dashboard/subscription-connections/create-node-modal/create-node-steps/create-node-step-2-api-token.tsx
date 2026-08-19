@@ -16,7 +16,7 @@ interface IProps {
     onPrev: () => void
     onCreate: () => void
     port?: number
-    pubKey: SubscriptionConnectionKeygenResponse | undefined
+    secretKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
 export const CreateNodeStep2ApiToken = ({
@@ -25,7 +25,7 @@ export const CreateNodeStep2ApiToken = ({
     onPrev,
     onCreate,
     port,
-    pubKey
+    secretKey
 }: IProps) => {
     const { t } = useTranslation()
     const apiSchema = form.getValues().apiSchema === 'tls' ? 'tls' : 'mtls'
@@ -43,7 +43,7 @@ export const CreateNodeStep2ApiToken = ({
                 apiPath={form.getValues().apiPath}
                 apiSchema={apiSchema}
                 port={port}
-                pubKey={pubKey}
+                secretKey={secretKey}
             />
 
             <Group justify="space-between" mt="auto">
@@ -58,7 +58,7 @@ export const CreateNodeStep2ApiToken = ({
 
                 <Button
                     color="teal"
-                    disabled={!pubKey}
+                    disabled={!secretKey}
                     loading={isCreating}
                     onClick={onCreate}
                     rightSection={<PiArrowRight size={18} />}

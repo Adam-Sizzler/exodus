@@ -191,9 +191,11 @@ func ValidateMihomoCustomParams(protocol string, network string, rawYAML []byte)
 		Up           *string `yaml:"up,omitempty"`
 		Down         *string `yaml:"down,omitempty"`
 		Ports        *string `yaml:"ports,omitempty"`
-		HopInterval  *int    `yaml:"hop-interval,omitempty"`
-		Obfs         *string `yaml:"obfs,omitempty"`
-		ObfsPassword *string `yaml:"obfs-password,omitempty"`
+		HopInterval       *int    `yaml:"hop-interval,omitempty"`
+		Obfs              *string `yaml:"obfs,omitempty"`
+		ObfsPassword      *string `yaml:"obfs-password,omitempty"`
+		ObfsMinPacketSize *int    `yaml:"obfs-min-packet-size,omitempty"`
+		ObfsMaxPacketSize *int    `yaml:"obfs-max-packet-size,omitempty"`
 		// GRPC Transport
 		GrpcOpts *MihomoGRPCTransportCustomParams `yaml:"grpc-opts,omitempty"`
 	}
@@ -219,6 +221,8 @@ func ValidateMihomoCustomParams(protocol string, network string, rawYAML []byte)
 		allowedKeys["hop-interval"] = true
 		allowedKeys["obfs"] = true
 		allowedKeys["obfs-password"] = true
+		allowedKeys["obfs-min-packet-size"] = true
+		allowedKeys["obfs-max-packet-size"] = true
 	}
 
 	if network == "grpc" {
@@ -238,8 +242,8 @@ func ValidateMihomoCustomParams(protocol string, network string, rawYAML []byte)
 		return fmt.Errorf("type validation failed: %w", err)
 	}
 
-	if typed.Obfs != nil && *typed.Obfs != "salamander" {
-		return fmt.Errorf("obfs must be 'salamander'")
+	if typed.Obfs != nil && *typed.Obfs != "salamander" && *typed.Obfs != "gecko" {
+		return fmt.Errorf("obfs must be 'salamander' or 'gecko'")
 	}
 	if typed.PacketEncoding != nil {
 		pe := *typed.PacketEncoding

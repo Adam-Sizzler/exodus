@@ -177,23 +177,21 @@ export const NodeVitalsCard = <
                                 }}
                             />
 
-                            {apiSchema === 'tls' && (
-                                <TextInput
-                                    description={t('base-node-form.api-path-description', {
-                                        defaultValue: 'Path prefix the node listens on (PATH_PREFIX)'
-                                    })}
-                                    key={form.key('apiPath')}
-                                    label={t('base-node-form.api-path', { defaultValue: 'API Path' })}
-                                    leftSection={<TbRoute2 size={16} />}
-                                    placeholder="/"
-                                    required
-                                    size="sm"
-                                    styles={{
-                                        label: { fontWeight: 500 }
-                                    }}
-                                    {...form.getInputProps('apiPath')}
-                                />
-                            )}
+                            <TextInput
+                                description={t('base-node-form.api-path-description', {
+                                    defaultValue: 'Path prefix the node listens on (PATH_PREFIX)'
+                                })}
+                                key={form.key('apiPath')}
+                                label={t('base-node-form.api-path', { defaultValue: 'API Path' })}
+                                leftSection={<TbRoute2 size={16} />}
+                                placeholder="/"
+                                required
+                                size="sm"
+                                styles={{
+                                    label: { fontWeight: 500 }
+                                }}
+                                {...form.getInputProps('apiPath')}
+                            />
                         </Stack>
 
                         <Group align="flex-end" gap="xs">

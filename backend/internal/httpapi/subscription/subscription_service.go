@@ -18,6 +18,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -328,6 +329,10 @@ func sortHosts(hosts []SubscriptionHost) {
 func createFallbackRemarkHosts(remarks []string) []SubscriptionHost {
 	result := make([]SubscriptionHost, 0, len(remarks))
 	for i, remark := range remarks {
+		if host, ok := parseFallbackHostFromRemark(remark, i+1); ok {
+			result = append(result, host)
+			continue
+		}
 		vlessType := "vless"
 		noneSec := "none"
 		tcpNet := "tcp"
@@ -342,4 +347,233 @@ func createFallbackRemarkHosts(remarks []string) []SubscriptionHost {
 		})
 	}
 	return result
+}
+
+func parseFallbackHostFromRemark(remark string, index int) (SubscriptionHost, bool) {
+	trimmed := strings.TrimSpace(remark)
+	if !strings.HasPrefix(trimmed, "{") {
+		return SubscriptionHost{}, false
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil {
+		return SubscriptionHost{}, false
+	}
+
+	address, _ := raw["address"].(string)
+	if address == "" {
+		return SubscriptionHost{}, false
+	}
+
+	var port int
+	switch p := raw["port"].(type) {
+	case float64:
+		port = int(p)
+	case int:
+		port = p
+	case string:
+		port, _ = strconv.Atoi(p)
+	}
+	if port <= 0 || port > 65535 {
+		port = 443
+	}
+
+	finalRemark := ""
+	if r, ok := raw["finalRemark"].(string); ok && r != "" {
+		finalRemark = r
+	} else if r, ok := raw["remark"].(string); ok && r != "" {
+		finalRemark = r
+	} else if meta, ok := raw["metadata"].(map[string]any); ok {
+		if r, ok := meta["remark"].(string); ok && r != "" {
+			finalRemark = r
+		}
+	}
+	if finalRemark == "" {
+		finalRemark = address
+	}
+
+	protocol := "vless"
+	if p, ok := raw["protocol"].(string); ok && p != "" {
+		protocol = p
+	} else if p, ok := raw["inboundType"].(string); ok && p != "" {
+		protocol = p
+	} else if p, ok := raw["type"].(string); ok && p != "" {
+		protocol = p
+	}
+
+	network := "tcp"
+	if n, ok := raw["transport"].(string); ok && n != "" {
+		network = n
+	} else if n, ok := raw["network"].(string); ok && n != "" {
+		network = n
+	} else if n, ok := raw["inboundNetwork"].(string); ok && n != "" {
+		network = n
+	}
+
+	security := "none"
+	if s, ok := raw["security"].(string); ok && s != "" {
+		security = s
+	} else if s, ok := raw["inboundSecurity"].(string); ok && s != "" {
+		security = s
+	} else if s, ok := raw["securityLayer"].(string); ok && s != "" {
+		security = s
+	}
+
+	var path *string
+	if p, ok := raw["path"].(string); ok && p != "" {
+		path = &p
+	} else if to, ok := raw["transportOptions"].(map[string]any); ok {
+		if p, ok := to["path"].(string); ok && p != "" {
+			path = &p
+		} else if p, ok := to["serviceName"].(string); ok && p != "" {
+			path = &p
+		}
+	}
+
+	var hostHeader *string
+	if h, ok := raw["host"].(string); ok && h != "" {
+		hostHeader = &h
+	} else if to, ok := raw["transportOptions"].(map[string]any); ok {
+		if h, ok := to["host"].(string); ok && h != "" {
+			hostHeader = &h
+		} else if h, ok := to["authority"].(string); ok && h != "" {
+			hostHeader = &h
+		}
+	}
+
+	var sni *string
+	if s, ok := raw["sni"].(string); ok && s != "" {
+		sni = &s
+	} else if so, ok := raw["securityOptions"].(map[string]any); ok {
+		if s, ok := so["serverName"].(string); ok && s != "" {
+			sni = &s
+		} else if s, ok := so["sni"].(string); ok && s != "" {
+			sni = &s
+		}
+	}
+
+	var alpn *string
+	if a, ok := raw["alpn"].(string); ok && a != "" {
+		alpn = &a
+	} else if so, ok := raw["securityOptions"].(map[string]any); ok {
+		if a, ok := so["alpn"].(string); ok && a != "" {
+			alpn = &a
+		} else if alist, ok := so["alpn"].([]any); ok {
+			parts := make([]string, 0, len(alist))
+			for _, item := range alist {
+				if s, ok := item.(string); ok && s != "" {
+					parts = append(parts, s)
+				}
+			}
+			if len(parts) > 0 {
+				joined := strings.Join(parts, ",")
+				alpn = &joined
+			}
+		}
+	}
+
+	var fingerprint *string
+	if f, ok := raw["fingerprint"].(string); ok && f != "" {
+		fingerprint = &f
+	} else if so, ok := raw["securityOptions"].(map[string]any); ok {
+		if f, ok := so["fingerprint"].(string); ok && f != "" {
+			fingerprint = &f
+		} else if f, ok := so["client-fingerprint"].(string); ok && f != "" {
+			fingerprint = &f
+		}
+	}
+
+	var credential *string
+	if c, ok := raw["protocolCredential"].(string); ok && c != "" {
+		credential = &c
+	} else if c, ok := raw["password"].(string); ok && c != "" {
+		credential = &c
+	} else if c, ok := raw["uuid"].(string); ok && c != "" {
+		credential = &c
+	} else if po, ok := raw["protocolOptions"].(map[string]any); ok {
+		if c, ok := po["id"].(string); ok && c != "" {
+			credential = &c
+		} else if c, ok := po["password"].(string); ok && c != "" {
+			credential = &c
+		}
+	} else if to, ok := raw["transportOptions"].(map[string]any); ok {
+		if c, ok := to["auth"].(string); ok && c != "" {
+			credential = &c
+		}
+	}
+
+	var finalMask *string
+	if fm, ok := raw["finalMask"]; ok && fm != nil {
+		if fmBytes, err := json.Marshal(fm); err == nil {
+			fmStr := string(fmBytes)
+			finalMask = &fmStr
+		}
+	} else if so, ok := raw["streamOverrides"].(map[string]any); ok {
+		if fm, ok := so["finalMask"]; ok && fm != nil {
+			if fmBytes, err := json.Marshal(fm); err == nil {
+				fmStr := string(fmBytes)
+				finalMask = &fmStr
+			}
+		}
+	}
+
+	var sockoptParams *string
+	if so, ok := raw["sockoptParams"].(string); ok && so != "" {
+		sockoptParams = &so
+	} else if so, ok := raw["streamOverrides"].(map[string]any); ok {
+		if s, ok := so["sockopt"]; ok && s != nil {
+			if soBytes, err := json.Marshal(s); err == nil {
+				soStr := string(soBytes)
+				sockoptParams = &soStr
+			}
+		}
+	}
+
+	var clashMuxParams *string
+	if mux, ok := raw["muxParams"].(string); ok && mux != "" {
+		clashMuxParams = &mux
+	} else if mux, ok := raw["mux"]; ok && mux != nil {
+		if muxBytes, err := json.Marshal(mux); err == nil {
+			muxStr := string(muxBytes)
+			clashMuxParams = &muxStr
+		}
+	}
+
+	var serverDescription *string
+	if co, ok := raw["clientOverrides"].(map[string]any); ok {
+		if sd, ok := co["serverDescription"].(string); ok && sd != "" {
+			serverDescription = &sd
+		}
+	}
+
+	uuidStr := fmt.Sprintf("00000000-0000-0000-0000-00000000%04d", index)
+	if meta, ok := raw["metadata"].(map[string]any); ok {
+		if u, ok := meta["uuid"].(string); ok && u != "" {
+			uuidStr = u
+		}
+	} else if u, ok := raw["uuid"].(string); ok && u != "" {
+		uuidStr = u
+	}
+
+	return SubscriptionHost{
+		UUID:                       uuidStr,
+		Remark:                     finalRemark,
+		Address:                    address,
+		Port:                       port,
+		Path:                       path,
+		SNI:                        sni,
+		Host:                       hostHeader,
+		ALPN:                       alpn,
+		Fingerprint:                fingerprint,
+		SecurityLayer:              security,
+		InboundType:                &protocol,
+		InboundNetwork:             &network,
+		InboundSecurity:            &security,
+		FinalMask:                  finalMask,
+		SockoptParams:              sockoptParams,
+		ClashMuxParams:             clashMuxParams,
+		ServerDescription:          serverDescription,
+		OverrideProtocolCredential: credential != nil,
+		ProtocolCredential:         credential,
+	}, true
 }

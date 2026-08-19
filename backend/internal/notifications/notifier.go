@@ -207,7 +207,37 @@ func (n *Notifier) webhookEnabled() bool {
 		return false
 	}
 	settings := n.cfg.Notifications
-	return settings.WebhookEnabled && len(settings.WebhookURLs) > 0 && strings.TrimSpace(settings.WebhookSecret) != ""
+	return settings.WebhookEnabled && strings.TrimSpace(settings.WebhookSecret) != "" && (len(settings.WebhookURLs) > 0 || len(settings.EventChannels) > 0)
+}
+
+func (n *Notifier) getWebhookURLsForEvent(eventName string) []string {
+	if n == nil || n.cfg == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	var result []string
+
+	for _, u := range n.cfg.Notifications.WebhookURLs {
+		trimmed := strings.TrimSpace(u)
+		if trimmed != "" {
+			if _, ok := seen[trimmed]; !ok {
+				seen[trimmed] = struct{}{}
+				result = append(result, trimmed)
+			}
+		}
+	}
+
+	for _, u := range n.cfg.Notifications.GetAdditionalWebhookURLs(eventName) {
+		trimmed := strings.TrimSpace(u)
+		if trimmed != "" {
+			if _, ok := seen[trimmed]; !ok {
+				seen[trimmed] = struct{}{}
+				result = append(result, trimmed)
+			}
+		}
+	}
+
+	return result
 }
 
 func (n *Notifier) sendWebhook(ctx context.Context, event Event) error {
@@ -218,12 +248,13 @@ func (n *Notifier) sendWebhook(ctx context.Context, event Event) error {
 	timestamp := event.Timestamp
 	signature := hmacSHA256Hex(n.cfg.Notifications.WebhookSecret, payload)
 
+	targetURLs := n.getWebhookURLsForEvent(event.Event)
+	if len(targetURLs) == 0 {
+		return nil
+	}
+
 	var lastErr error
-	for _, rawURL := range n.cfg.Notifications.WebhookURLs {
-		url := strings.TrimSpace(rawURL)
-		if url == "" {
-			continue
-		}
+	for _, url := range targetURLs {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 		if err != nil {
 			lastErr = err

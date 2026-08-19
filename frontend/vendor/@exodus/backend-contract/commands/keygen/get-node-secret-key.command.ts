@@ -16,6 +16,7 @@ export namespace GetNodeSecretKeyCommand {
     export const ResponseSchema = z.object({
         response: z.object({
             secretKey: z.string(),
+            grpcToken: z.string(),
         }),
     });
 

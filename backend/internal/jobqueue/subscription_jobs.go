@@ -11,6 +11,9 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/logger"
+	"exodus/internal/streamexport"
+
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -83,7 +86,7 @@ func StartSubscriptionQueues(ctx context.Context, wg *sync.WaitGroup, db *sql.DB
 			if err := json.Unmarshal(job.Payload, &payload); err != nil {
 				return err
 			}
-			return addSubscriptionRequestRecord(ctx, db, payload)
+			return addSubscriptionRequestRecord(ctx, db, client, cfg, payload)
 		},
 		jobUpsertHwidDevice: func(ctx context.Context, job Job) error {
 			var payload UpsertHwidDevicePayload
@@ -166,7 +169,7 @@ func updateUserSubscription(ctx context.Context, db *sql.DB, payload UpdateUserS
 	return nil
 }
 
-func addSubscriptionRequestRecord(ctx context.Context, db *sql.DB, payload AddSubscriptionRequestRecordPayload) error {
+func addSubscriptionRequestRecord(ctx context.Context, db *sql.DB, client *redis.Client, cfg *config.BackendConfig, payload AddSubscriptionRequestRecordPayload) error {
 	if payload.UserID <= 0 {
 		return nil
 	}
@@ -192,6 +195,20 @@ func addSubscriptionRequestRecord(ctx context.Context, db *sql.DB, payload AddSu
 			  LIMIT 24
 		  )
 	`, payload.UserID, payload.UserID)
+
+	if cfg != nil && cfg.Redis.ExportToStreamEnabled && client != nil {
+		if streamErr := streamexport.ExportSubscriptionRequest(ctx, client, true, cfg.Redis.ExportToStreamMaxLen, streamexport.SubscriptionRequestExport{
+			UserID:          payload.UserID,
+			RequestAt:       time.Now().UTC(),
+			SSRResponseType: srrType,
+			RequestIP:       payload.RequestIP,
+			UserAgent:       payload.UserAgent,
+			SRRRuleName:     payload.SRRRuleName,
+		}); streamErr != nil && cfg.Logger != nil {
+			cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("Failed to export subscription request to Redis stream", "error", streamErr)
+		}
+	}
+
 	return err
 }
 

@@ -18,6 +18,13 @@ func WithPanelAuth(db *sql.DB, cfg *config.BackendConfig, next http.Handler) htt
 			return
 		}
 
+		if principal != nil && principal.TokenType == "jwt_api_token" {
+			if !requireAPITokenScope(principal, r, cfg) {
+				shared.SendError(w, http.StatusForbidden, "Forbidden: insufficient API token scope", nil, cfg)
+				return
+			}
+		}
+
 		ctx := context.WithValue(r.Context(), authPrincipalContextKey, principal)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -55,7 +62,7 @@ func authenticateRequest(r *http.Request, db *sql.DB, cfg *config.BackendConfig)
 func RequireAdminRole(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := r.Context().Value(authPrincipalContextKey).(*AuthPrincipal)
-		if !ok || principal == nil {
+		if !ok || principal == nil || !strings.EqualFold(principal.Role, "ADMIN") {
 			shared.SendError(w, http.StatusForbidden, "forbidden", nil, nil)
 			return
 		}
@@ -66,7 +73,7 @@ func RequireAdminRole(next http.HandlerFunc) http.HandlerFunc {
 func RequireAdminRoleHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		principal, ok := r.Context().Value(authPrincipalContextKey).(*AuthPrincipal)
-		if !ok || principal == nil {
+		if !ok || principal == nil || !strings.EqualFold(principal.Role, "ADMIN") {
 			shared.SendError(w, http.StatusForbidden, "forbidden", nil, nil)
 			return
 		}

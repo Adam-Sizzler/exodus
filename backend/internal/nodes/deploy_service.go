@@ -107,6 +107,15 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 				BlockedPorts: normalizePortSlice(pluginConfig.EgressFilter.BlockedPorts),
 			},
 		}
+		if pluginConfig.PreStart.Enabled {
+			modules.PreStart.Enabled = true
+			if pluginConfig.PreStart.CleanupSockets.Enabled && len(pluginConfig.PreStart.CleanupSockets.Files) > 0 {
+				modules.PreStart.CleanupSockets = &deployCleanupSocketsBlock{
+					Enabled: true,
+					Files:   normalizeStringSlice(pluginConfig.PreStart.CleanupSockets.Files),
+				}
+			}
+		}
 		if len(haproxyInboundTags) > 0 {
 			haproxyUsers, haproxyEnabled, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid, haproxyInboundTags)
 			if usersErr != nil {

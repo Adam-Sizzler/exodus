@@ -22,6 +22,17 @@ type deployModulesTaskBlock struct {
 	HaproxyUsers   []deployHaproxyUserItem  `json:"haproxy_users,omitempty"`
 	IngressFilter  deployIngressFilterBlock `json:"ingress_filter"`
 	EgressFilter   deployEgressFilterBlock  `json:"egress_filter"`
+	PreStart       deployPreStartBlock      `json:"pre_start"`
+}
+
+type deployPreStartBlock struct {
+	Enabled        bool                       `json:"enabled"`
+	CleanupSockets *deployCleanupSocketsBlock `json:"cleanupSockets,omitempty"`
+}
+
+type deployCleanupSocketsBlock struct {
+	Enabled bool     `json:"enabled"`
+	Files   []string `json:"files,omitempty"`
 }
 
 type deployHaproxyUserItem struct {
@@ -61,6 +72,13 @@ type activeNodePluginRuntimeConfig struct {
 	HaproxyAuth struct {
 		InboundTags []string `json:"inboundTags"`
 	} `json:"haproxyAuth"`
+	PreStart struct {
+		Enabled        bool `json:"enabled"`
+		CleanupSockets struct {
+			Enabled bool     `json:"enabled"`
+			Files   []string `json:"files"`
+		} `json:"cleanupSockets"`
+	} `json:"preStart"`
 }
 
 type deployTarget struct {

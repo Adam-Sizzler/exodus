@@ -188,37 +188,38 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 }
 
 // --- API Scopes ----------------------------------------------------------
-func requireAPITokenScope(principal *AuthPrincipal, r *http.Request) bool {
+func requireAPITokenScope(principal *AuthPrincipal, r *http.Request, cfg *config.BackendConfig) bool {
 	if principal == nil {
 		return false
 	}
 	if principal.TokenType != "jwt_api_token" {
-		return true // UI sessions bypass API scope validation
+		return true // UI admin sessions bypass API scope validation
 	}
 	if len(principal.Scopes) == 0 {
 		return false
 	}
-
-	resource, expectedScope, kind := apiTokenScopeForRequest(r.Method, r.URL.Path)
-	if resource == "" || expectedScope == "" {
-		return false
-	}
-
-	if hasScope(principal.Scopes, expectedScope) {
+	if hasScope(principal.Scopes, "*") {
 		return true
 	}
 
-	if kind == "item" && strings.HasSuffix(expectedScope, ":write") {
-		wildcardScope := resource + ":write"
-		if hasScope(principal.Scopes, wildcardScope) {
-			return true
-		}
+	resource, action, specificEndpointScope := apiTokenScopeForRequest(r.Method, r.URL.Path, cfg)
+	if resource == "" {
+		return false
 	}
-	if kind == "item" && strings.HasSuffix(expectedScope, ":read") {
-		wildcardScope := resource + ":read"
-		if hasScope(principal.Scopes, wildcardScope) {
-			return true
-		}
+
+	// 1. Resource wildcard check (e.g. "users:*", "users")
+	if hasScope(principal.Scopes, resource+":*") || hasScope(principal.Scopes, resource) {
+		return true
+	}
+
+	// 2. Action scope check (e.g. "users:read", "users:write")
+	if action != "" && hasScope(principal.Scopes, resource+":"+action) {
+		return true
+	}
+
+	// 3. Specific endpoint scope (e.g. "users:list", "users:create", "system:stats", "keygen:read")
+	if specificEndpointScope != "" && hasScope(principal.Scopes, specificEndpointScope) {
+		return true
 	}
 
 	return false
@@ -243,58 +244,293 @@ func normalizeAPITokenPrincipalScopes(scopes []string) []string {
 
 func hasScope(scopes []string, expected string) bool {
 	for _, scope := range scopes {
-		if strings.EqualFold(scope, expected) {
+		scope = strings.TrimSpace(scope)
+		if scope == "*" || strings.EqualFold(scope, expected) {
 			return true
 		}
 	}
 	return false
 }
 
-func apiTokenScopeForRequest(method, requestPath string) (resource, endpointScope, kind string) {
+func apiTokenScopeForRequest(method, requestPath string, cfg *config.BackendConfig) (resource, action, specificScope string) {
 	clean := cleanPath(requestPath)
+	if cfg != nil && cfg.Backend.Trimmed() != "" {
+		clean = strings.TrimPrefix(clean, cfg.Backend.Trimmed())
+	}
+	if idx := strings.Index(clean, "/api/"); idx != -1 {
+		clean = clean[idx:]
+	}
 	if !strings.HasPrefix(clean, "/api/") {
 		return "", "", ""
 	}
-	trimmed := clean[len("/api/"):]
+	trimmed := strings.TrimPrefix(clean, "/api/")
+
+	isRead := method == http.MethodGet || method == http.MethodHead
+	action = "write"
+	if isRead {
+		action = "read"
+	}
 
 	switch {
-	case strings.HasPrefix(trimmed, "hosts/") || trimmed == "hosts":
-		return genericCRUDScope("hosts", method, clean, "/api/hosts")
-	case strings.HasPrefix(trimmed, "internal-squads/") || trimmed == "internal-squads":
-		return genericCRUDScope("internal_squads", method, clean, "/api/internal-squads")
-	case strings.HasPrefix(trimmed, "subscription-templates/") || trimmed == "subscription-templates":
-		return genericCRUDScope("subscription_templates", method, clean, "/api/subscription-templates")
-	case strings.HasPrefix(trimmed, "system/metadata") || trimmed == "system/metadata":
-		return genericCRUDScope("system_metadata", method, clean, "/api/system/metadata")
-	case strings.HasPrefix(trimmed, "nodes/") || trimmed == "nodes":
-		return genericCRUDScope("nodes", method, clean, "/api/nodes")
-	case strings.HasPrefix(trimmed, "config-profiles/") || trimmed == "config-profiles":
-		return genericCRUDScope("config_profiles", method, clean, "/api/config-profiles")
-	case strings.HasPrefix(trimmed, "subscription-connections/") || trimmed == "subscription-connections":
-		return genericCRUDScope("subscription_connections", method, clean, "/api/subscription-connections")
-	case strings.HasPrefix(trimmed, "squads/") || trimmed == "squads":
-		return genericCRUDScope("squads", method, clean, "/api/squads")
-	default:
-		return "", "", ""
-	}
-}
+	case strings.HasPrefix(trimmed, "users"):
+		resource = "users"
+		if isRead {
+			if trimmed == "users" || trimmed == "users/" {
+				specificScope = "users:list"
+			} else {
+				specificScope = "users:get"
+			}
+		} else {
+			if method == http.MethodPost && (trimmed == "users" || trimmed == "users/") {
+				specificScope = "users:create"
+			} else if method == http.MethodDelete {
+				specificScope = "users:delete"
+			} else {
+				specificScope = "users:update"
+			}
+		}
 
-func crudEndpointScope(resource, method, kind string) (string, string, string) {
-	switch method {
-	case http.MethodGet, http.MethodHead:
-		return resource, resource + ":read", kind
-	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
-		return resource, resource + ":write", kind
-	default:
-		return "", "", ""
-	}
-}
+	case strings.HasPrefix(trimmed, "nodes"):
+		resource = "nodes"
+		if isRead {
+			if trimmed == "nodes" || trimmed == "nodes/" {
+				specificScope = "nodes:list"
+			} else {
+				specificScope = "nodes:get"
+			}
+		} else {
+			if method == http.MethodPost && (trimmed == "nodes" || trimmed == "nodes/") {
+				specificScope = "nodes:create"
+			} else if method == http.MethodDelete {
+				specificScope = "nodes:delete"
+			} else {
+				specificScope = "nodes:update"
+			}
+		}
 
-func genericCRUDScope(resource, method, requestPath, collectionPath string) (string, string, string) {
-	if requestPath == collectionPath || requestPath == collectionPath+"/" {
-		return crudEndpointScope(resource, method, "collection")
+	case strings.HasPrefix(trimmed, "hosts"):
+		resource = "hosts"
+		if isRead {
+			if trimmed == "hosts" || trimmed == "hosts/" {
+				specificScope = "hosts:list"
+			} else {
+				specificScope = "hosts:get"
+			}
+		} else {
+			if method == http.MethodPost && (trimmed == "hosts" || trimmed == "hosts/") {
+				specificScope = "hosts:create"
+			} else if method == http.MethodDelete {
+				specificScope = "hosts:delete"
+			} else {
+				specificScope = "hosts:update"
+			}
+		}
+
+	case strings.HasPrefix(trimmed, "subscription-connections"):
+		resource = "subscription-connections"
+		if isRead {
+			if trimmed == "subscription-connections" || trimmed == "subscription-connections/" {
+				specificScope = "subscription-connections:list"
+			} else {
+				specificScope = "subscription-connections:get"
+			}
+		} else {
+			if method == http.MethodPost && (trimmed == "subscription-connections" || trimmed == "subscription-connections/") {
+				specificScope = "subscription-connections:create"
+			} else if method == http.MethodDelete {
+				specificScope = "subscription-connections:delete"
+			} else {
+				specificScope = "subscription-connections:update"
+			}
+		}
+
+	case strings.HasPrefix(trimmed, "config-profiles") || strings.HasPrefix(trimmed, "snippets"):
+		resource = "config-profiles"
+		if isRead {
+			specificScope = "config-profiles:read"
+		} else {
+			specificScope = "config-profiles:write"
+		}
+
+	case strings.HasPrefix(trimmed, "subscription-page-configs"):
+		resource = "subscription-page-configs"
+		if isRead {
+			if trimmed == "subscription-page-configs" || trimmed == "subscription-page-configs/" {
+				specificScope = "subscription-page-configs:list"
+			} else {
+				specificScope = "subscription-page-configs:get"
+			}
+		} else {
+			if method == http.MethodPost && (trimmed == "subscription-page-configs" || trimmed == "subscription-page-configs/") {
+				specificScope = "subscription-page-configs:create"
+			} else if method == http.MethodDelete {
+				specificScope = "subscription-page-configs:delete"
+			} else {
+				specificScope = "subscription-page-configs:update"
+			}
+		}
+
+	case strings.HasPrefix(trimmed, "subscriptions"):
+		resource = "subscriptions"
+		if isRead {
+			specificScope = "subscriptions:read"
+		} else {
+			specificScope = "subscriptions:write"
+		}
+
+	case strings.HasPrefix(trimmed, "subscription-settings"):
+		resource = "subscription-settings"
+		if isRead {
+			specificScope = "subscription-settings:read"
+		} else {
+			specificScope = "subscription-settings:write"
+		}
+
+	case strings.HasPrefix(trimmed, "subscription-templates"):
+		resource = "subscription-template"
+		if isRead {
+			if trimmed == "subscription-templates" || trimmed == "subscription-templates/" {
+				specificScope = "subscription-template:list"
+			} else {
+				specificScope = "subscription-template:get"
+			}
+		} else {
+			if method == http.MethodPost && (trimmed == "subscription-templates" || trimmed == "subscription-templates/") {
+				specificScope = "subscription-template:create"
+			} else if method == http.MethodDelete {
+				specificScope = "subscription-template:delete"
+			} else {
+				specificScope = "subscription-template:update"
+			}
+		}
+
+	case strings.HasPrefix(trimmed, "subscription-request-history"):
+		resource = "subscription-request-history"
+		specificScope = "subscription-request-history:read"
+
+	case strings.HasPrefix(trimmed, "metadata"):
+		resource = "metadata"
+		if isRead {
+			if strings.HasPrefix(trimmed, "metadata/user") {
+				specificScope = "metadata:get-user"
+			} else {
+				specificScope = "metadata:get-node"
+			}
+		} else {
+			if strings.HasPrefix(trimmed, "metadata/user") {
+				specificScope = "metadata:upsert-user"
+			} else {
+				specificScope = "metadata:upsert-node"
+			}
+		}
+
+	case strings.HasPrefix(trimmed, "node-plugins"):
+		resource = "node-plugins"
+		if isRead {
+			specificScope = "node-plugins:read"
+		} else {
+			specificScope = "node-plugins:write"
+		}
+
+	case strings.HasPrefix(trimmed, "hwid"):
+		resource = "hwid-user-devices"
+		if isRead {
+			specificScope = "hwid-user-devices:read"
+		} else {
+			specificScope = "hwid-user-devices:write"
+		}
+
+	case strings.HasPrefix(trimmed, "bandwidth-stats"):
+		resource = "bandwidth-stats"
+		specificScope = "bandwidth-stats:read"
+
+	case strings.HasPrefix(trimmed, "srs-lists"):
+		resource = "srs-lists"
+		if isRead {
+			specificScope = "srs-lists:read"
+		} else {
+			specificScope = "srs-lists:write"
+		}
+
+	case strings.HasPrefix(trimmed, "internal-squads"):
+		resource = "internal-squads"
+		if isRead {
+			specificScope = "internal-squads:read"
+		} else {
+			specificScope = "internal-squads:write"
+		}
+
+	case strings.HasPrefix(trimmed, "external-squads"):
+		resource = "external-squads"
+		if isRead {
+			specificScope = "external-squads:read"
+		} else {
+			specificScope = "external-squads:write"
+		}
+
+	case strings.HasPrefix(trimmed, "squad"),
+		strings.HasPrefix(trimmed, "inbound-assignments"),
+		strings.HasPrefix(trimmed, "inbounds-with-profiles"):
+		resource = "squads"
+		if isRead {
+			specificScope = "squads:read"
+		} else {
+			specificScope = "squads:write"
+		}
+
+	case strings.HasPrefix(trimmed, "infra-billing"):
+		resource = "infra-billing"
+		if isRead {
+			specificScope = "infra-billing:read"
+		} else {
+			specificScope = "infra-billing:write"
+		}
+
+	case strings.HasPrefix(trimmed, "keygen"):
+		resource = "keygen"
+		specificScope = "keygen:read"
+
+	case strings.HasPrefix(trimmed, "passkeys"):
+		resource = "passkeys"
+		if isRead {
+			specificScope = "passkeys:read"
+		} else {
+			specificScope = "passkeys:write"
+		}
+
+	case strings.HasPrefix(trimmed, "connections"):
+		resource = "connections"
+		if isRead {
+			specificScope = "connections:read"
+		} else {
+			specificScope = "connections:write"
+		}
+
+	case strings.HasPrefix(trimmed, "system"):
+		resource = "system"
+		if isRead {
+			specificScope = "system:stats"
+		} else {
+			specificScope = "system:write"
+		}
+
+	case strings.HasPrefix(trimmed, "tokens"), strings.HasPrefix(trimmed, "exodus-settings"):
+		resource = "tokens"
+		if isRead {
+			specificScope = "tokens:read"
+		} else {
+			specificScope = "tokens:write"
+		}
+
+	default:
+		parts := strings.Split(trimmed, "/")
+		if len(parts) > 0 && parts[0] != "" {
+			resource = parts[0]
+			specificScope = resource + ":" + action
+		}
 	}
-	return crudEndpointScope(resource, method, "item")
+
+	return resource, action, specificScope
 }
 
 // --- Notifications & Emitters ---------------------------------------------

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NodePluginSchema = exports.HaproxyAuthPluginSchema = exports.EgressFilterPluginSchema = exports.IngressFilterPluginSchema = exports.SharedListSchema = void 0;
+exports.NodePluginSchema = exports.PreStartPluginSchema = exports.HaproxyAuthPluginSchema = exports.EgressFilterPluginSchema = exports.IngressFilterPluginSchema = exports.SharedListSchema = void 0;
 const zod_1 = require("zod");
 const DOCS_LINK = `\n\n[📖 Documentation](https://docs.exodus.dev/docs/learn/node-plugins)`;
 const IpCidrOrExtSchema = zod_1.z
@@ -65,6 +65,34 @@ exports.HaproxyAuthPluginSchema = zod_1.z.object({
         markdownDescription: `List of inbound tags that participate in HAProxy authentication. Use an empty array to disable HAProxy authentication for all inbounds. Use "*" to include every supported inbound assigned to the node.${DOCS_LINK}`,
     }),
 });
+exports.PreStartPluginSchema = zod_1.z.object({
+    enabled: zod_1.z
+        .boolean()
+        .default(false)
+        .meta({
+        title: 'Enabled',
+        markdownDescription: `Enables the pre-start stage. All enabled sections below run every time before the core process starts — on node startup, on core restart, and after any configuration change that triggers a core reload. If a section fails, the failure is logged and the core still starts.${DOCS_LINK}`,
+    }),
+    cleanupSockets: zod_1.z
+        .object({
+        enabled: zod_1.z.boolean().meta({
+            title: 'Enable socket cleanup',
+            markdownDescription: `Removes stale unix socket files left behind by a previous core process that did not shut down cleanly. Only entries that are actually unix sockets or socket files are removed.${DOCS_LINK}`,
+        }),
+        files: zod_1.z
+            .array(zod_1.z.string().min(1).refine((v) => v.startsWith('/'), { message: 'Path must be absolute (start with "/")' }))
+            .max(64, { message: 'No more than 64 entries allowed' })
+            .meta({
+            title: 'Files',
+            markdownDescription: `Absolute paths to socket files. Glob patterns are supported (\`*\`, \`?\`, \`[…]\`), for example \`/dev/shm/*.sock\`. Paths that do not exist are skipped silently.${DOCS_LINK}`,
+        }),
+    })
+        .optional()
+        .meta({
+        title: 'Cleanup Sockets',
+        markdownDescription: `Stale unix socket removal before the core starts.${DOCS_LINK}`,
+    }),
+});
 exports.NodePluginSchema = zod_1.z.object({
     sharedLists: zod_1.z
         .array(exports.SharedListSchema)
@@ -85,5 +113,9 @@ exports.NodePluginSchema = zod_1.z.object({
     haproxyAuth: exports.HaproxyAuthPluginSchema.optional().meta({
         title: 'HAProxy Auth',
         markdownDescription: `HAProxy Auth Plugin configuration. Optional.${DOCS_LINK}`,
+    }),
+    preStart: exports.PreStartPluginSchema.optional().meta({
+        title: 'Pre-Start',
+        markdownDescription: `Pre-Start Plugin configuration. Optional.${DOCS_LINK}`,
     }),
 });

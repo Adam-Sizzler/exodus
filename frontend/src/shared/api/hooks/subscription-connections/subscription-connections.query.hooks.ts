@@ -139,15 +139,15 @@ export const deleteSubscriptionConnectionResponseSchema = z.object({
     })
 })
 
-const getSubscriptionConnectionsPubKeyResponseSchema = z.object({
+const getSubscriptionConnectionsSecretKeyResponseSchema = z.object({
     response: z.object({
-        pubKey: z.string(),
-        grpcToken: z.string().optional().default('')
+        secretKey: z.string(),
+        grpcToken: z.string()
     })
 })
 
 export type SubscriptionConnectionKeygenResponse = z.infer<
-    typeof getSubscriptionConnectionsPubKeyResponseSchema
+    typeof getSubscriptionConnectionsSecretKeyResponseSchema
 >['response']
 export type SubscriptionConnectionResponse = z.infer<typeof subscriptionConnectionNodeSchema>
 
@@ -158,7 +158,7 @@ export const subscriptionConnectionsQueryKeys = createQueryKeys('subscriptionCon
     getNode: (route: GetNodeCommand.RequestParam) => ({
         queryKey: [route]
     }),
-    getPubKey: {
+    getSecretKey: {
         queryKey: null
     },
     getAllTags: {
@@ -190,17 +190,17 @@ export const useGetSubscriptionConnection = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Subscription Connection')
 })
 
-export const useGetSubscriptionConnectionsPubKey = createGetQueryHook({
+export const useGetSubscriptionConnectionsSecretKey = createGetQueryHook({
     endpoint: '/api/keygen',
-    responseSchema: getSubscriptionConnectionsPubKeyResponseSchema,
-    getQueryKey: () => subscriptionConnectionsQueryKeys.getPubKey.queryKey,
+    responseSchema: getSubscriptionConnectionsSecretKeyResponseSchema,
+    getQueryKey: () => subscriptionConnectionsQueryKeys.getSecretKey.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,
         refetchOnMount: true,
         staleTime: sToMs(5)
     },
 
-    errorHandler: (error) => errorHandler(error, 'Get Subscription Connection PubKey')
+    errorHandler: (error) => errorHandler(error, 'Get Subscription Connection Secret Key')
 })
 
 export const useGetSubscriptionConnectionsTags = createGetQueryHook({

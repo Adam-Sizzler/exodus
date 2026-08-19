@@ -139,12 +139,21 @@ func SeedDefaults(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig
 
 	// Step 12: Verify Admin User
 	fmt.Println(divider)
-	fmt.Println("◐ [12/12] Verify Admin User")
+	fmt.Println("◐ [12/13] Verify Admin User")
 	if err := ensureSingleAdmin(ctx, tx, cfg); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
-	fmt.Println("✔ [12/12] Verify Admin User")
+	fmt.Println("✔ [12/13] Verify Admin User")
+
+	// Step 13: Verify and Clean API Tokens
+	fmt.Println(divider)
+	fmt.Println("◐ [13/13] Verify and Clean API Tokens")
+	if err := ensureValidAPITokens(ctx, tx, cfg); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	fmt.Println("✔ [13/13] Verify and Clean API Tokens")
 	fmt.Println(divider)
 
 	if err := tx.Commit(); err != nil {

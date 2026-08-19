@@ -17,7 +17,7 @@ interface IProps {
     onCreateNode: () => void
     onPrev: () => void
     port: number
-    pubKey?: SubscriptionConnectionKeygenResponse
+    secretKey?: SubscriptionConnectionKeygenResponse
 }
 
 export const CreateNodeStep2ConfigProfiles = ({
@@ -26,7 +26,7 @@ export const CreateNodeStep2ConfigProfiles = ({
     onCreateNode,
     onPrev,
     port,
-    pubKey
+    secretKey
 }: IProps) => {
     const { t } = useTranslation()
 
@@ -93,7 +93,7 @@ export const CreateNodeStep2ConfigProfiles = ({
             </Stack>
 
             <Stack gap="xs" mt="auto">
-                <CopyDockerComposeWidget port={port} pubKey={pubKey} />
+                <CopyDockerComposeWidget port={port} secretKey={secretKey} />
 
                 <Group justify="space-between">
                     <Button

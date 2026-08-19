@@ -9,7 +9,7 @@ interface IProps {
     port?: number
     apiPath?: string
     apiSchema?: 'mtls' | 'tls'
-    pubKey: SubscriptionConnectionKeygenResponse | undefined
+    secretKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
 const normalizePath = (value?: string) => {
@@ -20,15 +20,15 @@ const normalizePath = (value?: string) => {
     return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`
 }
 
-export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IProps) => {
+export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, secretKey }: IProps) => {
     const { t } = useTranslation()
 
-    if (!pubKey) {
+    if (!secretKey) {
         return <Skeleton height={78} />
     }
 
     const grpcPath = normalizePath(apiPath)
-    const normalizedToken = (pubKey.grpcToken ?? '').trim()
+    const normalizedToken = (secretKey.grpcToken ?? '').trim()
     const subPort = 3010
     const grpcPort = port ?? 2222
 
@@ -37,7 +37,7 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IP
     const composeAuth =
         apiSchema === 'tls'
             ? `\n      - SUB_GRPC_TOKEN=${normalizedToken}`
-            : `\n      - SUB_SECRET_KEY=${pubKey.pubKey.trimEnd()}`
+            : `\n      - SUB_SECRET_KEY=${secretKey.secretKey.trimEnd()}`
 
     const composePorts =
         apiSchema === 'tls' ? '' : `\n    ports:\n      - \"${grpcPort}:${grpcPort}\"`

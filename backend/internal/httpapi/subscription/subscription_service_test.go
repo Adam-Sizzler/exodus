@@ -1,6 +1,8 @@
 package subscription
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -917,3 +919,195 @@ func TestBuildSubscriptionLinksAndResolvedProxies(t *testing.T) {
 		t.Fatalf("unexpected resolved proxy: %+v", resolved[3])
 	}
 }
+
+func TestCreateFallbackRemarkHostsWithRawJSON(t *testing.T) {
+	// Case 1: Plain text remark -> dummy host 0.0.0.0:1
+	// Case 2: ResolvedProxyConfig JSON -> parsed as real proxy host
+	// Case 3: RawHost JSON -> parsed as real proxy host
+	// Case 4: Malformed JSON starting with { -> dummy host 0.0.0.0:1
+	// Case 5: JSON without address -> dummy host 0.0.0.0:1
+	resolvedProxyJSON := `{
+		"finalRemark": "Backup-VLESS",
+		"address": "backup.example.com",
+		"port": 8443,
+		"protocol": "vless",
+		"protocolOptions": {
+			"id": "11111111-2222-3333-4444-555555555555"
+		},
+		"transport": "ws",
+		"transportOptions": {
+			"path": "/vless-ws",
+			"host": "ws.example.com"
+		},
+		"security": "tls",
+		"securityOptions": {
+			"serverName": "sni.example.com",
+			"alpn": ["h2", "http/1.1"],
+			"fingerprint": "chrome"
+		}
+	}`
+
+	rawHostJSON := `{
+		"remark": "Direct-Trojan",
+		"address": "trojan.example.com",
+		"port": 443,
+		"protocol": "trojan",
+		"password": "trojan-password",
+		"transport": "tcp",
+		"security": "tls",
+		"sni": "trojan.sni.com"
+	}`
+
+	remarks := []string{
+		"Simple Text Remark",
+		resolvedProxyJSON,
+		rawHostJSON,
+		"{not-valid-json",
+		`{"remark": "No Address"}`,
+	}
+
+	hosts := createFallbackRemarkHosts(remarks)
+	if len(hosts) != 5 {
+		t.Fatalf("expected 5 hosts, got %d", len(hosts))
+	}
+
+	// Host 0: simple text
+	if hosts[0].Address != "0.0.0.0" || hosts[0].Port != 1 || hosts[0].Remark != "Simple Text Remark" {
+		t.Errorf("host 0: expected 0.0.0.0:1, got %s:%d (remark: %s)", hosts[0].Address, hosts[0].Port, hosts[0].Remark)
+	}
+
+	// Host 1: ResolvedProxyConfig JSON
+	if hosts[1].Address != "backup.example.com" || hosts[1].Port != 8443 {
+		t.Errorf("host 1: expected backup.example.com:8443, got %s:%d", hosts[1].Address, hosts[1].Port)
+	}
+	if hosts[1].Remark != "Backup-VLESS" {
+		t.Errorf("host 1: expected remark 'Backup-VLESS', got %s", hosts[1].Remark)
+	}
+	if hosts[1].InboundType == nil || *hosts[1].InboundType != "vless" {
+		t.Errorf("host 1: expected inboundType 'vless', got %v", hosts[1].InboundType)
+	}
+	if hosts[1].InboundNetwork == nil || *hosts[1].InboundNetwork != "ws" {
+		t.Errorf("host 1: expected inboundNetwork 'ws', got %v", hosts[1].InboundNetwork)
+	}
+	if hosts[1].InboundSecurity == nil || *hosts[1].InboundSecurity != "tls" {
+		t.Errorf("host 1: expected inboundSecurity 'tls', got %v", hosts[1].InboundSecurity)
+	}
+	if hosts[1].Path == nil || *hosts[1].Path != "/vless-ws" {
+		t.Errorf("host 1: expected path '/vless-ws', got %v", hosts[1].Path)
+	}
+	if hosts[1].Host == nil || *hosts[1].Host != "ws.example.com" {
+		t.Errorf("host 1: expected host 'ws.example.com', got %v", hosts[1].Host)
+	}
+	if hosts[1].SNI == nil || *hosts[1].SNI != "sni.example.com" {
+		t.Errorf("host 1: expected sni 'sni.example.com', got %v", hosts[1].SNI)
+	}
+	if hosts[1].ALPN == nil || *hosts[1].ALPN != "h2,http/1.1" {
+		t.Errorf("host 1: expected alpn 'h2,http/1.1', got %v", hosts[1].ALPN)
+	}
+	if hosts[1].Fingerprint == nil || *hosts[1].Fingerprint != "chrome" {
+		t.Errorf("host 1: expected fingerprint 'chrome', got %v", hosts[1].Fingerprint)
+	}
+	if hosts[1].ProtocolCredential == nil || *hosts[1].ProtocolCredential != "11111111-2222-3333-4444-555555555555" {
+		t.Errorf("host 1: expected credential '11111111-2222-3333-4444-555555555555', got %v", hosts[1].ProtocolCredential)
+	}
+
+	// Host 2: RawHost JSON
+	if hosts[2].Address != "trojan.example.com" || hosts[2].Port != 443 {
+		t.Errorf("host 2: expected trojan.example.com:443, got %s:%d", hosts[2].Address, hosts[2].Port)
+	}
+	if hosts[2].Remark != "Direct-Trojan" {
+		t.Errorf("host 2: expected remark 'Direct-Trojan', got %s", hosts[2].Remark)
+	}
+	if hosts[2].InboundType == nil || *hosts[2].InboundType != "trojan" {
+		t.Errorf("host 2: expected inboundType 'trojan', got %v", hosts[2].InboundType)
+	}
+	if hosts[2].ProtocolCredential == nil || *hosts[2].ProtocolCredential != "trojan-password" {
+		t.Errorf("host 2: expected credential 'trojan-password', got %v", hosts[2].ProtocolCredential)
+	}
+
+	// Host 3: Malformed JSON -> dummy 0.0.0.0:1
+	if hosts[3].Address != "0.0.0.0" || hosts[3].Port != 1 {
+		t.Errorf("host 3: expected 0.0.0.0:1, got %s:%d", hosts[3].Address, hosts[3].Port)
+	}
+
+	// Host 4: Missing address -> dummy 0.0.0.0:1
+	if hosts[4].Address != "0.0.0.0" || hosts[4].Port != 1 {
+		t.Errorf("host 4: expected 0.0.0.0:1, got %s:%d", hosts[4].Address, hosts[4].Port)
+	}
+}
+
+func TestBuildResponseHeadersWithCustomResponseHeaders(t *testing.T) {
+	user := SubscriptionUser{
+		UUID:             "11111111-2222-3333-4444-555555555555",
+		TID:              42,
+		Username:         "alice",
+		ShortUUID:        "alice-short",
+		Status:           "ACTIVE",
+		UsedTrafficBytes: 1024 * 1024 * 100,      // 100MB
+		TrafficLimitBytes: 1024 * 1024 * 1024 * 5, // 5GB
+		ExpireAt:         time.Now().Add(48 * time.Hour),
+	}
+
+	settings := SubscriptionSettingsParsed{
+		CustomResponseHeaders: map[string]string{
+			"profile-title":           "exEncodeBase64:{{USERNAME}} VIP",
+			"support-url":             "https://support.example.com",
+			"profile-update-interval": "6",
+			"x-custom-brand":          "Exodus-Edge",
+		},
+		ResponseHeaders: map[string]string{
+			"x-squad-zone": "eu-central",
+		},
+		ResponseHeadersRemove: []string{
+			"support-url",
+		},
+		HwidSettings: HwidSettings{
+			Enabled: true,
+		},
+	}
+
+	headers := buildResponseHeaders(context.Background(), nil, user, settings, "application/json")
+
+	// 1. Check content-disposition
+	if headers["content-disposition"] != "attachment; filename=alice" {
+		t.Errorf("expected content-disposition 'attachment; filename=alice', got %s", headers["content-disposition"])
+	}
+
+	// 2. Check x-hwid-active
+	if headers["x-hwid-active"] != "true" {
+		t.Errorf("expected x-hwid-active 'true', got %s", headers["x-hwid-active"])
+	}
+
+	// 3. Check profile-title base64 encoded "alice VIP"
+	expectedTitleEncoded := "base64:" + base64.StdEncoding.EncodeToString([]byte("alice VIP"))
+	if headers["profile-title"] != expectedTitleEncoded {
+		t.Errorf("expected profile-title %s, got %s", expectedTitleEncoded, headers["profile-title"])
+	}
+
+	// 4. Check profile-update-interval
+	if headers["profile-update-interval"] != "6" {
+		t.Errorf("expected profile-update-interval '6', got %s", headers["profile-update-interval"])
+	}
+
+	// 5. Check x-custom-brand
+	if headers["x-custom-brand"] != "Exodus-Edge" {
+		t.Errorf("expected x-custom-brand 'Exodus-Edge', got %s", headers["x-custom-brand"])
+	}
+
+	// 6. Check x-squad-zone
+	if headers["x-squad-zone"] != "eu-central" {
+		t.Errorf("expected x-squad-zone 'eu-central', got %s", headers["x-squad-zone"])
+	}
+
+	// 7. Check support-url removed by ResponseHeadersRemove
+	if _, exists := headers["support-url"]; exists {
+		t.Errorf("expected support-url to be removed, but got %s", headers["support-url"])
+	}
+
+	// 8. Check subscription-userinfo
+	if !strings.Contains(headers["subscription-userinfo"], "download=") || !strings.Contains(headers["subscription-userinfo"], "total=") {
+		t.Errorf("unexpected subscription-userinfo: %s", headers["subscription-userinfo"])
+	}
+}
+
+

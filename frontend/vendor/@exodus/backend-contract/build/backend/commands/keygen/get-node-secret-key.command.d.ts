@@ -6,6 +6,7 @@ export declare namespace GetNodeSecretKeyCommand {
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             secretKey: z.ZodString;
+            grpcToken: z.ZodString;
         }, z.core.$strip>;
     }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;

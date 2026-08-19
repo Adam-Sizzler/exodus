@@ -37,7 +37,7 @@ export interface ModalInternalStates {
     EDIT_NODE_BY_UUID_MODAL: {
         generatedCredentials?: {
             grpcToken?: string
-            pubKey: string
+            secretKey: string
         }
         nodeUuid: string
     }

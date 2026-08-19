@@ -349,7 +349,7 @@ func getHostsForUserWithOptions(ctx context.Context, dbConn *sql.DB, user Subscr
 	query := fmt.Sprintf(`
 		SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
 			   h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-			   h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.is_disabled,
+			   h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.final_mask, h.is_disabled,
 			   h.server_description, h.override_protocol_credential, h.protocol_credential, h.shuffle_host,
 			   h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
 			   h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
@@ -391,7 +391,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, singboxCustomParams, mihomoCustomParams, sockoptParams, serverDescription, protocolCredential sql.NullString
+	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, singboxCustomParams, mihomoCustomParams, sockoptParams, finalMask, serverDescription, protocolCredential sql.NullString
 	var xrayJSONTemplateUUID, mihomoIPVersion, configProfileUUID, configProfileInboundUUID, pinnedPeerCertSha256, verifyPeerCertByName sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
@@ -418,6 +418,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&singboxCustomParams,
 		&mihomoCustomParams,
 		&sockoptParams,
+		&finalMask,
 		&isDisabled,
 		&serverDescription,
 		&overrideProtocolCredential,
@@ -497,6 +498,9 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	}
 	if sockoptParams.Valid {
 		h.SockoptParams = &sockoptParams.String
+	}
+	if finalMask.Valid {
+		h.FinalMask = &finalMask.String
 	}
 	if isDisabled.Valid {
 		h.IsDisabled = isDisabled.Bool
@@ -1104,24 +1108,6 @@ func buildResponseHeaders(ctx context.Context, dbConn *sql.DB, user Subscription
 
 	subscriptionURL := resolveSubscriptionURL(ctx, dbConn, user, settings)
 
-	title := settings.Raw.ProfileTitle
-	if title == "" {
-		title = user.Username
-	} else {
-		title = formatTemplateValue(title, user, settings, subscriptionURL)
-	}
-	headers["profile-title"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(title)))
-
-	if settings.Raw.SupportLink != "" {
-		headers["support-url"] = settings.Raw.SupportLink
-	}
-
-	interval := settings.Raw.ProfileUpdateInterval
-	if interval <= 0 {
-		interval = 24
-	}
-	headers["profile-update-interval"] = fmt.Sprintf("%d", interval)
-
 	userInfo := getSubscriptionUserInfo(user)
 	parts := []string{}
 	for key, val := range userInfo {
@@ -1130,31 +1116,56 @@ func buildResponseHeaders(ctx context.Context, dbConn *sql.DB, user Subscription
 	sort.Strings(parts)
 	headers["subscription-userinfo"] = strings.Join(parts, "; ")
 
-	if settings.Raw.HappAnnounce != "" {
-		announce := formatTemplateValue(settings.Raw.HappAnnounce, user, settings, subscriptionURL)
-		headers["announce"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(announce)))
-	}
-
-	if settings.Raw.HappRouting != "" {
-		headers["routing"] = settings.Raw.HappRouting
-	}
-
-	if settings.Raw.IsProfileWebpageURLEnabled {
-		headers["profile-web-page-url"] = subscriptionURL
-	}
-
 	if refillDate := getSubscriptionRefillDate(user.TrafficLimitStrategy); refillDate != "" {
 		headers["subscription-refill-date"] = refillDate
 	}
 
-	for k, v := range settings.CustomResponseHeaders {
-		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
+	if settings.HwidSettings.Enabled {
+		headers["x-hwid-active"] = "true"
 	}
+
+	if len(settings.CustomResponseHeaders) > 0 {
+		for k, v := range settings.CustomResponseHeaders {
+			headers[strings.ToLower(strings.TrimSpace(k))] = formatTemplateValue(v, user, settings, subscriptionURL)
+		}
+	} else {
+		title := settings.Raw.ProfileTitle
+		if title == "" {
+			title = user.Username
+		} else {
+			title = formatTemplateValue(title, user, settings, subscriptionURL)
+		}
+		headers["profile-title"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(title)))
+
+		if settings.Raw.SupportLink != "" {
+			headers["support-url"] = settings.Raw.SupportLink
+		}
+
+		interval := settings.Raw.ProfileUpdateInterval
+		if interval <= 0 {
+			interval = 24
+		}
+		headers["profile-update-interval"] = fmt.Sprintf("%d", interval)
+
+		if settings.Raw.HappAnnounce != "" {
+			announce := formatTemplateValue(settings.Raw.HappAnnounce, user, settings, subscriptionURL)
+			headers["announce"] = fmt.Sprintf("base64:%s", base64.StdEncoding.EncodeToString([]byte(announce)))
+		}
+
+		if settings.Raw.HappRouting != "" {
+			headers["routing"] = settings.Raw.HappRouting
+		}
+
+		if settings.Raw.IsProfileWebpageURLEnabled {
+			headers["profile-web-page-url"] = subscriptionURL
+		}
+	}
+
 	for k, v := range settings.ResponseHeaders {
-		headers[k] = formatTemplateValue(v, user, settings, subscriptionURL)
+		headers[strings.ToLower(strings.TrimSpace(k))] = formatTemplateValue(v, user, settings, subscriptionURL)
 	}
 	for _, k := range settings.ResponseHeadersRemove {
-		delete(headers, k)
+		delete(headers, strings.ToLower(strings.TrimSpace(k)))
 	}
 	return headers
 }

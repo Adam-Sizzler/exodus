@@ -1,0 +1,176 @@
+package notifications
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
+
+	"exodus/internal/config"
+	"gopkg.in/yaml.v3"
+)
+
+func TestAdditionalWebhookURLsFromYAML(t *testing.T) {
+	yamlContent := `
+events:
+  user.created:
+    telegram: true
+    webhook: true
+    additionalWebhookUrls:
+      - https://example.com/webhook1
+      - https://example.com/webhook2
+  user.expired:
+    telegram: false
+    webhook: true
+`
+	var parsed struct {
+		Events map[string]config.NotificationEventChannelConfig `yaml:"events"`
+	}
+	if err := yaml.Unmarshal([]byte(yamlContent), &parsed); err != nil {
+		t.Fatalf("failed to unmarshal yaml: %v", err)
+	}
+
+	cfg := config.NotificationsConfig{
+		EventChannels: parsed.Events,
+	}
+
+	userCreatedURLs := cfg.GetAdditionalWebhookURLs("user.created")
+	if len(userCreatedURLs) != 2 {
+		t.Fatalf("expected 2 additional webhook urls, got %d", len(userCreatedURLs))
+	}
+	if userCreatedURLs[0] != "https://example.com/webhook1" || userCreatedURLs[1] != "https://example.com/webhook2" {
+		t.Errorf("unexpected urls: %v", userCreatedURLs)
+	}
+
+	userExpiredURLs := cfg.GetAdditionalWebhookURLs("user.expired")
+	if len(userExpiredURLs) != 0 {
+		t.Errorf("expected 0 additional webhook urls for user.expired, got %d", len(userExpiredURLs))
+	}
+
+	nonExistentURLs := cfg.GetAdditionalWebhookURLs("node.deleted")
+	if len(nonExistentURLs) != 0 {
+		t.Errorf("expected 0 additional webhook urls for non-existent event, got %d", len(nonExistentURLs))
+	}
+}
+
+func TestGetWebhookURLsForEventDeduplication(t *testing.T) {
+	trueVal := true
+	cfg := &config.BackendConfig{
+		Notifications: config.NotificationsConfig{
+			WebhookEnabled: true,
+			WebhookSecret:  "test-secret",
+			WebhookURLs:    []string{"https://global1.com/hook", "https://global2.com/hook"},
+			EventChannels: map[string]config.NotificationEventChannelConfig{
+				"user.created": {
+					Webhook: &trueVal,
+					AdditionalWebhookURLs: []string{
+						"https://additional1.com/hook",
+						"https://global1.com/hook", // duplicate
+						"https://additional2.com/hook",
+					},
+				},
+			},
+		},
+	}
+
+	notifier := New(cfg)
+	urls := notifier.getWebhookURLsForEvent("user.created")
+	if len(urls) != 4 {
+		t.Fatalf("expected 4 deduplicated urls, got %d: %v", len(urls), urls)
+	}
+
+	expected := []string{
+		"https://global1.com/hook",
+		"https://global2.com/hook",
+		"https://additional1.com/hook",
+		"https://additional2.com/hook",
+	}
+
+	for i, exp := range expected {
+		if urls[i] != exp {
+			t.Errorf("url[%d]: expected %s, got %s", i, exp, urls[i])
+		}
+	}
+}
+
+func TestSendWebhookWithAdditionalURLs(t *testing.T) {
+	var mu sync.Mutex
+	receivedRequests := make(map[string]int)
+
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		receivedRequests["server1"]++
+		mu.Unlock()
+
+		if r.Header.Get("X-Exodus-Signature") == "" {
+			t.Error("missing X-Exodus-Signature header")
+		}
+		if r.Header.Get("X-Exodus-Timestamp") == "" {
+			t.Error("missing X-Exodus-Timestamp header")
+		}
+		if r.Header.Get("User-Agent") != "Exodus" {
+			t.Errorf("expected User-Agent 'Exodus', got %s", r.Header.Get("User-Agent"))
+		}
+
+		var event Event
+		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+			t.Errorf("failed to decode body: %v", err)
+		}
+		if event.Event != "user.created" {
+			t.Errorf("expected event 'user.created', got %s", event.Event)
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server1.Close()
+
+	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		receivedRequests["server2"]++
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server2.Close()
+
+	trueVal := true
+	cfg := &config.BackendConfig{
+		Notifications: config.NotificationsConfig{
+			WebhookEnabled: true,
+			WebhookSecret:  "my-super-secret-key",
+			WebhookURLs:    []string{server1.URL},
+			EventChannels: map[string]config.NotificationEventChannelConfig{
+				"user.created": {
+					Webhook:               &trueVal,
+					AdditionalWebhookURLs: []string{server2.URL},
+				},
+			},
+		},
+	}
+
+	notifier := New(cfg)
+	event := Event{
+		Event:     "user.created",
+		Scope:     "USERS",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Data: map[string]any{
+			"username": "testuser",
+		},
+	}
+
+	err := notifier.sendWebhook(context.Background(), event)
+	if err != nil {
+		t.Fatalf("sendWebhook failed: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if receivedRequests["server1"] != 1 {
+		t.Errorf("server1 expected 1 request, got %d", receivedRequests["server1"])
+	}
+	if receivedRequests["server2"] != 1 {
+		t.Errorf("server2 expected 1 request, got %d", receivedRequests["server2"])
+	}
+}

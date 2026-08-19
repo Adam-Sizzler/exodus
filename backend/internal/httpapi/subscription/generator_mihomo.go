@@ -452,6 +452,8 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 	if host.InboundNetwork != nil && *host.InboundNetwork != "" {
 		network = *host.InboundNetwork
 	}
+	isHysteria2 := protocol == "hysteria2" || protocol == "hysteria" || protocol == "hy2"
+
 	switch protocol {
 	case "vless":
 		credential := effectiveProtocolCredential(host, user)
@@ -483,6 +485,16 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 			method = "aes-128-gcm"
 		}
 		proxy["cipher"] = method
+	case "hysteria2", "hysteria", "hy2":
+		credential := effectiveProtocolCredential(host, user)
+		if credential == "" {
+			return nil
+		}
+		proxy["type"] = "hysteria2"
+		proxy["password"] = credential
+		finalMaskMap := parseHysteria2FinalMask(host)
+		applyHysteria2QuicFields(proxy, finalMaskMap)
+		applyHysteria2ObfsFields(proxy, finalMaskMap)
 	}
 	security := "none"
 	if host.InboundSecurity != nil && *host.InboundSecurity != "" {
@@ -509,54 +521,73 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 		nativeSNI := extractMihomoNativeSNI(host.InboundRaw)
 		if nativeSNI != "" {
 			mihomoSNI = nativeSNI
+		} else if host.SNI != nil && *host.SNI != "" {
+			mihomoSNI = *host.SNI
 		} else {
 			mihomoSNI = host.Address
 		}
 	}
 
-	if security == "tls" {
-		proxy["tls"] = true
+	if isHysteria2 {
 		if mihomoSNI != "" {
-			proxy["servername"] = mihomoSNI
+			proxy["sni"] = mihomoSNI
 		}
-	}
-	if host.Fingerprint != nil && *host.Fingerprint != "" {
-		proxy["client-fingerprint"] = *host.Fingerprint
-	}
-	if host.ALPN != nil && *host.ALPN != "" {
-		proxy["alpn"] = strings.Split(*host.ALPN, ",")
-	}
-	if network != "" {
-		proxy["network"] = network
-	}
-	if network == "ws" {
-		wsOpts := map[string]interface{}{}
-		if host.Path != nil && *host.Path != "" {
-			wsOpts["path"] = *host.Path
+		if host.PinnedPeerCertSha256 != nil && *host.PinnedPeerCertSha256 != "" {
+			proxy["skip-cert-verify"] = true
 		}
-		headers := map[string]interface{}{}
-		if host.Host != nil && *host.Host != "" {
-			headers["Host"] = *host.Host
+		if host.Fingerprint != nil && *host.Fingerprint != "" {
+			proxy["client-fingerprint"] = *host.Fingerprint
 		}
-		if len(headers) > 0 {
-			wsOpts["headers"] = headers
+		if host.ALPN != nil && *host.ALPN != "" {
+			proxy["alpn"] = strings.Split(*host.ALPN, ",")
+		} else {
+			proxy["alpn"] = []string{"h3"}
 		}
-		if len(wsOpts) > 0 {
-			proxy["ws-opts"] = wsOpts
+	} else {
+		if security == "tls" {
+			proxy["tls"] = true
+			if mihomoSNI != "" {
+				proxy["servername"] = mihomoSNI
+			}
 		}
-	}
-	if network == "grpc" {
-		grpcOpts := map[string]interface{}{}
-		if host.Path != nil && *host.Path != "" {
-			grpcOpts["grpc-service-name"] = *host.Path
+		if host.Fingerprint != nil && *host.Fingerprint != "" {
+			proxy["client-fingerprint"] = *host.Fingerprint
 		}
-		if len(grpcOpts) > 0 {
-			proxy["grpc-opts"] = grpcOpts
+		if host.ALPN != nil && *host.ALPN != "" {
+			proxy["alpn"] = strings.Split(*host.ALPN, ",")
 		}
-	}
-	if host.ClashMuxParams != nil {
-		if mux := parseMihomoMuxParams(*host.ClashMuxParams); mux != nil {
-			proxy["smux"] = mux
+		if network != "" {
+			proxy["network"] = network
+		}
+		if network == "ws" {
+			wsOpts := map[string]interface{}{}
+			if host.Path != nil && *host.Path != "" {
+				wsOpts["path"] = *host.Path
+			}
+			headers := map[string]interface{}{}
+			if host.Host != nil && *host.Host != "" {
+				headers["Host"] = *host.Host
+			}
+			if len(headers) > 0 {
+				wsOpts["headers"] = headers
+			}
+			if len(wsOpts) > 0 {
+				proxy["ws-opts"] = wsOpts
+			}
+		}
+		if network == "grpc" {
+			grpcOpts := map[string]interface{}{}
+			if host.Path != nil && *host.Path != "" {
+				grpcOpts["grpc-service-name"] = *host.Path
+			}
+			if len(grpcOpts) > 0 {
+				proxy["grpc-opts"] = grpcOpts
+			}
+		}
+		if host.ClashMuxParams != nil {
+			if mux := parseMihomoMuxParams(*host.ClashMuxParams); mux != nil {
+				proxy["smux"] = mux
+			}
 		}
 	}
 	if host.MihomoCustomParams != nil && strings.TrimSpace(*host.MihomoCustomParams) != "" {
@@ -566,6 +597,173 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 		}
 	}
 	return proxy
+}
+
+func parseHysteria2FinalMask(host SubscriptionHost) map[string]any {
+	if host.FinalMask != nil && strings.TrimSpace(*host.FinalMask) != "" {
+		var m map[string]any
+		if err := json.Unmarshal([]byte(*host.FinalMask), &m); err == nil && len(m) > 0 {
+			return m
+		}
+	}
+	if len(host.InboundRaw) > 0 {
+		var raw map[string]any
+		if err := json.Unmarshal(host.InboundRaw, &raw); err == nil {
+			if fm, ok := raw["finalMask"].(map[string]any); ok {
+				return fm
+			}
+			if fm, ok := raw["final_mask"].(map[string]any); ok {
+				return fm
+			}
+			if _, hasUDP := raw["udp"]; hasUDP {
+				return raw
+			}
+			if _, hasQuic := raw["quicParams"]; hasQuic {
+				return raw
+			}
+		}
+	}
+	return nil
+}
+
+func applyHysteria2QuicFields(proxy map[string]interface{}, finalMask map[string]any) {
+	if finalMask == nil {
+		return
+	}
+	quicParams, ok := finalMask["quicParams"].(map[string]any)
+	if !ok {
+		quicParams, ok = finalMask["quic_params"].(map[string]any)
+	}
+	if !ok || quicParams == nil {
+		return
+	}
+	if brutalUp, ok := quicParams["brutalUp"]; ok && brutalUp != nil && fmt.Sprint(brutalUp) != "" && fmt.Sprint(brutalUp) != "<nil>" {
+		proxy["up"] = fmt.Sprint(brutalUp)
+	} else if brutalUp, ok := quicParams["brutal_up"]; ok && brutalUp != nil && fmt.Sprint(brutalUp) != "" && fmt.Sprint(brutalUp) != "<nil>" {
+		proxy["up"] = fmt.Sprint(brutalUp)
+	}
+	if brutalDown, ok := quicParams["brutalDown"]; ok && brutalDown != nil && fmt.Sprint(brutalDown) != "" && fmt.Sprint(brutalDown) != "<nil>" {
+		proxy["down"] = fmt.Sprint(brutalDown)
+	} else if brutalDown, ok := quicParams["brutal_down"]; ok && brutalDown != nil && fmt.Sprint(brutalDown) != "" && fmt.Sprint(brutalDown) != "<nil>" {
+		proxy["down"] = fmt.Sprint(brutalDown)
+	}
+	if udpHop, ok := quicParams["udpHop"].(map[string]any); ok && udpHop != nil {
+		if ports, ok := udpHop["ports"]; ok && ports != nil && fmt.Sprint(ports) != "" && fmt.Sprint(ports) != "<nil>" {
+			proxy["ports"] = fmt.Sprint(ports)
+		}
+		if interval, ok := udpHop["interval"]; ok && interval != nil && fmt.Sprint(interval) != "" && fmt.Sprint(interval) != "<nil>" {
+			proxy["hop-interval"] = fmt.Sprint(interval)
+		}
+	} else if udpHop, ok := quicParams["udp_hop"].(map[string]any); ok && udpHop != nil {
+		if ports, ok := udpHop["ports"]; ok && ports != nil && fmt.Sprint(ports) != "" && fmt.Sprint(ports) != "<nil>" {
+			proxy["ports"] = fmt.Sprint(ports)
+		}
+		if interval, ok := udpHop["interval"]; ok && interval != nil && fmt.Sprint(interval) != "" && fmt.Sprint(interval) != "<nil>" {
+			proxy["hop-interval"] = fmt.Sprint(interval)
+		}
+	}
+	if bbrProfile, ok := quicParams["bbrProfile"].(string); ok && bbrProfile != "" {
+		proxy["bbr-profile"] = bbrProfile
+	} else if bbrProfile, ok := quicParams["bbr_profile"].(string); ok && bbrProfile != "" {
+		proxy["bbr-profile"] = bbrProfile
+	}
+}
+
+func applyHysteria2ObfsFields(proxy map[string]interface{}, finalMask map[string]any) {
+	if finalMask == nil {
+		return
+	}
+	udpList, ok := finalMask["udp"].([]any)
+	if !ok {
+		if udpListRaw, ok2 := finalMask["udp"].([]map[string]any); ok2 {
+			for _, item := range udpListRaw {
+				if applySingleHysteria2Mask(proxy, item) {
+					return
+				}
+			}
+		}
+		return
+	}
+	for _, item := range udpList {
+		if itemMap, ok := item.(map[string]any); ok {
+			if applySingleHysteria2Mask(proxy, itemMap) {
+				return
+			}
+		}
+	}
+}
+
+func applySingleHysteria2Mask(proxy map[string]interface{}, mask map[string]any) bool {
+	maskType, _ := mask["type"].(string)
+	if !strings.EqualFold(maskType, "salamander") {
+		return false
+	}
+	settings, ok := mask["settings"].(map[string]any)
+	if !ok || settings == nil {
+		return false
+	}
+	password, ok := settings["password"].(string)
+	if !ok || password == "" {
+		return false
+	}
+
+	packetSize := settings["packetSize"]
+	if packetSize == nil {
+		packetSize = settings["packet_size"]
+	}
+
+	if packetSize == nil || strings.TrimSpace(fmt.Sprint(packetSize)) == "" || fmt.Sprint(packetSize) == "<nil>" {
+		proxy["obfs"] = "salamander"
+		proxy["obfs-password"] = password
+		return true
+	}
+
+	from, to := parseMihomoIntRange(packetSize)
+	proxy["obfs"] = "gecko"
+	proxy["obfs-password"] = password
+	if from != nil {
+		proxy["obfs-min-packet-size"] = *from
+	}
+	if to != nil {
+		proxy["obfs-max-packet-size"] = *to
+	}
+	return true
+}
+
+func parseMihomoIntRange(value any) (*int, *int) {
+	if value == nil {
+		return nil, nil
+	}
+	s := strings.TrimSpace(fmt.Sprint(value))
+	if s == "" || s == "<nil>" {
+		return nil, nil
+	}
+	parts := strings.SplitN(s, "-", 2)
+	var from, to *int
+	if len(parts) > 0 {
+		from = parseMihomoIntPart(parts[0])
+	}
+	if len(parts) > 1 {
+		to = parseMihomoIntPart(parts[1])
+	} else {
+		to = from
+	}
+	if from != nil && to != nil && *from > *to {
+		from, to = to, from
+	}
+	return from, to
+}
+
+func parseMihomoIntPart(part string) *int {
+	part = strings.TrimSpace(part)
+	if part == "" {
+		return nil
+	}
+	val, err := strconv.Atoi(part)
+	if err != nil || val < 0 {
+		return nil
+	}
+	return &val
 }
 
 func deepMergeMihomo(dst, src map[string]interface{}) {

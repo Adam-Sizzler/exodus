@@ -328,8 +328,8 @@ export declare const ResolvedProxyConfigSchema: z.ZodObject<{
         auth: z.ZodString;
     }, z.core.$strip>]>;
     security: z.ZodEnum<{
-        none: "none";
         tls: "tls";
+        none: "none";
         reality: "reality";
     }>;
     securityOptions: z.ZodOptional<z.ZodUnion<readonly [z.ZodObject<{

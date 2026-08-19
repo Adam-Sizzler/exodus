@@ -7,6 +7,12 @@ export declare const NodeResponseSchema: z.ZodObject<{
         address: z.ZodString;
         port: z.ZodNullable<z.ZodInt>;
         proxyUrl: z.ZodNullable<z.ZodString>;
+        apiSchema: z.ZodDefault<z.ZodEnum<{
+            mtls: "mtls";
+            tls: "tls";
+        }>>;
+        apiPath: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+        grpcAuthToken: z.ZodNullable<z.ZodString>;
         isConnected: z.ZodBoolean;
         isDisabled: z.ZodBoolean;
         isConnecting: z.ZodBoolean;

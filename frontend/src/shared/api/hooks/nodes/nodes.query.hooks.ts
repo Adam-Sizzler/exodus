@@ -71,7 +71,7 @@ export const useGetNodeSecretKey = createGetQueryHook({
         refetchInterval: sToMs(5)
     },
 
-    errorHandler: (error) => errorHandler(error, 'Get PubKey')
+    errorHandler: (error) => errorHandler(error, 'Get SecretKey')
 })
 
 export const useGetNodesTags = createGetQueryHook({

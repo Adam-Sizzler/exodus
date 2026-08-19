@@ -142,6 +142,7 @@ type SubscriptionHost struct {
 	SingboxCustomParams          *json.RawMessage
 	MihomoCustomParams           *string
 	SockoptParams                *string
+	FinalMask                    *string
 	IsDisabled                   bool
 	ServerDescription            *string
 	OverrideProtocolCredential   bool

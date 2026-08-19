@@ -92,8 +92,9 @@ type NotificationsConfig struct {
 }
 
 type NotificationEventChannelConfig struct {
-	Telegram *bool `yaml:"telegram" json:"telegram"`
-	Webhook  *bool `yaml:"webhook" json:"webhook"`
+	Telegram              *bool    `yaml:"telegram" json:"telegram"`
+	Webhook               *bool    `yaml:"webhook" json:"webhook"`
+	AdditionalWebhookURLs []string `yaml:"additionalWebhookUrls" json:"additionalWebhookUrls"`
 }
 
 type LogConfig struct {
@@ -424,6 +425,16 @@ func applyEnvOverrides(cfg *BackendConfig) {
 			cfg.Logger.Warn("Invalid PUSH_TO_DB_QUEUE_CONCURRENCY value, ignoring", "value", value)
 		}
 	}
+	if value := envFirst("EXPORT_TO_STREAM_ENABLED"); value != "" {
+		cfg.Redis.ExportToStreamEnabled = parseBoolEnv(value)
+	}
+	if value := envFirst("EXPORT_TO_STREAM_MAXLEN"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.Redis.ExportToStreamMaxLen = parsed
+		} else if cfg.Logger != nil {
+			cfg.Logger.Warn("Invalid EXPORT_TO_STREAM_MAXLEN value, ignoring", "value", value)
+		}
+	}
 
 	if value := envFirst("FRONT_END_DOMAIN"); value != "" {
 		cfg.CORS.AllowedOrigins = splitCSV(value)
@@ -591,6 +602,17 @@ func (c NotificationsConfig) EventChannelEnabled(eventName, channel string) bool
 	default:
 		return true
 	}
+}
+
+func (c NotificationsConfig) GetAdditionalWebhookURLs(eventName string) []string {
+	if strings.TrimSpace(eventName) == "" || c.EventChannels == nil {
+		return nil
+	}
+	eventConfig, exists := c.EventChannels[eventName]
+	if !exists {
+		return nil
+	}
+	return eventConfig.AdditionalWebhookURLs
 }
 
 var validBasePathRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-\/]*$`)

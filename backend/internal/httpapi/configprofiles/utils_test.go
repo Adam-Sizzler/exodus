@@ -66,20 +66,18 @@ func TestValidateConfigStructure(t *testing.T) {
 			errContains: "character ',' is not allowed in inbound tag",
 		},
 		{
-			name: "invalid config without outbounds array",
+			name: "valid config without outbounds array",
 			configJSON: `{
 				"log": {"level": "info"}
 			}`,
-			wantErr:     true,
-			errContains: "Config doesn't have outbounds.",
+			wantErr: false,
 		},
 		{
-			name: "invalid config with empty outbounds array",
+			name: "valid config with empty outbounds array",
 			configJSON: `{
 				"outbounds": []
 			}`,
-			wantErr:     true,
-			errContains: "Config doesn't have outbounds.",
+			wantErr: false,
 		},
 		{
 			name: "valid config with valid SS 2022 32-byte password",

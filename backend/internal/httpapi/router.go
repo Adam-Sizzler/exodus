@@ -268,6 +268,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/subscription-request-history/stats", subscriptionrequesthistory.SubscriptionRequestHistoryStatsHandler(db, cfg))
 
 	mux.HandleFunc("/api/system/stats", system.StatsHandler(db, cfg))
+	mux.HandleFunc("/api/system/configuration", system.ConfigurationHandler(db, cfg))
 	mux.HandleFunc("/api/system/stats/bandwidth", system.BandwidthStatsHandler(db, cfg))
 	mux.HandleFunc("/api/system/stats/nodes", system.NodesStatsHandler(db, cfg))
 	mux.HandleFunc("/api/system/stats/recap", system.RecapHandler(db, cfg))

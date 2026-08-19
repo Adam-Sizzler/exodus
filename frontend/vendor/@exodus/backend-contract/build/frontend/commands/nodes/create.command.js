@@ -14,6 +14,9 @@ var CreateNodeCommand;
         name: zod_1.z.string().min(3).max(30),
         address: zod_1.z.string().min(2),
         port: zod_1.z.int().min(1).max(65535).optional(),
+        apiSchema: zod_1.z.enum(['mtls', 'tls']).default('mtls'),
+        apiPath: zod_1.z.string().default('/'),
+        grpcAuthToken: zod_1.z.string().optional(),
         proxyUrl: zod_1.z
             .string()
             .regex(/^socks5:\/\/(?:[^:@/\s]+(?::[^@/\s]*)?@)?[^:@/\s]+:\d{1,5}$/, 'Expected socks5://[user:pass@]host:port')

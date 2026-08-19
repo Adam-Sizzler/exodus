@@ -221,6 +221,18 @@ definitions:
       userId:
         type: integer
     type: object
+  keygen.KeygenPayload:
+    properties:
+      grpcToken:
+        type: string
+      secretKey:
+        type: string
+    type: object
+  keygen.KeygenResponse:
+    properties:
+      response:
+        $ref: '#/definitions/keygen.KeygenPayload'
+    type: object
   metadata.metadataRequest:
     properties:
       metadata:
@@ -3720,8 +3732,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/keygen.KeygenResponse'
         "500":
           description: Internal Server Error
           schema:

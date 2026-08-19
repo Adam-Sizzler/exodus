@@ -7,6 +7,12 @@ export declare namespace CreateNodeCommand {
         name: z.ZodString;
         address: z.ZodString;
         port: z.ZodOptional<z.ZodInt>;
+        apiSchema: z.ZodDefault<z.ZodEnum<{
+            mtls: "mtls";
+            tls: "tls";
+        }>>;
+        apiPath: z.ZodDefault<z.ZodString>;
+        grpcAuthToken: z.ZodOptional<z.ZodString>;
         proxyUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         isTrafficTrackingActive: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         trafficLimitBytes: z.ZodOptional<z.ZodNumber>;
@@ -32,6 +38,12 @@ export declare namespace CreateNodeCommand {
             address: z.ZodString;
             port: z.ZodNullable<z.ZodInt>;
             proxyUrl: z.ZodNullable<z.ZodString>;
+            apiSchema: z.ZodDefault<z.ZodEnum<{
+                mtls: "mtls";
+                tls: "tls";
+            }>>;
+            apiPath: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+            grpcAuthToken: z.ZodNullable<z.ZodString>;
             isConnected: z.ZodBoolean;
             isDisabled: z.ZodBoolean;
             isConnecting: z.ZodBoolean;

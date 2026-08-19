@@ -15,6 +15,7 @@ import (
 	"exodus/internal/config"
 	"exodus/internal/jobqueue"
 	"exodus/internal/logger"
+	"exodus/internal/streamexport"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -232,6 +233,18 @@ func (w *Worker) handleRecordUserUsage(ctx context.Context, redisKey string) err
 		if err := bulkUpsertNodeUserUsageHistory(ctx, w.db, nodeID, entries[start:end]); err != nil {
 			_ = w.restoreProcessingKey(context.Background(), redisKey, processingKey, data)
 			return err
+		}
+		if w.cfg != nil && w.cfg.Redis.ExportToStreamEnabled {
+			streamEntries := make([]streamexport.UserUsageEntry, len(entries[start:end]))
+			for i, e := range entries[start:end] {
+				streamEntries[i] = streamexport.UserUsageEntry{
+					UserID:     e.UserID,
+					TotalBytes: e.TotalBytes,
+				}
+			}
+			if err := streamexport.ExportUserUsageBatch(ctx, w.client, true, w.cfg.Redis.ExportToStreamMaxLen, nodeID, streamEntries); err != nil && w.cfg.Logger != nil {
+				w.cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceRedis).Warn("Failed to export user usage batch to Redis stream", "error", err)
+			}
 		}
 	}
 

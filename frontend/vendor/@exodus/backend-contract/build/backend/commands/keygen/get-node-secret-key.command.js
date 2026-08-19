@@ -12,6 +12,7 @@ var GetNodeSecretKeyCommand;
     GetNodeSecretKeyCommand.ResponseSchema = zod_1.z.object({
         response: zod_1.z.object({
             secretKey: zod_1.z.string(),
+            grpcToken: zod_1.z.string(),
         }),
     });
 })(GetNodeSecretKeyCommand || (exports.GetNodeSecretKeyCommand = GetNodeSecretKeyCommand = {}));

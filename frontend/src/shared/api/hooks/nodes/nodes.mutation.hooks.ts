@@ -19,7 +19,11 @@ import { createMutationHook } from '../../tsq-helpers'
 
 export const useCreateNode = createMutationHook({
     endpoint: CreateNodeCommand.TSQ_url,
-    bodySchema: CreateNodeCommand.RequestBodySchema,
+    bodySchema: CreateNodeCommand.RequestBodySchema.extend({
+        apiSchema: z.enum(['mtls', 'tls']).optional().default('mtls'),
+        apiPath: z.string().optional().default('/'),
+        grpcAuthToken: z.string().optional()
+    }),
     responseSchema: CreateNodeCommand.ResponseSchema,
     requestMethod: CreateNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {

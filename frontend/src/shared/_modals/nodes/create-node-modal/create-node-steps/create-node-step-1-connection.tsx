@@ -218,26 +218,24 @@ export const CreateNodeStep1Connection = ({ form, onNext, secretKey, port }: IPr
                         {...apiSchemaInputProps}
                         onChange={(value) => {
                             const val = value === 'tls' ? 'tls' : 'mtls'
-                            apiSchemaInputProps.onChange(val)
+                            form.setFieldValue('apiSchema', val)
                         }}
                     />
 
-                    {apiSchema === 'tls' && (
-                        <TextInput
-                            key={form.key('apiPath')}
-                            description={t('base-node-form.api-path-description', {
-                                defaultValue: 'Path prefix the node listens on (PATH_PREFIX)'
-                            })}
-                            label={t('base-node-form.api-path', { defaultValue: 'API Path' })}
-                            leftSection={<TbRoute2 size={16} />}
-                            placeholder="/"
-                            size="sm"
-                            styles={{
-                                label: { fontWeight: 500 }
-                            }}
-                            {...form.getInputProps('apiPath')}
-                        />
-                    )}
+                    <TextInput
+                        key={form.key('apiPath')}
+                        description={t('base-node-form.api-path-description', {
+                            defaultValue: 'Path prefix the node listens on (PATH_PREFIX)'
+                        })}
+                        label={t('base-node-form.api-path', { defaultValue: 'API Path' })}
+                        leftSection={<TbRoute2 size={16} />}
+                        placeholder="/"
+                        size="sm"
+                        styles={{
+                            label: { fontWeight: 500 }
+                        }}
+                        {...form.getInputProps('apiPath')}
+                    />
 
                     <Popover
                         closeOnClickOutside={false}

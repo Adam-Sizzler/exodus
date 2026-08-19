@@ -18,13 +18,22 @@ type secretPayload struct {
 	JWTPublicKey string `json:"jwtPublicKey"`
 }
 
+type KeygenResponse struct {
+	Response KeygenPayload `json:"response"`
+}
+
+type KeygenPayload struct {
+	SecretKey string `json:"secretKey"`
+	GrpcToken string `json:"grpcToken"`
+}
+
 // KeygenHandler godoc
 // @Summary      Generate node keys and certs
 // @Description  Generate node TLS certificates, public keys, and gRPC auth tokens for node provisioning
 // @Tags         Keygen Controller
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200  {object}  map[string]any
+// @Success      200  {object}  KeygenResponse
 // @Failure      500  {object}  shared.ErrorResponse
 // @Router       /keygen [get]
 func KeygenHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
@@ -76,7 +85,6 @@ func KeygenHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{
-				"pubKey":    payload,
 				"secretKey": payload,
 				"grpcToken": grpcToken,
 			},

@@ -247,6 +247,11 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser) *Res
 		_ = json.Unmarshal(host.InboundRaw, &rawInboundMap)
 	}
 
+	var finalMaskMap any
+	if host.FinalMask != nil && strings.TrimSpace(*host.FinalMask) != "" {
+		_ = json.Unmarshal([]byte(*host.FinalMask), &finalMaskMap)
+	}
+
 	return &ResolvedProxyConfig{
 		FinalRemark:      remark,
 		Address:          host.Address,
@@ -258,7 +263,7 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser) *Res
 		Security:         security,
 		SecurityOptions:  securityOptions,
 		StreamOverrides: map[string]any{
-			"finalMask": nil,
+			"finalMask": finalMaskMap,
 			"sockopt":   sockoptMap,
 		},
 		Mux: muxMap,

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
+import { SubscriptionConnectionKeygenResponse } from '@shared/api/hooks'
 
 interface SubscriptionNodeVitalsForm {
     name?: string
@@ -18,21 +19,16 @@ interface SubscriptionNodeVitalsForm {
     apiPath?: string
 }
 
-interface SubscriptionConnectionKeygenResponse {
-    pubKey: string
-    grpcToken?: string
-}
-
 interface IProps<T extends SubscriptionNodeVitalsForm> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
-    pubKey: SubscriptionConnectionKeygenResponse | undefined
+    secretKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
 export const NodeVitalsCard = <T extends SubscriptionNodeVitalsForm>(props: IProps<T>) => {
     const { t } = useTranslation()
-    const { cardVariants, form, motionWrapper, pubKey } = props
+    const { cardVariants, form, motionWrapper, secretKey } = props
     const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
     const apiSchemaInputProps = form.getInputProps('apiSchema')
     const credentialLabel =
@@ -45,8 +41,8 @@ export const NodeVitalsCard = <T extends SubscriptionNodeVitalsForm>(props: IPro
               })
     const credentialValue =
         apiSchema === 'tls'
-            ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
-            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
+            ? (secretKey?.grpcToken?.trim() ?? 'Error loading...')
+            : (secretKey?.secretKey.trimEnd() ?? 'Error loading...')
 
     const MotionWrapper = motionWrapper
 
