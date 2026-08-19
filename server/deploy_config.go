@@ -43,6 +43,17 @@ type DeployModulesPayload struct {
 	HaproxyUsers   []HaproxyUserEntry      `json:"haproxy_users"`
 	IngressFilter  NftIngressFilterPayload `json:"ingress_filter"`
 	EgressFilter   NftEgressFilterPayload  `json:"egress_filter"`
+	PreStart       PreStartPluginPayload   `json:"pre_start"`
+}
+
+type PreStartPluginPayload struct {
+	Enabled        bool                         `json:"enabled"`
+	CleanupSockets *CleanupSocketsPluginPayload `json:"cleanupSockets,omitempty"`
+}
+
+type CleanupSocketsPluginPayload struct {
+	Enabled bool     `json:"enabled"`
+	Files   []string `json:"files"`
 }
 
 type HaproxyUserEntry struct {
@@ -179,6 +190,10 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 				log.Warn("Force restart requested")
 			} else {
 				log.Debug("Core managed lifecycle requested by deploy payload")
+			}
+
+			if task.Modules.PreStart.Enabled && task.Modules.PreStart.CleanupSockets != nil && task.Modules.PreStart.CleanupSockets.Enabled {
+				cleanupSocketFiles(log, task.Modules.PreStart.CleanupSockets.Files)
 			}
 
 			lifecycle := restartCoreProcessLifecycle(ctx, s.Cfg, s.apiService)
@@ -593,4 +608,42 @@ func getFieldString(v any, key string) string {
 	}
 	s, _ := value.(string)
 	return s
+}
+
+func cleanupSocketFiles(log interface {
+	Debug(string, ...any)
+	Info(string, ...any)
+	Warn(string, ...any)
+}, files []string) {
+	for _, pattern := range files {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			if log != nil {
+				log.Warn("Failed to glob pattern for cleanupSockets", "pattern", pattern, "error", err)
+			}
+			continue
+		}
+		for _, match := range matches {
+			info, err := os.Lstat(match)
+			if err != nil {
+				continue
+			}
+			// Only remove unix sockets or socket files
+			if info.Mode()&os.ModeSocket != 0 || strings.HasSuffix(match, ".sock") {
+				if err := os.Remove(match); err != nil {
+					if log != nil {
+						log.Warn("Failed to remove socket file", "path", match, "error", err)
+					}
+				} else {
+					if log != nil {
+						log.Info("Cleaned up stale socket file before core start", "path", match)
+					}
+				}
+			}
+		}
+	}
 }
