@@ -50,7 +50,7 @@ func TestAllTemplateVariables(t *testing.T) {
 	desc := "Premium user"
 	hwidLimit := 3
 	now := time.Now()
-	expireAt := now.Add(24 * 10 * time.Hour)
+	expireAt := now.Add(24*10*time.Hour + time.Hour)
 	createdAt := now.Add(-24 * 5 * time.Hour)
 	lastReset := now.Add(-24 * 2 * time.Hour)
 
@@ -81,9 +81,9 @@ func TestAllTemplateVariables(t *testing.T) {
 		expected string
 	}{
 		{"{{DAYS_LEFT}}", "10"},
-		{"{{TRAFFIC_USED}}", "25 GB"},
-		{"{{TRAFFIC_LEFT}}", "75 GB"},
-		{"{{TOTAL_TRAFFIC}}", "100 GB"},
+		{"{{TRAFFIC_USED}}", "25.00 GB"},
+		{"{{TRAFFIC_LEFT}}", "75.00 GB"},
+		{"{{TOTAL_TRAFFIC}}", "100.00 GB"},
 		{"{{STATUS}}", "Active"},
 		{"{{USERNAME}}", "johndoe"},
 		{"{{EMAIL}}", "test@example.com"},
@@ -108,4 +108,3 @@ func TestAllTemplateVariables(t *testing.T) {
 		}
 	}
 }
-
