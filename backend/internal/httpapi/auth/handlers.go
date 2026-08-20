@@ -14,6 +14,7 @@ import (
 	"exodus/internal/httpapi/middleware"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
+	"exodus/internal/panelsettings"
 	"exodus/internal/security"
 
 	"github.com/google/uuid"
@@ -420,8 +421,8 @@ func AuthSetupHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		brandingSettings, passwordSettings, _, _, bootstrapErr := getBootstrapData(db)
 		if bootstrapErr != nil {
 			cfg.Logger.Warn("Failed to include bootstrap settings in setup response", "error", bootstrapErr)
-			brandingSettings = defaultBrandingSettings()
-			passwordSettings = defaultPasswordSettings()
+			brandingSettings = panelsettings.DefaultBrandingSettings()
+			passwordSettings = panelsettings.DefaultPasswordSettings()
 		}
 
 		shared.WriteJSON(w, http.StatusCreated, LoginResponse{
@@ -492,8 +493,8 @@ func AuthMeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		brandingSettings, passwordSettings, _, _, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Warn("Failed to load branding for auth/me response", "error", err)
-			brandingSettings = defaultBrandingSettings()
-			passwordSettings = defaultPasswordSettings()
+			brandingSettings = panelsettings.DefaultBrandingSettings()
+			passwordSettings = panelsettings.DefaultPasswordSettings()
 		}
 
 		shared.WriteJSON(w, http.StatusOK, LoginResponse{

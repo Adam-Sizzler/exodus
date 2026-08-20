@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+
+	"exodus/internal/panelsettings"
 )
 
 // defaultResponseRules defines the initial Subscription Response Rules in pretty-formatted JSON structure.
@@ -180,68 +182,12 @@ const defaultSingboxConfig = `{
   }
 }`
 
-const defaultPasskeySettings = `{
-  "enabled": false,
-  "origin": null,
-  "rpId": null
-}`
-
-const defaultOAuth2Settings = `{
-  "generic": {
-    "allowedEmails": [],
-    "authorizationUrl": null,
-    "clientId": null,
-    "clientSecret": null,
-    "enabled": false,
-    "frontendDomain": null,
-    "tokenUrl": null,
-    "withPkce": false
-  },
-  "github": {
-    "allowedEmails": [],
-    "clientId": null,
-    "clientSecret": null,
-    "enabled": false
-  },
-  "keycloak": {
-    "allowedEmails": [],
-    "clientId": null,
-    "clientSecret": null,
-    "enabled": false,
-    "frontendDomain": null,
-    "keycloakDomain": null,
-    "realm": null
-  },
-  "pocketid": {
-    "allowedEmails": [],
-    "clientId": null,
-    "clientSecret": null,
-    "enabled": false,
-    "plainDomain": null
-  },
-  "telegram": {
-    "allowedIds": [],
-    "clientId": null,
-    "clientSecret": null,
-    "enabled": false,
-    "frontendDomain": null
-  },
-  "yandex": {
-    "allowedEmails": [],
-    "clientId": null,
-    "clientSecret": null,
-    "enabled": false
-  }
-}`
-
-const defaultPasswordSettings = `{
-  "enabled": true
-}`
-
-const defaultBrandingSettings = `{
-  "logoUrl": null,
-  "title": "EXODUS"
-}`
+var (
+	defaultPasskeySettings  = panelsettings.DefaultPasskeySettingsJSON
+	defaultOAuth2Settings   = panelsettings.DefaultOAuth2SettingsJSON
+	defaultPasswordSettings = panelsettings.DefaultPasswordSettingsJSON
+	defaultBrandingSettings = panelsettings.DefaultBrandingSettingsJSON
+)
 
 func canonicalHash(rawJSON string) (string, error) {
 	var v any

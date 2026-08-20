@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	panelsettingsDefaults "exodus/internal/panelsettings"
 )
 
 type PanelSettingsResponse struct {
@@ -91,10 +93,10 @@ func (r *responseRecorder) WriteHeader(statusCode int) { r.status = statusCode }
 
 func loadPanelSettings(ctx context.Context, db *sql.DB) (map[string]any, error) {
 	settings := map[string]any{
-		"passkey_settings":  map[string]any{"rpId": nil, "origin": nil, "enabled": false},
-		"oauth2_settings":   defaultOAuth2Settings(),
-		"password_settings": map[string]any{"enabled": true},
-		"branding_settings": map[string]any{"title": "EXODUS", "logoUrl": nil},
+		"passkey_settings":  panelsettingsDefaults.DefaultPasskeySettings(),
+		"oauth2_settings":   panelsettingsDefaults.DefaultOAuth2Settings(),
+		"password_settings": panelsettingsDefaults.DefaultPasswordSettings(),
+		"branding_settings": panelsettingsDefaults.DefaultBrandingSettings(),
 	}
 
 	row := db.QueryRowContext(ctx, `

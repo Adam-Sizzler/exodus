@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"exodus/internal/config"
+	"exodus/internal/panelsettings"
 )
 
 func getBootstrapData(db *sql.DB) (brandingSettings map[string]any, passwordSettings map[string]any, defaultUsername string, hasAdmin bool, err error) {
-	brandingSettings = defaultBrandingSettings()
-	passwordSettings = defaultPasswordSettings()
+	brandingSettings = panelsettings.DefaultBrandingSettings()
+	passwordSettings = panelsettings.DefaultPasswordSettings()
 	defaultUsername = "admin"
 	hasAdmin = false
 
@@ -56,19 +57,6 @@ func getBootstrapData(db *sql.DB) (brandingSettings map[string]any, passwordSett
 		}
 	}
 	return brandingSettings, passwordSettings, defaultUsername, hasAdmin, nil
-}
-
-func defaultBrandingSettings() map[string]any {
-	return map[string]any{
-		"title":   "EXODUS",
-		"logoUrl": nil,
-	}
-}
-
-func defaultPasswordSettings() map[string]any {
-	return map[string]any{
-		"enabled": true,
-	}
 }
 
 func getAuthMethodsStatus(db *sql.DB) (passkeyEnabled bool, oauth2Providers map[string]bool) {

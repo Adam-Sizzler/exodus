@@ -10,6 +10,7 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
+	panelsettingsDefaults "exodus/internal/panelsettings"
 	"exodus/internal/security"
 
 	"github.com/google/uuid"
@@ -96,10 +97,10 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 				)
 				ON CONFLICT (id) DO NOTHING
 			`,
-				`{"rpId":null,"origin":null,"enabled":false}`,
-				`{"github":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"yandex":{"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[]},"generic":{"enabled":false,"clientId":null,"tokenUrl":null,"withPkce":false,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"authorizationUrl":null},"keycloak":{"realm":null,"enabled":false,"clientId":null,"clientSecret":null,"allowedEmails":[],"frontendDomain":null,"keycloakDomain":null},"pocketid":{"enabled":false,"clientId":null,"plainDomain":null,"frontendDomain":null,"clientSecret":null,"allowedEmails":[]},"telegram":{"enabled":false,"clientId":null,"clientSecret":null,"allowedIds":[],"frontendDomain":null}}`,
-				`{"enabled":true}`,
-				`{"title":"EXODUS","logoUrl":null}`,
+				panelsettingsDefaults.DefaultPasskeySettingsJSON,
+				panelsettingsDefaults.DefaultOAuth2SettingsJSON,
+				panelsettingsDefaults.DefaultPasswordSettingsJSON,
+				panelsettingsDefaults.DefaultBrandingSettingsJSON,
 			); execErr != nil {
 				cfg.Logger.Error("Failed to seed panel settings", "error", execErr)
 				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
