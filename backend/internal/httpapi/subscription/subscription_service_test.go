@@ -1,7 +1,6 @@
 package subscription
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -902,7 +901,7 @@ func TestBuildSubscriptionLinksAndResolvedProxies(t *testing.T) {
 		t.Fatalf("expected hysteria2 link, got %s", links[3])
 	}
 
-	resolved := buildResolvedProxyConfigs(hosts, user)
+	resolved := buildResolvedProxyConfigs(hosts, user, SubscriptionSettingsParsed{}, "https://panel.exodus.dev/api/sub/"+user.ShortUUID)
 	if len(resolved) != 4 {
 		t.Fatalf("expected 4 resolved proxy configs, got %d", len(resolved))
 	}
@@ -1066,7 +1065,7 @@ func TestBuildResponseHeadersWithCustomResponseHeaders(t *testing.T) {
 		},
 	}
 
-	headers := buildResponseHeaders(context.Background(), nil, user, settings, "application/json")
+	headers := buildResponseHeaders(user, settings, "application/json", "https://panel.exodus.dev/api/sub/"+user.ShortUUID)
 
 	// 1. Check content-disposition
 	if headers["content-disposition"] != "attachment; filename=alice" {

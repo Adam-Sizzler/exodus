@@ -228,12 +228,8 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgr
 		ctx, user, r.UserAgent(), clientType, requestIP, hwidHeaders,
 	)
 	if err != nil {
-		if err == ErrHwidLimitExceeded {
-			shared.SendError(w, http.StatusForbidden, "HWID limit exceeded", nil, cfg)
-			return
-		}
-		if err == ErrHwidRequired {
-			shared.SendError(w, http.StatusBadRequest, "HWID header required", nil, cfg)
+		if err == ErrHwidCheckFailed {
+			shared.SendError(w, http.StatusInternalServerError, "failed to check hwid device limit", nil, cfg)
 			return
 		}
 		if err == ErrUserDisabled {
@@ -297,7 +293,7 @@ func (s *RenderService) ApplyHostOverrides(hosts []SubscriptionHost, overrides m
 	return applyHostOverrides(hosts, overrides)
 }
 
-func (s *RenderService) CheckHwidDeviceLimit(ctx context.Context, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
+func (s *RenderService) CheckHwidDeviceLimit(ctx context.Context, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (HwidCheckupResult, error) {
 	return checkHwidDeviceLimit(ctx, s.db, user, hwid, settings)
 }
 
@@ -314,7 +310,8 @@ func (s *RenderService) GetSubscriptionTemplateByName(ctx context.Context, name 
 }
 
 func (s *RenderService) BuildResponseHeaders(ctx context.Context, user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
-	return buildResponseHeaders(ctx, s.db, user, settings, contentType)
+	subscriptionURL := resolveSubscriptionURL(ctx, s.db, user, settings)
+	return buildResponseHeaders(user, settings, contentType, subscriptionURL)
 }
 
 func (s *RenderService) MatchResponseRules(rules *subscriptionresponserules.Config, header http.Header) string {

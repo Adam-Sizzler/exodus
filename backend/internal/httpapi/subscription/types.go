@@ -80,6 +80,21 @@ type HwidSettings struct {
 	MaxDevicesAnnounce  *string `json:"maxDevicesAnnounce"`
 }
 
+// HwidCheckupResult mirrors upstream's IHwidCheckupResult. Unlike a plain
+// allowed/denied bool, it distinguishes *why* the request wasn't allowed so
+// the caller can pick the right custom-remark category and response headers,
+// exactly like Exodus's checkHwidDeviceLimit().
+type HwidCheckupResult struct {
+	// Allowed reports whether the request may proceed with the user's real hosts.
+	Allowed bool
+	// LimitBypassed is true when the user has an explicit unlimited (0) device limit.
+	LimitBypassed bool
+	// MaxDeviceReached is true when the device count is at/over the configured limit.
+	MaxDeviceReached bool
+	// HwidNotSupported is true when the client didn't send an X-HWID header at all.
+	HwidNotSupported bool
+}
+
 type CustomRemarks struct {
 	ExpiredUsers           []string `json:"expiredUsers"`
 	LimitedUsers           []string `json:"limitedUsers"`
@@ -240,10 +255,15 @@ type HwidHeaders struct {
 }
 
 var (
-	ErrHwidLimitExceeded = errors.New("hwid limit exceeded")
-	ErrHwidRequired      = errors.New("hwid required")
-	ErrUserDisabled      = errors.New("user disabled")
-	ErrNoHosts           = errors.New("no hosts")
+	// ErrUserDisabled/ErrNoHosts remain hard errors: unlike an HWID device-limit
+	// hit, upstream has no soft/200 fallback for a disabled user or a squad with
+	// no hosts and no configured custom remark for that case.
+	ErrUserDisabled = errors.New("user disabled")
+	ErrNoHosts      = errors.New("no hosts")
+	// ErrHwidCheckFailed signals a genuine backend failure (DB error) while
+	// checking the device limit - distinct from a "soft" limit-exceeded /
+	// hwid-not-supported outcome, which is not an error at all upstream.
+	ErrHwidCheckFailed = errors.New("hwid check failed")
 )
 
 type XrayGenerator struct {

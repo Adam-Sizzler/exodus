@@ -3,16 +3,17 @@ package hosts
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
 
 func validateCreateRequest(req HostCreateRequestAPI) error {
-	if len(req.Remark) < 1 {
+	if utf8.RuneCountInString(req.Remark) < 1 {
 		return fmt.Errorf("remark must be at least 1 character")
 	}
-	if len(req.Remark) > 40 {
-		return fmt.Errorf("remark must be less than 40 characters")
+	if utf8.RuneCountInString(req.Remark) > 100 {
+		return fmt.Errorf("remark must be less than 100 characters")
 	}
 	if req.Port < 1 || req.Port > 65535 {
 		return fmt.Errorf("invalid port")
@@ -87,8 +88,11 @@ func validateUpdateRequest(req hostUpdateFields) error {
 		if req.Remark.Value == nil {
 			return fmt.Errorf("remark cannot be null")
 		}
-		if len(*req.Remark.Value) > 40 {
-			return fmt.Errorf("remark must be less than 40 characters")
+		if utf8.RuneCountInString(*req.Remark.Value) < 1 {
+			return fmt.Errorf("remark must be at least 1 character")
+		}
+		if utf8.RuneCountInString(*req.Remark.Value) > 100 {
+			return fmt.Errorf("remark must be less than 100 characters")
 		}
 	}
 	if req.Address.Set && req.Address.Value == nil {

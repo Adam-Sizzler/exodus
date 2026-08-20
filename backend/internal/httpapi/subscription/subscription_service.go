@@ -153,16 +153,66 @@ func (s *RenderService) RenderUserSubscription(
 		})
 	}
 
+	// Resolved once, reused below both for host remarks and for response
+	// headers (profile-title/announce/custom headers), instead of hitting
+	// the DB a second time inside buildResponseHeaders.
+	subscriptionURL := resolveSubscriptionURL(ctx, s.db, user, settings)
+
+	// hwidExtraHeaders is only populated when the device-limit check below
+	// produces a "soft" outcome (limit reached / hwid not supported): unlike
+	// a hard error, upstream still returns 200 with these extra headers
+	// (and, if configured, a templated fallback body) instead of failing
+	// the request outright.
+	var hwidExtraHeaders map[string]string
+	hwidSoftLimitHit := false
+
 	if settings.HwidSettings.Enabled {
-		ok, _, limitReached := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
-		if !ok {
-			if limitReached {
-				return nil, "", nil, ErrHwidLimitExceeded
+		result, err := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
+		if err != nil {
+			return nil, "", nil, ErrHwidCheckFailed
+		}
+
+		if !result.Allowed {
+			hwidSoftLimitHit = true
+			hwidExtraHeaders = map[string]string{"x-hwid-limit": "true"}
+
+			if result.MaxDeviceReached && settings.HwidSettings.MaxDevicesAnnounce != nil &&
+				*settings.HwidSettings.MaxDevicesAnnounce != "" {
+				hwidExtraHeaders["announce"] = formatTemplateValue(
+					"rwEncodeBase64:"+*settings.HwidSettings.MaxDevicesAnnounce,
+					user, settings, subscriptionURL,
+				)
 			}
-			return nil, "", nil, ErrHwidRequired
+			if result.HwidNotSupported {
+				hwidExtraHeaders["x-hwid-not-supported"] = "true"
+			}
+			if result.MaxDeviceReached {
+				hwidExtraHeaders["x-hwid-max-devices-reached"] = "true"
+			}
+
+			// Same custom-remarks mechanism as disabled/expired/limited/empty-hosts:
+			// swap in the matching fallback host list (or none, if not configured),
+			// which then flows through the exact same remark-templating and
+			// format-generator code below as any other host list.
+			hosts = nil
+			if settings.Raw.IsShowCustomRemarks {
+				if result.MaxDeviceReached && len(settings.CustomRemarks.HWIDMaxDevicesExceeded) > 0 {
+					hosts = createFallbackRemarkHosts(settings.CustomRemarks.HWIDMaxDevicesExceeded)
+				} else if result.HwidNotSupported && len(settings.CustomRemarks.HWIDNotSupported) > 0 {
+					hosts = createFallbackRemarkHosts(settings.CustomRemarks.HWIDNotSupported)
+				}
+			}
 		}
 	} else if hwid != nil {
 		_ = enqueueOrUpsertHwidUserDevice(ctx, s.db, user.TID, *hwid)
+	}
+
+	if len(hosts) > 0 {
+		// Same template substitution used for response headers, applied
+		// once here so every generator (xray/singbox/mihomo/raw) below
+		// sees the resolved+deduplicated remark. Also covers the
+		// disabled/expired/limited/empty-hosts/hwid-limit fallback remarks.
+		resolveHostRemarks(hosts, user, settings, subscriptionURL)
 	}
 
 	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP)
@@ -202,42 +252,53 @@ func (s *RenderService) RenderUserSubscription(
 	var outputContent string
 	var contentType string
 
-	switch reqType {
-	case responseTypeMihomo, responseTypeClash, responseTypeStash:
-		gen := NewMihomoGenerator(s.cfg)
-		out, err := gen.Generate([]byte(templateContent), user, hosts, settings)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		outputContent = out
-		contentType = "text/yaml; charset=utf-8"
-	case responseTypeSingbox:
-		gen := NewSingboxGenerator(s.cfg)
-		out, err := gen.Generate([]byte(templateContent), user, hosts, settings)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		outputContent = out
-		contentType = "application/json; charset=utf-8"
-	case responseTypeXrayJSON:
-		gen := NewXrayGenerator(s.cfg)
-		out, err := gen.GenerateJSON([]byte(templateContent), user, hosts, settings)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		outputContent = out
-		contentType = "application/json; charset=utf-8"
-	default:
-		gen := NewXrayGenerator(s.cfg)
-		links, err := gen.GenerateLinks(user, hosts, settings)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		outputContent = base64.StdEncoding.EncodeToString([]byte(strings.Join(links, "\n")))
+	if hwidSoftLimitHit && len(hosts) == 0 {
+		// No custom remark configured for this HWID outcome (or custom
+		// remarks disabled) - upstream still returns 200 with an empty
+		// plain-text body rather than running any format generator.
+		outputContent = ""
 		contentType = "text/plain; charset=utf-8"
+	} else {
+		switch reqType {
+		case responseTypeMihomo, responseTypeClash, responseTypeStash:
+			gen := NewMihomoGenerator(s.cfg)
+			out, err := gen.Generate([]byte(templateContent), user, hosts, settings)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			outputContent = out
+			contentType = "text/yaml; charset=utf-8"
+		case responseTypeSingbox:
+			gen := NewSingboxGenerator(s.cfg)
+			out, err := gen.Generate([]byte(templateContent), user, hosts, settings)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			outputContent = out
+			contentType = "application/json; charset=utf-8"
+		case responseTypeXrayJSON:
+			gen := NewXrayGenerator(s.cfg)
+			out, err := gen.GenerateJSON([]byte(templateContent), user, hosts, settings)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			outputContent = out
+			contentType = "application/json; charset=utf-8"
+		default:
+			gen := NewXrayGenerator(s.cfg)
+			links, err := gen.GenerateLinks(user, hosts, settings)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			outputContent = base64.StdEncoding.EncodeToString([]byte(strings.Join(links, "\n")))
+			contentType = "text/plain; charset=utf-8"
+		}
 	}
 
-	responseHeaders := buildResponseHeaders(ctx, s.db, user, settings, contentType)
+	responseHeaders := buildResponseHeaders(user, settings, contentType, subscriptionURL)
+	for k, v := range hwidExtraHeaders {
+		responseHeaders[k] = v
+	}
 	return []byte(outputContent), contentType, responseHeaders, nil
 }
 

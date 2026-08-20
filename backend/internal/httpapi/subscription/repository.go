@@ -571,27 +571,31 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	return h, nil
 }
 
-func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (bool, bool, bool) {
+// checkHwidDeviceLimit ports upstream's checkHwidDeviceLimit(): it never
+// treats "device limit reached" and "no X-HWID header sent" as the same
+// outcome, and DB failures are surfaced as a real error rather than folded
+// into one of the two device-limit reasons.
+func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (HwidCheckupResult, error) {
 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
 		if hwid != nil {
 			_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.TID, *hwid)
 		}
-		return true, false, false
+		return HwidCheckupResult{Allowed: true, LimitBypassed: true}, nil
 	}
 
 	if hwid == nil {
-		return false, false, true
+		return HwidCheckupResult{Allowed: false, HwidNotSupported: true}, nil
 	}
 
 	exists, err := hwidDeviceExists(ctx, dbConn, user.TID, hwid.Hwid)
 	if err == nil && exists {
 		_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.TID, *hwid)
-		return true, false, false
+		return HwidCheckupResult{Allowed: true}, nil
 	}
 
 	count, err := countHwidDevices(ctx, dbConn, user.TID)
 	if err != nil {
-		return false, true, false
+		return HwidCheckupResult{}, fmt.Errorf("count hwid devices: %w", err)
 	}
 
 	limit := settings.FallbackDeviceLimit
@@ -600,14 +604,14 @@ func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user Subscription
 	}
 
 	if count >= limit {
-		return false, true, false
+		return HwidCheckupResult{Allowed: false, MaxDeviceReached: true}, nil
 	}
 
 	if err := upsertHwidUserDevice(ctx, dbConn, user.TID, *hwid); err != nil {
-		return false, true, false
+		return HwidCheckupResult{}, fmt.Errorf("upsert hwid device: %w", err)
 	}
 
-	return true, false, false
+	return HwidCheckupResult{Allowed: true}, nil
 }
 
 func countHwidDevices(ctx context.Context, dbConn *sql.DB, userID int64) (int, error) {
@@ -1102,11 +1106,13 @@ func resolveSubscriptionURL(ctx context.Context, dbConn *sql.DB, user Subscripti
 	return fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
 }
 
-func buildResponseHeaders(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string) map[string]string {
+// buildResponseHeaders takes an already-resolved subscriptionURL instead of
+// (ctx, dbConn) so callers that already computed it for host remarks (or for
+// the raw/debug endpoint) don't pay for a second resolveSubscriptionURL DB
+// round-trip per request.
+func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string, subscriptionURL string) map[string]string {
 	headers := make(map[string]string)
 	headers["content-disposition"] = fmt.Sprintf("attachment; filename=%s", user.Username)
-
-	subscriptionURL := resolveSubscriptionURL(ctx, dbConn, user, settings)
 
 	userInfo := getSubscriptionUserInfo(user)
 	parts := []string{}
@@ -1182,6 +1188,11 @@ func parseTemplateArgs(rawArgs string) map[string]string {
 	return args
 }
 
+// formatTemplateValue is used for values that additionally support the
+// exEncodeBase64:/rwEncodeBase64: prefix (currently: custom response headers).
+// The actual {{VAR}} substitution lives in resolveTemplateVariables so that
+// every other caller (e.g. host remarks) shares the exact same variable set
+// without duplicating the switch below.
 func formatTemplateValue(value string, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) string {
 	shouldBase64 := false
 	if strings.HasPrefix(value, "exEncodeBase64:") {
@@ -1192,6 +1203,20 @@ func formatTemplateValue(value string, user SubscriptionUser, settings Subscript
 		value = strings.TrimPrefix(value, "rwEncodeBase64:")
 	}
 
+	res := resolveTemplateVariables(value, user, settings, subscriptionURL)
+
+	if shouldBase64 {
+		return "base64:" + base64.StdEncoding.EncodeToString([]byte(res))
+	}
+	return res
+}
+
+// resolveTemplateVariables replaces every supported {{VAR}} / {{VAR:k=v|...}}
+// placeholder in value using the user/settings context. This mirrors
+// upstream's TemplateEngine.replace() and is the single place where the
+// list of supported template variables is defined - reused by both response
+// headers (formatTemplateValue) and host remarks (resolveHostRemarks).
+func resolveTemplateVariables(value string, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) string {
 	trafficLeft := int64(0)
 	if user.TrafficLimitBytes > 0 {
 		if user.TrafficLimitBytes > user.UsedTrafficBytes {
@@ -1320,10 +1345,43 @@ func formatTemplateValue(value string, user SubscriptionUser, settings Subscript
 		}
 	})
 
-	if shouldBase64 {
-		return "base64:" + base64.StdEncoding.EncodeToString([]byte(res))
-	}
 	return res
+}
+
+// resolveHostRemarks applies {{VAR}} template substitution to every host's
+// Remark (in place) and deduplicates the results, exactly like upstream's
+// resolve-proxy-config.service.ts does before handing hosts off to any of
+// the format-specific generators (xray/singbox/mihomo). Call this once,
+// right after the final host list for a user is assembled, so every
+// generator - and the raw/debug JSON view - sees the same resolved remark
+// without each of them re-implementing template substitution.
+func resolveHostRemarks(hosts []SubscriptionHost, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) {
+	knownRemarks := make(map[string]int, len(hosts))
+	for i := range hosts {
+		hosts[i].Remark = deduplicateRemark(
+			resolveTemplateVariables(hosts[i].Remark, user, settings, subscriptionURL),
+			knownRemarks,
+		)
+	}
+}
+
+// deduplicateRemark ports upstream's deduplicateRemark(): if a remark was
+// already seen for this user's host list, it appends a " ^~N~^" suffix so
+// clients don't end up with multiple nodes sharing an identical name.
+func deduplicateRemark(remark string, knownRemarks map[string]int) string {
+	currentCount := knownRemarks[remark]
+	knownRemarks[remark] = currentCount + 1
+
+	if currentCount == 0 {
+		return remark
+	}
+
+	hasExistingSuffix := strings.Contains(remark, "^~") && strings.HasSuffix(remark, "~^")
+	suffix := currentCount + 1
+	if hasExistingSuffix {
+		suffix = currentCount
+	}
+	return fmt.Sprintf("%s ^~%d~^", remark, suffix)
 }
 
 func getSubscriptionUserInfo(user SubscriptionUser) map[string]int64 {

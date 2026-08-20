@@ -39,10 +39,15 @@ type ProxyEntryMetadata struct {
 	RawInbound                   any      `json:"rawInbound"`
 }
 
-func buildResolvedProxyConfigs(hosts []SubscriptionHost, user SubscriptionUser) []ResolvedProxyConfig {
+func buildResolvedProxyConfigs(hosts []SubscriptionHost, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) []ResolvedProxyConfig {
+	knownRemarks := make(map[string]int, len(hosts))
 	result := make([]ResolvedProxyConfig, 0, len(hosts))
 	for _, host := range hosts {
-		resolved := buildResolvedProxyConfig(host, user)
+		finalRemark := deduplicateRemark(
+			resolveTemplateVariables(strings.TrimSpace(host.Remark), user, settings, subscriptionURL),
+			knownRemarks,
+		)
+		resolved := buildResolvedProxyConfig(host, user, finalRemark)
 		if resolved != nil {
 			result = append(result, *resolved)
 		}
@@ -50,7 +55,7 @@ func buildResolvedProxyConfigs(hosts []SubscriptionHost, user SubscriptionUser) 
 	return result
 }
 
-func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser) *ResolvedProxyConfig {
+func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, finalRemark string) *ResolvedProxyConfig {
 	protocol := normalizedHostProtocol(host)
 	if protocol == "" {
 		return nil
@@ -215,7 +220,7 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser) *Res
 		securityOptions = nil
 	}
 
-	remark := strings.TrimSpace(host.Remark)
+	remark := finalRemark
 	if remark == "" {
 		remark = host.Address
 	}
@@ -417,9 +422,9 @@ func buildRawSubscriptionResponse(
 		expireAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
 	}
 
-	headers := buildResponseHeaders(ctx, db, user, settings, "application/json")
+	headers := buildResponseHeaders(user, settings, "application/json", subURL)
 
-	resolvedProxies := buildResolvedProxyConfigs(hosts, user)
+	resolvedProxies := buildResolvedProxyConfigs(hosts, user, settings, subURL)
 
 	return RawSubscriptionResponse{
 		User: ExtendedUserDTO{
