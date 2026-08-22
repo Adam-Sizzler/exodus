@@ -27,13 +27,18 @@ export const XhttpModalContent = ({ form }: IProps) => {
 
     const inputProps = form.getInputProps('xhttpExtraParams')
 
-    const [value, setValue] = useState<string>(
-        (form.getValues().xhttpExtraParams as unknown as string) ?? ''
-    )
+    const formVal = form.getValues().xhttpExtraParams
+    const [value, setValue] = useState<string>(() => {
+        if (typeof formVal === 'string') return formVal
+        if (formVal && typeof formVal === 'object') return JSON.stringify(formVal, null, 2)
+        return ''
+    })
 
     const handleChange = (next: string) => {
         setValue(next)
         form.setFieldValue('xhttpExtraParams', next)
+        form.setDirty({ xhttpExtraParams: true })
+        form.setTouched({ xhttpExtraParams: true })
     }
 
     return (

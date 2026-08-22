@@ -67,7 +67,7 @@ export declare namespace GetHostCommand {
                 readonly CLASH: "CLASH";
                 readonly SINGBOX: "SINGBOX";
             }>>;
-            mapper: z.ZodObject<{
+            mapper: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
                 xrayJson: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
                     op: z.ZodLiteral<"copy">;
                     from: z.ZodString;
@@ -116,7 +116,105 @@ export declare namespace GetHostCommand {
                     op: z.ZodLiteral<"unset">;
                     to: z.ZodString;
                 }, z.core.$strip>], "op">>>;
-            }, z.core.$strip>;
+            }, z.core.$strip>>>, z.ZodTransform<{
+                xrayJson?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+                mihomo?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+                base64?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+                singbox?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+            }, {
+                xrayJson?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+                mihomo?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+                base64?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+                singbox?: ({
+                    op: "copy";
+                    from: string;
+                    to: string;
+                } | {
+                    op: "set";
+                    value: string | number | boolean | Record<string, z.core.util.JSONType> | z.core.util.JSONType[];
+                    to: string;
+                } | {
+                    op: "unset";
+                    to: string;
+                })[] | undefined;
+            } | null | undefined>>;
         }, z.core.$strip>;
     }, z.core.$strip>;
     type RequestParam = z.infer<typeof RequestParamSchema>;

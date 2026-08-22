@@ -27,13 +27,18 @@ export const MuxModalContent = ({ form }: IProps) => {
 
     const inputProps = form.getInputProps('muxParams')
 
-    const [value, setValue] = useState<string>(
-        (form.getValues().muxParams as unknown as string) ?? ''
-    )
+    const formVal = form.getValues().muxParams
+    const [value, setValue] = useState<string>(() => {
+        if (typeof formVal === 'string') return formVal
+        if (formVal && typeof formVal === 'object') return JSON.stringify(formVal, null, 2)
+        return ''
+    })
 
     const handleChange = (next: string) => {
         setValue(next)
         form.setFieldValue('muxParams', next)
+        form.setDirty({ muxParams: true })
+        form.setTouched({ muxParams: true })
     }
 
     return (

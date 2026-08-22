@@ -43,5 +43,7 @@ export const HostsSchema = z.object({
     xrayJsonTemplateUuid: z.uuid().nullable(),
     excludedInternalSquads: z.array(z.uuid()),
     excludeFromSubscriptionTypes: z.array(z.enum(SUBSCRIPTION_TEMPLATE_TYPE)),
-    mapper: HostMapperSchema,
+    mapper: HostMapperSchema.nullish().transform(
+        (val) => val ?? { xrayJson: [], mihomo: [], base64: [], singbox: [] }
+    ),
 });

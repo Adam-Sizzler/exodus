@@ -39,6 +39,12 @@ func mapHostRecordToAPI(rec hostRecord, nodes []string, excluded []string) HostA
 			}
 			return rec.ExcludeTypes
 		}(),
-		Mapper: parseJSONAny(rec.Mapper),
+		Mapper: func() interface{} {
+			m := parseJSONAny(rec.Mapper)
+			if m == nil {
+				return map[string]interface{}{}
+			}
+			return m
+		}(),
 	}
 }

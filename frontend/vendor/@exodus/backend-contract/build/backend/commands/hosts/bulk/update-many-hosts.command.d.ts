@@ -18,6 +18,49 @@ export declare namespace UpdateManyHostsCommand {
         }>>>>;
         host: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         sni: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        remark: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+        address: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+        fingerprint: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        isDisabled: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
+        securityLayer: z.ZodOptional<z.ZodOptional<z.ZodEnum<{
+            readonly DEFAULT: "DEFAULT";
+            readonly TLS: "TLS";
+            readonly NONE: "NONE";
+        }>>>;
+        xhttpExtraParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        muxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        sockoptParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        finalMask: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
+        inbound: z.ZodOptional<z.ZodOptional<z.ZodObject<{
+            configProfileUuid: z.ZodUUID;
+            configProfileInboundUuid: z.ZodUUID;
+        }, z.core.$strip>>>;
+        serverDescription: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        isHidden: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        overrideSniFromAddress: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        keepSniBlank: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        vlessRouteId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodInt>>>;
+        pinnedPeerCertSha256: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        verifyPeerCertByName: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        shuffleHost: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        mihomoX25519: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+        mihomoIpVersion: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+            readonly DUAL: "dual";
+            readonly IPV4: "ipv4";
+            readonly IPV6: "ipv6";
+            readonly IPV4_PREFER: "ipv4-prefer";
+            readonly IPV6_PREFER: "ipv6-prefer";
+        }>>>>;
+        xrayJsonTemplateUuid: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUUID>>>;
+        excludedInternalSquads: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodUUID>>>;
+        excludeFromSubscriptionTypes: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodEnum<{
+            readonly XRAY_JSON: "XRAY_JSON";
+            readonly XRAY_BASE64: "XRAY_BASE64";
+            readonly MIHOMO: "MIHOMO";
+            readonly STASH: "STASH";
+            readonly CLASH: "CLASH";
+            readonly SINGBOX: "SINGBOX";
+        }>>>>;
         mapper: z.ZodOptional<z.ZodOptional<z.ZodObject<{
             xrayJson: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
                 op: z.ZodLiteral<"copy">;
@@ -68,49 +111,6 @@ export declare namespace UpdateManyHostsCommand {
                 to: z.ZodString;
             }, z.core.$strip>], "op">>>;
         }, z.core.$strip>>>;
-        remark: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-        address: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-        fingerprint: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        isDisabled: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
-        securityLayer: z.ZodOptional<z.ZodOptional<z.ZodEnum<{
-            readonly DEFAULT: "DEFAULT";
-            readonly TLS: "TLS";
-            readonly NONE: "NONE";
-        }>>>;
-        xhttpExtraParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        muxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        sockoptParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        finalMask: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        inbound: z.ZodOptional<z.ZodOptional<z.ZodObject<{
-            configProfileUuid: z.ZodUUID;
-            configProfileInboundUuid: z.ZodUUID;
-        }, z.core.$strip>>>;
-        serverDescription: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        isHidden: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        overrideSniFromAddress: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        keepSniBlank: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        vlessRouteId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodInt>>>;
-        pinnedPeerCertSha256: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        verifyPeerCertByName: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        shuffleHost: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        mihomoX25519: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        mihomoIpVersion: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodEnum<{
-            readonly DUAL: "dual";
-            readonly IPV4: "ipv4";
-            readonly IPV6: "ipv6";
-            readonly IPV4_PREFER: "ipv4-prefer";
-            readonly IPV6_PREFER: "ipv6-prefer";
-        }>>>>;
-        xrayJsonTemplateUuid: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUUID>>>;
-        excludedInternalSquads: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodUUID>>>;
-        excludeFromSubscriptionTypes: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodEnum<{
-            readonly XRAY_JSON: "XRAY_JSON";
-            readonly XRAY_BASE64: "XRAY_BASE64";
-            readonly MIHOMO: "MIHOMO";
-            readonly STASH: "STASH";
-            readonly CLASH: "CLASH";
-            readonly SINGBOX: "SINGBOX";
-        }>>>>;
         uuids: z.ZodArray<z.ZodUUID>;
     }, z.core.$strip>;
     type RequestBody = z.infer<typeof RequestBodySchema>;

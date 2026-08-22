@@ -33,7 +33,15 @@ export const EditHostDrawer = NiceModal.create((props: IProps) => {
     const modal = useModal()
     const { modalProps, hide } = useNiceMantineModal({
         modal,
-        drawer: true
+        drawer: true,
+        onClose() {
+            queryClient.refetchQueries({
+                queryKey: QueryKeys.hosts.getAllTags.queryKey
+            })
+            queryClient.refetchQueries({
+                queryKey: QueryKeys.hosts.getAllHosts.queryKey
+            })
+        }
     })
 
     const [advancedOpened, setAdvancedOpened] = useState(false)
@@ -59,6 +67,12 @@ export const EditHostDrawer = NiceModal.create((props: IProps) => {
     const { mutate: updateHost, isPending: isUpdateHostPending } = useUpdateHost({
         mutationFns: {
             onSuccess: async () => {
+                await queryClient.refetchQueries({
+                    queryKey: QueryKeys.hosts.getAllHosts.queryKey
+                })
+                await queryClient.refetchQueries({
+                    queryKey: QueryKeys.hosts.getAllTags.queryKey
+                })
                 hide()
             }
         }
@@ -87,7 +101,7 @@ export const EditHostDrawer = NiceModal.create((props: IProps) => {
                 muxParams: stringifyJsonField(host.muxParams),
                 sockoptParams: stringifyJsonField(host.sockoptParams),
                 finalMask: stringifyJsonField(host.finalMask),
-                mapper: host.mapper,
+                mapper: host.mapper ?? { xrayJson: [], mihomo: [], base64: [], singbox: [] },
                 tags: host.tags ?? undefined,
                 isHidden: host.isHidden,
                 overrideSniFromAddress: host.overrideSniFromAddress,
@@ -103,8 +117,9 @@ export const EditHostDrawer = NiceModal.create((props: IProps) => {
                 excludedInternalSquads: host.excludedInternalSquads ?? undefined,
                 excludeFromSubscriptionTypes: host.excludeFromSubscriptionTypes ?? undefined
             })
+            form.resetDirty()
         }
-    }, [configProfiles])
+    }, [configProfiles, host])
 
     form.watch('inbound.configProfileInboundUuid', ({ value }) => {
         const { inbound } = form.getValues()
@@ -124,6 +139,11 @@ export const EditHostDrawer = NiceModal.create((props: IProps) => {
     })
 
     const handleSubmit = form.onSubmit(async (values) => {
+        const mapperPayload =
+            values.mapper && typeof values.mapper === 'object' && Object.keys(values.mapper).length > 0
+                ? values.mapper
+                : { xrayJson: [], mihomo: [], base64: [], singbox: [] }
+
         updateHost({
             variables: {
                 ...values,
@@ -132,7 +152,8 @@ export const EditHostDrawer = NiceModal.create((props: IProps) => {
                 xhttpExtraParams: parseJsonField(values.xhttpExtraParams),
                 muxParams: parseJsonField(values.muxParams),
                 sockoptParams: parseJsonField(values.sockoptParams),
-                finalMask: parseJsonField(values.finalMask)
+                finalMask: parseJsonField(values.finalMask),
+                mapper: mapperPayload
             }
         })
     })

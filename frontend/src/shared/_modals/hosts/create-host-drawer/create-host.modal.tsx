@@ -29,7 +29,15 @@ export const CreateHostDrawer = NiceModal.create(() => {
     const modal = useModal()
     const { modalProps, hide } = useNiceMantineModal({
         modal,
-        drawer: true
+        drawer: true,
+        onClose() {
+            queryClient.refetchQueries({
+                queryKey: QueryKeys.hosts.getAllTags.queryKey
+            })
+            queryClient.refetchQueries({
+                queryKey: QueryKeys.hosts.getAllHosts.queryKey
+            })
+        }
     })
 
     const { data: configProfiles } = useGetConfigProfiles()
@@ -59,15 +67,14 @@ export const CreateHostDrawer = NiceModal.create(() => {
             inbound: {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''
-            }
+            },
+            mapper: { xrayJson: [], mihomo: [], base64: [], singbox: [] }
         }
     })
 
     const { mutate: createHost, isPending: isCreateHostPending } = useCreateHost({
         mutationFns: {
             onSuccess: async () => {
-                hide()
-
                 await queryClient.refetchQueries({
                     queryKey: QueryKeys.hosts.getAllTags.queryKey
                 })
@@ -75,6 +82,8 @@ export const CreateHostDrawer = NiceModal.create(() => {
                 await queryClient.refetchQueries({
                     queryKey: QueryKeys.hosts.getAllHosts.queryKey
                 })
+
+                hide()
             }
         }
     })
@@ -90,6 +99,11 @@ export const CreateHostDrawer = NiceModal.create(() => {
             return null
         }
 
+        const mapperPayload =
+            values.mapper && typeof values.mapper === 'object' && Object.keys(values.mapper).length > 0
+                ? values.mapper
+                : { xrayJson: [], mihomo: [], base64: [], singbox: [] }
+
         createHost({
             variables: {
                 ...values,
@@ -98,6 +112,7 @@ export const CreateHostDrawer = NiceModal.create(() => {
                 muxParams: parseJsonField(values.muxParams),
                 xhttpExtraParams: parseJsonField(values.xhttpExtraParams),
                 finalMask: parseJsonField(values.finalMask),
+                mapper: mapperPayload,
                 inbound: {
                     configProfileInboundUuid: values.inbound.configProfileInboundUuid,
                     configProfileUuid: values.inbound.configProfileUuid

@@ -52,12 +52,21 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
 
     const [error, setError] = useState<null | string>(null)
 
-    const currentMapper = form.getValues().mapper
+    const getFormMapperValue = () => {
+        const currentMapper = form.getValues().mapper
+        if (!currentMapper || typeof currentMapper !== 'object') {
+            return EMPTY_MAPPER
+        }
+        const hasEntries = Object.values(currentMapper).some(
+            (arr) => Array.isArray(arr) && arr.length > 0
+        )
+        if (!hasEntries) {
+            return EMPTY_MAPPER
+        }
+        return JSON.stringify(currentMapper, null, 2)
+    }
 
-    const initialValue =
-        currentMapper && Object.keys(currentMapper).length > 0
-            ? JSON.stringify(currentMapper, null, 2)
-            : EMPTY_MAPPER
+    const initialValue = getFormMapperValue()
 
     useEffect(() => {
         if (!monaco) return
@@ -65,13 +74,25 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
         MonacoSetupHostMapperEditorFeature.setup(rawInbound)
     }, [monaco, rawInbound])
 
+    useEffect(() => {
+        if (modal.visible) {
+            const nextVal = getFormMapperValue()
+            if (editorRef.current && editorRef.current.getValue() !== nextVal) {
+                editorRef.current.setValue(nextVal)
+            }
+            setError(null)
+        }
+    }, [modal.visible])
+
     const handleSave = () => {
         if (!editorRef.current) return
 
         const currentValue = editorRef.current.getValue().trim()
 
-        if (currentValue === '') {
-            form.setFieldValue('mapper', undefined)
+        if (currentValue === '' || currentValue === '{}' || currentValue === EMPTY_MAPPER) {
+            form.setFieldValue('mapper', { xrayJson: [], mihomo: [], base64: [], singbox: [] })
+            form.setDirty({ mapper: true })
+            form.setTouched({ mapper: true })
             hide()
             return
         }
@@ -94,6 +115,8 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
         }
 
         form.setFieldValue('mapper', result.data)
+        form.setDirty({ mapper: true })
+        form.setTouched({ mapper: true })
         hide()
     }
 
@@ -137,6 +160,9 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
                         onMount={(editor, monaco) => {
                             editorRef.current = editor
                             monacoRef.current = monaco
+
+                            const initial = getFormMapperValue()
+                            editor.setValue(initial)
 
                             forceMonacoRetokenize(editor)
 
