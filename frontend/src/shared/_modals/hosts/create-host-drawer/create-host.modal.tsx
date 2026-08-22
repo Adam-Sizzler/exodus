@@ -18,9 +18,10 @@ import {
     useGetNodes,
     useGetSubscriptionTemplates
 } from '@shared/api/hooks'
+import { LoadingScreen } from '@shared/ui'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { parseJsonField, parseYamlField } from '@shared/utils/misc'
+import { parseJsonField } from '@shared/utils/misc'
 
 export const CreateHostDrawer = NiceModal.create(() => {
     const { t } = useTranslation()
@@ -55,14 +56,6 @@ export const CreateHostDrawer = NiceModal.create(() => {
             port: 0,
             remark: '',
             address: '',
-            xhttpExtraParams: '',
-            muxParams: '',
-            singboxMuxParams: '',
-            clashMuxParams: '',
-            singboxCustomParams: '',
-            mihomoCustomParams: '',
-            sockoptParams: '',
-            finalMask: '',
             inbound: {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''
@@ -97,37 +90,20 @@ export const CreateHostDrawer = NiceModal.create(() => {
             return null
         }
 
-        const valuesAny = values as typeof values & {
-            clashMuxParams?: unknown
-            overrideProtocolCredential?: boolean
-            protocolCredential?: string | null
-            singboxMuxParams?: unknown
-            singboxCustomParams?: unknown
-            mihomoCustomParams?: string | null
-        }
-
-        const variables = {
-            ...valuesAny,
-            isDisabled: !values.isDisabled,
-            sockoptParams: parseJsonField(values.sockoptParams),
-            muxParams: parseJsonField(values.muxParams),
-            xhttpExtraParams: parseJsonField(values.xhttpExtraParams),
-            finalMask: parseJsonField(values.finalMask),
-            singboxMuxParams: parseJsonField(valuesAny.singboxMuxParams),
-            clashMuxParams: parseYamlField(valuesAny.clashMuxParams),
-            singboxCustomParams: parseJsonField(valuesAny.singboxCustomParams),
-            mihomoCustomParams: valuesAny.mihomoCustomParams || null,
-            overrideProtocolCredential: Boolean(valuesAny.overrideProtocolCredential),
-            protocolCredential: valuesAny.overrideProtocolCredential
-                ? valuesAny.protocolCredential || null
-                : null,
-            inbound: {
-                configProfileInboundUuid: values.inbound.configProfileInboundUuid,
-                configProfileUuid: values.inbound.configProfileUuid
+        createHost({
+            variables: {
+                ...values,
+                isDisabled: !values.isDisabled,
+                sockoptParams: parseJsonField(values.sockoptParams),
+                muxParams: parseJsonField(values.muxParams),
+                xhttpExtraParams: parseJsonField(values.xhttpExtraParams),
+                finalMask: parseJsonField(values.finalMask),
+                inbound: {
+                    configProfileInboundUuid: values.inbound.configProfileInboundUuid,
+                    configProfileUuid: values.inbound.configProfileUuid
+                }
             }
-        } as unknown as CreateHostCommand.Request
-
-        createHost({ variables })
+        })
 
         return null
     })
@@ -164,18 +140,22 @@ export const CreateHostDrawer = NiceModal.create(() => {
                 />
             }
         >
-            <BaseHostForm
-                advancedOpened={advancedOpened}
-                configProfiles={configProfiles?.configProfiles ?? []}
-                form={form}
-                handleSubmit={handleSubmit}
-                hostTags={hostTags?.tags ?? []}
-                internalSquads={internalSquads?.internalSquads ?? []}
-                isSubmitting={isCreateHostPending}
-                nodes={nodes!}
-                setAdvancedOpened={setAdvancedOpened}
-                subscriptionTemplates={templates?.templates ?? []}
-            />
+            {!configProfiles || !nodes || !templates || !internalSquads || !hostTags ? (
+                <LoadingScreen />
+            ) : (
+                <BaseHostForm
+                    advancedOpened={advancedOpened}
+                    configProfiles={configProfiles.configProfiles}
+                    form={form}
+                    handleSubmit={handleSubmit}
+                    hostTags={hostTags.tags}
+                    internalSquads={internalSquads.internalSquads}
+                    isSubmitting={isCreateHostPending}
+                    nodes={nodes}
+                    setAdvancedOpened={setAdvancedOpened}
+                    subscriptionTemplates={templates.templates}
+                />
+            )}
         </Drawer>
     )
 })

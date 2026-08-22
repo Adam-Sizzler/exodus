@@ -139,15 +139,22 @@ export const deleteSubscriptionConnectionResponseSchema = z.object({
     })
 })
 
-const getSubscriptionConnectionsSecretKeyResponseSchema = z.object({
-    response: z.object({
-        secretKey: z.string(),
-        grpcToken: z.string()
-    })
+const getSubscriptionConnectionsPubKeyResponseSchema = z.object({
+    response: z
+        .object({
+            secretKey: z.string().optional(),
+            pubKey: z.string().optional(),
+            grpcToken: z.string().optional().default('')
+        })
+        .transform((data) => ({
+            secretKey: data.secretKey || data.pubKey || '',
+            pubKey: data.pubKey || data.secretKey || '',
+            grpcToken: data.grpcToken || ''
+        }))
 })
 
 export type SubscriptionConnectionKeygenResponse = z.infer<
-    typeof getSubscriptionConnectionsSecretKeyResponseSchema
+    typeof getSubscriptionConnectionsPubKeyResponseSchema
 >['response']
 export type SubscriptionConnectionResponse = z.infer<typeof subscriptionConnectionNodeSchema>
 
@@ -158,7 +165,7 @@ export const subscriptionConnectionsQueryKeys = createQueryKeys('subscriptionCon
     getNode: (route: GetNodeCommand.RequestParam) => ({
         queryKey: [route]
     }),
-    getSecretKey: {
+    getPubKey: {
         queryKey: null
     },
     getAllTags: {
@@ -180,7 +187,7 @@ export const useGetSubscriptionConnections = createGetQueryHook({
 export const useGetSubscriptionConnection = createGetQueryHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.GET_ONE,
     responseSchema: getOneSubscriptionConnectionResponseSchema,
-    routeParamsSchema: GetNodeCommand.RequestSchema,
+    routeParamsSchema: GetNodeCommand.RequestParamSchema,
     getQueryKey: ({ route }) => subscriptionConnectionsQueryKeys.getNode(route!).queryKey,
     rQueryParams: {
         refetchOnMount: true,
@@ -190,17 +197,17 @@ export const useGetSubscriptionConnection = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get Subscription Connection')
 })
 
-export const useGetSubscriptionConnectionsSecretKey = createGetQueryHook({
+export const useGetSubscriptionConnectionsPubKey = createGetQueryHook({
     endpoint: '/api/keygen',
-    responseSchema: getSubscriptionConnectionsSecretKeyResponseSchema,
-    getQueryKey: () => subscriptionConnectionsQueryKeys.getSecretKey.queryKey,
+    responseSchema: getSubscriptionConnectionsPubKeyResponseSchema,
+    getQueryKey: () => subscriptionConnectionsQueryKeys.getPubKey.queryKey,
     rQueryParams: {
         placeholderData: keepPreviousData,
         refetchOnMount: true,
         staleTime: sToMs(5)
     },
 
-    errorHandler: (error) => errorHandler(error, 'Get Subscription Connection Secret Key')
+    errorHandler: (error) => errorHandler(error, 'Get Subscription Connection PubKey')
 })
 
 export const useGetSubscriptionConnectionsTags = createGetQueryHook({

@@ -19,3 +19,5 @@ __exportStar(require("./connections-by-user-result.command"), exports);
 __exportStar(require("./connections-by-user.command"), exports);
 __exportStar(require("./connections-by-node-result.command"), exports);
 __exportStar(require("./connections-by-node.command"), exports);
+__exportStar(require("./geocheck-by-node.command"), exports);
+__exportStar(require("./geocheck-by-node-result.command"), exports);

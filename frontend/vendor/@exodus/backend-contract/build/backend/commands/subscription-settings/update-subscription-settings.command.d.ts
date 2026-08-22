@@ -81,6 +81,7 @@ export declare namespace UpdateSubscriptionSettingsCommand {
                         key: z.ZodString;
                     }, z.core.$strip>>;
                     excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+                    respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
         }, z.core.$strip>>;
@@ -169,6 +170,7 @@ export declare namespace UpdateSubscriptionSettingsCommand {
                             key: z.ZodString;
                         }, z.core.$strip>>;
                         excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+                        respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
                     }, z.core.$strip>>;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;

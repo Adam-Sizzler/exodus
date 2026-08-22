@@ -26,6 +26,7 @@ __exportStar(require("./internal-squads"), exports);
 __exportStar(require("./connections"), exports);
 __exportStar(require("./keygen"), exports);
 __exportStar(require("./metadata"), exports);
+__exportStar(require("./node-integrations"), exports);
 __exportStar(require("./node-plugins"), exports);
 __exportStar(require("./nodes"), exports);
 __exportStar(require("./passkeys"), exports);

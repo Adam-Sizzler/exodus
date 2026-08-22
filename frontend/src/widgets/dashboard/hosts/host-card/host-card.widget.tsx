@@ -24,7 +24,7 @@ import ColorHash from 'color-hash'
 import { githubDarkTheme, JsonEditor } from 'json-edit-react'
 import { CSSProperties, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PiNetwork, PiProhibit, PiPulse, PiGearSixDuotone } from 'react-icons/pi'
+import { PiNetwork, PiProhibit, PiPulse } from 'react-icons/pi'
 import { RiDraggable } from 'react-icons/ri'
 import {
     TbAlertCircle,
@@ -133,14 +133,6 @@ export function HostCardWidget(props: IProps) {
         isParamSet(item.muxParams) ||
         isParamSet(itemWithMuxParams.singboxMuxParams) ||
         isParamSet(itemWithMuxParams.clashMuxParams)
-
-    const itemWithCustomParams = item as typeof item & {
-        singboxCustomParams?: unknown
-        mihomoCustomParams?: unknown
-    }
-    const hasCustomParams =
-        isParamSet(itemWithCustomParams.singboxCustomParams) ||
-        isParamSet(itemWithCustomParams.mihomoCustomParams)
     const hasSockoptParams = isParamSet(item.sockoptParams)
     const hasXrayJsonTemplate = !!item.xrayJsonTemplateUuid
     const serverDescription = item.serverDescription?.trim() || ''
@@ -484,16 +476,6 @@ export function HostCardWidget(props: IProps) {
                                 >
                                     <TbCloudNetwork size={16} />
                                 </ActionIcon>
-                            </Tooltip>
-
-                            <Tooltip label="Custom">
-                                <ThemeIcon
-                                    color={hasCustomParams ? 'teal' : 'gray'}
-                                    size={28}
-                                    variant="soft"
-                                >
-                                    <PiGearSixDuotone size={16} />
-                                </ThemeIcon>
                             </Tooltip>
 
                             <Tooltip label="Final Mask">

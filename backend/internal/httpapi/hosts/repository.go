@@ -24,8 +24,8 @@ func (r *HostRepository) getHosts(ctx context.Context) ([]hostRecord, error) {
 		SELECT
 			uuid, view_position, remark, address, port,
 			path, sni, host, alpn, fingerprint, security_layer,
-			xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, singbox_custom_params, mihomo_custom_params, sockopt_params, final_mask,
-			is_disabled, server_description, override_protocol_credential, protocol_credential,
+			xhttp_extra_params, mux_params, mapper, sockopt_params, final_mask,
+			is_disabled, server_description,
 			vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
 			shuffle_host, mihomo_x25519, mihomo_ip_version,
 			xray_json_template_uuid, keep_sni_blank,
@@ -59,8 +59,8 @@ func (r *HostRepository) getHostByUUID(ctx context.Context, hostUUID string) (ho
 		SELECT
 			uuid, view_position, remark, address, port,
 			path, sni, host, alpn, fingerprint, security_layer,
-			xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params, singbox_custom_params, mihomo_custom_params, sockopt_params, final_mask,
-			is_disabled, server_description, override_protocol_credential, protocol_credential,
+			xhttp_extra_params, mux_params, mapper, sockopt_params, final_mask,
+			is_disabled, server_description,
 			vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
 			shuffle_host, mihomo_x25519, mihomo_ip_version,
 			xray_json_template_uuid, keep_sni_blank,
@@ -77,12 +77,11 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var rec hostRecord
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var serverDescription, protocolCredential, pinnedPeerCertSha256, verifyPeerCertByName, mihomoIPVersion sql.NullString
+	var serverDescription, pinnedPeerCertSha256, verifyPeerCertByName, mihomoIPVersion sql.NullString
 	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
 	var vlessRouteID sql.NullInt64
-	var isDisabled, overrideProtocolCredential, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
-	var xhttpExtraParams, muxParams, singboxMuxParams, singboxCustomParams, sockoptParams, finalMask []byte
-	var clashMuxParams, mihomoCustomParams sql.NullString
+	var isDisabled, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var xhttpExtraParams, muxParams, mapper, sockoptParams, finalMask []byte
 	var tags, excludeTypes db.StringArray
 
 	err := scanner.Scan(
@@ -99,16 +98,11 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&securityLayer,
 		&xhttpExtraParams,
 		&muxParams,
-		&singboxMuxParams,
-		&clashMuxParams,
-		&singboxCustomParams,
-		&mihomoCustomParams,
+		&mapper,
 		&sockoptParams,
 		&finalMask,
 		&isDisabled,
 		&serverDescription,
-		&overrideProtocolCredential,
-		&protocolCredential,
 		&vlessRouteID,
 		&pinnedPeerCertSha256,
 		&verifyPeerCertByName,
@@ -154,29 +148,15 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 
 	rec.XHTTPExtraParams = bytesToRawMessage(xhttpExtraParams)
 	rec.MuxParams = bytesToRawMessage(muxParams)
-	rec.SingboxMuxParams = bytesToRawMessage(singboxMuxParams)
-	rec.SingboxCustomParams = bytesToRawMessage(singboxCustomParams)
+	rec.Mapper = bytesToRawMessage(mapper)
 	rec.SockoptParams = bytesToRawMessage(sockoptParams)
 	rec.FinalMask = bytesToRawMessage(finalMask)
-
-	if clashMuxParams.Valid {
-		rec.ClashMuxParams = &clashMuxParams.String
-	}
-	if mihomoCustomParams.Valid {
-		rec.MihomoCustomParams = &mihomoCustomParams.String
-	}
 
 	if isDisabled.Valid {
 		rec.IsDisabled = isDisabled.Bool
 	}
 	if serverDescription.Valid {
 		rec.ServerDescription = &serverDescription.String
-	}
-	if overrideProtocolCredential.Valid {
-		rec.OverrideProtocolCredential = overrideProtocolCredential.Bool
-	}
-	if protocolCredential.Valid {
-		rec.ProtocolCredential = &protocolCredential.String
 	}
 	if vlessRouteID.Valid {
 		v := int(vlessRouteID.Int64)
@@ -363,7 +343,7 @@ func (r *HostRepository) ensureXrayJSONTemplate(ctx context.Context, templateUUI
 	return nil
 }
 
-func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req HostCreateRequestAPI, xhttpExtra, mux, singboxMux []byte, clashMux *string, sockopt, finalMask []byte) error {
+func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req HostCreateRequestAPI, xhttpExtra, mux, sockopt, finalMask []byte) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -372,16 +352,18 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 		_ = tx.Rollback()
 	}()
 
-	singboxCustom, _ := normalizeJSONValue(req.SingboxCustomParams, true)
-	mihomoCustom := normalizeOptionalStringAllowEmpty(req.MihomoCustomParams)
+	mapperBytes, _ := normalizeJSONValue(req.Mapper, false)
+	if len(mapperBytes) == 0 {
+		mapperBytes = []byte("{}")
+	}
 
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO hosts (
 			uuid, remark, address, port,
 			path, sni, host, alpn, fingerprint, security_layer,
-			xhttp_extra_params, mux_params, singbox_mux_params, clash_mux_params,
-			singbox_custom_params, mihomo_custom_params, sockopt_params, final_mask,
-			is_disabled, server_description, override_protocol_credential, protocol_credential,
+			xhttp_extra_params, mux_params,
+			mapper, sockopt_params, final_mask,
+			is_disabled, server_description,
 			vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
 			shuffle_host, mihomo_x25519, mihomo_ip_version,
 			xray_json_template_uuid, keep_sni_blank,
@@ -390,13 +372,13 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 		) VALUES (
 			$1, $2, $3, $4,
 			$5, $6, $7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16, $17, $18,
-			$19, $20, $21, $22,
-			$23, $24, $25,
+			$11, $12, $13, $14, $15,
+			$16, $17,
+			$18, $19, $20,
+			$21, $22, $23,
+			$24, $25,
 			$26, $27, $28,
-			$29, $30,
-			$31, $32, $33,
-			$34, $35, $36
+			$29, $30, $31
 		)
 	`,
 		hostUUID,
@@ -411,16 +393,11 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 		normalizeSecurityLayer(req.SecurityLayer),
 		xhttpExtra,
 		mux,
-		singboxMux,
-		clashMux,
-		singboxCustom,
-		mihomoCustom,
+		mapperBytes,
 		sockopt,
 		finalMask,
 		coalesceBool(req.IsDisabled, false),
 		normalizeOptionalStringAllowEmpty(req.ServerDescription),
-		coalesceBool(req.OverrideProtocolCredential, false),
-		normalizeProtocolCredentialForCreate(req.OverrideProtocolCredential, req.ProtocolCredential),
 		normalizeNullableInt(req.VlessRouteID),
 		normalizeNullableString(req.PinnedPeerCertSha256),
 		normalizeNullableString(req.VerifyPeerCertByName),

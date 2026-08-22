@@ -31,7 +31,9 @@
     "sessions-explorer": "Sessions Explorer",
     "http-stats": "HTTP Stats",
     "subscription-connections": "نودها",
-    "srs-lists": "SRS Lists"
+    "srs-lists": "SRS Lists",
+    "remnawave-settings": "تنظیمات Exodus",
+    "quick-open": "Quick open"
   },
   "common": {
     "delete": "حذف",
@@ -82,7 +84,12 @@
     "processing": "Processing",
     "operation-completed": "Operation completed",
     "usage-stats": "Usage stats",
-    "active-sessions": "Active sessions"
+    "active-sessions": "Active sessions",
+    "copy-link": "Copy link",
+    "shared-lists": "Shared lists",
+    "try-again": "Try again",
+    "interface": "Interface",
+    "ip-address": "IP address"
   },
   "bandwidth-metrics": {
     "current-year": "امسال",
@@ -475,7 +482,9 @@
     "generate-protocol-credential": "Generate credential",
     "replaces-user-credential": "Replaces the user's protocol credential when generating configs.",
     "selector-nodes-first": "نود در ابتدای Selector",
-    "selector-nodes-first-description": "برای گروه‌های select در Sing-box و Mihomo. روشن: این نود قبل از موارد قالب مثل auto قرار می‌گیرد. خاموش: بعد از آن‌ها."
+    "selector-nodes-first-description": "برای گروه‌های select در Sing-box و Mihomo. روشن: این نود قبل از موارد قالب مثل auto قرار می‌گیرد. خاموش: بعد از آن‌ها.",
+    "hide-host-from-users-remnawave-will-send-host-only-for-raw-subscription-responses": "مخفی کردن هاست از کاربران، Exodus این هاست را فقط برای درخواست‌های اشتراک خام ارسال خواهد کرد",
+    "mapper": "Mapper"
   },
   "base-node-form": {
     "country": "کشور",
@@ -510,7 +519,8 @@
       "short-stats": "آمار مختصر",
       "exodus-usage": "مصرف منابع Exodus",
       "process-details": "مشخصات Process",
-      "runtime": "Runtime"
+      "runtime": "Runtime",
+      "remnawave-usage": "مصرف منابع Exodus"
     },
     "runtime-info": {
       "title": "Runtime Metrics Guide",
@@ -1366,7 +1376,8 @@
       "create-a-new-config-profile-by-entering-a-name-below": "برای ایجاد پروفایل پیکربندی جدید اسم آن را وارد کنید",
       "you-can-customize-singbox-config-after-creation": "کانفیگ Singbox را می‌توانید بعد از ایجاد شخصی‌سازی کنید",
       "profile-name": "نام پروفایل",
-      "enter-profile-name": "نام پروفایل را وارد کنید"
+      "enter-profile-name": "نام پروفایل را وارد کنید",
+      "you-can-customize-xray-config-after-creation": "کانفیگ Xray را می‌توانید بعد از ایجاد شخصی‌سازی کنید"
     }
   },
   "restart-node-button": {
@@ -1387,7 +1398,9 @@
       "disable-node": "غیرفعالسازی نود",
       "config-profile-or-inbounds-is-missing": "پروفایل پیکربندی یا اینباند وجود ندارد",
       "exodus-node-version": "نسخه نود، @exodus/node",
-      "singbox-core-version": "نسخه هسته Singbox"
+      "singbox-core-version": "نسخه هسته Singbox",
+      "xray-core-version": "نسخه هسته Xray",
+      "remnawave-node-version": "نسخه نود، @exodus/node"
     }
   },
   "config-profiles": {
@@ -1434,7 +1447,8 @@
       "stats": "آمار",
       "traffic-refill-in-days": "شارژ ترافیک در (روز):",
       "represents-the-uptime-of-the-singbox-core": "نشان‌دهنده آپتایم هسته Singbox",
-      "represents-the-uptime-of-the-subscription-node-container": "نشان‌دهنده زمان کارکرد کانتینر نود اشتراک"
+      "represents-the-uptime-of-the-subscription-node-container": "نشان‌دهنده زمان کارکرد کانتینر نود اشتراک",
+      "represents-the-uptime-of-the-xray-core": "نشان‌دهنده آپتایم هسته Xray"
     }
   },
   "nodes-spotlight-search": {
@@ -1582,14 +1596,17 @@
     "content-for-the-exodus-node-below": "زیر را برای نود کپی کنید.",
     "learn-more": "اطلاعات بیشتر.",
     "domain-or-ip": "دامنه یا آیپی",
-    "additional-options": "Additional options"
+    "additional-options": "Additional options",
+    "content-for-the-remnawave-node-below": "زیر را برای نود کپی کنید."
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "درحال برقراری اتصال mTLS",
     "exodus-will-try-to-reconnect-shortly": "به زودی Exodus برای اتصال مجدد تلاش خواهد کرد",
     "no-errros-so-far": "تا کنون خطایی وجود نداشته است",
     "last-error-message": "آخرین پیام خطا",
-    "singbox-core-is-up-and-running": "هسته Singbox درحال اجرا می‌باشد!"
+    "singbox-core-is-up-and-running": "هسته Singbox درحال اجرا می‌باشد!",
+    "xray-core-is-up-and-running": "هسته Xray درحال اجرا می‌باشد!",
+    "remnawave-will-try-to-reconnect-shortly": "به زودی Exodus برای اتصال مجدد تلاش خواهد کرد"
   },
   "external-squad-card": {
     "widget": {
@@ -1737,7 +1754,8 @@
       "example-hex-colors": "مثال با رنگ‌های HEX",
       "example-mantine-colors": "مثال با رنگ‌های MantineUI",
       "example-mixed": "مثال با رنگ‌های مختلط",
-      "color-format-note": "💡 رنگ مشخص شده فقط برای کلمه‌ای که به نشانگر رنگ چسبیده اعمال می‌شود. بدون نشانگر، متن سفیدرنگ خواهد بود."
+      "color-format-note": "💡 رنگ مشخص شده فقط برای کلمه‌ای که به نشانگر رنگ چسبیده اعمال می‌شود. بدون نشانگر، متن سفیدرنگ خواهد بود.",
+      "customize-your-remnawave-instance": "پنل Exodus خود را شخصی‌سازی کنید"
     }
   },
   "visual-settings-card": {
@@ -1865,7 +1883,9 @@
     "tags": "برچسب‌ها",
     "total-ram": "کل RAM",
     "cpu-model": "مدل پردازنده",
-    "singbox-v": "نسخه هسته Singbox"
+    "singbox-v": "نسخه هسته Singbox",
+    "ip-addresses": "IP addresses",
+    "xray-v": "نسخه هسته Xray"
   },
   "subpage-config-visual-editor": {
     "widget": {
@@ -2392,6 +2412,79 @@
       "edit-list": "Edit SRS list",
       "url": "URL",
       "status": "Status"
+    }
+  },
+  "node-ips": {
+    "title": "IP addresses",
+    "add-ip": "Add IP",
+    "status": "Status",
+    "remove-ip": "Remove IP",
+    "invalid-ip": "Not a valid IPv4 or IPv6 address",
+    "ip-is-required": "IP address is required",
+    "max-ips-reached": "Maximum {{max}} IP addresses",
+    "no-ips-yet": "No IP addresses yet"
+  },
+  "node-ip-statuses": {
+    "inbound": "Inbound",
+    "outbound": "Outbound",
+    "management": "Management",
+    "transit": "Transit",
+    "monitoring": "Monitoring",
+    "reserve": "Reserve",
+    "blocked": "Blocked",
+    "flagged": "Flagged",
+    "deprecated": "Deprecated",
+    "unknown": "Unknown"
+  },
+  "node-integrations": {
+    "modal": {
+      "title": "Node Integrations",
+      "delete-description": "The integration will be removed from all nodes and affected nodes will be restarted."
+    },
+    "editor": {
+      "description": "Description",
+      "description-placeholder": "What this integration does",
+      "config-must-be-an-object": "Config must be a JSON object"
+    },
+    "select": {
+      "label": "Integrations",
+      "placeholder": "Select integrations"
+    }
+  },
+  "shared-lists": {
+    "modal": {
+      "subtitle": "Reusable IP and ASN lists referenced by plugins as ext:name",
+      "delete-description": "The list will be deleted. Plugins referencing it keep the ext: reference and will fail validation until it is fixed."
+    },
+    "editor": {
+      "name-description": "Referenced in plugins as ext:name. Cannot be changed later."
+    }
+  },
+  "apply-to-nodes": {
+    "title": "Apply to nodes?",
+    "apply": "Apply now",
+    "apply-description": "Affected nodes receive the new configuration right away.",
+    "later": "Not now",
+    "later-description": "Changes are saved, but nodes keep the current version until their next sync or restart."
+  },
+  "node-geocheck": {
+    "title": "GeoCheck",
+    "source-default": "Default",
+    "default-placeholder": "Automatic",
+    "default-description": "The node will use its default outbound route.",
+    "ip-description": "Pick one of the node IPs or type any address",
+    "interface-description": "Pick one of the node interfaces or type any name",
+    "run": "Run check",
+    "running": "Running GeoCheck",
+    "running-description": "The node is probing its connectivity, this usually takes up to a minute.",
+    "failed-description": "The node could not complete the GeoCheck.",
+    "view-image": "Report",
+    "no-image": "No image in the report, open JSON",
+    "requires-node-version": "نیازمند Exodus Node نسخه {{version}} یا بالاتر"
+  },
+  "quick-open": {
+    "page": {
+      "description": "Open any entity by its identifier, or copy a direct link to share"
     }
   }
 }

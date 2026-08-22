@@ -241,12 +241,19 @@ definitions:
     type: object
   shared.ErrorResponse:
     properties:
+      code:
+        example: A001
+        type: string
+      details: {}
       error:
         example: invalid input
         type: string
       message:
         example: invalid input
         type: string
+      statusCode:
+        example: 400
+        type: integer
     type: object
   subscriptionresponserules.Condition:
     properties:
@@ -314,6 +321,46 @@ definitions:
   subscriptionresponserules.Settings:
     properties:
       disableSubscriptionAccessByPath:
+        type: boolean
+    type: object
+  system.SystemConfigurationMisc:
+    properties:
+      shortUuidLength:
+        type: integer
+      subPublicDomain:
+        type: string
+      userUsageIgnoreBelowBytes:
+        type: integer
+    type: object
+  system.SystemConfigurationNotifications:
+    properties:
+      bandwidthUsage:
+        type: boolean
+      expirationNotifications:
+        type: boolean
+      notConnectedAfter:
+        type: boolean
+      webhook:
+        type: boolean
+    type: object
+  system.SystemConfigurationResponse:
+    properties:
+      misc:
+        $ref: '#/definitions/system.SystemConfigurationMisc'
+      notifications:
+        $ref: '#/definitions/system.SystemConfigurationNotifications'
+      service:
+        $ref: '#/definitions/system.SystemConfigurationService'
+    type: object
+  system.SystemConfigurationService:
+    properties:
+      cleanUsageHistory:
+        type: boolean
+      disableSrhRecords:
+        type: boolean
+      disableUserUsageRecords:
+        type: boolean
+      exportToRedisStream:
         type: boolean
     type: object
   system.encryptHappRequest:
@@ -6780,6 +6827,27 @@ paths:
       summary: Get subpage config for user
       tags:
       - '[Public] Subscription Controller'
+  /system/configuration:
+    get:
+      description: Get public runtime configuration parameters
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/system.SystemConfigurationResponse'
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get system configuration
+      tags:
+      - System Controller
   /system/health:
     get:
       description: Get Go goroutines, memory allocation, and CPU metrics

@@ -108,9 +108,6 @@ func normalizedHostProtocol(host SubscriptionHost) string {
 }
 
 func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) string {
-	if host.OverrideProtocolCredential && host.ProtocolCredential != nil && *host.ProtocolCredential != "" {
-		return *host.ProtocolCredential
-	}
 	protocol := normalizedHostProtocol(host)
 	switch protocol {
 	case "vless", "vmess":
@@ -268,13 +265,18 @@ func buildVmessLink(_ SubscriptionHost, _ SubscriptionUser) string {
 }
 
 func applyTransportParams(params *url.Values, host SubscriptionHost) {
+	defaults := resolveSingboxInboundDefaults(host)
 	network := "tcp"
 	if host.InboundNetwork != nil && *host.InboundNetwork != "" {
 		network = *host.InboundNetwork
+	} else if defaults.network != "" {
+		network = defaults.network
 	}
 	security := "none"
 	if host.InboundSecurity != nil && *host.InboundSecurity != "" {
 		security = *host.InboundSecurity
+	} else if defaults.security != "" {
+		security = defaults.security
 	} else {
 		switch strings.ToUpper(host.SecurityLayer) {
 		case "TLS":
@@ -284,30 +286,76 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 		}
 	}
 	params.Set("type", network)
-	if security != "" {
+	if security != "" && security != "none" {
 		params.Set("security", security)
 	}
 	sni := ""
-	if host.SNI != nil {
+	if host.SNI != nil && *host.SNI != "" {
 		sni = *host.SNI
+	} else if defaults.sni != "" {
+		sni = defaults.sni
 	}
 	if sni == "" && host.OverrideSNIFromAddress {
 		sni = host.Address
 	}
-	if sni != "" {
+	if sni != "" && !host.KeepSNIBlank {
 		params.Set("sni", sni)
 	}
 	if host.ALPN != nil && *host.ALPN != "" {
 		params.Set("alpn", *host.ALPN)
+	} else if defaults.alpn != "" {
+		params.Set("alpn", defaults.alpn)
 	}
-	if host.Fingerprint != nil && *host.Fingerprint != "" {
-		params.Set("fp", *host.Fingerprint)
+	fp := firstNonEmpty(derefString(host.Fingerprint), defaults.fingerprint)
+	if fp != "" {
+		params.Set("fp", fp)
+	} else if security == "reality" {
+		params.Set("fp", "chrome")
 	}
-	if host.Path != nil && *host.Path != "" {
-		params.Set("path", *host.Path)
+	if security == "reality" {
+		if defaults.publicKey != "" {
+			params.Set("pbk", defaults.publicKey)
+		}
+		if defaults.shortID != "" {
+			params.Set("sid", defaults.shortID)
+		}
+		if defaults.spiderX != "" {
+			params.Set("spx", defaults.spiderX)
+		}
+	} else if security == "tls" {
+		if defaults.cipherSuites != "" {
+			params.Set("cs", defaults.cipherSuites)
+		}
+		if defaults.pinnedPeerCertSha256 != "" {
+			params.Set("pcs", defaults.pinnedPeerCertSha256)
+		}
+		if defaults.verifyPeerCertByName != "" {
+			params.Set("vcn", defaults.verifyPeerCertByName)
+		}
 	}
-	if host.Host != nil && *host.Host != "" {
-		params.Set("host", *host.Host)
+	if defaults.flow != "" {
+		params.Set("flow", defaults.flow)
+	}
+	path := firstNonEmpty(derefString(host.Path), defaults.path)
+	if path != "" {
+		params.Set("path", path)
+	}
+	hostHeader := firstNonEmpty(derefString(host.Host), defaults.hostHeader)
+	if hostHeader != "" {
+		params.Set("host", hostHeader)
+	}
+	if len(host.Mapper.Base64) > 0 {
+		m := make(map[string]string)
+		for k, v := range *params {
+			if len(v) > 0 {
+				m[k] = v[0]
+			}
+		}
+		ApplyHostMapperToBase64Query(m, host.Mapper.Base64, host)
+		*params = url.Values{}
+		for k, v := range m {
+			params.Set(k, v)
+		}
 	}
 }
 
@@ -419,18 +467,56 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 	if sni == "" && host.OverrideSNIFromAddress {
 		sni = host.Address
 	}
+	defaults := resolveSingboxInboundDefaults(host)
 	if security == "tls" {
 		tlsSettings := map[string]interface{}{}
 		if sni != "" {
 			tlsSettings["serverName"] = sni
+		} else if defaults.sni != "" {
+			tlsSettings["serverName"] = defaults.sni
 		}
 		if host.ALPN != nil && *host.ALPN != "" {
 			tlsSettings["alpn"] = strings.Split(*host.ALPN, ",")
+		} else if defaults.alpn != "" {
+			tlsSettings["alpn"] = strings.Split(defaults.alpn, ",")
 		}
-		if host.Fingerprint != nil && *host.Fingerprint != "" {
-			tlsSettings["fingerprint"] = *host.Fingerprint
+		fp := firstNonEmpty(derefString(host.Fingerprint), defaults.fingerprint)
+		if fp != "" {
+			tlsSettings["fingerprint"] = fp
+		}
+		if defaults.cipherSuites != "" {
+			tlsSettings["cipherSuites"] = defaults.cipherSuites
+		}
+		if defaults.pinnedPeerCertSha256 != "" {
+			tlsSettings["pinnedPeerCertSha256"] = defaults.pinnedPeerCertSha256
+		}
+		if defaults.verifyPeerCertByName != "" {
+			tlsSettings["verifyPeerCertByName"] = defaults.verifyPeerCertByName
 		}
 		streamSettings["tlsSettings"] = tlsSettings
+	} else if security == "reality" {
+		realitySettings := map[string]interface{}{}
+		if sni != "" {
+			realitySettings["serverName"] = sni
+		} else if defaults.sni != "" {
+			realitySettings["serverName"] = defaults.sni
+		}
+		fp := firstNonEmpty(derefString(host.Fingerprint), defaults.fingerprint)
+		if fp != "" {
+			realitySettings["fingerprint"] = fp
+		} else {
+			realitySettings["fingerprint"] = "chrome"
+		}
+		if defaults.publicKey != "" {
+			realitySettings["publicKey"] = defaults.publicKey
+		}
+		if defaults.shortID != "" {
+			realitySettings["shortId"] = defaults.shortID
+		}
+		if defaults.spiderX != "" {
+			realitySettings["spiderX"] = defaults.spiderX
+		}
+		streamSettings["realitySettings"] = realitySettings
 	}
 	if network == "ws" {
 		wsSettings := map[string]interface{}{}
@@ -528,7 +614,13 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 		return nil
 	}
 	if mux := parseJSONMapString(host.MuxParams); mux != nil {
-		outbound["mux"] = mux
+		delete(mux, "smux")
+		if len(mux) > 0 {
+			outbound["mux"] = mux
+		}
+	}
+	if len(host.Mapper.XrayJson) > 0 {
+		ApplyHostMapperToMap(outbound, host.Mapper.XrayJson, host)
 	}
 	return outbound
 }

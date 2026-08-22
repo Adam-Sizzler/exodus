@@ -115,6 +115,8 @@ type nodeAPI struct {
 	ConsumptionMultiplier     float64               `json:"consumptionMultiplier"`
 	NodeConsumptionMultiplier float64               `json:"nodeConsumptionMultiplier"`
 	Tags                      []string              `json:"tags"`
+	IntegrationUUIDs          []string              `json:"integrationUuids"`
+	IPs                       []NodeIPItem          `json:"ips"`
 	Note                      *string               `json:"note"`
 	CPUCount                  *int                  `json:"cpuCount"`
 	CPUModel                  *string               `json:"cpuModel"`
@@ -129,6 +131,11 @@ type nodeAPI struct {
 	} `json:"configProfile"`
 	ProviderUUID *string           `json:"providerUuid"`
 	Provider     *providerResponse `json:"provider"`
+}
+
+type NodeIPItem struct {
+	IP     string `json:"ip"`
+	Status string `json:"status"`
 }
 
 type nodeRecord struct {
@@ -159,6 +166,7 @@ type nodeRecord struct {
 	ViewPosition              int
 	CountryCode               string
 	Tags                      []string
+	IPs                       []NodeIPItem
 	Note                      *string
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
@@ -188,6 +196,7 @@ type createNodeRequest struct {
 	ConfigProfile             configProfileRefRequest `json:"configProfile"`
 	ProviderUUID              *string                 `json:"providerUuid,omitempty"`
 	Tags                      []string                `json:"tags,omitempty"`
+	IPs                       []NodeIPItem            `json:"ips,omitempty"`
 	Note                      *string                 `json:"note,omitempty"`
 }
 
@@ -211,6 +220,7 @@ type updateNodeRequest struct {
 	ConfigProfile             *configProfileRefRequest `json:"configProfile,omitempty"`
 	ProviderUUID              OptionalString           `json:"providerUuid,omitempty"`
 	Tags                      *[]string                `json:"tags,omitempty"`
+	IPs                       *[]NodeIPItem            `json:"ips,omitempty"`
 	Note                      OptionalString           `json:"note,omitempty"`
 }
 

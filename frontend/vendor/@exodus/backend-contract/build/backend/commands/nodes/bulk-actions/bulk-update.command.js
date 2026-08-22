@@ -31,6 +31,7 @@ var BulkNodesUpdateCommand;
                 .max(36, 'Each tag must be less than 36 characters'))
                 .max(10, 'Maximum 10 tags')),
             activePluginUuid: zod_1.z.uuid().nullish(),
+            integrationUuids: zod_1.z.optional(zod_1.z.array(zod_1.z.uuid()).max(20, 'Maximum 20 integrations')),
             note: zod_1.z.optional(zod_1.z.string().max(255).nullable()),
         }),
     });

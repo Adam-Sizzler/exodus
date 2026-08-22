@@ -4,6 +4,7 @@ exports.HostsSchema = void 0;
 const zod_1 = require("zod");
 const constants_1 = require("../constants");
 const hosts_1 = require("../constants/hosts");
+const host_mapper_1 = require("./host-mapper");
 exports.HostsSchema = zod_1.z.object({
     uuid: zod_1.z.uuid(),
     viewPosition: zod_1.z.int(),
@@ -19,10 +20,6 @@ exports.HostsSchema = zod_1.z.object({
     securityLayer: zod_1.z.enum(hosts_1.SECURITY_LAYERS).default(hosts_1.SECURITY_LAYERS.DEFAULT),
     xhttpExtraParams: zod_1.z.nullable(zod_1.z.unknown()),
     muxParams: zod_1.z.nullable(zod_1.z.unknown()),
-    singboxMuxParams: zod_1.z.nullable(zod_1.z.unknown()),
-    clashMuxParams: zod_1.z.string().nullable(),
-    singboxCustomParams: zod_1.z.nullable(zod_1.z.unknown()),
-    mihomoCustomParams: zod_1.z.string().nullable(),
     sockoptParams: zod_1.z.nullable(zod_1.z.unknown()),
     finalMask: zod_1.z.nullable(zod_1.z.unknown()),
     inbound: zod_1.z.object({
@@ -34,8 +31,6 @@ exports.HostsSchema = zod_1.z.object({
     isHidden: zod_1.z.boolean().default(false),
     overrideSniFromAddress: zod_1.z.boolean().default(false),
     keepSniBlank: zod_1.z.boolean().default(false),
-    overrideProtocolCredential: zod_1.z.boolean().default(false),
-    protocolCredential: zod_1.z.string().nullable(),
     vlessRouteId: zod_1.z.int().min(0).max(65535).nullable(),
     pinnedPeerCertSha256: zod_1.z.string().nullable(),
     verifyPeerCertByName: zod_1.z.string().nullable(),
@@ -46,4 +41,5 @@ exports.HostsSchema = zod_1.z.object({
     xrayJsonTemplateUuid: zod_1.z.uuid().nullable(),
     excludedInternalSquads: zod_1.z.array(zod_1.z.uuid()),
     excludeFromSubscriptionTypes: zod_1.z.array(zod_1.z.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)),
+    mapper: host_mapper_1.HostMapperSchema,
 });

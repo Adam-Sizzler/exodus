@@ -30,6 +30,7 @@ import {
     useUpdateInternalSquad
 } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
+import { OPEN_ENTITY } from '@shared/constants'
 import { ConfigProfileCardShared } from '@shared/ui/config-profiles/config-profile-card/config-profile-card.shared'
 import { VirtualizedFlatInboundsListShared } from '@shared/ui/config-profiles/virtualized-flat-inbounds-list/virtualized-flat-inbounds-list.shared'
 import { LoaderModalShared } from '@shared/ui/loader-modal'
@@ -467,6 +468,7 @@ export const InternalSquadsInboundsDrawer = NiceModal.create((props: IProps) => 
                     iconColor="teal"
                     IconComponent={TbCirclesRelation}
                     iconVariant="soft"
+                    openEntity={{ entity: OPEN_ENTITY.INTERNAL_SQUAD, id: squadUuid }}
                     title={t('internal-squads.drawer.widget.edit-internal-squad')}
                 />
             }

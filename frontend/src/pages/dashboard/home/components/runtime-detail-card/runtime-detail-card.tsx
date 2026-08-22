@@ -54,7 +54,8 @@ interface RuntimeDetailCardProps {
 }
 
 export function RuntimeDetailCard({ metric }: RuntimeDetailCardProps) {
-    const config = PROCESS_CONFIG[metric.instanceType] ?? DEFAULT_PROCESS
+    const instanceType = metric.instanceType as keyof typeof PROCESS_CONFIG | undefined
+    const config = (instanceType && PROCESS_CONFIG[instanceType]) ? PROCESS_CONFIG[instanceType] : DEFAULT_PROCESS
     const heapPercent = metric.heapTotal > 0 ? (metric.heapUsed / metric.heapTotal) * 100 : 0
 
     return (

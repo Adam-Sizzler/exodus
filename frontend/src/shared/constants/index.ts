@@ -1,3 +1,4 @@
+export * from './base-path'
 export * from './forms'
 export * from './interfaces'
 export * from './monaco-theme'

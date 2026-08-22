@@ -346,8 +346,10 @@ func preferredYAMLKeyOrder(parentKey string) []string {
 			"name", "type", "server", "port", "udp", "network",
 			"uuid", "password", "cipher", "tls", "skip-cert-verify",
 			"servername", "client-fingerprint", "alpn", "packet-encoding",
-			"flow", "encryption", "ws-opts", "grpc-opts", "smux",
+			"flow", "encryption", "reality-opts", "ws-opts", "grpc-opts", "smux",
 		}
+	case "reality-opts":
+		return []string{"public-key", "short-id", "support-x25519mlkem768"}
 	case "ws-opts":
 		return []string{"path", "headers", "max-early-data", "early-data-header-name", "v2ray-http-upgrade", "v2ray-http-upgrade-fast-open"}
 	case "headers":
@@ -528,6 +530,11 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 		}
 	}
 
+	defaults := resolveSingboxInboundDefaults(host)
+	if protocol == "vless" && defaults.flow != "" {
+		proxy["flow"] = defaults.flow
+	}
+
 	if isHysteria2 {
 		if mihomoSNI != "" {
 			proxy["sni"] = mihomoSNI
@@ -544,17 +551,69 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 			proxy["alpn"] = []string{"h3"}
 		}
 	} else {
-		if security == "tls" {
+		if defaults.security == "reality" || security == "reality" {
 			proxy["tls"] = true
-			if mihomoSNI != "" {
-				proxy["servername"] = mihomoSNI
+			if protocol == "trojan" {
+				if mihomoSNI != "" {
+					proxy["sni"] = mihomoSNI
+				} else if defaults.sni != "" {
+					proxy["sni"] = defaults.sni
+				}
+			} else {
+				if mihomoSNI != "" {
+					proxy["servername"] = mihomoSNI
+				} else if defaults.sni != "" {
+					proxy["servername"] = defaults.sni
+				}
+			}
+			realityOpts := map[string]interface{}{}
+			if defaults.publicKey != "" {
+				realityOpts["public-key"] = defaults.publicKey
+			}
+			if defaults.shortID != "" {
+				realityOpts["short-id"] = defaults.shortID
+			}
+			if host.MihomoX25519 {
+				realityOpts["support-x25519mlkem768"] = true
+			}
+			if len(realityOpts) > 0 {
+				proxy["reality-opts"] = realityOpts
+			}
+			if host.Fingerprint != nil && *host.Fingerprint != "" {
+				proxy["client-fingerprint"] = *host.Fingerprint
+			} else if defaults.fingerprint != "" {
+				proxy["client-fingerprint"] = defaults.fingerprint
+			} else {
+				proxy["client-fingerprint"] = "chrome"
+			}
+		} else if security == "tls" || defaults.security == "tls" {
+			proxy["tls"] = true
+			if protocol == "trojan" {
+				if mihomoSNI != "" {
+					proxy["sni"] = mihomoSNI
+				} else if defaults.sni != "" {
+					proxy["sni"] = defaults.sni
+				}
+			} else {
+				if mihomoSNI != "" {
+					proxy["servername"] = mihomoSNI
+				} else if defaults.sni != "" {
+					proxy["servername"] = defaults.sni
+				}
+			}
+			if host.Fingerprint != nil && *host.Fingerprint != "" {
+				proxy["client-fingerprint"] = *host.Fingerprint
+			} else if defaults.fingerprint != "" {
+				proxy["client-fingerprint"] = defaults.fingerprint
 			}
 		}
-		if host.Fingerprint != nil && *host.Fingerprint != "" {
-			proxy["client-fingerprint"] = *host.Fingerprint
+		if host.PinnedPeerCertSha256 != nil && *host.PinnedPeerCertSha256 != "" {
+			proxy["skip-cert-verify"] = true
 		}
 		if host.ALPN != nil && *host.ALPN != "" {
 			proxy["alpn"] = strings.Split(*host.ALPN, ",")
+		} else if defaults.alpn != "" {
+			proxy["alpn"] = strings.Split(defaults.alpn, ",")
 		}
 		if network != "" {
 			proxy["network"] = network
@@ -584,17 +643,14 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 				proxy["grpc-opts"] = grpcOpts
 			}
 		}
-		if host.ClashMuxParams != nil {
-			if mux := parseMihomoMuxParams(*host.ClashMuxParams); mux != nil {
+		if host.MuxParams != nil {
+			if mux := parseMihomoMuxParams(*host.MuxParams); mux != nil {
 				proxy["smux"] = mux
 			}
 		}
 	}
-	if host.MihomoCustomParams != nil && strings.TrimSpace(*host.MihomoCustomParams) != "" {
-		var custom map[string]interface{}
-		if err := yaml.Unmarshal([]byte(*host.MihomoCustomParams), &custom); err == nil {
-			deepMergeMihomo(proxy, custom)
-		}
+	if len(host.Mapper.Mihomo) > 0 {
+		ApplyHostMapperToMap(proxy, host.Mapper.Mihomo, host)
 	}
 	return proxy
 }
@@ -820,7 +876,15 @@ func parseMihomoMuxParams(rawStr string) map[string]interface{} {
 		return nil
 	}
 	var result map[string]interface{}
-	if err := yaml.Unmarshal([]byte(rawStr), &result); err != nil || result == nil {
+	if err := json.Unmarshal([]byte(rawStr), &result); err != nil || result == nil {
+		if err := yaml.Unmarshal([]byte(rawStr), &result); err != nil || result == nil {
+			return nil
+		}
+	}
+	if smux, ok := result["smux"].(map[string]interface{}); ok && smux != nil {
+		result = smux
+	}
+	if enabled, ok := result["enabled"].(bool); !ok || !enabled {
 		return nil
 	}
 	return normalizeMihomoMuxKeys(result)
@@ -833,7 +897,7 @@ func normalizeMihomoMuxKeys(mux map[string]interface{}) map[string]interface{} {
 	normalized := make(map[string]interface{})
 	for k, v := range mux {
 		nk := strings.ReplaceAll(k, "_", "-")
-		normalized[nk] = v
+		normalized[nk] = normalizeMapperValue(v)
 	}
 	return normalized
 }

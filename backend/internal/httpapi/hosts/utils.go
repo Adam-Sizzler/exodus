@@ -269,38 +269,13 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 			add("mux_params", val)
 		}
 	}
-	if set, val, err := normalizeOptionalJSONField(fields.SingboxMuxParams, true); err != nil {
+	if set, val, err := normalizeOptionalJSONField(fields.Mapper, false); err != nil {
 		return nil, nil, err
 	} else if set {
 		if val == nil {
-			clauses = append(clauses, "singbox_mux_params = NULL")
+			add("mapper", []byte("{}"))
 		} else {
-			add("singbox_mux_params", val)
-		}
-	}
-	if set, val, err := normalizeOptionalClashMuxYAML(fields.ClashMuxParams); err != nil {
-		return nil, nil, err
-	} else if set {
-		if val == nil {
-			clauses = append(clauses, "clash_mux_params = NULL")
-		} else {
-			add("clash_mux_params", val)
-		}
-	}
-	if set, val, err := normalizeOptionalJSONField(fields.SingboxCustomParams, true); err != nil {
-		return nil, nil, err
-	} else if set {
-		if val == nil {
-			clauses = append(clauses, "singbox_custom_params = NULL")
-		} else {
-			add("singbox_custom_params", val)
-		}
-	}
-	if fields.MihomoCustomParams.Set {
-		if fields.MihomoCustomParams.Value == nil {
-			clauses = append(clauses, "mihomo_custom_params = NULL")
-		} else {
-			add("mihomo_custom_params", strings.TrimSpace(*fields.MihomoCustomParams.Value))
+			add("mapper", val)
 		}
 	}
 	if set, val, err := normalizeOptionalJSONField(fields.SockoptParams, true); err != nil {
@@ -330,22 +305,6 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 			clauses = append(clauses, "server_description = NULL")
 		} else {
 			add("server_description", strings.TrimSpace(*fields.ServerDescription.Value))
-		}
-	}
-	protocolCredentialCleared := false
-	if fields.OverrideProtocolCredential != nil {
-		add("override_protocol_credential", *fields.OverrideProtocolCredential)
-		if !*fields.OverrideProtocolCredential {
-			clauses = append(clauses, "protocol_credential = NULL")
-			protocolCredentialCleared = true
-		}
-	}
-	if fields.ProtocolCredential.Set && !protocolCredentialCleared {
-		normalizedCredential := normalizeProtocolCredentialPointer(fields.ProtocolCredential.Value)
-		if normalizedCredential == nil {
-			clauses = append(clauses, "protocol_credential = NULL")
-		} else {
-			add("protocol_credential", *normalizedCredential)
 		}
 	}
 	if fields.VlessRouteID.Set {

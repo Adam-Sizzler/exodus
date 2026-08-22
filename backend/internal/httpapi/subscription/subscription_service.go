@@ -179,7 +179,7 @@ func (s *RenderService) RenderUserSubscription(
 			if result.MaxDeviceReached && settings.HwidSettings.MaxDevicesAnnounce != nil &&
 				*settings.HwidSettings.MaxDevicesAnnounce != "" {
 				hwidExtraHeaders["announce"] = formatTemplateValue(
-					"rwEncodeBase64:"+*settings.HwidSettings.MaxDevicesAnnounce,
+					"exEncodeBase64:"+*settings.HwidSettings.MaxDevicesAnnounce,
 					user, settings, subscriptionURL,
 				)
 			}
@@ -324,8 +324,6 @@ func (s *RenderService) buildSubscriptionInfoResponse(
 	settings SubscriptionSettingsParsed,
 	hosts []SubscriptionHost,
 ) SubscriptionInfoResponse {
-	links, ssConfLinks := buildSubscriptionLinks(hosts, user)
-
 	domain := strings.TrimSpace(settings.Raw.Address)
 	if domain == "" {
 		domain = "panel.exodus.dev"
@@ -339,6 +337,10 @@ func (s *RenderService) buildSubscriptionInfoResponse(
 		apiPath = "api/sub"
 	}
 	subURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+
+	resolveHostRemarks(hosts, user, settings, subURL)
+
+	links, ssConfLinks := buildSubscriptionLinks(hosts, user)
 
 	usedPretty := prettifyBytes(user.UsedTrafficBytes)
 	limitPretty := "0"
@@ -544,25 +546,6 @@ func parseFallbackHostFromRemark(remark string, index int) (SubscriptionHost, bo
 		}
 	}
 
-	var credential *string
-	if c, ok := raw["protocolCredential"].(string); ok && c != "" {
-		credential = &c
-	} else if c, ok := raw["password"].(string); ok && c != "" {
-		credential = &c
-	} else if c, ok := raw["uuid"].(string); ok && c != "" {
-		credential = &c
-	} else if po, ok := raw["protocolOptions"].(map[string]any); ok {
-		if c, ok := po["id"].(string); ok && c != "" {
-			credential = &c
-		} else if c, ok := po["password"].(string); ok && c != "" {
-			credential = &c
-		}
-	} else if to, ok := raw["transportOptions"].(map[string]any); ok {
-		if c, ok := to["auth"].(string); ok && c != "" {
-			credential = &c
-		}
-	}
-
 	var finalMask *string
 	if fm, ok := raw["finalMask"]; ok && fm != nil {
 		if fmBytes, err := json.Marshal(fm); err == nil {
@@ -590,13 +573,13 @@ func parseFallbackHostFromRemark(remark string, index int) (SubscriptionHost, bo
 		}
 	}
 
-	var clashMuxParams *string
+	var muxParams *string
 	if mux, ok := raw["muxParams"].(string); ok && mux != "" {
-		clashMuxParams = &mux
+		muxParams = &mux
 	} else if mux, ok := raw["mux"]; ok && mux != nil {
 		if muxBytes, err := json.Marshal(mux); err == nil {
 			muxStr := string(muxBytes)
-			clashMuxParams = &muxStr
+			muxParams = &muxStr
 		}
 	}
 
@@ -617,24 +600,22 @@ func parseFallbackHostFromRemark(remark string, index int) (SubscriptionHost, bo
 	}
 
 	return SubscriptionHost{
-		UUID:                       uuidStr,
-		Remark:                     finalRemark,
-		Address:                    address,
-		Port:                       port,
-		Path:                       path,
-		SNI:                        sni,
-		Host:                       hostHeader,
-		ALPN:                       alpn,
-		Fingerprint:                fingerprint,
-		SecurityLayer:              security,
-		InboundType:                &protocol,
-		InboundNetwork:             &network,
-		InboundSecurity:            &security,
-		FinalMask:                  finalMask,
-		SockoptParams:              sockoptParams,
-		ClashMuxParams:             clashMuxParams,
-		ServerDescription:          serverDescription,
-		OverrideProtocolCredential: credential != nil,
-		ProtocolCredential:         credential,
+		UUID:              uuidStr,
+		Remark:            finalRemark,
+		Address:           address,
+		Port:              port,
+		Path:              path,
+		SNI:               sni,
+		Host:              hostHeader,
+		ALPN:              alpn,
+		Fingerprint:       fingerprint,
+		SecurityLayer:     security,
+		InboundType:       &protocol,
+		InboundNetwork:    &network,
+		InboundSecurity:   &security,
+		FinalMask:         finalMask,
+		SockoptParams:     sockoptParams,
+		MuxParams:         muxParams,
+		ServerDescription: serverDescription,
 	}, true
 }

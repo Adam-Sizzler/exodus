@@ -1,0 +1,27 @@
+.viewport {
+    position: relative;
+    overflow: auto;
+    contain: paint;
+    border-radius: var(--mantine-radius-md);
+    min-height: 320px;
+    max-height: 62vh;
+}
+
+.viewport.fullscreenViewport {
+    max-height: none;
+    height: 100%;
+}
+
+.imageArea {
+    height: 62vh;
+    min-height: 320px;
+}
+
+.fullscreenViewport .imageArea {
+    height: 100%;
+}
+
+.canvas {
+    height: 100%;
+    padding: 16px;
+}

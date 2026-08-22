@@ -10,7 +10,7 @@ import { ToggleNodeStatusButtonFeature } from '@features/ui/dashboard/subscripti
 import { RestartNodeButtonFeature } from '@features/ui/dashboard/subscription-connections/restart-node-button'
 import { DeleteNodeFeature } from '@features/ui/dashboard/subscription-connections/delete-node'
 import { ModalAccordionWidget } from '@widgets/dashboard/subscription-connections/modal-accordeon-widget'
-import { SubscriptionConnectionKeygenResponse, SubscriptionConnectionResponse } from '@shared/api/hooks'
+import { SubscriptionConnectionResponse } from '@shared/api/hooks'
 import { ModalFooter } from '@shared/ui/modal-footer'
 
 import { NodeVitalsCard } from './node-vitals.card'
@@ -50,6 +50,11 @@ interface BaseSubscriptionConnectionFormValues {
     tags?: string[]
 }
 
+interface SubscriptionConnectionKeygenResponse {
+    pubKey: string
+    grpcToken?: string
+}
+
 interface IProps<T extends BaseSubscriptionConnectionFormValues> {
     form: UseFormReturnType<T>
     handleClose: () => void
@@ -57,11 +62,11 @@ interface IProps<T extends BaseSubscriptionConnectionFormValues> {
     isDataSubmitting: boolean
     node: SubscriptionConnectionResponse
     nodeDetailsCard?: ReactNode
-    secretKey: SubscriptionConnectionKeygenResponse | undefined
+    pubKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
 export const BaseNodeForm = <T extends BaseSubscriptionConnectionFormValues>(props: IProps<T>) => {
-    const { form, node, secretKey, nodeDetailsCard, handleClose, handleSubmit, isDataSubmitting } = props
+    const { form, node, pubKey, nodeDetailsCard, handleClose, handleSubmit, isDataSubmitting } = props
 
     return (
         <>
@@ -84,7 +89,7 @@ export const BaseNodeForm = <T extends BaseSubscriptionConnectionFormValues>(pro
                             cardVariants={cardVariants}
                             form={form}
                             motionWrapper={MotionWrapper}
-                            secretKey={secretKey}
+                            pubKey={pubKey}
                         />
                     </Stack>
                 </SimpleGrid>

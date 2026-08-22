@@ -27,7 +27,7 @@ export function SubscriptionConnectionsPageConnector() {
     useEffect(() => {
         ;(async () => {
             await queryClient.prefetchQuery({
-                queryKey: subscriptionConnectionsQueryKeys.getSecretKey.queryKey
+                queryKey: subscriptionConnectionsQueryKeys.getPubKey.queryKey
             })
         })()
         return () => {

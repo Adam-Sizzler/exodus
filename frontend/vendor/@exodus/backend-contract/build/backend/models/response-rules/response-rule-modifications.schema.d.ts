@@ -25,5 +25,6 @@ export declare const ResponseRuleModificationsSchema: z.ZodOptional<z.ZodObject<
         key: z.ZodString;
     }, z.core.$strip>>;
     excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
 }, z.core.$strip>>;
 //# sourceMappingURL=response-rule-modifications.schema.d.ts.map

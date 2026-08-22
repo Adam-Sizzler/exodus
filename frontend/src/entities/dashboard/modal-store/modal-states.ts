@@ -1,3 +1,11 @@
+import {
+    GetConfigProfilesCommand,
+    GetInfraProvidersCommand,
+    UpdateHostCommand
+} from '@exodus/backend-contract'
+
+import { THelpDrawerAvailableScreen } from '@shared/_modals/universal/help-drawer/help-drawer.types'
+
 export const MODALS = {
     CONFIG_PROFILES_SHOW_ACTIVE_NODE: 'CONFIG_PROFILES_SHOW_ACTIVE_NODE',
     INTERNAL_SQUAD_SHOW_INBOUNDS: 'INTERNAL_SQUAD_SHOW_INBOUNDS',
@@ -24,6 +32,7 @@ export const MODALS = {
 } as const
 
 export interface ModalInternalStates {
+    CONFIG_PROFILE_SHOW_INBOUNDS_DRAWER: GetConfigProfilesCommand.Response['response']['configProfiles'][number]
     CONFIG_PROFILE_SHOW_SNIPPETS_DRAWER: undefined
     CONFIG_PROFILES_SHOW_ACTIVE_NODE: GetConfigProfilesCommand.Response['response']['configProfiles'][number]['nodes']
     CREATE_HOST_MODAL: undefined
@@ -37,7 +46,7 @@ export interface ModalInternalStates {
     EDIT_NODE_BY_UUID_MODAL: {
         generatedCredentials?: {
             grpcToken?: string
-            secretKey: string
+            pubKey: string
         }
         nodeUuid: string
     }

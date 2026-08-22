@@ -1,1 +1,1 @@
-{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../commands/node-plugins/actions/index.ts"],"names":[],"mappings":"AAAA,cAAc,6BAA6B,CAAC;AAC5C,cAAc,mBAAmB,CAAC"}
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../commands/node-plugins/actions/index.ts"],"names":[],"mappings":"AAAA,cAAc,6BAA6B,CAAC;AAC5C,cAAc,mBAAmB,CAAC;AAClC,cAAc,4BAA4B,CAAC"}

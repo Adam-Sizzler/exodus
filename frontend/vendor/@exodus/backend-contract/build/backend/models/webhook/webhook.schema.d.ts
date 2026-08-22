@@ -184,6 +184,22 @@ export declare const ExodusWebhookNodeEvents: z.ZodObject<{
         consumptionMultiplier: z.ZodNumber;
         nodeConsumptionMultiplier: z.ZodNumber;
         tags: z.ZodArray<z.ZodString>;
+        integrationUuids: z.ZodArray<z.ZodUUID>;
+        ips: z.ZodArray<z.ZodObject<{
+            ip: z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>;
+            status: z.ZodEnum<{
+                readonly INBOUND: "INBOUND";
+                readonly OUTBOUND: "OUTBOUND";
+                readonly MANAGEMENT: "MANAGEMENT";
+                readonly TRANSIT: "TRANSIT";
+                readonly MONITORING: "MONITORING";
+                readonly RESERVE: "RESERVE";
+                readonly BLOCKED: "BLOCKED";
+                readonly FLAGGED: "FLAGGED";
+                readonly DEPRECATED: "DEPRECATED";
+                readonly UNKNOWN: "UNKNOWN";
+            }>;
+        }, z.core.$strip>>;
         createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
         updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
         configProfile: z.ZodObject<{
@@ -308,178 +324,6 @@ export declare const ExodusWebhookCrmEvents: z.ZodObject<{
         nodeName: z.ZodString;
         nextBillingAt: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
         loginUrl: z.ZodString;
-    }, z.core.$strip>;
-}, z.core.$strip>;
-export declare const ExodusWebhookTorrentBlockerEvents: z.ZodObject<{
-    scope: z.ZodLiteral<"torrent_blocker">;
-    event: z.ZodEnum<{
-        "torrent_blocker.report": "torrent_blocker.report";
-    }>;
-    timestamp: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
-    data: z.ZodObject<{
-        node: z.ZodObject<{
-            uuid: z.ZodUUID;
-            id: z.ZodNumber;
-            name: z.ZodString;
-            address: z.ZodString;
-            port: z.ZodNullable<z.ZodInt>;
-            proxyUrl: z.ZodNullable<z.ZodString>;
-            apiSchema: z.ZodDefault<z.ZodEnum<{
-                mtls: "mtls";
-                tls: "tls";
-            }>>;
-            apiPath: z.ZodDefault<z.ZodNullable<z.ZodString>>;
-            grpcAuthToken: z.ZodNullable<z.ZodString>;
-            isConnected: z.ZodBoolean;
-            isDisabled: z.ZodBoolean;
-            isConnecting: z.ZodBoolean;
-            lastStatusChange: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-            lastStatusMessage: z.ZodNullable<z.ZodString>;
-            isTrafficTrackingActive: z.ZodBoolean;
-            trafficResetDay: z.ZodNullable<z.ZodInt>;
-            trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
-            trafficUsedBytes: z.ZodNullable<z.ZodNumber>;
-            notifyPercent: z.ZodNullable<z.ZodInt>;
-            viewPosition: z.ZodInt;
-            countryCode: z.ZodString;
-            consumptionMultiplier: z.ZodNumber;
-            nodeConsumptionMultiplier: z.ZodNumber;
-            tags: z.ZodArray<z.ZodString>;
-            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            configProfile: z.ZodObject<{
-                activeConfigProfileUuid: z.ZodNullable<z.ZodUUID>;
-                activeInbounds: z.ZodArray<z.ZodObject<{
-                    uuid: z.ZodUUID;
-                    profileUuid: z.ZodUUID;
-                    tag: z.ZodString;
-                    type: z.ZodString;
-                    network: z.ZodNullable<z.ZodString>;
-                    security: z.ZodNullable<z.ZodString>;
-                    port: z.ZodNullable<z.ZodNumber>;
-                    rawInbound: z.ZodNullable<z.ZodUnknown>;
-                }, z.core.$strip>>;
-            }, z.core.$strip>;
-            providerUuid: z.ZodNullable<z.ZodUUID>;
-            provider: z.ZodNullable<z.ZodObject<{
-                uuid: z.ZodUUID;
-                name: z.ZodString;
-                faviconLink: z.ZodNullable<z.ZodString>;
-                loginUrl: z.ZodNullable<z.ZodString>;
-                createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-                updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            }, z.core.$strip>>;
-            activePluginUuid: z.ZodNullable<z.ZodUUID>;
-            system: z.ZodNullable<z.ZodObject<{
-                info: z.ZodObject<{
-                    arch: z.ZodString;
-                    cpus: z.ZodInt;
-                    cpuModel: z.ZodString;
-                    memoryTotal: z.ZodNumber;
-                    hostname: z.ZodString;
-                    platform: z.ZodString;
-                    release: z.ZodString;
-                    type: z.ZodString;
-                    version: z.ZodString;
-                    networkInterfaces: z.ZodArray<z.ZodString>;
-                }, z.core.$strip>;
-                stats: z.ZodObject<{
-                    memoryFree: z.ZodNumber;
-                    memoryUsed: z.ZodNumber;
-                    uptime: z.ZodNumber;
-                    loadAvg: z.ZodArray<z.ZodNumber>;
-                    interface: z.ZodNullable<z.ZodObject<{
-                        interface: z.ZodString;
-                        rxBytesPerSec: z.ZodNumber;
-                        txBytesPerSec: z.ZodNumber;
-                        rxTotal: z.ZodNumber;
-                        txTotal: z.ZodNumber;
-                    }, z.core.$strip>>;
-                }, z.core.$strip>;
-            }, z.core.$strip>>;
-            versions: z.ZodNullable<z.ZodObject<{
-                singbox: z.ZodString;
-                node: z.ZodString;
-            }, z.core.$strip>>;
-            singboxUptime: z.ZodNumber;
-            usersOnline: z.ZodNumber;
-            note: z.ZodNullable<z.ZodString>;
-        }, z.core.$strip>;
-        user: z.ZodObject<{
-            id: z.ZodNumber;
-            shortUuid: z.ZodString;
-            username: z.ZodString;
-            status: z.ZodEnum<{
-                readonly ACTIVE: "ACTIVE";
-                readonly DISABLED: "DISABLED";
-                readonly LIMITED: "LIMITED";
-                readonly EXPIRED: "EXPIRED";
-            }>;
-            trafficLimitBytes: z.ZodNumber;
-            trafficLimitStrategy: z.ZodEnum<{
-                readonly NO_RESET: "NO_RESET";
-                readonly DAY: "DAY";
-                readonly WEEK: "WEEK";
-                readonly MONTH: "MONTH";
-                readonly MONTH_ROLLING: "MONTH_ROLLING";
-            }>;
-            expireAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            telegramId: z.ZodNullable<z.ZodNumber>;
-            email: z.ZodNullable<z.ZodEmail>;
-            description: z.ZodNullable<z.ZodString>;
-            tag: z.ZodNullable<z.ZodString>;
-            hwidDeviceLimit: z.ZodNullable<z.ZodInt>;
-            externalSquadUuid: z.ZodNullable<z.ZodUUID>;
-            trojanPassword: z.ZodString;
-            vlessUuid: z.ZodUUID;
-            ssPassword: z.ZodString;
-            naivePassword: z.ZodString;
-            shadowtlsPassword: z.ZodString;
-            hysteria2Password: z.ZodString;
-            anytlsPassword: z.ZodString;
-            lastTriggeredThreshold: z.ZodInt;
-            subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-            lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            subscriptionUrl: z.ZodString;
-            activeInternalSquads: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodUUID;
-                name: z.ZodString;
-            }, z.core.$strip>>;
-            userTraffic: z.ZodObject<{
-                usedTrafficBytes: z.ZodNumber;
-                lifetimeUsedTrafficBytes: z.ZodNumber;
-                onlineAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-                firstConnectedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-                lastConnectedNodeUuid: z.ZodNullable<z.ZodUUID>;
-            }, z.core.$strip>;
-        }, z.core.$strip>;
-        report: z.ZodObject<{
-            actionReport: z.ZodObject<{
-                blocked: z.ZodBoolean;
-                ip: z.ZodString;
-                blockDuration: z.ZodNumber;
-                willUnblockAt: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
-                userId: z.ZodString;
-                processedAt: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
-            }, z.core.$strip>;
-            xrayReport: z.ZodObject<{
-                email: z.ZodNullable<z.ZodString>;
-                level: z.ZodNullable<z.ZodNumber>;
-                protocol: z.ZodNullable<z.ZodString>;
-                network: z.ZodString;
-                source: z.ZodNullable<z.ZodString>;
-                destination: z.ZodString;
-                routeTarget: z.ZodNullable<z.ZodString>;
-                originalTarget: z.ZodNullable<z.ZodString>;
-                inboundTag: z.ZodNullable<z.ZodString>;
-                inboundName: z.ZodNullable<z.ZodString>;
-                inboundLocal: z.ZodNullable<z.ZodString>;
-                outboundTag: z.ZodNullable<z.ZodString>;
-                ts: z.ZodNumber;
-            }, z.core.$strip>;
-        }, z.core.$strip>;
     }, z.core.$strip>;
 }, z.core.$strip>;
 export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
@@ -665,6 +509,22 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
         consumptionMultiplier: z.ZodNumber;
         nodeConsumptionMultiplier: z.ZodNumber;
         tags: z.ZodArray<z.ZodString>;
+        integrationUuids: z.ZodArray<z.ZodUUID>;
+        ips: z.ZodArray<z.ZodObject<{
+            ip: z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>;
+            status: z.ZodEnum<{
+                readonly INBOUND: "INBOUND";
+                readonly OUTBOUND: "OUTBOUND";
+                readonly MANAGEMENT: "MANAGEMENT";
+                readonly TRANSIT: "TRANSIT";
+                readonly MONITORING: "MONITORING";
+                readonly RESERVE: "RESERVE";
+                readonly BLOCKED: "BLOCKED";
+                readonly FLAGGED: "FLAGGED";
+                readonly DEPRECATED: "DEPRECATED";
+                readonly UNKNOWN: "UNKNOWN";
+            }>;
+        }, z.core.$strip>>;
         createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
         updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
         configProfile: z.ZodObject<{
@@ -787,177 +647,6 @@ export declare const ExodusWebhookEventSchema: z.ZodDiscriminatedUnion<[z.ZodObj
         nextBillingAt: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
         loginUrl: z.ZodString;
     }, z.core.$strip>;
-}, z.core.$strip>, z.ZodObject<{
-    scope: z.ZodLiteral<"torrent_blocker">;
-    event: z.ZodEnum<{
-        "torrent_blocker.report": "torrent_blocker.report";
-    }>;
-    timestamp: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
-    data: z.ZodObject<{
-        node: z.ZodObject<{
-            uuid: z.ZodUUID;
-            id: z.ZodNumber;
-            name: z.ZodString;
-            address: z.ZodString;
-            port: z.ZodNullable<z.ZodInt>;
-            proxyUrl: z.ZodNullable<z.ZodString>;
-            apiSchema: z.ZodDefault<z.ZodEnum<{
-                mtls: "mtls";
-                tls: "tls";
-            }>>;
-            apiPath: z.ZodDefault<z.ZodNullable<z.ZodString>>;
-            grpcAuthToken: z.ZodNullable<z.ZodString>;
-            isConnected: z.ZodBoolean;
-            isDisabled: z.ZodBoolean;
-            isConnecting: z.ZodBoolean;
-            lastStatusChange: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-            lastStatusMessage: z.ZodNullable<z.ZodString>;
-            isTrafficTrackingActive: z.ZodBoolean;
-            trafficResetDay: z.ZodNullable<z.ZodInt>;
-            trafficLimitBytes: z.ZodNullable<z.ZodNumber>;
-            trafficUsedBytes: z.ZodNullable<z.ZodNumber>;
-            notifyPercent: z.ZodNullable<z.ZodInt>;
-            viewPosition: z.ZodInt;
-            countryCode: z.ZodString;
-            consumptionMultiplier: z.ZodNumber;
-            nodeConsumptionMultiplier: z.ZodNumber;
-            tags: z.ZodArray<z.ZodString>;
-            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            configProfile: z.ZodObject<{
-                activeConfigProfileUuid: z.ZodNullable<z.ZodUUID>;
-                activeInbounds: z.ZodArray<z.ZodObject<{
-                    uuid: z.ZodUUID;
-                    profileUuid: z.ZodUUID;
-                    tag: z.ZodString;
-                    type: z.ZodString;
-                    network: z.ZodNullable<z.ZodString>;
-                    security: z.ZodNullable<z.ZodString>;
-                    port: z.ZodNullable<z.ZodNumber>;
-                    rawInbound: z.ZodNullable<z.ZodUnknown>;
-                }, z.core.$strip>>;
-            }, z.core.$strip>;
-            providerUuid: z.ZodNullable<z.ZodUUID>;
-            provider: z.ZodNullable<z.ZodObject<{
-                uuid: z.ZodUUID;
-                name: z.ZodString;
-                faviconLink: z.ZodNullable<z.ZodString>;
-                loginUrl: z.ZodNullable<z.ZodString>;
-                createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-                updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            }, z.core.$strip>>;
-            activePluginUuid: z.ZodNullable<z.ZodUUID>;
-            system: z.ZodNullable<z.ZodObject<{
-                info: z.ZodObject<{
-                    arch: z.ZodString;
-                    cpus: z.ZodInt;
-                    cpuModel: z.ZodString;
-                    memoryTotal: z.ZodNumber;
-                    hostname: z.ZodString;
-                    platform: z.ZodString;
-                    release: z.ZodString;
-                    type: z.ZodString;
-                    version: z.ZodString;
-                    networkInterfaces: z.ZodArray<z.ZodString>;
-                }, z.core.$strip>;
-                stats: z.ZodObject<{
-                    memoryFree: z.ZodNumber;
-                    memoryUsed: z.ZodNumber;
-                    uptime: z.ZodNumber;
-                    loadAvg: z.ZodArray<z.ZodNumber>;
-                    interface: z.ZodNullable<z.ZodObject<{
-                        interface: z.ZodString;
-                        rxBytesPerSec: z.ZodNumber;
-                        txBytesPerSec: z.ZodNumber;
-                        rxTotal: z.ZodNumber;
-                        txTotal: z.ZodNumber;
-                    }, z.core.$strip>>;
-                }, z.core.$strip>;
-            }, z.core.$strip>>;
-            versions: z.ZodNullable<z.ZodObject<{
-                singbox: z.ZodString;
-                node: z.ZodString;
-            }, z.core.$strip>>;
-            singboxUptime: z.ZodNumber;
-            usersOnline: z.ZodNumber;
-            note: z.ZodNullable<z.ZodString>;
-        }, z.core.$strip>;
-        user: z.ZodObject<{
-            id: z.ZodNumber;
-            shortUuid: z.ZodString;
-            username: z.ZodString;
-            status: z.ZodEnum<{
-                readonly ACTIVE: "ACTIVE";
-                readonly DISABLED: "DISABLED";
-                readonly LIMITED: "LIMITED";
-                readonly EXPIRED: "EXPIRED";
-            }>;
-            trafficLimitBytes: z.ZodNumber;
-            trafficLimitStrategy: z.ZodEnum<{
-                readonly NO_RESET: "NO_RESET";
-                readonly DAY: "DAY";
-                readonly WEEK: "WEEK";
-                readonly MONTH: "MONTH";
-                readonly MONTH_ROLLING: "MONTH_ROLLING";
-            }>;
-            expireAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            telegramId: z.ZodNullable<z.ZodNumber>;
-            email: z.ZodNullable<z.ZodEmail>;
-            description: z.ZodNullable<z.ZodString>;
-            tag: z.ZodNullable<z.ZodString>;
-            hwidDeviceLimit: z.ZodNullable<z.ZodInt>;
-            externalSquadUuid: z.ZodNullable<z.ZodUUID>;
-            trojanPassword: z.ZodString;
-            vlessUuid: z.ZodUUID;
-            ssPassword: z.ZodString;
-            naivePassword: z.ZodString;
-            shadowtlsPassword: z.ZodString;
-            hysteria2Password: z.ZodString;
-            anytlsPassword: z.ZodString;
-            lastTriggeredThreshold: z.ZodInt;
-            subRevokedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-            lastTrafficResetAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-            createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
-            subscriptionUrl: z.ZodString;
-            activeInternalSquads: z.ZodArray<z.ZodObject<{
-                uuid: z.ZodUUID;
-                name: z.ZodString;
-            }, z.core.$strip>>;
-            userTraffic: z.ZodObject<{
-                usedTrafficBytes: z.ZodNumber;
-                lifetimeUsedTrafficBytes: z.ZodNumber;
-                onlineAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-                firstConnectedAt: z.ZodNullable<z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>>;
-                lastConnectedNodeUuid: z.ZodNullable<z.ZodUUID>;
-            }, z.core.$strip>;
-        }, z.core.$strip>;
-        report: z.ZodObject<{
-            actionReport: z.ZodObject<{
-                blocked: z.ZodBoolean;
-                ip: z.ZodString;
-                blockDuration: z.ZodNumber;
-                willUnblockAt: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
-                userId: z.ZodString;
-                processedAt: z.ZodPipe<z.ZodString, z.ZodTransform<Date, string>>;
-            }, z.core.$strip>;
-            xrayReport: z.ZodObject<{
-                email: z.ZodNullable<z.ZodString>;
-                level: z.ZodNullable<z.ZodNumber>;
-                protocol: z.ZodNullable<z.ZodString>;
-                network: z.ZodString;
-                source: z.ZodNullable<z.ZodString>;
-                destination: z.ZodString;
-                routeTarget: z.ZodNullable<z.ZodString>;
-                originalTarget: z.ZodNullable<z.ZodString>;
-                inboundTag: z.ZodNullable<z.ZodString>;
-                inboundName: z.ZodNullable<z.ZodString>;
-                inboundLocal: z.ZodNullable<z.ZodString>;
-                outboundTag: z.ZodNullable<z.ZodString>;
-                ts: z.ZodNumber;
-            }, z.core.$strip>;
-        }, z.core.$strip>;
-    }, z.core.$strip>;
 }, z.core.$strip>], "scope">;
 export type TExodusWebhookEvent = z.infer<typeof ExodusWebhookEventSchema>;
 export type TExodusWebhookUserEvent = z.infer<typeof ExodusWebhookUserEvents>;
@@ -966,5 +655,4 @@ export type TExodusWebhookServiceEvent = z.infer<typeof ExodusWebhookServiceEven
 export type TExodusWebhookErrorsEvent = z.infer<typeof ExodusWebhookErrorsEvents>;
 export type TExodusWebhookCrmEvent = z.infer<typeof ExodusWebhookCrmEvents>;
 export type TExodusWebhookUserHwidDevicesEvent = z.infer<typeof ExodusWebhookUserHwidDevicesEvents>;
-export type TExodusWebhookTorrentBlockerEvent = z.infer<typeof ExodusWebhookTorrentBlockerEvents>;
 //# sourceMappingURL=webhook.schema.d.ts.map

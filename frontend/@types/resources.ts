@@ -1,7 +1,7 @@
-import exodus from '../public/locales/en/exodus.json'
+import exodus from '../public/locales/en/exodus.json';
 
 const resources = {
-    exodus
-} as const
+  exodus
+} as const;
 
-export default resources
+export default resources;

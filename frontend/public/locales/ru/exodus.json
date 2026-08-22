@@ -32,7 +32,9 @@
     "http-stats": "HTTP Статистика",
     "subscription-connections": "Ноды",
     "srs-lists": "SRS списки",
-    "modules": "Модули"
+    "modules": "Модули",
+    "remnawave-settings": "Настройки Exodus",
+    "quick-open": "Quick open"
   },
   "common": {
     "delete": "Удалить",
@@ -83,7 +85,12 @@
     "processing": "Обработка",
     "operation-completed": "Операция завершена",
     "usage-stats": "Статистика использования",
-    "active-sessions": "Активные сессии"
+    "active-sessions": "Активные сессии",
+    "copy-link": "Copy link",
+    "shared-lists": "Общие списки",
+    "try-again": "Попробуйте снова",
+    "interface": "Интерфейс",
+    "ip-address": "IP-адрес"
   },
   "bandwidth-metrics": {
     "current-year": "Текущий год",
@@ -479,7 +486,9 @@
     "generate-protocol-credential": "Сгенерировать credential",
     "replaces-user-credential": "Заменяет credential пользователя при генерации конфигов.",
     "selector-nodes-first": "Нода в начале селектора",
-    "selector-nodes-first-description": "Для групп select в Sing-box и Mihomo. Включено: эта нода ставится перед шаблонными элементами вроде auto. Выключено: после них."
+    "selector-nodes-first-description": "Для групп select в Sing-box и Mihomo. Включено: эта нода ставится перед шаблонными элементами вроде auto. Выключено: после них.",
+    "hide-host-from-users-remnawave-will-send-host-only-for-raw-subscription-responses": "Скрыть хост от пользователей, Exodus отправит этот хост только для RAW-формата подписки",
+    "mapper": "Маппер"
   },
   "base-node-form": {
     "country": "Страна",
@@ -533,7 +542,8 @@
       "short-stats": "Краткая статистика",
       "exodus-usage": "Exodus Usage",
       "process-details": "Детали по процессам",
-      "runtime": "Runtime"
+      "runtime": "Runtime",
+      "remnawave-usage": "Exodus Usage"
     },
     "runtime-info": {
       "title": "Справка по метрикам Runtime",
@@ -1068,7 +1078,9 @@
       "download": "Скачать",
       "quick-view": "Быстрый просмотр",
       "edit-singbox-config": "Изменить конфиг Singbox",
-      "singbox-config": "Конфиг. Singbox"
+      "singbox-config": "Конфиг. Singbox",
+      "edit-xray-config": "Изменить конфиг Xray",
+      "xray-config": "Конфиг. Xray"
     }
   },
   "config-profiles-header": {
@@ -1388,7 +1400,8 @@
       "create-a-new-config-profile-by-entering-a-name-below": "Создайте новый профиль, введя имя ниже.",
       "you-can-customize-singbox-config-after-creation": "Вы можете настроить конфигурацию Singbox после создания.",
       "profile-name": "Имя профиля",
-      "enter-profile-name": "Введите имя профиля"
+      "enter-profile-name": "Введите имя профиля",
+      "you-can-customize-xray-config-after-creation": "Вы можете настроить конфигурацию XRay после создания."
     }
   },
   "restart-node-button": {
@@ -1409,7 +1422,9 @@
       "disable-node": "Выключить ноду",
       "config-profile-or-inbounds-is-missing": "Профиль или инбаунд не выбран",
       "exodus-node-version": "Версия модуля @exodus/node",
-      "singbox-core-version": "Версия ядра Singbox"
+      "singbox-core-version": "Версия ядра Singbox",
+      "xray-core-version": "Версия ядра Xray",
+      "remnawave-node-version": "Версия модуля @exodus/node"
     }
   },
   "config-profiles": {
@@ -1456,7 +1471,8 @@
       "stats": "Статистика",
       "traffic-refill-in-days": "Сброс трафика (дней):",
       "represents-the-uptime-of-the-singbox-core": "Отражает время работы ядра Singbox",
-      "represents-the-uptime-of-the-subscription-node-container": "Отражает время работы контейнера ноды подписки"
+      "represents-the-uptime-of-the-subscription-node-container": "Отражает время работы контейнера ноды подписки",
+      "represents-the-uptime-of-the-xray-core": "Отражает время работы ядра Xray"
     }
   },
   "nodes-spotlight-search": {
@@ -1604,14 +1620,17 @@
     "content-for-the-exodus-node-below": "содержимое для Exodus node ниже.",
     "learn-more": "Дополнительная информация.",
     "domain-or-ip": "Домен или IP",
-    "additional-options": "Дополнительные параметры"
+    "additional-options": "Дополнительные параметры",
+    "content-for-the-remnawave-node-below": "содержимое для Exodus node ниже."
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Установка mTLS соединения...",
     "exodus-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться...",
     "no-errros-so-far": "Пока никаких ошибок нет",
     "last-error-message": "Последнее сообщение об ошибке",
-    "singbox-core-is-up-and-running": "Ядро Singbox запущено и работает!"
+    "singbox-core-is-up-and-running": "Ядро Singbox запущено и работает!",
+    "xray-core-is-up-and-running": "Ядро Xray запущено и работает!",
+    "remnawave-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться..."
   },
   "external-squad-card": {
     "widget": {
@@ -1759,7 +1778,8 @@
       "example-hex-colors": "Пример цветов HEX",
       "example-mantine-colors": "Пример цветов MantineUI",
       "example-mixed": "Пример со смешанными цветами",
-      "color-format-note": "💡 Цвет применяется только к словам, непосредственно следующим за маркером. Без маркеров текст будет белым."
+      "color-format-note": "💡 Цвет применяется только к словам, непосредственно следующим за маркером. Без маркеров текст будет белым.",
+      "customize-your-remnawave-instance": "Кастомизировать вашу панель Exodus"
     }
   },
   "visual-settings-card": {
@@ -1887,7 +1907,9 @@
     "tags": "Теги",
     "total-ram": "Всего памяти",
     "cpu-model": "Модель CPU",
-    "singbox-v": "вер. Sb"
+    "singbox-v": "вер. Sb",
+    "ip-addresses": "IP адреса",
+    "xray-v": "вер. Xray"
   },
   "subpage-config-visual-editor": {
     "widget": {
@@ -2447,6 +2469,79 @@
       "hours": "ч",
       "minutes": "мин",
       "seconds": "сек"
+    }
+  },
+  "node-ips": {
+    "title": "IP адреса",
+    "add-ip": "Добавить IP",
+    "status": "Статус",
+    "remove-ip": "Удалить IP",
+    "invalid-ip": "Недопустимый IPv4 или IPv6 адрес",
+    "ip-is-required": "Не указан IP-адрес",
+    "max-ips-reached": "Максимум {{max}} IP адресов",
+    "no-ips-yet": "Нет IP адресов"
+  },
+  "node-ip-statuses": {
+    "inbound": "Входящий",
+    "outbound": "Исходящий",
+    "management": "Менеджмент",
+    "transit": "Транзит",
+    "monitoring": "Мониторинг",
+    "reserve": "Резерв",
+    "blocked": "Заблокирован",
+    "flagged": "Помеченный",
+    "deprecated": "Устаревший",
+    "unknown": "Неизвестно"
+  },
+  "node-integrations": {
+    "modal": {
+      "title": "Интеграции ноды",
+      "delete-description": "Интеграция будет удалена со всех нод и затрагиваемые ноды будут перезапущены."
+    },
+    "editor": {
+      "description": "Описание",
+      "description-placeholder": "Что делает эта интеграция",
+      "config-must-be-an-object": "Конфигурация должна быть JSON объектом"
+    },
+    "select": {
+      "label": "Интеграции",
+      "placeholder": "Выбрать интеграцию"
+    }
+  },
+  "shared-lists": {
+    "modal": {
+      "subtitle": "Множественное использование IP и ASN списков, на которые ссылаются плагины как ext:name",
+      "delete-description": "Список будет удален. Плагины, ссылающиеся на него, сохраняют свою актуальность: ссылка не будет проверена до тех пор, пока не будет исправлена."
+    },
+    "editor": {
+      "name-description": "Ссылки в плагинах как ext:name. Нельзя изменить позже."
+    }
+  },
+  "apply-to-nodes": {
+    "title": "Применить к нодам?",
+    "apply": "Применить сейчас",
+    "apply-description": "Затрагиваемые ноды сразу же получают новую конфигурацию.",
+    "later": "Позже",
+    "later-description": "Изменения сохранены, но ноды сохраняют текущую версию до их следующей синхронизации или перезапуска."
+  },
+  "node-geocheck": {
+    "title": "GeoCheck",
+    "source-default": "По умолчанию",
+    "default-placeholder": "Автоматически",
+    "default-description": "Узел будет использовать исходящий маршрут по умолчанию.",
+    "ip-description": "Выберите один из IP-адресов узла или введите любой адрес",
+    "interface-description": "Выберите один из интерфейсов узла или введите любое имя",
+    "run": "Запустить проверку",
+    "running": "Выполняется проверка геоданных",
+    "running-description": "Нода проверяет соединение, обычно занимает до минуты.",
+    "failed-description": "Нода не смогла завершить GeoCheck.",
+    "view-image": "Отчет",
+    "no-image": "Нет изображения в отчете, открыть JSON",
+    "requires-node-version": "Требуется Exodus Node {{version}} или новее"
+  },
+  "quick-open": {
+    "page": {
+      "description": "Open any entity by its identifier, or copy a direct link to share"
     }
   }
 }

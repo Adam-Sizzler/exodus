@@ -173,16 +173,20 @@ func indentTopLevelJSONValue(value []byte) string {
 }
 
 type singboxInboundDefaults struct {
-	network     string
-	security    string
-	path        string
-	hostHeader  string
-	sni         string
-	alpn        string
-	fingerprint string
-	publicKey   string
-	shortID     string
-	flow        string
+	network              string
+	security             string
+	path                 string
+	hostHeader           string
+	sni                  string
+	alpn                 string
+	fingerprint          string
+	publicKey            string
+	shortID              string
+	flow                 string
+	cipherSuites         string
+	pinnedPeerCertSha256 string
+	verifyPeerCertByName string
+	spiderX              string
 }
 
 func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *orderedmap.OrderedMap {
@@ -312,50 +316,22 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 		}
 		outbound.Set("transport", transport)
 	}
-	if host.SingboxMuxParams != nil {
-		if mux := parseSingboxMuxParams(*host.SingboxMuxParams); mux != nil {
+	if host.MuxParams != nil {
+		if mux := parseSingboxMuxParams(*host.MuxParams); mux != nil {
 			outbound.Set("multiplex", orderedMapFromMapWithPreferredOrder(mux, []string{
 				"enabled",
 				"protocol",
 				"max_connections",
 				"min_streams",
+				"max_streams",
 				"padding",
 			}))
 		}
 	}
-	if host.SingboxCustomParams != nil && string(*host.SingboxCustomParams) != "{}" && string(*host.SingboxCustomParams) != "null" {
-		var custom map[string]interface{}
-		if err := json.Unmarshal(*host.SingboxCustomParams, &custom); err == nil {
-			deepMergeSingbox(outbound, custom)
-		}
+	if len(host.Mapper.Singbox) > 0 {
+		ApplyHostMapperToOrderedMap(outbound, host.Mapper.Singbox, host)
 	}
 	return outbound
-}
-
-func deepMergeSingbox(dst *orderedmap.OrderedMap, src map[string]interface{}) {
-	for k, v := range src {
-		if srcMap, ok := v.(map[string]interface{}); ok {
-			if dstVal, exists := dst.Get(k); exists {
-				if dstOM, ok := dstVal.(*orderedmap.OrderedMap); ok {
-					deepMergeSingbox(dstOM, srcMap)
-					continue
-				} else if dstMap, ok := dstVal.(map[string]interface{}); ok {
-					dstOM := orderedmap.New()
-					for dk, dv := range dstMap {
-						dstOM.Set(dk, dv)
-					}
-					deepMergeSingbox(dstOM, srcMap)
-					dst.Set(k, dstOM)
-					continue
-				}
-			}
-			srcOM := orderedmap.New()
-			deepMergeSingbox(srcOM, srcMap)
-			dst.Set(k, srcOM)
-			continue
-		}
-		dst.Set(k, v)
-	}
 }
 
 func isSupportedSingboxTransport(protocol, network string) bool {
@@ -436,6 +412,9 @@ func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults
 			derefString(host.ALPN),
 			joinStringSlice(readStringSlice(tlsSettings, "alpn")),
 		)
+		defaults.cipherSuites = readString(tlsSettings, "cipherSuites")
+		defaults.pinnedPeerCertSha256 = readString(tlsSettings, "pinnedPeerCertSha256")
+		defaults.verifyPeerCertByName = readString(tlsSettings, "verifyPeerCertByName")
 	case "reality":
 		realitySettings := readMap(streamSettings, "realitySettings")
 		nativeSNI = readFirstString(readStringSlice(realitySettings, "serverNames"))
@@ -449,6 +428,7 @@ func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults
 		if defaults.publicKey == "" {
 			defaults.publicKey = deriveRealityPublicKey(readString(realitySettings, "privateKey"))
 		}
+		defaults.spiderX = readString(realitySettings, "spiderX")
 	}
 	defaults.flow = resolveVlessFlow(host, defaults)
 
@@ -848,13 +828,18 @@ func parseSingboxMuxParams(rawStr string) map[string]interface{} {
 		return nil
 	}
 	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
-		return normalizeSingboxMuxKeys(result)
+	if err := json.Unmarshal([]byte(rawStr), &result); err != nil || result == nil {
+		if err := yaml.Unmarshal([]byte(rawStr), &result); err != nil || result == nil {
+			return nil
+		}
 	}
-	if err := yaml.Unmarshal([]byte(rawStr), &result); err == nil && result != nil {
-		return normalizeSingboxMuxKeys(result)
+	if smux, ok := result["smux"].(map[string]interface{}); ok && smux != nil {
+		result = smux
 	}
-	return nil
+	if enabled, ok := result["enabled"].(bool); !ok || !enabled {
+		return nil
+	}
+	return normalizeSingboxMuxKeys(result)
 }
 
 func normalizeSingboxMuxKeys(mux map[string]interface{}) map[string]interface{} {
@@ -864,7 +849,7 @@ func normalizeSingboxMuxKeys(mux map[string]interface{}) map[string]interface{} 
 	normalized := make(map[string]interface{})
 	for k, v := range mux {
 		nk := strings.ReplaceAll(k, "-", "_")
-		normalized[nk] = v
+		normalized[nk] = normalizeMapperValue(v)
 	}
 	return normalized
 }

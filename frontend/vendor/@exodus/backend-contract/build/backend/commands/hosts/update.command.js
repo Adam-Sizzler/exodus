@@ -32,14 +32,8 @@ var UpdateHostCommand;
         securityLayer: zod_1.z.optional(zod_1.z.enum(constants_1.SECURITY_LAYERS)),
         xhttpExtraParams: zod_1.z.unknown().nullish(),
         muxParams: zod_1.z.unknown().nullish(),
-        singboxMuxParams: zod_1.z.unknown().nullish(),
-        clashMuxParams: zod_1.z.string().nullish(),
-        singboxCustomParams: zod_1.z.unknown().nullish(),
-        mihomoCustomParams: zod_1.z.string().nullish(),
         sockoptParams: zod_1.z.unknown().nullish(),
         finalMask: zod_1.z.unknown().nullish(),
-        overrideProtocolCredential: zod_1.z.optional(zod_1.z.boolean()),
-        protocolCredential: zod_1.z.string().nullish(),
         serverDescription: zod_1.z.string().max(30).nullish(),
         tags: zod_1.z.optional(zod_1.z
             .array(zod_1.z
@@ -64,6 +58,7 @@ var UpdateHostCommand;
         excludeFromSubscriptionTypes: zod_1.z
             .optional(zod_1.z.array(zod_1.z.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)))
             .describe('Optional. Subscription types from which the host will be excluded from.'),
+        mapper: models_1.HostMapperSchema.optional(),
     });
     UpdateHostCommand.ResponseSchema = host_response_1.HostResponseSchema;
 })(UpdateHostCommand || (exports.UpdateHostCommand = UpdateHostCommand = {}));

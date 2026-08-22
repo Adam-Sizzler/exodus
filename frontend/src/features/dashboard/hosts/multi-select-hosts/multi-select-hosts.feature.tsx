@@ -168,7 +168,8 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                                 inbound: {
                                     configProfileUuid: host.inbound.configProfileUuid!,
                                     configProfileInboundUuid: host.inbound.configProfileInboundUuid!
-                                }
+                                },
+                                mapper: host.mapper ?? undefined
                             }
                         })
                     }))

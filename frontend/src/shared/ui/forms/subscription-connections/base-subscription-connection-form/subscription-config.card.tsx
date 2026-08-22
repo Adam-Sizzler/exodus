@@ -25,7 +25,7 @@ export const SubscriptionConfigCard = <T extends SubscriptionConfigForm>(props: 
 
     const { data: subpageConfigs, isLoading: isSubpageConfigsLoading } = useGetSubpageConfigs()
 
-    const configOptions = (subpageConfigs?.configs ?? []).map((item) => ({
+    const configOptions = (subpageConfigs?.configs ?? []).map((item: { uuid: string; name: string }) => ({
         value: item.uuid,
         label: item.name
     }))

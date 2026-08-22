@@ -1,13 +1,13 @@
 import { ActionIcon, ActionIconGroup, Group, Tooltip } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
-import { TbBook, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
+import { TbBook, TbList, TbPlus, TbRefresh, TbTerminal } from 'react-icons/tb'
 import { useNavigate } from 'react-router'
 
 import { showModal } from '@shared/_modals/show-modal'
+import { HelpActionIconShared } from '@shared/_modals/universal'
 import { queryClient } from '@shared/api'
 import { QueryKeys, useGetNodePlugins } from '@shared/api/hooks'
 import { UniversalSpotlightActionIconShared } from '@shared/ui/universal-spotlight'
-import { HelpActionIconShared } from '@shared/_modals/universal'
 
 export const NodePluginsHeaderActionButtonsFeature = () => {
     const { t } = useTranslation()
@@ -26,6 +26,19 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
             <HelpActionIconShared hidden={false} screen="PAGE_NODE_PLUGINS" />
 
             <UniversalSpotlightActionIconShared />
+
+            <ActionIconGroup>
+                <Tooltip label={t('common.shared-lists')} withArrow>
+                    <ActionIcon
+                        color="indigo"
+                        onClick={() => showModal('sharedLists_sharedListsModal')}
+                        size="input-md"
+                        variant="soft"
+                    >
+                        <TbList size="24px" />
+                    </ActionIcon>
+                </Tooltip>
+            </ActionIconGroup>
 
             <ActionIconGroup>
                 <Tooltip label="Executor" withArrow>

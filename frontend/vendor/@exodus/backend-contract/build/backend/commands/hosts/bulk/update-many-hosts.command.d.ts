@@ -8,10 +8,6 @@ export declare namespace UpdateManyHostsCommand {
         tags: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodString>>>;
         path: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         port: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
-        remark: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-        address: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-        sni: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        host: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         alpn: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodEnum<{
             readonly H3: "h3";
             readonly H2: "h2";
@@ -20,6 +16,60 @@ export declare namespace UpdateManyHostsCommand {
             readonly H3_H2_H1_COMBINED: "h3,h2,http/1.1";
             readonly H3_H2_COMBINED: "h3,h2";
         }>>>>;
+        host: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        sni: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+        mapper: z.ZodOptional<z.ZodOptional<z.ZodObject<{
+            xrayJson: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+            mihomo: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+            base64: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+            singbox: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+        }, z.core.$strip>>>;
+        remark: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+        address: z.ZodOptional<z.ZodOptional<z.ZodString>>;
         fingerprint: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         isDisabled: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
         securityLayer: z.ZodOptional<z.ZodOptional<z.ZodEnum<{
@@ -29,10 +79,6 @@ export declare namespace UpdateManyHostsCommand {
         }>>>;
         xhttpExtraParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
         muxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        singboxMuxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        clashMuxParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        singboxCustomParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
-        mihomoCustomParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         sockoptParams: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
         finalMask: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUnknown>>>;
         inbound: z.ZodOptional<z.ZodOptional<z.ZodObject<{
@@ -43,8 +89,6 @@ export declare namespace UpdateManyHostsCommand {
         isHidden: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
         overrideSniFromAddress: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
         keepSniBlank: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        overrideProtocolCredential: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
-        protocolCredential: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         vlessRouteId: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodInt>>>;
         pinnedPeerCertSha256: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
         verifyPeerCertByName: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;

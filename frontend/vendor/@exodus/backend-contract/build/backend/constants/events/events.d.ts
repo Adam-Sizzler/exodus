@@ -66,16 +66,12 @@ export declare const EVENTS: {
         readonly INFRA_BILLING_NODE_PAYMENT_OVERDUE_48HRS: "crm.infra_billing_node_payment_overdue_48hrs";
         readonly INFRA_BILLING_NODE_PAYMENT_OVERDUE_7_DAYS: "crm.infra_billing_node_payment_overdue_7_days";
     };
-    readonly TORRENT_BLOCKER: {
-        readonly REPORT: "torrent_blocker.report";
-    };
     readonly CATCH_ALL_USER_EVENTS: "user.*";
     readonly CATCH_ALL_USER_HWID_DEVICES_EVENTS: "user_hwid_devices.*";
     readonly CATCH_ALL_NODE_EVENTS: "node.*";
     readonly CATCH_ALL_SERVICE_EVENTS: "service.*";
     readonly CATCH_ALL_ERRORS_EVENTS: "errors.*";
     readonly CATCH_ALL_CRM_EVENTS: "crm.*";
-    readonly CATCH_ALL_TORRENT_BLOCKER_EVENTS: "torrent_blocker.*";
 };
 export type TNodeEvents = (typeof EVENTS.NODE)[keyof typeof EVENTS.NODE];
 export type TUserEvents = (typeof EVENTS.USER)[keyof typeof EVENTS.USER];
@@ -83,8 +79,7 @@ export type TServiceEvents = (typeof EVENTS.SERVICE)[keyof typeof EVENTS.SERVICE
 export type TErrorsEvents = (typeof EVENTS.ERRORS)[keyof typeof EVENTS.ERRORS];
 export type TCRMEvents = (typeof EVENTS.CRM)[keyof typeof EVENTS.CRM];
 export type TUserHwidDevicesEvents = (typeof EVENTS.USER_HWID_DEVICES)[keyof typeof EVENTS.USER_HWID_DEVICES];
-export type TTorrentBlockerEvents = (typeof EVENTS.TORRENT_BLOCKER)[keyof typeof EVENTS.TORRENT_BLOCKER];
-export type TAllEvents = TUserEvents | TNodeEvents | TServiceEvents | TErrorsEvents | TCRMEvents | TUserHwidDevicesEvents | TTorrentBlockerEvents;
+export type TAllEvents = TUserEvents | TNodeEvents | TServiceEvents | TErrorsEvents | TCRMEvents | TUserHwidDevicesEvents;
 export type TAllEventChannels = 'telegram' | 'webhook';
 export declare const EVENTS_SCOPES: {
     readonly USER: "user";
@@ -93,7 +88,6 @@ export declare const EVENTS_SCOPES: {
     readonly SERVICE: "service";
     readonly ERRORS: "errors";
     readonly CRM: "crm";
-    readonly TORRENT_BLOCKER: "torrent_blocker";
 };
 export type TEventsScope = (typeof EVENTS_SCOPES)[keyof typeof EVENTS_SCOPES];
 type ObjectValues<T> = T[keyof T];

@@ -78,6 +78,7 @@ func NewRedisClient(cfg *config.BackendConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Network:  network,
 		Addr:     addr,
+		Username: cfg.Redis.Username,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
@@ -102,6 +103,7 @@ func BuildAsynqRedisOpt(cfg *config.BackendConfig) asynq.RedisClientOpt {
 	return asynq.RedisClientOpt{
 		Network:  network,
 		Addr:     addr,
+		Username: cfg.Redis.Username,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	}

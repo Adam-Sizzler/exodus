@@ -100,6 +100,10 @@ exports.ResponseRuleModificationsSchema = zod_1.default
         title: 'Exclude Hosts by Tags',
         markdownDescription: 'Excludes hosts from the subscription output if at least one tag in the host matches the given tags.',
     }),
+    respondWithRemarks: zod_1.default.array(zod_1.default.string()).optional().meta({
+        title: 'Respond With Remarks',
+        markdownDescription: 'Replaces the response body with the provided remarks. If this array contains more than one element, actual hosts will not be sent.',
+    }),
 })
     .optional()
     .meta({

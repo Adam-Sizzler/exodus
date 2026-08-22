@@ -68,6 +68,12 @@ func buildNodeResponses(ctx context.Context, repo *NodeRepository, cfg *config.B
 		item.ConsumptionMultiplier = fromNanoMultiplier(record.ConsumptionMultiplier)
 		item.NodeConsumptionMultiplier = fromNanoMultiplier(record.NodeConsumptionMultiplier)
 		item.Tags = ensureStringSlice(record.Tags)
+		item.IntegrationUUIDs = []string{}
+		if record.IPs != nil {
+			item.IPs = record.IPs
+		} else {
+			item.IPs = []NodeIPItem{}
+		}
 		item.Note = record.Note
 		item.System = buildNodeSystemFromCache(hot.System)
 		item.Versions = buildNodeVersions(item.SingboxVersion, item.NodeVersion)

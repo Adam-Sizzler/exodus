@@ -29,7 +29,7 @@ func (r *NodeRepository) getAllNodeRecords(ctx context.Context) ([]nodeRecord, e
 			is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 			consumption_multiplier, node_consumption_multiplier,
 			is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-			notify_percent, provider_uuid, view_position, country_code, tags, note,
+			notify_percent, provider_uuid, view_position, country_code, tags, ips, note,
 			created_at, updated_at
 		FROM nodes
 		ORDER BY view_position ASC
@@ -60,7 +60,7 @@ func (r *NodeRepository) getNodeByUUID(ctx context.Context, nodeUUID string) (no
 			is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 			consumption_multiplier, node_consumption_multiplier,
 			is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-			notify_percent, provider_uuid, view_position, country_code, tags, note,
+			notify_percent, provider_uuid, view_position, country_code, tags, ips, note,
 			created_at, updated_at
 		FROM nodes
 		WHERE uuid = $1
@@ -83,6 +83,7 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 	var notifyPercent sql.NullInt64
 	var providerUUID sql.NullString
 	var tags db.StringArray
+	var ipsRaw []byte
 	var note sql.NullString
 
 	err := scanner.Scan(
@@ -113,12 +114,20 @@ func scanNodeRecord(scanner shared.RowScanner) (nodeRecord, error) {
 		&node.ViewPosition,
 		&node.CountryCode,
 		&tags,
+		&ipsRaw,
 		&note,
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
 	if err != nil {
 		return node, err
+	}
+
+	if len(ipsRaw) > 0 {
+		_ = json.Unmarshal(ipsRaw, &node.IPs)
+	}
+	if node.IPs == nil {
+		node.IPs = []NodeIPItem{}
 	}
 
 	if id.Valid {
@@ -314,17 +323,18 @@ func (r *NodeRepository) createNode(ctx context.Context, nodeUUID string, req cr
 		_ = tx.Rollback()
 	}()
 
+	ipsJSON, _ := json.Marshal(normalizeNodeIPs(req.IPs))
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO nodes (
 			uuid, name, address, port, proxy_url, api_schema, api_path, grpc_auth_token, active_config_profile_uuid, active_plugin_uuid,
 			is_connected, is_connecting, is_disabled, last_status_change, last_status_message,
 			consumption_multiplier, node_consumption_multiplier,
 			is_traffic_tracking_active, traffic_reset_day, traffic_limit_bytes, traffic_used_bytes,
-			notify_percent, provider_uuid, country_code, tags, note, created_at, updated_at
+			notify_percent, provider_uuid, country_code, tags, ips, note, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
 			$11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-			$21, $22, $23, $24, $25, $26, $27, $28
+			$21, $22, $23, $24, $25, $26, $27, $28, $29
 		)
 	`,
 		nodeUUID,
@@ -352,6 +362,7 @@ func (r *NodeRepository) createNode(ctx context.Context, nodeUUID string, req cr
 		normalizeNullableString(req.ProviderUUID),
 		normalizeCountryCode(req.CountryCode),
 		normalizeTags(req.Tags),
+		string(ipsJSON),
 		normalizeNullableString(req.Note),
 		now,
 		now,
@@ -440,6 +451,10 @@ func (r *NodeRepository) updateNode(ctx context.Context, req updateNodeRequest, 
 	}
 	if req.Tags != nil {
 		add("tags", normalizeTags(*req.Tags))
+	}
+	if req.IPs != nil {
+		ipsJSON, _ := json.Marshal(normalizeNodeIPs(*req.IPs))
+		add("ips", string(ipsJSON))
 	}
 	if req.Note.Set {
 		if req.Note.Value == nil || strings.TrimSpace(*req.Note.Value) == "" {

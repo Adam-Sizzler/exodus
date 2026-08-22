@@ -8,6 +8,7 @@ import {
     SUBSCRIPTION_TEMPLATE_TYPE,
     MIHOMO_IP_VERSION,
 } from '../../constants';
+import { HostMapperSchema } from '../../models';
 import { HostResponseSchema } from './host.response';
 
 export namespace CreateHostCommand {
@@ -39,14 +40,8 @@ export namespace CreateHostCommand {
         securityLayer: z.optional(z.enum(SECURITY_LAYERS).default(SECURITY_LAYERS.DEFAULT)),
         xhttpExtraParams: z.unknown().nullish(),
         muxParams: z.unknown().nullish(),
-        singboxMuxParams: z.unknown().nullish(),
-        clashMuxParams: z.string().nullish(),
-        singboxCustomParams: z.unknown().nullish(),
-        mihomoCustomParams: z.string().nullish(),
         sockoptParams: z.unknown().nullish(),
         finalMask: z.unknown().nullish(),
-        overrideProtocolCredential: z.optional(z.boolean().default(false)),
-        protocolCredential: z.string().nullish(),
         serverDescription: z.string().max(30).nullish(),
 
         tags: z.optional(
@@ -79,6 +74,7 @@ export namespace CreateHostCommand {
         excludeFromSubscriptionTypes: z
             .optional(z.array(z.enum(SUBSCRIPTION_TEMPLATE_TYPE)))
             .describe('Optional. Subscription types from which the host will be excluded from.'),
+        mapper: HostMapperSchema.optional(),
     });
 
     export const ResponseSchema = HostResponseSchema;

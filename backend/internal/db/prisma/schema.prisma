@@ -19,23 +19,8 @@ model ExodusSettings {
   @@map("exodus_settings")
 }
 
-model NodePlugin {
-  uuid         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String @map("name") @db.VarChar(255)
-  pluginConfig Json   @map("plugin_config")
-  viewPosition Int    @default(autoincrement()) @map("view_position")
-
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
-
-  nodes Nodes[]
-
-  @@map("node_plugin")
-}
-
 model Users {
-  tId                    BigInt    @id @default(autoincrement()) @map("t_id")
-  uuid                   String    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                     BigInt    @id @default(autoincrement()) @map("id")
   shortUuid              String    @unique @map("short_uuid")
   username               String    @unique @map("username")
   /// @kyselyType('ACTIVE' | 'DISABLED' | 'LIMITED' | 'EXPIRED')
@@ -61,15 +46,16 @@ model Users {
   externalSquadUuid      String?   @map("external_squad_uuid") @db.Uuid
   lastTriggeredThreshold Int       @default(0) @map("last_triggered_threshold")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   nodesUserUsageHistory          NodesUserUsageHistory[]
   hwidUserDevices                HwidUserDevices[]
   activeInternalSquads           InternalSquadMembers[]
   userSubscriptionRequestHistory UserSubscriptionRequestHistory[]
-  traffic                        UserTraffic?
   userMetas                      UserMeta[]
+  torrentBlockerReports          TorrentBlockerReports[]
+  traffic                        UserTraffic?
 
   externalSquad ExternalSquads? @relation(fields: [externalSquadUuid], references: [uuid], onDelete: SetNull)
 
@@ -78,7 +64,7 @@ model Users {
 }
 
 model UserTraffic {
-  tId BigInt @id @map("t_id")
+  id BigInt @id @map("id")
 
   usedTrafficBytes         BigInt @default(0) @map("used_traffic_bytes")
   lifetimeUsedTrafficBytes BigInt @default(0) @map("lifetime_used_traffic_bytes")
@@ -88,7 +74,7 @@ model UserTraffic {
 
   firstConnectedAt DateTime? @map("first_connected_at")
 
-  user              Users  @relation(fields: [tId], references: [tId], onDelete: Cascade)
+  user              Users  @relation(fields: [id], references: [id], onDelete: Cascade)
   lastConnectedNode Nodes? @relation(fields: [lastConnectedNodeUuid], references: [uuid], onDelete: SetNull)
 
   @@map("user_traffic")
@@ -97,33 +83,13 @@ model UserTraffic {
 model ApiTokens {
   uuid     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name     String   @map("name")
-  expireAt DateTime @default(dbgenerated("now() + interval '99999 days'")) @map("expire_at")
+  expireAt DateTime @map("expire_at")
   scopes   String[] @default(["*"]) @map("scopes")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("api_tokens")
-}
-
-model UserMeta {
-  userId   BigInt @map("user_id")
-  metadata Json   @map("metadata")
-
-  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
-
-  @@id([userId])
-  @@map("user_meta")
-}
-
-model NodeMeta {
-  nodeId   BigInt @map("node_id")
-  metadata Json   @map("metadata")
-
-  node Nodes @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-
-  @@id([nodeId])
-  @@map("node_meta")
 }
 
 model Admin {
@@ -132,8 +98,8 @@ model Admin {
   passwordHash String @map("password_hash")
   role         String @map("role")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   passkeys Passkeys[]
 
@@ -152,8 +118,8 @@ model Passkeys {
 
   admin Admin @relation(fields: [adminUuid], references: [uuid], onDelete: Cascade)
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@index([id])
   @@index([adminUuid])
@@ -169,22 +135,22 @@ model Keygen {
   clientCert String? @map("client_cert")
   clientKey  String? @map("client_key")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("keygen")
 }
 
 model Nodes {
-  id      BigInt @unique @default(autoincrement()) @map("id")
-  uuid    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name    String @unique @map("name")
-  address String @unique @map("address")
-  port    Int?   @map("port")
-  proxyUrl String? @map("proxy_url")
-  apiSchema String @default("grpc") @map("api_schema")
-  apiPath   String @default("") @map("api_path")
-  grpcAuthToken String @map("grpc_auth_token")
+  id            BigInt  @unique @default(autoincrement()) @map("id")
+  uuid          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String  @unique @map("name")
+  address       String  @unique @map("address")
+  port          Int?    @map("port")
+  proxyUrl      String? @map("proxy_url")
+  apiSchema     String  @default("grpc") @map("api_schema")
+  apiPath       String  @default("") @map("api_path")
+  grpcAuthToken String  @map("grpc_auth_token")
 
   activeConfigProfileUuid String? @map("active_config_profile_uuid") @db.Uuid
   activePluginUuid        String? @map("active_plugin_uuid") @db.Uuid
@@ -195,8 +161,9 @@ model Nodes {
 
   lastStatusChange  DateTime? @map("last_status_change")
   lastStatusMessage String?   @map("last_status_message")
+  note              String?   @map("note") @db.VarChar(255)
 
-  consumptionMultiplier BigInt @default(1000000000) @map("consumption_multiplier")
+  consumptionMultiplier     BigInt @default(1000000000) @map("consumption_multiplier")
   nodeConsumptionMultiplier BigInt @default(1000000000) @map("node_consumption_multiplier")
 
   isTrafficTrackingActive Boolean @default(false) @map("is_traffic_tracking_active")
@@ -204,18 +171,20 @@ model Nodes {
   trafficLimitBytes       BigInt? @default(0) @map("traffic_limit_bytes")
   trafficUsedBytes        BigInt? @default(0) @map("traffic_used_bytes")
   notifyPercent           Int?    @default(0) @map("notify_percent")
+  /// [NodeIps]
+  ips                     Json    @default("[]") @map("ips")
 
   providerUuid String? @map("provider_uuid") @db.Uuid
 
   viewPosition Int      @default(autoincrement()) @map("view_position")
   countryCode  String   @default("XX") @map("country_code")
   tags         String[] @default([]) @map("tags")
-  note         String?  @map("note") @db.VarChar(255)
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  integrationUuids String[] @default([]) @map("integration_uuids") @db.Uuid
 
-  nodesTrafficUsageHistory     NodesTrafficUsageHistory[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
   nodesUserUsageHistory        NodesUserUsageHistory[]
   nodesUsageHistory            NodesUsageHistory[]
   configProfileInboundsToNodes ConfigProfileInboundsToNodes[]
@@ -232,15 +201,56 @@ model Nodes {
   @@map("nodes")
 }
 
-model NodesTrafficUsageHistory {
-  id           BigInt   @id @default(autoincrement())
-  nodeUuid     String   @map("node_uuid") @db.Uuid
-  trafficBytes BigInt   @map("traffic_bytes")
-  resetAt      DateTime @default(dbgenerated("now()")) @map("reset_at")
+model SubNodes {
+  id                BigInt    @unique @default(autoincrement()) @map("id")
+  uuid              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String    @unique @map("name")
+  address           String    @map("address")
+  port              Int?      @map("port")
+  publicDomain      String?   @map("public_domain")
+  apiSchema         String    @default("tls") @map("api_schema")
+  apiPath           String    @default("") @map("api_path")
+  grpcAuthToken     String?   @map("grpc_auth_token")
 
-  node Nodes @relation(fields: [nodeUuid], references: [uuid], onDelete: Cascade)
+  isConnected       Boolean   @default(false) @map("is_connected")
+  isConnecting      Boolean   @default(false) @map("is_connecting")
+  isDisabled        Boolean   @default(false) @map("is_disabled")
 
-  @@map("nodes_traffic_usage_history")
+  lastStatusChange  DateTime? @map("last_status_change")
+  lastStatusMessage String?   @map("last_status_message")
+
+  viewPosition      Int       @default(autoincrement()) @map("view_position")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  subpageConfigs    SubNodesToSubscriptionPageConfig[]
+
+  @@index([id])
+  @@map("sub_nodes")
+}
+
+model SubNodesToSubscriptionPageConfig {
+  nodeUuid          String @map("node_uuid") @db.Uuid
+  subpageConfigUuid String @map("subpage_config_uuid") @db.Uuid
+
+  subNode       SubNodes               @relation(fields: [nodeUuid], references: [uuid], onDelete: Cascade)
+  subpageConfig SubscriptionPageConfig @relation(fields: [subpageConfigUuid], references: [uuid], onDelete: Cascade)
+
+  @@id([nodeUuid, subpageConfigUuid])
+  @@map("sub_nodes_to_subscription_page_config")
+}
+
+model Integrations {
+  uuid        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String  @unique @map("name") @db.VarChar(30)
+  description String? @map("description") @db.VarChar(255)
+  config      Json    @map("config")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("integrations")
 }
 
 model NodesUserUsageHistory {
@@ -250,12 +260,13 @@ model NodesUserUsageHistory {
   totalBytes BigInt @map("total_bytes")
 
   createdAt DateTime @default(dbgenerated("CURRENT_DATE")) @map("created_at") @db.Date
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   node Nodes @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([nodeId, createdAt, userId])
+  @@index([userId, createdAt])
   @@map("nodes_user_usage_history")
 }
 
@@ -265,8 +276,8 @@ model NodesUsageHistory {
   uploadBytes   BigInt @map("upload_bytes")
   totalBytes    BigInt @map("total_bytes")
 
-  createdAt DateTime @default(dbgenerated("date_trunc('hour', now())")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(dbgenerated("date_trunc('hour'::text, now())")) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   node Nodes @relation(fields: [nodeUuid], references: [uuid], onDelete: Cascade)
 
@@ -289,28 +300,23 @@ model Hosts {
   securityLayer                String   @default("DEFAULT") @map("security_layer") // ENUM: DEFAULT, TLS, NONE
   xhttpExtraParams             Json?    @map("xhttp_extra_params")
   muxParams                    Json?    @map("mux_params")
-  singboxMuxParams             Json?    @map("singbox_mux_params")
-  clashMuxParams               String?  @map("clash_mux_params")
-  singboxCustomParams          Json?    @map("singbox_custom_params")
-  mihomoCustomParams           String?  @map("mihomo_custom_params")
   sockoptParams                Json?    @map("sockopt_params")
   finalMask                    Json?    @map("final_mask")
   isDisabled                   Boolean  @default(false) @map("is_disabled")
   serverDescription            String?  @map("server_description") @db.VarChar(30)
-  overrideProtocolCredential   Boolean  @default(false) @map("override_protocol_credential")
-  protocolCredential           String?  @map("protocol_credential")
   vlessRouteId                 Int?     @map("vless_route_id")
   pinnedPeerCertSha256         String?  @map("pinned_peer_cert_sha256")
   verifyPeerCertByName         String?  @map("verify_peer_cert_by_name")
   shuffleHost                  Boolean  @default(false) @map("shuffle_host")
   mihomoX25519                 Boolean  @default(false) @map("mihomo_x25519")
-  mihomoIpVersion              String?  @map("mihomo_ip_version")
+  mihomoIpVersion              String?  @map("mihomo_ip_version") // ENUM: dual, ipv4, ipv6, ipv4-prefer, ipv6-prefer
   xrayJsonTemplateUuid         String?  @map("xray_json_template_uuid") @db.Uuid
   keepSniBlank                 Boolean  @default(false) @map("keep_sni_blank")
   excludeFromSubscriptionTypes String[] @default([]) @map("exclude_from_subscription_types")
+  mapper                       Json     @default("{}") @map("mapper")
 
   tags     String[] @default([]) @map("tags")
-  isHidden Boolean @default(false) @map("is_hidden")
+  isHidden Boolean  @default(false) @map("is_hidden")
 
   overrideSniFromAddress Boolean @default(false) @map("override_sni_from_address")
 
@@ -325,26 +331,6 @@ model Hosts {
   excludedInternalSquads InternalSquadHostExclusions[]
 
   @@map("hosts")
-}
-
-model SrsLists {
-  uuid           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tag            String    @unique @map("tag")
-  format         String    @default("binary") @map("format")
-  url            String    @unique @map("url")
-  updateInterval String    @default("1d") @map("update_interval")
-  path           String?   @map("path")
-  fileName       String    @unique @map("file_name")
-  viewPosition   Int       @default(autoincrement()) @map("view_position")
-  isEnabled      Boolean   @default(true) @map("is_enabled")
-  isAvailable    Boolean   @default(false) @map("is_available")
-  lastCheckedAt  DateTime? @map("last_checked_at")
-  lastError      String?   @map("last_error")
-
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
-
-  @@map("srs_lists")
 }
 
 model InternalSquadHostExclusions {
@@ -366,8 +352,8 @@ model SubscriptionTemplate {
   templateYaml String? @map("template_yaml")
   templateJson Json?   @map("template_json")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   externalSquadsTemplates ExternalSquadsTemplates[]
   hosts                   Hosts[]
@@ -378,17 +364,7 @@ model SubscriptionTemplate {
 
 model SubscriptionSettings {
   uuid                        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileTitle                String  @map("profile_title")
-  supportLink                 String  @map("support_link")
-  profileUpdateInterval       Int     @map("profile_update_interval")
-  address                     String? @map("address")
-  port                        Int?    @map("port")
-  apiSchema                   String? @map("api_schema")
-  apiPath                     String? @map("api_path")
-  isProfileWebpageUrlEnabled  Boolean @default(true) @map("is_profile_webpage_url_enabled")
   serveJsonAtBaseSubscription Boolean @default(false) @map("serve_json_at_base_subscription")
-  happAnnounce                String? @map("happ_announce")
-  happRouting                 String? @map("happ_routing")
   isShowCustomRemarks         Boolean @default(true) @map("is_show_custom_remarks")
   customRemarks               Json    @map("custom_remarks")
   customResponseHeaders       Json?   @map("custom_response_headers")
@@ -396,14 +372,14 @@ model SubscriptionSettings {
   responseRules               Json?   @map("response_rules")
   hwidSettings                Json?   @map("hwid_settings")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("subscription_settings")
 }
 
 model HwidUserDevices {
-  hwid        String  @map("hwid")
+  hwid        String  @map("hwid") @db.VarChar(64)
   userId      BigInt  @map("user_id")
   platform    String? @map("platform")
   osVersion   String? @map("os_version")
@@ -411,12 +387,13 @@ model HwidUserDevices {
   userAgent   String? @map("user_agent")
   requestIp   String? @map("request_ip")
 
-  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@id([hwid, userId])
+  @@index([userId])
   @@map("hwid_user_devices")
 }
 
@@ -425,8 +402,8 @@ model InternalSquads {
   viewPosition Int    @default(autoincrement()) @map("view_position")
   name         String @unique @map("name")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   internalSquadMembers  InternalSquadMembers[]
   internalSquadInbounds InternalSquadInbounds[]
@@ -440,7 +417,7 @@ model InternalSquadMembers {
   userId            BigInt @map("user_id")
 
   internalSquad InternalSquads @relation(fields: [internalSquadUuid], references: [uuid], onDelete: Cascade)
-  user          Users          @relation(fields: [userId], references: [tId], onDelete: Cascade)
+  user          Users          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([internalSquadUuid, userId])
   @@index([internalSquadUuid])
@@ -465,8 +442,8 @@ model ConfigProfiles {
   name         String @unique @map("name")
   config       Json   @map("config")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   nodes                 Nodes[]
   configProfileInbounds ConfigProfileInbounds[]
@@ -515,8 +492,8 @@ model InfraProviders {
   faviconLink String? @map("favicon_link")
   loginUrl    String? @map("login_url")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   infraBillingNodes   InfraBillingNodes[]
   infraBillingHistory InfraBillingHistory[]
@@ -526,17 +503,19 @@ model InfraProviders {
 }
 
 model InfraBillingNodes {
-  uuid          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nodeUuid      String?  @map("node_uuid") @db.Uuid
-  providerUuid  String   @map("provider_uuid") @db.Uuid
+  uuid     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nodeUuid String? @map("node_uuid") @db.Uuid
+  name     String? @map("name")
+
+  providerUuid String @map("provider_uuid") @db.Uuid
+
   nextBillingAt DateTime @map("next_billing_at")
-  name          String?  @map("name")
 
   provider InfraProviders @relation(fields: [providerUuid], references: [uuid], onDelete: Cascade)
   node     Nodes?         @relation(fields: [nodeUuid], references: [uuid], onDelete: Cascade)
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([nodeUuid, providerUuid])
   @@index([nextBillingAt])
@@ -556,15 +535,15 @@ model InfraBillingHistory {
 }
 
 model UserSubscriptionRequestHistory {
-  id        BigInt   @id @default(autoincrement())
-  userId    BigInt   @map("user_id")
-  requestIp String?  @map("request_ip")
-  userAgent String?  @map("user_agent")
+  id        BigInt  @id @default(autoincrement())
+  userId    BigInt  @map("user_id")
+  requestIp String? @map("request_ip")
+  userAgent String? @map("user_agent")
 
   srrRuleName     String? @map("srr_rule_name")
   srrResponseType String  @default("UNKNOWN") @map("srr_response_type")
 
-  requestAt DateTime @default(dbgenerated("now()")) @map("request_at")
+  requestAt DateTime @default(now()) @map("request_at")
 
   user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -587,26 +566,27 @@ model ConfigProfileSnippets {
   name    String @id @map("name") @db.VarChar(255)
   snippet Json   @map("snippet")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("config_profile_snippets")
 }
 
 model ExternalSquads {
-  uuid                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  viewPosition         Int    @default(autoincrement()) @map("view_position")
-  name                 String @unique @map("name") @db.VarChar(30)
-  subscriptionSettings Json?  @map("subscription_settings")
-  hostOverrides        Json?  @map("host_overrides")
-  responseHeaders      Json?  @map("response_headers")
+  uuid                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  viewPosition          Int      @default(autoincrement()) @map("view_position")
+  name                  String   @unique @map("name") @db.VarChar(30)
+  subscriptionSettings  Json?    @map("subscription_settings")
+  hostOverrides         Json?    @map("host_overrides")
+  responseHeadersAdd    Json     @default("{}") @map("response_headers_add")
+  responseHeadersRemove String[] @default([]) @map("response_headers_remove")
 
   hwidSettings  Json? @map("hwid_settings")
   customRemarks Json? @map("custom_remarks")
 
   subpageConfigUuid String? @map("subpage_config_uuid") @db.Uuid
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   externalSquadsTemplates ExternalSquadsTemplates[]
   users                   Users[]
@@ -633,10 +613,75 @@ model SubscriptionPageConfig {
   name         String @unique @map("name") @db.VarChar(30)
   config       Json   @map("config")
 
-  createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
-  updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   externalSquads ExternalSquads[]
+  subNodes       SubNodesToSubscriptionPageConfig[]
 
   @@map("subscription_page_config")
+}
+
+model SharedLists {
+  name   String @id @map("name") @db.VarChar(255)
+  config Json   @map("config")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("shared_lists")
+}
+
+model NodePlugin {
+  uuid         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  viewPosition Int    @default(autoincrement()) @map("view_position")
+  name         String @map("name") @db.VarChar(255)
+  pluginConfig Json   @map("plugin_config")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  nodes Nodes[]
+
+  @@map("node_plugin")
+}
+
+model UserMeta {
+  userId   BigInt @map("user_id")
+  metadata Json   @map("metadata")
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId])
+  @@map("user_meta")
+}
+
+model NodeMeta {
+  nodeId   BigInt @map("node_id")
+  metadata Json   @map("metadata")
+
+  node Nodes @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@id([nodeId])
+  @@map("node_meta")
+}
+
+model SrsLists {
+  uuid           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tag            String    @unique @map("tag")
+  format         String    @default("binary") @map("format")
+  url            String    @unique @map("url")
+  updateInterval String    @default("1d") @map("update_interval")
+  path           String?   @map("path")
+  fileName       String    @unique @map("file_name")
+  viewPosition   Int       @default(autoincrement()) @map("view_position")
+  isEnabled      Boolean   @default(true) @map("is_enabled")
+  isAvailable    Boolean   @default(false) @map("is_available")
+  lastCheckedAt  DateTime? @map("last_checked_at")
+  lastError      String?   @map("last_error")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("srs_lists")
 }

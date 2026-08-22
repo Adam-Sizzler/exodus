@@ -152,16 +152,11 @@ type SubscriptionHost struct {
 	SecurityLayer                string
 	XHTTPExtraParams             *string
 	MuxParams                    *string
-	SingboxMuxParams             *string
-	ClashMuxParams               *string
-	SingboxCustomParams          *json.RawMessage
-	MihomoCustomParams           *string
+	Mapper                       HostMapper
 	SockoptParams                *string
 	FinalMask                    *string
 	IsDisabled                   bool
 	ServerDescription            *string
-	OverrideProtocolCredential   bool
-	ProtocolCredential           *string
 	ShuffleHost                  bool
 	MihomoX25519                 bool
 	MihomoIPVersion              *string

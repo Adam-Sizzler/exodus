@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -421,3 +422,199 @@ func TestMihomoHysteria2FromInboundRaw(t *testing.T) {
 		t.Errorf("expected obfs-max-packet-size 250, got %v", proxy["obfs-max-packet-size"])
 	}
 }
+
+func TestMihomoVlessReality(t *testing.T) {
+	inboundType := "vless"
+	inboundRaw := json.RawMessage(`{
+		"type": "vless",
+		"streamSettings": {
+			"network": "tcp",
+			"security": "reality",
+			"realitySettings": {
+				"serverNames": ["reality.example.com"],
+				"publicKey": "my-public-key-12345",
+				"shortIds": ["0123456789abcdef"],
+				"fingerprint": "chrome"
+			}
+		}
+	}`)
+	host := SubscriptionHost{
+		Remark:      "VLESS-Reality-Node",
+		Address:     "node.example.com",
+		Port:        443,
+		InboundType: &inboundType,
+		InboundRaw:  inboundRaw,
+	}
+	user := SubscriptionUser{
+		VlessUUID: "11111111-2222-3333-4444-555555555555",
+	}
+
+	proxy := buildMihomoProxy(host, user)
+	if proxy == nil {
+		t.Fatal("expected proxy, got nil")
+	}
+
+	if proxy["type"] != "vless" {
+		t.Errorf("expected type 'vless', got %v", proxy["type"])
+	}
+	if proxy["uuid"] != "11111111-2222-3333-4444-555555555555" {
+		t.Errorf("expected uuid, got %v", proxy["uuid"])
+	}
+	if proxy["tls"] != true {
+		t.Errorf("expected tls true, got %v", proxy["tls"])
+	}
+	if proxy["servername"] != "reality.example.com" {
+		t.Errorf("expected servername 'reality.example.com', got %v", proxy["servername"])
+	}
+	if proxy["flow"] != "xtls-rprx-vision" {
+		t.Errorf("expected flow 'xtls-rprx-vision', got %v", proxy["flow"])
+	}
+	if proxy["client-fingerprint"] != "chrome" {
+		t.Errorf("expected client-fingerprint 'chrome', got %v", proxy["client-fingerprint"])
+	}
+	realityOpts, ok := proxy["reality-opts"].(map[string]interface{})
+	if !ok || realityOpts == nil {
+		t.Fatalf("expected reality-opts map, got %v", proxy["reality-opts"])
+	}
+	if realityOpts["public-key"] != "my-public-key-12345" {
+		t.Errorf("expected public-key, got %v", realityOpts["public-key"])
+	}
+	if realityOpts["short-id"] != "0123456789abcdef" {
+		t.Errorf("expected short-id, got %v", realityOpts["short-id"])
+	}
+}
+
+func TestMihomoExodusTemplateDirective(t *testing.T) {
+	templateYAML := []byte(`
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - DIRECT
+  - name: MANUAL
+    type: select
+    exodus:
+      include-proxies: false
+    proxies:
+      - DIRECT
+`)
+	inboundType := "vless"
+	hosts := []SubscriptionHost{
+		{
+			Remark:      "Node 1",
+			Address:     "1.1.1.1",
+			Port:        443,
+			InboundType: &inboundType,
+		},
+	}
+	user := SubscriptionUser{
+		VlessUUID: "11111111-2222-3333-4444-555555555555",
+	}
+
+	result, err := generateYAMLConfig(templateYAML, hosts, user)
+	if err != nil {
+		t.Fatalf("generateYAMLConfig error: %v", err)
+	}
+
+	var parsed struct {
+		ProxyGroups []map[string]interface{} `yaml:"proxy-groups"`
+	}
+	if err := yaml.Unmarshal([]byte(result), &parsed); err != nil {
+		t.Fatalf("failed to unmarshal output: %v", err)
+	}
+
+	if len(parsed.ProxyGroups) != 2 {
+		t.Fatalf("expected 2 proxy groups, got %d", len(parsed.ProxyGroups))
+	}
+
+	// First group should have Node 1
+	p0 := parsed.ProxyGroups[0]["proxies"].([]interface{})
+	if len(p0) != 2 || p0[1] != "Node 1" {
+		t.Errorf("expected PROXY group to include Node 1, got %v", p0)
+	}
+
+	// Second group has exodus.include-proxies: false -> should NOT have Node 1
+	p1 := parsed.ProxyGroups[1]["proxies"].([]interface{})
+	if len(p1) != 1 || p1[0] != "DIRECT" {
+		t.Errorf("expected MANUAL group to remain untouched, got %v", p1)
+	}
+
+	// The 'exodus' key must be deleted
+	if _, ok := parsed.ProxyGroups[1]["exodus"]; ok {
+		t.Errorf("expected exodus key to be removed from YAML")
+	}
+}
+
+func TestXrayVlessRealityLinkAndOutbound(t *testing.T) {
+	inboundType := "vless"
+	inboundRaw := json.RawMessage(`{
+		"type": "vless",
+		"streamSettings": {
+			"network": "tcp",
+			"security": "reality",
+			"realitySettings": {
+				"serverNames": ["reality.example.com"],
+				"publicKey": "my-public-key-12345",
+				"shortIds": ["0123456789abcdef"],
+				"fingerprint": "chrome"
+			}
+		}
+	}`)
+	muxParams := `{"smux": {"enabled": true, "protocol": "h2mux"}}`
+	host := SubscriptionHost{
+		Remark:      "VLESS-Reality-Link",
+		Address:     "node.example.com",
+		Port:        443,
+		InboundType: &inboundType,
+		InboundRaw:  inboundRaw,
+		MuxParams:   &muxParams,
+	}
+	user := SubscriptionUser{
+		VlessUUID: "11111111-2222-3333-4444-555555555555",
+	}
+
+	link, proto := buildHostLink(host, user)
+	if proto != "vless" {
+		t.Errorf("expected proto vless, got %s", proto)
+	}
+	if !strings.Contains(link, "security=reality") {
+		t.Errorf("link missing security=reality: %s", link)
+	}
+	if !strings.Contains(link, "pbk=my-public-key-12345") {
+		t.Errorf("link missing pbk: %s", link)
+	}
+	if !strings.Contains(link, "sid=0123456789abcdef") {
+		t.Errorf("link missing sid: %s", link)
+	}
+	if !strings.Contains(link, "flow=xtls-rprx-vision") {
+		t.Errorf("link missing flow: %s", link)
+	}
+	if !strings.Contains(link, "fp=chrome") {
+		t.Errorf("link missing fp: %s", link)
+	}
+
+	// Xray Outbound with smux only -> mux must be omitted
+	outbound := buildXrayOutbound(host, user)
+	if outbound == nil {
+		t.Fatal("expected outbound, got nil")
+	}
+	if _, hasMux := outbound["mux"]; hasMux {
+		t.Errorf("expected outbound.mux to be omitted when only smux is present, got %v", outbound["mux"])
+	}
+
+	// Xray Outbound with native Xray mux fields
+	nativeMux := `{"enabled": true, "concurrency": 8, "smux": {"enabled": true}}`
+	host.MuxParams = &nativeMux
+	outboundWithMux := buildXrayOutbound(host, user)
+	if muxObj, ok := outboundWithMux["mux"].(map[string]interface{}); !ok {
+		t.Errorf("expected outbound.mux to be present, got %v", outboundWithMux["mux"])
+	} else {
+		if _, hasSmux := muxObj["smux"]; hasSmux {
+			t.Errorf("expected smux key to be stripped from outbound.mux")
+		}
+		if muxObj["enabled"] != true || muxObj["concurrency"] != float64(8) {
+			t.Errorf("expected native mux fields, got %v", muxObj)
+		}
+	}
+}
+

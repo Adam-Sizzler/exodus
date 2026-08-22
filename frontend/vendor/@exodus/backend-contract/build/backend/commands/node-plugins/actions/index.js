@@ -16,3 +16,4 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./clone-node-plugin.command"), exports);
 __exportStar(require("./reorder.command"), exports);
+__exportStar(require("./sync-node-plugin.command"), exports);

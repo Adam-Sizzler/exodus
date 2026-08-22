@@ -66,8 +66,18 @@ func validateCreateRequest(req createNodeRequest) error {
 			return fmt.Errorf("countryCode must be 2 characters")
 		}
 	}
+	if err := validateNodeIPs(req.IPs); err != nil {
+		return err
+	}
 	if err := validateNote(req.Note); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateNodeIPs(items []NodeIPItem) error {
+	if len(items) > 64 {
+		return fmt.Errorf("ips cannot contain more than 64 items")
 	}
 	return nil
 }
@@ -133,6 +143,11 @@ func validateUpdateRequest(req updateNodeRequest) error {
 		code := strings.TrimSpace(*req.CountryCode)
 		if code != "" && len(code) != 2 {
 			return fmt.Errorf("countryCode must be 2 characters")
+		}
+	}
+	if req.IPs != nil {
+		if err := validateNodeIPs(*req.IPs); err != nil {
+			return err
 		}
 	}
 	if req.Note.Set {

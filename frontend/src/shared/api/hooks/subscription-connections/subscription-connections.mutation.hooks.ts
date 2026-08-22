@@ -279,7 +279,6 @@ export const useRestartSubscriptionConnection = createMutationHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.RESTART,
     responseSchema: subscriptionConnectionEventSentResponseSchema,
     routeParamsSchema: RestartNodeCommand.RequestParamSchema,
-    bodySchema: RestartNodeCommand.RequestBodySchema,
     requestMethod: RestartNodeCommand.endpointDetails.REQUEST_METHOD,
     rMutationParams: {
         onSuccess: () => {

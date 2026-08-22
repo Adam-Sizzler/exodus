@@ -31,7 +31,9 @@
     "sessions-explorer": "会话管理器",
     "http-stats": "HTTP 状态",
     "subscription-connections": "节点",
-    "srs-lists": "SRS Lists"
+    "srs-lists": "SRS Lists",
+    "remnawave-settings": "Exodus 设置",
+    "quick-open": "Quick open"
   },
   "common": {
     "delete": "删除",
@@ -82,7 +84,12 @@
     "processing": "处理中",
     "operation-completed": "操作已完成",
     "usage-stats": "使用状态",
-    "active-sessions": "活跃会话"
+    "active-sessions": "活跃会话",
+    "copy-link": "Copy link",
+    "shared-lists": "共享列表",
+    "try-again": "再试一次",
+    "interface": "接口",
+    "ip-address": "IP 地址"
   },
   "bandwidth-metrics": {
     "current-year": "今年",
@@ -475,7 +482,9 @@
     "generate-protocol-credential": "生成凭据",
     "replaces-user-credential": "生成配置时替换用户的协议凭据。",
     "selector-nodes-first": "节点置于选择器开头",
-    "selector-nodes-first-description": "用于 Sing-box 和 Mihomo 的 select 组。开启后：该节点放在模板项（如 auto）之前。关闭后：放在其后。"
+    "selector-nodes-first-description": "用于 Sing-box 和 Mihomo 的 select 组。开启后：该节点放在模板项（如 auto）之前。关闭后：放在其后。",
+    "hide-host-from-users-remnawave-will-send-host-only-for-raw-subscription-responses": "隐藏用户的主机。Exodus 将仅发送RAW 订阅。",
+    "mapper": "映射"
   },
   "base-node-form": {
     "country": "国家",
@@ -510,7 +519,8 @@
       "short-stats": "简要统计",
       "exodus-usage": "Exodus 使用情况",
       "process-details": "进程详情",
-      "runtime": "Runtime"
+      "runtime": "Runtime",
+      "remnawave-usage": "Exodus 使用情况"
     },
     "runtime-info": {
       "title": "运行时指标指南",
@@ -1366,7 +1376,8 @@
       "create-a-new-config-profile-by-entering-a-name-below": "在下方输入名称以创建新的配置文件。",
       "you-can-customize-singbox-config-after-creation": "创建后可以自定义 Singbox 配置。",
       "profile-name": "配置文件名称",
-      "enter-profile-name": "输入配置文件名称"
+      "enter-profile-name": "输入配置文件名称",
+      "you-can-customize-xray-config-after-creation": "创建后可以自定义 XRay 配置。"
     }
   },
   "restart-node-button": {
@@ -1387,7 +1398,9 @@
       "disable-node": "禁用节点",
       "config-profile-or-inbounds-is-missing": "缺少配置文件或者入站配置",
       "exodus-node-version": "节点版本，@exodus/节点",
-      "singbox-core-version": "Singbox 核心版本"
+      "singbox-core-version": "Singbox 核心版本",
+      "xray-core-version": "Xray 核心版本",
+      "remnawave-node-version": "节点版本，@exodus/节点"
     }
   },
   "config-profiles": {
@@ -1434,7 +1447,8 @@
       "stats": "统计信息",
       "traffic-refill-in-days": "流量重置(天)：",
       "represents-the-uptime-of-the-singbox-core": "表示Singbox 核心的运行时间",
-      "represents-the-uptime-of-the-subscription-node-container": "表示订阅节点容器的运行时间"
+      "represents-the-uptime-of-the-subscription-node-container": "表示订阅节点容器的运行时间",
+      "represents-the-uptime-of-the-xray-core": "表示Xray 核心的运行时间"
     }
   },
   "nodes-spotlight-search": {
@@ -1582,14 +1596,17 @@
     "content-for-the-exodus-node-below": "以下是 Exodus 节点的内容。",
     "learn-more": "了解更多。",
     "domain-or-ip": "域名或IP",
-    "additional-options": "附加参数"
+    "additional-options": "附加参数",
+    "content-for-the-remnawave-node-below": "以下是 Exodus 节点的内容。"
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "正在建立mTLS连接...",
     "exodus-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接...",
     "no-errros-so-far": "到目前为止没有错误",
     "last-error-message": "最后一个错误消息",
-    "singbox-core-is-up-and-running": "Singbox 核心正在运行！"
+    "singbox-core-is-up-and-running": "Singbox 核心正在运行！",
+    "xray-core-is-up-and-running": "Xray 核心正在运行！",
+    "remnawave-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接..."
   },
   "external-squad-card": {
     "widget": {
@@ -1737,7 +1754,8 @@
       "example-hex-colors": "十六进制颜色示例",
       "example-mantine-colors": "MantineUI颜色示例",
       "example-mixed": "混合颜色示例",
-      "color-format-note": "💡 颜色仅适用于标记后面的单词。没有标记，文本将为白色。"
+      "color-format-note": "💡 颜色仅适用于标记后面的单词。没有标记，文本将为白色。",
+      "customize-your-remnawave-instance": "自定义您的 Exodus 实例"
     }
   },
   "visual-settings-card": {
@@ -1865,7 +1883,9 @@
     "tags": "标签",
     "total-ram": "内存总数",
     "cpu-model": "CPU 型号",
-    "singbox-v": "Singbox V."
+    "singbox-v": "Singbox V.",
+    "ip-addresses": "IP 地址",
+    "xray-v": "Xray V."
   },
   "subpage-config-visual-editor": {
     "widget": {
@@ -2392,6 +2412,79 @@
       "edit-list": "Edit SRS list",
       "url": "URL",
       "status": "Status"
+    }
+  },
+  "node-ips": {
+    "title": "IP 地址",
+    "add-ip": "添加 IP",
+    "status": "状态",
+    "remove-ip": "删除 IP",
+    "invalid-ip": "不是有效的 IPv4 或 IPv6 地址",
+    "ip-is-required": "IP 地址为必填项",
+    "max-ips-reached": "最多允许 {{max}} 个 IP 地址",
+    "no-ips-yet": "还没有填写IP地址"
+  },
+  "node-ip-statuses": {
+    "inbound": "入站",
+    "outbound": "出站",
+    "management": "管理",
+    "transit": "传输",
+    "monitoring": "监测",
+    "reserve": "储备",
+    "blocked": "禁止访问",
+    "flagged": "已被标记 (Flagged)",
+    "deprecated": "已弃用",
+    "unknown": "未知"
+  },
+  "node-integrations": {
+    "modal": {
+      "title": "节点集合",
+      "delete-description": "集合将从所有节点中移除，受影响的节点将重新启动。"
+    },
+    "editor": {
+      "description": "描述",
+      "description-placeholder": "这个集合做了什么",
+      "config-must-be-an-object": "配置必须是JSON对象"
+    },
+    "select": {
+      "label": "集合",
+      "placeholder": "选择集合"
+    }
+  },
+  "shared-lists": {
+    "modal": {
+      "subtitle": "可重用的 IP 和 ASN 列表，插件引用为 ext:name",
+      "delete-description": "列表将被删除。插件引用它保持范围：引用并在修复之前失败验证。"
+    },
+    "editor": {
+      "name-description": "插件中引用为 ext:name。以后无法更改。"
+    }
+  },
+  "apply-to-nodes": {
+    "title": "是否应用到节点？",
+    "apply": "立即应用",
+    "apply-description": "受影响的节点立即收到新的配置。",
+    "later": "以后再说",
+    "later-description": "更改已保存，但节点保留当前版本，直到下次同步或重新启动。"
+  },
+  "node-geocheck": {
+    "title": "地理检测",
+    "source-default": "默认",
+    "default-placeholder": "自动化",
+    "default-description": "节点将使用默认的出站路由。",
+    "ip-description": "选择一个节点IP或输入任何地址",
+    "interface-description": "选择一个节点接口或输入任意名称",
+    "run": "运行检查",
+    "running": "正在运行地理检测",
+    "running-description": "该节点正在探索其连接性，这通常需要一分钟。",
+    "failed-description": "节点无法完成地理检测。",
+    "view-image": "反馈",
+    "no-image": "报告中没有图片，打开 JSON",
+    "requires-node-version": "需要 Exodus Node {{version}} 或更高版本"
+  },
+  "quick-open": {
+    "page": {
+      "description": "Open any entity by its identifier, or copy a direct link to share"
     }
   }
 }

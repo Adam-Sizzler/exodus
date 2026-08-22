@@ -231,6 +231,9 @@ export declare const REST_API: {
         readonly CREATE: "/api/snippets/";
         readonly UPDATE: "/api/snippets/";
         readonly DELETE: "/api/snippets/";
+        readonly ACTIONS: {
+            readonly SYNC: "/api/snippets/actions/sync";
+        };
     };
     readonly EXTERNAL_SQUADS: {
         readonly GET: "/api/external-squads/";
@@ -261,6 +264,13 @@ export declare const REST_API: {
             readonly CLONE: "/api/subscription-page-configs/actions/clone";
         };
     };
+    readonly NODE_INTEGRATIONS: {
+        readonly GET: (uuid: string) => string;
+        readonly GET_ALL: "/api/node-integrations/";
+        readonly UPDATE: "/api/node-integrations/";
+        readonly DELETE: (uuid: string) => string;
+        readonly CREATE: "/api/node-integrations/";
+    };
     readonly NODE_PLUGINS: {
         readonly GET: (uuid: string) => string;
         readonly GET_ALL: "/api/node-plugins/";
@@ -270,8 +280,19 @@ export declare const REST_API: {
         readonly ACTIONS: {
             readonly REORDER: "/api/node-plugins/actions/reorder";
             readonly CLONE: "/api/node-plugins/actions/clone";
+            readonly SYNC: "/api/node-plugins/actions/sync";
         };
         readonly EXECUTOR: "/api/node-plugins/executor";
+        readonly SHARED_LISTS: {
+            readonly GET_ALL: "/api/node-plugins/shared-lists";
+            readonly GET: (name: string) => string;
+            readonly CREATE: "/api/node-plugins/shared-lists";
+            readonly UPDATE: "/api/node-plugins/shared-lists";
+            readonly DELETE: (name: string) => string;
+            readonly ACTIONS: {
+                readonly SYNC: "/api/node-plugins/shared-lists/actions/sync";
+            };
+        };
         readonly TORRENT_BLOCKER: {
             readonly GET_REPORTS: "/api/node-plugins/torrent-blocker";
             readonly GET_REPORTS_STATS: "/api/node-plugins/torrent-blocker/stats";
@@ -299,6 +320,8 @@ export declare const REST_API: {
         readonly CONNECTIONS_BY_USER_RESULT: (jobId: string) => string;
         readonly CONNECTIONS_BY_NODE: (uuid: string) => string;
         readonly CONNECTIONS_BY_NODE_RESULT: (jobId: string) => string;
+        readonly GEOCHECK_BY_NODE: (uuid: string) => string;
+        readonly GEOCHECK_BY_NODE_RESULT: (jobId: string) => string;
         readonly DROP_CONNECTIONS: "/api/connections/drop";
     };
     readonly METADATA: {

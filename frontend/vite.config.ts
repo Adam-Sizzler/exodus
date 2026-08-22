@@ -29,7 +29,13 @@ export default defineConfig({
         // })
     ],
     optimizeDeps: {
-        include: ['html-parse-stringify']
+        include: [
+            'html-parse-stringify',
+            'monaco-editor/editor',
+            'monaco-editor/features/register.all',
+            'monaco-editor/languages/definitions/yaml/yaml',
+            'monaco-editor/languages/features/json/register'
+        ]
     },
     build: {
         target: 'esnext',
@@ -60,8 +66,20 @@ export default defineConfig({
                             test: /node_modules[\\/](react-icons|@lottiefiles[\\/]dotlottie-react)[\\/]/
                         },
                         {
+                            name: 'zod',
+                            test: /node_modules[\\/](axios|zod|zustand|xbytes|zod-to-json-schema)[\\/]/
+                        },
+                        {
                             name: 'utils',
-                            test: /node_modules[\\/](axios|zod|zustand|xbytes|zod-to-json-schema|nanoid|ufo|consola|semver|is-svg|sax|jsonc-parser|json-edit-react|dayjs)[\\/]/
+                            test: /node_modules[\\/](nanoid|ufo|consola|semver|is-svg|sax|jsonc-parser|json-edit-react|dayjs)[\\/]/
+                        },
+                        {
+                            name: 'mantine',
+                            test: /node_modules[\\/]@mantine[\\/](core|hooks|dates|nprogress|notifications|modals)[\\/]/
+                        },
+                        {
+                            name: 'exodus',
+                            test: /(node_modules|vendor)[\\/]@exodus[\\/](backend-contract|subscription-page-types|node-plugins)[\\/]/
                         },
                         {
                             name: 'i18n',
@@ -121,5 +139,13 @@ export default defineConfig({
             overlay: false
         }
     },
-    resolve: { tsconfigPaths: true }
+    resolve: {
+        tsconfigPaths: true,
+        alias: [
+            {
+                find: /^monaco-editor\/esm\/vs\/(.*)$/,
+                replacement: 'monaco-editor/$1'
+            }
+        ]
+    }
 })

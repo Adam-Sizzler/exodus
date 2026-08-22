@@ -9,7 +9,7 @@ interface IProps {
     port?: number
     apiPath?: string
     apiSchema?: 'mtls' | 'tls'
-    secretKey: SubscriptionConnectionKeygenResponse | undefined
+    pubKey: SubscriptionConnectionKeygenResponse | undefined
 }
 
 const normalizePath = (value?: string) => {
@@ -20,24 +20,24 @@ const normalizePath = (value?: string) => {
     return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`
 }
 
-export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, secretKey }: IProps) => {
+export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, pubKey }: IProps) => {
     const { t } = useTranslation()
 
-    if (!secretKey) {
+    if (!pubKey) {
         return <Skeleton height={78} />
     }
 
     const grpcPath = normalizePath(apiPath)
-    const normalizedToken = (secretKey.grpcToken ?? '').trim()
+    const normalizedToken = (pubKey.grpcToken ?? '').trim()
     const subPort = 3010
     const grpcPort = port ?? 2222
 
-    const composeBase = `services:\n  exodus-sub:\n    container_name: exodus-sub\n    hostname: exodus-sub\n    image: ghcr.io/Adam-Sizzler/exodus-sub:latest\n    restart: always\n    environment:\n      - SUB_APP_PORT=${subPort}\n      - SUB_GRPC_ADDRESS=0.0.0.0\n      - SUB_GRPC_PORT=${grpcPort}\n      - SUB_APP_PATH=${grpcPath}`
+    const composeBase = `services:\n  exodus-sub:\n    container_name: exodus-sub\n    hostname: exodus-sub\n    image: ghcr.io/Adam-Sizzler/exodus-sub:latest\n    restart: always\n    environment:\n      - APP_PORT_SUB=${subPort}\n      - SUB_GRPC_ADDRESS=0.0.0.0\n      - SUB_GRPC_PORT=${grpcPort}\n      - SUB_PATH=${grpcPath}`
 
     const composeAuth =
         apiSchema === 'tls'
             ? `\n      - SUB_GRPC_TOKEN=${normalizedToken}`
-            : `\n      - SUB_SECRET_KEY=${secretKey.secretKey.trimEnd()}`
+            : `\n      - SUB_SECRET_KEY=${pubKey.pubKey.trimEnd()}`
 
     const composePorts =
         apiSchema === 'tls' ? '' : `\n    ports:\n      - \"${grpcPort}:${grpcPort}\"`
@@ -58,7 +58,7 @@ export const CopyDockerComposeWidget = ({ port, apiPath, apiSchema, secretKey }:
                 {apiSchema === 'tls' ? 'gRPC + TLS + token' : 'gRPC + mTLS'}
             </Badge>
             <Badge color="gray" variant="soft">
-                SUB_APP_PATH={grpcPath}
+                SUB_PATH={grpcPath}
             </Badge>
             {apiSchema === 'tls' ? (
                 <Badge color="gray" variant="soft">

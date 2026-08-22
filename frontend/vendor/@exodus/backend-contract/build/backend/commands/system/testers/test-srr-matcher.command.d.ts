@@ -68,6 +68,7 @@ export declare namespace TestSrrMatcherCommand {
                         key: z.ZodString;
                     }, z.core.$strip>>;
                     excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+                    respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
         }, z.core.$strip>;
@@ -145,6 +146,7 @@ export declare namespace TestSrrMatcherCommand {
                         key: z.ZodString;
                     }, z.core.$strip>>;
                     excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+                    respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
             inputHeaders: z.ZodRecord<z.ZodString, z.ZodString>;

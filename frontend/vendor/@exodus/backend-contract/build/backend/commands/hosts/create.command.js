@@ -4,6 +4,7 @@ exports.CreateHostCommand = void 0;
 const zod_1 = require("zod");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 const host_response_1 = require("./host.response");
 var CreateHostCommand;
 (function (CreateHostCommand) {
@@ -27,14 +28,8 @@ var CreateHostCommand;
         securityLayer: zod_1.z.optional(zod_1.z.enum(constants_1.SECURITY_LAYERS).default(constants_1.SECURITY_LAYERS.DEFAULT)),
         xhttpExtraParams: zod_1.z.unknown().nullish(),
         muxParams: zod_1.z.unknown().nullish(),
-        singboxMuxParams: zod_1.z.unknown().nullish(),
-        clashMuxParams: zod_1.z.string().nullish(),
-        singboxCustomParams: zod_1.z.unknown().nullish(),
-        mihomoCustomParams: zod_1.z.string().nullish(),
         sockoptParams: zod_1.z.unknown().nullish(),
         finalMask: zod_1.z.unknown().nullish(),
-        overrideProtocolCredential: zod_1.z.optional(zod_1.z.boolean().default(false)),
-        protocolCredential: zod_1.z.string().nullish(),
         serverDescription: zod_1.z.string().max(30).nullish(),
         tags: zod_1.z.optional(zod_1.z
             .array(zod_1.z
@@ -59,6 +54,7 @@ var CreateHostCommand;
         excludeFromSubscriptionTypes: zod_1.z
             .optional(zod_1.z.array(zod_1.z.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)))
             .describe('Optional. Subscription types from which the host will be excluded from.'),
+        mapper: models_1.HostMapperSchema.optional(),
     });
     CreateHostCommand.ResponseSchema = host_response_1.HostResponseSchema;
 })(CreateHostCommand || (exports.CreateHostCommand = CreateHostCommand = {}));

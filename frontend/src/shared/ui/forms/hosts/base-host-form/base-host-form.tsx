@@ -47,16 +47,17 @@ import {
     PiTag
 } from 'react-icons/pi'
 import {
+    TbArrowsExchange,
     TbCirclesRelation,
     TbCloudNetwork,
     TbEye,
     TbFileDescription,
-    TbFingerprint,
     TbMask,
     TbServer2,
     TbStar
 } from 'react-icons/tb'
 
+import { showModal } from '@shared/_modals/show-modal'
 import { useIsMobile } from '@shared/hooks'
 import { ChipMultiSelect } from '@shared/ui/chip-multi-select'
 import { DrawerFooter } from '@shared/ui/drawer-footer'
@@ -71,7 +72,6 @@ import { emojiFlag, resolveCountryCode } from '@shared/utils/misc/resolve-countr
 import { IProps } from './interfaces'
 import { FINAL_MASK_MODAL_ID, FinalMaskModalContent } from './modals/final-mask.modal.content'
 import { MUX_MODAL_ID, MuxModalContent } from './modals/mux.modal.content'
-import { CUSTOM_PARAMS_MODAL_ID, CustomParamsModalContent } from './modals/custom-params.modal.content'
 import { SOCKOPT_MODAL_ID, SockoptModalContent } from './modals/sockopt.modal.content'
 import { XHTTP_MODAL_ID, XhttpModalContent } from './modals/xhttp.modal.content'
 
@@ -102,71 +102,6 @@ const SUBSCRIPTION_TYPES = {
     }
 } as const
 
-type ConfigProfileInbound =
-    IProps<CreateHostCommand.Request>['configProfiles'][number]['inbounds'][number]
-
-type HostCredentialProtocol =
-    | 'anytls'
-    | 'hysteria'
-    | 'hysteria2'
-    | 'naive'
-    | 'shadowtls'
-    | 'shadowsocks'
-    | 'trojan'
-    | 'tuic'
-    | 'vless'
-    | 'vmess'
-
-const normalizeCredentialProtocol = (protocol?: string | null): HostCredentialProtocol | null => {
-    const normalized = protocol?.trim().toLowerCase()
-
-    switch (normalized) {
-        case 'anytls':
-        case 'naive':
-        case 'shadowtls':
-        case 'trojan':
-        case 'tuic':
-        case 'vless':
-        case 'vmess':
-            return normalized
-        case 'hysteria':
-            return 'hysteria'
-        case 'hy2':
-        case 'hysteria2':
-            return 'hysteria2'
-        case 'shadowsocks':
-        case 'ss':
-            return 'shadowsocks'
-        default:
-            return null
-    }
-}
-
-const generateUuid = () => {
-    if (typeof globalThis.crypto?.randomUUID === 'function') {
-        return globalThis.crypto.randomUUID()
-    }
-
-    const bytes = new Uint8Array(16)
-    globalThis.crypto?.getRandomValues(bytes)
-    bytes[6] = (bytes[6] & 0x0f) | 0x40
-    bytes[8] = (bytes[8] & 0x3f) | 0x80
-    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
-
-    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
-        16,
-        20
-    )}-${hex.slice(20)}`
-}
-
-const generatePassword = () => {
-    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
-    const bytes = new Uint8Array(16)
-    globalThis.crypto?.getRandomValues(bytes)
-
-    return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
-}
-
 export const BaseHostForm = <
     T extends
         | CreateHostCommand.RequestBody
@@ -190,8 +125,6 @@ export const BaseHostForm = <
 
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<null | string>('basic')
-    const [activeCredentialInbound, setActiveCredentialInbound] =
-        useState<ConfigProfileInbound | null>(null)
     const isMobile = useIsMobile()
 
     const securityLayerLabels = {
@@ -200,48 +133,45 @@ export const BaseHostForm = <
         [SECURITY_LAYERS.DEFAULT]: t('base-host-form.inbounds-default')
     }
 
-    const resolveInbound = (
-        configProfileUuid?: string | null,
-        configProfileInboundUuid?: string | null
-    ) => {
-        if (!configProfileUuid || !configProfileInboundUuid) {
-            return null
+    const resolveSelectedRawInbound = () => {
+        const { inbound } = form.getValues()
+
+        if (!inbound?.configProfileUuid || !inbound.configProfileInboundUuid) {
+            return undefined
         }
 
-        return (
-            configProfiles
-                .find((profile) => profile.uuid === configProfileUuid)
-                ?.inbounds.find((inbound) => inbound.uuid === configProfileInboundUuid) ?? null
-        )
+        return configProfiles
+            ?.find((configProfile) => configProfile.uuid === inbound.configProfileUuid)
+            ?.inbounds.find(
+                (profileInbound) => profileInbound.uuid === inbound.configProfileInboundUuid
+            )?.rawInbound
     }
 
     const isXhttpExtraButtonDisabled = () => {
         const { inbound } = form.getValues()
 
-        return (
-            resolveInbound(inbound?.configProfileUuid, inbound?.configProfileInboundUuid)
-                ?.network !== 'xhttp'
+        if (!inbound) {
+            return true
+        }
+
+        if (!configProfiles || !inbound.configProfileInboundUuid || !inbound.configProfileUuid) {
+            return true
+        }
+
+        return !configProfiles.some(
+            (configProfile) =>
+                configProfile.uuid === inbound.configProfileUuid &&
+                configProfile.inbounds.some((inbound) => inbound.network === 'xhttp')
         )
     }
 
     const saveInbound = (inbound: string, configProfileUuid: string) => {
-        const nextInbound = resolveInbound(configProfileUuid, inbound)
-        const nextProtocol = normalizeCredentialProtocol(nextInbound?.type)
-        const currentProtocol = normalizeCredentialProtocol(activeCredentialInbound?.type)
-
         form.setValues({
             inbound: {
                 configProfileInboundUuid: inbound,
                 configProfileUuid
             }
         } as Partial<T>)
-        setActiveCredentialInbound(nextInbound)
-
-        if (!removeRequiredFields && (!nextProtocol || nextProtocol !== currentProtocol)) {
-            form.setFieldValue('overrideProtocolCredential' as never, false as never)
-            form.setFieldValue('protocolCredential' as never, null as never)
-        }
-
         form.setTouched({
             configProfileInboundUuid: true,
             configProfileUuid: true
@@ -251,51 +181,6 @@ export const BaseHostForm = <
             configProfileUuid: true
         })
     }
-
-    const syncCredentialInbound = () => {
-        const values = form.getValues() as {
-            inbound?: {
-                configProfileInboundUuid?: string | null
-                configProfileUuid?: string | null
-            }
-            protocolCredential?: string | null
-        }
-        const inbound = resolveInbound(
-            values.inbound?.configProfileUuid,
-            values.inbound?.configProfileInboundUuid
-        )
-        const protocol = normalizeCredentialProtocol(inbound?.type)
-
-        setActiveCredentialInbound(inbound)
-
-        if (!protocol) {
-            if (!removeRequiredFields) {
-                form.setFieldValue('overrideProtocolCredential' as never, false as never)
-                form.setFieldValue('protocolCredential' as never, null as never)
-            }
-            return
-        }
-    }
-
-    useEffect(() => {
-        syncCredentialInbound()
-    }, [configProfiles])
-
-    form.watch('inbound.configProfileUuid' as never, syncCredentialInbound)
-    form.watch('inbound.configProfileInboundUuid' as never, syncCredentialInbound)
-    form.watch('protocolCredential' as never, ({ value }) => {
-        const nextCredentialValue = value ? String(value) : ''
-        const shouldOverrideCredential = Boolean(nextCredentialValue.trim())
-
-        const values = form.getValues() as { overrideProtocolCredential?: boolean }
-
-        if (values.overrideProtocolCredential !== shouldOverrideCredential) {
-            form.setFieldValue(
-                'overrideProtocolCredential' as never,
-                shouldOverrideCredential as never
-            )
-        }
-    })
     const patternHoverCard = (showSingle = true, showMulti = true, showWildcard = true) => {
         return (
             <HoverCard shadow="md" width={300} withArrow>
@@ -387,27 +272,6 @@ export const BaseHostForm = <
             )
         )
         form.validateField('tags')
-    }
-
-    const activeCredentialProtocol = normalizeCredentialProtocol(activeCredentialInbound?.type)
-    const activeCredentialProtocolLabel =
-        activeCredentialProtocol === 'hysteria2'
-            ? 'HYSTERIA2'
-            : activeCredentialProtocol === 'shadowsocks'
-              ? 'SHADOWSOCKS'
-              : (activeCredentialProtocol?.toUpperCase() ?? '')
-    const isUUIDCredential =
-        activeCredentialProtocol === 'vless' || activeCredentialProtocol === 'vmess'
-
-    const handleGenerateProtocolCredential = () => {
-        if (!activeCredentialProtocol) {
-            return
-        }
-
-        const nextCredential = isUUIDCredential ? generateUuid() : generatePassword()
-
-        form.setFieldValue('protocolCredential' as never, nextCredential as never)
-        form.setFieldValue('overrideProtocolCredential' as never, true as never)
     }
 
     return (
@@ -962,75 +826,6 @@ export const BaseHostForm = <
                                                     </ActionIcon>
                                                 }
                                             />
-
-                                            <Group align="flex-end" gap="xs" wrap="nowrap" w="100%">
-                                                <TextInput
-                                                    key={form.key('protocolCredential' as never)}
-                                                    disabled={!activeCredentialProtocol}
-                                                    label={
-                                                        activeCredentialProtocol
-                                                            ? `${
-                                                                  isUUIDCredential
-                                                                      ? t(
-                                                                            'base-host-form.uuid-override'
-                                                                        )
-                                                                      : t(
-                                                                            'base-host-form.password-override'
-                                                                        )
-                                                              } (${activeCredentialProtocolLabel})`
-                                                            : t(
-                                                                  'base-host-form.override-protocol-credential'
-                                                              )
-                                                    }
-                                                    placeholder={
-                                                        activeCredentialProtocol
-                                                            ? t(
-                                                                  isUUIDCredential
-                                                                      ? 'base-host-form.uuid-override-placeholder'
-                                                                      : 'base-host-form.password-override-placeholder'
-                                                              )
-                                                            : t(
-                                                                  'base-host-form.override-protocol-credential-select-inbound'
-                                                              )
-                                                    }
-                                                    description={
-                                                        activeCredentialProtocol
-                                                            ? t(
-                                                                  'base-host-form.replaces-user-credential'
-                                                              )
-                                                            : activeCredentialInbound
-                                                              ? t(
-                                                                    'base-host-form.override-protocol-credential-unsupported'
-                                                                )
-                                                              : t(
-                                                                    'base-host-form.override-protocol-credential-select-inbound'
-                                                                )
-                                                    }
-                                                    style={{ flex: 1 }}
-                                                    {...form.getInputProps(
-                                                        'protocolCredential' as never
-                                                    )}
-                                                />
-
-                                                <Tooltip
-                                                    label={t(
-                                                        'base-host-form.generate-protocol-credential'
-                                                    )}
-                                                    withArrow
-                                                >
-                                                    <ActionIcon
-                                                        color="teal"
-                                                        disabled={!activeCredentialProtocol}
-                                                        h={36}
-                                                        onClick={handleGenerateProtocolCredential}
-                                                        style={{ flexShrink: 0 }}
-                                                        variant="soft"
-                                                        w={36}
-                                                    >
-                                                        <TbFingerprint size={18} />
-                                                    </ActionIcon>
-                                                </Tooltip>
-                                            </Group>
                                         </Stack>
                                     </SectionCard.Section>
 
@@ -1197,32 +992,6 @@ export const BaseHostForm = <
 
                                             <Button
                                                 color="gray"
-                                                leftSection={<PiGearSixDuotone />}
-                                                onClick={() => {
-                                                    modals.open({
-                                                        modalId: CUSTOM_PARAMS_MODAL_ID,
-                                                        fullScreen: isMobile,
-                                                        title: (
-                                                            <BaseOverlayHeader
-                                                                iconColor="teal"
-                                                                IconComponent={PiGearSixDuotone}
-                                                                iconVariant="soft"
-                                                                title="Custom"
-                                                            />
-                                                        ),
-                                                        centered: true,
-                                                        size: 'lg',
-                                                        withCloseButton: true,
-                                                        children: <CustomParamsModalContent form={form} />
-                                                    })
-                                                }}
-                                                variant="soft"
-                                            >
-                                                Custom
-                                            </Button>
-
-                                            <Button
-                                                color="gray"
                                                 leftSection={<PiNetwork />}
                                                 onClick={() => {
                                                     modals.open({
@@ -1277,6 +1046,23 @@ export const BaseHostForm = <
                                                 Final Mask
                                             </Button>
                                         </Group>
+                                    </SectionCard.Section>
+
+                                    <SectionCard.Section>
+                                        <Button
+                                            color="gray"
+                                            fullWidth
+                                            leftSection={<TbArrowsExchange />}
+                                            onClick={() => {
+                                                showModal('hosts_hostMapperModal', {
+                                                    form,
+                                                    rawInbound: resolveSelectedRawInbound()
+                                                })
+                                            }}
+                                            variant="soft"
+                                        >
+                                            {t('base-host-form.mapper')}
+                                        </Button>
                                     </SectionCard.Section>
                                 </SectionCard.Root>
 

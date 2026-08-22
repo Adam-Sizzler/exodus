@@ -8,7 +8,6 @@ import consola from 'consola/browser'
 import { useTranslation } from 'react-i18next'
 import { PiCheck, PiCheckSquareOffset, PiCopy, PiFloppyDisk } from 'react-icons/pi'
 import {
-    TbBraces,
     TbClipboardCopy,
     TbClipboardText,
     TbCut,
@@ -24,17 +23,8 @@ import { useIsMobile } from '@shared/hooks'
 import { useDownloadTemplate } from '@shared/ui/load-templates/use-download-template'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 
-import {
-    MODALS,
-    useModalClose,
-    useModalsStoreOpenWithData,
-    useModalState
-} from '@entities/dashboard/modal-store'
-
 import classes from './config-editor-actions.module.css'
 import { Props } from './interfaces'
-
-const MODAL_KEY = MODALS.CONFIG_PROFILE_SHOW_SNIPPETS_DRAWER
 
 export function ConfigEditorActionsFeature(props: Props) {
     const {
@@ -52,10 +42,6 @@ export function ConfigEditorActionsFeature(props: Props) {
     const isMobile = useIsMobile()
     const clipboard = useClipboard({ timeout: 500 })
 
-    const { isOpen } = useModalState(MODAL_KEY)
-    const close = useModalClose(MODAL_KEY)
-    const openWithData = useModalsStoreOpenWithData()
-
     const [opened, handlers] = useDisclosure(false)
 
     const { mutate: updateConfig, isPending: isUpdating } = useUpdateConfigProfile({
@@ -72,7 +58,15 @@ export function ConfigEditorActionsFeature(props: Props) {
                 const newValue = JSON.stringify(updatedConfigProfile.config, null, 2)
 
                 if (editorRef.current) {
-                    editorRef.current.setValue(newValue)
+                    const instance = editorRef.current
+
+                    if (instance.getValue() !== newValue) {
+                        const viewState = instance.saveViewState()
+
+                        instance.setValue(newValue)
+                        instance.restoreViewState(viewState)
+                    }
+
                     setOriginalValue(newValue)
                 }
 
@@ -195,6 +189,7 @@ export function ConfigEditorActionsFeature(props: Props) {
                 leftSection={<PiFloppyDisk size={16} />}
                 loading={isUpdating}
                 onClick={handleSave}
+                variant="soft"
             >
                 {t('common.save')}
             </Button>
@@ -328,21 +323,6 @@ export function ConfigEditorActionsFeature(props: Props) {
                 >
                     {t('config-editor-actions.feature.format')}
                 </Button>
-
-                <ActionIcon
-                    className={classes.actionIconRight}
-                    onClick={() => {
-                        if (isOpen) {
-                            close()
-                        } else {
-                            openWithData(MODAL_KEY, undefined)
-                        }
-                    }}
-                    size={36}
-                    variant={isOpen ? 'filled' : 'default'}
-                >
-                    <TbBraces size={20} />
-                </ActionIcon>
             </Group>
         </Group>
     )

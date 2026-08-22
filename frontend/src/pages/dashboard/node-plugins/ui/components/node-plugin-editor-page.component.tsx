@@ -1,12 +1,13 @@
-import { ActionIcon, Box, Flex, Group } from '@mantine/core'
+import { ActionIcon, ActionIconGroup, Box, Flex, Group, Tooltip } from '@mantine/core'
 import { GetNodePluginCommand } from '@exodus/backend-contract'
 import { NodePluginEditorWidget } from '@widgets/dashboard/node-plugins/node-plugin-editor'
-import { TbArrowBackUp, TbBook, TbPackage } from 'react-icons/tb'
+import { useTranslation } from 'react-i18next'
+import { TbArrowBackUp, TbBook, TbList, TbPackage } from 'react-icons/tb'
 import { useNavigate } from 'react-router'
 
-import { ROUTES } from '@shared/constants'
-import { Page, PageHeaderShared } from '@shared/ui'
-import { HelpActionIconShared } from '@shared/_modals/universal'
+import { showModal } from '@shared/_modals/show-modal'
+import { OPEN_ENTITY, ROUTES } from '@shared/constants'
+import { CopyEntityLinkButton, Page, PageHeaderShared } from '@shared/ui'
 
 interface Props {
     plugin: GetNodePluginCommand.Response['response']
@@ -14,6 +15,7 @@ interface Props {
 
 export const NodePluginEditorPageComponent = (props: Props) => {
     const { plugin } = props
+    const { t } = useTranslation()
 
     const navigate = useNavigate()
 
@@ -22,7 +24,37 @@ export const NodePluginEditorPageComponent = (props: Props) => {
             <PageHeaderShared
                 actions={
                     <Group>
-                        <HelpActionIconShared hidden={false} screen="PAGE_NODE_PLUGINS" />
+                        <CopyEntityLinkButton
+                            entity={OPEN_ENTITY.NODE_PLUGIN}
+                            iconSize={24}
+                            id={plugin.uuid}
+                            size="input-md"
+                            variant="soft"
+                        />
+
+                        <ActionIcon
+                            color="lime"
+                            component="a"
+                            href="https://github.com/Adam-Sizzler/exodus"
+                            size="input-md"
+                            target="_blank"
+                            variant="soft"
+                        >
+                            <TbBook size={24} />
+                        </ActionIcon>
+
+                        <ActionIconGroup>
+                            <Tooltip label={t('common.shared-lists')} withArrow>
+                                <ActionIcon
+                                    color="indigo"
+                                    onClick={() => showModal('sharedLists_sharedListsModal')}
+                                    size="input-md"
+                                    variant="soft"
+                                >
+                                    <TbList size="24px" />
+                                </ActionIcon>
+                            </Tooltip>
+                        </ActionIconGroup>
 
                         <ActionIcon
                             color="gray"

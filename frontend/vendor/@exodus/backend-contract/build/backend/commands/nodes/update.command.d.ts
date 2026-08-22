@@ -23,7 +23,23 @@ export declare namespace UpdateNodeCommand {
         providerUuid: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
         tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
         activePluginUuid: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
+        integrationUuids: z.ZodOptional<z.ZodArray<z.ZodUUID>>;
         note: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        ips: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            ip: z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>;
+            status: z.ZodEnum<{
+                readonly INBOUND: "INBOUND";
+                readonly OUTBOUND: "OUTBOUND";
+                readonly MANAGEMENT: "MANAGEMENT";
+                readonly TRANSIT: "TRANSIT";
+                readonly MONITORING: "MONITORING";
+                readonly RESERVE: "RESERVE";
+                readonly BLOCKED: "BLOCKED";
+                readonly FLAGGED: "FLAGGED";
+                readonly DEPRECATED: "DEPRECATED";
+                readonly UNKNOWN: "UNKNOWN";
+            }>;
+        }, z.core.$strip>>>;
     }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
@@ -54,6 +70,22 @@ export declare namespace UpdateNodeCommand {
             consumptionMultiplier: z.ZodNumber;
             nodeConsumptionMultiplier: z.ZodNumber;
             tags: z.ZodArray<z.ZodString>;
+            integrationUuids: z.ZodArray<z.ZodUUID>;
+            ips: z.ZodArray<z.ZodObject<{
+                ip: z.ZodUnion<readonly [z.ZodIPv4, z.ZodIPv6]>;
+                status: z.ZodEnum<{
+                    readonly INBOUND: "INBOUND";
+                    readonly OUTBOUND: "OUTBOUND";
+                    readonly MANAGEMENT: "MANAGEMENT";
+                    readonly TRANSIT: "TRANSIT";
+                    readonly MONITORING: "MONITORING";
+                    readonly RESERVE: "RESERVE";
+                    readonly BLOCKED: "BLOCKED";
+                    readonly FLAGGED: "FLAGGED";
+                    readonly DEPRECATED: "DEPRECATED";
+                    readonly UNKNOWN: "UNKNOWN";
+                }>;
+            }, z.core.$strip>>;
             createdAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
             updatedAt: z.ZodPipe<z.ZodISODateTime, z.ZodTransform<Date, string>>;
             configProfile: z.ZodObject<{

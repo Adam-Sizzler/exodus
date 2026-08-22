@@ -71,16 +71,11 @@ type hostRecord struct {
 	SecurityLayer              string
 	XHTTPExtraParams           json.RawMessage
 	MuxParams                  json.RawMessage
-	SingboxMuxParams           json.RawMessage
-	ClashMuxParams             *string
-	SingboxCustomParams        json.RawMessage
-	MihomoCustomParams         *string
+	Mapper                     json.RawMessage
 	SockoptParams              json.RawMessage
 	FinalMask                  json.RawMessage
 	IsDisabled                 bool
 	ServerDescription          *string
-	OverrideProtocolCredential bool
-	ProtocolCredential         *string
 	VlessRouteID               *int
 	PinnedPeerCertSha256       *string
 	VerifyPeerCertByName       *string
@@ -109,83 +104,73 @@ type OptionalInt = shared.OptionalInt
 type OptionalJSON = shared.OptionalJSON
 
 type HostAPI struct {
-	UUID                       string      `json:"uuid"`
-	ViewPosition               int         `json:"viewPosition"`
-	Remark                     string      `json:"remark"`
-	Address                    string      `json:"address"`
-	Port                       int         `json:"port"`
-	Path                       *string     `json:"path"`
-	SNI                        *string     `json:"sni"`
-	Host                       *string     `json:"host"`
-	ALPN                       *string     `json:"alpn"`
-	Fingerprint                *string     `json:"fingerprint"`
-	IsDisabled                 bool        `json:"isDisabled"`
-	SecurityLayer              string      `json:"securityLayer"`
-	XHTTPExtraParams           interface{} `json:"xhttpExtraParams"`
-	MuxParams                  interface{} `json:"muxParams"`
-	SingboxMuxParams           interface{} `json:"singboxMuxParams"`
-	ClashMuxParams             *string     `json:"clashMuxParams"`
-	SingboxCustomParams        interface{} `json:"singboxCustomParams"`
-	MihomoCustomParams         *string     `json:"mihomoCustomParams"`
-	SockoptParams              interface{} `json:"sockoptParams"`
-	FinalMask                  interface{} `json:"finalMask"`
-	Inbound                    HostInbound `json:"inbound"`
-	ServerDescription          *string     `json:"serverDescription"`
-	Tags                       []string    `json:"tags"`
-	IsHidden                   bool        `json:"isHidden"`
-	OverrideSNIFromAddress     bool        `json:"overrideSniFromAddress"`
-	KeepSNIBlank               bool        `json:"keepSniBlank"`
-	OverrideProtocolCredential bool        `json:"overrideProtocolCredential"`
-	ProtocolCredential         *string     `json:"protocolCredential"`
-	VlessRouteID               *int        `json:"vlessRouteId"`
-	PinnedPeerCertSha256       *string     `json:"pinnedPeerCertSha256"`
-	VerifyPeerCertByName       *string     `json:"verifyPeerCertByName"`
-	ShuffleHost                bool        `json:"shuffleHost"`
-	MihomoX25519               bool        `json:"mihomoX25519"`
-	MihomoIPVersion            *string     `json:"mihomoIpVersion"`
-	Nodes                      []string    `json:"nodes"`
-	XrayJSONTemplateUUID       *string     `json:"xrayJsonTemplateUuid"`
-	ExcludedInternalSquads     []string    `json:"excludedInternalSquads"`
-	ExcludeFromSubscription    []string    `json:"excludeFromSubscriptionTypes"`
+	UUID                    string      `json:"uuid"`
+	ViewPosition            int         `json:"viewPosition"`
+	Remark                  string      `json:"remark"`
+	Address                 string      `json:"address"`
+	Port                    int         `json:"port"`
+	Path                    *string     `json:"path"`
+	SNI                     *string     `json:"sni"`
+	Host                    *string     `json:"host"`
+	ALPN                    *string     `json:"alpn"`
+	Fingerprint             *string     `json:"fingerprint"`
+	IsDisabled              bool        `json:"isDisabled"`
+	SecurityLayer           string      `json:"securityLayer"`
+	XHTTPExtraParams        interface{} `json:"xhttpExtraParams"`
+	MuxParams               interface{} `json:"muxParams"`
+	SockoptParams           interface{} `json:"sockoptParams"`
+	FinalMask               interface{} `json:"finalMask"`
+	Inbound                 HostInbound `json:"inbound"`
+	ServerDescription       *string     `json:"serverDescription"`
+	Tags                    []string    `json:"tags"`
+	IsHidden                bool        `json:"isHidden"`
+	OverrideSNIFromAddress  bool        `json:"overrideSniFromAddress"`
+	KeepSNIBlank            bool        `json:"keepSniBlank"`
+	VlessRouteID            *int        `json:"vlessRouteId"`
+	PinnedPeerCertSha256    *string     `json:"pinnedPeerCertSha256"`
+	VerifyPeerCertByName    *string     `json:"verifyPeerCertByName"`
+	ShuffleHost             bool        `json:"shuffleHost"`
+	MihomoX25519            bool        `json:"mihomoX25519"`
+	MihomoIPVersion         *string     `json:"mihomoIpVersion"`
+	Nodes                   []string    `json:"nodes"`
+	XrayJSONTemplateUUID    *string     `json:"xrayJsonTemplateUuid"`
+	ExcludedInternalSquads  []string    `json:"excludedInternalSquads"`
+	ExcludeFromSubscription []string    `json:"excludeFromSubscriptionTypes"`
+	Mapper                  interface{} `json:"mapper"`
 }
 
 type HostCreateRequestAPI struct {
-	Inbound                    HostInbound      `json:"inbound"`
-	Remark                     string           `json:"remark"`
-	Address                    string           `json:"address"`
-	Port                       int              `json:"port"`
-	Path                       *string          `json:"path,omitempty"`
-	SNI                        *string          `json:"sni,omitempty"`
-	Host                       *string          `json:"host,omitempty"`
-	ALPN                       *string          `json:"alpn,omitempty"`
-	Fingerprint                *string          `json:"fingerprint,omitempty"`
-	IsDisabled                 *bool            `json:"isDisabled,omitempty"`
-	SecurityLayer              *string          `json:"securityLayer,omitempty"`
-	XHTTPExtraParams           *json.RawMessage `json:"xhttpExtraParams,omitempty"`
-	MuxParams                  *json.RawMessage `json:"muxParams,omitempty"`
-	SingboxMuxParams           *json.RawMessage `json:"singboxMuxParams,omitempty"`
-	ClashMuxParams             *string          `json:"clashMuxParams,omitempty"`
-	SingboxCustomParams        *json.RawMessage `json:"singboxCustomParams,omitempty"`
-	MihomoCustomParams         *string          `json:"mihomoCustomParams,omitempty"`
-	SockoptParams              *json.RawMessage `json:"sockoptParams,omitempty"`
-	FinalMask                  *json.RawMessage `json:"finalMask,omitempty"`
-	ServerDescription          *string          `json:"serverDescription,omitempty"`
-	Tags                       []string         `json:"tags,omitempty"`
-	IsHidden                   *bool            `json:"isHidden,omitempty"`
-	OverrideSNIFromAddress     *bool            `json:"overrideSniFromAddress,omitempty"`
-	KeepSNIBlank               *bool            `json:"keepSniBlank,omitempty"`
-	OverrideProtocolCredential *bool            `json:"overrideProtocolCredential,omitempty"`
-	ProtocolCredential         *string          `json:"protocolCredential,omitempty"`
-	VlessRouteID               *int             `json:"vlessRouteId,omitempty"`
-	PinnedPeerCertSha256       *string          `json:"pinnedPeerCertSha256,omitempty"`
-	VerifyPeerCertByName       *string          `json:"verifyPeerCertByName,omitempty"`
-	ShuffleHost                *bool            `json:"shuffleHost,omitempty"`
-	MihomoX25519               *bool            `json:"mihomoX25519,omitempty"`
-	MihomoIPVersion            *string          `json:"mihomoIpVersion,omitempty"`
-	Nodes                      []string         `json:"nodes,omitempty"`
-	XrayJSONTemplateUUID       *string          `json:"xrayJsonTemplateUuid,omitempty"`
-	ExcludedInternalSquads     []string         `json:"excludedInternalSquads,omitempty"`
-	ExcludeFromSubscription    []string         `json:"excludeFromSubscriptionTypes,omitempty"`
+	Inbound                 HostInbound      `json:"inbound"`
+	Remark                  string           `json:"remark"`
+	Address                 string           `json:"address"`
+	Port                    int              `json:"port"`
+	Path                    *string          `json:"path,omitempty"`
+	SNI                     *string          `json:"sni,omitempty"`
+	Host                    *string          `json:"host,omitempty"`
+	ALPN                    *string          `json:"alpn,omitempty"`
+	Fingerprint             *string          `json:"fingerprint,omitempty"`
+	IsDisabled              *bool            `json:"isDisabled,omitempty"`
+	SecurityLayer           *string          `json:"securityLayer,omitempty"`
+	XHTTPExtraParams        *json.RawMessage `json:"xhttpExtraParams,omitempty"`
+	MuxParams               *json.RawMessage `json:"muxParams,omitempty"`
+	Mapper                  *json.RawMessage `json:"mapper,omitempty"`
+	SockoptParams           *json.RawMessage `json:"sockoptParams,omitempty"`
+	FinalMask               *json.RawMessage `json:"finalMask,omitempty"`
+	ServerDescription       *string          `json:"serverDescription,omitempty"`
+	Tags                    []string         `json:"tags,omitempty"`
+	IsHidden                *bool            `json:"isHidden,omitempty"`
+	OverrideSNIFromAddress  *bool            `json:"overrideSniFromAddress,omitempty"`
+	KeepSNIBlank            *bool            `json:"keepSniBlank,omitempty"`
+	VlessRouteID            *int             `json:"vlessRouteId,omitempty"`
+	PinnedPeerCertSha256    *string          `json:"pinnedPeerCertSha256,omitempty"`
+	VerifyPeerCertByName    *string          `json:"verifyPeerCertByName,omitempty"`
+	ShuffleHost             *bool            `json:"shuffleHost,omitempty"`
+	MihomoX25519            *bool            `json:"mihomoX25519,omitempty"`
+	MihomoIPVersion         *string          `json:"mihomoIpVersion,omitempty"`
+	Nodes                   []string         `json:"nodes,omitempty"`
+	XrayJSONTemplateUUID    *string          `json:"xrayJsonTemplateUuid,omitempty"`
+	ExcludedInternalSquads  []string         `json:"excludedInternalSquads,omitempty"`
+	ExcludeFromSubscription []string         `json:"excludeFromSubscriptionTypes,omitempty"`
 }
 
 // hostUpdateFields holds every updatable host field shared between a
@@ -194,42 +179,37 @@ type HostCreateRequestAPI struct {
 // embedded struct means both request shapes and the clause-building logic
 // that reads them can never drift apart from each other.
 type hostUpdateFields struct {
-	Inbound                    *HostInbound   `json:"inbound,omitempty"`
-	Remark                     OptionalString `json:"remark,omitempty"`
-	Address                    OptionalString `json:"address,omitempty"`
-	Port                       *int           `json:"port,omitempty"`
-	Path                       OptionalString `json:"path,omitempty"`
-	SNI                        OptionalString `json:"sni,omitempty"`
-	Host                       OptionalString `json:"host,omitempty"`
-	ALPN                       OptionalString `json:"alpn,omitempty"`
-	Fingerprint                OptionalString `json:"fingerprint,omitempty"`
-	IsDisabled                 *bool          `json:"isDisabled,omitempty"`
-	SecurityLayer              *string        `json:"securityLayer,omitempty"`
-	XHTTPExtraParams           OptionalJSON   `json:"xhttpExtraParams,omitempty"`
-	MuxParams                  OptionalJSON   `json:"muxParams,omitempty"`
-	SingboxMuxParams           OptionalJSON   `json:"singboxMuxParams,omitempty"`
-	ClashMuxParams             OptionalString `json:"clashMuxParams,omitempty"`
-	SingboxCustomParams        OptionalJSON   `json:"singboxCustomParams,omitempty"`
-	MihomoCustomParams         OptionalString `json:"mihomoCustomParams,omitempty"`
-	SockoptParams              OptionalJSON   `json:"sockoptParams,omitempty"`
-	FinalMask                  OptionalJSON   `json:"finalMask,omitempty"`
-	ServerDescription          OptionalString `json:"serverDescription,omitempty"`
-	Tags                       []string       `json:"tags,omitempty"`
-	IsHidden                   *bool          `json:"isHidden,omitempty"`
-	OverrideSNIFromAddress     *bool          `json:"overrideSniFromAddress,omitempty"`
-	KeepSNIBlank               *bool          `json:"keepSniBlank,omitempty"`
-	OverrideProtocolCredential *bool          `json:"overrideProtocolCredential,omitempty"`
-	ProtocolCredential         OptionalString `json:"protocolCredential,omitempty"`
-	VlessRouteID               OptionalInt    `json:"vlessRouteId,omitempty"`
-	PinnedPeerCertSha256       OptionalString `json:"pinnedPeerCertSha256,omitempty"`
-	VerifyPeerCertByName       OptionalString `json:"verifyPeerCertByName,omitempty"`
-	ShuffleHost                *bool          `json:"shuffleHost,omitempty"`
-	MihomoX25519               *bool          `json:"mihomoX25519,omitempty"`
-	MihomoIPVersion            OptionalString `json:"mihomoIpVersion,omitempty"`
-	Nodes                      []string       `json:"nodes,omitempty"`
-	XrayJSONTemplateUUID       OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
-	ExcludedInternalSquads     []string       `json:"excludedInternalSquads,omitempty"`
-	ExcludeFromSubscription    []string       `json:"excludeFromSubscriptionTypes,omitempty"`
+	Inbound                 *HostInbound   `json:"inbound,omitempty"`
+	Remark                  OptionalString `json:"remark,omitempty"`
+	Address                 OptionalString `json:"address,omitempty"`
+	Port                    *int           `json:"port,omitempty"`
+	Path                    OptionalString `json:"path,omitempty"`
+	SNI                     OptionalString `json:"sni,omitempty"`
+	Host                    OptionalString `json:"host,omitempty"`
+	ALPN                    OptionalString `json:"alpn,omitempty"`
+	Fingerprint             OptionalString `json:"fingerprint,omitempty"`
+	IsDisabled              *bool          `json:"isDisabled,omitempty"`
+	SecurityLayer           *string        `json:"securityLayer,omitempty"`
+	XHTTPExtraParams        OptionalJSON   `json:"xhttpExtraParams,omitempty"`
+	MuxParams               OptionalJSON   `json:"muxParams,omitempty"`
+	Mapper                  OptionalJSON   `json:"mapper,omitempty"`
+	SockoptParams           OptionalJSON   `json:"sockoptParams,omitempty"`
+	FinalMask               OptionalJSON   `json:"finalMask,omitempty"`
+	ServerDescription       OptionalString `json:"serverDescription,omitempty"`
+	Tags                    []string       `json:"tags,omitempty"`
+	IsHidden                *bool          `json:"isHidden,omitempty"`
+	OverrideSNIFromAddress  *bool          `json:"overrideSniFromAddress,omitempty"`
+	KeepSNIBlank            *bool          `json:"keepSniBlank,omitempty"`
+	VlessRouteID            OptionalInt    `json:"vlessRouteId,omitempty"`
+	PinnedPeerCertSha256    OptionalString `json:"pinnedPeerCertSha256,omitempty"`
+	VerifyPeerCertByName    OptionalString `json:"verifyPeerCertByName,omitempty"`
+	ShuffleHost             *bool          `json:"shuffleHost,omitempty"`
+	MihomoX25519            *bool          `json:"mihomoX25519,omitempty"`
+	MihomoIPVersion         OptionalString `json:"mihomoIpVersion,omitempty"`
+	Nodes                   []string       `json:"nodes,omitempty"`
+	XrayJSONTemplateUUID    OptionalString `json:"xrayJsonTemplateUuid,omitempty"`
+	ExcludedInternalSquads  []string       `json:"excludedInternalSquads,omitempty"`
+	ExcludeFromSubscription []string       `json:"excludeFromSubscriptionTypes,omitempty"`
 }
 
 type HostUpdateRequestAPI struct {

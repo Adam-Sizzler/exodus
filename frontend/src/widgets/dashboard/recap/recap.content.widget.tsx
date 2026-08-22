@@ -56,13 +56,16 @@ export function RecapContent() {
         try {
             setCardKey((k) => k + 1)
 
-            await copyScreenshotToClipboard(async () => {
-                await new Promise<void>((resolve) => {
-                    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-                })
-                if (!ref.current) throw new Error('ref')
-                return ref.current
-            })
+            await copyScreenshotToClipboard(
+                async () => {
+                    await new Promise<void>((resolve) => {
+                        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+                    })
+                    if (!ref.current) throw new Error('ref')
+                    return ref.current
+                },
+                `exodus-recap-${dayjs().format('YYYY-MM-DD')}.png`
+            )
         } catch (error) {
             notifications.show({
                 color: 'red',

@@ -1,13 +1,25 @@
-import { ActionIcon, Button, Group, NumberInput, Select, Stack, TextInput, Tooltip } from '@mantine/core'
+import {
+    ActionIcon,
+    CheckIcon,
+    ComboboxItem,
+    Group,
+    MultiSelect,
+    NumberInput,
+    Select,
+    Stack,
+    Text,
+    TextInput,
+    Tooltip
+} from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import {
     CreateNodeCommand,
+    GetNodeIntegrationsCommand,
     GetNodePluginsCommand,
     GetNodeSecretKeyCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
 import { ForwardRefComponent, HTMLMotionProps, Variants } from 'motion/react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HiOutlineServer } from 'react-icons/hi'
 import {
@@ -22,17 +34,20 @@ import {
     TbWorld
 } from 'react-icons/tb'
 
-import { generateGrpcAuthToken } from '@shared/utils/misc'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
+import { TagInputPill } from '@shared/ui/tag-input-pill'
+import { generateGrpcAuthToken } from '@shared/utils/misc'
 
 import { COUNTRIES } from './constants'
+import integrationsClasses from './integrations-select.module.css'
 
 interface IProps<T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
+    nodeIntegrations: GetNodeIntegrationsCommand.Response['response']['nodeIntegrations']
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     nodeUuid: string
     secretKey: GetNodeSecretKeyCommand.Response['response'] | undefined
@@ -44,7 +59,15 @@ export const NodeVitalsCard = <
     props: IProps<T>
 ) => {
     const { t } = useTranslation()
-    const { cardVariants, form, motionWrapper, nodePlugins, secretKey, nodeUuid } = props
+    const {
+        cardVariants,
+        form,
+        motionWrapper,
+        nodeIntegrations,
+        nodePlugins,
+        secretKey,
+        nodeUuid
+    } = props
 
     const MotionWrapper = motionWrapper
 
@@ -240,6 +263,57 @@ export const NodeVitalsCard = <
                             leftSection={<TbPackage size={16} />}
                             nothingFoundMessage={t('node-vitals.card.nothing-found')}
                             placeholder={t('node-vitals.card.select-plugin')}
+                            searchable
+                            styles={{
+                                label: { fontWeight: 500 }
+                            }}
+                        />
+
+                        <MultiSelect
+                            key={form.key('integrationUuids')}
+                            label={t('node-integrations.select.label')}
+                            {...form.getInputProps('integrationUuids')}
+                            clearable
+                            data={nodeIntegrations.map((integration) => ({
+                                label: integration.name,
+                                value: integration.uuid,
+                                description: integration.description
+                            }))}
+                            leftSection={<TbPlugConnected size={16} />}
+                            nothingFoundMessage={t('common.nothing-found')}
+                            placeholder={t('node-integrations.select.placeholder')}
+                            classNames={{ option: integrationsClasses.option }}
+                            scrollAreaProps={{ styles: { content: { minWidth: '100%' } } }}
+                            renderOption={({ option, checked }) => {
+                                const { description } = option as ComboboxItem & {
+                                    description?: null | string
+                                }
+
+                                return (
+                                    <Group gap="xs" miw={0} w="100%" wrap="nowrap">
+                                        <CheckIcon
+                                            size={12}
+                                            style={{
+                                                flexShrink: 0,
+                                                opacity: checked ? 1 : 0.25
+                                            }}
+                                        />
+                                        <Stack flex={1} gap={0} miw={0}>
+                                            <Text size="sm" truncate="end">
+                                                {option.label}
+                                            </Text>
+                                            {description && (
+                                                <Text c="dimmed" size="xs" truncate="end">
+                                                    {description}
+                                                </Text>
+                                            )}
+                                        </Stack>
+                                    </Group>
+                                )
+                            }}
+                            renderPill={({ option, value, onRemove }) => (
+                                <TagInputPill onRemove={onRemove} value={option?.label ?? value} />
+                            )}
                             searchable
                             styles={{
                                 label: { fontWeight: 500 }

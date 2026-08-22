@@ -9,6 +9,9 @@ export * from './bandwidth-stats/bandwidth-stats.query.hooks'
 export * from './config-profiles/config-profiles.mutation.hooks'
 export * from './config-profiles/config-profiles.query.hooks'
 
+export * from './connections/connections.mutation.hooks'
+export * from './connections/connections.query.hooks'
+
 export * from './external-squads/external-squads.mutation.hooks'
 export * from './external-squads/external-squads.query.hooks'
 
@@ -19,38 +22,42 @@ export * from './hwid-user-devices/hwid-user-devices.mutation.hooks'
 export * from './hwid-user-devices/hwid-user-devices.query.hooks'
 
 export * from './infra-billing/infra-billing.mutation.hooks'
-
 export * from './infra-billing/infra-billing.query.hooks'
+
 export * from './internal-squads/internal-squads.mutation.hooks'
 export * from './internal-squads/internal-squads.query.hooks'
 
-export * from './connections/connections.mutation.hooks'
-export * from './connections/connections.query.hooks'
 export * from './keys-factory'
+
+export * from './node-integrations/node-integrations.mutation.hooks'
+export * from './node-integrations/node-integrations.query.hooks'
+
 export * from './node-plugins/node-plugins.mutation.hooks'
-
 export * from './node-plugins/node-plugins.query.hooks'
+
 export * from './nodes/nodes.mutation.hooks'
-
 export * from './nodes/nodes.query.hooks'
-export * from './subscription-connections/subscription-connections.mutation.hooks'
-export * from './subscription-connections/subscription-connections.query.hooks'
+
 export * from './passkeys/passkeys.hooks'
-
 export * from './passkeys/passkeys.query.hooks'
+
 export * from './exodus-settings/exodus-settings.mutation.hooks'
-
 export * from './exodus-settings/exodus-settings.query.hooks'
+
 export * from './snippets/snippets.mutation.hooks'
-
 export * from './snippets/snippets.query.hooks'
-export * from './subpage-configs/subpage-configs.mutation.hooks'
 
+export * from './subpage-configs/subpage-configs.mutation.hooks'
 export * from './subpage-configs/subpage-configs.query.hooks'
+
 export * from './subscription-request-history/subscription-request-history.query.hooks'
 
 export * from './subscription-settings/subscription-settings.mutation.hooks'
 export * from './subscription-settings/subscription-settings.query.hooks'
+
+export * from './subscription-connections/subscription-connections.mutation.hooks'
+export * from './subscription-connections/subscription-connections.query.hooks'
+
 export * from './subscription-template/subscription-template.mutation.hooks'
 export * from './subscription-template/subscription-template.query.hooks'
 
@@ -58,5 +65,6 @@ export * from './system/system.query.hooks'
 
 export * from './users/users.mutation.hooks'
 export * from './users/users.query.hooks'
+
 export * from './srs-lists/srs-lists.query.hooks'
 export * from './srs-lists/srs-lists.mutation.hooks'

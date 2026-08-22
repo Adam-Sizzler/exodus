@@ -32,14 +32,8 @@ export declare namespace UpdateHostCommand {
         }>>;
         xhttpExtraParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         muxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
-        singboxMuxParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
-        clashMuxParams: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        singboxCustomParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
-        mihomoCustomParams: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         sockoptParams: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
         finalMask: z.ZodOptional<z.ZodNullable<z.ZodUnknown>>;
-        overrideProtocolCredential: z.ZodOptional<z.ZodBoolean>;
-        protocolCredential: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         serverDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
         isHidden: z.ZodOptional<z.ZodBoolean>;
@@ -68,6 +62,56 @@ export declare namespace UpdateHostCommand {
             readonly CLASH: "CLASH";
             readonly SINGBOX: "SINGBOX";
         }>>>;
+        mapper: z.ZodOptional<z.ZodObject<{
+            xrayJson: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+            mihomo: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+            base64: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+            singbox: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                op: z.ZodLiteral<"copy">;
+                from: z.ZodString;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"set">;
+                value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                to: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                op: z.ZodLiteral<"unset">;
+                to: z.ZodString;
+            }, z.core.$strip>], "op">>>;
+        }, z.core.$strip>>;
     }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
@@ -96,10 +140,6 @@ export declare namespace UpdateHostCommand {
             }>>;
             xhttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
-            singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
-            clashMuxParams: z.ZodNullable<z.ZodString>;
-            singboxCustomParams: z.ZodNullable<z.ZodUnknown>;
-            mihomoCustomParams: z.ZodNullable<z.ZodString>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             finalMask: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
@@ -111,8 +151,6 @@ export declare namespace UpdateHostCommand {
             isHidden: z.ZodDefault<z.ZodBoolean>;
             overrideSniFromAddress: z.ZodDefault<z.ZodBoolean>;
             keepSniBlank: z.ZodDefault<z.ZodBoolean>;
-            overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
-            protocolCredential: z.ZodNullable<z.ZodString>;
             vlessRouteId: z.ZodNullable<z.ZodInt>;
             pinnedPeerCertSha256: z.ZodNullable<z.ZodString>;
             verifyPeerCertByName: z.ZodNullable<z.ZodString>;
@@ -136,6 +174,56 @@ export declare namespace UpdateHostCommand {
                 readonly CLASH: "CLASH";
                 readonly SINGBOX: "SINGBOX";
             }>>;
+            mapper: z.ZodObject<{
+                xrayJson: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+                mihomo: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+                base64: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+                singbox: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+            }, z.core.$strip>;
         }, z.core.$strip>;
     }, z.core.$strip>;
     type RequestBody = z.infer<typeof RequestBodySchema>;

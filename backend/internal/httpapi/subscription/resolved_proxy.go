@@ -243,8 +243,6 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, fina
 	var muxMap any
 	if host.MuxParams != nil && strings.TrimSpace(*host.MuxParams) != "" {
 		_ = json.Unmarshal([]byte(*host.MuxParams), &muxMap)
-	} else if host.SingboxMuxParams != nil && strings.TrimSpace(*host.SingboxMuxParams) != "" {
-		_ = json.Unmarshal([]byte(*host.SingboxMuxParams), &muxMap)
 	}
 
 	var rawInboundMap any

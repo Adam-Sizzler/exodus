@@ -56,6 +56,8 @@ func Handler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			handleExecutor(w, r, db, cfg)
 		case strings.HasPrefix(path, "actions/"):
 			handleAction(w, r, db, cfg, strings.TrimPrefix(path, "actions/"))
+		case path == "shared-lists" || strings.HasPrefix(path, "shared-lists/"):
+			handleSharedLists(w, r, db, cfg, strings.TrimPrefix(strings.TrimPrefix(path, "shared-lists"), "/"))
 		default:
 			handleByUUID(w, r, db, cfg, path)
 		}

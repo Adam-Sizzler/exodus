@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { NODES_ROUTES, REST_API } from '../../api';
 import { getEndpointDetails } from '../../constants';
-import { NodesSchema } from '../../models';
+import { NodeIpsSchema, NodesSchema } from '../../models';
 import { NodeResponseSchema } from './node.response';
 
 export namespace UpdateNodeCommand {
@@ -68,7 +68,9 @@ export namespace UpdateNodeCommand {
                 .max(10, 'Maximum 10 tags'),
         ),
         activePluginUuid: z.uuid().nullish(),
+        integrationUuids: z.optional(z.array(z.uuid()).max(20, 'Maximum 20 integrations')),
         note: z.optional(z.string().max(255).nullable()),
+        ips: z.optional(NodeIpsSchema),
     });
 
     export const ResponseSchema = NodeResponseSchema;

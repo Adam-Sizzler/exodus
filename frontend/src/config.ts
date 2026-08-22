@@ -13,5 +13,9 @@ export const app = {
         wasmJsUrl: withBasePath('/assets/wasm_exec.js'),
         jsonSchemaUrl: withBasePath('/assets/singbox.schema.json'),
         jsonSchemaCnUrl: withBasePath('/assets/singbox.schema.json')
+    },
+    templateEditor: {
+        singboxJsonSchemaUrl: withBasePath('/assets/singbox.schema.json'),
+        mihomoYamlSchemaUrl: withBasePath('/assets/mihomo.schema.json')
     }
 }

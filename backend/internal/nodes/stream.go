@@ -121,7 +121,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	case "error", "failed", "unhealthy", "stopped":
 		message := "Core error"
 		if coreError != "" {
-			message = fmt.Sprintf("Core error: %s", coreError)
+			message = coreError
 		}
 		nm.updateConnectionStatus(nodeName, false, false, message)
 	}

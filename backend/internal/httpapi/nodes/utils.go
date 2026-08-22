@@ -27,6 +27,25 @@ func normalizeTags(tags []string) []string {
 	return dedupeStrings(normalized)
 }
 
+func normalizeNodeIPs(items []NodeIPItem) []NodeIPItem {
+	if items == nil {
+		return []NodeIPItem{}
+	}
+	result := make([]NodeIPItem, 0, len(items))
+	for _, it := range items {
+		ip := strings.TrimSpace(it.IP)
+		status := strings.ToUpper(strings.TrimSpace(it.Status))
+		if ip == "" {
+			continue
+		}
+		if status == "" {
+			status = "UNKNOWN"
+		}
+		result = append(result, NodeIPItem{IP: ip, Status: status})
+	}
+	return result
+}
+
 func normalizeNullableString(value *string) any {
 	if value == nil || strings.TrimSpace(*value) == "" {
 		return nil

@@ -12,6 +12,7 @@ import (
 	"exodus/internal/httpapi/auth"
 	"exodus/internal/httpapi/bandwidthstats"
 	"exodus/internal/httpapi/configprofiles"
+	"exodus/internal/httpapi/connections"
 	"exodus/internal/httpapi/externalsquads"
 	"exodus/internal/httpapi/health"
 	"exodus/internal/httpapi/hosts"
@@ -20,6 +21,7 @@ import (
 	"exodus/internal/httpapi/keygen"
 	"exodus/internal/httpapi/metadata"
 	"exodus/internal/httpapi/middleware"
+	"exodus/internal/httpapi/nodeintegrations"
 	"exodus/internal/httpapi/nodeplugins"
 	"exodus/internal/httpapi/nodes"
 	"exodus/internal/httpapi/panelsettings"
@@ -169,6 +171,9 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/nodes-with-config", squads.NodesWithConfigHandler(db, cfg))
 	mux.HandleFunc("/api/node-plugins", nodeplugins.Handler(db, cfg))
 	mux.HandleFunc("/api/node-plugins/", nodeplugins.Handler(db, cfg))
+	mux.HandleFunc("/api/node-integrations", nodeintegrations.Handler(db, cfg))
+	mux.HandleFunc("/api/node-integrations/", nodeintegrations.Handler(db, cfg))
+	mux.HandleFunc("/api/connections/", connections.Handler(db, cfg))
 	mux.HandleFunc("/api/metadata/user/", auth.RequireAdminRole(metadata.UserHandler(db, cfg)))
 	mux.HandleFunc("/api/metadata/node/", auth.RequireAdminRole(metadata.NodeHandler(db, cfg)))
 

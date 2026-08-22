@@ -20,5 +20,5 @@ __exportStar(require("./delete-node-plugin.command"), exports);
 __exportStar(require("./executor.command"), exports);
 __exportStar(require("./get-node-plugin.command"), exports);
 __exportStar(require("./get-node-plugins.command"), exports);
-__exportStar(require("./torrent-blocker"), exports);
+__exportStar(require("./shared-lists"), exports);
 __exportStar(require("./update-node-plugin.command"), exports);

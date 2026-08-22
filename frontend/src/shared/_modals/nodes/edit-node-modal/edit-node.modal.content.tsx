@@ -1,4 +1,4 @@
-import { useForm, schemaResolver } from '@mantine/form'
+import { schemaResolver, useForm } from '@mantine/form'
 import { UpdateNodeCommand } from '@exodus/backend-contract'
 import { NodeDetailsCardWidget } from '@widgets/dashboard/nodes/node-details-card'
 import { NodeSystemCardWidget } from '@widgets/dashboard/nodes/node-system-card'
@@ -10,12 +10,14 @@ import {
     configProfilesQueryKeys,
     nodesQueryKeys,
     useGetNode,
+    useGetNodeIntegrations,
     useGetNodePlugins,
     useGetNodeSecretKey,
     useUpdateNode
 } from '@shared/api/hooks'
 import { BaseNodeForm } from '@shared/ui/forms/nodes/base-node-form/base-node-form'
 import { LoaderModalShared } from '@shared/ui/loader-modal'
+import { withNodeIpsErrors } from '@shared/ui/node-ips'
 
 interface IProps {
     nodeUuid: string
@@ -35,11 +37,14 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 form.setFieldValue('proxyUrl', null)
             }
         },
-        validate: schemaResolver(UpdateNodeCommand.RequestBodySchema.omit({ uuid: true }))
+        validate: withNodeIpsErrors(
+            schemaResolver(UpdateNodeCommand.RequestBodySchema.omit({ uuid: true }))
+        )
     })
 
     const { data: secretKey } = useGetNodeSecretKey()
     const { data: nodePlugins } = useGetNodePlugins()
+    const { data: nodeIntegrations } = useGetNodeIntegrations()
 
     const { data: fetchedNode } = useGetNode({
         route: {
@@ -88,6 +93,8 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
                 consumptionMultiplier: fetchedNode.consumptionMultiplier ?? undefined,
                 nodeConsumptionMultiplier: fetchedNode.nodeConsumptionMultiplier ?? undefined,
                 tags: fetchedNode.tags ?? undefined,
+                integrationUuids: (fetchedNode as any).integrationUuids ?? [],
+                ips: (fetchedNode as any).ips ?? [],
                 proxyUrl: fetchedNode.proxyUrl ?? undefined,
                 configProfile: {
                     activeConfigProfileUuid:
@@ -126,7 +133,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
         })
     })
 
-    if (!fetchedNode) {
+    if (!fetchedNode || !secretKey || !nodePlugins || !nodeIntegrations) {
         return (
             <motion.div
                 animate={{ opacity: 1 }}
@@ -144,10 +151,11 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             handleClose={onClose}
             handleSubmit={handleSubmit}
             isDataSubmitting={isUpdateNodePending}
-            node={fetchedNode}
-            nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode} />}
-            nodePlugins={nodePlugins?.nodePlugins ?? []}
-            nodeSystemCard={<NodeSystemCardWidget node={fetchedNode} />}
+            node={fetchedNode as any}
+            nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode as any} />}
+            nodeIntegrations={nodeIntegrations.nodeIntegrations}
+            nodePlugins={nodePlugins.nodePlugins}
+            nodeSystemCard={<NodeSystemCardWidget node={fetchedNode as any} />}
             secretKey={secretKey}
         />
     )

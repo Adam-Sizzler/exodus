@@ -19,14 +19,14 @@ import { useRef } from 'react'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 
-interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {
+interface IProps<T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody> {
     cardVariants: Variants
     form: UseFormReturnType<T>
     motionWrapper: ForwardRefComponent<HTMLDivElement, HTMLMotionProps<'div'>>
 }
 
 export const NodeConsumptionCard = <
-    T extends CreateNodeCommand.Request | UpdateNodeCommand.Request
+    T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody
 >(
     props: IProps<T>
 ) => {

@@ -23,15 +23,15 @@ interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     form: UseFormReturnType<CreateSubscriptionConnectionRequest, any>
     onNext: () => void
-    secretKey:
+    pubKey:
         | {
-              secretKey: string
+              pubKey: string
               grpcToken?: string
           }
         | undefined
 }
 
-export const CreateNodeStep1Connection = ({ form, onNext, secretKey }: IProps) => {
+export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
     const { t } = useTranslation()
     const apiSchema: 'mtls' | 'tls' = form.values.apiSchema === 'tls' ? 'tls' : 'mtls'
     const apiSchemaInputProps = form.getInputProps('apiSchema')
@@ -45,8 +45,8 @@ export const CreateNodeStep1Connection = ({ form, onNext, secretKey }: IProps) =
               })
     const credentialValue =
         apiSchema === 'tls'
-            ? (secretKey?.grpcToken?.trim() ?? 'Error loading...')
-            : (secretKey?.secretKey.trimEnd() ?? 'Error loading...')
+            ? (pubKey?.grpcToken?.trim() ?? 'Error loading...')
+            : (pubKey?.pubKey.trimEnd() ?? 'Error loading...')
 
     const handleNext = async () => {
         const nameErrors = form.validateField('name')
@@ -83,7 +83,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, secretKey }: IProps) =
                     <Code c="white" color="gray.8">
                         docker-compose.yml
                     </Code>{' '}
-                    {t('create-node-step-1-connection.content-for-the-exodus-node-below')}{' '}
+                    {t('create-node-step-1-connection.content-for-the-remnawave-node-below')}{' '}
                     <Anchor
                         fw="700"
                         href="https://docs.exodus.dev/docs/install/exodus-node"
@@ -210,7 +210,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, secretKey }: IProps) =
                 <Group justify="flex-end" mt="auto">
                     <Button
                         color="teal"
-                        disabled={!secretKey}
+                        disabled={!pubKey}
                         rightSection={<PiArrowRight size={18} />}
                         size="md"
                         type="submit"

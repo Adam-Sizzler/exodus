@@ -56,6 +56,7 @@ export declare const ResponseRuleSchemaBase: z.ZodObject<{
             key: z.ZodString;
         }, z.core.$strip>>;
         excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const ResponseRuleSchema: z.ZodObject<{
@@ -115,6 +116,7 @@ export declare const ResponseRuleSchema: z.ZodObject<{
             key: z.ZodString;
         }, z.core.$strip>>;
         excludeHostsByTags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        respondWithRemarks: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
 //# sourceMappingURL=response-rule.schema.d.ts.map

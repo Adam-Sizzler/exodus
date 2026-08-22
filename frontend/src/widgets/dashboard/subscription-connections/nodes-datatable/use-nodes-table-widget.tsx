@@ -35,11 +35,11 @@ export function getNodesTableColumns(
             ),
             width: '0%',
             textAlign: 'right',
-            render: ({ uuid }) => (
+            render: (record) => (
                 <Group gap={4} justify="flex-end" wrap="nowrap">
                     <ActionIcon
                         color="teal"
-                        onClick={() => handleViewNode(uuid)}
+                        onClick={() => handleViewNode(record.uuid)}
                         size="md"
                         variant="outline"
                     >
@@ -51,12 +51,12 @@ export function getNodesTableColumns(
         {
             accessor: 'isConnected',
             title: '',
-            render: ({ isConnected, isConnecting, isDisabled, uuid }) => (
+            render: (record) => (
                 <NodeStatusSimplfiedBadgeWidget
-                    isConnected={isConnected}
-                    isConnecting={isConnecting}
-                    isDisabled={isDisabled}
-                    nodeUuid={uuid}
+                    isConnected={record.isConnected}
+                    isConnecting={record.isConnecting}
+                    isDisabled={record.isDisabled}
+                    nodeUuid={record.uuid}
                 />
             )
         },
@@ -64,11 +64,11 @@ export function getNodesTableColumns(
         {
             accessor: 'name',
             title: t('use-nodes-table-widget.name'),
-            render: ({ name, countryCode }) => (
+            render: (record) => (
                 <Group gap={6} wrap="nowrap">
-                    {countryCode && countryCode !== 'XX' && (
+                    {record.countryCode && record.countryCode !== 'XX' && (
                         <ReactCountryFlag
-                            countryCode={countryCode}
+                            countryCode={record.countryCode}
                             style={{
                                 fontSize: '1.1em',
                                 borderRadius: '2px'
@@ -84,7 +84,7 @@ export function getNodesTableColumns(
                             whiteSpace: 'nowrap'
                         }}
                     >
-                        {name}
+                        {record.name}
                     </Text>
                 </Group>
             )
@@ -92,19 +92,19 @@ export function getNodesTableColumns(
         {
             accessor: 'address',
             title: t('use-nodes-table-widget.address'),
-            render: ({ address, port }) => `${address}:${port}`
+            render: (record) => `${record.address}:${record.port}`
         },
         {
             accessor: 'configProfile.activeConfigProfileUuid',
             title: t('use-nodes-table-widget.config-profile'),
-            render: ({ configProfile: { activeConfigProfileUuid } }) =>
-                configProfiles.find((profile) => profile.uuid === activeConfigProfileUuid)?.name
+            render: (record) =>
+                configProfiles?.find((profile) => profile.uuid === record.configProfile?.activeConfigProfileUuid)?.name
         },
         {
             accessor: 'configProfile.activeInbounds',
             title: t('use-nodes-table-widget.inbounds'),
-            render: ({ configProfile: { activeInbounds } }) =>
-                sortBy(activeInbounds, 'tag')
+            render: (record) =>
+                sortBy(record.configProfile?.activeInbounds || [], 'tag')
                     .map((inbound) => inbound.tag)
                     .join(', ')
         },
@@ -115,13 +115,13 @@ export function getNodesTableColumns(
         {
             accessor: 'provider.name',
             title: t('use-nodes-table-widget.provider'),
-            render: ({ provider }) =>
-                provider ? (
+            render: (record) =>
+                record.provider ? (
                     <Group gap="xs" wrap="nowrap">
                         <Avatar
-                            alt={provider.name}
+                            alt={record.provider.name}
                             color="initials"
-                            name={provider.name}
+                            name={record.provider.name}
                             onLoad={(event) => {
                                 const img = event.target as HTMLImageElement
                                 if (img.naturalWidth <= 16 && img.naturalHeight <= 16) {
@@ -130,17 +130,17 @@ export function getNodesTableColumns(
                             }}
                             radius="sm"
                             size={16}
-                            src={faviconResolver(provider.faviconLink)}
+                            src={faviconResolver(record.provider.faviconLink)}
                         />
 
-                        <Text size="sm">{provider.name}</Text>
+                        <Text size="sm">{record.provider.name}</Text>
                     </Group>
                 ) : null
         },
         {
             accessor: 'tags',
             title: t('use-nodes-table-widget.tags'),
-            render: ({ tags }) => tags?.join(', ') ?? '-'
+            render: (record) => record.tags?.join(', ') ?? '-'
         },
         {
             accessor: 'totalRam',

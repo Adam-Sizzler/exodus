@@ -4,6 +4,7 @@ exports.CreateNodeCommand = void 0;
 const zod_1 = require("zod");
 const api_1 = require("../../api");
 const constants_1 = require("../../constants");
+const models_1 = require("../../models");
 const node_response_1 = require("./node.response");
 var CreateNodeCommand;
 (function (CreateNodeCommand) {
@@ -48,7 +49,9 @@ var CreateNodeCommand;
             .max(36, 'Each tag must be less than 36 characters'))
             .max(10, 'Maximum 10 tags')),
         activePluginUuid: zod_1.z.optional(zod_1.z.nullable(zod_1.z.uuid())),
+        integrationUuids: zod_1.z.optional(zod_1.z.array(zod_1.z.uuid()).max(20, 'Maximum 20 integrations')),
         note: zod_1.z.optional(zod_1.z.string().max(255, 'Note must be less than 255 characters')),
+        ips: zod_1.z.optional(models_1.NodeIpsSchema),
     });
     CreateNodeCommand.ResponseSchema = node_response_1.NodeResponseSchema;
 })(CreateNodeCommand || (exports.CreateNodeCommand = CreateNodeCommand = {}));

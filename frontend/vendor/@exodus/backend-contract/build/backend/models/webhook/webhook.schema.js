@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExodusWebhookEventSchema = exports.ExodusWebhookTorrentBlockerEvents = exports.ExodusWebhookCrmEvents = exports.ExodusWebhookErrorsEvents = exports.ExodusWebhookServiceEvents = exports.ExodusWebhookNodeEvents = exports.ExodusWebhookUserHwidDevicesEvents = exports.ExodusWebhookUserEvents = void 0;
+exports.ExodusWebhookEventSchema = exports.ExodusWebhookCrmEvents = exports.ExodusWebhookErrorsEvents = exports.ExodusWebhookServiceEvents = exports.ExodusWebhookNodeEvents = exports.ExodusWebhookUserHwidDevicesEvents = exports.ExodusWebhookUserEvents = void 0;
 const zod_1 = __importDefault(require("zod"));
 const constants_1 = require("../../constants");
 const extended_users_schema_1 = require("../extended-users.schema");
@@ -110,49 +110,6 @@ exports.ExodusWebhookCrmEvents = zod_1.default.object({
         loginUrl: zod_1.default.string(),
     }),
 });
-exports.ExodusWebhookTorrentBlockerEvents = zod_1.default.object({
-    scope: zod_1.default.literal(constants_1.EVENTS_SCOPES.TORRENT_BLOCKER),
-    event: zod_1.default.enum((0, constants_1.toZodEnum)(constants_1.EVENTS.TORRENT_BLOCKER)),
-    timestamp: zod_1.default
-        .string()
-        .datetime()
-        .transform((str) => new Date(str)),
-    data: zod_1.default.object({
-        node: nodes_schema_1.NodesSchema,
-        user: extended_users_schema_1.ExtendedUsersSchema,
-        report: zod_1.default.object({
-            actionReport: zod_1.default.object({
-                blocked: zod_1.default.boolean(),
-                ip: zod_1.default.string(),
-                blockDuration: zod_1.default.number(),
-                willUnblockAt: zod_1.default
-                    .string()
-                    .datetime({ offset: true, local: true })
-                    .transform((str) => new Date(str)),
-                userId: zod_1.default.string(),
-                processedAt: zod_1.default
-                    .string()
-                    .datetime({ offset: true, local: true })
-                    .transform((str) => new Date(str)),
-            }),
-            xrayReport: zod_1.default.object({
-                email: zod_1.default.string().nullable(),
-                level: zod_1.default.number().nullable(),
-                protocol: zod_1.default.string().nullable(),
-                network: zod_1.default.string(),
-                source: zod_1.default.string().nullable(),
-                destination: zod_1.default.string(),
-                routeTarget: zod_1.default.string().nullable(),
-                originalTarget: zod_1.default.string().nullable(),
-                inboundTag: zod_1.default.string().nullable(),
-                inboundName: zod_1.default.string().nullable(),
-                inboundLocal: zod_1.default.string().nullable(),
-                outboundTag: zod_1.default.string().nullable(),
-                ts: zod_1.default.number(),
-            }),
-        }),
-    }),
-});
 exports.ExodusWebhookEventSchema = zod_1.default.discriminatedUnion('scope', [
     exports.ExodusWebhookUserEvents,
     exports.ExodusWebhookUserHwidDevicesEvents,
@@ -160,5 +117,4 @@ exports.ExodusWebhookEventSchema = zod_1.default.discriminatedUnion('scope', [
     exports.ExodusWebhookServiceEvents,
     exports.ExodusWebhookErrorsEvents,
     exports.ExodusWebhookCrmEvents,
-    exports.ExodusWebhookTorrentBlockerEvents,
 ]);

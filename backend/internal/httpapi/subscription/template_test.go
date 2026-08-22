@@ -81,9 +81,9 @@ func TestAllTemplateVariables(t *testing.T) {
 		expected string
 	}{
 		{"{{DAYS_LEFT}}", "10"},
-		{"{{TRAFFIC_USED}}", "25.00 GB"},
-		{"{{TRAFFIC_LEFT}}", "75.00 GB"},
-		{"{{TOTAL_TRAFFIC}}", "100.00 GB"},
+		{"{{TRAFFIC_USED}}", "25.00 GiB"},
+		{"{{TRAFFIC_LEFT}}", "75.00 GiB"},
+		{"{{TOTAL_TRAFFIC}}", "100.00 GiB"},
 		{"{{STATUS}}", "Active"},
 		{"{{USERNAME}}", "johndoe"},
 		{"{{EMAIL}}", "test@example.com"},
@@ -106,5 +106,35 @@ func TestAllTemplateVariables(t *testing.T) {
 		if got != tc.expected {
 			t.Errorf("template %q: expected %q, got %q", tc.input, tc.expected, got)
 		}
+	}
+}
+
+func TestResolveHostRemarksConnectionKeys(t *testing.T) {
+	desc := "1www"
+	now := time.Now()
+	expireAt := now.Add(217 * 24 * time.Hour + 2 * time.Hour)
+
+	user := SubscriptionUser{
+		Username:          "switzerland_user",
+		ShortUUID:         "swz123",
+		TrafficLimitBytes: 1024 * 1024 * 1024 * 1024,      // 1024 GiB
+		UsedTrafficBytes:  400001000000,                  // ~372.53 GiB
+		ExpireAt:          expireAt,
+		Description:       &desc,
+	}
+	settings := SubscriptionSettingsParsed{}
+	subURL := "https://sub.domain.com/swz123"
+
+	hosts := []SubscriptionHost{
+		{
+			Remark: "🇨🇭 Switzerland {{TRAFFIC_USED}}/{{TOTAL_TRAFFIC}} | {{DAYS_LEFT}} дн. | {{DESCRIPTION}}",
+		},
+	}
+
+	resolveHostRemarks(hosts, user, settings, subURL)
+
+	expected := "🇨🇭 Switzerland 372.53 GiB/1024.00 GiB | 217 дн. | 1www"
+	if hosts[0].Remark != expected {
+		t.Errorf("expected remark %q, got %q", expected, hosts[0].Remark)
 	}
 }

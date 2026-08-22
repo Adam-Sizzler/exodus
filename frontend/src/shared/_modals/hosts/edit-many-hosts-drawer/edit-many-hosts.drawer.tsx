@@ -19,9 +19,10 @@ import {
     useGetSubscriptionTemplates,
     useUpdateManyHosts
 } from '@shared/api/hooks'
+import { LoadingScreen } from '@shared/ui'
 import { BaseHostForm } from '@shared/ui/forms/hosts/base-host-form'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
-import { parseJsonField, parseYamlField } from '@shared/utils/misc'
+import { parseJsonField } from '@shared/utils/misc'
 
 interface IProps {
     uuids: string[]
@@ -111,20 +112,6 @@ export const EditManyHostsDrawer = NiceModal.create((props: IProps) => {
         if (form.isDirty('finalMask')) {
             dirtyValues.finalMask = parseJsonField(values.finalMask)
         }
-        const valuesAny = values as any
-        const dirtyValuesAny = dirtyValues as any
-        if (form.isDirty('singboxMuxParams' as never)) {
-            dirtyValuesAny.singboxMuxParams = parseJsonField(valuesAny.singboxMuxParams)
-        }
-        if (form.isDirty('clashMuxParams' as never)) {
-            dirtyValuesAny.clashMuxParams = parseYamlField(valuesAny.clashMuxParams)
-        }
-        if (form.isDirty('singboxCustomParams' as never)) {
-            dirtyValuesAny.singboxCustomParams = parseJsonField(valuesAny.singboxCustomParams)
-        }
-        if (form.isDirty('mihomoCustomParams' as never)) {
-            dirtyValuesAny.mihomoCustomParams = valuesAny.mihomoCustomParams || null
-        }
 
         const changedKeys = Object.keys(dirtyValues)
 
@@ -205,19 +192,23 @@ export const EditManyHostsDrawer = NiceModal.create((props: IProps) => {
                 />
             }
         >
-            <BaseHostForm
-                advancedOpened={advancedOpened}
-                configProfiles={configProfiles?.configProfiles ?? []}
-                form={form}
-                handleSubmit={handleSubmit}
-                hostTags={hostTags?.tags ?? []}
-                internalSquads={internalSquads?.internalSquads ?? []}
-                isSubmitting={isUpdateManyHostsPending}
-                nodes={nodes!}
-                removeRequiredFields={true}
-                setAdvancedOpened={setAdvancedOpened}
-                subscriptionTemplates={templates?.templates ?? []}
-            />
+            {!configProfiles || !nodes || !templates || !internalSquads || !hostTags ? (
+                <LoadingScreen />
+            ) : (
+                <BaseHostForm
+                    advancedOpened={advancedOpened}
+                    configProfiles={configProfiles.configProfiles}
+                    form={form}
+                    handleSubmit={handleSubmit}
+                    hostTags={hostTags.tags}
+                    internalSquads={internalSquads.internalSquads}
+                    isSubmitting={isUpdateManyHostsPending}
+                    nodes={nodes}
+                    removeRequiredFields={true}
+                    setAdvancedOpened={setAdvancedOpened}
+                    subscriptionTemplates={templates.templates}
+                />
+            )}
         </Drawer>
     )
 })

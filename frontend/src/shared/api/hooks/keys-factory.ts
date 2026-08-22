@@ -5,15 +5,16 @@ import { authQueryKeys } from './auth/auth.query.hooks'
 import { bandwidthStatsQueryKeys } from './bandwidth-stats/bandwidth-stats.query.hooks'
 import { configProfilesQueryKeys } from './config-profiles/config-profiles.query.hooks'
 import { connectionsQueryKeys } from './connections/connections.query.hooks'
+import { exodusSettingsQueryKeys } from './exodus-settings/exodus-settings.query.hooks'
 import { externalSquadsQueryKeys } from './external-squads/external-squads.query.hooks'
 import { hostsQueryKeys } from './hosts/hosts.query.hooks'
 import { hwidUserDevicesQueryKeys } from './hwid-user-devices/hwid-user-devices.query.hooks'
 import { infraBillingQueryKeys } from './infra-billing/infra-billing.query.hooks'
 import { internalSquadsQueryKeys } from './internal-squads/internal-squads.query.hooks'
+import { nodeIntegrationsQueryKeys } from './node-integrations/node-integrations.query.hooks'
 import { nodePluginsQueryKeys } from './node-plugins/node-plugins.query.hooks'
 import { nodesQueryKeys } from './nodes/nodes.query.hooks'
 import { passkeysQueryKeys } from './passkeys/passkeys.query.hooks'
-import { exodusSettingsQueryKeys } from './exodus-settings/exodus-settings.query.hooks'
 import { snippetsQueryKeys } from './snippets/snippets.query.hooks'
 import { srsListsQueryKeys } from './srs-lists/srs-lists.query.hooks'
 import { subpageConfigsQueryKeys } from './subpage-configs/subpage-configs.query.hooks'
@@ -46,8 +47,9 @@ export const QueryKeys = mergeQueryKeys(
     bandwidthStatsQueryKeys,
     connectionsQueryKeys,
     nodePluginsQueryKeys,
-    subscriptionConnectionsQueryKeys,
-    srsListsQueryKeys
+    nodeIntegrationsQueryKeys,
+    srsListsQueryKeys,
+    subscriptionConnectionsQueryKeys
 )
 
 export type TQueryKeys = inferQueryKeyStore<typeof QueryKeys>

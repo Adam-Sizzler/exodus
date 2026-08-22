@@ -1006,9 +1006,6 @@ func TestCreateFallbackRemarkHostsWithRawJSON(t *testing.T) {
 	if hosts[1].Fingerprint == nil || *hosts[1].Fingerprint != "chrome" {
 		t.Errorf("host 1: expected fingerprint 'chrome', got %v", hosts[1].Fingerprint)
 	}
-	if hosts[1].ProtocolCredential == nil || *hosts[1].ProtocolCredential != "11111111-2222-3333-4444-555555555555" {
-		t.Errorf("host 1: expected credential '11111111-2222-3333-4444-555555555555', got %v", hosts[1].ProtocolCredential)
-	}
 
 	// Host 2: RawHost JSON
 	if hosts[2].Address != "trojan.example.com" || hosts[2].Port != 443 {
@@ -1019,9 +1016,6 @@ func TestCreateFallbackRemarkHostsWithRawJSON(t *testing.T) {
 	}
 	if hosts[2].InboundType == nil || *hosts[2].InboundType != "trojan" {
 		t.Errorf("host 2: expected inboundType 'trojan', got %v", hosts[2].InboundType)
-	}
-	if hosts[2].ProtocolCredential == nil || *hosts[2].ProtocolCredential != "trojan-password" {
-		t.Errorf("host 2: expected credential 'trojan-password', got %v", hosts[2].ProtocolCredential)
 	}
 
 	// Host 3: Malformed JSON -> dummy 0.0.0.0:1

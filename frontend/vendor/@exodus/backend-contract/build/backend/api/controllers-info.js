@@ -32,6 +32,11 @@ exports.CONTROLLERS_INFO = {
         description: '',
         resource: 'nodes',
     },
+    NODE_INTEGRATIONS: {
+        tag: 'Node Integrations Controller',
+        description: '',
+        resource: 'node-integrations',
+    },
     NODE_PLUGINS: {
         tag: 'Node Plugins Controller',
         description: '',

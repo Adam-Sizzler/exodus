@@ -1096,32 +1096,14 @@
         },
         "/config-profiles-with-inbounds": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get list of configuration profiles with embedded inbounds for squad assignment",
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
-                    "Internal Squads Controller"
+                    "Config Profiles Controller"
                 ],
-                "summary": "Config profiles with inbounds",
+                "summary": "Get config profiles with inbounds",
+                "description": "Retrieve all config profiles including mapped inbounds",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
+                        "description": "OK"
                     }
                 }
             }
@@ -3194,76 +3176,26 @@
         },
         "/inbound-assignments": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get or assign inbounds to squads and nodes",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Internal Squads Controller"
                 ],
-                "summary": "Manage inbound assignments",
-                "parameters": [
-                    {
-                        "description": "Inbound assignments payload",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
+                "summary": "Get inbound squad assignments",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
+                        "description": "OK"
                     }
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get or assign inbounds to squads and nodes",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Internal Squads Controller"
                 ],
-                "summary": "Manage inbound assignments",
+                "summary": "Save inbound squad assignments",
                 "parameters": [
                     {
-                        "description": "Inbound assignments payload",
                         "name": "body",
                         "in": "body",
+                        "required": true,
                         "schema": {
                             "type": "object"
                         }
@@ -3271,23 +3203,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
+                        "description": "OK"
                     }
                 }
             }
@@ -9276,6 +9192,19 @@
                 }
             }
         },
+        "/system/configuration": {
+            "get": {
+                "tags": [
+                    "System Controller"
+                ],
+                "summary": "Get backend runtime configuration metadata",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/system/health": {
             "get": {
                 "security": [
@@ -11154,6 +11083,291 @@
                     }
                 }
             }
+        },
+        "/connections/geocheck/by-node": {
+            "post": {
+                "tags": [
+                    "Connections Controller"
+                ],
+                "summary": "Run GeoCheck on a node",
+                "description": "Trigger network and IP quality geocheck diagnostics on the target node",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nodeUuid": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/node-integrations": {
+            "get": {
+                "tags": [
+                    "Node Plugins Controller"
+                ],
+                "summary": "Get all node integrations",
+                "description": "Retrieve a list of all configured external node integrations (e.g. GeoCheck, Torrent Blocker)",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Node Plugins Controller"
+                ],
+                "summary": "Create node integration",
+                "description": "Register a new external node integration",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
+        },
+        "/node-integrations/{uuid}": {
+            "get": {
+                "tags": [
+                    "Node Plugins Controller"
+                ],
+                "summary": "Get node integration by UUID",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Node Plugins Controller"
+                ],
+                "summary": "Update node integration",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Node Plugins Controller"
+                ],
+                "summary": "Delete node integration",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/nodes-with-config": {
+            "get": {
+                "tags": [
+                    "Nodes Controller"
+                ],
+                "summary": "Get nodes with config profiles",
+                "description": "Retrieve all nodes mapped to their active config profiles",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/inbounds-with-profiles": {
+            "get": {
+                "tags": [
+                    "Config Profiles Controller"
+                ],
+                "summary": "Get inbounds with profiles",
+                "description": "Retrieve all inbounds and their associated profile configurations",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/squads-summary": {
+            "get": {
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Get summary of all squads",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/squad-inbounds": {
+            "get": {
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Get squad inbounds",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/squad-members": {
+            "get": {
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Get squad members",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/squad-details/{id}": {
+            "get": {
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Get squad details by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/internal-squads/reorder": {
+            "post": {
+                "tags": [
+                    "Internal Squads Controller"
+                ],
+                "summary": "Reorder internal squads",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/external-squads/reorder": {
+            "post": {
+                "tags": [
+                    "External Squads Controller"
+                ],
+                "summary": "Reorder external squads",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -11529,6 +11743,11 @@
         "shared.ErrorResponse": {
             "type": "object",
             "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "A001"
+                },
+                "details": {},
                 "error": {
                     "type": "string",
                     "example": "invalid input"
@@ -11536,6 +11755,10 @@
                 "message": {
                     "type": "string",
                     "example": "invalid input"
+                },
+                "statusCode": {
+                    "type": "integer",
+                    "example": 400
                 }
             }
         },
@@ -11640,6 +11863,68 @@
             "type": "object",
             "properties": {
                 "disableSubscriptionAccessByPath": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "system.SystemConfigurationMisc": {
+            "type": "object",
+            "properties": {
+                "shortUuidLength": {
+                    "type": "integer"
+                },
+                "subPublicDomain": {
+                    "type": "string"
+                },
+                "userUsageIgnoreBelowBytes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "system.SystemConfigurationNotifications": {
+            "type": "object",
+            "properties": {
+                "bandwidthUsage": {
+                    "type": "boolean"
+                },
+                "expirationNotifications": {
+                    "type": "boolean"
+                },
+                "notConnectedAfter": {
+                    "type": "boolean"
+                },
+                "webhook": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "system.SystemConfigurationResponse": {
+            "type": "object",
+            "properties": {
+                "misc": {
+                    "$ref": "#/definitions/system.SystemConfigurationMisc"
+                },
+                "notifications": {
+                    "$ref": "#/definitions/system.SystemConfigurationNotifications"
+                },
+                "service": {
+                    "$ref": "#/definitions/system.SystemConfigurationService"
+                }
+            }
+        },
+        "system.SystemConfigurationService": {
+            "type": "object",
+            "properties": {
+                "cleanUsageHistory": {
+                    "type": "boolean"
+                },
+                "disableSrhRecords": {
+                    "type": "boolean"
+                },
+                "disableUserUsageRecords": {
+                    "type": "boolean"
+                },
+                "exportToRedisStream": {
                     "type": "boolean"
                 }
             }

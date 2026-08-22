@@ -9,7 +9,6 @@ import { memo } from 'react'
 import { MODALS, useModalClose, useModalState } from '@entities/dashboard/modal-store'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { useGetConfigProfiles, useGetHosts } from '@shared/api/hooks'
-import { SEARCH_PARAMS } from '@shared/constants/search-params'
 import { SingboxLogo } from '@shared/ui/logos'
 import { ROUTES } from '@shared/constants'
 import { LoadingScreen } from '@shared/ui'
@@ -94,7 +93,7 @@ export const LinkedHostsDrawer = memo(() => {
                                 navigate({
                                     pathname: ROUTES.DASHBOARD.MANAGEMENT.HOSTS,
                                     search: createSearchParams({
-                                        [SEARCH_PARAMS.HOST]: host.uuid
+                                        host: host.uuid
                                     }).toString()
                                 })
                             }}

@@ -29,6 +29,11 @@ export declare const CONTROLLERS_INFO: {
         readonly description: "";
         readonly resource: "nodes";
     };
+    readonly NODE_INTEGRATIONS: {
+        readonly tag: "Node Integrations Controller";
+        readonly description: "";
+        readonly resource: "node-integrations";
+    };
     readonly NODE_PLUGINS: {
         readonly tag: "Node Plugins Controller";
         readonly description: "";

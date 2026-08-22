@@ -12,6 +12,7 @@ export declare namespace BulkNodesUpdateCommand {
             providerUuid: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
             tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
             activePluginUuid: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
+            integrationUuids: z.ZodOptional<z.ZodArray<z.ZodUUID>>;
             note: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         }, z.core.$strip>;
     }, z.core.$strip>;

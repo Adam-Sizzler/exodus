@@ -74,30 +74,6 @@ func TestNormalizeJSONField(t *testing.T) {
 	}
 }
 
-func TestValidateProtocolCredentialCreate(t *testing.T) {
-	if err := validateProtocolCredentialCreate(hostBoolPtr(true), nil); err == nil {
-		t.Fatal("expected required credential error")
-	}
-	if err := validateProtocolCredentialCreate(hostBoolPtr(true), hostStringPtr("secret")); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if err := validateProtocolCredentialCreate(hostBoolPtr(false), nil); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestValidateProtocolCredentialUpdate(t *testing.T) {
-	if err := validateProtocolCredentialUpdate(hostBoolPtr(true), OptionalString{Set: true, Value: nil}); err == nil {
-		t.Fatal("expected required credential error")
-	}
-	if err := validateProtocolCredentialUpdate(hostBoolPtr(true), OptionalString{Set: true, Value: hostStringPtr("secret")}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if err := validateProtocolCredentialUpdate(nil, OptionalString{Set: true, Value: hostStringPtr("")}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestValidateTemplateTypes(t *testing.T) {
 	if err := validateTemplateTypes([]string{"SINGBOX", "CLASH"}); err != nil {
 		t.Fatalf("unexpected error: %v", err)

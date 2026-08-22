@@ -4,6 +4,7 @@ exports.NodesSchema = void 0;
 const zod_1 = require("zod");
 const config_profile_inbounds_schema_1 = require("./config-profile-inbounds.schema");
 const infra_provider_schema_1 = require("./infra-provider.schema");
+const node_ips_schema_1 = require("./node-ips.schema");
 const node_system_schema_1 = require("./node-system.schema");
 exports.NodesSchema = zod_1.z.object({
     uuid: zod_1.z.uuid(),
@@ -30,6 +31,8 @@ exports.NodesSchema = zod_1.z.object({
     consumptionMultiplier: zod_1.z.number(),
     nodeConsumptionMultiplier: zod_1.z.number(),
     tags: zod_1.z.array(zod_1.z.string()),
+    integrationUuids: zod_1.z.array(zod_1.z.uuid()),
+    ips: node_ips_schema_1.NodeIpsSchema,
     createdAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
     updatedAt: zod_1.z.iso.datetime().transform((str) => new Date(str)),
     configProfile: zod_1.z.object({

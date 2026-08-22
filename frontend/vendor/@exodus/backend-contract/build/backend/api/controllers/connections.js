@@ -12,5 +12,9 @@ exports.CONNECTIONS_ROUTES = {
     // GET
     CONNECTIONS_BY_NODE_RESULT: (jobId) => `by-node/${jobId}`,
     // POST
+    GEOCHECK_BY_NODE: (uuid) => `geocheck/${uuid}`,
+    // GET
+    GEOCHECK_BY_NODE_RESULT: (jobId) => `geocheck/${jobId}`,
+    // POST
     DROP_CONNECTIONS: 'drop',
 };

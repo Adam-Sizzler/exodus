@@ -12,12 +12,12 @@ import { CopyDockerComposeWidget } from './copy-docker-compose.widget'
 
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    form: UseFormReturnType<CreateNodeCommand.Request, any>
+    form: UseFormReturnType<CreateNodeCommand.RequestBody, any>
     isCreating: boolean
     onCreateNode: () => void
     onPrev: () => void
     port: number
-    secretKey?: SubscriptionConnectionKeygenResponse
+    pubKey?: SubscriptionConnectionKeygenResponse
 }
 
 export const CreateNodeStep2ConfigProfiles = ({
@@ -26,7 +26,7 @@ export const CreateNodeStep2ConfigProfiles = ({
     onCreateNode,
     onPrev,
     port,
-    secretKey
+    pubKey
 }: IProps) => {
     const { t } = useTranslation()
 
@@ -93,7 +93,7 @@ export const CreateNodeStep2ConfigProfiles = ({
             </Stack>
 
             <Stack gap="xs" mt="auto">
-                <CopyDockerComposeWidget port={port} secretKey={secretKey} />
+                <CopyDockerComposeWidget port={port} pubKey={pubKey} />
 
                 <Group justify="space-between">
                     <Button

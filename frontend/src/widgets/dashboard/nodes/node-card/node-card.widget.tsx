@@ -17,7 +17,7 @@ import {
     PiMemoryDuotone,
     PiUsersDuotone
 } from 'react-icons/pi'
-import { TbAlertCircle } from 'react-icons/tb'
+import { TbAlertCircle, TbPackage, TbPlugConnected } from 'react-icons/tb'
 
 import { Logo } from '@shared/ui/logo'
 import { SingboxLogo } from '@shared/ui/logos'
@@ -73,7 +73,9 @@ export const NodeCardWidget = memo((props: IProps) => {
         index,
         isDragOverlay = false,
         isMobile,
-        disableReordering = false
+        disableReordering = false,
+        integrationsNames,
+        pluginsName
     } = props
 
     const clipboard = useClipboard({ timeout: 500 })
@@ -443,6 +445,38 @@ export const NodeCardWidget = memo((props: IProps) => {
                             </Text>
                         </Flex>
                         <Flex align="center" gap="md" ml="auto">
+                            {pluginsName && (
+                                <Flex align="center" gap={4} maw={150}>
+                                    <TbPackage
+                                        color="var(--mantine-color-dimmed)"
+                                        size={12}
+                                        style={{ flexShrink: 0 }}
+                                    />
+                                    <Text c="dimmed" ff="monospace" size="xs" truncate="end">
+                                        {pluginsName}
+                                    </Text>
+                                </Flex>
+                            )}
+                            {integrationsNames.length > 0 && (
+                                <Tooltip
+                                    label={integrationsNames.join(', ')}
+                                    multiline
+                                    radius="md"
+                                    w={250}
+                                >
+                                    <Flex align="center" gap={4} maw={220}>
+                                        <TbPlugConnected
+                                            color="var(--mantine-color-pink-5)"
+                                            size={12}
+                                            style={{ flexShrink: 0 }}
+                                        />
+                                        <Text c="dimmed" ff="monospace" size="xs" truncate="end">
+                                            {integrationsNames.join(', ')}
+                                        </Text>
+                                    </Flex>
+                                </Tooltip>
+                            )}
+
                             <Flex align="center" gap={4}>
                                 <SingboxLogo color="var(--mantine-color-dimmed)" size={12} />
                                 <Text c="dimmed" ff="monospace" size="xs">

@@ -116,6 +116,7 @@ type DatabaseConfig struct {
 type RedisConfig struct {
 	Host                         string
 	Port                         int
+	Username                     string
 	Password                     string
 	DB                           int
 	Socket                       string
@@ -366,6 +367,9 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid REDIS_PORT value, ignoring", "value", value)
 		}
+	}
+	if value := envFirst("REDIS_USERNAME"); value != "" {
+		cfg.Redis.Username = value
 	}
 	if value := envFirst("REDIS_PASSWORD"); value != "" {
 		cfg.Redis.Password = value

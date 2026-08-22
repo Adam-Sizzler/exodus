@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { SUBSCRIPTION_TEMPLATE_TYPE } from '../constants';
 import { ALPN, MIHOMO_IP_VERSION, SECURITY_LAYERS } from '../constants/hosts';
+import { HostMapperSchema } from './host-mapper';
 
 export const HostsSchema = z.object({
     uuid: z.uuid(),
@@ -18,10 +19,6 @@ export const HostsSchema = z.object({
     securityLayer: z.enum(SECURITY_LAYERS).default(SECURITY_LAYERS.DEFAULT),
     xhttpExtraParams: z.nullable(z.unknown()),
     muxParams: z.nullable(z.unknown()),
-    singboxMuxParams: z.nullable(z.unknown()),
-    clashMuxParams: z.string().nullable(),
-    singboxCustomParams: z.nullable(z.unknown()),
-    mihomoCustomParams: z.string().nullable(),
     sockoptParams: z.nullable(z.unknown()),
     finalMask: z.nullable(z.unknown()),
 
@@ -35,8 +32,6 @@ export const HostsSchema = z.object({
     isHidden: z.boolean().default(false),
     overrideSniFromAddress: z.boolean().default(false),
     keepSniBlank: z.boolean().default(false),
-    overrideProtocolCredential: z.boolean().default(false),
-    protocolCredential: z.string().nullable(),
     vlessRouteId: z.int().min(0).max(65535).nullable(),
     pinnedPeerCertSha256: z.string().nullable(),
     verifyPeerCertByName: z.string().nullable(),
@@ -48,4 +43,5 @@ export const HostsSchema = z.object({
     xrayJsonTemplateUuid: z.uuid().nullable(),
     excludedInternalSquads: z.array(z.uuid()),
     excludeFromSubscriptionTypes: z.array(z.enum(SUBSCRIPTION_TEMPLATE_TYPE)),
+    mapper: HostMapperSchema,
 });

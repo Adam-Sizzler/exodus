@@ -30,10 +30,6 @@ export declare namespace GetHostsCommand {
             }>>;
             xhttpExtraParams: z.ZodNullable<z.ZodUnknown>;
             muxParams: z.ZodNullable<z.ZodUnknown>;
-            singboxMuxParams: z.ZodNullable<z.ZodUnknown>;
-            clashMuxParams: z.ZodNullable<z.ZodString>;
-            singboxCustomParams: z.ZodNullable<z.ZodUnknown>;
-            mihomoCustomParams: z.ZodNullable<z.ZodString>;
             sockoptParams: z.ZodNullable<z.ZodUnknown>;
             finalMask: z.ZodNullable<z.ZodUnknown>;
             inbound: z.ZodObject<{
@@ -45,8 +41,6 @@ export declare namespace GetHostsCommand {
             isHidden: z.ZodDefault<z.ZodBoolean>;
             overrideSniFromAddress: z.ZodDefault<z.ZodBoolean>;
             keepSniBlank: z.ZodDefault<z.ZodBoolean>;
-            overrideProtocolCredential: z.ZodDefault<z.ZodBoolean>;
-            protocolCredential: z.ZodNullable<z.ZodString>;
             vlessRouteId: z.ZodNullable<z.ZodInt>;
             pinnedPeerCertSha256: z.ZodNullable<z.ZodString>;
             verifyPeerCertByName: z.ZodNullable<z.ZodString>;
@@ -70,6 +64,56 @@ export declare namespace GetHostsCommand {
                 readonly CLASH: "CLASH";
                 readonly SINGBOX: "SINGBOX";
             }>>;
+            mapper: z.ZodObject<{
+                xrayJson: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+                mihomo: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+                base64: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+                singbox: z.ZodOptional<z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                    op: z.ZodLiteral<"copy">;
+                    from: z.ZodString;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"set">;
+                    value: z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodBoolean, z.ZodArray<z.ZodJSONSchema>, z.ZodRecord<z.ZodString, z.ZodJSONSchema>]>;
+                    to: z.ZodString;
+                }, z.core.$strip>, z.ZodObject<{
+                    op: z.ZodLiteral<"unset">;
+                    to: z.ZodString;
+                }, z.core.$strip>], "op">>>;
+            }, z.core.$strip>;
         }, z.core.$strip>>;
     }, z.core.$strip>;
     type Response = z.infer<typeof ResponseSchema>;

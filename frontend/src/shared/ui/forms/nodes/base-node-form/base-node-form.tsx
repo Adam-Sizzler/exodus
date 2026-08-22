@@ -5,13 +5,14 @@ import { ToggleNodeStatusButtonFeature } from '@features/ui/dashboard/nodes/togg
 import { Button, CopyButton, Group, Menu, px, Stack } from '@mantine/core'
 import { UseFormReturnType } from '@mantine/form'
 import {
+    GetNodeCommand,
+    GetNodeIntegrationsCommand,
     GetNodePluginsCommand,
     GetNodeSecretKeyCommand,
-    GetNodeCommand,
     UpdateNodeCommand
 } from '@exodus/backend-contract'
-import { ModalAccordionWidget } from '@widgets/dashboard/nodes/modal-accordeon-widget'
-import { motion } from 'framer-motion'
+import { NodeErrorMessageWidget } from '@widgets/dashboard/nodes/node-error-message'
+import { motion } from 'motion/react'
 import { t } from 'i18next'
 import { ReactNode } from 'react'
 import { PiFloppyDiskDuotone } from 'react-icons/pi'
@@ -22,6 +23,7 @@ import { ModalFooter } from '@shared/ui/modal-footer'
 
 import { NodeConfigProfilesCard } from './node-config-profiles.card'
 import { NodeConsumptionCard } from './node-consumption.card'
+import { NodeIpsCard } from './node-ips.card'
 import { NodeTrackingAndBillingCard } from './node-tracking-and-billing.card'
 import { NodeVitalsCard } from './node-vitals.card'
 
@@ -53,6 +55,7 @@ interface IProps<T extends UpdateNodeCommand.RequestBody> {
     isDataSubmitting: boolean
     node: GetNodeCommand.Response['response']
     nodeDetailsCard?: ReactNode
+    nodeIntegrations: GetNodeIntegrationsCommand.Response['response']['nodeIntegrations']
     nodePlugins: GetNodePluginsCommand.Response['response']['nodePlugins']
     nodeSystemCard?: ReactNode
     secretKey: GetNodeSecretKeyCommand.Response['response'] | undefined
@@ -62,6 +65,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
     const {
         form,
         node,
+        nodeIntegrations,
         nodePlugins,
         secretKey,
         nodeDetailsCard,
@@ -82,7 +86,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
                     initial="hidden"
                     variants={containerVariants}
                 >
-                    <ModalAccordionWidget node={node} />
+                    <NodeErrorMessageWidget node={node} />
 
                     {nodeDetailsCard && (
                         <MotionWrapper variants={cardVariants}>{nodeDetailsCard}</MotionWrapper>
@@ -96,9 +100,16 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
                         cardVariants={cardVariants}
                         form={form}
                         motionWrapper={MotionWrapper}
+                        nodeIntegrations={nodeIntegrations}
                         nodePlugins={nodePlugins}
                         nodeUuid={node.uuid}
                         secretKey={secretKey}
+                    />
+
+                    <NodeIpsCard
+                        cardVariants={cardVariants}
+                        form={form}
+                        motionWrapper={MotionWrapper}
                     />
 
                     <NodeConfigProfilesCard
@@ -129,7 +140,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
                         style={{ flex: '1 1 400px' }}
                         variants={containerVariants}
                     >
-                        <ModalAccordionWidget node={node} />
+                        <NodeErrorMessageWidget node={node} />
 
                         {nodeDetailsCard && (
                             <MotionWrapper variants={cardVariants}>{nodeDetailsCard}</MotionWrapper>
@@ -139,6 +150,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
                             cardVariants={cardVariants}
                             form={form}
                             motionWrapper={MotionWrapper}
+                            nodeIntegrations={nodeIntegrations}
                             nodePlugins={nodePlugins}
                             nodeUuid={node.uuid}
                             secretKey={secretKey}
@@ -162,6 +174,12 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
                         {nodeSystemCard && node.system && (
                             <MotionWrapper variants={cardVariants}>{nodeSystemCard}</MotionWrapper>
                         )}
+
+                        <NodeIpsCard
+                            cardVariants={cardVariants}
+                            form={form}
+                            motionWrapper={MotionWrapper}
+                        />
 
                         <NodeConfigProfilesCard
                             cardVariants={cardVariants}
@@ -217,7 +235,7 @@ export const BaseNodeForm = <T extends UpdateNodeCommand.RequestBody>(props: IPr
                     loading={isDataSubmitting}
                     onClick={handleSubmit}
                     size="md"
-                    variant="light"
+                    variant="soft"
                 >
                     {t('common.save')}
                 </Button>

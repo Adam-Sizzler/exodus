@@ -20,7 +20,7 @@ import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 import { useGetSubscriptionConnectionsTags } from '@shared/api/hooks'
 
-interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request> {
+interface IProps<T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody> {
     advancedOpened: boolean
     cardVariants: Variants
     form: UseFormReturnType<T>
@@ -29,7 +29,7 @@ interface IProps<T extends CreateNodeCommand.Request | UpdateNodeCommand.Request
 }
 
 export const NodeTrackingAndBillingCard = <
-    T extends CreateNodeCommand.Request | UpdateNodeCommand.Request
+    T extends CreateNodeCommand.RequestBody | UpdateNodeCommand.RequestBody
 >(
     props: IProps<T>
 ) => {

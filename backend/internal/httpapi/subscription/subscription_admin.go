@@ -218,11 +218,40 @@ func handleGetConnectionKeysByUserID(w http.ResponseWriter, r *http.Request, db 
 		return
 	}
 
+	settings, err := loadSubscriptionSettings(ctx, db, cfg)
+	if err != nil {
+		shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
+		return
+	}
+
+	squadOverrides, _ := loadExternalSquadOverrides(ctx, db, ptrString(user.ExternalSquadUUID), cfg)
+	settings = applyExternalSquadOverrides(settings, squadOverrides)
+
 	hosts, err := getHostsForUserWithOptions(ctx, db, user, true, true)
 	if err != nil {
 		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
 		return
 	}
+
+	if len(settings.HostOverrides) > 0 {
+		hosts = applyHostOverrides(hosts, settings.HostOverrides)
+	}
+
+	scheme := strings.TrimSpace(settings.Raw.APISchema)
+	if scheme == "" {
+		scheme = "https"
+	}
+	domain := strings.TrimSpace(settings.Raw.Address)
+	if domain == "" {
+		domain = "panel.exodus.dev"
+	}
+	apiPath := strings.Trim(strings.TrimSpace(settings.Raw.APIPath), "/")
+	if apiPath == "" {
+		apiPath = "api/sub"
+	}
+	subURL := fmt.Sprintf("%s://%s/%s/%s", scheme, domain, apiPath, user.ShortUUID)
+
+	resolveHostRemarks(hosts, user, settings, subURL)
 
 	var enabledHosts, disabledHosts, hiddenHosts []SubscriptionHost
 	for _, h := range hosts {

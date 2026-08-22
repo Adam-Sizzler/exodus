@@ -7,7 +7,7 @@ import {
     subscriptionConnectionsQueryKeys,
     updateSubscriptionConnectionFormSchema,
     useGetSubscriptionConnection,
-    useGetSubscriptionConnectionsSecretKey,
+    useGetSubscriptionConnectionsPubKey,
     useUpdateSubscriptionConnection
 } from '@shared/api/hooks'
 import { BaseNodeForm } from '@shared/ui/forms/subscription-connections/base-subscription-connection-form/base-subscription-connection-form'
@@ -19,7 +19,7 @@ import { NodeDetailsCardWidget } from '../node-details-card/node-details-card.wi
 interface IProps {
     generatedCredentials?: {
         grpcToken?: string
-        secretKey: string
+        pubKey: string
     }
     nodeUuid: string
     onClose: () => void
@@ -47,7 +47,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
         validate: zodResolver(updateSubscriptionConnectionFormSchema)
     })
 
-    const { data: secretKeyData } = useGetSubscriptionConnectionsSecretKey({
+    const { data: pubKey } = useGetSubscriptionConnectionsPubKey({
         rQueryParams: {
             enabled: !generatedCredentials
         }
@@ -145,14 +145,13 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
             isDataSubmitting={isUpdateNodePending}
             node={fetchedNode}
             nodeDetailsCard={<NodeDetailsCardWidget node={fetchedNode} />}
-            secretKey={
-                (generatedCredentials ?? secretKeyData)
+            pubKey={
+                (generatedCredentials ?? pubKey)
                     ? {
-                          secretKey: (generatedCredentials ?? secretKeyData)!.secretKey,
+                          ...(generatedCredentials ?? pubKey)!,
                           grpcToken:
                               fetchedNode.grpcAuthToken ||
-                              (generatedCredentials ?? secretKeyData)?.grpcToken ||
-                              ''
+                              (generatedCredentials ?? pubKey)?.grpcToken
                       }
                     : undefined
             }

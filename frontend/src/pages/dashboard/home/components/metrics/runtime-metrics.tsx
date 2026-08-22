@@ -75,7 +75,8 @@ export const getRuntimeProcessMetrics = (
     }
 
     return runtimeMetrics.map((process) => {
-        const config = PROCESS_CONFIG[process.instanceType] ?? DEFAULT_PROCESS
+        const instanceType = process.instanceType as keyof typeof PROCESS_CONFIG | undefined
+        const config = (instanceType && PROCESS_CONFIG[instanceType]) ? PROCESS_CONFIG[instanceType] : DEFAULT_PROCESS
         return {
             value: prettifyBytesUtil(process.rss, true),
             IconComponent: config.Icon,

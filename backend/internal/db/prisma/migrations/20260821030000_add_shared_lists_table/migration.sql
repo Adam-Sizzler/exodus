@@ -1,0 +1,7 @@
+-- CreateTable shared_lists
+CREATE TABLE IF NOT EXISTS "shared_lists" (
+    "name" VARCHAR(255) NOT NULL PRIMARY KEY,
+    "config" JSONB NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

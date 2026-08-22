@@ -69,16 +69,12 @@ exports.EVENTS = {
         INFRA_BILLING_NODE_PAYMENT_OVERDUE_48HRS: 'crm.infra_billing_node_payment_overdue_48hrs',
         INFRA_BILLING_NODE_PAYMENT_OVERDUE_7_DAYS: 'crm.infra_billing_node_payment_overdue_7_days',
     },
-    TORRENT_BLOCKER: {
-        REPORT: 'torrent_blocker.report',
-    },
     CATCH_ALL_USER_EVENTS: 'user.*',
     CATCH_ALL_USER_HWID_DEVICES_EVENTS: 'user_hwid_devices.*',
     CATCH_ALL_NODE_EVENTS: 'node.*',
     CATCH_ALL_SERVICE_EVENTS: 'service.*',
     CATCH_ALL_ERRORS_EVENTS: 'errors.*',
     CATCH_ALL_CRM_EVENTS: 'crm.*',
-    CATCH_ALL_TORRENT_BLOCKER_EVENTS: 'torrent_blocker.*',
 };
 exports.EVENTS_SCOPES = {
     USER: 'user',
@@ -87,7 +83,6 @@ exports.EVENTS_SCOPES = {
     SERVICE: 'service',
     ERRORS: 'errors',
     CRM: 'crm',
-    TORRENT_BLOCKER: 'torrent_blocker',
 };
 const toZodEnum = (obj) => Object.values(obj);
 exports.toZodEnum = toZodEnum;

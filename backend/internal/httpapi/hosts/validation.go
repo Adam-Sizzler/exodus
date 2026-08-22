@@ -33,9 +33,6 @@ func validateCreateRequest(req HostCreateRequestAPI) error {
 	if req.ServerDescription != nil && len(*req.ServerDescription) > 30 {
 		return fmt.Errorf("serverDescription must be less than 30 characters")
 	}
-	if err := validateProtocolCredentialCreate(req.OverrideProtocolCredential, req.ProtocolCredential); err != nil {
-		return err
-	}
 	if err := validateVlessRouteID(req.VlessRouteID); err != nil {
 		return err
 	}
@@ -119,9 +116,6 @@ func validateUpdateRequest(req hostUpdateFields) error {
 		if len(*req.ServerDescription.Value) > 30 {
 			return fmt.Errorf("serverDescription must be less than 30 characters")
 		}
-	}
-	if err := validateProtocolCredentialUpdate(req.OverrideProtocolCredential, req.ProtocolCredential); err != nil {
-		return err
 	}
 	if req.VlessRouteID.Set {
 		if err := validateVlessRouteID(req.VlessRouteID.Value); err != nil {
@@ -223,38 +217,6 @@ func validateTemplateTypes(values []string) error {
 		if _, ok := allowedTemplateTypes[value]; !ok {
 			return fmt.Errorf("invalid subscription template type")
 		}
-	}
-	return nil
-}
-
-func validateProtocolCredentialCreate(override *bool, value *string) error {
-	if err := validateProtocolCredentialValue(value); err != nil {
-		return err
-	}
-	if coalesceBool(override, false) && normalizeProtocolCredentialPointer(value) == nil {
-		return fmt.Errorf("protocolCredential is required when overrideProtocolCredential is enabled")
-	}
-	return nil
-}
-
-func validateProtocolCredentialUpdate(override *bool, value OptionalString) error {
-	if value.Set {
-		if err := validateProtocolCredentialValue(value.Value); err != nil {
-			return err
-		}
-	}
-	if override != nil && *override && value.Set && normalizeProtocolCredentialPointer(value.Value) == nil {
-		return fmt.Errorf("protocolCredential is required when overrideProtocolCredential is enabled")
-	}
-	return nil
-}
-
-func validateProtocolCredentialValue(value *string) error {
-	if value == nil {
-		return nil
-	}
-	if len(strings.TrimSpace(*value)) > maxProtocolCredentialLength {
-		return fmt.Errorf("protocolCredential must be less than 256 characters")
 	}
 	return nil
 }

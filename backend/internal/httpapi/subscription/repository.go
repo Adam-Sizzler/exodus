@@ -349,8 +349,8 @@ func getHostsForUserWithOptions(ctx context.Context, dbConn *sql.DB, user Subscr
 	query := fmt.Sprintf(`
 		SELECT DISTINCT h.uuid, h.view_position, h.remark, h.address, h.port,
 			   h.path, h.sni, h.host, h.alpn, h.fingerprint, h.security_layer,
-			   h.xhttp_extra_params, h.mux_params, h.singbox_mux_params, h.clash_mux_params, h.singbox_custom_params, h.mihomo_custom_params, h.sockopt_params, h.final_mask, h.is_disabled,
-			   h.server_description, h.override_protocol_credential, h.protocol_credential, h.shuffle_host,
+			   h.xhttp_extra_params, h.mux_params, h.mapper, h.sockopt_params, h.final_mask, h.is_disabled,
+			   h.server_description, h.shuffle_host,
 			   h.mihomo_x25519, h.mihomo_ip_version, h.xray_json_template_uuid, h.keep_sni_blank,
 			   h.exclude_from_subscription_types, h.tags, h.is_hidden, h.override_sni_from_address,
 			   h.config_profile_uuid, h.config_profile_inbound_uuid,
@@ -391,13 +391,13 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	var h SubscriptionHost
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
-	var xhttpExtraParams, muxParams, singboxMuxParams, clashMuxParams, singboxCustomParams, mihomoCustomParams, sockoptParams, finalMask, serverDescription, protocolCredential sql.NullString
+	var xhttpExtraParams, muxParams, mapper, sockoptParams, finalMask, serverDescription sql.NullString
 	var xrayJSONTemplateUUID, mihomoIPVersion, configProfileUUID, configProfileInboundUUID, pinnedPeerCertSha256, verifyPeerCertByName sql.NullString
 	var inboundTag, inboundType, inboundNetwork, inboundSecurity sql.NullString
 	var inboundPort sql.NullInt64
 	var rawInbound sql.NullString
 	var excludeTypes, hostTags db.StringArray
-	var isDisabled, overrideProtocolCredential, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
+	var isDisabled, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 
 	err := scanner.Scan(
 		&h.UUID,
@@ -413,16 +413,11 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 		&securityLayer,
 		&xhttpExtraParams,
 		&muxParams,
-		&singboxMuxParams,
-		&clashMuxParams,
-		&singboxCustomParams,
-		&mihomoCustomParams,
+		&mapper,
 		&sockoptParams,
 		&finalMask,
 		&isDisabled,
 		&serverDescription,
-		&overrideProtocolCredential,
-		&protocolCredential,
 		&shuffleHost,
 		&mihomoX25519,
 		&mihomoIPVersion,
@@ -483,18 +478,8 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if muxParams.Valid {
 		h.MuxParams = &muxParams.String
 	}
-	if singboxMuxParams.Valid {
-		h.SingboxMuxParams = &singboxMuxParams.String
-	}
-	if clashMuxParams.Valid {
-		h.ClashMuxParams = &clashMuxParams.String
-	}
-	if singboxCustomParams.Valid {
-		b := json.RawMessage(singboxCustomParams.String)
-		h.SingboxCustomParams = &b
-	}
-	if mihomoCustomParams.Valid {
-		h.MihomoCustomParams = &mihomoCustomParams.String
+	if mapper.Valid && strings.TrimSpace(mapper.String) != "" {
+		h.Mapper = ParseHostMapper([]byte(mapper.String))
 	}
 	if sockoptParams.Valid {
 		h.SockoptParams = &sockoptParams.String
@@ -507,12 +492,6 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	}
 	if serverDescription.Valid {
 		h.ServerDescription = &serverDescription.String
-	}
-	if overrideProtocolCredential.Valid {
-		h.OverrideProtocolCredential = overrideProtocolCredential.Bool
-	}
-	if protocolCredential.Valid {
-		h.ProtocolCredential = &protocolCredential.String
 	}
 	if shuffleHost.Valid {
 		h.ShuffleHost = shuffleHost.Bool
@@ -1211,6 +1190,14 @@ func formatTemplateValue(value string, user SubscriptionUser, settings Subscript
 	return res
 }
 
+func formatTemplateTrafficBytes(bytes int64) string {
+	if bytes <= 0 {
+		return "0.00 GiB"
+	}
+	const gib = 1024 * 1024 * 1024
+	return fmt.Sprintf("%.2f GiB", float64(bytes)/float64(gib))
+}
+
 // resolveTemplateVariables replaces every supported {{VAR}} / {{VAR:k=v|...}}
 // placeholder in value using the user/settings context. This mirrors
 // upstream's TemplateEngine.replace() and is the single place where the
@@ -1293,11 +1280,11 @@ func resolveTemplateVariables(value string, user SubscriptionUser, settings Subs
 		case "DAYS_LEFT":
 			return strconv.FormatInt(daysLeft, 10)
 		case "TRAFFIC_USED":
-			return prettifyBytes(user.UsedTrafficBytes)
+			return formatTemplateTrafficBytes(user.UsedTrafficBytes)
 		case "TRAFFIC_LEFT":
-			return prettifyBytes(trafficLeft)
+			return formatTemplateTrafficBytes(trafficLeft)
 		case "TOTAL_TRAFFIC":
-			return prettifyBytes(user.TrafficLimitBytes)
+			return formatTemplateTrafficBytes(user.TrafficLimitBytes)
 		case "STATUS":
 			if val, ok := args[user.Status]; ok {
 				return val
