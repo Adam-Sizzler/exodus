@@ -101,7 +101,7 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	}
 	log.Debug("Core service state after start", "state", result.ProcessAfter)
 
-	if err := waitForCoreAPIReady(ctx, cfg, apiService); err != nil {
+	if err := waitForCoreAPIReady(ctx, cfg, apiService, s6, coreProcessName); err != nil {
 		diagCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		diagMsg, _ := RunSingboxCheck(diagCtx, config.FixedSingboxConfigPath)
 		cancel()
@@ -243,15 +243,33 @@ func shouldStopBeforeStart(stateName string) bool {
 	}
 }
 
-func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service) error {
+func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service, s6 *s6Client, coreProcessName string) error {
 	log := cfg.LoggerFor("SingboxService")
 	if apiService == nil {
 		return fmt.Errorf("core API service is nil")
 	}
 
+	// Give a short 250ms window for the process to either boot or immediately fail
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(250 * time.Millisecond):
+	}
+
 	var lastErr error
 	for attempt := 1; attempt <= coreHealthcheckAttempts; attempt++ {
-		checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		// Quick check if core already died/stopped according to supervisor
+		if s6 != nil && coreProcessName != "" {
+			if pInfo, s6Err := s6.GetProcessInfo(ctx, coreProcessName); s6Err == nil {
+				state := strings.ToUpper(strings.TrimSpace(pInfo.StateName))
+				if state == "STOPPED" || state == "DOWN" || state == "DEAD" || state == "FATAL" {
+					log.Debug("Core process is stopped or dead, fast failing healthcheck", "state", pInfo.StateName, "attempt", attempt)
+					return fmt.Errorf("core process is %s", pInfo.StateName)
+				}
+			}
+		}
+
+		checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		err := apiService.CheckCoreReady(checkCtx)
 		cancel()
 		if err == nil {
@@ -260,6 +278,17 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 		}
 		lastErr = err
 		log.Debug("Get Sing-box internal status attempt failed", "attempt", attempt, "retries_left", coreHealthcheckAttempts-attempt, "error", err)
+
+		// After failed attempt, verify if process stopped before waiting
+		if s6 != nil && coreProcessName != "" {
+			if pInfo, s6Err := s6.GetProcessInfo(ctx, coreProcessName); s6Err == nil {
+				state := strings.ToUpper(strings.TrimSpace(pInfo.StateName))
+				if state == "STOPPED" || state == "DOWN" || state == "DEAD" || state == "FATAL" {
+					log.Debug("Core process stopped after failed attempt, fast failing healthcheck", "state", pInfo.StateName)
+					return fmt.Errorf("core process is %s", pInfo.StateName)
+				}
+			}
+		}
 
 		if attempt == coreHealthcheckAttempts {
 			break

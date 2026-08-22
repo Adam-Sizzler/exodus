@@ -44,6 +44,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	instanceLock := server.AcquireInstanceLock(&cfg)
+	defer func() {
+		if instanceLock != nil {
+			instanceLock.Release()
+		}
+	}()
+
 	nodeServer, err := server.NewNodeServer(&cfg)
 	if err != nil {
 		cfg.LoggerFor("Bootstrap").Error("Failed to create node server", "error", err)
