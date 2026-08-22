@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"runtime"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	_ "google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 )
 
@@ -76,7 +78,7 @@ func NewNodeServer(version string) *NodeServer {
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
 	log := logger.WithContext("GrpcServer")
 	remoteAddr := streamPeerAddress(stream.Context())
-	log.Info("Panel stream connected", logger.String("remoteAddr", remoteAddr))
+	log.Info("Panel stream connected successfully", logger.String("remoteAddr", remoteAddr))
 
 	s.attachStream(stream)
 	defer func() {
@@ -131,7 +133,7 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 			return nil
 		case recvErr := <-recvErrCh:
 			if recvErr == io.EOF {
-				log.Warn("Panel stream closed", logger.String("remoteAddr", remoteAddr))
+				log.Info("Panel stream closed by panel", logger.String("remoteAddr", remoteAddr))
 				return nil
 			}
 			log.Warn("Panel stream receive failed", logger.String("remoteAddr", remoteAddr), logger.String("error", recvErr.Error()))
@@ -388,7 +390,7 @@ func (s *NodeServer) applySubpageConfigUpdate(update *proto.SubpageConfigUpdate)
 	count := len(s.subpageConfigs)
 	s.subpageConfigsMu.Unlock()
 
-	log.Info("[OK] " + uuid)
+	log.Info("Subscription page config updated from panel", logger.String("uuid", uuid))
 	log.Debug("Subpage config cache updated", logger.String("uuid", uuid), logger.Int("bytes", len(clone)), logger.Int("total", count))
 }
 
@@ -516,11 +518,38 @@ func clampInterval(seconds int) int {
 }
 
 func streamPeerAddress(ctx context.Context) string {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		for _, key := range []string{"cf-connecting-ip", "x-real-ip", "true-client-ip", "x-client-ip"} {
+			if vals := md.Get(key); len(vals) > 0 {
+				val := strings.TrimSpace(vals[0])
+				if val != "" {
+					return val
+				}
+			}
+		}
+		if vals := md.Get("x-forwarded-for"); len(vals) > 0 {
+			raw := strings.TrimSpace(vals[0])
+			if raw != "" {
+				parts := strings.Split(raw, ",")
+				for _, p := range parts {
+					cleaned := strings.TrimSpace(p)
+					if cleaned != "" {
+						return cleaned
+					}
+				}
+			}
+		}
+	}
+
 	peerInfo, ok := peer.FromContext(ctx)
 	if !ok || peerInfo.Addr == nil {
 		return "unknown"
 	}
-	return peerInfo.Addr.String()
+	addrStr := peerInfo.Addr.String()
+	if host, _, err := net.SplitHostPort(addrStr); err == nil && host != "" {
+		return host
+	}
+	return addrStr
 }
 
 func detectCPUModel() string {
