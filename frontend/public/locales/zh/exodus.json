@@ -32,7 +32,7 @@
     "http-stats": "HTTP 状态",
     "subscription-connections": "节点",
     "srs-lists": "SRS Lists",
-    "remnawave-settings": "Exodus 设置",
+    "exodus-settings": "Exodus 设置",
     "quick-open": "Quick open"
   },
   "common": {
@@ -483,7 +483,7 @@
     "replaces-user-credential": "生成配置时替换用户的协议凭据。",
     "selector-nodes-first": "节点置于选择器开头",
     "selector-nodes-first-description": "用于 Sing-box 和 Mihomo 的 select 组。开启后：该节点放在模板项（如 auto）之前。关闭后：放在其后。",
-    "hide-host-from-users-remnawave-will-send-host-only-for-raw-subscription-responses": "隐藏用户的主机。Exodus 将仅发送RAW 订阅。",
+    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "隐藏用户的主机。Exodus 将仅发送RAW 订阅。",
     "mapper": "映射"
   },
   "base-node-form": {
@@ -520,7 +520,7 @@
       "exodus-usage": "Exodus 使用情况",
       "process-details": "进程详情",
       "runtime": "Runtime",
-      "remnawave-usage": "Exodus 使用情况"
+      "exodus-usage": "Exodus 使用情况"
     },
     "runtime-info": {
       "title": "运行时指标指南",
@@ -1400,7 +1400,7 @@
       "exodus-node-version": "节点版本，@exodus/节点",
       "singbox-core-version": "Singbox 核心版本",
       "xray-core-version": "Xray 核心版本",
-      "remnawave-node-version": "节点版本，@exodus/节点"
+      "exodus-node-version": "节点版本，@exodus/节点"
     }
   },
   "config-profiles": {
@@ -1597,7 +1597,7 @@
     "learn-more": "了解更多。",
     "domain-or-ip": "域名或IP",
     "additional-options": "附加参数",
-    "content-for-the-remnawave-node-below": "以下是 Exodus 节点的内容。"
+    "content-for-the-exodus-node-below": "以下是 Exodus 节点的内容。"
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "正在建立mTLS连接...",
@@ -1606,7 +1606,7 @@
     "last-error-message": "最后一个错误消息",
     "singbox-core-is-up-and-running": "Singbox 核心正在运行！",
     "xray-core-is-up-and-running": "Xray 核心正在运行！",
-    "remnawave-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接..."
+    "exodus-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接..."
   },
   "external-squad-card": {
     "widget": {
@@ -1755,7 +1755,7 @@
       "example-mantine-colors": "MantineUI颜色示例",
       "example-mixed": "混合颜色示例",
       "color-format-note": "💡 颜色仅适用于标记后面的单词。没有标记，文本将为白色。",
-      "customize-your-remnawave-instance": "自定义您的 Exodus 实例"
+      "customize-your-exodus-instance": "自定义您的 Exodus 实例"
     }
   },
   "visual-settings-card": {

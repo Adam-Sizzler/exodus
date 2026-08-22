@@ -33,7 +33,7 @@
     "subscription-connections": "Ноды",
     "srs-lists": "SRS списки",
     "modules": "Модули",
-    "remnawave-settings": "Настройки Exodus",
+    "exodus-settings": "Настройки Exodus",
     "quick-open": "Quick open"
   },
   "common": {
@@ -487,7 +487,7 @@
     "replaces-user-credential": "Заменяет credential пользователя при генерации конфигов.",
     "selector-nodes-first": "Нода в начале селектора",
     "selector-nodes-first-description": "Для групп select в Sing-box и Mihomo. Включено: эта нода ставится перед шаблонными элементами вроде auto. Выключено: после них.",
-    "hide-host-from-users-remnawave-will-send-host-only-for-raw-subscription-responses": "Скрыть хост от пользователей, Exodus отправит этот хост только для RAW-формата подписки",
+    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "Скрыть хост от пользователей, Exodus отправит этот хост только для RAW-формата подписки",
     "mapper": "Маппер"
   },
   "base-node-form": {
@@ -543,7 +543,7 @@
       "exodus-usage": "Exodus Usage",
       "process-details": "Детали по процессам",
       "runtime": "Runtime",
-      "remnawave-usage": "Exodus Usage"
+      "exodus-usage": "Exodus Usage"
     },
     "runtime-info": {
       "title": "Справка по метрикам Runtime",
@@ -1424,7 +1424,7 @@
       "exodus-node-version": "Версия модуля @exodus/node",
       "singbox-core-version": "Версия ядра Singbox",
       "xray-core-version": "Версия ядра Xray",
-      "remnawave-node-version": "Версия модуля @exodus/node"
+      "exodus-node-version": "Версия модуля @exodus/node"
     }
   },
   "config-profiles": {
@@ -1621,7 +1621,7 @@
     "learn-more": "Дополнительная информация.",
     "domain-or-ip": "Домен или IP",
     "additional-options": "Дополнительные параметры",
-    "content-for-the-remnawave-node-below": "содержимое для Exodus node ниже."
+    "content-for-the-exodus-node-below": "содержимое для Exodus node ниже."
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Установка mTLS соединения...",
@@ -1630,7 +1630,7 @@
     "last-error-message": "Последнее сообщение об ошибке",
     "singbox-core-is-up-and-running": "Ядро Singbox запущено и работает!",
     "xray-core-is-up-and-running": "Ядро Xray запущено и работает!",
-    "remnawave-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться..."
+    "exodus-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться..."
   },
   "external-squad-card": {
     "widget": {
@@ -1779,7 +1779,7 @@
       "example-mantine-colors": "Пример цветов MantineUI",
       "example-mixed": "Пример со смешанными цветами",
       "color-format-note": "💡 Цвет применяется только к словам, непосредственно следующим за маркером. Без маркеров текст будет белым.",
-      "customize-your-remnawave-instance": "Кастомизировать вашу панель Exodus"
+      "customize-your-exodus-instance": "Кастомизировать вашу панель Exodus"
     }
   },
   "visual-settings-card": {

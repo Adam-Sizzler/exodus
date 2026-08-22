@@ -253,7 +253,7 @@ export const NodeDetailsCardWidget = memo((props: IProps) => {
                                     border: '1px solid rgba(99, 102, 241, 0.2)'
                                 }}
                             >
-                                <Tooltip label={t('node-details-card.widget.remnawave-node-version')}>
+                                <Tooltip label={t('node-details-card.widget.exodus-node-version')}>
                                     <Group gap="xs" justify="center">
                                         <Logo color="var(--mantine-color-indigo-5)" size={16} />
                                         <Text c="indigo.5" fw={600} size="sm">

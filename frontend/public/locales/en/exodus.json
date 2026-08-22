@@ -287,7 +287,7 @@
     "replaces-user-credential": "Replaces the user's protocol credential when generating configs.",
     "selector-nodes-first": "Node at selector start",
     "selector-nodes-first-description": "For Sing-box and Mihomo select groups. Enabled: this node is placed before template entries like auto. Disabled: after them.",
-    "hide-host-from-users-remnawave-will-send-host-only-for-raw-subscription-responses": "Hide host from users, Exodus will send host only for RAW Subscription responses.",
+    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "Hide host from users, Exodus will send host only for RAW Subscription responses.",
     "mapper": "Mapper"
   },
   "base-node-form": {
@@ -381,7 +381,7 @@
       "example-mantine-colors": "Example with MantineUI colors",
       "example-mixed": "Example with mixed colors",
       "color-format-note": "💡 Color applies only to the word immediately following the marker. Without markers, text will be white.",
-      "customize-your-remnawave-instance": "Customize your Exodus instance"
+      "customize-your-exodus-instance": "Customize your Exodus instance"
     }
   },
   "bulk-all-user-actions-drawer": {
@@ -689,7 +689,7 @@
     "subscription-connections": "Nodes",
     "srs-lists": "SRS Lists",
     "modules": "Modules",
-    "remnawave-settings": "Exodus Settings",
+    "exodus-settings": "Exodus Settings",
     "quick-open": "Quick open"
   },
   "contact-information-card": {
@@ -752,7 +752,7 @@
     "learn-more": "Learn more.",
     "domain-or-ip": "Domain or IP",
     "additional-options": "Additional options",
-    "content-for-the-remnawave-node-below": "content for the Exodus Node below."
+    "content-for-the-exodus-node-below": "content for the Exodus Node below."
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Establishing mTLS connection...",
@@ -761,7 +761,7 @@
     "last-error-message": "Last error message",
     "singbox-core-is-up-and-running": "Singbox Core is up and running!",
     "xray-core-is-up-and-running": "Xray Core is up and running!",
-    "remnawave-will-try-to-reconnect-shortly": "Exodus will try to reconnect shortly..."
+    "exodus-will-try-to-reconnect-shortly": "Exodus will try to reconnect shortly..."
   },
   "create-user-modal": {
     "widget": {
@@ -1106,7 +1106,7 @@
       "exodus-usage": "Exodus Usage",
       "process-details": "Process Details",
       "runtime": "Runtime",
-      "remnawave-usage": "Exodus Usage"
+      "exodus-usage": "Exodus Usage"
     },
     "runtime-info": {
       "title": "Runtime Metrics Guide",
@@ -1503,7 +1503,7 @@
       "exodus-node-version": "Node version, @exodus/node",
       "singbox-core-version": "Singbox Core Version",
       "xray-core-version": "Xray Core Version",
-      "remnawave-node-version": "Node version, @exodus/node"
+      "exodus-node-version": "Node version, @exodus/node"
     }
   },
   "node-geocheck": {

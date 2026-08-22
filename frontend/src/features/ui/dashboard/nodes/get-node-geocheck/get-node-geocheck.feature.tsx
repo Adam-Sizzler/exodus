@@ -7,7 +7,7 @@ import semver from 'semver'
 
 import { showModal } from '@shared/_modals/show-modal'
 
-const MIN_NODE_VERSION = '2.7.0'
+const MIN_NODE_VERSION = '26.8.22'
 
 interface IProps {
     node: GetNodeCommand.Response['response']
@@ -20,10 +20,11 @@ const GetNodeGeocheckFeatureComponent = (props: IProps) => {
     const nodeVersion = node.versions?.node || (node as any).nodeVersion
 
     const isSupported = useMemo(() => {
-        if (!nodeVersion || nodeVersion === 'dev' || nodeVersion === 'unknown') return true
+        if (!nodeVersion || nodeVersion === 'unknown') return false
+        if (nodeVersion === 'dev') return true
         const version = semver.coerce(nodeVersion)
 
-        return version !== null ? semver.gte(version, MIN_NODE_VERSION) : true
+        return version !== null ? semver.gte(version, MIN_NODE_VERSION) : false
     }, [nodeVersion])
 
     return (

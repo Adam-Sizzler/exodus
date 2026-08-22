@@ -83,7 +83,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                     <Code c="white" color="gray.8">
                         docker-compose.yml
                     </Code>{' '}
-                    {t('create-node-step-1-connection.content-for-the-remnawave-node-below')}{' '}
+                    {t('create-node-step-1-connection.content-for-the-exodus-node-below')}{' '}
                     <Anchor
                         fw="700"
                         href="https://docs.exodus.dev/docs/install/exodus-node"
