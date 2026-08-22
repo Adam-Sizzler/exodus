@@ -340,12 +340,15 @@ func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions)
 	v2rayAPI, hasV2rayAPI := orderedMapByKey(&experimental, "v2ray_api")
 
 	listen := opt.Listen
-	if hasV2rayAPI {
+	if listen == "" && hasV2rayAPI {
 		if lRaw, ok := v2rayAPI.Get("listen"); ok {
 			if lStr, ok := lRaw.(string); ok && lStr != "" {
 				listen = lStr
 			}
 		}
+	}
+	if listen == "" {
+		listen = fmt.Sprintf("%s:%d", config.FixedCoreAPIAddress, config.FixedCoreAPIGRPCPort)
 	}
 
 	stats, hasStats := orderedMapByKey(&v2rayAPI, "stats")
@@ -432,6 +435,7 @@ func BuildSingboxConfigWithV2RayAPI(rawConfig json.RawMessage, opt BuildOptions)
 		return nil, buildSummary{}, fmt.Errorf("marshal sing-box JSON: %w", err)
 	}
 	return data, buildSummary{
+		Listen:    listen,
 		Inbounds:  statsInbounds,
 		Outbounds: statsOutbounds,
 		Users:     statsUsers,

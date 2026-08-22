@@ -209,9 +209,9 @@ func TestBuildSingboxConfigWithV2RayAPIOptionOverrides(t *testing.T) {
 	}
 
 	v2rayAPI := mustOrderedMap(t, mustGet(t, experimental, "v2ray_api"))
-	// Should use listen address from raw config, not BuildOptions
-	if val, ok := v2rayAPI.Get("listen"); !ok || val != "127.0.0.1:10086" {
-		t.Fatalf("expected v2ray_api.listen='127.0.0.1:10086', got %v", val)
+	// Should use listen address from BuildOptions
+	if val, ok := v2rayAPI.Get("listen"); !ok || val != "127.0.0.1:10085" {
+		t.Fatalf("expected v2ray_api.listen='127.0.0.1:10085', got %v", val)
 	}
 
 	stats := mustOrderedMap(t, mustGet(t, v2rayAPI, "stats"))

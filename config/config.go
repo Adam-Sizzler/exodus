@@ -69,13 +69,6 @@ func LoadNodeConfig() (NodeConfig, error) {
 
 	cfg.Log.LogLevel = ResolveExodusLogLevel(cfg.Log.LogLevel)
 
-	if value := os.Getenv("SINGBOX_API_PORT"); value != "" {
-		port, err := strconv.Atoi(strings.TrimSpace(value))
-		if err == nil && port >= 1 && port <= 65535 {
-			cfg.CoreAPIGRPCPort = port
-		}
-	}
-
 	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_ADDRESS")); value != "" {
 		cfg.Backend.GrpcAddress = value
 	}
