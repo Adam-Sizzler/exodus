@@ -21,7 +21,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
@@ -231,10 +230,7 @@ func validateIncomingGRPCToken(ctx context.Context, expectedToken string) error 
 func grpcUnaryRequestLogger(log *config.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
-		remoteAddr := ""
-		if p, ok := peer.FromContext(ctx); ok && p.Addr != nil {
-			remoteAddr = p.Addr.String()
-		}
+		remoteAddr := server.ExtractClientIP(ctx)
 
 		log.Debug("gRPC unary request", "method", info.FullMethod, "remote_addr", remoteAddr)
 		log.Trace("gRPC unary request details", "method", info.FullMethod, "payload_type", fmt.Sprintf("%T", req))
@@ -256,10 +252,7 @@ func grpcUnaryRequestLogger(log *config.Logger) grpc.UnaryServerInterceptor {
 func grpcStreamRequestLogger(log *config.Logger) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		start := time.Now()
-		remoteAddr := ""
-		if p, ok := peer.FromContext(ss.Context()); ok && p.Addr != nil {
-			remoteAddr = p.Addr.String()
-		}
+		remoteAddr := server.ExtractClientIP(ss.Context())
 
 		log.Debug(
 			"gRPC stream opened",

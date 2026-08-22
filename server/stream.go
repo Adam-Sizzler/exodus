@@ -14,6 +14,13 @@ const defaultStreamInterval = 15 * time.Second
 
 // StreamNodeData handles bidirectional streaming for node data.
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
+	remoteAddr := ExtractClientIP(stream.Context())
+	log := s.Cfg.LoggerFor("StreamService")
+	log.Info("Panel stream connected successfully", "remote_addr", remoteAddr, "interval_seconds", int(defaultStreamInterval/time.Second))
+	defer func() {
+		log.Warn("Panel stream disconnected", "remote_addr", remoteAddr)
+	}()
+
 	reqCh := make(chan *proto.NodeDataRequest)
 	recvErrCh := make(chan error, 1)
 	sendErrCh := make(chan error, 1)
@@ -22,22 +29,20 @@ func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServe
 	go receiveStreamRequests(stream, reqCh, recvErrCh)
 	go s.sendStreamStats(stream, sendErrCh, updateIntervalCh)
 
-	s.Cfg.LoggerFor("StatsService").Log("Stream started, auto-push enabled", "interval_seconds", int(defaultStreamInterval/time.Second))
-
 	for {
 		select {
 		case <-stream.Context().Done():
-			s.Cfg.LoggerFor("StatsService").Log("Stream context canceled", "error", stream.Context().Err())
+			log.Debug("Panel stream context canceled", "remote_addr", remoteAddr, "error", stream.Context().Err())
 			return stream.Context().Err()
 		case err := <-sendErrCh:
-			s.Cfg.LoggerFor("StatsService").Error("Failed to send stream data", "error", err)
+			log.Error("Failed to send stream data", "remote_addr", remoteAddr, "error", err)
 			return err
 		case err := <-recvErrCh:
 			if err == io.EOF {
-				s.Cfg.LoggerFor("StatsService").Log("Stream closed by client")
+				log.Info("Panel stream closed by panel", "remote_addr", remoteAddr)
 				return nil
 			}
-			s.Cfg.LoggerFor("StatsService").Error("Failed to receive stream request", "error", err)
+			log.Warn("Panel stream receive failed", "remote_addr", remoteAddr, "error", err)
 			return err
 		case req, ok := <-reqCh:
 			if !ok || req == nil {
