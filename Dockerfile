@@ -3,7 +3,7 @@ FROM golang:1.25.12-alpine AS builder
 
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
-ARG VERSION=unknown
+ARG VERSION=2.7.4
 
 WORKDIR /build
 
@@ -74,6 +74,9 @@ COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
 RUN chmod -R +x /etc/s6-overlay && \
     chmod +x /opt/app/exodus-node && \
+    ln -sf /opt/app/exodus-node /usr/local/bin/cli && \
+    ln -sf /opt/app/exodus-node /usr/local/bin/geocheck && \
+    ln -sf /opt/app/exodus-node /usr/local/bin/exodus-node && \
     mkdir -p /run /opt/app/singbox /var/log/singbox /usr/local/share/asn && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current\n' > /usr/local/bin/slogs && \
     printf '#!/bin/sh\ntail -n +1 -f /var/log/singbox/current | grep -E "(^| )(WARN|ERROR|FATAL)( |\\[)|panic:"\n' > /usr/local/bin/serrors && \

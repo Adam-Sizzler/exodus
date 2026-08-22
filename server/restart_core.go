@@ -102,12 +102,26 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	log.Debug("Core service state after start", "state", result.ProcessAfter)
 
 	if err := waitForCoreAPIReady(ctx, cfg, apiService); err != nil {
-		result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
+		diagCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		diagMsg, _ := RunSingboxCheck(diagCtx, config.FixedSingboxConfigPath)
+		cancel()
+
+		// Refresh state after failure
+		if afterInfo, s6Err := s6.GetProcessInfo(ctx, coreProcessName); s6Err == nil {
+			result.ProcessAfter = afterInfo.StateName
+		}
+
+		if strings.TrimSpace(diagMsg) != "" {
+			result.Error = strings.TrimSpace(diagMsg)
+		} else {
+			result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
+		}
+
 		if apiService != nil {
 			apiService.MarkCoreOffline()
 			apiService.SetCoreError(result.Error)
 		}
-		log.Error("Failed to start Sing-box: "+err.Error(), "state", result.ProcessAfter)
+		log.Error("Failed to start Sing-box: "+result.Error, "state", result.ProcessAfter)
 		return result
 	}
 

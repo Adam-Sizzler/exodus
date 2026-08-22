@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	Version    = "unknown"
+	Version    = "2.7.4"
 	Revision   = "unknown"
 	BuildTags  = "unknown"
 	CgoEnabled = "unknown"

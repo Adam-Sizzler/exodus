@@ -125,6 +125,20 @@ func (s *NodeServer) SubmitTask(ctx context.Context, task *proto.NodeTask) (*rpc
 			Message: fmt.Sprintf("success: accepted=%t", accepted),
 		}, nil
 
+	case taskOperationGeocheck:
+		outputJSON, err := ExecuteGeocheck(ctx, taskPayload)
+		if err != nil {
+			s.Cfg.LoggerFor("GeocheckService").Warn("Geocheck failed", "task_id", task.TaskId, "error", err)
+			return &rpcstatus.Status{
+				Code:    int32(codes.Internal),
+				Message: err.Error(),
+			}, nil
+		}
+		return &rpcstatus.Status{
+			Code:    int32(codes.OK),
+			Message: outputJSON,
+		}, nil
+
 	default:
 		s.Cfg.LoggerFor("NodeService").Warn("Unsupported task operation", "task_id", task.TaskId, "operation", task.Operation)
 		return &rpcstatus.Status{

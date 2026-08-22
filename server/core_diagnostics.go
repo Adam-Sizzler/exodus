@@ -4,50 +4,41 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
-	"time"
 
 	"exodus-node/config"
 )
 
-func (s *NodeServer) diagnoseCoreFailure(ctx context.Context, baseErr error) string {
-	message := fmt.Sprintf("core stats unavailable: %v", baseErr)
+var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 
-	checkCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
-	defer cancel()
-
-	output, err := runSingboxCheck(checkCtx)
-	if err == nil {
-		trimmed := strings.TrimSpace(output)
-		if trimmed != "" {
-			message = fmt.Sprintf("%s; sing-box check: %s", message, trimmed)
-		}
-		s.Cfg.LoggerFor("SingboxService").Error("Core health-check failed", "diagnostic", message)
-		return message
-	}
-
-	trimmedErr := strings.TrimSpace(err.Error())
-	if trimmedErr != "" {
-		message = fmt.Sprintf("%s; sing-box check failed: %s", message, trimmedErr)
-	}
-	s.Cfg.LoggerFor("SingboxService").Error("Core health-check failed", "diagnostic", message)
-	return message
+func stripANSI(s string) string {
+	return ansiRegexp.ReplaceAllString(s, "")
 }
 
-func runSingboxCheck(ctx context.Context) (string, error) {
+// RunSingboxCheck executes `sing-box check -c <configPath>` and returns the cleaned command output.
+func RunSingboxCheck(ctx context.Context, configPath string) (string, error) {
+	if configPath == "" {
+		configPath = config.FixedSingboxConfigPath
+	}
+
 	commands := [][]string{
-		{"/usr/local/bin/sing-box", "check", "-c", config.FixedSingboxConfigPath},
-		{"sing-box", "check", "-c", config.FixedSingboxConfigPath},
+		{"/usr/local/bin/sing-box", "check", "-c", configPath},
+		{"sing-box", "check", "-c", configPath},
 	}
 
 	var lastErr error
 	for _, cmdArgs := range commands {
 		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 		out, err := cmd.CombinedOutput()
+		outputStr := strings.TrimSpace(stripANSI(string(out)))
 		if err == nil {
-			return string(out), nil
+			return outputStr, nil
 		}
-		lastErr = fmt.Errorf("%s: %w: %s", strings.Join(cmdArgs, " "), err, strings.TrimSpace(string(out)))
+		if outputStr != "" {
+			return outputStr, fmt.Errorf("%s", outputStr)
+		}
+		lastErr = fmt.Errorf("%s: %w", strings.Join(cmdArgs, " "), err)
 	}
 
 	if lastErr == nil {
