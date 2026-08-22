@@ -75,14 +75,6 @@ export const CreateHostDrawer = NiceModal.create(() => {
     const { mutate: createHost, isPending: isCreateHostPending } = useCreateHost({
         mutationFns: {
             onSuccess: async () => {
-                await queryClient.refetchQueries({
-                    queryKey: QueryKeys.hosts.getAllTags.queryKey
-                })
-
-                await queryClient.refetchQueries({
-                    queryKey: QueryKeys.hosts.getAllHosts.queryKey
-                })
-
                 hide()
             }
         }
