@@ -57,6 +57,10 @@ var retiredMigrations = map[string]struct{}{
 	"20260413201500_drop_hosts_xhttp_extra_params":               {},
 	"20260419170000_sub_nodes_public_domain":                     {},
 	"20260518013000_drop_config_profile_snippets":                {},
+	"20260821000000_add_node_integrations":                        {},
+	"20260821010000_add_node_ips_and_host_mapper":                {},
+	"20260821020000_migrate_custom_params_to_mapper":              {},
+	"20260821030000_add_shared_lists_table":                      {},
 }
 
 func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendConfig) error {
