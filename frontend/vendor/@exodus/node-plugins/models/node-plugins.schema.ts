@@ -159,6 +159,13 @@ export const preStartPluginSchema = z.object({
 });
 
 export const HaproxyAuthPluginSchema = z.object({
+    enabled: z
+        .boolean()
+        .default(false)
+        .meta({
+            title: 'Enabled',
+            markdownDescription: `If this plugin is enabled, HAProxy user credentials table will be generated for participating inbounds.${DOCS_LINK}`,
+        }),
     inboundTags: z
         .array(z.string())
         .optional()

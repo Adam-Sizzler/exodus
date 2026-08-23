@@ -167,6 +167,7 @@ Examples: `192.168.1.1`, `10.0.0.0/8`, `172.16.0.0/12`, `2001:db8::/32`.
         "blockedPorts": []
     },
     "haproxyAuth": {
+        "enabled": false,
         "inboundTags": ["*"]
     }
 }
@@ -207,6 +208,7 @@ Generates and maintains a CSV user credentials file (`/app/haproxy/data/users.cs
  
 ```json
 "haproxyAuth": {
+    "enabled": true,
     "inboundTags": ["*"]
 }
 ```

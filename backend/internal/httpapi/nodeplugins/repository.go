@@ -79,7 +79,7 @@ func (c *executorCommand) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"blockedIps":[]},"egressFilter":{"enabled":false,"blockedIps":[],"blockedPorts":[]},"haproxyAuth":{"inboundTags":[]}}`)
+var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"blockedIps":[]},"egressFilter":{"enabled":false,"blockedIps":[],"blockedPorts":[]},"haproxyAuth":{"enabled":false,"inboundTags":[]}}`)
 
 const haproxyAllInboundTags = "*"
 
@@ -109,7 +109,10 @@ func normalizePluginConfig(raw json.RawMessage) (json.RawMessage, error) {
 }
 
 func normalizeHaproxyAuthConfig(raw any) (map[string]any, error) {
-	result := map[string]any{"inboundTags": []string{}}
+	result := map[string]any{
+		"enabled":     false,
+		"inboundTags": []string{},
+	}
 	if raw == nil {
 		return result, nil
 	}
@@ -117,6 +120,10 @@ func normalizeHaproxyAuthConfig(raw any) (map[string]any, error) {
 	obj, ok := raw.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("haproxyAuth must be a JSON object")
+	}
+
+	if enabled, ok := obj["enabled"].(bool); ok {
+		result["enabled"] = enabled
 	}
 
 	if rawTags, ok := obj["inboundTags"]; ok {
@@ -134,6 +141,9 @@ func normalizeHaproxyAuthConfig(raw any) (map[string]any, error) {
 			tags = append(tags, value)
 		}
 		result["inboundTags"] = tags
+		if _, hasEnabled := obj["enabled"]; !hasEnabled && len(tags) > 0 {
+			result["enabled"] = true
+		}
 		return result, nil
 	}
 

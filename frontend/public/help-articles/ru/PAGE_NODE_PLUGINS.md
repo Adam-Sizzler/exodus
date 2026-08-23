@@ -168,6 +168,7 @@ CIDR-нотация (IPv4 и IPv6) поддерживается в плагин�
         "blockedPorts": []
     },
     "haproxyAuth": {
+        "enabled": false,
         "inboundTags": ["*"]
     }
 }
@@ -208,6 +209,7 @@ Egress Filter блокирует исходящие подключения с н
 
 ```json
 "haproxyAuth": {
+    "enabled": true,
     "inboundTags": ["*"]
 }
 ```

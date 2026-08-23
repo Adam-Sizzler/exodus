@@ -32,6 +32,7 @@ export declare const preStartPluginSchema: z.ZodObject<{
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const HaproxyAuthPluginSchema: z.ZodObject<{
+    enabled: z.ZodDefault<z.ZodBoolean>;
     inboundTags: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
 }, z.core.$strip>;
 export declare const NodePluginSchema: z.ZodObject<{
@@ -54,6 +55,7 @@ export declare const NodePluginSchema: z.ZodObject<{
         blockedPorts: z.ZodOptional<z.ZodArray<z.ZodInt>>;
     }, z.core.$strip>>;
     haproxyAuth: z.ZodOptional<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
         inboundTags: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     }, z.core.$strip>>;
     preStart: z.ZodOptional<z.ZodObject<{
@@ -75,6 +77,7 @@ export declare const NodePluginEditorSchema: z.ZodObject<{
         blockedPorts: z.ZodOptional<z.ZodArray<z.ZodInt>>;
     }, z.core.$strip>>;
     haproxyAuth: z.ZodOptional<z.ZodObject<{
+        enabled: z.ZodDefault<z.ZodBoolean>;
         inboundTags: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     }, z.core.$strip>>;
     preStart: z.ZodOptional<z.ZodObject<{

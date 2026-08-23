@@ -74,10 +74,10 @@ func TestNormalizePluginConfigNormalizesHaproxyConfig(t *testing.T) {
 	}
 	haproxyAuth := config["haproxyAuth"].(map[string]any)
 	if inboundTags, ok := haproxyAuth["inboundTags"].([]any); !ok || len(inboundTags) != 0 {
-		t.Fatalf("expected legacy enabled=false to normalize to inboundTags=[], got %#v", haproxyAuth["inboundTags"])
+		t.Fatalf("expected enabled=false to normalize to inboundTags=[], got %#v", haproxyAuth["inboundTags"])
 	}
-	if _, ok := haproxyAuth["enabled"]; ok {
-		t.Fatal("normalized haproxyAuth should not preserve legacy enabled flag")
+	if enabled, ok := haproxyAuth["enabled"].(bool); !ok || enabled {
+		t.Fatalf("expected enabled=false, got %#v", haproxyAuth["enabled"])
 	}
 	if _, ok := config["ingressFilter"]; ok {
 		t.Fatal("normalized config should not add ingressFilter")
@@ -102,9 +102,9 @@ func TestNormalizePluginConfigConvertsLegacyHaproxyEnabled(t *testing.T) {
 	haproxyAuth := config["haproxyAuth"].(map[string]any)
 	inboundTags, ok := haproxyAuth["inboundTags"].([]any)
 	if !ok || len(inboundTags) != 1 || inboundTags[0] != "*" {
-		t.Fatalf("expected legacy enabled=true to normalize to inboundTags=[*], got %#v", haproxyAuth["inboundTags"])
+		t.Fatalf("expected enabled=true to normalize to inboundTags=[*], got %#v", haproxyAuth["inboundTags"])
 	}
-	if _, ok := haproxyAuth["enabled"]; ok {
-		t.Fatal("normalized haproxyAuth should not preserve legacy enabled flag")
+	if enabled, ok := haproxyAuth["enabled"].(bool); !ok || !enabled {
+		t.Fatalf("expected enabled=true, got %#v", haproxyAuth["enabled"])
 	}
 }

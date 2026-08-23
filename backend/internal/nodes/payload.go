@@ -70,6 +70,7 @@ type activeNodePluginRuntimeConfig struct {
 		BlockedPorts []int    `json:"blockedPorts"`
 	} `json:"egressFilter"`
 	HaproxyAuth struct {
+		Enabled     bool     `json:"enabled"`
 		InboundTags []string `json:"inboundTags"`
 	} `json:"haproxyAuth"`
 	PreStart struct {

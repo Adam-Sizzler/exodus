@@ -116,7 +116,7 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 				}
 			}
 		}
-		if len(haproxyInboundTags) > 0 {
+		if pluginConfig.HaproxyAuth.Enabled && len(haproxyInboundTags) > 0 {
 			haproxyUsers, haproxyEnabled, usersErr := nm.loadNodeHaproxyUsers(nm.globalCtx, target.uuid, haproxyInboundTags)
 			if usersErr != nil {
 				nm.cfg.Logger.Warn("Failed to load node users for HAPROXY payload", "node", target.name, "node_uuid", target.uuid, "error", usersErr)
