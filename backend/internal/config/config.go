@@ -276,7 +276,7 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		return
 	}
 
-	if value := envFirst("LOG_LEVEL", "EXODUS_LOG_LEVEL"); value != "" {
+	if value := envFirst("LOG_LEVEL"); value != "" {
 		cfg.Log.LogLevel = resolveConfiguredLogLevel(value)
 	}
 	if value := envFirst("LOG_FORMAT", "EXODUS_LOG_FORMAT"); value != "" {
