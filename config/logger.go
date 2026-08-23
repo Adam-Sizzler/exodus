@@ -67,19 +67,27 @@ func ResolveExodusLogLevel(configured string) string {
 	if configured == "" {
 		configured = strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
 	}
-	if configured == "trace" || configured == "verbose" {
+	if configured == "" {
+		configured = strings.ToLower(strings.TrimSpace(os.Getenv("EXODUS_LOG_LEVEL")))
+	}
+
+	switch configured {
+	case "trace", "verbose":
 		return "trace"
-	}
-
-	if IsDevelopment() || parseBoolEnv(os.Getenv("ENABLE_DEBUG_LOGS")) {
+	case "debug":
 		return "debug"
+	case "info", "log":
+		return "info"
+	case "warn", "warning":
+		return "warn"
+	case "error":
+		return "error"
+	case "none", "silent":
+		return "none"
 	}
 
-	if configured != "" {
-		switch configured {
-		case "debug", "info", "log", "warn", "warning", "error", "none", "silent":
-			return configured
-		}
+	if parseBoolEnv(os.Getenv("ENABLE_DEBUG_LOGS")) {
+		return "debug"
 	}
 
 	return "info"
@@ -98,15 +106,13 @@ func parseExodusLogLevel(level string) LogLevel {
 	if trimmed == "" {
 		trimmed = strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
 	}
-	if trimmed == "trace" || trimmed == "verbose" {
-		return LogLevelTrace
-	}
-
-	if IsDevelopment() || parseBoolEnv(os.Getenv("ENABLE_DEBUG_LOGS")) {
-		return LogLevelDebug
+	if trimmed == "" {
+		trimmed = strings.ToLower(strings.TrimSpace(os.Getenv("EXODUS_LOG_LEVEL")))
 	}
 
 	switch trimmed {
+	case "trace", "verbose":
+		return LogLevelTrace
 	case "debug":
 		return LogLevelDebug
 	case "info", "log":
@@ -117,9 +123,13 @@ func parseExodusLogLevel(level string) LogLevel {
 		return LogLevelError
 	case "none", "silent":
 		return LogLevelNone
-	default:
-		return LogLevelInfo
 	}
+
+	if parseBoolEnv(os.Getenv("ENABLE_DEBUG_LOGS")) {
+		return LogLevelDebug
+	}
+
+	return LogLevelInfo
 }
 
 func parseBoolEnv(value string) bool {
