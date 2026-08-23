@@ -91,25 +91,6 @@ func (nm *NodeMonitor) loadSharedIPLists(ctx context.Context) map[string][]strin
 	return result
 }
 
-func (cfg activeNodePluginRuntimeConfig) sharedIPLists() map[string][]string {
-	result := make(map[string][]string, len(cfg.SharedLists))
-	for _, list := range cfg.SharedLists {
-		if strings.TrimSpace(list.Type) != "ipList" {
-			continue
-		}
-		name := strings.TrimSpace(list.Name)
-		if name == "" {
-			continue
-		}
-		items := append([]string(nil), list.Items...)
-		trimmedName := strings.TrimPrefix(name, "ext:")
-		result[name] = items
-		result[trimmedName] = items
-		result["ext:"+trimmedName] = items
-	}
-	return result
-}
-
 func resolvePluginIPRefs(raw []string, sharedLists map[string][]string) []string {
 	result := make([]string, 0, len(raw))
 	for _, item := range raw {

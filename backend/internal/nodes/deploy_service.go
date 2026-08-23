@@ -95,11 +95,6 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			nm.cfg.Logger.Warn("Failed to load node plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
 		}
 		sharedLists := nm.loadSharedIPLists(nm.globalCtx)
-		for k, v := range pluginConfig.sharedIPLists() {
-			if _, exists := sharedLists[k]; !exists {
-				sharedLists[k] = v
-			}
-		}
 		haproxyInboundTags := normalizeHaproxyInboundTags(pluginConfig.HaproxyAuth.InboundTags)
 		modules := &deployModulesTaskBlock{
 			IngressFilter: deployIngressFilterBlock{

@@ -55,11 +55,6 @@ type deployEgressFilterBlock struct {
 }
 
 type activeNodePluginRuntimeConfig struct {
-	SharedLists []struct {
-		Name  string   `json:"name"`
-		Type  string   `json:"type"`
-		Items []string `json:"items"`
-	} `json:"sharedLists"`
 	IngressFilter struct {
 		Enabled    bool     `json:"enabled"`
 		BlockedIPs []string `json:"blockedIps"`
