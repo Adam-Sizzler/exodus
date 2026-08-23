@@ -43,6 +43,54 @@ func (nm *NodeMonitor) loadNodePluginRuntimeConfig(ctx context.Context, nodeUUID
 	return pluginConfig, nil
 }
 
+func (nm *NodeMonitor) loadSharedIPLists(ctx context.Context) map[string][]string {
+	result := make(map[string][]string)
+	if nm.db == nil {
+		return result
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := nm.db.QueryContext(ctx, `SELECT name, config::text FROM shared_lists`)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		var rawConfig sql.NullString
+		if err := rows.Scan(&name, &rawConfig); err != nil {
+			continue
+		}
+		if !rawConfig.Valid || strings.TrimSpace(rawConfig.String) == "" {
+			continue
+		}
+		var parsed struct {
+			Type  string   `json:"type"`
+			Items []string `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(rawConfig.String), &parsed); err != nil {
+			continue
+		}
+		if strings.TrimSpace(parsed.Type) != "ipList" {
+			continue
+		}
+		cleanName := strings.TrimSpace(name)
+		if cleanName == "" {
+			continue
+		}
+		trimmedName := strings.TrimPrefix(cleanName, "ext:")
+		extName := "ext:" + trimmedName
+		items := append([]string(nil), parsed.Items...)
+		result[cleanName] = items
+		result[trimmedName] = items
+		result[extName] = items
+	}
+	return result
+}
+
 func (cfg activeNodePluginRuntimeConfig) sharedIPLists() map[string][]string {
 	result := make(map[string][]string, len(cfg.SharedLists))
 	for _, list := range cfg.SharedLists {
@@ -53,7 +101,11 @@ func (cfg activeNodePluginRuntimeConfig) sharedIPLists() map[string][]string {
 		if name == "" {
 			continue
 		}
-		result[name] = append([]string(nil), list.Items...)
+		items := append([]string(nil), list.Items...)
+		trimmedName := strings.TrimPrefix(name, "ext:")
+		result[name] = items
+		result[trimmedName] = items
+		result["ext:"+trimmedName] = items
 	}
 	return result
 }
@@ -66,7 +118,13 @@ func resolvePluginIPRefs(raw []string, sharedLists map[string][]string) []string
 			continue
 		}
 		if strings.HasPrefix(value, "ext:") {
-			result = append(result, sharedLists[value]...)
+			if ips, ok := sharedLists[value]; ok {
+				result = append(result, ips...)
+			}
+			continue
+		}
+		if ips, ok := sharedLists[value]; ok {
+			result = append(result, ips...)
 			continue
 		}
 		result = append(result, value)
