@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	monitor "exodus/internal/nodes"
+
 	"github.com/google/uuid"
 )
 
@@ -77,7 +79,7 @@ func (c *executorCommand) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"blockedIps":[]},"egressFilter":{"enabled":false,"blockedIps":[],"blockedPorts":[]},"haproxyAuth":{"inboundTags":[]},"sharedLists":[]}`)
+var defaultPluginConfig = json.RawMessage(`{"ingressFilter":{"enabled":false,"blockedIps":[]},"egressFilter":{"enabled":false,"blockedIps":[],"blockedPorts":[]},"haproxyAuth":{"inboundTags":[]}}`)
 
 const haproxyAllInboundTags = "*"
 
@@ -98,10 +100,6 @@ func normalizePluginConfig(raw json.RawMessage) (json.RawMessage, error) {
 	}
 	if _, ok := obj["connectionDrop"]; ok {
 		return nil, fmt.Errorf("connectionDrop plugin is not supported by sing-box core")
-	}
-
-	if _, ok := obj["sharedLists"]; !ok {
-		obj["sharedLists"] = []any{}
 	}
 
 	haproxyAuth, err := normalizeHaproxyAuthConfig(obj["haproxyAuth"])
@@ -349,5 +347,31 @@ func scanPluginRow(scanner pluginScanner, plugin *nodePlugin) error {
 		return err
 	}
 	plugin.PluginConfig = json.RawMessage(rawConfig)
+	return nil
+}
+
+func syncPlugin(ctx context.Context, db *sql.DB, pluginUUID string) error {
+	var id string
+	if err := db.QueryRowContext(ctx, `SELECT uuid::text FROM node_plugin WHERE uuid::text = $1`, pluginUUID).Scan(&id); err != nil {
+		return err
+	}
+
+	rows, err := db.QueryContext(ctx, `SELECT uuid::text FROM nodes WHERE active_plugin_uuid::text = $1 AND is_disabled = false`, pluginUUID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var nodeUUIDs []string
+	for rows.Next() {
+		var nodeUUID string
+		if err := rows.Scan(&nodeUUID); err == nil && nodeUUID != "" {
+			nodeUUIDs = append(nodeUUIDs, nodeUUID)
+		}
+	}
+
+	if len(nodeUUIDs) > 0 {
+		monitor.RequestNodeDeploy(false, nodeUUIDs...)
+	}
 	return nil
 }

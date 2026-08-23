@@ -540,12 +540,66 @@ const injectSharedListNames = (node: unknown, sharedLists: TSharedLists): void =
     Object.values(schemaNode).forEach((value) => injectSharedListNames(value, sharedLists))
 }
 
+export interface IInboundSuggestion {
+    tag: string
+    type?: string
+    port?: number | null
+    network?: string | null
+    security?: string | null
+    profileName?: string
+}
+
+const injectInboundTags = (schema: unknown, inbounds: IInboundSuggestion[]): void => {
+    if (!schema || typeof schema !== 'object') return
+
+    const schemaObj = schema as Record<string, any>
+    const haproxyAuth = schemaObj.properties?.haproxyAuth
+    if (haproxyAuth && typeof haproxyAuth === 'object') {
+        const inboundTags = haproxyAuth.properties?.inboundTags
+        if (inboundTags && typeof inboundTags === 'object') {
+            const items = inboundTags.items as Record<string, any> | undefined
+            if (items && typeof items === 'object') {
+                const uniqueTagsMap = new Map<string, IInboundSuggestion>()
+                for (const inbound of inbounds) {
+                    if (inbound.tag && !uniqueTagsMap.has(inbound.tag)) {
+                        uniqueTagsMap.set(inbound.tag, inbound)
+                    }
+                }
+
+                const tags = ['*', ...uniqueTagsMap.keys()]
+                const descriptions = [
+                    '**All inbounds (`*`)** · Match all supported inbounds assigned to the node',
+                    ...Array.from(uniqueTagsMap.values()).map((item) => {
+                        const details = [
+                            item.type ? `**${item.type}**` : '',
+                            item.port ? `port ${item.port}` : '',
+                            item.profileName ? `in profile **${item.profileName}**` : ''
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        return details || `Inbound tag: ${item.tag}`
+                    })
+                ]
+
+                items.enum = tags
+                items.markdownEnumDescriptions = descriptions
+                items.title = 'Inbound Tag'
+                items.markdownDescription =
+                    inbounds.length > 0
+                        ? 'Select an existing inbound tag from config profiles or `*` for all inbounds.'
+                        : 'Use `*` for all inbounds or specify an inbound tag.'
+            }
+        }
+    }
+}
+
 export const MonacoSetupNodePluginEditorFeature = {
-    setup: async (sharedLists: TSharedLists = []) => {
+    setup: async (sharedLists: TSharedLists = [], inbounds: IInboundSuggestion[] = []) => {
         try {
             const schema = NodePluginEditorSchema.toJSONSchema()
 
             injectSharedListNames(schema, sharedLists)
+            injectInboundTags(schema, inbounds)
 
             registerJsonSchema(
                 {

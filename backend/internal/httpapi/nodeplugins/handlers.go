@@ -37,7 +37,11 @@ import (
 // @Router       /node-plugins/actions/reorder [post]
 func Handler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/api/node-plugins")
+		path := r.URL.Path
+		if cfg != nil {
+			path = strings.TrimPrefix(path, cfg.Backend.Trimmed())
+		}
+		path = strings.TrimPrefix(path, "/api/node-plugins")
 		path = strings.Trim(path, "/")
 
 		switch {
@@ -311,6 +315,29 @@ func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 			return
 		}
 		shared.WriteJSON(w, http.StatusCreated, responseEnvelope[nodePlugin]{Response: plugin})
+	case "sync":
+		var req struct {
+			UUID string `json:"uuid"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		pluginUUID := strings.TrimSpace(req.UUID)
+		if _, err := uuid.Parse(pluginUUID); err != nil {
+			shared.WriteJSONError(w, http.StatusBadRequest, "invalid uuid")
+			return
+		}
+		if err := syncPlugin(r.Context(), db, pluginUUID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
+				return
+			}
+			cfg.Logger.Error("Failed to sync node plugin", "uuid", pluginUUID, "error", err)
+			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to sync node plugin")
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
 	default:
 		shared.WriteJSONError(w, http.StatusNotFound, "not found")
 	}

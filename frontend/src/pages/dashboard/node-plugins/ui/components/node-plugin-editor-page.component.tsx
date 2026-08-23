@@ -32,16 +32,16 @@ export const NodePluginEditorPageComponent = (props: Props) => {
                             variant="soft"
                         />
 
-                        <ActionIcon
-                            color="lime"
-                            component="a"
-                            href="https://github.com/Adam-Sizzler/exodus"
-                            size="input-md"
-                            target="_blank"
-                            variant="soft"
-                        >
-                            <TbBook size={24} />
-                        </ActionIcon>
+                        <Tooltip label={t('help-action-icon.shared.help-article')} withArrow>
+                            <ActionIcon
+                                color="lime"
+                                onClick={() => showModal('helpDrawer', { screen: 'PAGE_NODE_PLUGINS' })}
+                                size="input-md"
+                                variant="soft"
+                            >
+                                <TbBook size={24} />
+                            </ActionIcon>
+                        </Tooltip>
 
                         <ActionIconGroup>
                             <Tooltip label={t('common.shared-lists')} withArrow>

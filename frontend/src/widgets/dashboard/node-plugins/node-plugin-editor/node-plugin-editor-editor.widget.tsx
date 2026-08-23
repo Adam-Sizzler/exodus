@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { TbAlertTriangle } from 'react-icons/tb'
 import { useBlocker } from 'react-router'
 
-import { useGetSharedLists } from '@shared/api/hooks'
+import { useGetConfigProfiles, useGetSharedLists } from '@shared/api/hooks'
 import { usePseudoFullscreen, useViewportFillHeight } from '@shared/hooks'
 import { CodeEditor, editorClasses, EditorFooter, EditorStatusBar } from '@shared/ui/code-editor'
 import { fullscreenClasses, FullscreenToggleButton } from '@shared/ui/fullscreen-toggle-button'
@@ -32,6 +32,7 @@ export function NodePluginEditorWidget(props: IProps) {
     const { nodePlugin, pluginUuid } = props
 
     const { data: sharedLists } = useGetSharedLists()
+    const { data: configProfiles } = useGetConfigProfiles()
 
     const [result, setResult] = useState('')
     const [isConfigValid, setIsConfigValid] = useState(false)
@@ -95,12 +96,39 @@ export function NodePluginEditorWidget(props: IProps) {
 
     const sharedListsData = useMemo(() => sharedLists?.sharedLists ?? [], [sharedLists])
 
+    const inboundsData = useMemo(() => {
+        const list: Array<{
+            tag: string
+            type?: string
+            port?: number | null
+            network?: string | null
+            security?: string | null
+            profileName?: string
+        }> = []
+        const profiles = configProfiles?.configProfiles ?? []
+        for (const profile of profiles) {
+            for (const inbound of profile.inbounds ?? []) {
+                if (inbound.tag) {
+                    list.push({
+                        tag: inbound.tag,
+                        type: inbound.type,
+                        port: inbound.port,
+                        network: inbound.network,
+                        security: inbound.security,
+                        profileName: profile.name
+                    })
+                }
+            }
+        }
+        return list
+    }, [configProfiles])
+
     useEffect(() => {
-        MonacoSetupNodePluginEditorFeature.setup(sharedListsData)
-    }, [sharedListsData])
+        MonacoSetupNodePluginEditorFeature.setup(sharedListsData, inboundsData)
+    }, [sharedListsData, inboundsData])
 
     const handleEditorDidMount = () => {
-        MonacoSetupNodePluginEditorFeature.setup(sharedListsData)
+        MonacoSetupNodePluginEditorFeature.setup(sharedListsData, inboundsData)
     }
 
     const checkForChanges = () => {

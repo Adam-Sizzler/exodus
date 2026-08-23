@@ -58,7 +58,7 @@ func TestNormalizePluginConfigPreservesPartialConfig(t *testing.T) {
 	}
 }
 
-func TestNormalizePluginConfigAddsOnlySharedListsToHaproxyConfig(t *testing.T) {
+func TestNormalizePluginConfigNormalizesHaproxyConfig(t *testing.T) {
 	raw := json.RawMessage(`{"haproxyAuth":{"enabled":false}}`)
 
 	normalized, err := normalizePluginConfig(raw)
@@ -79,9 +79,6 @@ func TestNormalizePluginConfigAddsOnlySharedListsToHaproxyConfig(t *testing.T) {
 	}
 	if _, ok := haproxyAuth["enabled"]; ok {
 		t.Fatal("normalized haproxyAuth should not preserve legacy enabled flag")
-	}
-	if _, ok := config["sharedLists"]; !ok {
-		t.Fatal("normalized config is missing sharedLists")
 	}
 	if _, ok := config["ingressFilter"]; ok {
 		t.Fatal("normalized config should not add ingressFilter")
