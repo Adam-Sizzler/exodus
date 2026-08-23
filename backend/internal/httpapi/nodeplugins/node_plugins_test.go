@@ -2,7 +2,6 @@ package nodeplugins
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 )
 
@@ -107,22 +106,5 @@ func TestNormalizePluginConfigConvertsLegacyHaproxyEnabled(t *testing.T) {
 	}
 	if _, ok := haproxyAuth["enabled"]; ok {
 		t.Fatal("normalized haproxyAuth should not preserve legacy enabled flag")
-	}
-}
-
-func TestNormalizePluginConfigRejectsUnsupportedPlugins(t *testing.T) {
-	cases := []string{
-		`{"torrentBlocker":{"enabled":true}}`,
-		`{"connectionDrop":{"enabled":true}}`,
-	}
-
-	for _, tc := range cases {
-		_, err := normalizePluginConfig(json.RawMessage(tc))
-		if err == nil {
-			t.Fatalf("expected unsupported plugin config to fail: %s", tc)
-		}
-		if !strings.Contains(err.Error(), "not supported") {
-			t.Fatalf("expected unsupported error, got: %v", err)
-		}
 	}
 }

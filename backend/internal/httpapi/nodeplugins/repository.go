@@ -95,13 +95,6 @@ func normalizePluginConfig(raw json.RawMessage) (json.RawMessage, error) {
 	if obj == nil {
 		return append(json.RawMessage(nil), defaultPluginConfig...), nil
 	}
-	if _, ok := obj["torrentBlocker"]; ok {
-		return nil, fmt.Errorf("torrentBlocker plugin is not supported by sing-box core")
-	}
-	if _, ok := obj["connectionDrop"]; ok {
-		return nil, fmt.Errorf("connectionDrop plugin is not supported by sing-box core")
-	}
-
 	haproxyAuth, err := normalizeHaproxyAuthConfig(obj["haproxyAuth"])
 	if err != nil {
 		return nil, err
