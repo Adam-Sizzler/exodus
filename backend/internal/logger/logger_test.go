@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-func TestResolveLevelNodeEnvDevelopmentEnablesDebug(t *testing.T) {
-	if got := ResolveLevel("development", "", ""); got != LevelDebug {
-		t.Fatalf("ResolveLevel() = %v, want debug", got)
+func TestResolveLevelNodeEnvDevelopmentDefaultsToInfo(t *testing.T) {
+	if got := ResolveLevel("development", "", ""); got != LevelInfo {
+		t.Fatalf("ResolveLevel() = %v, want info", got)
 	}
 }
 

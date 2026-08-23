@@ -104,11 +104,12 @@ func New(opts Options) *Logger {
 }
 
 func ResolveLevel(nodeEnv, debugLogs, configured string) Level {
-	if strings.EqualFold(strings.TrimSpace(nodeEnv), "development") || parseBool(debugLogs) {
-		return LevelDebug
+	trimmed := strings.ToLower(strings.TrimSpace(configured))
+	if trimmed == "" {
+		trimmed = strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
 	}
 
-	switch strings.ToLower(strings.TrimSpace(configured)) {
+	switch trimmed {
 	case "error":
 		return LevelError
 	case "warn", "warning":
@@ -117,11 +118,15 @@ func ResolveLevel(nodeEnv, debugLogs, configured string) Level {
 		return LevelVerbose
 	case "debug":
 		return LevelDebug
-	case "info", "log", "":
-		return LevelInfo
-	default:
+	case "info", "log":
 		return LevelInfo
 	}
+
+	if parseBool(debugLogs) {
+		return LevelDebug
+	}
+
+	return LevelInfo
 }
 
 func parseBool(value string) bool {

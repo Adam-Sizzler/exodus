@@ -27,6 +27,7 @@ var semverPattern = regexp.MustCompile(`^[vV]?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z\.-]
 
 func main() {
 	logger.Configure(logger.Options{
+		Level:      os.Getenv("LOG_LEVEL"),
 		NodeEnv:    os.Getenv("NODE_ENV"),
 		DebugLogs:  os.Getenv("ENABLE_DEBUG_LOGS"),
 		InstanceID: os.Getenv("INSTANCE_ID"),
