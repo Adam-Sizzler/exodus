@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -247,11 +246,12 @@ func toZeroLevel(level Level) zerolog.Level {
 }
 
 const (
-	ansiReset  = "[0m"
-	ansiRed    = "[31m"
-	ansiGreen  = "[32m"
-	ansiYellow = "[33m"
-	ansiCyan   = "[36m"
+	ansiReset  = "\x1b[0m"
+	ansiRed    = "\x1b[31m"
+	ansiGreen  = "\x1b[32m"
+	ansiYellow = "\x1b[33m"
+	ansiCyan   = "\x1b[36m"
+	ansiGray   = "\x1b[90m"
 )
 
 type exodusConsoleWriter struct {
@@ -289,9 +289,9 @@ func (w *exodusConsoleWriter) Write(p []byte) (int, error) {
 	delete(payload, "context")
 	delete(payload, "message")
 
-	fields := renderPayload(payload)
-	if fields != "" {
-		message = strings.TrimRight(message, " ") + " " + fields
+	extra := formatExtraFields(payload)
+	if extra != "" {
+		message = strings.TrimRight(message, " ") + extra
 	}
 
 	w.mu.Lock()
@@ -401,62 +401,46 @@ func levelFromString(label, zeroLevel string) Level {
 	}
 }
 
-func renderPayload(payload map[string]any) string {
-	if len(payload) == 0 {
+func formatExtraFields(fields map[string]any) string {
+	if len(fields) == 0 {
 		return ""
 	}
-
-	keys := make([]string, 0, len(payload))
-	for key := range payload {
-		if strings.TrimSpace(key) != "" {
-			keys = append(keys, key)
-		}
+	parts := make([]string, 0, len(fields))
+	for key, value := range fields {
+		parts = append(parts, key+"="+formatFieldValue(value))
 	}
-	sort.Strings(keys)
-	if _, ok := payload["stack"]; ok {
-		reordered := []string{"stack"}
-		for _, key := range keys {
-			if key != "stack" {
-				reordered = append(reordered, key)
-			}
-		}
-		keys = reordered
-	}
-
-	ordered := make([]string, 0, len(keys))
-	for _, key := range keys {
-		ordered = append(ordered, fmt.Sprintf("%s: %s", key, renderValue(payload[key])))
-	}
-	return "{ " + strings.Join(ordered, ", ") + " }"
+	return " " + strings.Join(parts, " ")
 }
 
-func renderValue(value any) string {
+func formatFieldValue(value any) string {
 	switch typed := value.(type) {
+	case nil:
+		return "null"
 	case string:
-		return fmt.Sprintf("%q", typed)
-	case []string:
-		items := make([]string, 0, len(typed))
-		for _, item := range typed {
-			items = append(items, fmt.Sprintf("%q", item))
+		if strings.ContainsAny(typed, " \t\n\r") {
+			return fmt.Sprintf("%q", typed)
 		}
-		return "[ " + strings.Join(items, ", ") + " ]"
-	case []any:
-		items := make([]string, 0, len(typed))
-		for _, item := range typed {
-			items = append(items, renderValue(item))
+		return typed
+	case error:
+		errStr := typed.Error()
+		if strings.ContainsAny(errStr, " \t\n\r") {
+			return fmt.Sprintf("%q", errStr)
 		}
-		return "[ " + strings.Join(items, ", ") + " ]"
-	case map[string]any:
-		if len(typed) == 0 {
-			return "{}"
+		return errStr
+	case fmt.Stringer:
+		str := typed.String()
+		if strings.ContainsAny(str, " \t\n\r") {
+			return fmt.Sprintf("%q", str)
 		}
+		return str
+	default:
+		data, err := json.Marshal(typed)
+		if err == nil {
+			s := string(data)
+			return s
+		}
+		return fmt.Sprint(typed)
 	}
-
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprintf("%q", fmt.Sprint(value))
-	}
-	return string(encoded)
 }
 
 func colorizeLevel(text string, level Level) string {
