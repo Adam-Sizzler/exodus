@@ -148,14 +148,6 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	}
 	persistedNodeUUID = nodeUUID
 
-	if _, execErr := nm.db.Exec(`
-		UPDATE nodes
-		SET updated_at = CURRENT_TIMESTAMP
-		WHERE name = $1`, nodeName); execErr != nil {
-		nm.cfg.Logger.Warn("Failed to update node updated_at", "node", nodeName, "error", execErr)
-		return
-	}
-
 	if trafficDelta.TotalUploadBytes > 0 || trafficDelta.TotalDownloadBytes > 0 {
 		totalBytes := trafficDelta.TotalUploadBytes + trafficDelta.TotalDownloadBytes
 		nodeUsageBytes := applyConsumptionMultiplier(totalBytes, nodeConsumptionMultiplier)
@@ -181,6 +173,14 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			nm.cfg.Logger.Warn("Failed to update node traffic used bytes", "node", nodeName, "error", execErr)
 			return
 		}
+	} else {
+		if _, execErr := nm.db.Exec(`
+			UPDATE nodes
+			SET updated_at = CURRENT_TIMESTAMP
+			WHERE name = $1`, nodeName); execErr != nil {
+			nm.cfg.Logger.Warn("Failed to update node updated_at", "node", nodeName, "error", execErr)
+			return
+		}
 	}
 
 	if len(trafficDelta.UserBytesByName) > 0 {
@@ -195,50 +195,29 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 		}
 		if len(usernames) > 0 {
 			rows, queryErr := nm.db.Query(`
-				SELECT id, username
-				FROM users
-				WHERE status = 'ACTIVE' AND (username = ANY($1) OR lower(username) = ANY($2))
+				SELECT u.id, u.username, COALESCE(ut.first_connected_at IS NOT NULL, false)
+				FROM users u
+				LEFT JOIN user_traffic ut ON u.id = ut.id
+				WHERE u.status = 'ACTIVE' AND (u.username = ANY($1) OR lower(u.username) = ANY($2))
 			`, usernames, usernamesLower)
 			if queryErr == nil {
 				userIDs := make(map[string]int64, len(usernames))
 				userIDsLower := make(map[string]int64, len(usernames))
+				firstConnectedByID := make(map[int64]bool, len(usernames))
 				for rows.Next() {
 					var (
-						userID   int64
-						username string
+						userID            int64
+						username          string
+						hasFirstConnected bool
 					)
-					if scanErr := rows.Scan(&userID, &username); scanErr == nil {
+					if scanErr := rows.Scan(&userID, &username, &hasFirstConnected); scanErr == nil {
 						trimmed := strings.TrimSpace(username)
 						userIDs[trimmed] = userID
 						userIDsLower[strings.ToLower(trimmed)] = userID
+						firstConnectedByID[userID] = hasFirstConnected
 					}
 				}
 				rows.Close()
-
-				firstConnectedByID := make(map[int64]bool, len(userIDs))
-				if len(userIDs) > 0 {
-					ids := make([]int64, 0, len(userIDs))
-					for _, userID := range userIDs {
-						ids = append(ids, userID)
-					}
-					firstRows, firstErr := nm.db.Query(`
-						SELECT id, first_connected_at IS NOT NULL
-						FROM user_traffic
-						WHERE id = ANY($1)
-					`, ids)
-					if firstErr == nil {
-						for firstRows.Next() {
-							var (
-								userID            int64
-								hasFirstConnected bool
-							)
-							if scanErr := firstRows.Scan(&userID, &hasFirstConnected); scanErr == nil {
-								firstConnectedByID[userID] = hasFirstConnected
-							}
-						}
-						firstRows.Close()
-					}
-				}
 
 				usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
 				for username, rawBytes := range trafficDelta.UserBytesByName {
@@ -388,50 +367,67 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 			continue
 		}
 		rawKey := strings.TrimSpace(stat.GetName())
-		key := strings.ToLower(rawKey)
+		if rawKey == "" {
+			continue
+		}
 		valStr := strings.TrimSpace(stat.GetValue())
 		val, _ := strconv.ParseInt(valStr, 10, 64)
 
-		if strings.Contains(rawKey, ">>>") {
-			parts := strings.Split(rawKey, ">>>")
-			if len(parts) == 4 && strings.ToLower(strings.TrimSpace(parts[2])) == "traffic" {
-				category := strings.ToLower(strings.TrimSpace(parts[0]))
-				tagOrUser := strings.TrimSpace(parts[1])
-				direction := strings.ToLower(strings.TrimSpace(parts[3]))
-				switch category {
-				case "outbound":
-					switch direction {
-					case "uplink":
-						delta.TotalUploadBytes += val
-					case "downlink":
-						delta.TotalDownloadBytes += val
-					}
-					counters := delta.OutboundByTag[tagOrUser]
-					switch direction {
-					case "uplink":
-						counters.UploadBytes += val
-					case "downlink":
-						counters.DownloadBytes += val
-					}
-					delta.OutboundByTag[tagOrUser] = counters
-				case "inbound":
-					counters := delta.InboundByTag[tagOrUser]
-					switch direction {
-					case "uplink":
-						counters.UploadBytes += val
-					case "downlink":
-						counters.DownloadBytes += val
-					}
-					delta.InboundByTag[tagOrUser] = counters
-				case "user":
-					if val > 0 {
-						delta.UserBytesByName[tagOrUser] += val
-					}
+		if strings.HasPrefix(rawKey, "user>>>") {
+			rest := rawKey[7:]
+			idx := strings.Index(rest, ">>>")
+			if idx > 0 && strings.HasPrefix(rest[idx+3:], "traffic>>>") {
+				username := rest[:idx]
+				if val > 0 {
+					delta.UserBytesByName[username] += val
 				}
 			}
 			continue
 		}
 
+		if strings.HasPrefix(rawKey, "inbound>>>") {
+			rest := rawKey[10:]
+			idx := strings.Index(rest, ">>>")
+			if idx > 0 && strings.HasPrefix(rest[idx+3:], "traffic>>>") {
+				tag := rest[:idx]
+				direction := strings.ToLower(rest[idx+3+10:])
+				counters := delta.InboundByTag[tag]
+				switch direction {
+				case "uplink":
+					counters.UploadBytes += val
+				case "downlink":
+					counters.DownloadBytes += val
+				}
+				delta.InboundByTag[tag] = counters
+			}
+			continue
+		}
+
+		if strings.HasPrefix(rawKey, "outbound>>>") {
+			rest := rawKey[11:]
+			idx := strings.Index(rest, ">>>")
+			if idx > 0 && strings.HasPrefix(rest[idx+3:], "traffic>>>") {
+				tag := rest[:idx]
+				direction := strings.ToLower(rest[idx+3+10:])
+				switch direction {
+				case "uplink":
+					delta.TotalUploadBytes += val
+				case "downlink":
+					delta.TotalDownloadBytes += val
+				}
+				counters := delta.OutboundByTag[tag]
+				switch direction {
+				case "uplink":
+					counters.UploadBytes += val
+				case "downlink":
+					counters.DownloadBytes += val
+				}
+				delta.OutboundByTag[tag] = counters
+			}
+			continue
+		}
+
+		key := strings.ToLower(rawKey)
 		switch {
 		case key == "total_download_bytes":
 			delta.TotalDownloadBytes = val
