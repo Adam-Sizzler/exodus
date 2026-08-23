@@ -308,7 +308,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 }
 
 func (nm *NodeMonitor) updateHotCacheNodeRuntime(
-	nodeName string,
+	_ string,
 	nodeUUID string,
 	singboxVersion string,
 	nodeVersion string,
@@ -317,7 +317,7 @@ func (nm *NodeMonitor) updateHotCacheNodeRuntime(
 	usersOnline int,
 	systemInfo json.RawMessage,
 	systemStats json.RawMessage,
-	delta trafficStatsDelta,
+	_ trafficStatsDelta,
 ) {
 	if nm.hotCache == nil {
 		return
@@ -400,23 +400,26 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 				direction := strings.ToLower(strings.TrimSpace(parts[3]))
 				switch category {
 				case "outbound":
-					if direction == "uplink" {
+					switch direction {
+					case "uplink":
 						delta.TotalUploadBytes += val
-					} else if direction == "downlink" {
+					case "downlink":
 						delta.TotalDownloadBytes += val
 					}
 					counters := delta.OutboundByTag[tagOrUser]
-					if direction == "uplink" {
+					switch direction {
+					case "uplink":
 						counters.UploadBytes += val
-					} else if direction == "downlink" {
+					case "downlink":
 						counters.DownloadBytes += val
 					}
 					delta.OutboundByTag[tagOrUser] = counters
 				case "inbound":
 					counters := delta.InboundByTag[tagOrUser]
-					if direction == "uplink" {
+					switch direction {
+					case "uplink":
 						counters.UploadBytes += val
-					} else if direction == "downlink" {
+					case "downlink":
 						counters.DownloadBytes += val
 					}
 					delta.InboundByTag[tagOrUser] = counters
@@ -451,9 +454,10 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 				direction := parts[len(parts)-1]
 				tag := strings.Join(parts[1:len(parts)-1], "_")
 				counters := delta.InboundByTag[tag]
-				if direction == "down" || direction == "download" {
+				switch direction {
+				case "down", "download":
 					counters.DownloadBytes += val
-				} else if direction == "up" || direction == "upload" {
+				case "up", "upload":
 					counters.UploadBytes += val
 				}
 				delta.InboundByTag[tag] = counters
@@ -464,9 +468,10 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 				direction := parts[len(parts)-1]
 				tag := strings.Join(parts[1:len(parts)-1], "_")
 				counters := delta.OutboundByTag[tag]
-				if direction == "down" || direction == "download" {
+				switch direction {
+				case "down", "download":
 					counters.DownloadBytes += val
-				} else if direction == "up" || direction == "upload" {
+				case "up", "upload":
 					counters.UploadBytes += val
 				}
 				delta.OutboundByTag[tag] = counters
