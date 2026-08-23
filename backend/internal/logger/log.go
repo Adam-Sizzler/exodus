@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -257,13 +256,8 @@ func (l *Logger) PrintEnvironmentErrors(errors map[string]string) {
 
 	fmt.Fprintln(l.writer, "🔧 Environment Configuration Errors")
 	fmt.Fprintln(l.writer)
-	keys := make([]string, 0, len(errors))
-	for key := range errors {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		fmt.Fprintf(l.writer, "❌ %s\n%s\n\n", key, errors[key])
+	for key, err := range errors {
+		fmt.Fprintf(l.writer, "❌ %s\n%s\n\n", key, err)
 	}
 	fmt.Fprintln(l.writer, "Please fix configuration and restart application.")
 }
@@ -574,16 +568,11 @@ func formatExtraFields(fields map[string]any) string {
 	ignored := map[string]bool{
 		"time": true, "level": true, "message": true, "role": true, "context": true, "service": true,
 	}
-	keys := make([]string, 0, len(fields))
-	for key := range fields {
+	parts := make([]string, 0, len(fields))
+	for key, value := range fields {
 		if !ignored[key] {
-			keys = append(keys, key)
+			parts = append(parts, key+"="+formatFieldValue(value))
 		}
-	}
-	sort.Strings(keys)
-	parts := make([]string, 0, len(keys))
-	for _, key := range keys {
-		parts = append(parts, key+"="+formatFieldValue(fields[key]))
 	}
 	return strings.Join(parts, " ")
 }
