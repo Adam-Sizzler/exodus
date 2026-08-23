@@ -31,8 +31,8 @@ func TestLoadNodeConfigTokenMode(t *testing.T) {
 	if cfg.Backend.WithSlash() != "/node/" {
 		t.Fatalf("WithSlash() = %q, want /node/", cfg.Backend.WithSlash())
 	}
-	if cfg.Log.LogLevel != "info" {
-		t.Fatalf("LogLevel = %q, want info because LOG_LEVEL/EXODUS_LOG_LEVEL are ignored", cfg.Log.LogLevel)
+	if cfg.Log.LogLevel != "debug" {
+		t.Fatalf("LogLevel = %q, want debug", cfg.Log.LogLevel)
 	}
 }
 
