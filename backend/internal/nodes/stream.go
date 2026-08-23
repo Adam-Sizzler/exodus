@@ -185,26 +185,32 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 
 	if len(trafficDelta.UserBytesByName) > 0 {
 		usernames := make([]string, 0, len(trafficDelta.UserBytesByName))
+		usernamesLower := make([]string, 0, len(trafficDelta.UserBytesByName))
 		for username := range trafficDelta.UserBytesByName {
-			if strings.TrimSpace(username) != "" {
-				usernames = append(usernames, username)
+			trimmed := strings.TrimSpace(username)
+			if trimmed != "" {
+				usernames = append(usernames, trimmed)
+				usernamesLower = append(usernamesLower, strings.ToLower(trimmed))
 			}
 		}
 		if len(usernames) > 0 {
 			rows, queryErr := nm.db.Query(`
 				SELECT id, username
 				FROM users
-				WHERE status = 'ACTIVE' AND username = ANY($1)
-			`, usernames)
+				WHERE status = 'ACTIVE' AND (username = ANY($1) OR lower(username) = ANY($2))
+			`, usernames, usernamesLower)
 			if queryErr == nil {
 				userIDs := make(map[string]int64, len(usernames))
+				userIDsLower := make(map[string]int64, len(usernames))
 				for rows.Next() {
 					var (
 						userID   int64
 						username string
 					)
 					if scanErr := rows.Scan(&userID, &username); scanErr == nil {
-						userIDs[strings.TrimSpace(username)] = userID
+						trimmed := strings.TrimSpace(username)
+						userIDs[trimmed] = userID
+						userIDsLower[strings.ToLower(trimmed)] = userID
 					}
 				}
 				rows.Close()
@@ -238,6 +244,9 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				for username, rawBytes := range trafficDelta.UserBytesByName {
 					username = strings.TrimSpace(username)
 					userID, ok := userIDs[username]
+					if !ok {
+						userID, ok = userIDsLower[strings.ToLower(username)]
+					}
 					if !ok {
 						continue
 					}
@@ -378,16 +387,17 @@ func extractTrafficStatsDelta(stats []*proto.Stat) trafficStatsDelta {
 		if stat == nil {
 			continue
 		}
-		key := strings.ToLower(strings.TrimSpace(stat.GetName()))
+		rawKey := strings.TrimSpace(stat.GetName())
+		key := strings.ToLower(rawKey)
 		valStr := strings.TrimSpace(stat.GetValue())
 		val, _ := strconv.ParseInt(valStr, 10, 64)
 
-		if strings.Contains(key, ">>>") {
-			parts := strings.Split(key, ">>>")
-			if len(parts) == 4 && parts[2] == "traffic" {
-				category := parts[0]
-				tagOrUser := parts[1]
-				direction := parts[3]
+		if strings.Contains(rawKey, ">>>") {
+			parts := strings.Split(rawKey, ">>>")
+			if len(parts) == 4 && strings.ToLower(strings.TrimSpace(parts[2])) == "traffic" {
+				category := strings.ToLower(strings.TrimSpace(parts[0]))
+				tagOrUser := strings.TrimSpace(parts[1])
+				direction := strings.ToLower(strings.TrimSpace(parts[3]))
 				switch category {
 				case "outbound":
 					if direction == "uplink" {
