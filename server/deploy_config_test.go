@@ -134,6 +134,54 @@ func TestShouldReloadCoreHonorsForceRestart(t *testing.T) {
 	}
 }
 
+// Regression test: DeployConfig used to pre-default task.Listen to the fixed
+// port before ever calling BuildSingboxConfigWithV2RayAPI, which made
+// opt.Listen always non-empty and permanently shadowed the profile config's
+// own experimental.v2ray_api.listen. This asserts the underlying priority
+// chain Build is supposed to honor: when no explicit BuildOptions.Listen is
+// given, the profile config's own listen value must win over the fixed
+// default.
+func TestBuildSingboxConfigWithV2RayAPIFallsBackToProfileListenWhenNoExplicitOverride(t *testing.T) {
+	raw := []byte(`{
+  "log": {"level":"debug"},
+  "inbounds": [{"tag":"trojan-in","type":"trojan","users":[{"name":"u1"}]}],
+  "outbounds": [{"tag":"direct","type":"direct"}],
+  "experimental": {
+    "v2ray_api": {
+      "listen": "127.0.0.1:10086",
+      "stats": {
+        "enabled": true,
+        "inbounds": ["trojan-in"],
+        "outbounds": ["direct"],
+        "users": ["u1"]
+      }
+    }
+  }
+}`)
+
+	out, summary, err := BuildSingboxConfigWithV2RayAPI(raw, BuildOptions{
+		Listen:  "",
+		Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("BuildSingboxConfigWithV2RayAPI failed: %v", err)
+	}
+
+	if summary.Listen != "127.0.0.1:10086" {
+		t.Fatalf("expected summary.Listen from profile config '127.0.0.1:10086', got %v", summary.Listen)
+	}
+
+	var cfg orderedmap.OrderedMap
+	if err := json.Unmarshal(out, &cfg); err != nil {
+		t.Fatalf("unmarshal built config: %v", err)
+	}
+	experimental := mustOrderedMap(t, mustGet(t, cfg, "experimental"))
+	v2rayAPI := mustOrderedMap(t, mustGet(t, experimental, "v2ray_api"))
+	if val, ok := v2rayAPI.Get("listen"); !ok || val != "127.0.0.1:10086" {
+		t.Fatalf("expected v2ray_api.listen='127.0.0.1:10086' from profile config, got %v", val)
+	}
+}
+
 func mustGet(t *testing.T, o orderedmap.OrderedMap, key string) any {
 	t.Helper()
 	v, ok := o.Get(key)

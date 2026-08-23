@@ -94,14 +94,28 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	log.Debug("Core process start command accepted")
 
 	after, err := s6.GetProcessInfo(ctx, coreProcessName)
+	startedPID := 0
 	if err == nil {
 		result.ProcessAfter = after.StateName
+		startedPID = after.PID
 	} else {
 		result.ProcessAfter = "UNKNOWN"
 	}
-	log.Debug("Core service state after start", "state", result.ProcessAfter)
+	log.Debug("Core service state after start", "state", result.ProcessAfter, "pid", startedPID)
 
-	if err := waitForCoreAPIReady(ctx, cfg, apiService, s6, coreProcessName); err != nil {
+	// startedPID pins the healthcheck to the exact process this start attempt
+	// launched. s6-svc -wu only confirms the OS process was forked/exec'd -
+	// sing-box can still fatal-exit moments later (e.g. "address already in
+	// use" on the v2ray_api listen port) well after s6 already reported it
+	// up. Without pinning to a PID, a subsequent CheckCoreReady() success is
+	// meaningless: it only proves *something* answers on that host:port, not
+	// that it's the process we just started - it could be a stale/orphaned
+	// core, or an unrelated process squatting the same port (the exact
+	// failure mode reported: the node "connects" but to a foreign core).
+	// Matches upstream Remnawave node's XrayProcessDownError guard in
+	// xray.service.ts#getXrayInternalStatus, which aborts the moment the
+	// s6-tracked PID no longer matches the one recorded right after start.
+	if err := waitForCoreAPIReady(ctx, cfg, apiService, s6, coreProcessName, startedPID); err != nil {
 		diagCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		diagMsg, _ := RunSingboxCheck(diagCtx, config.FixedSingboxConfigPath)
 		cancel()
@@ -243,7 +257,32 @@ func shouldStopBeforeStart(stateName string) bool {
 	}
 }
 
-func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service, s6 *s6Client, coreProcessName string) error {
+// coreIdentityFailure inspects the s6-supervised core process and reports
+// whether it can no longer vouch for startedPID: either the supervisor
+// reports it stopped/dead outright, or it's "up" under a *different* PID
+// than the one this start attempt launched (crashed and got respawned by
+// s6 since). startedPID <= 0 means the PID right after start couldn't be
+// determined (e.g. no s6-svstat available) - in that case only the state
+// is checked, matching upstream Remnawave's `startedPid !== null` guard.
+func coreIdentityFailure(ctx context.Context, s6 *s6Client, coreProcessName string, startedPID int) (string, bool) {
+	if s6 == nil || coreProcessName == "" {
+		return "", false
+	}
+	pInfo, err := s6.GetProcessInfo(ctx, coreProcessName)
+	if err != nil {
+		return "", false
+	}
+	state := strings.ToUpper(strings.TrimSpace(pInfo.StateName))
+	if state == "STOPPED" || state == "DOWN" || state == "DEAD" || state == "FATAL" {
+		return fmt.Sprintf("core process is %s", pInfo.StateName), true
+	}
+	if startedPID > 0 && pInfo.PID > 0 && pInfo.PID != startedPID {
+		return fmt.Sprintf("core process restarted under a new pid (was %d, now %d) - a healthcheck response can no longer be trusted as coming from this start attempt", startedPID, pInfo.PID), true
+	}
+	return "", false
+}
+
+func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service, s6 *s6Client, coreProcessName string, startedPID int) error {
 	log := cfg.LoggerFor("SingboxService")
 	if apiService == nil {
 		return fmt.Errorf("core API service is nil")
@@ -258,36 +297,36 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 
 	var lastErr error
 	for attempt := 1; attempt <= coreHealthcheckAttempts; attempt++ {
-		// Quick check if core already died/stopped according to supervisor
-		if s6 != nil && coreProcessName != "" {
-			if pInfo, s6Err := s6.GetProcessInfo(ctx, coreProcessName); s6Err == nil {
-				state := strings.ToUpper(strings.TrimSpace(pInfo.StateName))
-				if state == "STOPPED" || state == "DOWN" || state == "DEAD" || state == "FATAL" {
-					log.Debug("Core process is stopped or dead, fast failing healthcheck", "state", pInfo.StateName, "attempt", attempt)
-					return fmt.Errorf("core process is %s", pInfo.StateName)
-				}
-			}
+		// Quick check if core already died/stopped, or was respawned under a
+		// different pid, according to the supervisor
+		if reason, broken := coreIdentityFailure(ctx, s6, coreProcessName, startedPID); broken {
+			log.Debug("Core process identity broken, fast failing healthcheck", "reason", reason, "attempt", attempt)
+			return fmt.Errorf("%s", reason)
 		}
 
 		checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		err := apiService.CheckCoreReady(checkCtx)
 		cancel()
 		if err == nil {
+			// A successful API response alone doesn't prove it came from
+			// *our* process - re-verify identity right now before trusting it,
+			// since the process could have crashed and something else could
+			// be answering on the same host:port in the gap since the last check.
+			if reason, broken := coreIdentityFailure(ctx, s6, coreProcessName, startedPID); broken {
+				log.Debug("Core API answered but process identity is broken, not trusting it", "reason", reason, "attempt", attempt)
+				return fmt.Errorf("%s", reason)
+			}
 			log.Debug("Core API healthcheck passed", "attempt", attempt)
 			return nil
 		}
 		lastErr = err
 		log.Debug("Get Sing-box internal status attempt failed", "attempt", attempt, "retries_left", coreHealthcheckAttempts-attempt, "error", err)
 
-		// After failed attempt, verify if process stopped before waiting
-		if s6 != nil && coreProcessName != "" {
-			if pInfo, s6Err := s6.GetProcessInfo(ctx, coreProcessName); s6Err == nil {
-				state := strings.ToUpper(strings.TrimSpace(pInfo.StateName))
-				if state == "STOPPED" || state == "DOWN" || state == "DEAD" || state == "FATAL" {
-					log.Debug("Core process stopped after failed attempt, fast failing healthcheck", "state", pInfo.StateName)
-					return fmt.Errorf("core process is %s", pInfo.StateName)
-				}
-			}
+		// After failed attempt, verify if process stopped or was respawned
+		// under a different pid before waiting
+		if reason, broken := coreIdentityFailure(ctx, s6, coreProcessName, startedPID); broken {
+			log.Debug("Core process identity broken after failed attempt, fast failing healthcheck", "reason", reason)
+			return fmt.Errorf("%s", reason)
 		}
 
 		if attempt == coreHealthcheckAttempts {

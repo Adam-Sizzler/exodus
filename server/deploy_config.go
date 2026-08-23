@@ -97,10 +97,14 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 
 	configPath := config.FixedSingboxConfigPath
 
+	// Do NOT default task.Listen here. Doing so makes opt.Listen always
+	// non-empty below, which permanently shadows BuildSingboxConfigWithV2RayAPI's
+	// own fallback to the profile config's experimental.v2ray_api.listen -
+	// the panel-sent config profile's listen/port was silently discarded and
+	// the node always fell back to the fixed default instead. Pass task.Listen
+	// through as-is (possibly empty) so Build's priority chain applies:
+	// explicit task.Listen > profile config's own listen > fixed default.
 	listen := task.Listen
-	if listen == "" {
-		listen = fmt.Sprintf("%s:%d", config.FixedCoreAPIAddress, s.Cfg.CoreAPIGRPCPort)
-	}
 
 	enabled := true
 	if task.Stats.Enabled != nil {
@@ -118,7 +122,10 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 		return DeploySummary{}, fmt.Errorf("build sing-box config: %w", err)
 	}
 
-	// Update the target listen address if overridden by the config
+	// Update the target listen address to whatever Build actually resolved
+	// (explicit task.Listen, else the profile config's own listen, else the
+	// fixed default) - this is always the real effective value regardless of
+	// which branch of the priority chain produced it.
 	listen = summary.Listen
 
 	// Update the core API client connection to use the new listen address/port
