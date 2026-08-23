@@ -209,7 +209,6 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 			coreReady = lifecycle.Ready
 			if lifecycle.failed() {
 				reloadError = lifecycle.Error
-				log.Error("Failed to start Sing-box: "+lifecycle.Error, "process_before", lifecycle.ProcessBefore, "process_after", lifecycle.ProcessAfter)
 			} else {
 				restarted = lifecycle.Started
 			}

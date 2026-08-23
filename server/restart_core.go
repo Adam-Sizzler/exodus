@@ -126,10 +126,6 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 		}
 
 		logReason := ExtractSingboxLogReason(DefaultSingboxLogPath, 10)
-		tailLines := TailSingboxLogLines(DefaultSingboxLogPath, 5)
-		if len(tailLines) > 0 {
-			log.Error(fmt.Sprintf("Sing-box Core Log Tail (%s, %d lines):\n  %s", DefaultSingboxLogPath, len(tailLines), strings.Join(tailLines, "\n  ")))
-		}
 
 		if strings.TrimSpace(diagMsg) != "" {
 			result.Error = strings.TrimSpace(diagMsg)
@@ -143,7 +139,7 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 			apiService.MarkCoreOffline()
 			apiService.SetCoreError(result.Error)
 		}
-		log.Error("Failed to start Sing-box: "+result.Error, "state", result.ProcessAfter)
+		log.Error("Failed to start Sing-box: " + result.Error)
 		return result
 	}
 
