@@ -264,12 +264,22 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 				}
 				s.logCoreStatsFailure("Core stats query failed; returning degraded stats", err)
 			} else {
+				userBytes := make(map[string]int64)
 				for _, item := range stats {
 					s.logger.Trace("Processing core stat", "name", item.Name, "value", item.Value)
 					result.Stat = append(result.Stat, Stat{
 						Name:  item.Name,
 						Value: strconv.FormatInt(item.Value, 10),
 					})
+					if strings.HasPrefix(item.Name, "user>>>") {
+						parts := strings.Split(item.Name, ">>>")
+						if len(parts) == 4 && parts[2] == "traffic" && item.Value > 0 {
+							userBytes[parts[1]] += item.Value
+						}
+					}
+				}
+				for username, totalBytes := range userBytes {
+					s.logger.Trace("Recorded user traffic delta", "user", username, "bytes", totalBytes)
 				}
 			}
 
