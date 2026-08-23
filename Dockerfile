@@ -4,6 +4,7 @@ WORKDIR /ui
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 ARG SINGBOX_ASSETS_URL=https://adam-sizzler.github.io/s-validator
+ARG SINGBOX_SCHEMA_URL=https://github.com/BlackDuty/sing-box-schema/releases/download/v1.13.13/schema.json
 
 COPY frontend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm install --legacy-peer-deps --no-audit --prefer-offline
@@ -13,9 +14,11 @@ COPY frontend/ ./
 RUN if [ ! -f public/assets/main.wasm ] || [ ! -f public/assets/wasm_exec.js ] || [ ! -f public/assets/singbox.schema.json ]; then \
       apk add --no-cache curl \
       && mkdir -p public/assets \
-      && curl -L ${SINGBOX_ASSETS_URL}/wasm_exec.js -o public/assets/wasm_exec.js \
-      && curl -L ${SINGBOX_ASSETS_URL}/singbox.schema.json -o public/assets/singbox.schema.json \
-      && curl -L ${SINGBOX_ASSETS_URL}/main.wasm -o public/assets/main.wasm; \
+      && curl -fsSL ${SINGBOX_SCHEMA_URL} -o public/assets/singbox.schema.json \
+      && if [ ! -f public/assets/main.wasm ] || [ ! -f public/assets/wasm_exec.js ]; then \
+           curl -fsSL ${SINGBOX_ASSETS_URL}/wasm_exec.js -o public/assets/wasm_exec.js \
+           && curl -fsSL ${SINGBOX_ASSETS_URL}/main.wasm -o public/assets/main.wasm; \
+         fi; \
     else \
       echo "Assets already present locally, skipping download"; \
     fi
