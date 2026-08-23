@@ -10,7 +10,6 @@ import (
 func TestResolveExodusLogLevelDevelopment(t *testing.T) {
 	t.Setenv("NODE_ENV", "development")
 	t.Setenv("LOG_LEVEL", "")
-	t.Setenv("EXODUS_LOG_LEVEL", "")
 	t.Setenv("ENABLE_DEBUG_LOGS", "")
 	if got := ResolveExodusLogLevel(""); got != "info" {
 		t.Fatalf("ResolveExodusLogLevel() = %q, want info", got)
@@ -20,7 +19,6 @@ func TestResolveExodusLogLevelDevelopment(t *testing.T) {
 func TestResolveExodusLogLevelDebugFlag(t *testing.T) {
 	t.Setenv("NODE_ENV", "production")
 	t.Setenv("LOG_LEVEL", "")
-	t.Setenv("EXODUS_LOG_LEVEL", "")
 	t.Setenv("ENABLE_DEBUG_LOGS", "true")
 	if got := ResolveExodusLogLevel(""); got != "debug" {
 		t.Fatalf("ResolveExodusLogLevel() = %q, want debug", got)
@@ -31,7 +29,6 @@ func TestResolveExodusLogLevelDefaultsToInfo(t *testing.T) {
 	t.Setenv("NODE_ENV", "")
 	t.Setenv("ENV", "")
 	t.Setenv("LOG_LEVEL", "")
-	t.Setenv("EXODUS_LOG_LEVEL", "")
 	t.Setenv("ENABLE_DEBUG_LOGS", "")
 	if got := ResolveExodusLogLevel(""); got != "info" {
 		t.Fatalf("ResolveExodusLogLevel() = %q, want info", got)

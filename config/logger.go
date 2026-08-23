@@ -67,9 +67,6 @@ func ResolveExodusLogLevel(configured string) string {
 	if configured == "" {
 		configured = strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
 	}
-	if configured == "" {
-		configured = strings.ToLower(strings.TrimSpace(os.Getenv("EXODUS_LOG_LEVEL")))
-	}
 
 	switch configured {
 	case "trace", "verbose":
@@ -105,9 +102,6 @@ func parseExodusLogLevel(level string) LogLevel {
 	trimmed := strings.ToLower(strings.TrimSpace(level))
 	if trimmed == "" {
 		trimmed = strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
-	}
-	if trimmed == "" {
-		trimmed = strings.ToLower(strings.TrimSpace(os.Getenv("EXODUS_LOG_LEVEL")))
 	}
 
 	switch trimmed {

@@ -7,7 +7,6 @@ func TestLoadNodeConfigTokenMode(t *testing.T) {
 	t.Setenv("NODE_GRPC_TOKEN", "1234567890abcdef")
 	t.Setenv("NODE_GRPC_PATH", "/node/")
 	t.Setenv("LOG_LEVEL", "debug")
-	t.Setenv("EXODUS_LOG_LEVEL", "debug")
 
 	cfg, err := LoadNodeConfig()
 	if err != nil {
