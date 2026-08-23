@@ -45,10 +45,9 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			continue
 		}
 		state.mutex.RLock()
-		isReady := state.isConnected && state.client != nil
 		client := state.client
 		state.mutex.RUnlock()
-		if !isReady {
+		if client == nil {
 			continue
 		}
 		nodeUUID, ok := nodesByName[nodeName]

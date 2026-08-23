@@ -81,6 +81,10 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 	syncTicker := time.NewTicker(scheduler.RecordNodeUsageInterval)
 	defer syncTicker.Stop()
 
+	// Periodic watchdog for disconnected active nodes every NodeHealthCheckInterval (10 seconds)
+	watchdogTicker := time.NewTicker(scheduler.NodeHealthCheckInterval)
+	defer watchdogTicker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -100,7 +104,61 @@ func (nm *NodeMonitor) Start(ctx context.Context, wg *sync.WaitGroup) {
 			nm.deployToConnectedNodes(deployReq.Restart, deployReq.ForceRestart, deployReq.NodeUUIDs)
 		case <-syncTicker.C:
 			nm.syncNodes()
+		case <-watchdogTicker.C:
+			nm.retryFailedNodes()
 		}
+	}
+}
+
+// retryFailedNodes automatically re-attempts deploy for active nodes whose core failed to start or is disconnected.
+func (nm *NodeMonitor) retryFailedNodes() {
+	if nm == nil {
+		return
+	}
+
+	ctx := nm.globalCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rows, err := nm.db.QueryContext(ctx, `SELECT uuid::text, name FROM nodes WHERE is_disabled = false AND is_connected = false`)
+	if err != nil {
+		nm.cfg.Logger.Debug("Failed to query disconnected nodes for watchdog retry", "error", err)
+		return
+	}
+	defer rows.Close()
+
+	failedNodes := make(map[string]string)
+	for rows.Next() {
+		var uuid, name string
+		if scanErr := rows.Scan(&uuid, &name); scanErr == nil {
+			failedNodes[name] = uuid
+		}
+	}
+	if len(failedNodes) == 0 {
+		return
+	}
+
+	failedTargets := make([]string, 0, len(failedNodes))
+	nm.nodesLock.RLock()
+	for name, uuid := range failedNodes {
+		state, ok := nm.nodes[name]
+		if !ok || state == nil {
+			continue
+		}
+		state.mutex.RLock()
+		hasClient := state.client != nil
+		state.mutex.RUnlock()
+
+		if hasClient {
+			failedTargets = append(failedTargets, uuid)
+		}
+	}
+	nm.nodesLock.RUnlock()
+
+	if len(failedTargets) > 0 {
+		nm.cfg.Logger.Debug("Node watchdog retrying deploy for active disconnected nodes", "count", len(failedTargets), "node_uuids", failedTargets)
+		nm.deployToConnectedNodes(true, false, failedTargets)
 	}
 }
 
