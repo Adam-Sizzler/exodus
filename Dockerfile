@@ -38,6 +38,11 @@ WORKDIR /build/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
+# Invalidate cache on build bust or code changes
+ARG BUILD_BUST=1
+ARG __EX_METADATA_GIT_BACKEND_COMMIT=unknown
+ARG __EX_METADATA_VERSION=unknown
+
 # Copy source code
 COPY backend/ ./
 
