@@ -66,7 +66,7 @@ func TestParseDeployCoreState(t *testing.T) {
 			message:     `success: users=4 core_ready=false reload_error="parse config: unknown outbound"`,
 			wantHas:     true,
 			wantReady:   false,
-			wantMessage: "Core error: parse config: unknown outbound",
+			wantMessage: "parse config: unknown outbound",
 		},
 		{
 			name:        "missing core readiness does not imply connected",

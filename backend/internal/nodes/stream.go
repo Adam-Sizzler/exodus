@@ -119,11 +119,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	case "running", "ok", "healthy":
 		nm.updateConnectionStatus(nodeName, true, false, "")
 	case "error", "failed", "unhealthy", "stopped":
-		message := "Core error"
-		if coreError != "" {
-			message = coreError
-		}
-		nm.updateConnectionStatus(nodeName, false, false, message)
+		nm.updateConnectionStatus(nodeName, false, false, coreError)
 	}
 
 	singboxVersion := firstNonEmptyString(values["singbox_version"])

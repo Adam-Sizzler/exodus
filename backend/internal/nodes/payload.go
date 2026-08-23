@@ -143,7 +143,7 @@ func parseDeployCoreState(message string) (bool, bool, string) {
 	reloadErr, _ := deployMessageValue(message, "reload_error")
 	reloadErr = strings.TrimSpace(reloadErr)
 	if reloadErr != "" {
-		return true, false, "Core error: " + reloadErr
+		return true, false, reloadErr
 	}
 	return true, false, firstNonEmptyString(message, "Core failed to start")
 }
