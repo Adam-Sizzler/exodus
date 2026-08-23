@@ -125,8 +125,16 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 			result.ProcessAfter = afterInfo.StateName
 		}
 
+		logReason := ExtractSingboxLogReason(DefaultSingboxLogPath, 10)
+		tailLines := TailSingboxLogLines(DefaultSingboxLogPath, 5)
+		if len(tailLines) > 0 {
+			log.Error(fmt.Sprintf("Sing-box Core Log Tail (%s, %d lines):\n  %s", DefaultSingboxLogPath, len(tailLines), strings.Join(tailLines, "\n  ")))
+		}
+
 		if strings.TrimSpace(diagMsg) != "" {
 			result.Error = strings.TrimSpace(diagMsg)
+		} else if strings.TrimSpace(logReason) != "" {
+			result.Error = fmt.Sprintf("core process is %s · %s", result.ProcessAfter, strings.TrimSpace(logReason))
 		} else {
 			result.Error = fmt.Sprintf("core API healthcheck failed: %v", err)
 		}
