@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -276,7 +278,14 @@ func (w *exodusConsoleWriter) Write(p []byte) (int, error) {
 		}
 		line += " " + ctx
 	}
-	line += " " + event.Message + formatJSONFields(fields)
+	line += " " + event.Message
+	extra := formatExtraFields(fields)
+	if extra != "" {
+		if w.color {
+			extra = colorize(extra, ansiGray)
+		}
+		line += extra
+	}
 	return w.writeRaw(line)
 }
 
@@ -291,42 +300,57 @@ func isBoxMessage(message string) bool {
 	return strings.HasPrefix(message, "╭") || strings.HasPrefix(message, "╔")
 }
 
-func formatJSONFields(fields map[string]any) string {
+func formatExtraFields(fields map[string]any) string {
 	if len(fields) == 0 {
 		return ""
 	}
-	parts := make([]string, 0, len(fields))
-	for key, value := range fields {
-		parts = append(parts, fmt.Sprintf("%q: %s", key, jsonLogValue(value)))
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
 	}
-	return " {" + strings.Join(parts, ", ") + "}"
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, key+"="+formatFieldValue(fields[key]))
+	}
+	return " " + strings.Join(parts, " ")
 }
 
-func jsonLogValue(value any) string {
-	switch v := value.(type) {
+func formatFieldValue(value any) string {
+	switch typed := value.(type) {
 	case nil:
 		return "null"
-	case error:
-		return quoteJSONString(v.Error())
-	case fmt.Stringer:
-		return quoteJSONString(v.String())
 	case string:
-		return quoteJSONString(v)
-	default:
-		data, err := json.Marshal(v)
-		if err == nil {
-			return string(data)
+		if strings.ContainsAny(typed, " \t\n\r") {
+			return strconv.Quote(typed)
 		}
-		return quoteJSONString(fmt.Sprint(v))
+		return typed
+	case error:
+		errStr := typed.Error()
+		if strings.ContainsAny(errStr, " \t\n\r") {
+			return strconv.Quote(errStr)
+		}
+		return errStr
+	case fmt.Stringer:
+		str := typed.String()
+		if strings.ContainsAny(str, " \t\n\r") {
+			return strconv.Quote(str)
+		}
+		return str
+	default:
+		data, err := json.Marshal(typed)
+		if err == nil {
+			s := string(data)
+			if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) {
+				unquoted, unquoteErr := strconv.Unquote(s)
+				if unquoteErr == nil && !strings.ContainsAny(unquoted, " \t\n\r") {
+					return unquoted
+				}
+			}
+			return s
+		}
+		return fmt.Sprint(typed)
 	}
-}
-
-func quoteJSONString(value string) string {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprintf("%q", value)
-	}
-	return string(data)
 }
 
 const (

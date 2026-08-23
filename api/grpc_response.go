@@ -266,7 +266,6 @@ func (s *Service) GetApiResponse(ctx context.Context) (*ApiResponse, error) {
 			} else {
 				userBytes := make(map[string]int64)
 				for _, item := range stats {
-					s.logger.Trace("Processing core stat", "name", item.Name, "value", item.Value)
 					result.Stat = append(result.Stat, Stat{
 						Name:  item.Name,
 						Value: strconv.FormatInt(item.Value, 10),
