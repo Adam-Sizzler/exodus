@@ -2,8 +2,11 @@ package server
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,8 +26,8 @@ import (
 )
 
 const (
-	DefaultAsnLmdbPath   = "/usr/local/share/asn"
-	FallbackAsnLmdbPath  = "/var/lib/exodus-node/asn"
+	DefaultAsnLmdbPath   = "/usr/local/share/asn/asn-prefixes.lmdb"
+	FallbackAsnLmdbPath  = "/var/lib/exodus-node/asn/asn-prefixes.lmdb"
 	DefaultAsnReleaseURL = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz"
 )
 
@@ -75,23 +78,12 @@ func NewAsnLmdbService(cfg *config.NodeConfig) *AsnLmdbService {
 
 	if service.isAvailable {
 		if service.logger != nil {
-			service.logger.Info("[OK] ASN LMDB database opened successfully: " + service.dbPath)
+			service.logger.Info("ASN LMDB database opened successfully")
 		}
 	} else {
 		if service.logger != nil {
 			service.logger.Info(fmt.Sprintf("ASN LMDB database not found at %s — downloading dataset in background...", service.dbPath))
 		}
-		go func() {
-			if err := service.FetchAndLoadDataset(DefaultAsnReleaseURL); err != nil {
-				if service.logger != nil {
-					service.logger.Warn(fmt.Sprintf("Failed to download initial ASN dataset: %v — ASN lookup disabled (graceful degradation)", err))
-				}
-			} else {
-				if service.logger != nil {
-					service.logger.Info("[OK] ASN LMDB database downloaded and loaded successfully: " + service.dbPath)
-				}
-			}
-		}()
 	}
 
 	go service.startPeriodicUpdater()
@@ -100,7 +92,15 @@ func NewAsnLmdbService(cfg *config.NodeConfig) *AsnLmdbService {
 }
 
 func (s *AsnLmdbService) startPeriodicUpdater() {
-	ticker := time.NewTicker(7 * 24 * time.Hour)
+	// First check 5 seconds after startup, then every 24 hours
+	time.Sleep(3 * time.Second)
+	if err := s.CheckAndUpdateDataset(DefaultAsnReleaseURL); err != nil {
+		if s.logger != nil {
+			s.logger.Warn(fmt.Sprintf("Initial ASN dataset check failed: %v", err))
+		}
+	}
+
+	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
 	for {
@@ -108,13 +108,9 @@ func (s *AsnLmdbService) startPeriodicUpdater() {
 		case <-s.stopChan:
 			return
 		case <-ticker.C:
-			if err := s.FetchAndLoadDataset(DefaultAsnReleaseURL); err != nil {
+			if err := s.CheckAndUpdateDataset(DefaultAsnReleaseURL); err != nil {
 				if s.logger != nil {
 					s.logger.Warn(fmt.Sprintf("Periodic ASN dataset update failed: %v", err))
-				}
-			} else {
-				if s.logger != nil {
-					s.logger.Info("[OK] Periodic ASN dataset updated successfully")
 				}
 			}
 		}
@@ -136,7 +132,9 @@ func (s *AsnLmdbService) openDB() error {
 	} else {
 		// If path is a directory containing data.mdb, open directory
 		if stat, err := os.Stat(filepath.Join(targetPath, "data.mdb")); err == nil && !stat.IsDir() {
-			// directory contains data.mdb
+			// directory directly contains data.mdb
+		} else if stat, err := os.Stat(filepath.Join(targetPath, "asn-prefixes.lmdb", "data.mdb")); err == nil && !stat.IsDir() {
+			targetPath = filepath.Join(targetPath, "asn-prefixes.lmdb")
 		} else if strings.HasSuffix(targetPath, "asn-prefixes.lmdb") {
 			parent := filepath.Dir(targetPath)
 			if _, parentErr := os.Stat(filepath.Join(parent, "data.mdb")); parentErr == nil {
@@ -305,8 +303,9 @@ func (s *AsnLmdbService) ResolveASNs(asns []int) (ipv4, ipv6 []string) {
 	return outV4, outV6
 }
 
-// FetchAndLoadDataset downloads and extracts the daily ASN dataset archive if missing or requested.
-func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
+// CheckAndUpdateDataset checks the remote ASN dataset against local database SHA-256 hash.
+// If the hashes differ or local database is missing, it downloads, extracts, and reloads LMDB in runtime.
+func (s *AsnLmdbService) CheckAndUpdateDataset(urlStr string) error {
 	if urlStr == "" {
 		urlStr = DefaultAsnReleaseURL
 	}
@@ -315,13 +314,13 @@ func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
 	if strings.HasSuffix(targetDir, "asn-prefixes.lmdb") {
 		targetDir = filepath.Dir(targetDir)
 	}
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return fmt.Errorf("create asn dir: %w", err)
+	lmdbDir := filepath.Join(targetDir, "asn-prefixes.lmdb")
+	localDataFile := filepath.Join(lmdbDir, "data.mdb")
+	if _, err := os.Stat(localDataFile); err != nil {
+		localDataFile = filepath.Join(targetDir, "data.mdb")
 	}
 
-	if s.logger != nil {
-		s.logger.Info("Downloading ASN dataset from " + urlStr + "...")
-	}
+	localHash, _ := computeFileSha256(localDataFile)
 
 	client := &http.Client{Timeout: 120 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
@@ -340,13 +339,22 @@ func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
 		return fmt.Errorf("http get %s returned status %d", urlStr, resp.StatusCode)
 	}
 
-	gr, err := gzip.NewReader(resp.Body)
+	archiveBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+
+	// Unpack in memory to check data.mdb hash
+	gr, err := gzip.NewReader(bytes.NewReader(archiveBytes))
 	if err != nil {
 		return fmt.Errorf("read gzip stream: %w", err)
 	}
 	defer gr.Close()
 
 	tr := tar.NewReader(gr)
+	var remoteDataBytes []byte
+	filesToExtract := make(map[string][]byte)
+
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
@@ -355,28 +363,100 @@ func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
 		if err != nil {
 			return fmt.Errorf("read tar entry: %w", err)
 		}
-
-		targetPath := filepath.Join(targetDir, filepath.Base(header.Name))
-		if header.Typeflag == tar.TypeDir {
-			_ = os.MkdirAll(targetPath, 0755)
-			continue
+		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
+			content, err := io.ReadAll(tr)
+			if err != nil {
+				return fmt.Errorf("read tar file %s: %w", header.Name, err)
+			}
+			filesToExtract[header.Name] = content
+			if filepath.Base(header.Name) == "data.mdb" {
+				remoteDataBytes = content
+			}
 		}
+	}
 
+	if len(remoteDataBytes) == 0 {
+		return fmt.Errorf("remote archive does not contain data.mdb")
+	}
+
+	remoteHashSum := sha256.Sum256(remoteDataBytes)
+	remoteHash := hex.EncodeToString(remoteHashSum[:])
+
+	if s.isAvailable && localHash != "" && localHash == remoteHash {
+		if s.logger != nil {
+			preview := localHash
+			if len(preview) > 12 {
+				preview = preview[:12]
+			}
+			s.logger.Info("ASN dataset check: database is up to date (sha256: " + preview + "...)")
+		}
+		return nil
+	}
+
+	// Update required
+	if s.logger != nil {
+		localPreview := localHash
+		if len(localPreview) > 12 {
+			localPreview = localPreview[:12]
+		} else if localPreview == "" {
+			localPreview = "none"
+		}
+		remotePreview := remoteHash
+		if len(remotePreview) > 12 {
+			remotePreview = remotePreview[:12]
+		}
+		s.logger.Info(fmt.Sprintf("New ASN dataset detected (remote: %s..., local: %s...), updating database...", remotePreview, localPreview))
+	}
+
+	_ = os.MkdirAll(lmdbDir, 0755)
+	_ = os.MkdirAll(targetDir, 0755)
+
+	for name, content := range filesToExtract {
+		targetPath := filepath.Join(targetDir, name)
+		if strings.HasPrefix(name, "asn-prefixes.lmdb/") {
+			targetPath = filepath.Join(targetDir, name)
+		} else {
+			targetPath = filepath.Join(lmdbDir, filepath.Base(name))
+		}
 		_ = os.MkdirAll(filepath.Dir(targetPath), 0755)
-		out, err := os.Create(targetPath)
-		if err != nil {
-			return fmt.Errorf("create file %s: %w", targetPath, err)
+		if err := os.WriteFile(targetPath, content, 0644); err != nil {
+			return fmt.Errorf("write extracted file %s: %w", targetPath, err)
 		}
-
-		if _, err := io.Copy(out, tr); err != nil {
-			out.Close()
-			return fmt.Errorf("write file %s: %w", targetPath, err)
-		}
-		out.Close()
 	}
 
 	// Re-open LMDB database
-	return s.openDB()
+	if err := s.openDB(); err != nil {
+		return fmt.Errorf("re-open updated database: %w", err)
+	}
+
+	if s.logger != nil {
+		remotePreview := remoteHash
+		if len(remotePreview) > 12 {
+			remotePreview = remotePreview[:12]
+		}
+		s.logger.Info("[OK] ASN LMDB database updated successfully (sha256: " + remotePreview + "...)")
+	}
+
+	return nil
+}
+
+func computeFileSha256(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// FetchAndLoadDataset downloads and extracts the daily ASN dataset archive if missing or requested.
+func (s *AsnLmdbService) FetchAndLoadDataset(urlStr string) error {
+	return s.CheckAndUpdateDataset(urlStr)
 }
 
 func encodeOrderedBinaryNumberKey(n uint32) []byte {

@@ -112,10 +112,11 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	// that it's the process we just started - it could be a stale/orphaned
 	// core, or an unrelated process squatting the same port (the exact
 	// failure mode reported: the node "connects" but to a foreign core).
-	// Matches upstream Remnawave node's XrayProcessDownError guard in
+	// Matches upstream Exodus node's XrayProcessDownError guard in
 	// xray.service.ts#getXrayInternalStatus, which aborts the moment the
 	// s6-tracked PID no longer matches the one recorded right after start.
-	if err := waitForCoreAPIReady(ctx, cfg, apiService, s6, coreProcessName, startedPID); err != nil {
+	elapsed, err := waitForCoreAPIReady(ctx, cfg, apiService, s6, coreProcessName, startedPID)
+	if err != nil {
 		diagCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		diagMsg, _ := RunSingboxCheck(diagCtx, config.FixedSingboxConfigPath)
 		cancel()
@@ -147,7 +148,8 @@ func restartCoreProcessLifecycle(ctx context.Context, cfg *config.NodeConfig, ap
 	if apiService != nil {
 		apiService.MarkCoreOnline()
 	}
-	log.Log(renderCoreStartedMessage(result.ProcessAfter))
+	log.Log(fmt.Sprintf("✔ Sing-box Core v%s is up and running.", detectManagedCoreVersion()))
+	log.Log(fmt.Sprintf("Attempt to start Sing-box took: %s", formatDuration(elapsed)))
 	return result
 }
 
@@ -267,7 +269,7 @@ func shouldStopBeforeStart(stateName string) bool {
 // than the one this start attempt launched (crashed and got respawned by
 // s6 since). startedPID <= 0 means the PID right after start couldn't be
 // determined (e.g. no s6-svstat available) - in that case only the state
-// is checked, matching upstream Remnawave's `startedPid !== null` guard.
+// is checked, matching upstream Exodus's `startedPid !== null` guard.
 func coreIdentityFailure(ctx context.Context, s6 *s6Client, coreProcessName string, startedPID int) (string, bool) {
 	if s6 == nil || coreProcessName == "" {
 		return "", false
@@ -286,16 +288,18 @@ func coreIdentityFailure(ctx context.Context, s6 *s6Client, coreProcessName stri
 	return "", false
 }
 
-func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service, s6 *s6Client, coreProcessName string, startedPID int) error {
+func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService *api.Service, s6 *s6Client, coreProcessName string, startedPID int) (time.Duration, error) {
 	log := cfg.LoggerFor("SingboxService")
 	if apiService == nil {
-		return fmt.Errorf("core API service is nil")
+		return 0, fmt.Errorf("core API service is nil")
 	}
+
+	startTime := time.Now()
 
 	// Give a short 250ms window for the process to either boot or immediately fail
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return 0, ctx.Err()
 	case <-time.After(250 * time.Millisecond):
 	}
 
@@ -305,12 +309,15 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 		// different pid, according to the supervisor
 		if reason, broken := coreIdentityFailure(ctx, s6, coreProcessName, startedPID); broken {
 			log.Debug("Core process identity broken, fast failing healthcheck", "reason", reason, "attempt", attempt)
-			return fmt.Errorf("%s", reason)
+			return time.Since(startTime), fmt.Errorf("%s", reason)
 		}
 
 		checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		err := apiService.CheckCoreReady(checkCtx)
 		cancel()
+
+		elapsed := time.Since(startTime)
+
 		if err == nil {
 			// A successful API response alone doesn't prove it came from
 			// *our* process - re-verify identity right now before trusting it,
@@ -318,19 +325,22 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 			// be answering on the same host:port in the gap since the last check.
 			if reason, broken := coreIdentityFailure(ctx, s6, coreProcessName, startedPID); broken {
 				log.Debug("Core API answered but process identity is broken, not trusting it", "reason", reason, "attempt", attempt)
-				return fmt.Errorf("%s", reason)
+				return elapsed, fmt.Errorf("%s", reason)
 			}
 			log.Debug("Core API healthcheck passed", "attempt", attempt)
-			return nil
+			return elapsed, nil
 		}
 		lastErr = err
-		log.Debug("Get Sing-box internal status attempt failed", "attempt", attempt, "retries_left", coreHealthcheckAttempts-attempt, "error", err)
+
+		// Warn with Remnawave-style retry format
+		log.Warn(fmt.Sprintf("▸ Sing-box Core status check, %d/%d · elapsed %s · retrying in %s",
+			attempt, coreHealthcheckAttempts, formatDuration(elapsed), formatDuration(coreHealthcheckInterval)))
 
 		// After failed attempt, verify if process stopped or was respawned
 		// under a different pid before waiting
 		if reason, broken := coreIdentityFailure(ctx, s6, coreProcessName, startedPID); broken {
 			log.Debug("Core process identity broken after failed attempt, fast failing healthcheck", "reason", reason)
-			return fmt.Errorf("%s", reason)
+			return elapsed, fmt.Errorf("%s", reason)
 		}
 
 		if attempt == coreHealthcheckAttempts {
@@ -338,7 +348,7 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 		}
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return elapsed, ctx.Err()
 		case <-time.After(coreHealthcheckInterval):
 		}
 	}
@@ -346,5 +356,19 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 	if lastErr == nil {
 		lastErr = fmt.Errorf("unknown core API healthcheck error")
 	}
-	return lastErr
+	return time.Since(startTime), lastErr
+}
+
+// formatDuration formats a duration as "Xs Yms" or just "Yms" for short durations.
+func formatDuration(d time.Duration) string {
+	ms := d.Milliseconds()
+	if ms < 1000 {
+		return fmt.Sprintf("%dms", ms)
+	}
+	sec := ms / 1000
+	remainMs := ms % 1000
+	if remainMs == 0 {
+		return fmt.Sprintf("%ds", sec)
+	}
+	return fmt.Sprintf("%ds %dms", sec, remainMs)
 }

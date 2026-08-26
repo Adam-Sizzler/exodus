@@ -44,6 +44,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if authMsg := server.GetAuthValidationMessage(&cfg); authMsg != "" {
+		cfg.Logger.Log(authMsg)
+	}
+	if cfg.SecretKeyReport != nil && cfg.Backend.GRPCToken != "" {
+		cfg.LoggerFor("ConfigService").Warn("SECRET_KEY takes priority over NODE_GRPC_TOKEN — token auth disabled")
+	}
+
 	instanceLock := server.AcquireInstanceLock(&cfg)
 	defer func() {
 		if instanceLock != nil {

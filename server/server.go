@@ -43,7 +43,7 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 		apiService: apiService,
 		asnService: asnService,
 	}
-	cfg.LoggerFor("Supervisor").Info("[OK] Supervisor (s6-overlay) initialized")
+	cfg.LoggerFor("Supervisor").Debug("[OK] Supervisor (s6-overlay) initialized")
 	cfg.LoggerFor("NetworkStatsService").Info("Network stats polling started (interval: 1000ms, default: " + detectDefaultNetworkInterfaceForLogs() + ")")
 	cfg.LoggerFor("NftService").Info("[PLUGIN] Ingress Filter: available")
 	cfg.LoggerFor("NftService").Info("[PLUGIN] Egress Filter: available")

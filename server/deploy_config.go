@@ -95,6 +95,8 @@ func (s *NodeServer) DeployConfig(ctx context.Context, task DeployConfigTaskPayl
 	}
 	log.Debug("DeployConfig started", "config_bytes", len(rawConfig))
 
+	logInternalUserExtraction(s.Cfg.LoggerFor("InternalService"), rawConfig)
+
 	configPath := config.FixedSingboxConfigPath
 
 	// Do NOT default task.Listen here. Doing so makes opt.Listen always
@@ -531,6 +533,123 @@ func nonNilSlice(in []string) []string {
 		return []string{}
 	}
 	return in
+}
+
+// djb2Dual matches Remnawave's @remnawave/hashed-set implementation.
+func djb2Dual(str string) (uint32, uint32) {
+	var high uint32 = 5381
+	var low uint32 = 5387
+	for i := 0; i < len(str); i++ {
+		c := uint32(str[i])
+		high = (high<<5) + high + c
+		low = (low<<6) + low + c*37
+	}
+	return high, low
+}
+
+type HashedSet struct {
+	seen     map[string]struct{}
+	hashHigh uint32
+	hashLow  uint32
+}
+
+func NewHashedSet() *HashedSet {
+	return &HashedSet{
+		seen: make(map[string]struct{}),
+	}
+}
+
+func (h *HashedSet) Add(str string) {
+	if str == "" {
+		return
+	}
+	if _, ok := h.seen[str]; !ok {
+		h.seen[str] = struct{}{}
+		high, low := djb2Dual(str)
+		h.hashHigh ^= high
+		h.hashLow ^= low
+	}
+}
+
+func (h *HashedSet) Hash64String() string {
+	return fmt.Sprintf("%08x%08x", h.hashHigh, h.hashLow)
+}
+
+func (h *HashedSet) Size() int {
+	return len(h.seen)
+}
+
+func computeEmptyConfigHash(rawConfig json.RawMessage) string {
+	var parsed map[string]any
+	if err := json.Unmarshal(rawConfig, &parsed); err != nil {
+		return sha256Hex(rawConfig)
+	}
+	if inbounds, ok := parsed["inbounds"].([]any); ok {
+		cleanInbounds := make([]any, 0, len(inbounds))
+		for _, in := range inbounds {
+			if inMap, ok := in.(map[string]any); ok {
+				copyMap := make(map[string]any, len(inMap))
+				for k, v := range inMap {
+					if k != "users" && k != "clients" {
+						copyMap[k] = v
+					}
+				}
+				cleanInbounds = append(cleanInbounds, copyMap)
+			}
+		}
+		parsed["inbounds"] = cleanInbounds
+	}
+	cleanJSON, err := json.Marshal(parsed)
+	if err != nil {
+		return sha256Hex(rawConfig)
+	}
+	return sha256Hex(cleanJSON)
+}
+
+func logInternalUserExtraction(log *config.Logger, rawConfig json.RawMessage) {
+	if log == nil {
+		return
+	}
+	start := time.Now()
+	log.Log("Cleaning up internal service.")
+	log.Log("Starting user extraction from inbounds...")
+	log.Log(fmt.Sprintf("▸ Empty Config Hash: %s", computeEmptyConfigHash(rawConfig)))
+
+	var parsed struct {
+		Inbounds []map[string]any `json:"inbounds"`
+	}
+	if err := json.Unmarshal(rawConfig, &parsed); err == nil {
+		for _, in := range parsed.Inbounds {
+			tag, _ := in["tag"].(string)
+			if tag == "" {
+				tag = "inbound"
+			}
+			usersRaw, ok := in["users"].([]any)
+			if !ok || len(usersRaw) == 0 {
+				continue
+			}
+			userSet := NewHashedSet()
+			for _, u := range usersRaw {
+				if uMap, ok := u.(map[string]any); ok {
+					id, _ := uMap["uuid"].(string)
+					if id == "" {
+						id, _ = uMap["password"].(string)
+					}
+					if id == "" {
+						id, _ = uMap["name"].(string)
+					}
+					if id != "" {
+						userSet.Add(id)
+					}
+				}
+			}
+			if userSet.Size() > 0 {
+				h := userSet.Hash64String()
+				log.Log(fmt.Sprintf("▸ %s · %d users · %s (%s)", tag, userSet.Size(), h, h))
+			}
+		}
+	}
+	log.Log(fmt.Sprintf("User extraction completed in %s", formatDuration(time.Since(start))))
 }
 
 func normalizeLocalRuleSetPathsOrdered(cfg *orderedmap.OrderedMap, baseDir string) {

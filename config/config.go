@@ -15,6 +15,7 @@ type NodeConfig struct {
 	Backend         BackendConfig
 	CoreAPIGRPCPort int
 	Logger          *Logger
+	SecretKeyReport *SecretKeyReport
 }
 
 type LogConfig struct {
@@ -92,13 +93,14 @@ func LoadNodeConfig() (NodeConfig, error) {
 		cfg.Backend.GRPCToken = value
 	}
 
-	nodePayload, err := ParseNodePayloadFromSecret()
+	nodePayload, report, err := ParseNodePayloadFromSecret()
 	if err == nil {
 		cfg.Backend.MTLSConfig = &MTLSConfig{
 			Cert:   nodePayload.NodeCertPem,
 			Key:    nodePayload.NodeKeyPem,
 			CACert: nodePayload.CaCertPem,
 		}
+		cfg.SecretKeyReport = report
 	} else if !errors.Is(err, ErrSecretKeyNotSet) {
 		return cfg, err
 	}

@@ -60,7 +60,7 @@ func TestCoreIdentityFailureSkipsPidCheckWhenStartedPidUnknown(t *testing.T) {
 
 	// startedPID <= 0 means we couldn't determine the pid right after start
 	// (e.g. no s6-svstat at that moment) - only the up/down state should be
-	// checked, matching upstream Remnawave's `startedPid !== null` guard.
+	// checked, matching upstream Exodus's `startedPid !== null` guard.
 	if reason, broken := coreIdentityFailure(context.Background(), s6, coreProcessName, 0); broken {
 		t.Fatalf("expected no identity failure when startedPID is unknown, got reason=%q", reason)
 	}

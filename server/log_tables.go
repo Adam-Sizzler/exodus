@@ -8,11 +8,27 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"exodus-node/config"
 	"exodus-node/constant"
 )
+
+// GetAuthValidationMessage returns the SECRET_KEY or GRPC_TOKEN validation table.
+// If SECRET_KEY is set — renders full check table (like Remnawave).
+// If only GRPC_TOKEN is set — renders single-line table.
+// Returns empty string if neither is configured.
+func GetAuthValidationMessage(cfg *config.NodeConfig) string {
+	if cfg == nil {
+		return ""
+	}
+	if cfg.SecretKeyReport != nil {
+		return renderSecretKeyTable(cfg.SecretKeyReport)
+	}
+	if cfg.Backend.GRPCToken != "" {
+		return renderGrpcTokenTable()
+	}
+	return ""
+}
 
 func GetStartMessage(cfg *config.NodeConfig) string {
 	port := config.DefaultNodeGRPCPort
@@ -26,33 +42,21 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 		"Exodus Node "+constant.Version,
 		[][]string{
 			{
-				"Docs → https://docs.exodus.dev",
-				"Community → https://t.me/exodus",
+				"Docs: https://docs.exodus.dev",
+				"Community: https://t.me/exodus",
 			},
 			{
-				"API Port → " + strconv.Itoa(port),
-				"Internal Ports → " + strconv.Itoa(cfg.CoreAPIGRPCPort),
-				"Path Prefix → " + pathPrefix,
+				"API Port: " + strconv.Itoa(port),
+				"Internal Ports: " + strconv.Itoa(cfg.CoreAPIGRPCPort),
+				"Path Prefix: " + pathPrefix,
 			},
 			{
-				"Sing-box Core → v" + detectManagedCoreVersion(),
-				"Sing-box Path → /usr/local/bin/sing-box",
+				"Sing-box Core: v" + detectManagedCoreVersion(),
+				"Sing-box Path: /usr/local/bin/sing-box",
 			},
 			{fmt.Sprintf("%dC, %s, %s", runtime.NumCPU(), detectCPUModelForLogs(), formatIECBytesForLogs(detectTotalRAMForLogs()))},
-			{"Kernel → " + strings.TrimSpace(runCommandForLogs("uname", "-r"))},
-			wrapPrefixedLogLine("Interfaces → ", strings.Join(detectNetworkInterfacesForLogs(), ", "), logTableWidth-4),
-		},
-	)
-}
-
-func renderCoreStartedMessage(processState string) string {
-	return renderPlainLogTable(
-		"Sing-box started successfully",
-		[]string{
-			"Version → " + detectManagedCoreVersion(),
-			"Process State → " + processState,
-			"Started At → " + time.Now().Format(time.RFC3339),
-			"Config → " + config.FixedSingboxConfigPath,
+			{"Kernel: " + strings.TrimSpace(runCommandForLogs("uname", "-r"))},
+			wrapPrefixedLogLine("Network Interfaces: ", strings.Join(detectNetworkInterfacesForLogs(), ", "), logTableWidth-4),
 		},
 	)
 }
@@ -61,10 +65,86 @@ func renderCoreFailedMessage(processState, err string) string {
 	return renderPlainLogTable(
 		"Sing-box failed to start",
 		append([]string{
-			"Version → " + detectManagedCoreVersion(),
-			"Process State → " + processState,
-		}, wrapPrefixedLogLine("Error → ", err, logTableWidth-4)...),
+			"Version: " + detectManagedCoreVersion(),
+			"Process State: " + processState,
+		}, wrapPrefixedLogLine("Error: ", err, logTableWidth-4)...),
 	)
+}
+
+// renderSecretKeyTable renders the SECRET_KEY validation box (Remnawave-style with ┌┐└┘).
+func renderSecretKeyTable(report *config.SecretKeyReport) string {
+	width := logTableWidth
+	top := "┌" + strings.Repeat("─", width-2) + "┐"
+	mid := "├" + strings.Repeat("─", width-2) + "┤"
+	bot := "└" + strings.Repeat("─", width-2) + "┘"
+
+	title := "SECRET_KEY OK"
+	if !report.AllOK {
+		title = "SECRET_KEY INVALID"
+	}
+
+	var b strings.Builder
+	b.WriteString(top)
+	b.WriteByte('\n')
+	b.WriteString(renderCenteredLine(title, width))
+	b.WriteByte('\n')
+	b.WriteString(mid)
+
+	// Find max label width for alignment
+	labelW := 0
+	for _, c := range report.Checks {
+		if len(c.Name) > labelW {
+			labelW = len(c.Name)
+		}
+	}
+
+	for _, c := range report.Checks {
+		mark := "✓"
+		if !c.OK {
+			mark = "✗"
+		}
+		inner := width - 4 // 2 for borders, 2 for padding
+		line := fmt.Sprintf("%s %-*s  %s", mark, labelW, c.Name, c.Detail)
+		if logCellWidth(line) > inner {
+			line = truncateLogCell(line, inner)
+		}
+		// Left-aligned with padding
+		padRight := inner - logCellWidth(line)
+		if padRight < 0 {
+			padRight = 0
+		}
+		b.WriteByte('\n')
+		b.WriteString("│ ")
+		b.WriteString(line)
+		b.WriteString(strings.Repeat(" ", padRight))
+		b.WriteString(" │")
+	}
+
+	if report.SNI != "" {
+		b.WriteByte('\n')
+		b.WriteString(mid)
+		b.WriteByte('\n')
+		b.WriteString(renderCenteredLine(report.SNI, width))
+	}
+
+	b.WriteByte('\n')
+	b.WriteString(bot)
+	return b.String()
+}
+
+// renderGrpcTokenTable renders a simple box for GRPC_TOKEN mode.
+func renderGrpcTokenTable() string {
+	width := logTableWidth
+	top := "┌" + strings.Repeat("─", width-2) + "┐"
+	bot := "└" + strings.Repeat("─", width-2) + "┘"
+
+	var b strings.Builder
+	b.WriteString(top)
+	b.WriteByte('\n')
+	b.WriteString(renderCenteredLine("NODE_GRPC_TOKEN: OK", width))
+	b.WriteByte('\n')
+	b.WriteString(bot)
+	return b.String()
 }
 
 const logTableWidth = 80

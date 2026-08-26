@@ -16,7 +16,7 @@ const defaultStreamInterval = 15 * time.Second
 func (s *NodeServer) StreamNodeData(stream proto.NodeService_StreamNodeDataServer) error {
 	remoteAddr := ExtractClientIP(stream.Context())
 	log := s.Cfg.LoggerFor("StreamService")
-	log.Info("Panel stream connected successfully", "remote_addr", remoteAddr, "interval_seconds", int(defaultStreamInterval/time.Second))
+	log.Info("Panel stream connected successfully", "remote_addr", remoteAddr)
 	defer func() {
 		log.Warn("Panel stream disconnected", "remote_addr", remoteAddr)
 	}()
@@ -127,7 +127,7 @@ func (s *NodeServer) handleStreamRequest(req *proto.NodeDataRequest, updateInter
 			<-updateIntervalCh
 			updateIntervalCh <- next
 		}
-		s.Cfg.LoggerFor("StatsService").Log("Stream interval updated", "interval_seconds", interval)
+		s.Cfg.LoggerFor("StatsService").Debug("Stream interval updated", "interval_seconds", interval)
 		return nil
 	case *proto.NodeDataRequest_ListUsers:
 		return status.Error(codes.Unimplemented, statsOnlyMessage)

@@ -300,7 +300,8 @@ func (w *exodusConsoleWriter) writeRaw(line string) (int, error) {
 }
 
 func isBoxMessage(message string) bool {
-	return strings.HasPrefix(message, "╭") || strings.HasPrefix(message, "╔")
+	trimmed := strings.TrimLeft(message, "\r\n ")
+	return strings.HasPrefix(trimmed, "╭") || strings.HasPrefix(trimmed, "╔") || strings.HasPrefix(trimmed, "┌")
 }
 
 func formatExtraFields(fields map[string]any) string {

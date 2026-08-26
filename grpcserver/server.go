@@ -53,9 +53,9 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		}
 		unaryInterceptors = append(unaryInterceptors, grpcTokenUnaryInterceptor(expectedToken))
 		streamInterceptors = append(streamInterceptors, grpcTokenStreamInterceptor(expectedToken))
-		log.Info("gRPC auth mode: TLS + token")
+		log.Debug("gRPC auth mode: TLS + token")
 	} else {
-		log.Info("gRPC auth mode: mTLS")
+		log.Debug("gRPC auth mode: mTLS")
 	}
 
 	var opts []grpc.ServerOption
@@ -86,7 +86,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 			ClientCAs:    caCertPool,
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 		}
-		log.Info("mTLS enabled for gRPC server")
+		log.Debug("mTLS enabled for gRPC server")
 	} else {
 		if cfg.Backend.GrpcAddress != "127.0.0.1" && cfg.Backend.GrpcAddress != "localhost" {
 			log.Warn("Insecure gRPC on non-local address", "address", cfg.Backend.GrpcAddress)
@@ -99,7 +99,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 
 	pathPrefix := cfg.Backend.Trimmed()
 	if pathPrefix != "" {
-		log.Info("gRPC path prefix configured", "prefix", pathPrefix)
+		log.Debug("gRPC path prefix configured", "prefix", pathPrefix)
 	}
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +134,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 		return err
 	}
 
-	log.Info("Starting gRPC server", "address", addr)
+	log.Debug("Starting gRPC server", "address", addr)
 
 	httpServer := &http.Server{
 		ReadHeaderTimeout: 10 * time.Second,

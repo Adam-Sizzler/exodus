@@ -37,11 +37,16 @@ RUN set -eu; \
 FROM alpine:3.23 AS singbox
 
 ARG SINGBOX_VERSION=v1.13.13
+ARG ASN_LMDB_URL=https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz
 
 RUN apk update && apk add --no-cache ca-certificates curl \
     && curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
         -o /usr/local/bin/sing-box \
-    && chmod +x /usr/local/bin/sing-box
+    && chmod +x /usr/local/bin/sing-box \
+    && mkdir -p /usr/local/share/asn \
+    && curl -fL "${ASN_LMDB_URL}" -o /tmp/asn-prefixes-lmdb.tar.gz \
+    && tar -xzf /tmp/asn-prefixes-lmdb.tar.gz -C /usr/local/share/asn \
+    && rm -f /tmp/asn-prefixes-lmdb.tar.gz
 
 FROM alpine:3.23
 
@@ -69,6 +74,7 @@ WORKDIR /opt/app
 
 COPY --from=builder /build/exodus-node-app /opt/app/exodus-node
 COPY --from=singbox /usr/local/bin/sing-box /usr/local/bin/sing-box
+COPY --from=singbox /usr/local/share/asn /usr/local/share/asn
 
 COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 
