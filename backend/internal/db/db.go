@@ -24,6 +24,11 @@ func OpenAndInitDB(cfg *config.BackendConfig) (*sql.DB, error) {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(15 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+
 	for {
 		pingCtx, cancelPing := context.WithTimeout(context.Background(), 5*time.Second)
 		err := db.PingContext(pingCtx)

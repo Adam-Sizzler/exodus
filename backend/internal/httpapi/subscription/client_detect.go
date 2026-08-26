@@ -60,13 +60,17 @@ func extractSyntheticHwidHeaders(r *http.Request, userUUID, requestIP string) *H
 		stringPtrIfNotEmpty(userAgent),
 	)
 
-	signature := strings.Join([]string{
-		"exodus:synthetic-hwid:v1",
-		"ua=" + strings.ToLower(ptrString(userAgentPtr)),
-		"platform=" + strings.ToLower(ptrString(platform)),
-		"os=" + strings.ToLower(ptrString(osVersion)),
-		"model=" + strings.ToLower(ptrString(deviceModel)),
-	}, "|")
+	var b strings.Builder
+	b.Grow(128)
+	b.WriteString("exodus:synthetic-hwid:v1|ua=")
+	b.WriteString(strings.ToLower(ptrString(userAgentPtr)))
+	b.WriteString("|platform=")
+	b.WriteString(strings.ToLower(ptrString(platform)))
+	b.WriteString("|os=")
+	b.WriteString(strings.ToLower(ptrString(osVersion)))
+	b.WriteString("|model=")
+	b.WriteString(strings.ToLower(ptrString(deviceModel)))
+	signature := b.String()
 
 	return &HwidHeaders{
 		Hwid:        deterministicSyntheticHwid(userUUID, signature),

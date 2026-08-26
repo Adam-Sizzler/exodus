@@ -208,6 +208,10 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if OnSettingsUpdated != nil {
+		OnSettingsUpdated()
+	}
+
 	apiSettings, err := convertSubscriptionSettingsToAPI(settings)
 	if err != nil {
 		shared.SendAPIError(w, shared.ErrUpdateSubscriptionSettingsFailed.WithCause(err), cfg)
@@ -216,3 +220,7 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": apiSettings})
 }
+
+// OnSettingsUpdated is invoked whenever subscription settings are modified.
+var OnSettingsUpdated func()
+

@@ -515,6 +515,10 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
+	if OnSquadUpdated != nil {
+		OnSquadUpdated(req.UUID)
+	}
+
 	handleGetExternalSquadByUUID(w, r, db, cfg, req.UUID)
 }
 
@@ -530,8 +534,16 @@ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
+	if OnSquadUpdated != nil {
+		OnSquadUpdated(squadUUID)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// OnSquadUpdated is invoked whenever external squad overrides are modified.
+var OnSquadUpdated func(uuid string)
+
 
 func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, squadUUID string) {
 	var req BulkUsersRequest

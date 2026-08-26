@@ -3,6 +3,7 @@ package nodehotcache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -99,28 +100,33 @@ func (c *Cache) GetMany(ctx context.Context, uuids []string) (map[string]HotCach
 		return result, nil
 	}
 
-	pipe := c.client.Pipeline()
-	commands := make([]*redis.StringCmd, 0, len(uuids)*5)
+	keys := make([]string, 0, len(uuids)*5)
 	for _, uuid := range uuids {
-		commands = append(commands,
-			pipe.Get(ctx, key(systemInfoPrefix, uuid)),
-			pipe.Get(ctx, key(systemStatsPrefix, uuid)),
-			pipe.Get(ctx, key(usersOnlinePrefix, uuid)),
-			pipe.Get(ctx, key(versionsPrefix, uuid)),
-			pipe.Get(ctx, key(singboxUptimePrefix, uuid)),
+		keys = append(keys,
+			key(systemInfoPrefix, uuid),
+			key(systemStatsPrefix, uuid),
+			key(usersOnlinePrefix, uuid),
+			key(versionsPrefix, uuid),
+			key(singboxUptimePrefix, uuid),
 		)
 	}
-	if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil {
+
+	values, err := c.client.MGet(ctx, keys...).Result()
+	if err != nil && err != redis.Nil {
 		return result, nil
 	}
 
 	for i, uuid := range uuids {
 		base := i * 5
-		infoRaw := stringValue(commands[base])
-		statsRaw := stringValue(commands[base+1])
-		onlineRaw := stringValue(commands[base+2])
-		versionsRaw := stringValue(commands[base+3])
-		uptimeRaw := stringValue(commands[base+4])
+		if base+4 >= len(values) {
+			break
+		}
+
+		infoRaw := mgetString(values[base])
+		statsRaw := mgetString(values[base+1])
+		onlineRaw := mgetString(values[base+2])
+		versionsRaw := mgetString(values[base+3])
+		uptimeRaw := mgetString(values[base+4])
 
 		hot := HotCache{
 			SingboxUptime: parseInt64(uptimeRaw),
@@ -142,6 +148,20 @@ func (c *Cache) GetMany(ctx context.Context, uuids []string) (map[string]HotCach
 	}
 
 	return result, nil
+}
+
+func mgetString(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch val := v.(type) {
+	case string:
+		return val
+	case []byte:
+		return string(val)
+	default:
+		return fmt.Sprint(val)
+	}
 }
 
 func (c *Cache) SetSystemInfo(ctx context.Context, uuid string, info json.RawMessage) error {

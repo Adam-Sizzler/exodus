@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"exodus/internal/config"
@@ -13,20 +14,71 @@ import (
 	"exodus/internal/security"
 )
 
+var (
+	tokenCacheLock sync.RWMutex
+	tokenCache     = make(map[string]cachedTokenPrincipal)
+)
+
+type cachedTokenPrincipal struct {
+	principal *AuthPrincipal
+	expiresAt time.Time
+}
+
+const tokenCacheTTL = 15 * time.Second
+
 func resolveToken(token string, db *sql.DB, cfg *config.BackendConfig) (*AuthPrincipal, error) {
 	if token == "" {
 		return nil, errors.New("empty token")
 	}
 
-	if principal, err := resolveAdminJWT(token, db, cfg); err == nil {
+	tokenCacheLock.RLock()
+	if cached, ok := tokenCache[token]; ok && time.Now().Before(cached.expiresAt) {
+		tokenCacheLock.RUnlock()
+		return cached.principal, nil
+	}
+	tokenCacheLock.RUnlock()
+
+	var principal *AuthPrincipal
+	var err error
+
+	if principal, err = resolveAdminJWT(token, db, cfg); err == nil && principal != nil {
+		cacheResolvedPrincipal(token, principal)
 		return principal, nil
 	}
 
-	if principal, err := resolveAPIJWT(token, db, cfg); err == nil {
+	if principal, err = resolveAPIJWT(token, db, cfg); err == nil && principal != nil {
+		cacheResolvedPrincipal(token, principal)
 		return principal, nil
 	}
 
 	return nil, errors.New("invalid auth token")
+}
+
+func cacheResolvedPrincipal(token string, principal *AuthPrincipal) {
+	tokenCacheLock.Lock()
+	defer tokenCacheLock.Unlock()
+
+	if len(tokenCache) > 1000 {
+		now := time.Now()
+		for k, v := range tokenCache {
+			if now.After(v.expiresAt) {
+				delete(tokenCache, k)
+			}
+		}
+	}
+
+	ttl := tokenCacheTTL
+	if principal.ExpiresAt > 0 {
+		tokenRemaining := time.Until(time.Unix(principal.ExpiresAt, 0))
+		if tokenRemaining > 0 && tokenRemaining < ttl {
+			ttl = tokenRemaining
+		}
+	}
+
+	tokenCache[token] = cachedTokenPrincipal{
+		principal: principal,
+		expiresAt: time.Now().Add(ttl),
+	}
 }
 
 func resolveAdminJWT(token string, db *sql.DB, cfg *config.BackendConfig) (*AuthPrincipal, error) {

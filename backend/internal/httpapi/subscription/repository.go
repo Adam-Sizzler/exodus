@@ -15,10 +15,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"exodus/internal/config"
 	"exodus/internal/db"
+	"exodus/internal/httpapi/externalsquads"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
@@ -27,7 +29,78 @@ import (
 	"exodus/internal/util"
 )
 
+var (
+	subSettingsCacheLock sync.RWMutex
+	subSettingsCached    *SubscriptionSettingsParsed
+	subSettingsCacheTime time.Time
+
+	squadOverridesCacheLock sync.RWMutex
+	squadOverridesCache     = make(map[string]cachedSquadOverride)
+
+	subNodeBaseLock sync.RWMutex
+	subNodeBaseVal  string
+	subNodeBaseExp  time.Time
+
+	subTemplateLock      sync.RWMutex
+	subTemplateTypeCache = make(map[string]cachedTemplate)
+	subTemplateNameCache = make(map[string]cachedNamedTemplate)
+)
+
+type cachedSquadOverride struct {
+	overrides *ExternalSquadOverrides
+	expiresAt time.Time
+}
+
+type cachedTemplate struct {
+	data      []byte
+	expiresAt time.Time
+}
+
+type cachedNamedTemplate struct {
+	templateType string
+	data         []byte
+	expiresAt    time.Time
+}
+
+const (
+	subSettingsCacheTTL = 1 * time.Hour
+	squadOverridesCacheTTL = 1 * time.Hour
+	subNodeBaseTTL      = 30 * time.Second
+	subTemplateCacheTTL = 5 * time.Minute
+)
+
+func init() {
+	subscriptionsettings.OnSettingsUpdated = InvalidateSubscriptionSettingsCache
+	externalsquads.OnSquadUpdated = InvalidateExternalSquadCache
+}
+
+// InvalidateSubscriptionSettingsCache clears the cached subscription settings.
+func InvalidateSubscriptionSettingsCache() {
+	subSettingsCacheLock.Lock()
+	subSettingsCached = nil
+	subSettingsCacheLock.Unlock()
+}
+
+// InvalidateExternalSquadCache clears the cached squad overrides.
+func InvalidateExternalSquadCache(squadUUID string) {
+	squadOverridesCacheLock.Lock()
+	if squadUUID == "" {
+		squadOverridesCache = make(map[string]cachedSquadOverride)
+	} else {
+		delete(squadOverridesCache, squadUUID)
+	}
+	squadOverridesCacheLock.Unlock()
+}
+
 func loadSubscriptionSettings(ctx context.Context, dbConn *sql.DB, _ *config.BackendConfig) (SubscriptionSettingsParsed, error) {
+	subSettingsCacheLock.RLock()
+	if subSettingsCached != nil && time.Since(subSettingsCacheTime) < subSettingsCacheTTL {
+		cached := *subSettingsCached
+		subSettingsCacheLock.RUnlock()
+		return cached, nil
+	}
+	subSettingsCacheLock.RUnlock()
+
 	var parsed SubscriptionSettingsParsed
 
 	row := dbConn.QueryRowContext(ctx, `
@@ -104,10 +177,26 @@ func loadSubscriptionSettings(ctx context.Context, dbConn *sql.DB, _ *config.Bac
 		}
 	}
 
+	subSettingsCacheLock.Lock()
+	subSettingsCached = &parsed
+	subSettingsCacheTime = time.Now()
+	subSettingsCacheLock.Unlock()
+
 	return parsed, nil
 }
 
 func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID string, cfg *config.BackendConfig) (*ExternalSquadOverrides, error) {
+	if strings.TrimSpace(squadUUID) == "" {
+		return nil, nil
+	}
+
+	squadOverridesCacheLock.RLock()
+	if cached, ok := squadOverridesCache[squadUUID]; ok && time.Now().Before(cached.expiresAt) {
+		squadOverridesCacheLock.RUnlock()
+		return cached.overrides, nil
+	}
+	squadOverridesCacheLock.RUnlock()
+
 	log := cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP)
 	overrides := &ExternalSquadOverrides{
 		Templates: make(map[string]string),
@@ -184,6 +273,13 @@ func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID s
 	} else {
 		log.Warn("Failed to load external squad templates", "error", err)
 	}
+
+	squadOverridesCacheLock.Lock()
+	squadOverridesCache[squadUUID] = cachedSquadOverride{
+		overrides: overrides,
+		expiresAt: time.Now().Add(squadOverridesCacheTTL),
+	}
+	squadOverridesCacheLock.Unlock()
 
 	return overrides, nil
 }
@@ -589,15 +685,14 @@ func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user Subscription
 	return HwidCheckupResult{Allowed: true}, nil
 }
 
-// hwidLockPrefix matches Remnawave's HWID_LOCK_PREFIX (900000000n): added to
+// hwidLockPrefix (900000000n): added to
 // the user ID to form the pg_advisory_xact_lock key, keeping this lock's
 // numeric key space clear of the fixed key internal/db/migrations.go uses
 // for its own advisory lock (2203092601 — far outside this per-user range
 // for any realistic user ID).
 const hwidLockPrefix int64 = 900000000
 
-// createHwidDeviceWithAdvisoryLock is a 1:1 port of Remnawave's
-// HwidUserDevicesRepository.createWithAdvisoryLock: count-then-insert is a
+// createHwidDeviceWithAdvisoryLock serializes device creation per user: count-then-insert is a
 // classic check-then-act race — two concurrent requests for the same user
 // with two different new HWIDs can both pass a plain "count < limit" check
 // before either INSERT commits, silently exceeding the device limit under
@@ -746,6 +841,14 @@ func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID str
 
 func getSubscriptionTemplate(ctx context.Context, dbConn *sql.DB, templateType string) ([]byte, error) {
 	upperType := strings.ToUpper(strings.TrimSpace(templateType))
+
+	subTemplateLock.RLock()
+	if cached, ok := subTemplateTypeCache[upperType]; ok && time.Now().Before(cached.expiresAt) {
+		subTemplateLock.RUnlock()
+		return cached.data, nil
+	}
+	subTemplateLock.RUnlock()
+
 	row := dbConn.QueryRowContext(ctx, `
 		SELECT template_yaml, template_json
 		FROM subscription_templates
@@ -770,10 +873,25 @@ func getSubscriptionTemplate(ctx context.Context, dbConn *sql.DB, templateType s
 			templateData = []byte(templateYAML.String)
 		}
 	}
+
+	subTemplateLock.Lock()
+	subTemplateTypeCache[upperType] = cachedTemplate{
+		data:      templateData,
+		expiresAt: time.Now().Add(subTemplateCacheTTL),
+	}
+	subTemplateLock.Unlock()
+
 	return templateData, nil
 }
 
 func getSubscriptionTemplateByName(ctx context.Context, dbConn *sql.DB, name string) (string, []byte, error) {
+	subTemplateLock.RLock()
+	if cached, ok := subTemplateNameCache[name]; ok && time.Now().Before(cached.expiresAt) {
+		subTemplateLock.RUnlock()
+		return cached.templateType, cached.data, nil
+	}
+	subTemplateLock.RUnlock()
+
 	row := dbConn.QueryRowContext(ctx, `
 		SELECT template_type, template_yaml, template_json
 		FROM subscription_templates
@@ -799,6 +917,15 @@ func getSubscriptionTemplateByName(ctx context.Context, dbConn *sql.DB, name str
 			templateData = []byte(templateYAML.String)
 		}
 	}
+
+	subTemplateLock.Lock()
+	subTemplateNameCache[name] = cachedNamedTemplate{
+		templateType: templateType,
+		data:         templateData,
+		expiresAt:    time.Now().Add(subTemplateCacheTTL),
+	}
+	subTemplateLock.Unlock()
+
 	return templateType, templateData, nil
 }
 
@@ -1073,6 +1200,14 @@ func resolveSubscriptionBaseFromNode(ctx context.Context, dbConn *sql.DB) string
 		return ""
 	}
 
+	subNodeBaseLock.RLock()
+	if time.Now().Before(subNodeBaseExp) {
+		val := subNodeBaseVal
+		subNodeBaseLock.RUnlock()
+		return val
+	}
+	subNodeBaseLock.RUnlock()
+
 	var domain sql.NullString
 	var apiPath sql.NullString
 	row := dbConn.QueryRowContext(ctx, `
@@ -1086,11 +1221,19 @@ func resolveSubscriptionBaseFromNode(ctx context.Context, dbConn *sql.DB) string
 
 	scanErr := row.Scan(&domain, &apiPath)
 	if errors.Is(scanErr, sql.ErrNoRows) || scanErr != nil || !domain.Valid {
+		subNodeBaseLock.Lock()
+		subNodeBaseVal = ""
+		subNodeBaseExp = time.Now().Add(subNodeBaseTTL)
+		subNodeBaseLock.Unlock()
 		return ""
 	}
 
 	nodeDomain := strings.TrimSpace(strings.Split(domain.String, ",")[0])
 	if nodeDomain == "" {
+		subNodeBaseLock.Lock()
+		subNodeBaseVal = ""
+		subNodeBaseExp = time.Now().Add(subNodeBaseTTL)
+		subNodeBaseLock.Unlock()
 		return ""
 	}
 
@@ -1100,6 +1243,10 @@ func resolveSubscriptionBaseFromNode(ctx context.Context, dbConn *sql.DB) string
 
 	parsedDomain, parseErr := url.Parse(nodeDomain)
 	if parseErr != nil || strings.TrimSpace(parsedDomain.Host) == "" {
+		subNodeBaseLock.Lock()
+		subNodeBaseVal = ""
+		subNodeBaseExp = time.Now().Add(subNodeBaseTTL)
+		subNodeBaseLock.Unlock()
 		return ""
 	}
 
@@ -1110,7 +1257,14 @@ func resolveSubscriptionBaseFromNode(ctx context.Context, dbConn *sql.DB) string
 
 	base := strings.TrimRight(parsedDomain.String(), "/")
 	path := normalizeSubscriptionAPIPath(apiPath.String)
-	return base + path
+	res := base + path
+
+	subNodeBaseLock.Lock()
+	subNodeBaseVal = res
+	subNodeBaseExp = time.Now().Add(subNodeBaseTTL)
+	subNodeBaseLock.Unlock()
+
+	return res
 }
 
 func normalizeSubscriptionAPIPath(value string) string {
@@ -1150,6 +1304,9 @@ func resolveSubscriptionURL(ctx context.Context, dbConn *sql.DB, user Subscripti
 // round-trip per request.
 func buildResponseHeaders(user SubscriptionUser, settings SubscriptionSettingsParsed, contentType string, subscriptionURL string) map[string]string {
 	headers := make(map[string]string)
+	if contentType != "" {
+		headers["content-type"] = contentType
+	}
 	headers["content-disposition"] = fmt.Sprintf("attachment; filename=%s", user.Username)
 
 	userInfo := getSubscriptionUserInfo(user)
@@ -1252,11 +1409,7 @@ func formatTemplateValue(value string, user SubscriptionUser, settings Subscript
 // formatTemplateTrafficBytes renders a traffic value for {{TRAFFIC_USED}} /
 // {{TRAFFIC_LEFT}} / {{TOTAL_TRAFFIC}} placeholders using util.FormatBytes,
 // so the unit auto-scales past 1024 GiB into TiB/PiB instead of staying
-// pinned to GiB. NOTE: this intentionally diverges from upstream Remnawave's
-// TemplateEngine.replace(), which always renders these three placeholders in
-// GiB regardless of magnitude - clients/scripts parsing the subscription
-// remark that expect the upstream-fixed "X.XX GiB" format will see "X.XX
-// TiB" once a limit/usage crosses 1024 GiB.
+// pinned to GiB.
 func formatTemplateTrafficBytes(bytes int64) string {
 	if bytes < 0 {
 		bytes = 0
