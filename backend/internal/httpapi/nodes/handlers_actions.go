@@ -15,10 +15,10 @@ func handleEnableNode(w http.ResponseWriter, r *http.Request, service *NodeServi
 	err := service.EnableNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to enable node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrEnableNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 	sendUpdatedNodeResponse(w, r, service, nodeUUID)
@@ -28,10 +28,10 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, service *NodeServ
 	err := service.DisableNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to disable node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDisableNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 	sendUpdatedNodeResponse(w, r, service, nodeUUID)
@@ -40,14 +40,14 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, service *NodeServ
 func handleRestartNode(w http.ResponseWriter, r *http.Request, service *NodeService, nodeUUID string) {
 	req, err := decodeOptionalRestartNodesRequest(r)
 	if err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 
 	err = service.RestartNode(r.Context(), nodeUUID, isForceRestartRequested(req))
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
@@ -60,10 +60,10 @@ func handleResetNodeTraffic(w http.ResponseWriter, r *http.Request, service *Nod
 	err := service.ResetNodeTraffic(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to reset node traffic", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrResetNodeTrafficFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -73,7 +73,7 @@ func handleResetNodeTraffic(w http.ResponseWriter, r *http.Request, service *Nod
 func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	req, err := decodeOptionalRestartNodesRequest(r)
 	if err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 
@@ -83,7 +83,7 @@ func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, service *Node
 			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to restart all nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrRestartNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
@@ -110,23 +110,23 @@ func isForceRestartRequested(req restartAllNodesRequest) bool {
 func handleReorderNodes(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	var req reorderNodesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 	if len(req.Nodes) == 0 {
-		shared.SendError(w, http.StatusBadRequest, "nodes cannot be empty", nil, service.cfg)
+		shared.SendAPIError(w, shared.ErrNodesListCannotBeEmpty, service.cfg)
 		return
 	}
 	for _, item := range req.Nodes {
 		if _, err := uuid.Parse(item.UUID); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrInvalidUUID, service.cfg)
 			return
 		}
 	}
 
 	err := service.ReorderNodes(r.Context(), req.Nodes)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrReorderNodesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -136,12 +136,12 @@ func handleReorderNodes(w http.ResponseWriter, r *http.Request, service *NodeSer
 func sendUpdatedNodeResponse(w http.ResponseWriter, r *http.Request, service *NodeService, nodeUUID string) {
 	node, err := service.repo.getNodeByUUID(r.Context(), nodeUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUpdatedNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 	response, err := buildNodeResponses(r.Context(), service.repo, service.cfg, []nodeRecord{node})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildNodeResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})

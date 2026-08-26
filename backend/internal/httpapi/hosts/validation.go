@@ -5,6 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"exodus/internal/util"
+
 	"github.com/google/uuid"
 )
 
@@ -204,12 +206,7 @@ func validateHostTags(tags []string) error {
 }
 
 func validateUUIDList(values []string) error {
-	for _, value := range values {
-		if _, err := uuid.Parse(value); err != nil {
-			return fmt.Errorf("invalid uuid value")
-		}
-	}
-	return nil
+	return util.ValidateUUIDsAllowEmpty(values)
 }
 
 func validateTemplateTypes(values []string) error {

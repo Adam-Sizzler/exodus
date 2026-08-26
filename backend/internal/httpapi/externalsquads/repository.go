@@ -51,6 +51,68 @@ func getExternalSquads(ctx context.Context, db *sql.DB) ([]ExternalSquadRecord, 
 	return records, rows.Err()
 }
 
+// getExternalSquadsMembersCount batch-loads member counts for a set of external squads
+// in a single query, instead of one COUNT(*) query per squad.
+func getExternalSquadsMembersCount(ctx context.Context, db *sql.DB, squadUUIDs []string) (map[string]int, error) {
+	result := make(map[string]int, len(squadUUIDs))
+	if len(squadUUIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT external_squad_uuid, COUNT(*)
+		FROM users
+		WHERE external_squad_uuid = ANY($1)
+		GROUP BY external_squad_uuid
+	`, squadUUIDs)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var uuid string
+		var count int
+		if err := rows.Scan(&uuid, &count); err != nil {
+			return result, err
+		}
+		result[uuid] = count
+	}
+	return result, rows.Err()
+}
+
+// getExternalSquadsTemplates batch-loads templates for a set of external squads
+// in a single query, instead of one query per squad.
+func getExternalSquadsTemplates(ctx context.Context, db *sql.DB, squadUUIDs []string) (map[string][]ExternalSquadTemplate, error) {
+	result := make(map[string][]ExternalSquadTemplate, len(squadUUIDs))
+	for _, id := range squadUUIDs {
+		result[id] = make([]ExternalSquadTemplate, 0)
+	}
+	if len(squadUUIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT external_squad_uuid, template_uuid, template_type
+		FROM external_squads_templates
+		WHERE external_squad_uuid = ANY($1)
+	`, squadUUIDs)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var squadUUID string
+		var t ExternalSquadTemplate
+		if err := rows.Scan(&squadUUID, &t.TemplateUUID, &t.TemplateType); err != nil {
+			return result, err
+		}
+		result[squadUUID] = append(result[squadUUID], t)
+	}
+	return result, rows.Err()
+}
+
 func getExternalSquadByUUID(ctx context.Context, db *sql.DB, squadUUID string) (ExternalSquadRecord, error) {
 	row := db.QueryRowContext(ctx, `
 		SELECT uuid, view_position, name,

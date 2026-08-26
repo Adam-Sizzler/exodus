@@ -69,7 +69,7 @@ func NodesHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			nodeUUID := strings.TrimSuffix(path, "/users")
 			handleGetNodeUsersUsage(w, r, db, cfg, nodeUUID)
 		default:
-			shared.WriteJSONError(w, http.StatusNotFound, "not found")
+			shared.SendAPIError(w, shared.ErrNotFound, cfg)
 		}
 	}
 }
@@ -100,7 +100,7 @@ func UsersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		path := strings.TrimPrefix(r.URL.Path, "/api/bandwidth-stats/users")
 		path = strings.Trim(path, "/")
 		if path == "" {
-			shared.WriteJSONError(w, http.StatusNotFound, "not found")
+			shared.SendAPIError(w, shared.ErrNotFound, cfg)
 			return
 		}
 
@@ -142,7 +142,7 @@ JOIN nodes n ON n.uuid = l.node_uuid
 ORDER BY total_speed_bps DESC
 	`)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes realtime usage", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesRealtimeUsageFailed.WithCause(err), cfg)
 		return
 	}
 	defer rows.Close()
@@ -155,13 +155,13 @@ ORDER BY total_speed_bps DESC
 			&it.DownloadBytes, &it.UploadBytes, &it.TotalBytes,
 			&it.DownloadSpeedBps, &it.UploadSpeedBps, &it.TotalSpeedBps,
 		); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes realtime usage", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodesRealtimeUsageFailed.WithCause(scanErr), cfg)
 			return
 		}
 		items = append(items, it)
 	}
 	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes realtime usage", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesRealtimeUsageFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -188,7 +188,7 @@ LEFT JOIN daily_traffic dt ON dt.date = d.date
 ORDER BY d.ord
 	`, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesSparklineFailed.WithCause(err), cfg)
 		return
 	}
 	defer sparkRows.Close()
@@ -197,13 +197,13 @@ ORDER BY d.ord
 	for sparkRows.Next() {
 		var v int64
 		if scanErr := sparkRows.Scan(&v); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes sparkline", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodesSparklineFailed.WithCause(scanErr), cfg)
 			return
 		}
 		sparkline = append(sparkline, v)
 	}
 	if err := sparkRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesSparklineFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -233,7 +233,7 @@ GROUP BY nt.uuid, nt.name, nt.country_code, nt.total_bytes
 ORDER BY nt.total_bytes DESC
 	`, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(err), cfg)
 		return
 	}
 	defer seriesRows.Close()
@@ -243,7 +243,7 @@ ORDER BY nt.total_bytes DESC
 		var s usageSeries
 		var dataRaw string
 		if scanErr := seriesRows.Scan(&s.UUID, &s.Name, &s.CountryCode, &s.Total, &dataRaw); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes usage", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(scanErr), cfg)
 			return
 		}
 		s.Color = colorFromUUID(s.UUID)
@@ -251,7 +251,7 @@ ORDER BY nt.total_bytes DESC
 		series = append(series, s)
 	}
 	if err := seriesRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -265,7 +265,7 @@ ORDER BY total DESC
 LIMIT $3
 	`, startDate, endDate, topLimit)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetTopNodesFailed.WithCause(err), cfg)
 		return
 	}
 	defer topRows.Close()
@@ -274,14 +274,14 @@ LIMIT $3
 	for topRows.Next() {
 		var t topNode
 		if scanErr := topRows.Scan(&t.UUID, &t.Name, &t.CountryCode, &t.Total); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan top nodes", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetTopNodesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		t.Color = colorFromUUID(t.UUID)
 		topNodes = append(topNodes, t)
 	}
 	if err := topRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetTopNodesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -306,10 +306,10 @@ func handleGetNodeUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB,
 	err := db.QueryRowContext(r.Context(), `SELECT id FROM nodes WHERE uuid = $1`, nodeUUID).Scan(&nodeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			shared.WriteJSONError(w, http.StatusNotFound, "node not found")
+			shared.SendAPIError(w, shared.ErrNodeNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetOneNodeFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -326,7 +326,7 @@ LEFT JOIN daily_traffic dt ON dt.date = d.date::date
 ORDER BY d.ord
 	`, nodeID, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node users sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodeUsersSparklineFailed.WithCause(err), cfg)
 		return
 	}
 	defer sparkRows.Close()
@@ -335,13 +335,13 @@ ORDER BY d.ord
 	for sparkRows.Next() {
 		var v int64
 		if scanErr := sparkRows.Scan(&v); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan node users sparkline", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodeUsersSparklineFailed.WithCause(scanErr), cfg)
 			return
 		}
 		sparkline = append(sparkline, v)
 	}
 	if err := sparkRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node users sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodeUsersSparklineFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -355,7 +355,7 @@ ORDER BY total DESC
 LIMIT $4
 	`, nodeID, startDate, endDate, topLimit)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetTopUsersFailed.WithCause(err), cfg)
 		return
 	}
 	defer topRows.Close()
@@ -365,7 +365,7 @@ LIMIT $4
 		var userUUID, username string
 		var total int64
 		if scanErr := topRows.Scan(&userUUID, &username, &total); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan top users", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetTopUsersFailed.WithCause(scanErr), cfg)
 			return
 		}
 		topUsers = append(topUsers, topUser{
@@ -375,7 +375,7 @@ LIMIT $4
 		})
 	}
 	if err := topRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetTopUsersFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -407,7 +407,7 @@ func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB
 
 	nodeRows, err := db.QueryContext(r.Context(), `SELECT id FROM nodes WHERE uuid = ANY($1)`, req.NodesUUIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), cfg)
 		return
 	}
 	defer nodeRows.Close()
@@ -416,17 +416,17 @@ func handleGetNodesUsersUsage(w http.ResponseWriter, r *http.Request, db *sql.DB
 	for nodeRows.Next() {
 		var id int64
 		if scanErr := nodeRows.Scan(&id); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan node ID", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		nodeIDs = append(nodeIDs, id)
 	}
 	if err := nodeRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), cfg)
 		return
 	}
 	if len(nodeIDs) == 0 {
-		shared.WriteJSONError(w, http.StatusNotFound, "nodes not found")
+		shared.SendAPIError(w, shared.ErrNodeNotFound, cfg)
 		return
 	}
 
@@ -443,7 +443,7 @@ LEFT JOIN daily_traffic dt ON dt.date = d.date::date
 ORDER BY d.ord
 	`, nodeIDs, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes users sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodeUsersSparklineFailed.WithCause(err), cfg)
 		return
 	}
 	defer sparkRows.Close()
@@ -452,13 +452,13 @@ ORDER BY d.ord
 	for sparkRows.Next() {
 		var v int64
 		if scanErr := sparkRows.Scan(&v); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan nodes users sparkline", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodeUsersSparklineFailed.WithCause(scanErr), cfg)
 			return
 		}
 		sparkline = append(sparkline, v)
 	}
 	if err := sparkRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes users sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodeUsersSparklineFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -472,7 +472,7 @@ ORDER BY total DESC
 LIMIT $4
 	`, nodeIDs, startDate, endDate, topLimit)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetTopUsersFailed.WithCause(err), cfg)
 		return
 	}
 	defer topRows.Close()
@@ -482,7 +482,7 @@ LIMIT $4
 		var userUUID, username string
 		var total int64
 		if scanErr := topRows.Scan(&userUUID, &username, &total); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan top users", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetTopUsersFailed.WithCause(scanErr), cfg)
 			return
 		}
 		topUsers = append(topUsers, topUser{
@@ -492,7 +492,7 @@ LIMIT $4
 		})
 	}
 	if err := topRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetTopUsersFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -514,11 +514,11 @@ func handleGetUserUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg 
 
 	var userExists bool
 	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&userExists); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserStatsFailed.WithCause(err), cfg)
 		return
 	}
 	if !userExists {
-		shared.WriteJSONError(w, http.StatusNotFound, "user not found")
+		shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 		return
 	}
 
@@ -535,7 +535,7 @@ LEFT JOIN daily_traffic dt ON dt.date = d.date::date
 ORDER BY d.ord
 	`, userID, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserSparklineFailed.WithCause(err), cfg)
 		return
 	}
 	defer sparkRows.Close()
@@ -544,13 +544,13 @@ ORDER BY d.ord
 	for sparkRows.Next() {
 		var v int64
 		if scanErr := sparkRows.Scan(&v); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan user sparkline", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetUserSparklineFailed.WithCause(scanErr), cfg)
 			return
 		}
 		sparkline = append(sparkline, v)
 	}
 	if err := sparkRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user sparkline", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserSparklineFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -580,7 +580,7 @@ GROUP BY nt.uuid, nt.name, nt.country_code, nt.total_bytes
 ORDER BY nt.total_bytes DESC
 	`, userID, startDate, endDate, pgDateArrayLiteral(dates))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user nodes series", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserNodesSeriesFailed.WithCause(err), cfg)
 		return
 	}
 	defer seriesRows.Close()
@@ -590,7 +590,7 @@ ORDER BY nt.total_bytes DESC
 		var s usageSeries
 		var dataRaw string
 		if scanErr := seriesRows.Scan(&s.UUID, &s.Name, &s.CountryCode, &s.Total, &dataRaw); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan user nodes series", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetUserNodesSeriesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		s.Color = colorFromUUID(s.UUID)
@@ -598,7 +598,7 @@ ORDER BY nt.total_bytes DESC
 		series = append(series, s)
 	}
 	if err := seriesRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user nodes series", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserNodesSeriesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -612,7 +612,7 @@ ORDER BY total DESC
 LIMIT $4
 	`, userID, startDate, endDate, topLimit)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user top nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserTopNodesFailed.WithCause(err), cfg)
 		return
 	}
 	defer topRows.Close()
@@ -621,14 +621,14 @@ LIMIT $4
 	for topRows.Next() {
 		var t topNode
 		if scanErr := topRows.Scan(&t.UUID, &t.Name, &t.CountryCode, &t.Total); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan user top nodes", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetUserTopNodesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		t.Color = colorFromUUID(t.UUID)
 		topNodes = append(topNodes, t)
 	}
 	if err := topRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user top nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserTopNodesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -671,7 +671,7 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		SELECT id, uuid FROM nodes WHERE uuid = ANY($1::uuid[])
 	`, pgDateArrayLiteral(req.NodesUUIDs))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -691,7 +691,7 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		var nodeUUID string
 		if scanErr := nodeRows.Scan(&id, &nodeUUID); scanErr != nil {
 			nodeRows.Close()
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan node", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		nodeUUIDByID[id] = nodeUUID
@@ -699,7 +699,7 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 	}
 	nodeRows.Close()
 	if err := nodeRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -730,7 +730,7 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		HAVING COALESCE(SUM(nuh.total_bytes), 0) >= $4
 	`, nodeIDsLiteral, startDate, endDate, minTotalBytes)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes usage", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(err), cfg)
 		return
 	}
 	defer rows.Close()
@@ -738,7 +738,7 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 	for rows.Next() {
 		var nodeID, userID, totalBytes int64
 		if scanErr := rows.Scan(&nodeID, &userID, &totalBytes); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan node user usage item", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(scanErr), cfg)
 			return
 		}
 		nodeUUID, ok := nodeUUIDByID[nodeID]
@@ -749,7 +749,7 @@ func handlePostNodesUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		item.Users = append(item.Users, nodeUsageUser{ID: userID, TotalBytes: totalBytes})
 	}
 	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node user usage items", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(err), cfg)
 		return
 	}
 

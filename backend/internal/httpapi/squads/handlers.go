@@ -16,7 +16,7 @@ import (
 func handleGetInternalSquads(w http.ResponseWriter, r *http.Request, service *SquadService) {
 	squads, err := service.repo.getSquads(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squads", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -24,12 +24,12 @@ func handleGetInternalSquads(w http.ResponseWriter, r *http.Request, service *Sq
 	for _, squad := range squads {
 		membersCount, err := service.repo.getSquadMembersCount(r.Context(), squad.UUID)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to build internal squads response", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), service.cfg)
 			return
 		}
 		inbounds, err := service.repo.getSquadInbounds(r.Context(), squad.UUID)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to build internal squads response", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), service.cfg)
 			return
 		}
 		item := buildInternalSquadResponse(squad, membersCount, inbounds)
@@ -58,11 +58,11 @@ func handleCreateInternalSquad(w http.ResponseWriter, r *http.Request, service *
 
 	result, err := service.CreateSquad(r.Context(), req)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			shared.SendError(w, http.StatusConflict, "name already exists", err, service.cfg)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "already exists") {
+			shared.SendAPIError(w, shared.ErrInternalSquadNameAlreadyExists, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to create internal squad", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrCreateInternalSquadFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -101,14 +101,14 @@ func handleUpdateInternalSquad(w http.ResponseWriter, r *http.Request, service *
 	result, err := service.UpdateSquad(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errSquadNotFound) {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, service.cfg)
 		} else if strings.Contains(strings.ToLower(err.Error()), "inbound not found") {
-			shared.SendError(w, http.StatusBadRequest, "one or more inbounds not found", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileInboundNotFoundInProfile.WithCause(err), service.cfg)
 		} else {
-			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-				shared.SendError(w, http.StatusConflict, "name already exists", err, service.cfg)
+			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "already exists") {
+				shared.SendAPIError(w, shared.ErrInternalSquadNameAlreadyExists, service.cfg)
 			} else {
-				shared.SendError(w, http.StatusInternalServerError, "update failed", err, service.cfg)
+				shared.SendAPIError(w, shared.ErrUpdateInternalSquadFailed.WithCause(err), service.cfg)
 			}
 		}
 		return
@@ -133,9 +133,9 @@ func handleDeleteInternalSquad(w http.ResponseWriter, r *http.Request, service *
 	_, err := service.DeleteSquad(r.Context(), squadUUID)
 	if err != nil {
 		if errors.Is(err, errSquadNotFound) {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, service.cfg)
 		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to delete internal squad", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrDeleteInternalSquadFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
@@ -147,21 +147,21 @@ func handleGetInternalSquad(w http.ResponseWriter, r *http.Request, service *Squ
 	squad, err := service.repo.getSquadByUUID(r.Context(), squadUUID)
 	if err != nil {
 		if errors.Is(err, errSquadNotFound) {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, service.cfg)
 		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to find internal squad", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
 
 	membersCount, err := service.repo.getSquadMembersCount(r.Context(), squadUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build internal squad response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 	inbounds, err := service.repo.getSquadInbounds(r.Context(), squadUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build internal squad response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -176,9 +176,9 @@ func handleGetInternalSquadAccessibleNodes(w http.ResponseWriter, r *http.Reques
 	nodes, err := service.repo.getSquadAccessibleNodes(r.Context(), squadUUID)
 	if err != nil {
 		if errors.Is(err, errInternalSquadNotFound) {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, service.cfg)
 		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squad accessible nodes", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadAccessibleNodesFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
@@ -215,7 +215,7 @@ func handleReorderInternalSquads(w http.ResponseWriter, r *http.Request, service
 
 	err := service.ReorderSquads(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder internal squads", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrReorderInternalSquadsFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -226,7 +226,7 @@ func handleGetInboundAssignments(w http.ResponseWriter, r *http.Request, service
 	nodeUUID := r.URL.Query().Get("node_uuid")
 	assignments, err := service.repo.getInboundAssignments(r.Context(), nodeUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to get inbound assignments", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -249,7 +249,7 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, service
 
 	result, err := service.SetInboundAssignments(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to set inbound assignments", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateInternalSquadFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -268,7 +268,7 @@ func handleSetInboundAssignments(w http.ResponseWriter, r *http.Request, service
 func handleGetConfigProfilesWithInbounds(w http.ResponseWriter, r *http.Request, service *SquadService) {
 	profiles, err := service.repo.getConfigProfilesWithInbounds(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to get config profiles with inbounds", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -288,7 +288,7 @@ func NodesWithConfigHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		}
 		nodes, err := repo.getNodesWithConfig(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes with config", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), cfg)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -308,7 +308,7 @@ func InboundsWithProfilesHandler(db *sql.DB, cfg *config.BackendConfig) http.Han
 		}
 		inbounds, err := repo.getInboundsWithProfiles(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch inbounds with profiles", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), cfg)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -328,7 +328,7 @@ func AllSquadsSummaryHandler(db *sql.DB, cfg *config.BackendConfig) http.Handler
 		}
 		squads, err := repo.getAllSquadsSummary(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch squads summary", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), cfg)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -348,7 +348,7 @@ func SquadInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 			squadUUID := r.URL.Query().Get("squad_uuid")
 			inbounds, err := repo.getSquadInboundBindings(r.Context(), squadUUID)
 			if err != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad inbounds", err, cfg)
+				shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), cfg)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -369,14 +369,14 @@ func SquadInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 			err := service.SetSquadInbounds(r.Context(), req)
 			if err != nil {
 				if err.Error() == "squad not found" {
-					shared.SendError(w, http.StatusNotFound, "squad not found", err, cfg)
+					shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 					return
 				}
 				if strings.Contains(err.Error(), "inbound not found") {
 					shared.SendError(w, http.StatusBadRequest, err.Error(), err, cfg)
 					return
 				}
-				shared.SendError(w, http.StatusInternalServerError, "failed to set squad inbounds", err, cfg)
+				shared.SendAPIError(w, shared.ErrUpdateInternalSquadFailed.WithCause(err), cfg)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -400,7 +400,7 @@ func SquadMembersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 			squadUUID := r.URL.Query().Get("squad_uuid")
 			members, err := repo.getSquadMembers(r.Context(), squadUUID)
 			if err != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad members", err, cfg)
+				shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), cfg)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -421,14 +421,14 @@ func SquadMembersHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 			err := service.SetSquadMembers(r.Context(), req)
 			if err != nil {
 				if err.Error() == "squad not found" {
-					shared.SendError(w, http.StatusNotFound, "squad not found", err, cfg)
+					shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 					return
 				}
 				if strings.Contains(err.Error(), "user not found") {
 					shared.SendError(w, http.StatusBadRequest, err.Error(), err, cfg)
 					return
 				}
-				shared.SendError(w, http.StatusInternalServerError, "failed to set squad members", err, cfg)
+				shared.SendAPIError(w, shared.ErrUpdateInternalSquadFailed.WithCause(err), cfg)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -468,10 +468,10 @@ func SquadDetailsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 		squad, err := repo.getSquadDetails(r.Context(), squadUUID)
 		if err != nil {
 			if err.Error() == "squad not found" {
-				shared.SendError(w, http.StatusNotFound, "squad not found", nil, cfg)
+				shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 				return
 			}
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad details", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), cfg)
 			return
 		}
 

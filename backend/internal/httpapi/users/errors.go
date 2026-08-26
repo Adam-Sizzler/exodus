@@ -3,49 +3,34 @@ package users
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
-
-	"github.com/jackc/pgx/v5/pgconn"
+	"exodus/internal/util"
 )
 
 func handleUserWriteError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {
 	switch {
 	case errors.Is(err, errUsernameExists):
-		shared.SendError(w, http.StatusConflict, "username already exists", nil, cfg)
+		shared.SendAPIError(w, shared.ErrUsernameAlreadyExists, cfg)
 	case errors.Is(err, errShortUUIDExists):
-		shared.SendError(w, http.StatusConflict, "short uuid already exists", nil, cfg)
+		shared.SendAPIError(w, shared.ErrShortUUIDAlreadyExists, cfg)
 	case errors.Is(err, errVLESSUUIDExists):
-		shared.SendError(w, http.StatusConflict, "vless uuid already exists", nil, cfg)
+		shared.SendAPIError(w, shared.ErrVlessUUIDAlreadyExists, cfg)
 	case errors.Is(err, errUserNotFound):
-		shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 	default:
-		shared.SendError(w, http.StatusInternalServerError, "failed to write user", err, cfg)
+		shared.SendAPIError(w, shared.ErrUserWriteFailed.WithCause(err), cfg)
 	}
 }
 
 func mapUserWriteError(err error) error {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		switch pgErr.ConstraintName {
-		case "users_username_key":
-			return errUsernameExists
-		case "users_short_uuid_key":
-			return errShortUUIDExists
-		case "users_vless_uuid_key":
-			return errVLESSUUIDExists
-		}
-	}
-
-	message := err.Error()
 	switch {
-	case strings.Contains(message, "users_username_key"), strings.Contains(message, "UNIQUE constraint failed: users.username"):
+	case util.IsUniqueViolation(err, "users_username_key"):
 		return errUsernameExists
-	case strings.Contains(message, "users_short_uuid_key"), strings.Contains(message, "UNIQUE constraint failed: users.short_uuid"):
+	case util.IsUniqueViolation(err, "users_short_uuid_key"):
 		return errShortUUIDExists
-	case strings.Contains(message, "users_vless_uuid_key"), strings.Contains(message, "UNIQUE constraint failed: users.vless_uuid"):
+	case util.IsUniqueViolation(err, "users_vless_uuid_key"):
 		return errVLESSUUIDExists
 	default:
 		return err

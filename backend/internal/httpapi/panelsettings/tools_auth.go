@@ -32,7 +32,7 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			secret := cfg.JWT.AuthSecret
 			if err := security.ValidateJWTSecret(secret); err != nil {
-				shared.WriteJSONError(w, http.StatusForbidden, "forbidden")
+				shared.SendAPIError(w, shared.ErrForbidden, cfg)
 				return
 			}
 
@@ -74,7 +74,7 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 					return
 				}
 
-				shared.WriteJSONError(w, http.StatusForbidden, "invalid OTT token")
+				shared.SendAPIError(w, shared.ErrForbidden, cfg)
 				return
 			}
 
@@ -86,7 +86,7 @@ func ToolsAuthMiddleware(cfg *config.BackendConfig) func(http.Handler) http.Hand
 				}
 			}
 
-			shared.WriteJSONError(w, http.StatusForbidden, "forbidden")
+			shared.SendAPIError(w, shared.ErrForbidden, cfg)
 		})
 	}
 }

@@ -88,7 +88,7 @@ func handleGetAllSharedLists(w http.ResponseWriter, r *http.Request, db *sql.DB,
 			})
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch shared lists", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllSharedListsFailed.WithCause(err), cfg)
 		return
 	}
 	defer rows.Close()
@@ -99,7 +99,7 @@ func handleGetAllSharedLists(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		var configBytes []byte
 		var createdAt, updatedAt time.Time
 		if err := rows.Scan(&name, &configBytes, &createdAt, &updatedAt); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan shared list", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllSharedListsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -139,10 +139,10 @@ func handleGetSharedListByName(w http.ResponseWriter, r *http.Request, db *sql.D
 	var configBytes []byte
 	if err := row.Scan(&item.Name, &configBytes, &item.CreatedAt, &item.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "shared list not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSharedListNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch shared list", err, cfg)
+		shared.SendAPIError(w, shared.ErrSharedListNotFound.WithCause(err), cfg)
 		return
 	}
 	item.Config = json.RawMessage(configBytes)
@@ -177,7 +177,7 @@ func handleCreateSharedList(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		RETURNING name, config, created_at, updated_at
 	`, name, configJSON).Scan(&item.Name, &configBytes, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to create shared list", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSharedListFailed.WithCause(err), cfg)
 		return
 	}
 	item.Config = json.RawMessage(configBytes)
@@ -214,10 +214,10 @@ func handleUpdateSharedList(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 	`, configJSON, name).Scan(&item.Name, &configBytes, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "shared list not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSharedListNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to update shared list", err, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSharedListFailed.WithCause(err), cfg)
 		return
 	}
 	item.Config = json.RawMessage(configBytes)
@@ -230,16 +230,16 @@ func handleUpdateSharedList(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 func handleDeleteSharedList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, name string) {
 	res, err := db.ExecContext(r.Context(), `DELETE FROM shared_lists WHERE name = $1`, name)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete shared list", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSharedListFailed.WithCause(err), cfg)
 		return
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete shared list", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSharedListFailed.WithCause(err), cfg)
 		return
 	}
 	if n == 0 {
-		shared.SendError(w, http.StatusNotFound, "shared list not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrSharedListNotFound, cfg)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

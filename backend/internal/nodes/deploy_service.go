@@ -73,6 +73,10 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 		return
 	}
 
+	// Node-independent data: identical for every target in this deploy cycle,
+	// so it's loaded once instead of once per node (was a per-target N+1).
+	sharedLists := nm.loadSharedIPLists(nm.globalCtx)
+
 	for _, target := range targets {
 		start := time.Now()
 		configJSON, err := nm.buildNodeConfigForDeploy(nm.globalCtx, target.uuid)
@@ -93,7 +97,6 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 		if modulesErr != nil {
 			nm.cfg.Logger.Warn("Failed to load node plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
 		}
-		sharedLists := nm.loadSharedIPLists(nm.globalCtx)
 		haproxyInboundTags := normalizeHaproxyInboundTags(pluginConfig.HaproxyAuth.InboundTags)
 		modules := &deployModulesTaskBlock{
 			IngressFilter: deployIngressFilterBlock{

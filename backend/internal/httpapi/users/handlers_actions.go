@@ -149,12 +149,12 @@ func handleRevokeUserSubscription(w http.ResponseWriter, r *http.Request, servic
 func sendUpdatedUserResponse(w http.ResponseWriter, r *http.Request, service *UserService, userUUID string) {
 	record, err := service.repo.getUserRecordByUUID(r.Context(), userUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated user", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUpdatedUserFailed.WithCause(err), service.cfg)
 		return
 	}
 	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build updated user response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUpdatedUserFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
@@ -162,10 +162,10 @@ func sendUpdatedUserResponse(w http.ResponseWriter, r *http.Request, service *Us
 
 func handleUserActionError(w http.ResponseWriter, err error, cfg *config.BackendConfig, message string) {
 	if errors.Is(err, errUserNotFound) {
-		shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 		return
 	}
-	shared.SendError(w, http.StatusInternalServerError, message, err, cfg)
+	shared.SendAPIError(w, shared.ErrUpdateUserFailed.WithCause(err), cfg)
 }
 
 func plannedUserStatusForUpdate(record userRecord, req updateUserRequest, now time.Time) (string, bool) {

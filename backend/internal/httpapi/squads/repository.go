@@ -354,41 +354,72 @@ func (r *SquadRepository) updateSquad(ctx context.Context, squadUUID string, cla
 	}
 
 	if inboundUUIDs != nil {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_inbounds WHERE internal_squad_uuid = $1`, squadUUID); err != nil {
+		if err := r.replaceSquadInbounds(ctx, tx, squadUUID, inboundUUIDs); err != nil {
 			return err
-		}
-
-		seen := make(map[string]struct{}, len(inboundUUIDs))
-		for _, inboundUUID := range inboundUUIDs {
-			cleanInboundUUID := strings.TrimSpace(inboundUUID)
-			if cleanInboundUUID == "" {
-				continue
-			}
-			if _, ok := seen[cleanInboundUUID]; ok {
-				continue
-			}
-			seen[cleanInboundUUID] = struct{}{}
-
-			var inboundExists int
-			if err := tx.QueryRowContext(ctx, `SELECT 1 FROM config_profile_inbounds WHERE uuid = $1`, cleanInboundUUID).Scan(&inboundExists); err != nil {
-				if err == sql.ErrNoRows {
-					return fmt.Errorf("inbound not found")
-				}
-				return err
-			}
-
-			if _, err := tx.ExecContext(
-				ctx,
-				`INSERT INTO internal_squad_inbounds (internal_squad_uuid, inbound_uuid) VALUES ($1, $2)`,
-				squadUUID,
-				cleanInboundUUID,
-			); err != nil {
-				return err
-			}
 		}
 	}
 
 	return tx.Commit()
+}
+
+// replaceSquadInbounds clears and re-inserts a squad's inbounds within an existing
+// transaction. Existence is validated in a single batch query and rows are inserted
+// in a single batch statement, instead of one SELECT + one INSERT per inbound.
+func (r *SquadRepository) replaceSquadInbounds(ctx context.Context, tx *sql.Tx, squadUUID string, inboundUUIDs []string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_inbounds WHERE internal_squad_uuid = $1`, squadUUID); err != nil {
+		return fmt.Errorf("failed to clear existing inbounds: %w", err)
+	}
+
+	cleaned := make([]string, 0, len(inboundUUIDs))
+	seen := make(map[string]struct{}, len(inboundUUIDs))
+	for _, inboundUUID := range inboundUUIDs {
+		trimmed := strings.TrimSpace(inboundUUID)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		cleaned = append(cleaned, trimmed)
+	}
+	if len(cleaned) == 0 {
+		return nil
+	}
+
+	rows, err := tx.QueryContext(ctx, `SELECT uuid FROM config_profile_inbounds WHERE uuid = ANY($1)`, cleaned)
+	if err != nil {
+		return err
+	}
+	existing := make(map[string]struct{}, len(cleaned))
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			rows.Close()
+			return err
+		}
+		existing[u] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	for _, u := range cleaned {
+		if _, ok := existing[u]; !ok {
+			return fmt.Errorf("inbound not found: %s", u)
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO internal_squad_inbounds (internal_squad_uuid, inbound_uuid)
+		SELECT $1, unnest($2::uuid[])
+	`, squadUUID, cleaned); err != nil {
+		return fmt.Errorf("failed to insert inbounds: %w", err)
+	}
+
+	return nil
 }
 
 func (r *SquadRepository) deleteSquad(ctx context.Context, squadUUID string) (string, error) {
@@ -403,6 +434,10 @@ func (r *SquadRepository) deleteSquad(ctx context.Context, squadUUID string) (st
 }
 
 func (r *SquadRepository) reorderSquads(ctx context.Context, items []reorderSquadItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -411,10 +446,23 @@ func (r *SquadRepository) reorderSquads(ctx context.Context, items []reorderSqua
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range items {
-		if _, err := tx.ExecContext(ctx, `UPDATE internal_squads SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); err != nil {
-			return err
-		}
+	// Single batched UPDATE via UNNEST instead of one round-trip per squad.
+	uuids := make([]string, len(items))
+	positions := make([]int32, len(items))
+	for i, item := range items {
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE internal_squads AS s
+		SET view_position = v.view_position
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE s.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `SELECT setval('internal_squads_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM internal_squads) + 1)`); err != nil {
 		return err
@@ -503,27 +551,8 @@ func (r *SquadRepository) setSquadInbounds(ctx context.Context, squadUUID string
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, "DELETE FROM internal_squad_inbounds WHERE internal_squad_uuid = $1", squadUUID)
-	if err != nil {
-		return fmt.Errorf("failed to clear existing inbounds: %w", err)
-	}
-
-	for _, inboundUUID := range inboundUUIDs {
-		var inboundID string
-		err := tx.QueryRowContext(ctx, "SELECT uuid FROM config_profile_inbounds WHERE uuid = $1", inboundUUID).Scan(&inboundID)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("inbound not found: %s", inboundUUID)
-			}
-			return err
-		}
-
-		_, err = tx.ExecContext(ctx,
-			"INSERT INTO internal_squad_inbounds (internal_squad_uuid, inbound_uuid) VALUES ($1, $2)",
-			squadUUID, inboundUUID)
-		if err != nil {
-			return fmt.Errorf("failed to insert inbound: %w", err)
-		}
+	if err := r.replaceSquadInbounds(ctx, tx, squadUUID, inboundUUIDs); err != nil {
+		return err
 	}
 
 	return tx.Commit()
@@ -592,22 +621,42 @@ func (r *SquadRepository) setSquadMembers(ctx context.Context, squadUUID string,
 		return fmt.Errorf("failed to clear existing members: %w", err)
 	}
 
-	for _, userID := range userIDs {
-		var exists bool
-		err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userID).Scan(&exists)
-		if err != nil {
+	if len(userIDs) == 0 {
+		return tx.Commit()
+	}
+
+	// Batch-validate existence in a single query instead of one SELECT per user.
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM users WHERE id = ANY($1)`, userIDs)
+	if err != nil {
+		return err
+	}
+	existing := make(map[int64]struct{}, len(userIDs))
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
 			return err
 		}
-		if !exists {
+		existing[id] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	for _, userID := range userIDs {
+		if _, ok := existing[userID]; !ok {
 			return fmt.Errorf("user not found: %d", userID)
 		}
+	}
 
-		_, err = tx.ExecContext(ctx,
-			"INSERT INTO internal_squad_members (internal_squad_uuid, user_id) VALUES ($1, $2)",
-			squadUUID, userID)
-		if err != nil {
-			return fmt.Errorf("failed to insert member: %w", err)
-		}
+	// Batch-insert all rows in a single statement instead of one INSERT per member.
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO internal_squad_members (internal_squad_uuid, user_id)
+		SELECT $1, unnest($2::bigint[])
+	`, squadUUID, userIDs); err != nil {
+		return fmt.Errorf("failed to insert members: %w", err)
 	}
 
 	return tx.Commit()

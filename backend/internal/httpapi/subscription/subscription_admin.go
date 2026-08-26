@@ -47,13 +47,13 @@ func SubscriptionsHandler(db, backgroundDB *sql.DB, cfg *config.BackendConfig) h
 
 		settings, err := loadSubscriptionSettings(ctx, db, cfg)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
+			shared.SendAPIError(w, shared.ErrSubscriptionSettingsNotFound, cfg)
 			return
 		}
 
 		users, total, err := getUsersWithPagination(ctx, db, start, size)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch users", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -148,16 +148,16 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 		}
 		if err != nil {
 			if errorsIsNoRows(err) {
-				shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+				shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 				return
 			}
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 			return
 		}
 
 		settings, err := loadSubscriptionSettings(ctx, db, cfg)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
+			shared.SendAPIError(w, shared.ErrSubscriptionSettingsNotFound, cfg)
 			return
 		}
 
@@ -165,7 +165,7 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 			withDisabledHosts := r.URL.Query().Get("withDisabledHosts") == "true"
 			hosts, err := getHostsForUserWithOptions(ctx, db, user, withDisabledHosts, true)
 			if err != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+				shared.SendAPIError(w, shared.ErrGetAllHostsFailed.WithCause(err), cfg)
 				return
 			}
 
@@ -193,7 +193,7 @@ func SubscriptionByUUIDHandler(db, backgroundDB *sql.DB, cfg *config.BackendConf
 
 		hosts, err := getHostsForUser(ctx, db, user)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllHostsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -211,16 +211,16 @@ func handleGetConnectionKeysByUserID(w http.ResponseWriter, r *http.Request, db 
 	user, err := getSubscriptionUserByID(ctx, db, userID)
 	if err != nil {
 		if errorsIsNoRows(err) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 		return
 	}
 
 	settings, err := loadSubscriptionSettings(ctx, db, cfg)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
+		shared.SendAPIError(w, shared.ErrSubscriptionSettingsNotFound, cfg)
 		return
 	}
 
@@ -229,7 +229,7 @@ func handleGetConnectionKeysByUserID(w http.ResponseWriter, r *http.Request, db 
 
 	hosts, err := getHostsForUserWithOptions(ctx, db, user, true, true)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllHostsFailed.WithCause(err), cfg)
 		return
 	}
 

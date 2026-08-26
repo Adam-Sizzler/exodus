@@ -13,7 +13,7 @@ import (
 func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	var req bulkProfileModificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 	if err := validateUUIDs(req.UUIDs); err != nil {
@@ -27,7 +27,7 @@ func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, servi
 
 	err := service.BulkProfileModification(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to modify nodes profile", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrModifyNodesProfileFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -37,7 +37,7 @@ func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, servi
 func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	var req bulkUpdateNodesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 	if err := validateBulkUpdateRequest(req); err != nil {
@@ -92,7 +92,7 @@ func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, service *Node
 	if len(clauses) > 0 {
 		err := service.BulkNodesUpdate(r.Context(), req, clauses, args)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to update nodes", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrUpdateNodeFailed.WithCause(err), service.cfg)
 			return
 		}
 	}
@@ -103,7 +103,7 @@ func handleBulkNodesUpdate(w http.ResponseWriter, r *http.Request, service *Node
 func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	var req bulkNodesActionsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 	if err := validateUUIDs(req.UUIDs); err != nil {
@@ -114,10 +114,10 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, service *Nod
 	err := service.BulkNodesActions(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to perform bulk actions", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrNodeBulkActionFailed.WithCause(err), service.cfg)
 		return
 	}
 

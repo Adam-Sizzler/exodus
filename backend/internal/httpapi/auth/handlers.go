@@ -40,7 +40,7 @@ func AuthBootstrapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 		brandingSettings, passwordSettings, defaultUsername, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Error("Failed to read auth bootstrap data", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to get auth bootstrap")
+			shared.SendAPIError(w, shared.ErrGetAuthBootstrapFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -71,7 +71,7 @@ func AuthStatusHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		brandingSettings, passwordSettings, _, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Error("Failed to load auth status", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load auth status")
+			shared.SendAPIError(w, shared.ErrGetAuthStatusFailed.WithCause(err), cfg)
 			return
 		}
 		cfg.Logger.Trace("Auth status requested", "has_admin", hasAdmin, "remote_addr", r.RemoteAddr)
@@ -170,7 +170,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		username := strings.TrimSpace(req.Username)
 		password := req.Password
 		if username == "" || password == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
+			shared.SendError(w, http.StatusBadRequest, "username and password are required", nil, cfg)
 			return
 		}
 		cfg.Logger.Trace("Auth login attempt", "username", username, "client_ip", rateLimitKey)
@@ -178,14 +178,14 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		_, passwordSettings, _, hasAdmin, err := getBootstrapData(db)
 		if err != nil {
 			cfg.Logger.Error("Failed to read auth bootstrap for login", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
+			shared.SendAPIError(w, shared.ErrValidateCredentialsFailed.WithCause(err), cfg)
 			return
 		}
 
 		if !hasAdmin {
 			cfg.Logger.Warn("Auth login blocked: no admin configured", "username", username, "client_ip", rateLimitKey)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "no_admin_configured", r)
-			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
+			shared.SendAPIError(w, shared.ErrLoginNotAllowed, cfg)
 			return
 		}
 
@@ -199,7 +199,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		if !passwordEnabled {
 			cfg.Logger.Warn("Auth login blocked: password auth disabled", "username", username, "client_ip", rateLimitKey)
 			emitLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, username, "", password, "password_auth_disabled", r)
-			shared.WriteJSONError(w, http.StatusForbidden, "login is not allowed")
+			shared.SendAPIError(w, shared.ErrLoginNotAllowed, cfg)
 			return
 		}
 
@@ -219,7 +219,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		scanErr := row.Scan(&adminUUID, &storedPasswordHash, &role)
 		if scanErr != nil && !errors.Is(scanErr, sql.ErrNoRows) {
 			cfg.Logger.Error("Failed to read admin credentials", "error", scanErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate credentials")
+			shared.SendAPIError(w, shared.ErrValidateCredentialsFailed.WithCause(scanErr), cfg)
 			return
 		}
 
@@ -233,7 +233,7 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			case <-r.Context().Done():
 				return
 			}
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
+			shared.SendAPIError(w, shared.ErrInvalidCredentials, cfg)
 			return
 		}
 
@@ -246,14 +246,14 @@ func AuthLoginCompatHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			case <-r.Context().Done():
 				return
 			}
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid credentials")
+			shared.SendAPIError(w, shared.ErrInvalidCredentials, cfg)
 			return
 		}
 
 		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, role)
 		if err != nil {
 			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
+			shared.SendAPIError(w, shared.ErrCreateAuthTokenFailed.WithCause(err), cfg)
 			return
 		}
 		globalAuthRateLimiter.Reset(r.Context(), rateLimitKey, cfg)
@@ -291,32 +291,32 @@ func AuthRegisterHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			cfg.Logger.Warn("Auth register decode failed", "error", err, "remote_addr", r.RemoteAddr)
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 			return
 		}
 
 		username := strings.TrimSpace(req.Username)
 		password := req.Password
 		if username == "" || password == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
+			shared.SendError(w, http.StatusBadRequest, "username and password are required", nil, cfg)
 			return
 		}
 		cfg.Logger.Trace("Auth register attempt", "username", username, "remote_addr", r.RemoteAddr)
 
 		passwordHash, err := security.HashPassword(password, cfg.JWT.AuthSecret)
 		if err != nil {
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin account")
+			shared.SendAPIError(w, shared.ErrCreateAdminAccountFailed.WithCause(err), cfg)
 			return
 		}
 
 		var adminCount int
 		if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to check admin status")
+			shared.SendAPIError(w, shared.ErrCheckAdminStatusFailed.WithCause(countErr), cfg)
 			return
 		}
 		if adminCount > 0 {
 			cfg.Logger.Warn("Auth register blocked: admin already configured", "username", username, "remote_addr", r.RemoteAddr)
-			shared.WriteJSONError(w, http.StatusForbidden, "registration is not allowed")
+			shared.SendAPIError(w, shared.ErrRegistrationNotAllowed, cfg)
 			return
 		}
 
@@ -326,14 +326,14 @@ func AuthRegisterHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 			VALUES ($1, $2, $3, 'ADMIN')
 		`, adminUUID, username, passwordHash); execErr != nil {
 			cfg.Logger.Error("Auth register failed", "username", username, "remote_addr", r.RemoteAddr, "error", execErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
+			shared.SendAPIError(w, shared.ErrCreateAdminAccountFailed.WithCause(execErr), cfg)
 			return
 		}
 
 		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, "ADMIN")
 		if err != nil {
 			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
+			shared.SendAPIError(w, shared.ErrCreateAuthTokenFailed.WithCause(err), cfg)
 			return
 		}
 		cfg.Logger.Info("Auth register success", "username", username, "remote_addr", r.RemoteAddr)
@@ -372,31 +372,31 @@ func AuthSetupHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		var req SetupRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 			return
 		}
 
 		username := strings.TrimSpace(req.Username)
 		password := req.Password
 		if username == "" || password == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "username and password are required")
+			shared.SendError(w, http.StatusBadRequest, "username and password are required", nil, cfg)
 			return
 		}
 
 		passwordHash, err := security.HashPassword(password, cfg.JWT.AuthSecret)
 		if err != nil {
 			cfg.Logger.Error("Failed to hash setup password", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create admin account")
+			shared.SendAPIError(w, shared.ErrCreateAdminAccountFailed.WithCause(err), cfg)
 			return
 		}
 
 		var adminCount int
 		if countErr := db.QueryRow("SELECT COUNT(*) FROM admin").Scan(&adminCount); countErr != nil {
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to check admin status")
+			shared.SendAPIError(w, shared.ErrCheckAdminStatusFailed.WithCause(countErr), cfg)
 			return
 		}
 		if adminCount > 0 {
-			shared.WriteJSONError(w, http.StatusConflict, "admin account already exists")
+			shared.SendAPIError(w, shared.ErrAdminAlreadyExists, cfg)
 			return
 		}
 
@@ -406,14 +406,14 @@ func AuthSetupHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			VALUES ($1, $2, $3, 'ADMIN')
 		`, adminUUID, username, passwordHash); execErr != nil {
 			cfg.Logger.Error("Failed to create initial admin account", "error", execErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create initial admin account")
+			shared.SendAPIError(w, shared.ErrCreateAdminAccountFailed.WithCause(execErr), cfg)
 			return
 		}
 
 		accessToken, expiresAt, err := createAdminAccessToken(cfg, username, adminUUID, "ADMIN")
 		if err != nil {
 			cfg.Logger.Error("Failed to create JWT auth token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create auth token")
+			shared.SendAPIError(w, shared.ErrCreateAuthTokenFailed.WithCause(err), cfg)
 			return
 		}
 		setAuthCookie(w, r, cfg, accessToken, expiresAt)
@@ -463,7 +463,7 @@ func AuthMeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		principal, ok := CurrentAuthPrincipal(r.Context())
 		if !ok || principal == nil || principal.TokenType != "jwt_auth" {
-			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+			shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 			return
 		}
 
@@ -480,11 +480,11 @@ func AuthMeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		if scanErr := row.Scan(&adminInfo.UUID, &adminInfo.Username, &adminInfo.Role); scanErr != nil {
 			if errors.Is(scanErr, sql.ErrNoRows) {
-				shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+				shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 				return
 			}
 			cfg.Logger.Error("Failed to load auth me payload", "error", scanErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load current session")
+			shared.SendAPIError(w, shared.ErrLoadCurrentSessionFailed.WithCause(scanErr), cfg)
 			return
 		}
 		adminInfo.Role = strings.ToUpper(adminInfo.Role)
@@ -577,33 +577,33 @@ func OAuth2AuthorizeHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 		}
 		provider := strings.ToLower(strings.TrimSpace(req.Provider))
 		if !isSupportedOAuthProvider(provider) {
-			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2ProviderNotFound, cfg)
 			return
 		}
 		if !isLoginAllowed(db) {
-			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
+			shared.SendAPIError(w, shared.ErrForbidden, cfg)
 			return
 		}
 		settings, err := loadOAuthSettings(db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2AuthorizeFailed.WithCause(err), cfg)
 			return
 		}
 		providerSettings := getOAuthProviderSettings(settings, provider)
 		if !providerSettings.Enabled {
-			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2ProviderDisabled, cfg)
 			return
 		}
 
 		state, err := security.GenerateRandomToken(32)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to generate OAuth2 state", err, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2AuthorizeFailed.WithCause(err), cfg)
 			return
 		}
 		codeVerifier := ""
 		authURL, err := buildAuthorizationURL(provider, providerSettings, cfg.Backend.Trimmed(), state, &codeVerifier)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "OAuth2 authorize error", err, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2AuthorizeFailed.WithCause(err), cfg)
 			return
 		}
 		storeOAuthState(provider, state, codeVerifier)
@@ -627,46 +627,46 @@ func OAuth2CallbackHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 		provider := strings.ToLower(strings.TrimSpace(req.Provider))
 		if !isSupportedOAuthProvider(provider) {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "unsupported_provider", r)
-			shared.SendError(w, http.StatusBadRequest, "OAuth2 provider not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2ProviderNotFound, cfg)
 			return
 		}
 		stateEntry, ok := takeOAuthState(provider)
 		if !ok || stateEntry.State != strings.TrimSpace(req.State) {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "state_mismatch", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 state mismatch", nil, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2StateMismatch, cfg)
 			return
 		}
 		if !isLoginAllowed(db) {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "login_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "login is not allowed", nil, cfg)
+			shared.SendAPIError(w, shared.ErrForbidden, cfg)
 			return
 		}
 		settings, err := loadOAuthSettings(db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to load OAuth2 settings", err, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2CallbackFailed.WithCause(err), cfg)
 			return
 		}
 		providerSettings := getOAuthProviderSettings(settings, provider)
 		if !providerSettings.Enabled {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "provider_disabled", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 provider is disabled", nil, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2ProviderDisabled, cfg)
 			return
 		}
 		email, hasCustomClaim, err := exchangeOAuthCode(r.Context(), provider, providerSettings, cfg.Backend.Trimmed(), strings.TrimSpace(req.Code), stateEntry.CodeVerifier)
 		if err != nil {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, "", "", "callback_error", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 callback error", err, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2CallbackFailed.WithCause(err), cfg)
 			return
 		}
 		if email == "" || !isOAuthPrincipalAllowed(provider, email, hasCustomClaim, providerSettings) {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "email_not_allowed", r)
-			shared.SendError(w, http.StatusForbidden, "OAuth2 principal is not allowed", nil, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2PrincipalNotAllowed, cfg)
 			return
 		}
 		token, adminUUID, err := createFirstAdminSession(w, r, db, cfg)
 		if err != nil {
 			emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptFailed, "oauth2", provider, email, "", "session_create_failed", r)
-			shared.SendError(w, http.StatusForbidden, "failed to create OAuth2 session", err, cfg)
+			shared.SendAPIError(w, shared.ErrOAuth2SessionCreateFailed.WithCause(err), cfg)
 			return
 		}
 		emitExternalLoginNotification(r.Context(), cfg, notifications.EventLoginAttemptSuccess, "oauth2", provider, email, adminUUID, "", r)

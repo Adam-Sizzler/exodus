@@ -81,22 +81,22 @@ func handlePublicSubscriptionInfo(w http.ResponseWriter, r *http.Request, db, ba
 	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
 	if err != nil {
 		if errorsIsNoRows(err) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 		return
 	}
 
 	settings, err := loadSubscriptionSettings(ctx, db, cfg)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "subscription settings not found", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubscriptionSettingsFailed.WithCause(err), cfg)
 		return
 	}
 
 	hosts, err := getHostsForUser(ctx, db, user)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllHostsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -129,16 +129,16 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db,
 	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
 	if err != nil {
 		if errorsIsNoRows(err) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 		return
 	}
 
 	hosts, err := getHostsForUser(ctx, db, user)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch hosts", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllHostsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -150,13 +150,13 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db,
 		}
 	}
 	if targetHost == nil {
-		shared.SendError(w, http.StatusNotFound, "host for tag not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrHostNotFound, cfg)
 		return
 	}
 
 	settings, err := loadSubscriptionSettings(ctx, db, cfg)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to load settings", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubscriptionSettingsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -165,7 +165,7 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db,
 	if reqType == "ss" || reqType == "shadowsocks" {
 		links, err := NewXrayGenerator(cfg).GenerateLinks(user, []SubscriptionHost{*targetHost}, settings)
 		if err != nil || len(links) == 0 {
-			shared.SendError(w, http.StatusInternalServerError, "failed to generate shadowsocks link", err, cfg)
+			shared.SendAPIError(w, shared.ErrGenerateShadowsocksLinkFailed.WithCause(err), cfg)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -198,10 +198,10 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgr
 	user, err := getSubscriptionUserByShortUUID(ctx, db, shortUUID)
 	if err != nil {
 		if errorsIsNoRows(err) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 		return
 	}
 
@@ -229,19 +229,19 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgr
 	)
 	if err != nil {
 		if err == ErrHwidCheckFailed {
-			shared.SendError(w, http.StatusInternalServerError, "failed to check hwid device limit", nil, cfg)
+			shared.SendAPIError(w, shared.ErrCheckHwidDeviceLimitFailed, cfg)
 			return
 		}
 		if err == ErrUserDisabled {
-			shared.SendError(w, http.StatusForbidden, "user is disabled or expired", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserIsDisabledOrExpired, cfg)
 			return
 		}
 		if err == ErrNoHosts {
-			shared.SendError(w, http.StatusNotFound, "no active hosts available", nil, cfg)
+			shared.SendAPIError(w, shared.ErrNoActiveHostsAvailable, cfg)
 			return
 		}
 		log.Warn("Failed to render subscription", "short_uuid", shortUUID, "error", err)
-		shared.SendError(w, http.StatusInternalServerError, "failed to render subscription", err, cfg)
+		shared.SendAPIError(w, shared.ErrRenderSubscriptionFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -378,10 +378,10 @@ func SubpageConfigPublicHandler(db, backgroundDB *sql.DB, cfg *config.BackendCon
 		subpageConfigUUID, webpageAllowed, err := getSubpageConfigForUser(r.Context(), db, cfg, shortUUID, req.RequestHeaders)
 		if err != nil {
 			if errorsIsNoRows(err) {
-				shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+				shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 				return
 			}
-			shared.SendError(w, http.StatusInternalServerError, "failed to get subpage config", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubpageConfigFailed.WithCause(err), cfg)
 			return
 		}
 

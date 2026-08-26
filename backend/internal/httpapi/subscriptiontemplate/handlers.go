@@ -128,7 +128,7 @@ func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, dbCo
 		FROM subscription_templates
 		ORDER BY view_position ASC, template_type ASC`)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch templates", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllSubTemplatesFailed.WithCause(err), cfg)
 		return
 	}
 	defer rows.Close()
@@ -137,7 +137,7 @@ func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, dbCo
 	for rows.Next() {
 		var rec subscriptionTemplateRecord
 		if scanErr := rows.Scan(&rec.UUID, &rec.ViewPosition, &rec.Name, &rec.TemplateType); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan template", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllSubTemplatesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		templates = append(templates, SubscriptionTemplate{
@@ -150,7 +150,7 @@ func handleGetSubscriptionTemplates(w http.ResponseWriter, r *http.Request, dbCo
 		})
 	}
 	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to iterate templates", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllSubTemplatesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -170,10 +170,10 @@ func handleGetSubscriptionTemplateByUUID(w http.ResponseWriter, r *http.Request,
 		WHERE uuid = $1`, templateUUID)
 	if err := scanSubscriptionTemplateRecord(row, &rec); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch template", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubTemplateByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -196,7 +196,7 @@ func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 		return
 	}
 	if req.Name == "Default" {
-		shared.SendError(w, http.StatusBadRequest, "reserved template name", nil, cfg)
+		shared.SendAPIError(w, shared.ErrReservedSubTemplateName, cfg)
 		return
 	}
 	if !isAllowedTemplateType(req.TemplateType) {
@@ -204,7 +204,7 @@ func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 		return
 	}
 	if req.TemplateType == "XRAY_BASE64" {
-		shared.SendError(w, http.StatusBadRequest, "templateType not allowed", nil, cfg)
+		shared.SendAPIError(w, shared.ErrSubTemplateTypeNotAllowed, cfg)
 		return
 	}
 
@@ -219,7 +219,7 @@ func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 	viewPosition := 0
 	row := dbConn.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(view_position), 0) + 1 FROM subscription_templates`)
 	if scanErr := row.Scan(&viewPosition); scanErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to query max view position", scanErr, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSubTemplateFailed.WithCause(scanErr), cfg)
 		return
 	}
 
@@ -236,10 +236,10 @@ func handleCreateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 	)
 	if execErr != nil {
 		if isUniqueViolation(execErr) {
-			shared.SendError(w, http.StatusConflict, "template name already exists for templateType", execErr, cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateNameAlreadyExistsForThisType, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to create template", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSubTemplateFailed.WithCause(execErr), cfg)
 		return
 	}
 
@@ -273,7 +273,7 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 			return
 		}
 		if trimmed == "Default" {
-			shared.SendError(w, http.StatusBadRequest, "reserved template name", nil, cfg)
+			shared.SendAPIError(w, shared.ErrReservedSubTemplateName, cfg)
 			return
 		}
 		req.Name = &trimmed
@@ -287,7 +287,7 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 	}
 
 	if req.TemplateJSON != nil && req.EncodedTemplateYML != nil {
-		shared.SendError(w, http.StatusBadRequest, "templateJson and encodedTemplateYaml cannot be updated together", nil, cfg)
+		shared.SendAPIError(w, shared.ErrSubTemplateJsonAndYamlCannotBeUpdatedSimultaneously, cfg)
 		return
 	}
 
@@ -298,10 +298,10 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 		WHERE uuid = $1`, req.UUID)
 	if scanErr := scanSubscriptionTemplateRecord(row, &template); scanErr != nil {
 		if errors.Is(scanErr, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch template", scanErr, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubTemplateByUUIDFailed.WithCause(scanErr), cfg)
 		return
 	}
 
@@ -309,11 +309,11 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 	isJsonTemplate := template.TemplateType == "XRAY_JSON" || template.TemplateType == "SINGBOX"
 
 	if isYamlTemplate && req.TemplateJSON != nil {
-		shared.SendError(w, http.StatusBadRequest, "templateJson not allowed for YAML template", nil, cfg)
+		shared.SendAPIError(w, shared.ErrSubTemplateJsonNotAllowedForYaml, cfg)
 		return
 	}
 	if isJsonTemplate && req.EncodedTemplateYML != nil {
-		shared.SendError(w, http.StatusBadRequest, "encodedTemplateYaml not allowed for JSON template", nil, cfg)
+		shared.SendAPIError(w, shared.ErrSubTemplateYamlNotAllowedForJson, cfg)
 		return
 	}
 
@@ -358,19 +358,19 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 	result, execErr := dbConn.ExecContext(r.Context(), query, args...)
 	if execErr != nil {
 		if isUniqueViolation(execErr) {
-			shared.SendError(w, http.StatusConflict, "template name already exists for templateType", execErr, cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateNameAlreadyExistsForThisType, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "update failed", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSubTemplateFailed.WithCause(execErr), cfg)
 		return
 	}
 	rowsAffected, raErr := result.RowsAffected()
 	if raErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "update failed", raErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSubTemplateFailed.WithCause(raErr), cfg)
 		return
 	}
 	if rowsAffected == 0 {
-		shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrSubTemplateNotFound, cfg)
 		return
 	}
 
@@ -392,20 +392,20 @@ func handleDeleteSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 	row := dbConn.QueryRowContext(r.Context(), `SELECT name FROM subscription_templates WHERE uuid = $1`, templateUUID)
 	if err := row.Scan(&templateName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "template not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to find template", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubTemplateByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 
 	if templateName == "Default" {
-		shared.SendError(w, http.StatusBadRequest, "reserved template cannot be deleted", nil, cfg)
+		shared.SendAPIError(w, shared.ErrReservedSubTemplateCannotBeDeleted, cfg)
 		return
 	}
 
 	if _, execErr := dbConn.ExecContext(r.Context(), `DELETE FROM subscription_templates WHERE uuid = $1`, templateUUID); execErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete template", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSubTemplateFailed.WithCause(execErr), cfg)
 		return
 	}
 
@@ -431,22 +431,34 @@ func handleReorderSubscriptionTemplates(w http.ResponseWriter, r *http.Request, 
 
 	tx, err := dbConn.BeginTx(r.Context(), nil)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "begin tx failed", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSubscriptionTemplatesFailed.WithCause(err), cfg)
 		return
 	}
 	defer func() {
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range req.Items {
-		if _, execErr := tx.ExecContext(r.Context(), `UPDATE subscription_templates SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); execErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to reorder templates", execErr, cfg)
-			return
-		}
+	uuids := make([]string, len(req.Items))
+	positions := make([]int32, len(req.Items))
+	for i, item := range req.Items {
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
+	}
+
+	if _, err := tx.ExecContext(r.Context(), `
+		UPDATE subscription_templates AS t
+		SET view_position = v.view_position
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE t.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		shared.SendAPIError(w, shared.ErrReorderSubscriptionTemplatesFailed.WithCause(err), cfg)
+		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to commit reorder", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSubscriptionTemplatesFailed.WithCause(err), cfg)
 		return
 	}
 

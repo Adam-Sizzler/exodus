@@ -8,6 +8,7 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/util"
 
 	"github.com/google/uuid"
 )
@@ -219,15 +220,7 @@ func validateNote(value *string) error {
 }
 
 func validateUUIDs(values []string) error {
-	if len(values) == 0 {
-		return fmt.Errorf("uuids cannot be empty")
-	}
-	for _, value := range values {
-		if _, err := uuid.Parse(value); err != nil {
-			return fmt.Errorf("invalid uuid value")
-		}
-	}
-	return nil
+	return util.ValidateUUIDs(values)
 }
 
 func validateTags(tags []string) error {
@@ -248,10 +241,10 @@ func validateTags(tags []string) error {
 func handleConfigProfileValidationError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {
 	switch {
 	case errors.Is(err, errConfigProfileNotFound):
-		shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrConfigProfileNotFound, cfg)
 	case errors.Is(err, errConfigProfileInboundInvalid):
-		shared.SendError(w, http.StatusBadRequest, "config profile inbound not found in specified profile", nil, cfg)
+		shared.SendAPIError(w, shared.ErrConfigProfileInboundNotFoundInProfile, cfg)
 	default:
-		shared.SendError(w, http.StatusInternalServerError, "failed to validate config profile inbounds", err, cfg)
+		shared.SendAPIError(w, shared.ErrValidateConfigProfileInboundsFailed.WithCause(err), cfg)
 	}
 }

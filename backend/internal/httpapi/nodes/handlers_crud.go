@@ -13,13 +13,13 @@ import (
 func handleGetNodes(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	nodes, err := service.repo.getAllNodeRecords(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildNodeResponses(r.Context(), service.repo, service.cfg, nodes)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildNodeResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -30,16 +30,16 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, service *NodeService,
 	node, err := service.repo.getNodeByUUID(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetOneNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildNodeResponses(r.Context(), service.repo, service.cfg, []nodeRecord{node})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildNodeResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -49,7 +49,7 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, service *NodeService,
 func handleCreateNode(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	var req createNodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 	if err := validateCreateRequest(req); err != nil {
@@ -63,18 +63,20 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, service *NodeServi
 
 	node, err := service.CreateNode(r.Context(), req)
 	if err != nil {
-		errStr := err.Error()
-		if errors.Is(err, errNodeNameExists) || errors.Is(err, errNodeAddressExists) {
-			shared.SendError(w, http.StatusBadRequest, errStr, err, service.cfg)
-		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to create node", err, service.cfg)
+		switch {
+		case errors.Is(err, errNodeNameExists):
+			shared.SendAPIError(w, shared.ErrNodeNameAlreadyExists, service.cfg)
+		case errors.Is(err, errNodeAddressExists):
+			shared.SendAPIError(w, shared.ErrNodeAddressAlreadyExists, service.cfg)
+		default:
+			shared.SendAPIError(w, shared.ErrCreateNodeFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
 
 	response, err := buildNodeResponses(r.Context(), service.repo, service.cfg, []nodeRecord{node})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildNodeResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
@@ -83,11 +85,11 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, service *NodeServi
 func handleUpdateNode(w http.ResponseWriter, r *http.Request, service *NodeService) {
 	var req updateNodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidJSON.WithCause(err), service.cfg)
 		return
 	}
 	if _, err := uuid.Parse(req.UUID); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, service.cfg)
+		shared.SendAPIError(w, shared.ErrInvalidUUID, service.cfg)
 		return
 	}
 	if err := validateUpdateRequest(req); err != nil {
@@ -104,21 +106,23 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, service *NodeServi
 	node, err := service.UpdateNode(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		errStr := err.Error()
-		if errors.Is(err, errNodeNameExists) || errors.Is(err, errNodeAddressExists) {
-			shared.SendError(w, http.StatusBadRequest, errStr, err, service.cfg)
-		} else {
-			shared.SendError(w, http.StatusInternalServerError, "failed to update node", err, service.cfg)
+		switch {
+		case errors.Is(err, errNodeNameExists):
+			shared.SendAPIError(w, shared.ErrNodeNameAlreadyExists, service.cfg)
+		case errors.Is(err, errNodeAddressExists):
+			shared.SendAPIError(w, shared.ErrNodeAddressAlreadyExists, service.cfg)
+		default:
+			shared.SendAPIError(w, shared.ErrUpdateNodeFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
 
 	response, err := buildNodeResponses(r.Context(), service.repo, service.cfg, []nodeRecord{node})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build node response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildNodeResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
@@ -128,10 +132,10 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, service *NodeServi
 	err := service.DeleteNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDeleteNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 

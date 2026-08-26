@@ -253,6 +253,39 @@ func (r *HostRepository) getHostExcludedSquads(ctx context.Context, hostUUIDs []
 	return result, rows.Err()
 }
 
+// replaceHostsNodesTx batch-replaces the node assignments for multiple hosts at
+// once: one DELETE (ANY) + one multi-row INSERT (UNNEST cross-join), instead of
+// one DELETE + one INSERT per node, repeated per host — a call this size used to
+// make len(hostUUIDs) * len(nodeUUIDs) sequential round-trips.
+func (r *HostRepository) replaceHostsNodesTx(ctx context.Context, tx *sql.Tx, hostUUIDs []string, nodeUUIDs []string) error {
+	if len(hostUUIDs) == 0 {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts_to_nodes WHERE host_uuid = ANY($1)`, hostUUIDs); err != nil {
+		return err
+	}
+
+	cleanNodes := uniqueNonEmptyStrings(nodeUUIDs)
+	if len(cleanNodes) == 0 {
+		return nil
+	}
+
+	hostArg := make([]string, 0, len(hostUUIDs)*len(cleanNodes))
+	nodeArg := make([]string, 0, len(hostUUIDs)*len(cleanNodes))
+	for _, h := range hostUUIDs {
+		for _, n := range cleanNodes {
+			hostArg = append(hostArg, h)
+			nodeArg = append(nodeArg, n)
+		}
+	}
+
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO hosts_to_nodes (host_uuid, node_uuid)
+		SELECT unnest($1::uuid[]), unnest($2::uuid[])
+	`, hostArg, nodeArg)
+	return err
+}
+
 func (r *HostRepository) replaceHostNodesTx(ctx context.Context, tx *sql.Tx, hostUUID string, nodeUUIDs []string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts_to_nodes WHERE host_uuid = $1`, hostUUID); err != nil {
 		return err
@@ -267,6 +300,37 @@ func (r *HostRepository) replaceHostNodesTx(ctx context.Context, tx *sql.Tx, hos
 		}
 	}
 	return nil
+}
+
+// replaceHostsExcludedSquadsTx is the batched counterpart of
+// replaceHostExcludedSquadsTx — see replaceHostsNodesTx for why.
+func (r *HostRepository) replaceHostsExcludedSquadsTx(ctx context.Context, tx *sql.Tx, hostUUIDs []string, squadUUIDs []string) error {
+	if len(hostUUIDs) == 0 {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_host_exclusions WHERE host_uuid = ANY($1)`, hostUUIDs); err != nil {
+		return err
+	}
+
+	cleanSquads := uniqueNonEmptyStrings(squadUUIDs)
+	if len(cleanSquads) == 0 {
+		return nil
+	}
+
+	hostArg := make([]string, 0, len(hostUUIDs)*len(cleanSquads))
+	squadArg := make([]string, 0, len(hostUUIDs)*len(cleanSquads))
+	for _, h := range hostUUIDs {
+		for _, s := range cleanSquads {
+			hostArg = append(hostArg, h)
+			squadArg = append(squadArg, s)
+		}
+	}
+
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO internal_squad_host_exclusions (host_uuid, squad_uuid)
+		SELECT unnest($1::uuid[]), unnest($2::uuid[])
+	`, hostArg, squadArg)
+	return err
 }
 
 func (r *HostRepository) replaceHostExcludedSquadsTx(ctx context.Context, tx *sql.Tx, hostUUID string, squadUUIDs []string) error {
@@ -482,6 +546,10 @@ func (r *HostRepository) deleteHost(ctx context.Context, hostUUID string) error 
 }
 
 func (r *HostRepository) reorderHosts(ctx context.Context, items []reorderHostItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -490,11 +558,26 @@ func (r *HostRepository) reorderHosts(ctx context.Context, items []reorderHostIt
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range items {
-		if _, err := tx.ExecContext(ctx, `UPDATE hosts SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); err != nil {
-			return err
-		}
+	// Single batched UPDATE via UNNEST instead of one round-trip per host —
+	// matches Remnawave's reorderMany (UPDATE ... FROM (VALUES ...) AS v).
+	uuids := make([]string, len(items))
+	positions := make([]int32, len(items))
+	for i, item := range items {
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
 	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE hosts AS h
+		SET view_position = v.view_position
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE h.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		return err
+	}
+
 	if _, err := tx.ExecContext(ctx, `SELECT setval('hosts_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM hosts) + 1)`); err != nil {
 		return err
 	}
@@ -543,17 +626,13 @@ func (r *HostRepository) bulkUpdateHosts(ctx context.Context, uuids []string, cl
 	}
 
 	if nodes != nil {
-		for _, hostUUID := range uuids {
-			if err := r.replaceHostNodesTx(ctx, tx, hostUUID, nodes); err != nil {
-				return err
-			}
+		if err := r.replaceHostsNodesTx(ctx, tx, uuids, nodes); err != nil {
+			return err
 		}
 	}
 	if excludedInternalSquads != nil {
-		for _, hostUUID := range uuids {
-			if err := r.replaceHostExcludedSquadsTx(ctx, tx, hostUUID, excludedInternalSquads); err != nil {
-				return err
-			}
+		if err := r.replaceHostsExcludedSquadsTx(ctx, tx, uuids, excludedInternalSquads); err != nil {
+			return err
 		}
 	}
 

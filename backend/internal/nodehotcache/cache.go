@@ -24,8 +24,8 @@ const (
 	systemInfoTTL    = 30 * time.Second
 	systemStatsTTL   = 30 * time.Second
 	versionsTTL      = 30 * time.Second
-	singboxUptimeTTL = 30 * time.Second
-	usersOnlineTTL   = 30 * time.Second
+	singboxUptimeTTL = 16 * time.Second
+	usersOnlineTTL   = 16 * time.Second
 )
 
 type NodeSystem struct {

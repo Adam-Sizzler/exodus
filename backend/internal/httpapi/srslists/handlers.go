@@ -160,7 +160,7 @@ func SRSListsBulkHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 func handleGetSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	items, err := srscore.LoadAll(r.Context(), db)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch srs lists", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSrsListsFailed.WithCause(err), cfg)
 		return
 	}
 	apiItems := make([]srsListAPI, 0, len(items))
@@ -193,7 +193,7 @@ func handleGetSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *
 func handleGetSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, listUUID string) {
 	items, err := srscore.LoadAll(r.Context(), db)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch srs list", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSrsListByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 	for _, item := range items {
@@ -222,7 +222,7 @@ func handleGetSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *c
 			return
 		}
 	}
-	shared.WriteJSONError(w, http.StatusNotFound, "srs list not found")
+	shared.SendAPIError(w, shared.ErrSrsListNotFound, cfg)
 }
 
 func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
@@ -318,7 +318,7 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 	dbStarted := time.Now()
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "begin transaction failed", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSRSListFailed.WithCause(err), cfg)
 		return
 	}
 	defer func() {
@@ -327,7 +327,7 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 
 	var maxPos sql.NullInt64
 	if err := tx.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(view_position), -1) FROM srs_lists`).Scan(&maxPos); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to query max position", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSRSListFailed.WithCause(err), cfg)
 		return
 	}
 	currentPos := int64(-1)
@@ -341,13 +341,13 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 			INSERT INTO srs_lists (tag, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		`, item.Tag, item.Format, item.URL, item.UpdateInterval, item.Path, item.FileName, currentPos, item.IsEnabled); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "failed to create srs list", err, cfg)
+			shared.SendAPIError(w, shared.ErrCreateSRSListFailed.WithCause(err), cfg)
 			return
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to commit transaction", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSRSListFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -374,11 +374,11 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 		return
 	}
 	if strings.TrimSpace(req.UUID) == "" {
-		shared.WriteJSONError(w, http.StatusBadRequest, "uuid is required")
+		shared.SendError(w, http.StatusBadRequest, "uuid is required", nil, cfg)
 		return
 	}
 	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "invalid uuid")
+		shared.SendError(w, http.StatusBadRequest, "invalid uuid", nil, cfg)
 		return
 	}
 
@@ -390,7 +390,7 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 	if req.URL != nil {
 		urlValue := strings.TrimSpace(*req.URL)
 		if urlValue == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "url cannot be empty")
+			shared.SendError(w, http.StatusBadRequest, "url cannot be empty", nil, cfg)
 			return
 		}
 		derivedName, err := srscore.DeriveFileNameFromURL(urlValue)
@@ -454,7 +454,7 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 	}
 
 	if len(updates) == 0 {
-		shared.WriteJSONError(w, http.StatusBadRequest, "nothing to update")
+		shared.SendError(w, http.StatusBadRequest, "nothing to update", nil, cfg)
 		return
 	}
 
@@ -466,16 +466,16 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 	dbStarted := time.Now()
 	res, execErr := db.ExecContext(r.Context(), query, args...)
 	if execErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to update srs list", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSRSListFailed.WithCause(execErr), cfg)
 		return
 	}
 	rows, rowsErr := res.RowsAffected()
 	if rowsErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to read rows affected", rowsErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSRSListFailed.WithCause(rowsErr), cfg)
 		return
 	}
 	if rows == 0 {
-		shared.WriteJSONError(w, http.StatusNotFound, "srs list not found")
+		shared.SendAPIError(w, shared.ErrSrsListNotFound, cfg)
 		return
 	}
 
@@ -493,16 +493,16 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 func handleDeleteSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, listUUID string) {
 	res, execErr := db.ExecContext(r.Context(), `DELETE FROM srs_lists WHERE uuid = $1`, listUUID)
 	if execErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to delete srs list", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSRSListFailed.WithCause(execErr), cfg)
 		return
 	}
 	rows, rowsErr := res.RowsAffected()
 	if rowsErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to read rows affected", rowsErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSRSListFailed.WithCause(rowsErr), cfg)
 		return
 	}
 	if rows == 0 {
-		shared.WriteJSONError(w, http.StatusNotFound, "srs list not found")
+		shared.SendAPIError(w, shared.ErrSrsListNotFound, cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"deleted": true}})
@@ -516,17 +516,17 @@ func handleBulkDeleteSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB
 	}
 	cleanUUIDs, err := normalizeUUIDs(req.UUIDs)
 	if len(cleanUUIDs) == 0 {
-		shared.WriteJSONError(w, http.StatusBadRequest, "uuids are required")
+		shared.SendError(w, http.StatusBadRequest, "uuids are required", nil, cfg)
 		return
 	}
 	if err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "one or more uuids are invalid")
+		shared.SendError(w, http.StatusBadRequest, "one or more uuids are invalid", nil, cfg)
 		return
 	}
 
 	_, execErr := db.ExecContext(r.Context(), `DELETE FROM srs_lists WHERE uuid = ANY($1)`, cleanUUIDs)
 	if execErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to bulk delete srs lists", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSRSListFailed.WithCause(execErr), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"deleted": true}})
@@ -540,11 +540,11 @@ func handleBulkEnableSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB
 	}
 	cleanUUIDs, err := normalizeUUIDs(req.UUIDs)
 	if err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "one or more uuids are invalid")
+		shared.SendError(w, http.StatusBadRequest, "one or more uuids are invalid", nil, cfg)
 		return
 	}
 	if len(cleanUUIDs) == 0 {
-		shared.WriteJSONError(w, http.StatusBadRequest, "uuids are required")
+		shared.SendError(w, http.StatusBadRequest, "uuids are required", nil, cfg)
 		return
 	}
 
@@ -554,7 +554,7 @@ func handleBulkEnableSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB
 		WHERE uuid = ANY($2)
 	`, enabled, cleanUUIDs)
 	if execErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to update srs lists state", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSRSListFailed.WithCause(execErr), cfg)
 		return
 	}
 
@@ -569,16 +569,16 @@ func handleBulkSetIntervalSRSLists(w http.ResponseWriter, r *http.Request, db *s
 	}
 	cleanUUIDs, err := normalizeUUIDs(req.UUIDs)
 	if err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "one or more uuids are invalid")
+		shared.SendError(w, http.StatusBadRequest, "one or more uuids are invalid", nil, cfg)
 		return
 	}
 	if len(cleanUUIDs) == 0 {
-		shared.WriteJSONError(w, http.StatusBadRequest, "uuids are required")
+		shared.SendError(w, http.StatusBadRequest, "uuids are required", nil, cfg)
 		return
 	}
 	interval := strings.TrimSpace(req.UpdateInterval)
 	if interval == "" {
-		shared.WriteJSONError(w, http.StatusBadRequest, "updateInterval is required")
+		shared.SendError(w, http.StatusBadRequest, "updateInterval is required", nil, cfg)
 		return
 	}
 
@@ -588,7 +588,7 @@ func handleBulkSetIntervalSRSLists(w http.ResponseWriter, r *http.Request, db *s
 		WHERE uuid = ANY($2)
 	`, interval, cleanUUIDs)
 	if execErr != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to update update interval", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSRSListFailed.WithCause(execErr), cfg)
 		return
 	}
 
@@ -608,28 +608,40 @@ func handleReorderSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, c
 
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "begin transaction failed", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSRSListsFailed.WithCause(err), cfg)
 		return
 	}
 	defer func() {
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range req.Items {
-		if _, err := uuid.Parse(strings.TrimSpace(item.UUID)); err != nil {
+	uuids := make([]string, len(req.Items))
+	positions := make([]int32, len(req.Items))
+	for i, item := range req.Items {
+		trimmed := strings.TrimSpace(item.UUID)
+		if _, err := uuid.Parse(trimmed); err != nil {
 			shared.SendError(w, http.StatusBadRequest, fmt.Sprintf("invalid uuid: %s", item.UUID), nil, cfg)
 			return
 		}
-		if _, err := tx.ExecContext(r.Context(), `
-			UPDATE srs_lists SET view_position = $1, updated_at = CURRENT_TIMESTAMP WHERE uuid = $2
-		`, item.ViewPosition, item.UUID); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "failed to update item position", err, cfg)
-			return
-		}
+		uuids[i] = trimmed
+		positions[i] = int32(item.ViewPosition)
+	}
+
+	// Single batched UPDATE via UNNEST instead of one round-trip per item.
+	if _, err := tx.ExecContext(r.Context(), `
+		UPDATE srs_lists AS s
+		SET view_position = v.view_position, updated_at = CURRENT_TIMESTAMP
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE s.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		shared.SendAPIError(w, shared.ErrReorderSRSListsFailed.WithCause(err), cfg)
+		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to commit transaction", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSRSListsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -647,12 +659,12 @@ func handleCheckSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 
 	if len(req.UUIDs) > 0 {
 		if err := checkSelectedLists(r.Context(), db, cfg, req.UUIDs); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "failed to check selected srs lists", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllSRSListsFailed.WithCause(err), cfg)
 			return
 		}
 	} else {
 		if _, err := srscore.CheckAndUpdateAvailability(r.Context(), db, cfg); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "failed to check srs lists", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllSRSListsFailed.WithCause(err), cfg)
 			return
 		}
 	}

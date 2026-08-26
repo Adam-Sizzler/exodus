@@ -165,10 +165,10 @@ func handleBulkAddUsersToInternalSquad(w http.ResponseWriter, r *http.Request, d
 	var exists int
 	if err := db.QueryRowContext(ctx, `SELECT 1 FROM internal_squads WHERE uuid = $1`, squadUUID).Scan(&exists); err != nil {
 		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to check internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrAddUsersToInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -178,7 +178,7 @@ func handleBulkAddUsersToInternalSquad(w http.ResponseWriter, r *http.Request, d
 		ON CONFLICT (internal_squad_uuid, user_id) DO NOTHING
 	`, squadUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to add users to internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrAddUsersToInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -190,10 +190,10 @@ func handleBulkRemoveUsersFromInternalSquad(w http.ResponseWriter, r *http.Reque
 	var exists int
 	if err := db.QueryRowContext(ctx, `SELECT 1 FROM internal_squads WHERE uuid = $1`, squadUUID).Scan(&exists); err != nil {
 		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to check internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrRemoveUsersFromInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -201,7 +201,7 @@ func handleBulkRemoveUsersFromInternalSquad(w http.ResponseWriter, r *http.Reque
 		DELETE FROM internal_squad_members WHERE internal_squad_uuid = $1
 	`, squadUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to remove users from internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrRemoveUsersFromInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -213,10 +213,10 @@ func handleBulkAddManyUsersToInternalSquad(w http.ResponseWriter, r *http.Reques
 	var exists int
 	if err := db.QueryRowContext(ctx, `SELECT 1 FROM internal_squads WHERE uuid = $1`, squadUUID).Scan(&exists); err != nil {
 		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to check internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrAddUsersToInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -234,7 +234,7 @@ func handleBulkAddManyUsersToInternalSquad(w http.ResponseWriter, r *http.Reques
 		ON CONFLICT (internal_squad_uuid, user_id) DO NOTHING
 	`, squadUUID, req.UserIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to add users to internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrAddUsersToInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -246,10 +246,10 @@ func handleBulkRemoveManyUsersFromInternalSquad(w http.ResponseWriter, r *http.R
 	var exists int
 	if err := db.QueryRowContext(ctx, `SELECT 1 FROM internal_squads WHERE uuid = $1`, squadUUID).Scan(&exists); err != nil {
 		if err == sql.ErrNoRows {
-			shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to check internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrRemoveUsersFromInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -266,7 +266,7 @@ func handleBulkRemoveManyUsersFromInternalSquad(w http.ResponseWriter, r *http.R
 		WHERE internal_squad_uuid = $1 AND user_id = ANY($2::bigint[])
 	`, squadUUID, req.UserIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to remove users from internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrRemoveUsersFromInternalSquadFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -361,7 +361,7 @@ func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql
 		LIMIT $4
 	`, squadUUID, cursor, minTotalBytes, limit)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad usage", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 	defer rows.Close()
@@ -376,14 +376,14 @@ func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql
 	for rows.Next() {
 		var item squadUserUsageItem
 		if scanErr := rows.Scan(&item.ID, &item.TotalBytes); scanErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan squad user usage item", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(scanErr), cfg)
 			return
 		}
 		users = append(users, item)
 		lastID = item.ID
 	}
 	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad user usage items", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -427,7 +427,7 @@ func BandwidthStatsInternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) 
 		path = strings.Trim(path, "/")
 		parts := strings.Split(path, "/")
 		if len(parts) == 0 || parts[0] == "" {
-			shared.WriteJSONError(w, http.StatusNotFound, "not found")
+			shared.SendAPIError(w, shared.ErrNotFound, cfg)
 			return
 		}
 
@@ -446,7 +446,7 @@ func BandwidthStatsInternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) 
 			return
 		}
 
-		shared.WriteJSONError(w, http.StatusNotFound, "not found")
+		shared.SendAPIError(w, shared.ErrNotFound, cfg)
 	}
 }
 
@@ -471,11 +471,11 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 
 	var squadExists bool
 	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM internal_squads WHERE uuid = $1)`, squadUUID).Scan(&squadExists); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch internal squad", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 	if !squadExists {
-		shared.SendError(w, http.StatusNotFound, "internal squad not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrInternalSquadNotFound, cfg)
 		return
 	}
 
@@ -501,7 +501,7 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 		WHERE isi.internal_squad_uuid = $1
 	`, squadUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadAccessibleNodesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -512,7 +512,7 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 		var nodeUUID string
 		if scanErr := nodeRows.Scan(&id, &nodeUUID); scanErr != nil {
 			nodeRows.Close()
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan squad node", scanErr, cfg)
+			shared.SendAPIError(w, shared.ErrGetInternalSquadAccessibleNodesFailed.WithCause(scanErr), cfg)
 			return
 		}
 		nodeUUIDByID[id] = nodeUUID
@@ -520,7 +520,7 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 	}
 	nodeRows.Close()
 	if err := nodeRows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch squad nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInternalSquadAccessibleNodesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -534,7 +534,7 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 			GROUP BY nuh.created_at, nuh.node_id
 		`, userID, nodeIDsLiteral, startDate, endDate)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user squad daily usage", err, cfg)
+			shared.SendAPIError(w, shared.ErrInternalServerError.WithCause(err), cfg)
 			return
 		}
 		for usageRows.Next() {
@@ -542,7 +542,7 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 			var nodeID, totalBytes int64
 			if scanErr := usageRows.Scan(&createdAt, &nodeID, &totalBytes); scanErr != nil {
 				usageRows.Close()
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan user squad daily usage", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrInternalServerError.WithCause(scanErr), cfg)
 				return
 			}
 			nodeUUID, ok := nodeUUIDByID[nodeID]
@@ -554,7 +554,7 @@ func handleGetInternalSquadUserUsage(w http.ResponseWriter, r *http.Request, db 
 		}
 		if err := usageRows.Err(); err != nil {
 			usageRows.Close()
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user squad daily usage", err, cfg)
+			shared.SendAPIError(w, shared.ErrInternalServerError.WithCause(err), cfg)
 			return
 		}
 		usageRows.Close()

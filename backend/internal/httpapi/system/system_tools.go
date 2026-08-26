@@ -62,12 +62,12 @@ func GenerateX25519Handler(cfg *config.BackendConfig) http.HandlerFunc {
 		for i := 0; i < 30; i++ {
 			privateKey := make([]byte, curve25519.ScalarSize)
 			if _, err := rand.Read(privateKey); err != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to generate x25519 keypair", err, cfg)
+				shared.SendAPIError(w, shared.ErrGenerateX25519KeypairFailed.WithCause(err), cfg)
 				return
 			}
 			publicKey, err := curve25519.X25519(privateKey, curve25519.Basepoint)
 			if err != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to generate x25519 keypair", err, cfg)
+				shared.SendAPIError(w, shared.ErrGenerateX25519KeypairFailed.WithCause(err), cfg)
 				return
 			}
 			keypairs = append(keypairs, map[string]string{
@@ -110,7 +110,7 @@ func EncryptHappCryptoLinkHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		encrypted, err := encryptHappV4(req.LinkToEncrypt)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to encrypt Happ crypto link", err, cfg)
+			shared.SendAPIError(w, shared.ErrEncryptHappCryptoLinkFailed.WithCause(err), cfg)
 			return
 		}
 		shared.WriteJSON(w, http.StatusOK, map[string]any{

@@ -75,7 +75,7 @@ func entityHandler(db *sql.DB, cfg *config.BackendConfig, entity string) http.Ha
 		case http.MethodGet:
 			metadata, err := getMetadata(r, db, entity, pathParam)
 			if err != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to fetch metadata", err, cfg)
+				shared.SendAPIError(w, shared.ErrGetMetadataFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"metadata": metadata}})
@@ -91,10 +91,14 @@ func entityHandler(db *sql.DB, cfg *config.BackendConfig, entity string) http.Ha
 			metadata, err := upsertMetadata(r, db, entity, pathParam, req.Metadata)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					shared.SendError(w, http.StatusNotFound, entity+" not found", nil, cfg)
+					if entity == "node" {
+						shared.SendAPIError(w, shared.ErrNodeNotFound, cfg)
+					} else {
+						shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
+					}
 					return
 				}
-				shared.SendError(w, http.StatusInternalServerError, "failed to update metadata", err, cfg)
+				shared.SendAPIError(w, shared.ErrUpdateMetadataFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"metadata": metadata}})

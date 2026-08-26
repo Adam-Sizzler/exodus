@@ -192,7 +192,7 @@ func UsersTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		tags, err := service.repo.getAllUserTags(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user tags", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrFetchUserTagsFailed.WithCause(err), service.cfg)
 			return
 		}
 

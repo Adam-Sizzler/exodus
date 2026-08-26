@@ -72,7 +72,7 @@ func handleList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.
 	plugins, err := loadPlugins(r.Context(), db)
 	if err != nil {
 		cfg.Logger.Error("Failed to load node plugins", "error", err)
-		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load node plugins")
+		shared.SendAPIError(w, shared.ErrGetNodePluginsFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, responseEnvelope[listPayload]{
@@ -83,24 +83,24 @@ func handleList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.
 func handleCreate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	var req createRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 		return
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		shared.WriteJSONError(w, http.StatusBadRequest, "name is required")
+		shared.SendError(w, http.StatusBadRequest, "name is required", nil, cfg)
 		return
 	}
 	configJSON, err := normalizePluginConfig(req.PluginConfig)
 	if err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, err.Error())
+		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
 	}
 
 	plugin, err := createPlugin(r.Context(), db, name, configJSON)
 	if err != nil {
 		cfg.Logger.Error("Failed to create node plugin", "error", err)
-		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to create node plugin")
+		shared.SendAPIError(w, shared.ErrCreateNodePluginFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusCreated, responseEnvelope[nodePlugin]{Response: plugin})
@@ -109,17 +109,17 @@ func handleCreate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 func handleByUUID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, rawPath string) {
 	parts := strings.Split(strings.Trim(rawPath, "/"), "/")
 	if len(parts) == 0 || parts[0] == "" {
-		shared.WriteJSONError(w, http.StatusNotFound, "not found")
+		shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 		return
 	}
 	pluginUUID := parts[0]
 	if _, err := uuid.Parse(pluginUUID); err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "invalid uuid")
+		shared.SendError(w, http.StatusBadRequest, "invalid uuid", nil, cfg)
 		return
 	}
 
 	if len(parts) > 1 {
-		shared.WriteJSONError(w, http.StatusNotFound, "not found")
+		shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 		return
 	}
 
@@ -128,11 +128,11 @@ func handleByUUID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 		plugin, err := loadPluginByUUID(r.Context(), db, pluginUUID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
+				shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 				return
 			}
 			cfg.Logger.Error("Failed to load node plugin", "uuid", pluginUUID, "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load node plugin")
+			shared.SendAPIError(w, shared.ErrGetNodePluginsFailed.WithCause(err), cfg)
 			return
 		}
 		shared.WriteJSON(w, http.StatusOK, responseEnvelope[nodePlugin]{Response: plugin})
@@ -148,21 +148,21 @@ func handleByUUID(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, urlUUID string) {
 	var req updateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 		return
 	}
 
 	pluginUUID := urlUUID
 	if pluginUUID == "" {
 		if req.UUID == nil || *req.UUID == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "uuid is required")
+			shared.SendError(w, http.StatusBadRequest, "uuid is required", nil, cfg)
 			return
 		}
 		pluginUUID = *req.UUID
 	}
 
 	if _, err := uuid.Parse(pluginUUID); err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "invalid uuid")
+		shared.SendError(w, http.StatusBadRequest, "invalid uuid", nil, cfg)
 		return
 	}
 
@@ -170,7 +170,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 	if req.Name != nil {
 		trimmed := strings.TrimSpace(*req.Name)
 		if trimmed == "" {
-			shared.WriteJSONError(w, http.StatusBadRequest, "name cannot be empty")
+			shared.SendError(w, http.StatusBadRequest, "name cannot be empty", nil, cfg)
 			return
 		}
 		name = &trimmed
@@ -180,7 +180,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 	if req.PluginConfig != nil {
 		normalized, err := normalizePluginConfig(*req.PluginConfig)
 		if err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, err.Error())
+			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 			return
 		}
 		configJSON = &normalized
@@ -189,11 +189,11 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 	plugin, err := updatePlugin(r.Context(), db, pluginUUID, name, configJSON, req.ViewPosition)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
+			shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 			return
 		}
 		cfg.Logger.Error("Failed to update node plugin", "uuid", pluginUUID, "error", err)
-		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update node plugin")
+		shared.SendAPIError(w, shared.ErrUpdateNodePluginFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, responseEnvelope[nodePlugin]{Response: plugin})
@@ -202,7 +202,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 func handleDelete(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, pluginUUID string) {
 	if err := deletePlugin(r.Context(), db, pluginUUID); err != nil {
 		cfg.Logger.Error("Failed to delete node plugin", "uuid", pluginUUID, "error", err)
-		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete node plugin")
+		shared.SendAPIError(w, shared.ErrDeleteNodePluginFailed.WithCause(err), cfg)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -216,39 +216,39 @@ func handleExecutor(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *con
 
 	var req executorRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 		return
 	}
 	command := strings.TrimSpace(req.Command.Command)
 	switch command {
 	case "blockIps", "unblockIps", "recreateTables":
 	default:
-		shared.WriteJSONError(w, http.StatusBadRequest, "unsupported executor command")
+		shared.SendError(w, http.StatusBadRequest, "unsupported executor command", nil, cfg)
 		return
 	}
 	if req.TargetNodes.Target != "specificNodes" {
-		shared.WriteJSONError(w, http.StatusBadRequest, "targetNodes.target must be specificNodes")
+		shared.SendError(w, http.StatusBadRequest, "targetNodes.target must be specificNodes", nil, cfg)
 		return
 	}
 	targetNodeUUIDs := normalizeUUIDList(req.TargetNodes.NodeUUIDs)
 	if len(targetNodeUUIDs) == 0 {
-		shared.WriteJSONError(w, http.StatusBadRequest, "nodeUuids are required")
+		shared.SendError(w, http.StatusBadRequest, "nodeUuids are required", nil, cfg)
 		return
 	}
 	for _, nodeUUID := range targetNodeUUIDs {
 		if _, err := uuid.Parse(nodeUUID); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid node uuid")
+			shared.SendError(w, http.StatusBadRequest, "invalid node uuid", nil, cfg)
 			return
 		}
 	}
 
 	if err := ensureNodesExist(r.Context(), db, targetNodeUUIDs); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.WriteJSONError(w, http.StatusBadRequest, "one or more nodes were not found")
+			shared.SendError(w, http.StatusBadRequest, "one or more nodes were not found", nil, cfg)
 			return
 		}
 		cfg.Logger.Error("Failed to validate node plugin executor targets", "error", err)
-		shared.WriteJSONError(w, http.StatusInternalServerError, "failed to validate targets")
+		shared.SendAPIError(w, shared.ErrExecuteNodePluginFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -259,7 +259,7 @@ func handleExecutor(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *con
 	)
 	if err := monitor.RequestNodePluginExecutor(req.Command.Raw, targetNodeUUIDs...); err != nil {
 		cfg.Logger.Warn("Failed to send node plugin executor command", "command", command, "error", err)
-		shared.WriteJSONError(w, http.StatusBadGateway, err.Error())
+		shared.SendAPIError(w, shared.ErrExecuteNodePluginFailed.WithCause(err), cfg)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
@@ -275,43 +275,43 @@ func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 	case "reorder":
 		var req reorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 			return
 		}
 		if len(req.Items) == 0 {
-			shared.WriteJSONError(w, http.StatusBadRequest, "items are required")
+			shared.SendError(w, http.StatusBadRequest, "items are required", nil, cfg)
 			return
 		}
 		if err := reorderPlugins(r.Context(), db, req); err != nil {
 			cfg.Logger.Error("Failed to reorder node plugins", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to reorder node plugins")
+			shared.SendAPIError(w, shared.ErrReorderNodePluginsFailed.WithCause(err), cfg)
 			return
 		}
 		plugins, err := loadPlugins(r.Context(), db)
 		if err != nil {
 			cfg.Logger.Error("Failed to load reordered node plugins", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load node plugins")
+			shared.SendAPIError(w, shared.ErrGetNodePluginsFailed.WithCause(err), cfg)
 			return
 		}
 		shared.WriteJSON(w, http.StatusOK, responseEnvelope[listPayload]{Response: listPayload{NodePlugins: plugins, Total: len(plugins)}})
 	case "clone":
 		var req cloneRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 			return
 		}
 		if _, err := uuid.Parse(strings.TrimSpace(req.CloneFromUUID)); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid cloneFromUuid")
+			shared.SendError(w, http.StatusBadRequest, "invalid cloneFromUuid", nil, cfg)
 			return
 		}
 		plugin, err := clonePlugin(r.Context(), db, req)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
+				shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 				return
 			}
 			cfg.Logger.Error("Failed to clone node plugin", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to clone node plugin")
+			shared.SendAPIError(w, shared.ErrCloneNodePluginFailed.WithCause(err), cfg)
 			return
 		}
 		shared.WriteJSON(w, http.StatusCreated, responseEnvelope[nodePlugin]{Response: plugin})
@@ -320,25 +320,25 @@ func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 			UUID string `json:"uuid"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+			shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 			return
 		}
 		pluginUUID := strings.TrimSpace(req.UUID)
 		if _, err := uuid.Parse(pluginUUID); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid uuid")
+			shared.SendError(w, http.StatusBadRequest, "invalid uuid", nil, cfg)
 			return
 		}
 		if err := syncPlugin(r.Context(), db, pluginUUID); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				shared.WriteJSONError(w, http.StatusNotFound, "node plugin not found")
+				shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 				return
 			}
 			cfg.Logger.Error("Failed to sync node plugin", "uuid", pluginUUID, "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to sync node plugin")
+			shared.SendAPIError(w, shared.ErrSyncNodePluginFailed.WithCause(err), cfg)
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
 	default:
-		shared.WriteJSONError(w, http.StatusNotFound, "not found")
+		shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 	}
 }

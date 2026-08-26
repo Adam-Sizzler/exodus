@@ -132,7 +132,7 @@ func handleGetSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, db
 		ORDER BY view_position ASC
 	`)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription page configs", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllSubpageConfigsFailed.WithCause(err), cfg)
 		return
 	}
 	defer rows.Close()
@@ -142,7 +142,7 @@ func handleGetSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, db
 		var cfgItem SubscriptionPageConfig
 		var viewPosition sql.NullInt64
 		if err := rows.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to scan subscription page config", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllSubpageConfigsFailed.WithCause(err), cfg)
 			return
 		}
 		if viewPosition.Valid {
@@ -151,7 +151,7 @@ func handleGetSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request, db
 		configs = append(configs, cfgItem)
 	}
 	if err := rows.Err(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to iterate subscription page configs", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetAllSubpageConfigsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -168,10 +168,10 @@ func handleGetSubscriptionPageConfigByUUID(w http.ResponseWriter, r *http.Reques
 	cfgItem, err := fetchSubscriptionPageConfig(ctx, db, uuidStr, true)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSubpageConfigNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription page config", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubpageConfigByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -195,7 +195,7 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	ctx := r.Context()
 	defaultConfig, err := fetchDefaultSubpageConfig(ctx, db)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch default subpage config", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -210,10 +210,10 @@ func handleCreateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	var configStr sql.NullString
 	if err := row.Scan(&created.UUID, &viewPosition, &created.Name, &configStr, &created.CreatedAt, &created.UpdatedAt); err != nil {
 		if isUniqueNameError(err) {
-			shared.SendError(w, http.StatusConflict, "config name already exists", err, cfg)
+			shared.SendAPIError(w, shared.ErrSubpageConfigNameAlreadyExists, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to create subscription page config", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
 	if viewPosition.Valid {
@@ -302,14 +302,14 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 	var configStr sql.NullString
 	if err := row.Scan(&updated.UUID, &viewPosition, &updated.Name, &configStr, &updated.CreatedAt, &updated.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSubpageConfigNotFound, cfg)
 			return
 		}
 		if isUniqueNameError(err) {
-			shared.SendError(w, http.StatusConflict, "config name already exists", err, cfg)
+			shared.SendAPIError(w, shared.ErrSubpageConfigNameAlreadyExists, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to update subscription page config", err, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
 	if viewPosition.Valid {
@@ -343,29 +343,30 @@ func handleUpdateSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, 
 
 func handleDeleteSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, uuidStr string) {
 	if uuidStr == defaultSubpageConfigUUID {
-		shared.SendError(w, http.StatusBadRequest, "reserved config cannot be deleted", nil, cfg)
+		shared.SendAPIError(w, shared.ErrReservedSubpageConfigCantBeDeleted, cfg)
 		return
 	}
 
 	ctx := r.Context()
 	targetNodeUUIDs, targetErr := getSubNodeUUIDsBySubpageConfigUUID(ctx, db, uuidStr)
 	if targetErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to resolve linked subscription nodes", targetErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSubpageConfigFailed.WithCause(targetErr), cfg)
 		return
 	}
 
 	result, err := db.ExecContext(ctx, `DELETE FROM subscription_page_config WHERE uuid = $1`, uuidStr)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete subscription page config", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
-	ra, err := result.RowsAffected()
+
+	rows, err := result.RowsAffected()
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to read rows affected", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
-	if ra == 0 {
-		shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
+	if rows == 0 {
+		shared.SendAPIError(w, shared.ErrSubpageConfigNotFound, cfg)
 		return
 	}
 
@@ -404,25 +405,37 @@ func handleReorderSubscriptionPageConfigs(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "begin tx failed", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSubpageConfigsFailed.WithCause(err), cfg)
 		return
 	}
 	defer func() {
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range req.Items {
-		if _, err := tx.ExecContext(ctx, `UPDATE subscription_page_config SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to reorder subscription page configs", err, cfg)
-			return
-		}
+	uuids := make([]string, len(req.Items))
+	positions := make([]int32, len(req.Items))
+	for i, item := range req.Items {
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE subscription_page_config AS c
+		SET view_position = v.view_position
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE c.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		shared.SendAPIError(w, shared.ErrReorderSubpageConfigsFailed.WithCause(err), cfg)
+		return
 	}
 	if _, err := tx.ExecContext(ctx, `SELECT setval('subscription_page_config_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM subscription_page_config) + 1)`); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to update sequence", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSubpageConfigsFailed.WithCause(err), cfg)
 		return
 	}
 	if err := tx.Commit(); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "commit reorder failed", err, cfg)
+		shared.SendAPIError(w, shared.ErrReorderSubpageConfigsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -454,10 +467,10 @@ func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, d
 	var configStr sql.NullString
 	if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "subscription page config not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrSubpageConfigNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription page config for cloning", err, cfg)
+		shared.SendAPIError(w, shared.ErrCloneSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
 	if viewPosition.Valid {
@@ -478,7 +491,7 @@ func handleCloneSubscriptionPageConfig(w http.ResponseWriter, r *http.Request, d
 	var insertViewPosition sql.NullInt64
 	var insertConfigStr sql.NullString
 	if err := insertRow.Scan(&created.UUID, &insertViewPosition, &created.Name, &insertConfigStr, &created.CreatedAt, &created.UpdatedAt); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to clone subscription page config", err, cfg)
+		shared.SendAPIError(w, shared.ErrCloneSubpageConfigFailed.WithCause(err), cfg)
 		return
 	}
 	if insertViewPosition.Valid {

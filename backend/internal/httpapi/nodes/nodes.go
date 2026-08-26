@@ -87,7 +87,7 @@ func NodeByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		nodeUUID := parts[0]
 		if _, err := uuid.Parse(nodeUUID); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+			shared.SendAPIError(w, shared.ErrInvalidUUID, cfg)
 			return
 		}
 
@@ -212,7 +212,7 @@ func NodesTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		tags, err := service.repo.getNodeTags(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch node tags", err, cfg)
+			shared.SendAPIError(w, shared.ErrFetchNodeTagsFailed.WithCause(err), cfg)
 			return
 		}
 		shared.WriteJSON(w, http.StatusOK, map[string]any{

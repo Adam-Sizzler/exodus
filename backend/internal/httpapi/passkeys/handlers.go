@@ -37,7 +37,7 @@ import (
 func PasskeysHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/passkeys" && r.URL.Path != "/api/passkeys/" {
-			shared.WriteJSONError(w, http.StatusNotFound, "not found")
+			shared.SendAPIError(w, shared.ErrNotFound, cfg)
 			return
 		}
 
@@ -57,13 +57,13 @@ func PasskeysHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 func handleGetPasskeys(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	adminUUID, ok := currentAdminUUID(r)
 	if !ok {
-		shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+		shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 		return
 	}
 
 	items, err := listPasskeysForAdmin(r.Context(), db, adminUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch passkeys", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetPasskeysFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
@@ -76,7 +76,7 @@ func handleGetPasskeys(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *
 func handlePatchPasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	adminUUID, ok := currentAdminUUID(r)
 	if !ok {
-		shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+		shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 		return
 	}
 
@@ -102,22 +102,22 @@ func handlePatchPasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg 
 		WHERE id = $2 AND admin_uuid = $3
 	`, req.Name, req.ID, adminUUID)
 	if execErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to update passkey name", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdatePasskeyFailed.WithCause(execErr), cfg)
 		return
 	}
 	rows, rowsErr := result.RowsAffected()
 	if rowsErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to read rows affected", rowsErr, cfg)
+		shared.SendAPIError(w, shared.ErrUpdatePasskeyFailed.WithCause(rowsErr), cfg)
 		return
 	}
 	if rows == 0 {
-		shared.SendError(w, http.StatusNotFound, "passkey not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrPasskeyNotFound, cfg)
 		return
 	}
 
 	items, err := listPasskeysForAdmin(r.Context(), db, adminUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch passkeys", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetPasskeysFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
@@ -130,7 +130,7 @@ func handlePatchPasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg 
 func handleDeletePasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	adminUUID, ok := currentAdminUUID(r)
 	if !ok {
-		shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+		shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 		return
 	}
 
@@ -147,16 +147,16 @@ func handleDeletePasskey(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 
 	result, execErr := db.ExecContext(r.Context(), `DELETE FROM passkeys WHERE id = $1 AND admin_uuid = $2`, req.ID, adminUUID)
 	if execErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete passkey", execErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeletePasskeyFailed.WithCause(execErr), cfg)
 		return
 	}
 	rows, rowsErr := result.RowsAffected()
 	if rowsErr != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to read rows affected", rowsErr, cfg)
+		shared.SendAPIError(w, shared.ErrDeletePasskeyFailed.WithCause(rowsErr), cfg)
 		return
 	}
 	if rows == 0 {
-		shared.SendError(w, http.StatusNotFound, "passkey not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrPasskeyNotFound, cfg)
 		return
 	}
 
@@ -182,7 +182,7 @@ func RegistrationOptionsHandler(db *sql.DB, cfg *config.BackendConfig) http.Hand
 
 		adminUUID, ok := currentAdminUUID(r)
 		if !ok {
-			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+			shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 			return
 		}
 
@@ -246,7 +246,7 @@ func VerifyRegistrationHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 
 		adminUUID, ok := currentAdminUUID(r)
 		if !ok {
-			shared.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+			shared.SendAPIError(w, shared.ErrUnauthorized, cfg)
 			return
 		}
 
@@ -456,13 +456,13 @@ func VerifyAuthenticationHandler(db *sql.DB, cfg *config.BackendConfig) http.Han
 func sendPasskeySetupError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {
 	switch {
 	case errors.Is(err, errPasskeysNotEnabled):
-		shared.SendError(w, http.StatusForbidden, "passkeys not enabled", err, cfg)
+		shared.SendAPIError(w, shared.ErrPasskeysNotEnabled, cfg)
 	case errors.Is(err, errPasskeysNotConfigured):
-		shared.SendError(w, http.StatusForbidden, "passkeys not configured", err, cfg)
+		shared.SendAPIError(w, shared.ErrPasskeysNotConfigured, cfg)
 	case errors.Is(err, errChallengeNotFound):
-		shared.SendError(w, http.StatusForbidden, "challenge not found or expired", err, cfg)
+		shared.SendAPIError(w, shared.ErrPasskeyChallengeNotFound, cfg)
 	default:
-		shared.SendError(w, http.StatusInternalServerError, "passkey setup error", err, cfg)
+		shared.SendAPIError(w, shared.ErrPasskeySetupFailed.WithCause(err), cfg)
 	}
 }
 

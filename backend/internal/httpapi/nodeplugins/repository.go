@@ -9,6 +9,7 @@ import (
 	"time"
 
 	monitor "exodus/internal/nodes"
+	"exodus/internal/util"
 
 	"github.com/google/uuid"
 )
@@ -267,6 +268,20 @@ func deletePlugin(ctx context.Context, db *sql.DB, pluginUUID string) error {
 }
 
 func reorderPlugins(ctx context.Context, db *sql.DB, req reorderRequest) error {
+	if len(req.Items) == 0 {
+		return nil
+	}
+
+	uuids := make([]string, len(req.Items))
+	positions := make([]int32, len(req.Items))
+	for i, item := range req.Items {
+		if _, err := uuid.Parse(item.UUID); err != nil {
+			return fmt.Errorf("invalid uuid")
+		}
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
+	}
+
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -274,13 +289,17 @@ func reorderPlugins(ctx context.Context, db *sql.DB, req reorderRequest) error {
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	for _, item := range req.Items {
-		if _, err := uuid.Parse(item.UUID); err != nil {
-			return fmt.Errorf("invalid uuid")
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE node_plugin SET view_position = $1, updated_at = CURRENT_TIMESTAMP WHERE uuid::text = $2`, item.ViewPosition, item.UUID); err != nil {
-			return err
-		}
+
+	// Single batched UPDATE via UNNEST instead of one round-trip per plugin.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE node_plugin AS p
+		SET view_position = v.view_position, updated_at = CURRENT_TIMESTAMP
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE p.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
@@ -311,20 +330,7 @@ func ensureNodesExist(ctx context.Context, db *sql.DB, nodeUUIDs []string) error
 }
 
 func normalizeUUIDList(raw []string) []string {
-	seen := make(map[string]struct{}, len(raw))
-	result := make([]string, 0, len(raw))
-	for _, item := range raw {
-		value := strings.TrimSpace(item)
-		if value == "" {
-			continue
-		}
-		if _, exists := seen[value]; exists {
-			continue
-		}
-		seen[value] = struct{}{}
-		result = append(result, value)
-	}
-	return result
+	return util.NormalizeUUIDs(raw)
 }
 
 type pluginScanner interface {

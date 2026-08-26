@@ -24,6 +24,7 @@ import (
 	"exodus/internal/httpapi/subscriptionsettings"
 	"exodus/internal/jobqueue"
 	"exodus/internal/logger"
+	"exodus/internal/util"
 )
 
 func loadSubscriptionSettings(ctx context.Context, dbConn *sql.DB, _ *config.BackendConfig) (SubscriptionSettingsParsed, error) {
@@ -572,34 +573,92 @@ func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user Subscription
 		return HwidCheckupResult{Allowed: true}, nil
 	}
 
-	count, err := countHwidDevices(ctx, dbConn, user.TID)
-	if err != nil {
-		return HwidCheckupResult{}, fmt.Errorf("count hwid devices: %w", err)
-	}
-
 	limit := settings.FallbackDeviceLimit
 	if user.HwidDeviceLimit != nil {
 		limit = *user.HwidDeviceLimit
 	}
 
-	if count >= limit {
-		return HwidCheckupResult{Allowed: false, MaxDeviceReached: true}, nil
+	allowed, err := createHwidDeviceWithAdvisoryLock(ctx, dbConn, user.TID, *hwid, limit)
+	if err != nil {
+		return HwidCheckupResult{}, fmt.Errorf("create hwid device: %w", err)
 	}
-
-	if err := upsertHwidUserDevice(ctx, dbConn, user.TID, *hwid); err != nil {
-		return HwidCheckupResult{}, fmt.Errorf("upsert hwid device: %w", err)
+	if !allowed {
+		return HwidCheckupResult{Allowed: false, MaxDeviceReached: true}, nil
 	}
 
 	return HwidCheckupResult{Allowed: true}, nil
 }
 
-func countHwidDevices(ctx context.Context, dbConn *sql.DB, userID int64) (int, error) {
-	var count int
-	err := dbConn.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_id = $1`, userID).Scan(&count)
+// hwidLockPrefix matches Remnawave's HWID_LOCK_PREFIX (900000000n): added to
+// the user ID to form the pg_advisory_xact_lock key, keeping this lock's
+// numeric key space clear of the fixed key internal/db/migrations.go uses
+// for its own advisory lock (2203092601 — far outside this per-user range
+// for any realistic user ID).
+const hwidLockPrefix int64 = 900000000
+
+// createHwidDeviceWithAdvisoryLock is a 1:1 port of Remnawave's
+// HwidUserDevicesRepository.createWithAdvisoryLock: count-then-insert is a
+// classic check-then-act race — two concurrent requests for the same user
+// with two different new HWIDs can both pass a plain "count < limit" check
+// before either INSERT commits, silently exceeding the device limit under
+// concurrent load. pg_advisory_xact_lock(userID) serializes this per user
+// (other users are unaffected) and releases automatically at transaction
+// end, so a crashed/canceled request can't leave the lock held.
+func createHwidDeviceWithAdvisoryLock(ctx context.Context, dbConn *sql.DB, userID int64, hwid HwidHeaders, deviceLimit int) (bool, error) {
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
-	return count, nil
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, hwidLockPrefix+userID); err != nil {
+		return false, fmt.Errorf("acquire hwid advisory lock: %w", err)
+	}
+
+	// Matches upstream: select up to deviceLimit existing hwids rather than an
+	// unbounded COUNT(*) — same limit check, cheaper for a large device count.
+	rows, err := tx.QueryContext(ctx, `SELECT hwid FROM hwid_user_devices WHERE user_id = $1 LIMIT $2`, userID, deviceLimit)
+	if err != nil {
+		return false, fmt.Errorf("count hwid devices: %w", err)
+	}
+	existing := 0
+	for rows.Next() {
+		existing++
+	}
+	if closeErr := rows.Close(); closeErr != nil {
+		return false, closeErr
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+
+	if existing >= deviceLimit {
+		return false, nil
+	}
+
+	hwid.Platform = lowerStringPtr(hwid.Platform)
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (hwid, user_id)
+		DO UPDATE SET
+			platform = COALESCE(EXCLUDED.platform, hwid_user_devices.platform),
+			os_version = COALESCE(EXCLUDED.os_version, hwid_user_devices.os_version),
+			device_model = COALESCE(EXCLUDED.device_model, hwid_user_devices.device_model),
+			user_agent = COALESCE(EXCLUDED.user_agent, hwid_user_devices.user_agent),
+			request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
+			updated_at = now()
+	`, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP); err != nil {
+		return false, fmt.Errorf("insert hwid device: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit hwid device tx: %w", err)
+	}
+
+	return true, nil
 }
 
 func hwidDeviceExists(ctx context.Context, dbConn *sql.DB, userID int64, hwid string) (bool, error) {
@@ -1190,19 +1249,28 @@ func formatTemplateValue(value string, user SubscriptionUser, settings Subscript
 	return res
 }
 
+// formatTemplateTrafficBytes renders a traffic value for {{TRAFFIC_USED}} /
+// {{TRAFFIC_LEFT}} / {{TOTAL_TRAFFIC}} placeholders using util.FormatBytes,
+// so the unit auto-scales past 1024 GiB into TiB/PiB instead of staying
+// pinned to GiB. NOTE: this intentionally diverges from upstream Remnawave's
+// TemplateEngine.replace(), which always renders these three placeholders in
+// GiB regardless of magnitude - clients/scripts parsing the subscription
+// remark that expect the upstream-fixed "X.XX GiB" format will see "X.XX
+// TiB" once a limit/usage crosses 1024 GiB.
 func formatTemplateTrafficBytes(bytes int64) string {
-	if bytes <= 0 {
-		return "0.00 GiB"
+	if bytes < 0 {
+		bytes = 0
 	}
-	const gib = 1024 * 1024 * 1024
-	return fmt.Sprintf("%.2f GiB", float64(bytes)/float64(gib))
+	return util.FormatBytes(bytes)
 }
 
 // resolveTemplateVariables replaces every supported {{VAR}} / {{VAR:k=v|...}}
 // placeholder in value using the user/settings context. This mirrors
-// upstream's TemplateEngine.replace() and is the single place where the
-// list of supported template variables is defined - reused by both response
-// headers (formatTemplateValue) and host remarks (resolveHostRemarks).
+// upstream's TemplateEngine.replace() for the variable set and syntax, but
+// NOT for TOTAL_TRAFFIC/TRAFFIC_USED/TRAFFIC_LEFT unit scaling - see
+// formatTemplateTrafficBytes. This is the single place where the list of
+// supported template variables is defined - reused by both response headers
+// (formatTemplateValue) and host remarks (resolveHostRemarks).
 func resolveTemplateVariables(value string, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) string {
 	trafficLeft := int64(0)
 	if user.TrafficLimitBytes > 0 {

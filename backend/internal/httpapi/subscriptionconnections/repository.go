@@ -380,6 +380,10 @@ func (r *SubscriptionConnectionRepository) setNodeDisabled(ctx context.Context, 
 }
 
 func (r *SubscriptionConnectionRepository) reorderNodes(ctx context.Context, items []reorderNodeItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -388,10 +392,23 @@ func (r *SubscriptionConnectionRepository) reorderNodes(ctx context.Context, ite
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range items {
-		if _, err := tx.ExecContext(ctx, `UPDATE sub_nodes SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); err != nil {
-			return err
-		}
+	// Single batched UPDATE via UNNEST instead of one round-trip per sub-node.
+	uuids := make([]string, len(items))
+	positions := make([]int32, len(items))
+	for i, item := range items {
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE sub_nodes AS s
+		SET view_position = v.view_position
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE s.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `SELECT setval('sub_nodes_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM sub_nodes) + 1)`); err != nil {
 		return err

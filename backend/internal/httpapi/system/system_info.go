@@ -2,7 +2,6 @@ package system
 
 import (
 	"bufio"
-	"fmt"
 	"math/big"
 	"net/url"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"exodus/internal/constant"
+	"exodus/internal/util"
 )
 
 type memStats struct {
@@ -390,24 +390,5 @@ func detectPhysicalCores(fallback int) int {
 }
 
 func formatBigBytes(value *big.Int) string {
-	if value == nil || value.Sign() == 0 {
-		return "0 B"
-	}
-
-	sign := ""
-	abs := new(big.Int).Set(value)
-	if abs.Sign() < 0 {
-		sign = "-"
-		abs.Abs(abs)
-	}
-
-	byteFloat, _ := new(big.Float).SetInt(abs).Float64()
-	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
-	idx := 0
-	for byteFloat >= 1024 && idx < len(units)-1 {
-		byteFloat /= 1024
-		idx++
-	}
-
-	return fmt.Sprintf("%s%.2f %s", sign, byteFloat, units[idx])
+	return util.FormatBigBytes(value)
 }

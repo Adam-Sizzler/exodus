@@ -20,8 +20,22 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, error) {
-	rows, err := r.db.QueryContext(ctx, `
+// getUsersTableRecords fetches one page of the users table with filtering,
+// sorting and pagination applied in SQL (WHERE/ORDER BY/LIMIT/OFFSET), instead
+// of loading the whole users table into memory and slicing it in Go.
+func (r *UserRepository) getUsersTableRecords(ctx context.Context, whereSQL, orderSQL string, whereArgs []any, start, size int) ([]userRecord, int64, error) {
+	baseFrom := `FROM users u LEFT JOIN user_traffic ut ON ut.id = u.id ` + whereSQL
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) "+baseFrom, whereArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	limitIdx := len(whereArgs) + 1
+	offsetIdx := len(whereArgs) + 2
+	args := append(append([]any{}, whereArgs...), size, start)
+
+	query := fmt.Sprintf(`
 		SELECT
 			u.id, u.uuid, u.short_uuid, u.username, u.status, u.traffic_limit_bytes,
 			u.traffic_limit_strategy, u.expire_at, u.last_traffic_reset_at,
@@ -31,27 +45,30 @@ func (r *UserRepository) getAllUserRecords(ctx context.Context) ([]userRecord, e
 			u.last_triggered_threshold, u.created_at, u.updated_at,
 			COALESCE(ut.used_traffic_bytes, 0), COALESCE(ut.lifetime_used_traffic_bytes, 0),
 			ut.online_at, ut.last_connected_node_uuid, ut.first_connected_at
-		FROM users u
-		LEFT JOIN user_traffic ut ON ut.id = u.id
-		ORDER BY u.id DESC
-	`)
+		%s
+		%s
+		LIMIT $%d OFFSET $%d
+	`, baseFrom, orderSQL, limitIdx, offsetIdx)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	records := make([]userRecord, 0)
+	records := make([]userRecord, 0, size)
 	for rows.Next() {
 		record, scanErr := scanUserRecord(rows)
 		if scanErr != nil {
-			return nil, scanErr
+			return nil, 0, scanErr
 		}
 		records = append(records, record)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return records, nil
+
+	return records, total, nil
 }
 
 func (r *UserRepository) getUserRecordByID(ctx context.Context, id int64) (userRecord, error) {

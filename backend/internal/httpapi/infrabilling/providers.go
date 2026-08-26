@@ -140,7 +140,7 @@ func handleCreateProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		VALUES ($1, $2, $3)
 		RETURNING uuid
 	`, name, nullableString(faviconURL), nullableString(loginURL)).Scan(&providerUUID); err != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to create infra provider", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateInfraProviderFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -205,12 +205,12 @@ func handleUpdateProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		query := fmt.Sprintf("UPDATE infra_providers SET %s, updated_at = now() WHERE uuid = $%d", strings.Join(updates, ", "), idx)
 		result, err := db.ExecContext(r.Context(), query, args...)
 		if err != nil {
-			shared.SendError(w, http.StatusBadRequest, "failed to update infra provider", err, cfg)
+			shared.SendAPIError(w, shared.ErrUpdateInfraProviderFailed.WithCause(err), cfg)
 			return
 		}
 		affected, err := result.RowsAffected()
 		if err != nil || affected == 0 {
-			shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
+			shared.SendAPIError(w, shared.ErrInfraProviderNotFound, cfg)
 			return
 		}
 	}
@@ -226,12 +226,12 @@ func handleDeleteProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 
 	result, err := db.ExecContext(r.Context(), `DELETE FROM infra_providers WHERE uuid = $1`, providerUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusBadRequest, "failed to delete infra provider", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteInfraProviderFailed.WithCause(err), cfg)
 		return
 	}
 	affected, err := result.RowsAffected()
 	if err != nil || affected == 0 {
-		shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
+		shared.SendAPIError(w, shared.ErrInfraProviderNotFound, cfg)
 		return
 	}
 
@@ -241,7 +241,7 @@ func handleDeleteProvider(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 func writeProvidersResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
 	items, err := getProviders(r.Context(), db)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch infra providers", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInfraProvidersFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
@@ -259,11 +259,11 @@ func writeProviderResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, c
 func writeProviderResponseWithStatus(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, providerUUID string, status int) {
 	item, err := getProvider(r.Context(), db, providerUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch infra provider", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInfraProviderByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 	if item == nil {
-		shared.WriteJSONError(w, http.StatusNotFound, "infra provider not found")
+		shared.SendAPIError(w, shared.ErrInfraProviderNotFound, cfg)
 		return
 	}
 	shared.WriteJSON(w, status, map[string]any{"response": item})

@@ -80,14 +80,14 @@ func handleGetSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Request,
 			}
 		}
 		if err != nil {
-			shared.SendError(w, http.StatusNotFound, "subscription settings not found", err, cfg)
+			shared.SendAPIError(w, shared.ErrSubscriptionSettingsNotFound, cfg)
 			return
 		}
 	}
 
 	apiSettings, err := convertSubscriptionSettingsToAPI(settings)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to parse subscription settings", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetSubscriptionSettingsFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -185,7 +185,7 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 	}
 
 	if len(updates) == 0 {
-		shared.SendError(w, http.StatusBadRequest, "no fields to update", nil, cfg)
+		handleGetSubscriptionSettingsEXODUS(w, r, db, cfg)
 		return
 	}
 
@@ -204,13 +204,13 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 	row := db.QueryRowContext(r.Context(), query, args...)
 	settings, err := ScanSubscriptionSettings(row)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to update subscription settings", err, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSubscriptionSettingsFailed.WithCause(err), cfg)
 		return
 	}
 
 	apiSettings, err := convertSubscriptionSettingsToAPI(settings)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to parse subscription settings", err, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateSubscriptionSettingsFailed.WithCause(err), cfg)
 		return
 	}
 

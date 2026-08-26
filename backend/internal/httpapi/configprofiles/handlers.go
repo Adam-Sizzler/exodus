@@ -9,21 +9,21 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/util"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func handleGetConfigProfiles(w http.ResponseWriter, r *http.Request, service *ConfigProfileService) {
 	records, err := service.repo.getAllConfigProfileRecords(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfilesFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildConfigProfileResponses(r.Context(), service, records)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build config profiles response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfilesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -39,16 +39,16 @@ func handleGetConfigProfile(w http.ResponseWriter, r *http.Request, service *Con
 	record, err := service.repo.getConfigProfileRecordByUUID(r.Context(), profileUUID)
 	if err != nil {
 		if errors.Is(err, errConfigProfileNotFound) {
-			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfileByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildConfigProfileResponses(r.Context(), service, []configProfileRecord{record})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfileByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
@@ -61,16 +61,16 @@ func handleGetComputedConfigProfile(w http.ResponseWriter, r *http.Request, serv
 func handleGetConfigProfileInbounds(w http.ResponseWriter, r *http.Request, service *ConfigProfileService, profileUUID string) {
 	if _, err := service.repo.getConfigProfileRecordByUUID(r.Context(), profileUUID); err != nil {
 		if errors.Is(err, errConfigProfileNotFound) {
-			shared.SendError(w, http.StatusNotFound, "config profile not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfileByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	inbounds, err := service.repo.getConfigProfileInboundsMap(r.Context(), []string{profileUUID})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profile inbounds", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfileByUUIDFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -85,7 +85,7 @@ func handleGetConfigProfileInbounds(w http.ResponseWriter, r *http.Request, serv
 func handleGetAllInbounds(w http.ResponseWriter, r *http.Request, service *ConfigProfileService) {
 	records, err := service.repo.getAllConfigProfileRecords(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch config profiles", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfilesFailed.WithCause(err), service.cfg)
 		return
 	}
 	profileUUIDs := make([]string, 0, len(records))
@@ -94,7 +94,7 @@ func handleGetAllInbounds(w http.ResponseWriter, r *http.Request, service *Confi
 	}
 	inboundsMap, err := service.repo.getConfigProfileInboundsMap(r.Context(), profileUUIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch inbounds", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfilesFailed.WithCause(err), service.cfg)
 		return
 	}
 	all := make([]ConfigProfileInbound, 0)
@@ -129,7 +129,7 @@ func handleCreateConfigProfile(w http.ResponseWriter, r *http.Request, service *
 
 	response, err := buildConfigProfileResponses(r.Context(), service, []configProfileRecord{result})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildConfigProfileResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": response[0]})
@@ -158,7 +158,7 @@ func handleUpdateConfigProfile(w http.ResponseWriter, r *http.Request, service *
 
 	response, err := buildConfigProfileResponses(r.Context(), service, []configProfileRecord{result})
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build config profile response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBuildConfigProfileResponseFailed.WithCause(err), service.cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response[0]})
@@ -192,7 +192,7 @@ func handleReorderConfigProfiles(w http.ResponseWriter, r *http.Request, service
 
 	err := service.ReorderConfigProfiles(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder config profiles", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrReorderConfigProfilesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -202,7 +202,7 @@ func handleReorderConfigProfiles(w http.ResponseWriter, r *http.Request, service
 func handleConfigProfileWriteError(w http.ResponseWriter, err error, cfg *config.BackendConfig) {
 	switch {
 	case errors.Is(err, errConfigProfileNotFound):
-		shared.SendError(w, http.StatusNotFound, "config profile not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrConfigProfileNotFound, cfg)
 	case strings.Contains(err.Error(), "no fields to update"),
 		strings.Contains(err.Error(), "duplicate inbound tag"),
 		strings.Contains(err.Error(), "all inbounds must have a non-empty tag"),
@@ -213,31 +213,18 @@ func handleConfigProfileWriteError(w http.ResponseWriter, err error, cfg *config
 		strings.Contains(err.Error(), "failed to parse config JSON"):
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 	default:
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			switch pgErr.ConstraintName {
-			case "config_profiles_name_key":
-				shared.SendError(w, http.StatusConflict, errMessageConfigProfileNameAlreadyExists, nil, cfg)
-			case "config_profile_inbounds_tag_key":
-				shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
-			default:
-				shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
-			}
-			return
+		switch {
+		case util.IsUniqueViolation(err, "config_profiles_name_key"):
+			shared.SendAPIError(w, shared.ErrConfigProfileNameAlreadyExists, cfg)
+		case util.IsUniqueViolation(err):
+			// Matches the original behavior: any other unique violation on
+			// this write (named "config_profile_inbounds_tag_key", any other
+			// constraint, or a non-Postgres test double) is reported as a
+			// duplicate inbound tag rather than a generic failure.
+			shared.SendAPIError(w, shared.ErrInboundTagsMustBeUnique, cfg)
+		default:
+			shared.SendAPIError(w, shared.ErrUpdateConfigProfileFailed.WithCause(err), cfg)
 		}
-		if strings.Contains(err.Error(), "config_profiles_name_key") || strings.Contains(err.Error(), "config_profiles.name") {
-			shared.SendError(w, http.StatusConflict, errMessageConfigProfileNameAlreadyExists, nil, cfg)
-			return
-		}
-		if strings.Contains(err.Error(), "config_profile_inbounds_tag_key") || strings.Contains(err.Error(), "config_profile_inbounds.tag") {
-			shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
-			return
-		}
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			shared.SendError(w, http.StatusConflict, errMessageInboundTagsMustBeUnique, nil, cfg)
-			return
-		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to write config profile", err, cfg)
 	}
 }
 
@@ -315,12 +302,11 @@ func handleCreateConfigProfileSnippet(w http.ResponseWriter, r *http.Request, se
 	}
 
 	if err := service.CreateSnippet(r.Context(), req); err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			shared.SendError(w, http.StatusBadRequest, "Snippet name already exists", nil, service.cfg)
+		if util.IsUniqueViolation(err) {
+			shared.SendAPIError(w, shared.ErrSnippetNameAlreadyExists, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "Create snippet error", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrCreateConfigProfileFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -358,10 +344,10 @@ func handleUpdateConfigProfileSnippet(w http.ResponseWriter, r *http.Request, se
 
 	if err := service.UpdateSnippet(r.Context(), req); err != nil {
 		if errors.Is(err, errConfigProfileSnippetNotFound) {
-			shared.SendError(w, http.StatusNotFound, "Snippet not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrSnippetNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "Update snippet error", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateConfigProfileFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -385,10 +371,10 @@ func handleDeleteConfigProfileSnippet(w http.ResponseWriter, r *http.Request, se
 
 	if err := service.DeleteSnippet(r.Context(), req.Name); err != nil {
 		if errors.Is(err, errConfigProfileSnippetNotFound) {
-			shared.SendError(w, http.StatusNotFound, "Snippet not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrSnippetNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "Delete snippet by name error", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDeleteConfigProfileFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -398,7 +384,7 @@ func handleDeleteConfigProfileSnippet(w http.ResponseWriter, r *http.Request, se
 func writeConfigProfileSnippetsResponse(w http.ResponseWriter, r *http.Request, service *ConfigProfileService, status int) {
 	snippets, err := service.repo.getSnippets(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "Get snippets error", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetConfigProfilesFailed.WithCause(err), service.cfg)
 		return
 	}
 

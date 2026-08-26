@@ -56,13 +56,13 @@ func KeygenHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			LIMIT 1
 		`).Scan(&pubKey, &caCert, &caKey)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch keygen data", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetKeygenDataFailed.WithCause(err), cfg)
 			return
 		}
 
 		nodeCert, err := security.GenerateNodeCert(caCert, caKey)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to generate node certificate", err, cfg)
+			shared.SendAPIError(w, shared.ErrGenerateNodeCertFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -73,13 +73,13 @@ func KeygenHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			JWTPublicKey: pubKey,
 		})
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to encode secret payload", err, cfg)
+			shared.SendAPIError(w, shared.ErrEncodeSecretPayloadFailed.WithCause(err), cfg)
 			return
 		}
 		payload := base64.StdEncoding.EncodeToString(raw)
 		grpcToken, err := security.GenerateGRPCAuthToken()
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to generate grpc auth token", err, cfg)
+			shared.SendAPIError(w, shared.ErrGenerateGRPCTokenFailed.WithCause(err), cfg)
 			return
 		}
 

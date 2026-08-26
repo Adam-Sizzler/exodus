@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"exodus/internal/util"
+
 	"github.com/google/uuid"
 )
 
@@ -212,10 +214,7 @@ func marshalJSON(v any) (sql.NullString, error) {
 }
 
 func coalesceInt(v *int, fallback int) int {
-	if v == nil {
-		return fallback
-	}
-	return *v
+	return util.Coalesce(v, fallback)
 }
 
 func normalizeStringPtr(v *string) interface{} {
@@ -229,7 +228,5 @@ func normalizeStringPtr(v *string) interface{} {
 }
 
 func isUniqueViolation(err error, constraint string) bool {
-	return strings.Contains(err.Error(), "duplicate key") ||
-		strings.Contains(err.Error(), "Unique constraint") ||
-		strings.Contains(err.Error(), constraint)
+	return util.IsUniqueViolation(err, constraint)
 }

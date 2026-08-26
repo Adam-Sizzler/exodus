@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -13,8 +12,7 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/notifications"
-
-	"github.com/jackc/pgx/v5/pgconn"
+	"exodus/internal/util"
 )
 
 const (
@@ -190,9 +188,5 @@ func randomSuffix(n int) string {
 }
 
 func isUniqueNameError(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return false
+	return util.IsUniqueViolation(err)
 }

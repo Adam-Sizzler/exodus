@@ -176,7 +176,7 @@ func handleCreateBillingNode(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		VALUES ($1, $2, $3, $4)
 	`, req.NodeUUID, req.ProviderUUID, nameArg, nextBillingAt)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to create infra billing node", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateInfraBillingNodeFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -209,7 +209,7 @@ func handleUpdateBillingNodes(w http.ResponseWriter, r *http.Request, db *sql.DB
 			SET next_billing_at = $1, updated_at = now()
 			WHERE uuid = $2
 		`, nextBillingAt, nodeUUID); execErr != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to update infra billing node", execErr, cfg)
+			shared.SendAPIError(w, shared.ErrUpdateInfraBillingNodeFailed.WithCause(execErr), cfg)
 			return
 		}
 	}
@@ -224,7 +224,7 @@ func handleDeleteBillingNode(w http.ResponseWriter, r *http.Request, db *sql.DB,
 		return
 	}
 	if _, err := db.ExecContext(r.Context(), `DELETE FROM infra_billing_nodes WHERE uuid = $1`, nodeUUID); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete infra billing node", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteInfraBillingNodeFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -256,7 +256,7 @@ func handleCreateBillingHistory(w http.ResponseWriter, r *http.Request, db *sql.
 		VALUES ($1, $2, $3)
 	`, req.ProviderUUID, req.Amount, billedAt)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to create infra billing history record", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateInfraBillingHistoryRecordFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -270,7 +270,7 @@ func handleDeleteBillingHistory(w http.ResponseWriter, r *http.Request, db *sql.
 		return
 	}
 	if _, err := db.ExecContext(r.Context(), `DELETE FROM infra_billing_history WHERE uuid = $1`, historyUUID); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete infra billing history record", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteInfraBillingHistoryRecordFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -280,7 +280,7 @@ func handleDeleteBillingHistory(w http.ResponseWriter, r *http.Request, db *sql.
 func writeBillingNodesResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, status int) {
 	response, err := getBillingNodesResponse(r, db)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch infra billing nodes", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetBillingNodesFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, status, map[string]any{"response": response})
@@ -289,7 +289,7 @@ func writeBillingNodesResponse(w http.ResponseWriter, r *http.Request, db *sql.D
 func writeBillingHistoryResponse(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, status int, start, size int) {
 	response, err := getBillingHistoryResponse(r, db, start, size)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch infra billing history", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetInfraBillingHistoryRecordsFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, status, map[string]any{"response": response})

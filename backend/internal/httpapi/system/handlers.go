@@ -97,25 +97,25 @@ func StatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		statusCounts, totalUsers, err := readUsersStatusStats(r.Context(), db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read users stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemStatsFailed.WithCause(err), cfg)
 			return
 		}
 
 		onlineStats, err := readOnlineStats(r.Context(), db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read online stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemStatsFailed.WithCause(err), cfg)
 			return
 		}
 
 		totalOnline, err := readTotalOnlineOnNodes(r.Context(), db, cfg)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes online stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemStatsFailed.WithCause(err), cfg)
 			return
 		}
 
 		lifetimeBytes, err := readLifetimeTrafficBytes(r.Context(), db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read lifetime traffic", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemStatsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -176,31 +176,31 @@ func RecapHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 		users, err := readUsersRecap(r.Context(), db, startOfMonth)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read users recap", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemRecapFailed.WithCause(err), cfg)
 			return
 		}
 
 		nodes, err := readNodesRecap(r.Context(), db, cfg)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes recap", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemRecapFailed.WithCause(err), cfg)
 			return
 		}
 
 		lifetimeTraffic, err := readLifetimeTrafficBytes(r.Context(), db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read lifetime traffic recap", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemRecapFailed.WithCause(err), cfg)
 			return
 		}
 
 		monthTraffic, err := readUsageBytesTextByRange(r.Context(), db, usageRange{start: startOfMonth, end: endOfMonth})
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read month traffic recap", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemRecapFailed.WithCause(err), cfg)
 			return
 		}
 
 		initDate, err := readInitDate(r.Context(), db)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read init date recap", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSystemRecapFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -257,27 +257,27 @@ func BandwidthStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 
 		lastTwoDays, err := readUsageComparison(r.Context(), db, getLastTwoDaysRanges(now))
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read last two days bandwidth", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetBandwidthStatsFailed.WithCause(err), cfg)
 			return
 		}
 		lastSevenDays, err := readUsageComparison(r.Context(), db, getLastSevenDaysRanges(now))
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read last seven days bandwidth", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetBandwidthStatsFailed.WithCause(err), cfg)
 			return
 		}
 		last30Days, err := readUsageComparison(r.Context(), db, getLast30DaysRanges(now))
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read last 30 days bandwidth", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetBandwidthStatsFailed.WithCause(err), cfg)
 			return
 		}
 		calendarMonth, err := readUsageComparison(r.Context(), db, getCalendarMonthRanges(now))
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read calendar month bandwidth", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetBandwidthStatsFailed.WithCause(err), cfg)
 			return
 		}
 		currentYear, err := readUsageComparison(r.Context(), db, getCalendarYearRanges(now))
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read current year bandwidth", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetBandwidthStatsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -397,7 +397,7 @@ func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			ORDER BY date ASC
 		`)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows.Close()
@@ -409,7 +409,7 @@ func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 				totalBytes string
 			)
 			if scanErr := rows.Scan(&name, &date, &totalBytes); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(scanErr), cfg)
 				return
 			}
 			stats = append(stats, nodeDayStat{
@@ -419,7 +419,7 @@ func NodesStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			})
 		}
 		if err := rows.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to read nodes statistics", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetNodesUsageFailed.WithCause(err), cfg)
 			return
 		}
 

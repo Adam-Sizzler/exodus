@@ -70,7 +70,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 		total := 0
 		countQuery := `SELECT COUNT(*) FROM user_subscription_request_history` + whereSQL
 		if err := db.QueryRowContext(r.Context(), countQuery, whereArgs...).Scan(&total); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription request history count", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -82,7 +82,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 
 		rows, err := db.QueryContext(r.Context(), query, args...)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription request history", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows.Close()
@@ -92,7 +92,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 			var item historyRecord
 			var requestAt sql.NullTime
 			if scanErr := rows.Scan(&item.ID, &item.UserID, &item.SRRResponseType, &item.SRRRuleName, &item.RequestIP, &item.UserAgent, &requestAt); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan subscription request history", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(scanErr), cfg)
 				return
 			}
 			if requestAt.Valid {
@@ -101,7 +101,7 @@ func SubscriptionRequestHistoryHandler(db *sql.DB, cfg *config.BackendConfig) ht
 			records = append(records, item)
 		}
 		if err := rows.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription request history", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -140,7 +140,7 @@ func SubscriptionRequestHistoryStatsHandler(db *sql.DB, cfg *config.BackendConfi
 			ORDER BY count DESC
 		`)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription request history stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows.Close()
@@ -149,13 +149,13 @@ func SubscriptionRequestHistoryStatsHandler(db *sql.DB, cfg *config.BackendConfi
 			var app string
 			var count int
 			if scanErr := rows.Scan(&app, &count); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan subscription request history stats", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(scanErr), cfg)
 				return
 			}
 			byParsedApp = append(byParsedApp, map[string]any{"app": app, "count": count})
 		}
 		if err := rows.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch subscription request history stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -168,7 +168,7 @@ func SubscriptionRequestHistoryStatsHandler(db *sql.DB, cfg *config.BackendConfi
 			ORDER BY date_time ASC
 		`)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hourly request stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows2.Close()
@@ -177,7 +177,7 @@ func SubscriptionRequestHistoryStatsHandler(db *sql.DB, cfg *config.BackendConfi
 			var dt time.Time
 			var count int
 			if scanErr := rows2.Scan(&dt, &count); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan hourly request stats", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(scanErr), cfg)
 				return
 			}
 			hourly = append(hourly, map[string]any{
@@ -186,7 +186,7 @@ func SubscriptionRequestHistoryStatsHandler(db *sql.DB, cfg *config.BackendConfi
 			})
 		}
 		if err := rows2.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hourly request stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetSubscriptionRequestHistoryFailed.WithCause(err), cfg)
 			return
 		}
 

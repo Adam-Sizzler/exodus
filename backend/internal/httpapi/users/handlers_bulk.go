@@ -45,7 +45,7 @@ func handleBulkDeleteUsers(w http.ResponseWriter, r *http.Request, service *User
 
 	err = service.BulkDeleteUsers(r.Context(), targets)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete users", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBulkDeleteUsersFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -78,7 +78,7 @@ func handleBulkRevokeUsersSubscription(w http.ResponseWriter, r *http.Request, s
 	// handled one by one, same as upstream Exodus's bulkRevokeUsersSubscription
 	for _, targetUUID := range targets {
 		if err := service.RevokeUserSubscription(r.Context(), targetUUID, revokeUserSubscriptionRequest{}); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to revoke users subscription", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrBulkRevokeSubscriptionFailed.WithCause(err), service.cfg)
 			return
 		}
 	}
@@ -110,7 +110,7 @@ func handleBulkResetUsersTraffic(w http.ResponseWriter, r *http.Request, service
 	}
 
 	if _, err := service.BulkResetUsersTraffic(r.Context(), targets); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reset users traffic", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBulkResetTrafficFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -142,7 +142,7 @@ func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, servi
 	}
 
 	if _, err := service.BulkDeleteUsersByStatus(r.Context(), status); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete users by status", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBulkDeleteByStatusFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -159,7 +159,7 @@ func handleBulkDeleteUsersByStatus(w http.ResponseWriter, r *http.Request, servi
 // @Router       /users/bulk/all/reset-traffic [post]
 func handleBulkAllResetUsersTraffic(w http.ResponseWriter, r *http.Request, service *UserService) {
 	if _, err := service.BulkAllResetUsersTraffic(r.Context()); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reset all users traffic", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBulkResetAllTrafficFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -195,7 +195,7 @@ func handleBulkExtendUsersExpirationDate(w http.ResponseWriter, r *http.Request,
 
 	_, err = service.BulkExtendUsersExpirationDate(r.Context(), targets, req.ExtendDays)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to extend users expiration date", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBulkExtendExpirationFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -225,7 +225,7 @@ func handleBulkAllExtendUsersExpirationDate(w http.ResponseWriter, r *http.Reque
 	}
 
 	if _, err := service.BulkAllExtendUsersExpirationDate(r.Context(), req.ExtendDays); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to extend all users expiration date", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrBulkExtendExpirationFailed.WithCause(err), service.cfg)
 		return
 	}
 

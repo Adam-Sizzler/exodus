@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"exodus/internal/util"
+
 	"github.com/google/uuid"
 )
 
@@ -119,22 +121,11 @@ func firstNonEmptyLowerHeader(r *http.Request, names ...string) *string {
 }
 
 func stringPtrIfNotEmpty(value string) *string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil
-	}
-	return &value
+	return util.StringPtrIfNotEmpty(value)
 }
 
 func lowerStringPtr(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	lowered := strings.ToLower(strings.TrimSpace(*value))
-	if lowered == "" {
-		return nil
-	}
-	return &lowered
+	return util.LowerStringPtr(value)
 }
 
 func ptrString(value *string) string {

@@ -31,22 +31,23 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request, service *UserService
 		return
 	}
 
-	records, err := service.repo.getAllUserRecords(r.Context())
+	whereSQL, orderSQL, whereArgs, err := buildUsersTableQuery(query.Filters, query.FilterModes, query.Sorting)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch users", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), service.cfg)
+		return
+	}
+
+	records, total, err := service.repo.getUsersTableRecords(r.Context(), whereSQL, orderSQL, whereArgs, query.Start, query.Size)
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildUserResponses(r.Context(), service.repo, records, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build users response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), service.cfg)
 		return
 	}
-
-	response = filterUsersTableResponse(response, query.Filters, query.FilterModes)
-	sortUsersTableResponse(response, query.Sorting)
-	total := len(response)
-	response = paginateUsersTableResponse(response, query.Start, query.Size)
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
@@ -100,13 +101,13 @@ func handleGetUsersStream(w http.ResponseWriter, r *http.Request, service *UserS
 
 	records, nextCursor, total, err := service.repo.getUsersStream(r.Context(), cursor, size, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to stream users", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildUserResponses(r.Context(), service.repo, records, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build users response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -135,16 +136,16 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, service *UserService,
 	record, err := service.repo.getUserRecordByUUID(r.Context(), userUUID)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), service.cfg)
 		return
 	}
 
 	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build user response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), service.cfg)
 		return
 	}
 
@@ -152,13 +153,13 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, service *UserService,
 }
 
 // handleCreateUser godoc
-// @Summary      Create a new user
-// @Description  Create a new user account
+// @Summary      Create a user
+// @Description  Create user with protocol links and quotas
 // @Tags         Users Controller
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body  body      createUserRequest  true  "User creation parameters"
+// @Param        body  body      createUserRequest  true  "User create fields"
 // @Success      201   {object}  UserResponseEnvelope
 // @Failure      400   {object}  shared.ErrorResponse
 // @Failure      409   {object}  shared.ErrorResponse
@@ -170,7 +171,6 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, service *UserServi
 		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
 		return
 	}
-
 	if err := validateCreateUserRequest(req); err != nil {
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 		return
@@ -184,7 +184,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request, service *UserServi
 
 	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{record}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build created user response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrCreateUserFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -218,7 +218,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, service *UserServi
 	updatedRecord, err := service.UpdateUser(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, service.cfg)
 			return
 		}
 		handleUserWriteError(w, err, service.cfg)
@@ -227,7 +227,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, service *UserServi
 
 	response, err := buildUserResponses(r.Context(), service.repo, []userRecord{updatedRecord}, resolveUsersSubscriptionBase(r.Context(), service.repo.db, r, service.cfg))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to build updated user response", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateUserFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -255,10 +255,10 @@ func handleGetUserSubscriptionRequestHistory(w http.ResponseWriter, r *http.Requ
 	records, err := service.repo.getUserSubscriptionRequestHistory(r.Context(), userID)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user subscription request history", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUserHistoryFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -291,10 +291,10 @@ func handleGetUserAccessibleNodes(w http.ResponseWriter, r *http.Request, servic
 	activeNodes, err := service.repo.getUserAccessibleNodes(r.Context(), userID)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user accessible nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUserAccessibleNodesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -321,10 +321,10 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request, service *UserServi
 	err := service.DeleteUser(r.Context(), userUUID)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete user", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDeleteUserFailed.WithCause(err), service.cfg)
 		return
 	}
 

@@ -4,14 +4,11 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"exodus/internal/httpapi/shared"
-
-	"github.com/jackc/pgx/v5/pgconn"
+	"exodus/internal/util"
 )
 
 const (
@@ -141,11 +138,7 @@ func ensureJSONObject(raw json.RawMessage) error {
 }
 
 func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+	return util.IsUniqueViolation(err)
 }
 
 func isAllowedTemplateType(v string) bool {

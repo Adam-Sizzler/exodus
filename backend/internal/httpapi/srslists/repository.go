@@ -3,14 +3,11 @@ package srslists
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
 	"time"
 
 	"exodus/internal/config"
 	srscore "exodus/internal/srslists"
-
-	"github.com/google/uuid"
+	"exodus/internal/util"
 )
 
 type srsListAPI struct {
@@ -126,21 +123,5 @@ func checkSelectedLists(ctx context.Context, db *sql.DB, cfg *config.BackendConf
 }
 
 func normalizeUUIDs(values []string) ([]string, error) {
-	clean := make([]string, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for _, raw := range values {
-		u := strings.TrimSpace(raw)
-		if u == "" {
-			continue
-		}
-		if _, err := uuid.Parse(u); err != nil {
-			return nil, fmt.Errorf("invalid uuid: %s", u)
-		}
-		if _, ok := seen[u]; ok {
-			continue
-		}
-		seen[u] = struct{}{}
-		clean = append(clean, u)
-	}
-	return clean, nil
+	return util.NormalizeAndValidateUUIDs(values)
 }

@@ -8,24 +8,17 @@ import (
 	"strings"
 
 	"exodus/internal/config"
+	"exodus/internal/util"
 
 	"github.com/google/uuid"
 )
 
 func validateUUIDList(values []string) error {
-	if len(values) == 0 {
-		return fmt.Errorf("uuids cannot be empty")
-	}
-	return validateUUIDListAllowEmpty(values)
+	return util.ValidateUUIDs(values)
 }
 
 func validateUUIDListAllowEmpty(values []string) error {
-	for _, value := range values {
-		if _, err := uuid.Parse(strings.TrimSpace(value)); err != nil {
-			return fmt.Errorf("invalid uuid value")
-		}
-	}
-	return nil
+	return util.ValidateUUIDsAllowEmpty(values)
 }
 
 func dedupeStrings(values []string) []string {
@@ -243,10 +236,7 @@ func normalizeUserTag(value *string) any {
 }
 
 func coalesceInt64(value *int64, fallback int64) int64 {
-	if value == nil {
-		return fallback
-	}
-	return *value
+	return util.Coalesce(value, fallback)
 }
 
 func coalesceUUID(value *string) string {

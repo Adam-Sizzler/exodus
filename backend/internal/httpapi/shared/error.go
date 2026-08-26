@@ -34,6 +34,21 @@ func (e *APIError) Unwrap() error {
 	return e.Cause
 }
 
+// WithCause returns a copy of e with Cause set to cause, leaving e itself
+// (a shared, package-level registry entry) untouched. Registry entries are
+// declared once as package-level *APIError values and read concurrently by
+// every request — mutating e.Cause directly would race across requests, so
+// every call site must go through WithCause instead of assigning to a
+// registry entry's Cause field.
+func (e *APIError) WithCause(cause error) *APIError {
+	if e == nil {
+		return nil
+	}
+	cp := *e
+	cp.Cause = cause
+	return &cp
+}
+
 func (e *APIError) ToResponse() ErrorResponse {
 	if e == nil {
 		return ErrorResponse{}

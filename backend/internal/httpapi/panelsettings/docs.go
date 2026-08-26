@@ -168,7 +168,7 @@ func DocsOpenAPIHandler(cfg *config.BackendConfig) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		spec, err := buildExodusOpenAPISpec(cfg)
 		if err != nil {
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to prepare openapi spec")
+			shared.SendAPIError(w, shared.ErrInternalServerError.WithCause(err), cfg)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

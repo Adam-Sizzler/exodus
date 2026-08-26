@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+
+	"exodus/internal/util"
 )
 
 type ResolvedProxyConfig struct {
@@ -388,14 +390,14 @@ func buildRawSubscriptionResponse(
 
 	limitPretty := "0 B"
 	if user.TrafficLimitBytes > 0 {
-		limitPretty = prettifyBytes(user.TrafficLimitBytes)
+		limitPretty = util.FormatBytes(user.TrafficLimitBytes)
 	}
 
 	convertedUserInfo := ConvertedUserInfoDTO{
 		DaysLeft:            daysLeft,
 		TrafficLimit:        limitPretty,
-		TrafficUsed:         prettifyBytes(user.UsedTrafficBytes),
-		LifetimeTrafficUsed: prettifyBytes(user.LifetimeUsedBytes),
+		TrafficUsed:         util.FormatBytes(user.UsedTrafficBytes),
+		LifetimeTrafficUsed: util.FormatBytes(user.LifetimeUsedBytes),
 		HwidCheckup:         nil,
 	}
 

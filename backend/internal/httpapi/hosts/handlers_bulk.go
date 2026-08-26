@@ -35,17 +35,17 @@ func handleBulkUpdateHosts(w http.ResponseWriter, r *http.Request, service *Host
 	if err != nil {
 		switch {
 		case errors.Is(err, errHostNotFound):
-			shared.SendError(w, http.StatusNotFound, "host not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrHostNotFound, service.cfg)
 		case errors.Is(err, errConfigProfileNotFound):
-			shared.SendError(w, http.StatusBadRequest, "config profile not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileNotFound, service.cfg)
 		case errors.Is(err, errConfigProfileInboundNotFound):
-			shared.SendError(w, http.StatusBadRequest, "config profile inbound not found in specified profile", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileInboundNotFoundInProfile, service.cfg)
 		case errors.Is(err, errTemplateNotFound):
-			shared.SendError(w, http.StatusBadRequest, "subscription template not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateNotFound, service.cfg)
 		case errors.Is(err, errTemplateTypeNotAllowed):
-			shared.SendError(w, http.StatusBadRequest, "template type not allowed", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrSubTemplateTypeNotAllowed, service.cfg)
 		default:
-			shared.SendError(w, http.StatusInternalServerError, "failed to update hosts", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrUpdateHostFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
@@ -72,7 +72,7 @@ func handleReorderHosts(w http.ResponseWriter, r *http.Request, service *HostSer
 
 	err := service.ReorderHosts(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder hosts", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateHostFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -92,7 +92,7 @@ func handleBulkEnableHosts(w http.ResponseWriter, r *http.Request, service *Host
 
 	err := service.BulkEnableHosts(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to enable hosts", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateHostFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -112,7 +112,7 @@ func handleBulkDisableHosts(w http.ResponseWriter, r *http.Request, service *Hos
 
 	err := service.BulkDisableHosts(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to disable hosts", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateHostFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -132,7 +132,7 @@ func handleBulkDeleteHosts(w http.ResponseWriter, r *http.Request, service *Host
 
 	err := service.BulkDeleteHosts(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete hosts", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDeleteHostFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -162,11 +162,11 @@ func handleBulkSetInbound(w http.ResponseWriter, r *http.Request, service *HostS
 	if err != nil {
 		switch {
 		case errors.Is(err, errConfigProfileNotFound):
-			shared.SendError(w, http.StatusBadRequest, "config profile not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileNotFound, service.cfg)
 		case errors.Is(err, errConfigProfileInboundNotFound):
-			shared.SendError(w, http.StatusBadRequest, "config profile inbound not found in specified profile", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrConfigProfileInboundNotFoundInProfile, service.cfg)
 		default:
-			shared.SendError(w, http.StatusInternalServerError, "failed to validate config profile inbound", err, service.cfg)
+			shared.SendAPIError(w, shared.ErrUpdateHostFailed.WithCause(err), service.cfg)
 		}
 		return
 	}
@@ -191,7 +191,7 @@ func handleBulkSetPort(w http.ResponseWriter, r *http.Request, service *HostServ
 
 	err := service.BulkSetPort(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to set port", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateHostFailed.WithCause(err), service.cfg)
 		return
 	}
 

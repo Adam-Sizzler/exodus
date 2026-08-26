@@ -243,6 +243,10 @@ func (r *ConfigProfileRepository) deleteConfigProfile(ctx context.Context, profi
 }
 
 func (r *ConfigProfileRepository) reorderConfigProfiles(ctx context.Context, items []reorderConfigProfilesItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -251,11 +255,26 @@ func (r *ConfigProfileRepository) reorderConfigProfiles(ctx context.Context, ite
 		_ = tx.Rollback()
 	}()
 
-	for _, item := range items {
-		if _, err := tx.ExecContext(ctx, `UPDATE config_profiles SET view_position = $1 WHERE uuid = $2`, item.ViewPosition, item.UUID); err != nil {
-			return err
-		}
+	// Single batched UPDATE via UNNEST instead of one round-trip per profile —
+	// same pattern as hosts.reorderHosts / Remnawave's reorderMany.
+	uuids := make([]string, len(items))
+	positions := make([]int32, len(items))
+	for i, item := range items {
+		uuids[i] = item.UUID
+		positions[i] = int32(item.ViewPosition)
 	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE config_profiles AS c
+		SET view_position = v.view_position
+		FROM (
+			SELECT unnest($1::uuid[]) AS uuid, unnest($2::int[]) AS view_position
+		) AS v
+		WHERE c.uuid = v.uuid
+	`, uuids, positions); err != nil {
+		return err
+	}
+
 	if _, err := tx.ExecContext(ctx, `SELECT setval('config_profiles_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM config_profiles) + 1)`); err != nil {
 		return err
 	}

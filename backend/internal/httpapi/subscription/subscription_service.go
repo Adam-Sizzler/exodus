@@ -26,6 +26,7 @@ import (
 	"exodus/internal/httpapi/subscriptionresponserules"
 	"exodus/internal/httpapi/subscriptionsettings"
 	"exodus/internal/logger"
+	"exodus/internal/util"
 )
 
 type RenderService struct {
@@ -302,23 +303,6 @@ func (s *RenderService) RenderUserSubscription(
 	return []byte(outputContent), contentType, responseHeaders, nil
 }
 
-func prettifyBytes(bytes int64) string {
-	if bytes <= 0 {
-		return "0 B"
-	}
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	units := []string{"KB", "MB", "GB", "TB", "PB"}
-	return fmt.Sprintf("%.2f %s", float64(bytes)/float64(div), units[exp])
-}
-
 func (s *RenderService) buildSubscriptionInfoResponse(
 	user SubscriptionUser,
 	settings SubscriptionSettingsParsed,
@@ -342,12 +326,12 @@ func (s *RenderService) buildSubscriptionInfoResponse(
 
 	links, ssConfLinks := buildSubscriptionLinks(hosts, user)
 
-	usedPretty := prettifyBytes(user.UsedTrafficBytes)
+	usedPretty := util.FormatBytes(user.UsedTrafficBytes)
 	limitPretty := "0"
 	if user.TrafficLimitBytes > 0 {
-		limitPretty = prettifyBytes(user.TrafficLimitBytes)
+		limitPretty = util.FormatBytes(user.TrafficLimitBytes)
 	}
-	lifetimePretty := prettifyBytes(user.LifetimeUsedBytes)
+	lifetimePretty := util.FormatBytes(user.LifetimeUsedBytes)
 
 	daysLeft := 0
 	expiresAt := user.ExpireAt

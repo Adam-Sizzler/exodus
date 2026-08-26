@@ -21,6 +21,7 @@ import (
 	"golang.org/x/net/proxy"
 
 	"exodus/internal/config"
+	"exodus/internal/util"
 )
 
 const (
@@ -431,7 +432,7 @@ func formatUserMessage(event Event) string {
 	fullInfo := fmt.Sprintf(
 		"%s\n<b>Traffic limit:</b> <code>%s</code>\n<b>Valid until:</b> <code>%s UTC</code>\n<b>Sub:</b> <code>%s</code>",
 		basicInfo,
-		html.EscapeString(formatBytes(int64Value(event.Data, "trafficLimitBytes"))),
+		html.EscapeString(util.FormatBytes(int64Value(event.Data, "trafficLimitBytes"))),
 		html.EscapeString(formatTelegramDateTime(stringValue(event.Data, "expireAt"))),
 		html.EscapeString(stringValue(event.Data, "shortUuid")),
 	)
@@ -458,7 +459,7 @@ func formatUserMessage(event Event) string {
 		if traffic == 0 {
 			traffic = int64Value(nestedMap(event.Data, "userTraffic"), "usedTrafficBytes")
 		}
-		return fmt.Sprintf("%s\n%s\n<b>Traffic:</b> <code>%s</code>", userHeader("<tg-emoji emoji-id='5264727218734524899'>🔄</tg-emoji>", "traffic_reset"), basicInfo, html.EscapeString(formatBytes(traffic)))
+		return fmt.Sprintf("%s\n%s\n<b>Traffic:</b> <code>%s</code>", userHeader("<tg-emoji emoji-id='5264727218734524899'>🔄</tg-emoji>", "traffic_reset"), basicInfo, html.EscapeString(util.FormatBytes(traffic)))
 	case EventUserFirstConnected:
 		return fmt.Sprintf("%s\n%s", userHeader("<tg-emoji emoji-id='5379999674193172777'>🔭</tg-emoji>", "first_connected"), basicInfo)
 	case EventUserExpiration:
@@ -477,8 +478,8 @@ func formatUserMessage(event Event) string {
 			"%s\n%s\n<b>Traffic:</b> <code>%s</code>\n<b>Limit:</b> <code>%s</code>\n<b>Threshold:</b> <code>%d%%</code>",
 			userHeader("<tg-emoji emoji-id='5447644880824181073'>⚠️</tg-emoji>", "bandwidth_usage_threshold_reached"),
 			basicInfo,
-			html.EscapeString(formatBytes(traffic)),
-			html.EscapeString(formatBytes(int64Value(event.Data, "trafficLimitBytes"))),
+			html.EscapeString(util.FormatBytes(traffic)),
+			html.EscapeString(util.FormatBytes(int64Value(event.Data, "trafficLimitBytes"))),
 			intValue(event.Data, "lastTriggeredThreshold"),
 		)
 	case EventUserNotConnected:
@@ -540,8 +541,8 @@ func formatNodeMessage(event Event) string {
 		return fmt.Sprintf(
 			"%s\n<tg-emoji emoji-id='5447410659077661506'>🌐</tg-emoji> <code>%s</code> <b>/</b> <code>%s</code>\n<b>Name:</b> <code>%s</code>\n<b>Address:</b> <code>%s:%d</code>\n<b>Traffic reset day:</b> <code>%d</code>\n<b>Percent:</b> <code>%d %%</code>",
 			nodeHeader("<tg-emoji emoji-id='5431577498364158238'>📊</tg-emoji>", "nodeTrafficNotify", "Bandwidth limit reached"),
-			html.EscapeString(formatBytes(int64Value(event.Data, "trafficUsedBytes"))),
-			html.EscapeString(formatBytes(int64Value(event.Data, "trafficLimitBytes"))),
+			html.EscapeString(util.FormatBytes(int64Value(event.Data, "trafficUsedBytes"))),
+			html.EscapeString(util.FormatBytes(int64Value(event.Data, "trafficLimitBytes"))),
 			name,
 			address,
 			intValue(event.Data, "port"),
@@ -821,21 +822,4 @@ func boolValue(data map[string]any, key string) bool {
 	}
 	value, _ := data[key].(bool)
 	return value
-}
-
-func formatBytes(value int64) string {
-	if value < 0 {
-		value = 0
-	}
-	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB"}
-	floatValue := float64(value)
-	unit := 0
-	for floatValue >= 1024 && unit < len(units)-1 {
-		floatValue /= 1024
-		unit++
-	}
-	if unit == 0 {
-		return fmt.Sprintf("%d %s", value, units[unit])
-	}
-	return fmt.Sprintf("%.2f %s", floatValue, units[unit])
 }

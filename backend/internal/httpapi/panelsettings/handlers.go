@@ -23,20 +23,20 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
+				shared.SendAPIError(w, shared.ErrGetPanelSettingsFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, PanelSettingsResponse{Settings: settings})
 		case http.MethodPatch, http.MethodPut:
 			var payload map[string]json.RawMessage
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+				shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 				return
 			}
 			candidateSettings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings before update", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load panel settings")
+				shared.SendAPIError(w, shared.ErrGetPanelSettingsFailed.WithCause(err), cfg)
 				return
 			}
 
@@ -61,12 +61,12 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 					continue
 				}
 				if !json.Valid(raw) {
-					shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON value for "+key)
+					shared.SendError(w, http.StatusBadRequest, "invalid JSON value for "+key, nil, cfg)
 					return
 				}
 				var decoded any
 				if err := json.Unmarshal(raw, &decoded); err != nil {
-					shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON value for "+key)
+					shared.SendError(w, http.StatusBadRequest, "invalid JSON value for "+key, err, cfg)
 					return
 				}
 				candidateSettings[column] = decoded
@@ -79,12 +79,12 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 			}
 
 			if len(setClauses) == 0 {
-				shared.WriteJSONError(w, http.StatusBadRequest, "no valid fields provided")
+				shared.SendError(w, http.StatusBadRequest, "no valid fields provided", nil, cfg)
 				return
 			}
 			if authSettingsTouched {
 				if err := validateAuthenticationSettings(candidateSettings); err != nil {
-					shared.WriteJSONError(w, http.StatusBadRequest, err.Error())
+					shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 					return
 				}
 			}
@@ -103,21 +103,21 @@ func PanelSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFun
 				panelsettingsDefaults.DefaultBrandingSettingsJSON,
 			); execErr != nil {
 				cfg.Logger.Error("Failed to seed panel settings", "error", execErr)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
+				shared.SendAPIError(w, shared.ErrUpdatePanelSettingsFailed.WithCause(execErr), cfg)
 				return
 			}
 
 			query := "UPDATE exodus_settings SET " + strings.Join(setClauses, ", ") + " WHERE id = 1"
 			if _, execErr := db.ExecContext(r.Context(), query, args...); execErr != nil {
 				cfg.Logger.Error("Failed to update panel settings", "error", execErr)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to update panel settings")
+				shared.SendAPIError(w, shared.ErrUpdatePanelSettingsFailed.WithCause(execErr), cfg)
 				return
 			}
 
 			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load panel settings after update", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated panel settings")
+				shared.SendAPIError(w, shared.ErrGetPanelSettingsFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, PanelSettingsResponse{Settings: settings})
@@ -148,7 +148,7 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 			tokens, err := loadAPITokens(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load api tokens", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load api tokens")
+				shared.SendAPIError(w, shared.ErrFindAllApiTokensFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{
@@ -165,7 +165,7 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 				Scopes          []string `json:"scopes"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+				shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 				return
 			}
 			tokenName := strings.TrimSpace(payload.Name)
@@ -176,7 +176,7 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 				tokenName = strings.TrimSpace(payload.TokenNameLegacy)
 			}
 			if tokenName == "" {
-				shared.WriteJSONError(w, http.StatusBadRequest, "name is required")
+				shared.SendError(w, http.StatusBadRequest, "name is required", nil, cfg)
 				return
 			}
 			expiresInDays := payload.ExpiresInDays
@@ -190,7 +190,7 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 			tokenValue, expiresAtUnix, err := security.SignAPITokenJWTWithLifetime(cfg.JWT.AuthSecret, tokenUUID, lifetime)
 			if err != nil {
 				cfg.Logger.Error("Failed to generate api token", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to generate api token")
+				shared.SendAPIError(w, shared.ErrCreateApiTokenFailed.WithCause(err), cfg)
 				return
 			}
 			expireAt := time.Unix(expiresAtUnix, 0).UTC()
@@ -208,7 +208,7 @@ func PanelAPITokensHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 				VALUES ($1, $2, $3, $4::text[])
 			`, record.UUID, record.Name, record.ExpireAt, postgresTextArrayLiteral(record.Scopes)); execErr != nil {
 				cfg.Logger.Error("Failed to insert api token", "error", execErr)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to save api token")
+				shared.SendAPIError(w, shared.ErrCreateApiTokenFailed.WithCause(execErr), cfg)
 				return
 			}
 
@@ -264,7 +264,7 @@ func PanelAPITokensOttHandler(_ *sql.DB, cfg *config.BackendConfig) http.Handler
 		ott, err := security.SignOttJWT(secret)
 		if err != nil {
 			cfg.Logger.Error("Failed to issue OTT token", "error", err)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to issue ott token")
+			shared.SendAPIError(w, shared.ErrIssueOttTokenFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -301,7 +301,7 @@ func PanelAPITokenByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.Hand
 		}
 
 		if _, err := uuid.Parse(tokenUUID); err != nil {
-			shared.WriteJSONError(w, http.StatusBadRequest, "invalid token UUID")
+			shared.SendError(w, http.StatusBadRequest, "invalid token UUID", nil, cfg)
 			return
 		}
 		if r.Method != http.MethodDelete {
@@ -312,17 +312,17 @@ func PanelAPITokenByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.Hand
 		result, execErr := db.ExecContext(r.Context(), "DELETE FROM api_tokens WHERE uuid = $1", tokenUUID)
 		if execErr != nil {
 			cfg.Logger.Error("Failed to delete api token", "uuid", tokenUUID, "error", execErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete api token")
+			shared.SendAPIError(w, shared.ErrDeleteApiTokenFailed.WithCause(execErr), cfg)
 			return
 		}
 		rowsAffected, execErr := result.RowsAffected()
 		if execErr != nil {
 			cfg.Logger.Error("Failed to read rows affected for api token deletion", "uuid", tokenUUID, "error", execErr)
-			shared.WriteJSONError(w, http.StatusInternalServerError, "failed to delete api token")
+			shared.SendAPIError(w, shared.ErrDeleteApiTokenFailed.WithCause(execErr), cfg)
 			return
 		}
 		if rowsAffected == 0 {
-			shared.WriteJSONError(w, http.StatusNotFound, "api token not found")
+			shared.SendAPIError(w, shared.ErrAPITokenNotFound, cfg)
 			return
 		}
 
@@ -350,14 +350,14 @@ func ExodusSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load exodus settings", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load settings")
+				shared.SendAPIError(w, shared.ErrGetPanelSettingsFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": toExodusSettingsResponse(settings)})
 		case http.MethodPatch:
 			var payload map[string]json.RawMessage
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				shared.WriteJSONError(w, http.StatusBadRequest, "invalid JSON body")
+				shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
 				return
 			}
 			adapted := map[string]json.RawMessage{}
@@ -374,7 +374,7 @@ func ExodusSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 				}
 			}
 			if len(adapted) == 0 {
-				shared.WriteJSONError(w, http.StatusBadRequest, "no valid fields provided")
+				shared.SendError(w, http.StatusBadRequest, "no valid fields provided", nil, cfg)
 				return
 			}
 
@@ -395,7 +395,7 @@ func ExodusSettingsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 			settings, err := loadPanelSettings(r.Context(), db)
 			if err != nil {
 				cfg.Logger.Error("Failed to load exodus settings after update", "error", err)
-				shared.WriteJSONError(w, http.StatusInternalServerError, "failed to load updated settings")
+				shared.SendAPIError(w, shared.ErrGetPanelSettingsFailed.WithCause(err), cfg)
 				return
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": toExodusSettingsResponse(settings)})

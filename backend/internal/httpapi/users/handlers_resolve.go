@@ -36,10 +36,10 @@ func handleResolveUser(w http.ResponseWriter, r *http.Request, service *UserServ
 	user, err := service.repo.resolveUser(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errUserNotFound) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to resolve user", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrResolveUserFailed.WithCause(err), service.cfg)
 		return
 	}
 

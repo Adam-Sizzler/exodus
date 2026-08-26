@@ -15,10 +15,10 @@ func handleEnableNode(w http.ResponseWriter, r *http.Request, service *Subscript
 	_, err := service.EnableNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to enable node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrEnableNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -29,10 +29,10 @@ func handleDisableNode(w http.ResponseWriter, r *http.Request, service *Subscrip
 	_, err := service.DisableNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to disable node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDisableNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -43,10 +43,10 @@ func handleRestartNode(w http.ResponseWriter, r *http.Request, service *Subscrip
 	err := service.RestartNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
+		shared.SendAPIError(w, shared.ErrRestartNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -57,10 +57,10 @@ func handleResetNodeTraffic(w http.ResponseWriter, r *http.Request, service *Sub
 	err := service.ResetNodeTraffic(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to reset node traffic", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrResetNodeTrafficFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -82,7 +82,7 @@ func handleRestartAllNodes(w http.ResponseWriter, r *http.Request, service *Subs
 			shared.SendError(w, http.StatusBadRequest, err.Error(), nil, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to inspect nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrRestartNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -96,7 +96,7 @@ func handleReorderNodes(w http.ResponseWriter, r *http.Request, service *Subscri
 		return
 	}
 	if len(req.Nodes) == 0 {
-		shared.SendError(w, http.StatusBadRequest, "nodes cannot be empty", nil, service.cfg)
+		shared.SendAPIError(w, shared.ErrNodesListCannotBeEmpty, service.cfg)
 		return
 	}
 	for _, item := range req.Nodes {
@@ -108,7 +108,7 @@ func handleReorderNodes(w http.ResponseWriter, r *http.Request, service *Subscri
 
 	err := service.ReorderNodes(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to reorder nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrReorderNodesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -128,7 +128,7 @@ func handleBulkProfileModification(w http.ResponseWriter, r *http.Request, servi
 
 	err := service.BulkProfileModification(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed bulk profile modification", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrModifyNodesProfileFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -148,7 +148,7 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, service *Sub
 
 	err := service.BulkNodesActions(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed bulk node actions", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrNodeBulkActionFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -158,7 +158,7 @@ func handleBulkNodesActions(w http.ResponseWriter, r *http.Request, service *Sub
 func sendUpdatedNodeResponse(w http.ResponseWriter, r *http.Request, service *SubscriptionConnectionService, nodeUUID string) {
 	node, err := service.repo.getNodeByUUID(r.Context(), nodeUUID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch updated node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUpdatedNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 	providerUUIDs := make([]string, 0, 1)
@@ -167,7 +167,7 @@ func sendUpdatedNodeResponse(w http.ResponseWriter, r *http.Request, service *Su
 	}
 	providersMap, err := service.repo.getProviders(r.Context(), providerUUIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch providers", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrFetchUpdatedNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 	response := buildNodeResponses([]nodeRecord{node}, providersMap)

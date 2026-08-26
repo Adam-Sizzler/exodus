@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"exodus/internal/config"
 	"exodus/internal/logger"
 	"exodus/internal/streamexport"
+	"exodus/internal/util"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -233,12 +233,5 @@ func upsertHwidDevice(ctx context.Context, db *sql.DB, payload UpsertHwidDeviceP
 }
 
 func lowerStringPtr(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	lowered := strings.ToLower(strings.TrimSpace(*value))
-	if lowered == "" {
-		return nil
-	}
-	return &lowered
+	return util.LowerStringPtr(value)
 }

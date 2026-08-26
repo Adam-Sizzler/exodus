@@ -8,6 +8,7 @@ import (
 
 	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/subscriptionnodes"
+	"exodus/internal/util"
 )
 
 var nodeTagRegex = regexp.MustCompile(`^[A-Z0-9_:]+$`)
@@ -80,15 +81,7 @@ func validateUpdateRequest(req updateNodeRequest) error {
 }
 
 func validateUUIDs(values []string) error {
-	if len(values) == 0 {
-		return fmt.Errorf("uuids cannot be empty")
-	}
-	for _, value := range values {
-		if _, err := uuidValidate(value); err != nil {
-			return fmt.Errorf("invalid uuid value")
-		}
-	}
-	return nil
+	return util.ValidateUUIDs(values)
 }
 
 func validateTags(tags []string) error {
@@ -369,13 +362,4 @@ func dedupeStrings(values []string) []string {
 		result = append(result, value)
 	}
 	return result
-}
-
-// Simple helper to avoid external uuid dependency in utils
-func uuidValidate(uuidStr string) (string, error) {
-	parsed := strings.TrimSpace(uuidStr)
-	if len(parsed) != 36 {
-		return "", fmt.Errorf("invalid uuid length")
-	}
-	return parsed, nil
 }

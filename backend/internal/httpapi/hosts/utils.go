@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"exodus/internal/util"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -132,10 +134,7 @@ func normalizeOptionalJSONField(raw OptionalJSON, emptyObjectAsNull bool) (bool,
 }
 
 func coalesceBool(value *bool, fallback bool) bool {
-	if value == nil {
-		return fallback
-	}
-	return *value
+	return util.Coalesce(value, fallback)
 }
 
 func ensureStringSlice(values []string) []string {

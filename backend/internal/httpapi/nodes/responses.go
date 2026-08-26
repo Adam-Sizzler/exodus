@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"exodus/internal/config"
-	"exodus/internal/httpapi/shared"
 	"exodus/internal/nodehotcache"
+	"exodus/internal/util"
 )
 
 func buildNodeResponses(ctx context.Context, repo *NodeRepository, cfg *config.BackendConfig, records []nodeRecord) ([]nodeAPI, error) {
@@ -80,7 +80,7 @@ func buildNodeResponses(ctx context.Context, repo *NodeRepository, cfg *config.B
 		if item.System != nil {
 			item.CPUCount = &item.System.Info.CPUs
 			item.CPUModel = stringPtrIfNotEmpty(item.System.Info.CPUModel)
-			totalRAM := shared.FormatBytes(int64(item.System.Info.MemoryTotal))
+			totalRAM := util.FormatBytes(int64(item.System.Info.MemoryTotal))
 			item.TotalRAM = &totalRAM
 		}
 		if !record.IsConnected || record.IsConnecting || record.IsDisabled {
@@ -160,9 +160,5 @@ func buildNodeVersions(singboxVersion *string, nodeVersion *string) *nodeVersion
 }
 
 func stringPtrIfNotEmpty(value string) *string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil
-	}
-	return &value
+	return util.StringPtrIfNotEmpty(value)
 }

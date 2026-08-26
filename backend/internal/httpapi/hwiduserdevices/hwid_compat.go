@@ -13,6 +13,7 @@ import (
 
 	"exodus/internal/config"
 	"exodus/internal/httpapi/shared"
+	"exodus/internal/httpapi/subscription"
 	"exodus/internal/notifications"
 )
 
@@ -148,7 +149,7 @@ func HWIDCompatDevicesHandler(db *sql.DB, cfg *config.BackendConfig) http.Handle
 		start, size := parseStartSize(r, 0, 25, 1000)
 		devices, total, err := getHWIDCompatDevices(r.Context(), db, start, size, r)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid devices", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllHwidDevicesFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -165,10 +166,10 @@ func handleHWIDCompatGetUserDevices(w http.ResponseWriter, r *http.Request, db *
 	devices, err := getHWIDCompatDevicesByUserID(r.Context(), db, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserHwidDevicesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -196,19 +197,62 @@ func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, db
 		return
 	}
 	userID := req.UserID
+	ctx := r.Context()
 
-	var userExists bool
-	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&userExists); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+	var hwidDeviceLimit *int
+	var externalSquadUUID *string
+	err := db.QueryRowContext(ctx, `SELECT hwid_device_limit, external_squad_uuid FROM users WHERE id = $1`, userID).
+		Scan(&hwidDeviceLimit, &externalSquadUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 		return
 	}
-	if !userExists {
-		shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 		return
+	}
+
+	var deviceExists bool
+	if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM hwid_user_devices WHERE user_id = $1 AND hwid = $2)`, userID, hwid).
+		Scan(&deviceExists); err != nil {
+		shared.SendAPIError(w, shared.ErrCreateUserHwidDeviceFailed.WithCause(err), cfg)
+		return
+	}
+	if deviceExists {
+		shared.SendAPIError(w, shared.ErrUserHwidDeviceExists, cfg)
+		return
+	}
+
+	renderService := subscription.NewRenderService(db, db, cfg)
+	settings, err := renderService.LoadSubscriptionSettings(ctx)
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetSubscriptionSettingsFailed.WithCause(err), cfg)
+		return
+	}
+	if externalSquadUUID != nil {
+		overrides, _ := renderService.LoadExternalSquadOverrides(ctx, *externalSquadUUID)
+		settings = renderService.MergeSettings(settings, overrides)
+	}
+
+	if settings.HwidSettings.Enabled {
+		var existingCount int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_id = $1`, userID).
+			Scan(&existingCount); err != nil {
+			shared.SendAPIError(w, shared.ErrCreateUserHwidDeviceFailed.WithCause(err), cfg)
+			return
+		}
+		deviceLimit := settings.HwidSettings.FallbackDeviceLimit
+		if hwidDeviceLimit != nil {
+			deviceLimit = *hwidDeviceLimit
+		}
+		if existingCount >= deviceLimit {
+			shared.SendAPIError(w, shared.ErrUserHwidDeviceLimitReached, cfg)
+			return
+		}
 	}
 
 	now := time.Now().UTC()
-	_, err := db.ExecContext(r.Context(), `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
 		ON CONFLICT (hwid, user_id) DO UPDATE SET
@@ -220,13 +264,13 @@ func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, db
 			updated_at = EXCLUDED.updated_at
 	`, hwid, userID, req.Platform, req.OSVersion, req.DeviceModel, req.UserAgent, req.RequestIP, now)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to save hwid device", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateUserHwidDeviceFailed.WithCause(err), cfg)
 		return
 	}
 
-	devices, err := getHWIDCompatDevicesByUserID(r.Context(), db, userID)
+	devices, err := getHWIDCompatDevicesByUserID(ctx, db, userID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserHwidDevicesFailed.WithCause(err), cfg)
 		return
 	}
 
@@ -237,7 +281,7 @@ func handleHWIDCompatCreateUserDevice(w http.ResponseWriter, r *http.Request, db
 			break
 		}
 	}
-	emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceAdded, hwidCompatNotificationData(createdDevice), nil)
+	emitHWIDNotification(ctx, cfg, notifications.EventUserHWIDDeviceAdded, hwidCompatNotificationData(createdDevice), nil)
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
@@ -266,11 +310,11 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, db
 
 	var userExists bool
 	if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&userExists); err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 		return
 	}
 	if !userExists {
-		shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 		return
 	}
 
@@ -283,27 +327,27 @@ func handleHWIDCompatDeleteUserDevice(w http.ResponseWriter, r *http.Request, db
 	deletedDevice, err := scanHWIDCompatDevice(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrHwidDeviceNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to find hwid device", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteUserHwidDeviceFailed.WithCause(err), cfg)
 		return
 	}
 
 	result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE hwid = $1 AND user_id = $2`, hwid, userID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete user hwid device", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteUserHwidDeviceFailed.WithCause(err), cfg)
 		return
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil || rowsAffected == 0 {
-		shared.SendError(w, http.StatusNotFound, "hwid device not found", nil, cfg)
+		shared.SendAPIError(w, shared.ErrHwidDeviceNotFound, cfg)
 		return
 	}
 
 	devices, err := getHWIDCompatDevicesByUserID(r.Context(), db, userID)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch user hwid devices", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetUserHwidDevicesFailed.WithCause(err), cfg)
 		return
 	}
 	emitHWIDNotification(r.Context(), cfg, notifications.EventUserHWIDDeviceDeleted, hwidCompatNotificationData(deletedDevice), nil)
@@ -348,17 +392,17 @@ func HWIDCompatDeleteAllUserDevicesHandler(db *sql.DB, cfg *config.BackendConfig
 
 		var userExists bool
 		if err := db.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, userID).Scan(&userExists); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch user", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetUserByError.WithCause(err), cfg)
 			return
 		}
 		if !userExists {
-			shared.SendError(w, http.StatusNotFound, "user not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 			return
 		}
 
 		result, err := db.ExecContext(r.Context(), `DELETE FROM hwid_user_devices WHERE user_id = $1`, userID)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to delete user hwid devices", err, cfg)
+			shared.SendAPIError(w, shared.ErrDeleteUserHwidDeviceFailed.WithCause(err), cfg)
 			return
 		}
 		deletedCount, _ := result.RowsAffected()
@@ -401,7 +445,7 @@ func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			FROM hwid_user_devices
 		`)
 		if err := row.Scan(&totalDevices, &uniqueDevices, &uniqueUsers); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -413,7 +457,7 @@ func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			ORDER BY count DESC
 		`)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid platform stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows.Close()
@@ -422,13 +466,13 @@ func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			var platform string
 			var count int
 			if scanErr := rows.Scan(&platform, &count); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan hwid platform stats", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(scanErr), cfg)
 				return
 			}
 			byPlatform = append(byPlatform, map[string]any{"platform": platform, "count": count, "byApp": []map[string]any{}})
 		}
 		if err := rows.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid platform stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -443,7 +487,7 @@ func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			ORDER BY platform ASC, count DESC
 		`)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid app stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows2.Close()
@@ -453,7 +497,7 @@ func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			var app string
 			var count int
 			if scanErr := rows2.Scan(&platform, &app, &count); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan hwid app stats", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(scanErr), cfg)
 				return
 			}
 			if strings.HasPrefix(app, "https:") {
@@ -462,7 +506,7 @@ func HWIDCompatStatsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerF
 			byAppByPlatform[platform] = append(byAppByPlatform[platform], map[string]any{"app": app, "count": count})
 		}
 		if err := rows2.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch hwid app stats", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -517,7 +561,7 @@ func HWIDCompatTopUsersHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 		}
 		var total int
 		if err := db.QueryRowContext(r.Context(), `SELECT COUNT(DISTINCT user_id) FROM hwid_user_devices`).Scan(&total); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users count", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 
@@ -530,7 +574,7 @@ func HWIDCompatTopUsersHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 			OFFSET $1 LIMIT $2
 		`, start, size)
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users by hwid devices", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 		defer rows.Close()
@@ -539,13 +583,13 @@ func HWIDCompatTopUsersHandler(db *sql.DB, cfg *config.BackendConfig) http.Handl
 		for rows.Next() {
 			var v item
 			if scanErr := rows.Scan(&v.ID, &v.Username, &v.DevicesCount); scanErr != nil {
-				shared.SendError(w, http.StatusInternalServerError, "failed to scan top users by hwid devices", scanErr, cfg)
+				shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(scanErr), cfg)
 				return
 			}
 			users = append(users, v)
 		}
 		if err := rows.Err(); err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch top users by hwid devices", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetHwidStatsFailed.WithCause(err), cfg)
 			return
 		}
 

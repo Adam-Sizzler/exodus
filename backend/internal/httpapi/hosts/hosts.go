@@ -211,7 +211,7 @@ func HostsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		tags, err := service.repo.getHostTags(r.Context())
 		if err != nil {
-			shared.SendError(w, http.StatusInternalServerError, "failed to fetch host tags", err, cfg)
+			shared.SendAPIError(w, shared.ErrGetAllHostTagsFailed.WithCause(err), cfg)
 			return
 		}
 		shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"tags": tags}})

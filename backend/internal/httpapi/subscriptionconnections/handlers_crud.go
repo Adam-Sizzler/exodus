@@ -13,7 +13,7 @@ import (
 func handleGetNodes(w http.ResponseWriter, r *http.Request, service *SubscriptionConnectionService) {
 	nodes, err := service.repo.getAllNodeRecords(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch nodes", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -26,7 +26,7 @@ func handleGetNodes(w http.ResponseWriter, r *http.Request, service *Subscriptio
 
 	providersMap, err := service.repo.getProviders(r.Context(), dedupeStrings(providerUUIDs))
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch providers", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetAllNodesFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -38,10 +38,10 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, service *Subscription
 	node, err := service.repo.getNodeByUUID(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetOneNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -52,7 +52,7 @@ func handleGetNode(w http.ResponseWriter, r *http.Request, service *Subscription
 
 	providersMap, err := service.repo.getProviders(r.Context(), providerUUIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch providers", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrGetOneNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -73,7 +73,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, service *Subscript
 
 	created, err := service.CreateNode(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to create node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrCreateNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -84,7 +84,7 @@ func handleCreateNode(w http.ResponseWriter, r *http.Request, service *Subscript
 
 	providersMap, err := service.repo.getProviders(r.Context(), providerUUIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch providers", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrCreateNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -110,10 +110,10 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, service *Subscript
 	updated, err := service.UpdateNode(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to update node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -124,7 +124,7 @@ func handleUpdateNode(w http.ResponseWriter, r *http.Request, service *Subscript
 
 	providersMap, err := service.repo.getProviders(r.Context(), providerUUIDs)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch providers", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrUpdateNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 
@@ -136,10 +136,10 @@ func handleDeleteNode(w http.ResponseWriter, r *http.Request, service *Subscript
 	err := service.DeleteNode(r.Context(), nodeUUID)
 	if err != nil {
 		if errors.Is(err, errNodeNotFound) {
-			shared.SendError(w, http.StatusNotFound, "node not found", nil, service.cfg)
+			shared.SendAPIError(w, shared.ErrNodeNotFound, service.cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete node", err, service.cfg)
+		shared.SendAPIError(w, shared.ErrDeleteNodeFailed.WithCause(err), service.cfg)
 		return
 	}
 

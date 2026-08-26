@@ -53,7 +53,7 @@ func Handler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 func handleGetAll(w http.ResponseWriter, r *http.Request, repo *Repository, cfg *config.BackendConfig) {
 	items, err := repo.GetAll(r.Context())
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch integrations", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodeIntegrationsFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
@@ -68,10 +68,10 @@ func handleGetByUUID(w http.ResponseWriter, r *http.Request, repo *Repository, c
 	item, err := repo.GetByUUID(r.Context(), itemUUID)
 	if err != nil {
 		if errors.Is(err, errIntegrationNotFound) {
-			shared.SendError(w, http.StatusNotFound, "integration not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrNodeIntegrationNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to fetch integration", err, cfg)
+		shared.SendAPIError(w, shared.ErrGetNodeIntegrationByUUIDFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": item})
@@ -90,7 +90,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request, repo *Repository, cfg 
 
 	item, err := repo.Create(r.Context(), req)
 	if err != nil {
-		shared.SendError(w, http.StatusInternalServerError, "failed to create integration", err, cfg)
+		shared.SendAPIError(w, shared.ErrCreateNodeIntegrationFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": item})
@@ -110,10 +110,10 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, repo *Repository, cfg 
 	item, err := repo.Update(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, errIntegrationNotFound) {
-			shared.SendError(w, http.StatusNotFound, "integration not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrNodeIntegrationNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to update integration", err, cfg)
+		shared.SendAPIError(w, shared.ErrUpdateNodeIntegrationFailed.WithCause(err), cfg)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": item})
@@ -122,10 +122,10 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, repo *Repository, cfg 
 func handleDelete(w http.ResponseWriter, r *http.Request, repo *Repository, cfg *config.BackendConfig, itemUUID string) {
 	if err := repo.Delete(r.Context(), itemUUID); err != nil {
 		if errors.Is(err, errIntegrationNotFound) {
-			shared.SendError(w, http.StatusNotFound, "integration not found", nil, cfg)
+			shared.SendAPIError(w, shared.ErrNodeIntegrationNotFound, cfg)
 			return
 		}
-		shared.SendError(w, http.StatusInternalServerError, "failed to delete integration", err, cfg)
+		shared.SendAPIError(w, shared.ErrDeleteNodeIntegrationFailed.WithCause(err), cfg)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
