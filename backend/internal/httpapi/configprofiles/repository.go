@@ -255,8 +255,7 @@ func (r *ConfigProfileRepository) reorderConfigProfiles(ctx context.Context, ite
 		_ = tx.Rollback()
 	}()
 
-	// Single batched UPDATE via UNNEST instead of one round-trip per profile —
-	// same pattern as hosts.reorderHosts / Remnawave's reorderMany.
+	// Single batched UPDATE via UNNEST instead of one round-trip per profile.
 	uuids := make([]string, len(items))
 	positions := make([]int32, len(items))
 	for i, item := range items {

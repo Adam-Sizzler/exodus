@@ -7,9 +7,19 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"exodus/internal/config"
 )
+
+var (
+	usersSubNodeBaseLock sync.RWMutex
+	usersSubNodeBaseVal  string
+	usersSubNodeBaseExp  time.Time
+)
+
+const usersSubNodeBaseTTL = 30 * time.Second
 
 func resolveUsersSubscriptionBase(ctx context.Context, db *sql.DB, r *http.Request, cfg *config.BackendConfig) string {
 	if base := resolveUsersSubscriptionBaseFromNode(ctx, db); base != "" {
@@ -24,6 +34,14 @@ func resolveUsersSubscriptionBaseFromNode(ctx context.Context, db *sql.DB) strin
 		return ""
 	}
 
+	usersSubNodeBaseLock.RLock()
+	if time.Now().Before(usersSubNodeBaseExp) {
+		val := usersSubNodeBaseVal
+		usersSubNodeBaseLock.RUnlock()
+		return val
+	}
+	usersSubNodeBaseLock.RUnlock()
+
 	var domain sql.NullString
 	var apiPath sql.NullString
 	row := db.QueryRowContext(ctx, `
@@ -37,11 +55,19 @@ func resolveUsersSubscriptionBaseFromNode(ctx context.Context, db *sql.DB) strin
 
 	scanErr := row.Scan(&domain, &apiPath)
 	if errors.Is(scanErr, sql.ErrNoRows) || scanErr != nil || !domain.Valid {
+		usersSubNodeBaseLock.Lock()
+		usersSubNodeBaseVal = ""
+		usersSubNodeBaseExp = time.Now().Add(usersSubNodeBaseTTL)
+		usersSubNodeBaseLock.Unlock()
 		return ""
 	}
 
 	nodeDomain := strings.TrimSpace(strings.Split(domain.String, ",")[0])
 	if nodeDomain == "" {
+		usersSubNodeBaseLock.Lock()
+		usersSubNodeBaseVal = ""
+		usersSubNodeBaseExp = time.Now().Add(usersSubNodeBaseTTL)
+		usersSubNodeBaseLock.Unlock()
 		return ""
 	}
 
@@ -51,6 +77,10 @@ func resolveUsersSubscriptionBaseFromNode(ctx context.Context, db *sql.DB) strin
 
 	parsedDomain, parseErr := url.Parse(nodeDomain)
 	if parseErr != nil || strings.TrimSpace(parsedDomain.Host) == "" {
+		usersSubNodeBaseLock.Lock()
+		usersSubNodeBaseVal = ""
+		usersSubNodeBaseExp = time.Now().Add(usersSubNodeBaseTTL)
+		usersSubNodeBaseLock.Unlock()
 		return ""
 	}
 
@@ -61,7 +91,14 @@ func resolveUsersSubscriptionBaseFromNode(ctx context.Context, db *sql.DB) strin
 
 	base := strings.TrimRight(parsedDomain.String(), "/")
 	path := normalizeUsersSubscriptionAPIPath(apiPath.String)
-	return base + path
+	res := base + path
+
+	usersSubNodeBaseLock.Lock()
+	usersSubNodeBaseVal = res
+	usersSubNodeBaseExp = time.Now().Add(usersSubNodeBaseTTL)
+	usersSubNodeBaseLock.Unlock()
+
+	return res
 }
 
 func normalizeUsersSubscriptionAPIPath(value string) string {

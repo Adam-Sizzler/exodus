@@ -134,8 +134,7 @@ func TestResolveHostRemarksConnectionKeys(t *testing.T) {
 	resolveHostRemarks(hosts, user, settings, subURL)
 
 	// TrafficLimitBytes is exactly 1 TiB (1024 GiB): with auto-scaling,
-	// util.FormatBytes crosses the GiB->TiB boundary here, unlike upstream
-	// Remnawave which would render "1024.00 GiB". See
+	// util.FormatBytes crosses the GiB->TiB boundary here. See
 	// formatTemplateTrafficBytes for the rationale.
 	expected := "🇨🇭 Switzerland 372.53 GiB/1.00 TiB | 217 дн. | 1www"
 	if hosts[0].Remark != expected {

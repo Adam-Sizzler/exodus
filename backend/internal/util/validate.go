@@ -9,9 +9,7 @@ import (
 
 // ParseUUID trims whitespace and validates value as an RFC 4122 UUID,
 // returning its canonical (lowercase, hyphenated) string form. This is the
-// single source of truth for UUID format validation across the backend -
-// mirrors upstream Remnawave's shared `z.uuid()` contract primitive, which
-// every schema references instead of hand-rolling its own check.
+// single source of truth for UUID format validation across the backend.
 func ParseUUID(value string) (string, error) {
 	parsed, err := uuid.Parse(strings.TrimSpace(value))
 	if err != nil {

@@ -7,17 +7,8 @@ import (
 	"time"
 )
 
-// usersFilterColumnMap is a 1:1 port of Remnawave's USERS_FILTER_COLUMN_MAP
-// (users.repository.ts). Any filter/sort id NOT in this map is silently
-// ignored — exactly Remnawave's `if (!(filter.id in USERS_FILTER_COLUMN_MAP))
-// continue;` — never treated as "exclude everything".
-//
-// naivePassword/shadowtlsPassword/hysteria2Password/anytlsPassword/
-// trafficLimitStrategy/updatedAt have no Remnawave equivalent (sing-box-only
-// protocols and an Exodus-only field). They're added here and go through the
-// same generic fallback switch Remnawave applies to any of its own
-// non-special-cased columns, so they behave the same way a Remnawave column
-// with no special case would.
+// usersFilterColumnMap maps frontend table column names to database columns.
+// Any filter/sort id NOT in this map is silently ignored.
 var usersFilterColumnMap = map[string]string{
 	"id":                  "u.id",
 	"uuid":                "u.uuid",
@@ -82,17 +73,14 @@ var usersFilterColumnMap = map[string]string{
 	"anytls_password":        "u.anytls_password",
 }
 
-// usersNumericFilterIDs is a 1:1 port of Remnawave's NUMERIC_FILTER_IDS.
+// usersNumericFilterIDs contains filter IDs that represent numeric values.
 var usersNumericFilterIDs = map[string]struct{}{
 	"hwidDeviceLimit":   {},
 	"id":                {},
 	"trafficLimitBytes": {},
 }
 
-// usersExactDateFilterIDs is a 1:1 port of the id list Remnawave special-cases
-// to an exact-equality date match. Note subRevokedAt is deliberately excluded
-// here too — Remnawave doesn't special-case it either, so it falls through to
-// the generic switch below, same as upstream.
+// usersExactDateFilterIDs contains filter IDs that map to exact date matching.
 var usersExactDateFilterIDs = map[string]struct{}{
 	"createdAt":            {},
 	"expireAt":             {},
@@ -100,16 +88,14 @@ var usersExactDateFilterIDs = map[string]struct{}{
 	"userTraffic.onlineAt": {},
 }
 
-// buildUsersTableQuery is a 1:1 port of Remnawave's getAllUsers + applyUsersFilters:
-// filtering, sorting and pagination pushed down to Postgres instead of loading
-// every user row and filtering/sorting it in Go.
+// buildUsersTableQuery builds SQL filtering, sorting and pagination for users.
 func buildUsersTableQuery(filters []usersTableFilter, filterModes map[string]string, sorting []usersTableSorting) (whereSQL string, orderSQL string, args []any, err error) {
 	clauses := make([]string, 0, len(filters))
 
 	for _, filter := range filters {
 		_, known := usersFilterColumnMap[filter.ID]
 		if !known && filter.ID != "activeInternalSquads" && filter.ID != "nodeName" {
-			continue // unknown id: ignored, matching Remnawave's `continue`
+			continue
 		}
 		if filter.Value == nil {
 			continue
@@ -125,8 +111,6 @@ func buildUsersTableQuery(filters []usersTableFilter, filterModes map[string]str
 
 		switch {
 		case filter.ID == "activeInternalSquads":
-			// Remnawave: single squad uuid, exact match via subquery — not a
-			// multi-value OR, and not a name match (the picker sends one uuid).
 			v, ok := singleStringValue(filter.Value)
 			if !ok {
 				continue
@@ -138,7 +122,6 @@ func buildUsersTableQuery(filters []usersTableFilter, filterModes map[string]str
 			))
 
 		case filter.ID == "nodeName":
-			// Remnawave: exact match against the node uuid (the picker sends one uuid).
 			v, ok := singleStringValue(filter.Value)
 			if !ok {
 				continue
@@ -168,7 +151,7 @@ func buildUsersTableQuery(filters []usersTableFilter, filterModes map[string]str
 				continue
 			}
 			if _, parseErr := strconv.ParseInt(strings.TrimSpace(v), 10, 64); parseErr != nil {
-				continue // not numeric-looking: filter dropped, matching Remnawave's swallowed catch
+				continue
 			}
 			args = append(args, "%"+v+"%")
 			clauses = append(clauses, fmt.Sprintf(`CAST(u.id AS TEXT) LIKE $%d`, len(args)))
@@ -223,7 +206,6 @@ func buildUsersTableQuery(filters []usersTableFilter, filterModes map[string]str
 			dir = "DESC"
 		}
 		if sort.ID == "usedTrafficPercentage" {
-			// Remnawave: usedTrafficBytes / NULLIF(trafficLimitBytes, 0), computed at sort time.
 			orderParts = append(orderParts, fmt.Sprintf(
 				"CAST(COALESCE(ut.used_traffic_bytes, 0) AS NUMERIC) / NULLIF(u.traffic_limit_bytes, 0) %s NULLS LAST", dir,
 			))
@@ -244,27 +226,8 @@ func buildUsersTableQuery(filters []usersTableFilter, filterModes map[string]str
 	return whereSQL, orderSQL, args, nil
 }
 
-// buildGenericUsersFilterClause is a 1:1 port of the generic switch(mode) branch
-// at the end of Remnawave's applyUsersFilters:
-//
-//	const value = NUMERIC_FILTER_IDS.has(filter.id) ? Number(filter.value) : filter.value;
-//	switch (mode) { ... }
-//
-// `value` is computed once and reused across cases — including startsWith/
-// endsWith/contains, which is why a numeric-id field goes through the same
-// Number() normalization there too, not just for equals/comparisons. The
-// 'equals' + array branch is the one exception: Remnawave binds the RAW
-// filter.value array via `'in'` there, not the Number-converted `value`.
-//
-// A malformed numeric filter value returns a non-nil error instead of
-// silently dropping the filter, matching Remnawave's behavior for this case:
-// `Number('garbage')` is NaN in JS, gets bound to the query as-is, and
-// Postgres rejects it at execution time — failing the whole request. Go's
-// strconv.ParseFloat fails at parse time instead of bind time, but the
-// caller (buildUsersTableQuery) propagates the error the same way, so the
-// end result is the same request-wide failure, not a partially-applied filter.
+// buildGenericUsersFilterClause builds filter expressions based on filter mode.
 func buildGenericUsersFilterClause(col string, rawValue any, mode string, numeric bool, argOffset int) (string, []any, bool, error) {
-	// case 'equals' with an array: Remnawave uses filter.value as-is, unconverted.
 	if mode == "equals" {
 		if arr, ok := rawValue.([]any); ok && len(arr) > 0 {
 			vals := make([]any, len(arr))
@@ -281,8 +244,6 @@ func buildGenericUsersFilterClause(col string, rawValue any, mode string, numeri
 
 	// case 'between': doesn't use the shared `value` below at all — it reads
 	// filter.value as a [from, to] tuple directly with its own per-bound cast.
-	// Handled first so a whole-array Number() parse failure (JS: silently NaN,
-	// unused for this mode anyway) can't short-circuit it in Go.
 	if mode == "between" {
 		castFn := func(v any) (any, error) {
 			if !numeric {
@@ -323,7 +284,6 @@ func buildGenericUsersFilterClause(col string, rawValue any, mode string, numeri
 		return strings.Join(parts, " AND "), args, true, nil
 	}
 
-	// const value = NUMERIC_FILTER_IDS.has(filter.id) ? Number(filter.value) : filter.value;
 	value := rawValue
 	if numeric {
 		n, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(rawValue)), 64)
@@ -360,9 +320,7 @@ func isExactDateFilter(filterID string) bool {
 	return ok
 }
 
-// singleStringValue extracts a single string from a filter value that's
-// expected to carry exactly one id/uuid (select-style pickers), matching how
-// Remnawave's special-cased branches use `filter.value as string` directly.
+// singleStringValue extracts a single string from a filter value.
 func singleStringValue(v any) (string, bool) {
 	switch t := v.(type) {
 	case string:

@@ -2,19 +2,14 @@ package shared
 
 import "net/http"
 
-// This file is the single source of truth for named API errors, mirroring
-// upstream Remnawave's libs/contract/constants/errors/errors.ts: one place
+// This file is the single source of truth for named API errors: one place
 // that pairs a stable machine-readable Code with a fixed HTTPStatus and a
-// canonical Message, instead of each of the ~760 call sites across the
-// codebase inventing its own free-text message and status code by hand
-// (which is how "invalid uuid" / "invalid uuid format" / "invalid uuid in
-// list" ended up as three different strings for the same situation).
+// canonical Message, instead of each of the call sites across the
+// codebase inventing its own free-text message and status code by hand.
 //
-// Unlike upstream's opaque sequential codes ("A011"), these use descriptive
-// SCREAMING_SNAKE_CASE strings — more idiomatic for a Go registry meant to
-// be read directly (shared.ErrNodeNotFound.Code == "NODE_NOT_FOUND"), and
-// self-documenting in logs/API responses without needing to cross-reference
-// a lookup table to know what "A011" means.
+// These use descriptive SCREAMING_SNAKE_CASE strings — idiomatic for a
+// Go registry meant to be read directly (shared.ErrNodeNotFound.Code == "NODE_NOT_FOUND"),
+// and self-documenting in logs/API responses.
 //
 // Usage at a call site:
 //

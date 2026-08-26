@@ -312,7 +312,8 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 	} else if security == "reality" {
 		params.Set("fp", "chrome")
 	}
-	if security == "reality" {
+	switch security {
+	case "reality":
 		if defaults.publicKey != "" {
 			params.Set("pbk", defaults.publicKey)
 		}
@@ -322,7 +323,7 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 		if defaults.spiderX != "" {
 			params.Set("spx", defaults.spiderX)
 		}
-	} else if security == "tls" {
+	case "tls":
 		if defaults.cipherSuites != "" {
 			params.Set("cs", defaults.cipherSuites)
 		}
@@ -468,7 +469,8 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 		sni = host.Address
 	}
 	defaults := resolveSingboxInboundDefaults(host)
-	if security == "tls" {
+	switch security {
+	case "tls":
 		tlsSettings := map[string]interface{}{}
 		if sni != "" {
 			tlsSettings["serverName"] = sni
@@ -488,13 +490,13 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 			tlsSettings["cipherSuites"] = defaults.cipherSuites
 		}
 		if defaults.pinnedPeerCertSha256 != "" {
-			tlsSettings["pinnedPeerCertSha256"] = defaults.pinnedPeerCertSha256
+			tlsSettings["pinnedPeerCertificateChainSha256"] = []string{defaults.pinnedPeerCertSha256}
 		}
 		if defaults.verifyPeerCertByName != "" {
 			tlsSettings["verifyPeerCertByName"] = defaults.verifyPeerCertByName
 		}
 		streamSettings["tlsSettings"] = tlsSettings
-	} else if security == "reality" {
+	case "reality":
 		realitySettings := map[string]interface{}{}
 		if sni != "" {
 			realitySettings["serverName"] = sni

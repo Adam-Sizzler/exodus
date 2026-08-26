@@ -150,7 +150,8 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, fina
 		security = "tls"
 	}
 
-	if security == "tls" {
+	switch security {
+	case "tls":
 		var alpn *string
 		if defaults.alpn != "" {
 			v := defaults.alpn
@@ -188,7 +189,7 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, fina
 			"echForceQuery":           nil,
 			"echSockopt":              nil,
 		}
-	} else if security == "reality" {
+	case "reality":
 		fp := "chrome"
 		if defaults.fingerprint != "" {
 			fp = defaults.fingerprint
@@ -217,7 +218,7 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, fina
 			"spiderX":       nil,
 			"mldsa65Verify": nil,
 		}
-	} else {
+	default:
 		security = "none"
 		securityOptions = nil
 	}

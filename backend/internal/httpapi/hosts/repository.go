@@ -558,8 +558,7 @@ func (r *HostRepository) reorderHosts(ctx context.Context, items []reorderHostIt
 		_ = tx.Rollback()
 	}()
 
-	// Single batched UPDATE via UNNEST instead of one round-trip per host —
-	// matches Remnawave's reorderMany (UPDATE ... FROM (VALUES ...) AS v).
+	// Single batched UPDATE via UNNEST instead of one round-trip per host.
 	uuids := make([]string, len(items))
 	positions := make([]int32, len(items))
 	for i, item := range items {

@@ -165,6 +165,10 @@ func handleUserActionError(w http.ResponseWriter, err error, cfg *config.Backend
 		shared.SendAPIError(w, shared.ErrUserNotFound, cfg)
 		return
 	}
+	if message != "" {
+		shared.SendAPIError(w, shared.ErrUpdateUserFailed.WithCause(fmt.Errorf("%s: %w", message, err)), cfg)
+		return
+	}
 	shared.SendAPIError(w, shared.ErrUpdateUserFailed.WithCause(err), cfg)
 }
 

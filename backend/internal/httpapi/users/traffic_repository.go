@@ -49,7 +49,8 @@ func (r *UserRepository) queryReactivatedExpiredUserNodeUUIDsTx(ctx context.Cont
 		JOIN config_profile_inbounds_to_nodes cpitn ON cpitn.config_profile_inbound_uuid = isi.inbound_uuid
 		WHERE u.status = 'EXPIRED'
 		  AND u.uuid = ANY($1)
-	`, dedupeStrings(userUUIDs))
+		  AND u.expire_at + ($2::int * INTERVAL '1 day') > CURRENT_TIMESTAMP
+	`, dedupeStrings(userUUIDs), extendDays)
 	if err != nil {
 		return nil, err
 	}

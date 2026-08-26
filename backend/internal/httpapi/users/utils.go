@@ -81,7 +81,7 @@ func protocolCredentialString(value *string, fallback string) string {
 	if value != nil && strings.TrimSpace(*value) != "" {
 		return strings.TrimSpace(*value)
 	}
-	return ""
+	return fallback
 }
 
 type userProtocolCredentials struct {
