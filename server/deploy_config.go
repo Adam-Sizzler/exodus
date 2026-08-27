@@ -535,7 +535,7 @@ func nonNilSlice(in []string) []string {
 	return in
 }
 
-// djb2Dual matches Remnawave's @remnawave/hashed-set implementation.
+// djb2Dual implements 64-bit dual-hash for fast deduplication.
 func djb2Dual(str string) (uint32, uint32) {
 	var high uint32 = 5381
 	var low uint32 = 5387

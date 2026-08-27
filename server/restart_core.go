@@ -332,7 +332,7 @@ func waitForCoreAPIReady(ctx context.Context, cfg *config.NodeConfig, apiService
 		}
 		lastErr = err
 
-		// Warn with Remnawave-style retry format
+		// Warn with formatted retry message
 		log.Warn(fmt.Sprintf("▸ Sing-box Core status check, %d/%d · elapsed %s · retrying in %s",
 			attempt, coreHealthcheckAttempts, formatDuration(elapsed), formatDuration(coreHealthcheckInterval)))
 

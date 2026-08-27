@@ -14,7 +14,7 @@ import (
 )
 
 // GetAuthValidationMessage returns the SECRET_KEY or GRPC_TOKEN validation table.
-// If SECRET_KEY is set — renders full check table (like Remnawave).
+// If SECRET_KEY is set — renders full check table.
 // If only GRPC_TOKEN is set — renders single-line table.
 // Returns empty string if neither is configured.
 func GetAuthValidationMessage(cfg *config.NodeConfig) string {
@@ -71,7 +71,7 @@ func renderCoreFailedMessage(processState, err string) string {
 	)
 }
 
-// renderSecretKeyTable renders the SECRET_KEY validation box (Remnawave-style with ┌┐└┘).
+// renderSecretKeyTable renders the SECRET_KEY validation box with ASCII borders (┌┐└┘).
 func renderSecretKeyTable(report *config.SecretKeyReport) string {
 	width := logTableWidth
 	top := "┌" + strings.Repeat("─", width-2) + "┐"
