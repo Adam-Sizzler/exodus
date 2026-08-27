@@ -7324,9 +7324,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new user account
+      description: Create user with protocol links and quotas
       parameters:
-      - description: User creation parameters
+      - description: User create fields
         in: body
         name: body
         required: true
@@ -7353,7 +7353,7 @@ paths:
             $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Create a new user
+      summary: Create a user
       tags:
       - Users Controller
   /users/{userId}:
