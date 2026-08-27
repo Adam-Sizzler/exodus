@@ -386,7 +386,7 @@ func telegramReplyMarkup(event Event) map[string]any {
 	}
 	return map[string]any{
 		"inline_keyboard": [][]map[string]string{
-			{{"text": "Documentation", "url": "https://docs.exodus.dev"}},
+			{{"text": "Documentation", "url": "https://docs.ex"}},
 			{{"text": "Community", "url": "https://t.me/exodus"}},
 		},
 	}
@@ -578,7 +578,7 @@ func formatServiceMessage(event Event) string {
 	switch event.Event {
 	case EventServicePanelStarted:
 		version := firstNonEmptyString(stringValue(event.Data, "panelVersion"), stringValue(event.Data, "version"))
-		return fmt.Sprintf("<tg-emoji emoji-id='5418304400152096012'>🌊</tg-emoji> <b>#panel_started</b>\n%s\n<tg-emoji emoji-id='5461117441612462242'>✅</tg-emoji> Exodus %s is up and running.\n\n<tg-emoji emoji-id='5463036196777128277'>🦋</tg-emoji> Join community: @exodus\n<tg-emoji emoji-id='5415680458602081205'>📚</tg-emoji> Documentation: https://docs.exodus.dev", telegramSeparator, html.EscapeString(version))
+		return fmt.Sprintf("<tg-emoji emoji-id='5418304400152096012'>🌊</tg-emoji> <b>#panel_started</b>\n%s\n<tg-emoji emoji-id='5461117441612462242'>✅</tg-emoji> Exodus %s is up and running.\n\n<tg-emoji emoji-id='5463036196777128277'>🦋</tg-emoji> Join community: @exodus\n<tg-emoji emoji-id='5415680458602081205'>📚</tg-emoji> Documentation: https://docs.ex", telegramSeparator, html.EscapeString(version))
 	case EventLoginAttemptFailed:
 		loginAttempt := loginAttemptData(event.Data)
 		return fmt.Sprintf(

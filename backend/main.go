@@ -137,7 +137,7 @@ func main() {
 	cfg.Logger.PrintStartupBanner(logger.BannerOptions{
 		Title:          "Exodus Backend",
 		Version:        constant.Version,
-		DocsURL:        "https://docs.exodus.dev",
+		DocsURL:        "https://docs.ex",
 		CommunityURL:   "https://t.me/exodus",
 		HTTPPort:       cfg.Backend.AppPort,
 		PathPrefix:     cfg.Backend.BasePath,

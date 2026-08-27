@@ -23,7 +23,7 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
         })),
         plainDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
             const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
@@ -32,7 +32,7 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
         })),
         allowedEmails: zod_1.default.array(zod_1.default.string()),
     }),
@@ -55,7 +55,7 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
         })),
         keycloakDomain: zod_1.default.nullable(zod_1.default.string().refine((val) => {
             const fqdnRegex = /(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,63}$)/;
@@ -64,7 +64,7 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
         })),
         allowedEmails: zod_1.default.array(zod_1.default.string()),
     })
@@ -95,7 +95,7 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
         })),
         allowedEmails: zod_1.default.array(zod_1.default.string()),
     })
@@ -122,7 +122,7 @@ exports.Oauth2SettingsSchema = zod_1.default.object({
             }
             return false;
         }, {
-            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+            message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
         })),
     })
         .default({

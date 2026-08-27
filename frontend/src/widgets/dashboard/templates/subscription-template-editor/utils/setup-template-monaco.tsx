@@ -44,7 +44,7 @@ const configureYaml = (monaco: Monaco, schemas?: SchemasSettings[]) => {
     monacoYaml = configureMonacoYaml(monaco, options)
 }
 
-const DOCS_URL = 'https://docs.rw/docs/learn/xray-json-advanced'
+const DOCS_URL = 'https://docs.ex/docs/learn/xray-json-advanced'
 const DOCS_LINK = `\n\n[📖 Documentation](${DOCS_URL})`
 
 const getInboundType = (host: Host): string => {

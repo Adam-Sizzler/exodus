@@ -8,7 +8,7 @@ export function SupportControl() {
         <HeaderControl
             className={classes.support}
             component="a"
-            href="https://docs.exodus.dev/docs/donate"
+            href="https://docs.ex/docs/donate"
             rel="noopener noreferrer"
             target="_blank"
         >

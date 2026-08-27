@@ -12,8 +12,8 @@ const DefaultSubscriptionPageConfig = `
   ],
   "brandingSettings": {
     "title": "Subscription",
-    "logoUrl": "https://docs.exodus.dev/img/logo.svg",
-    "supportUrl": "https://dummy.docs.exodus.dev"
+    "logoUrl": "https://docs.ex/img/logo.svg",
+    "supportUrl": "https://dummy.docs.ex"
   },
   "uiConfig": {
     "subscriptionInfoBlockType": "expanded",

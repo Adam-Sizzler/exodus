@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 import classes from './PrimeModal.module.css'
 
-const PRIME_LINK = 'https://docs.exodus.dev/prime'
+const PRIME_LINK = 'https://docs.ex/prime'
 
 const FEATURES = [
     {

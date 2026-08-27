@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodePluginEditorSchema = exports.NodePluginSchema = exports.HaproxyAuthPluginSchema = exports.preStartPluginSchema = exports.EgressFilterPluginSchema = exports.IngressFilterPluginSchema = exports.SharedListSchema = exports.SharedListConfigSchema = void 0;
 const zod_1 = require("zod");
-const DOCS_LINK = `\n\n[📖 Documentation](https://docs.rw/docs/learn/node-plugins)`;
+const DOCS_LINK = `\n\n[📖 Documentation](https://docs.ex/docs/learn/node-plugins)`;
 // https://github.com/colinhacks/zod/issues/5944
 const IPV6 = zod_1.z.regexes.ipv6.source.slice(1, -1);
 const ipv6 = () => zod_1.z.string().regex(new RegExp(`^(${IPV6})$`), { error: 'Invalid IPv6 address' });

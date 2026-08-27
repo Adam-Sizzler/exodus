@@ -79,7 +79,7 @@ export function BaseSettingsBlockComponent({ form }: IProps) {
                                         <ActionIcon
                                             color="gray"
                                             component="a"
-                                            href="https://docs.exodus.dev/docs/install/subscription-page/display-raw-keys"
+                                            href="https://docs.ex/docs/install/subscription-page/display-raw-keys"
                                             onClick={(e) => e.stopPropagation()}
                                             rel="noopener noreferrer"
                                             size="xs"

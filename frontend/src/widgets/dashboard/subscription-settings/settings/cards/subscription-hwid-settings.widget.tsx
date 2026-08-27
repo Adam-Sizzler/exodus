@@ -124,7 +124,7 @@ export const SubscriptionHwidSettingsWidget = (props: IProps) => {
                             rel="noopener noreferrer"
                             size="md"
                             target="_blank"
-                            to="https://docs.exodus.dev/docs/features/hwid-device-limit"
+                            to="https://docs.ex/docs/features/hwid-device-limit"
                             variant="light"
                             w="fit-content"
                         >

@@ -23,7 +23,7 @@ export const Oauth2SettingsSchema = z.object({
                     return false;
                 },
                 {
-                    message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+                    message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
                 },
             ),
         ),
@@ -39,7 +39,7 @@ export const Oauth2SettingsSchema = z.object({
                     return false;
                 },
                 {
-                    message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+                    message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
                 },
             ),
         ),
@@ -70,7 +70,7 @@ export const Oauth2SettingsSchema = z.object({
                     },
                     {
                         message:
-                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
                     },
                 ),
             ),
@@ -87,7 +87,7 @@ export const Oauth2SettingsSchema = z.object({
                     },
                     {
                         message:
-                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
                     },
                 ),
             ),
@@ -128,7 +128,7 @@ export const Oauth2SettingsSchema = z.object({
                     },
                     {
                         message:
-                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
                     },
                 ),
             ),
@@ -163,7 +163,7 @@ export const Oauth2SettingsSchema = z.object({
                     },
                     {
                         message:
-                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.rw"',
+                            'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
                     },
                 ),
             ),

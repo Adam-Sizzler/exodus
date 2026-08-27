@@ -65,7 +65,7 @@ LABEL org.opencontainers.image.title="Exodus" \
       org.opencontainers.image.source="https://github.com/exodus/backend" \
       org.opencontainers.image.vendor="Exodus" \
       org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.documentation="https://docs.exodus.dev"
+      org.opencontainers.image.documentation="https://docs.ex"
 
 ARG BRANCH=main
 ARG __EX_METADATA_VERSION=1.0.0

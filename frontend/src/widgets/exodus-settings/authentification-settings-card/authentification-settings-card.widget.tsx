@@ -149,13 +149,13 @@ const getFieldConfig = (t: TFunction) =>
         frontendDomain: {
             label: t('auth-settings.passkey.rpId.label'),
             description: t('auth-settings.passkey.rpId.description'),
-            placeholder: 'docs.exodus.dev',
+            placeholder: 'docs.ex',
             type: 'text' as const
         },
         keycloakDomain: {
             label: t('auth-settings.fields.keycloakDomain.label'),
             description: t('auth-settings.fields.keycloakDomain.description'),
-            placeholder: 'keycloak.docs.exodus.dev',
+            placeholder: 'keycloak.docs.ex',
             type: 'text' as const
         },
         authorizationUrl: {

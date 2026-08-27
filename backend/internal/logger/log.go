@@ -273,7 +273,7 @@ func (l *Logger) PrintStartupBanner(opts BannerOptions) {
 		opts.Title = strings.TrimSpace(opts.Title) + " " + strings.TrimSpace(opts.Version)
 	}
 	if strings.TrimSpace(opts.DocsURL) == "" {
-		opts.DocsURL = "https://docs.exodus.dev"
+		opts.DocsURL = "https://docs.ex"
 	}
 	if strings.TrimSpace(opts.CommunityURL) == "" {
 		opts.CommunityURL = "https://t.me/exodus"

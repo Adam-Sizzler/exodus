@@ -86,7 +86,7 @@ export const CreateNodeStep1Connection = ({ form, onNext, pubKey }: IProps) => {
                     {t('create-node-step-1-connection.content-for-the-exodus-node-below')}{' '}
                     <Anchor
                         fw="700"
-                        href="https://docs.exodus.dev/docs/install/exodus-node"
+                        href="https://docs.ex/docs/install/exodus-node"
                         inherit
                         rel="noopener noreferrer"
                         target="_blank"
