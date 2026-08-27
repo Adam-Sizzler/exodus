@@ -58,7 +58,7 @@ LABEL org.opencontainers.image.title="Exodus Node" \
       org.opencontainers.image.source="https://github.com/exodus/node" \
       org.opencontainers.image.vendor="Exodus" \
       org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.documentation="https://docs.exodus.dev"
+      org.opencontainers.image.documentation="https://docs.ex"
 
 RUN apk update && apk add --no-cache ca-certificates tzdata sqlite-libs curl xz
 

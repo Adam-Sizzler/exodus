@@ -42,7 +42,7 @@ func GetStartMessage(cfg *config.NodeConfig) string {
 		"Exodus Node "+constant.Version,
 		[][]string{
 			{
-				"Docs: https://docs.exodus.dev",
+				"Docs: https://docs.ex",
 				"Community: https://t.me/exodus",
 			},
 			{
