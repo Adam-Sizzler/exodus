@@ -10,7 +10,7 @@ import (
 )
 
 func emitUserNotification(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, record userRecord, meta map[string]any) {
-	data := userRecordNotificationData(record)
+	data := userRecordNotificationData(ctx, repo, cfg, record)
 	if userNotificationNeedsInternalSquads(event) {
 		enrichUserNotificationInternalSquads(ctx, repo, record.UUID, data)
 	}
@@ -43,16 +43,53 @@ func enrichUserNotificationInternalSquads(ctx context.Context, repo *UserReposit
 	}
 
 	squads := squadsByUser[userUUID]
+	squadObjects := make([]map[string]any, 0, len(squads))
 	names := make([]string, 0, len(squads))
 	for _, squad := range squads {
 		name := strings.TrimSpace(squad.Name)
 		if name != "" {
 			names = append(names, name)
+			squadObjects = append(squadObjects, map[string]any{
+				"uuid": squad.UUID,
+				"name": squad.Name,
+			})
 		}
 	}
 
-	data["activeInternalSquads"] = names
+	data["activeInternalSquads"] = squadObjects
 	data["internalSquads"] = names
+}
+
+func enrichUsersNotificationInternalSquads(ctx context.Context, repo *UserRepository, userUUIDs []string, dataByUUID map[string]map[string]any) {
+	if repo == nil || len(userUUIDs) == 0 || len(dataByUUID) == 0 {
+		return
+	}
+
+	squadsByUser, err := repo.getUsersActiveInternalSquads(ctx, userUUIDs)
+	if err != nil {
+		return
+	}
+
+	for userUUID, squads := range squadsByUser {
+		data, exists := dataByUUID[userUUID]
+		if !exists || data == nil {
+			continue
+		}
+		squadObjects := make([]map[string]any, 0, len(squads))
+		names := make([]string, 0, len(squads))
+		for _, squad := range squads {
+			name := strings.TrimSpace(squad.Name)
+			if name != "" {
+				names = append(names, name)
+				squadObjects = append(squadObjects, map[string]any{
+					"uuid": squad.UUID,
+					"name": squad.Name,
+				})
+			}
+		}
+		data["activeInternalSquads"] = squadObjects
+		data["internalSquads"] = names
+	}
 }
 
 func emitUsersByUUIDsNotification(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, userUUIDs []string) {
@@ -61,56 +98,86 @@ func emitUsersByUUIDsNotification(ctx context.Context, repo *UserRepository, cfg
 		return
 	}
 	records, err := repo.getUserRecordsByUUIDs(ctx, clean)
-	if err != nil {
-		emitUsersNotificationFromRecords(ctx, repo, cfg, event, clean, nil)
+	if err != nil || len(records) == 0 {
 		return
 	}
-	emitUsersNotificationFromRecords(ctx, repo, cfg, event, clean, records)
-}
 
-func emitUsersNotificationFromRecords(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
-	clean := dedupeStrings(userUUIDs)
-	if len(clean) == 0 {
-		return
+	foundUUIDs := make([]string, 0, len(records))
+	dataByUUID := make(map[string]map[string]any, len(records))
+	for _, record := range records {
+		foundUUIDs = append(foundUUIDs, record.UUID)
+		dataByUUID[record.UUID] = userRecordNotificationData(ctx, repo, cfg, record)
 	}
-	skipTelegram := len(clean) >= 500
-	for _, userUUID := range clean {
+
+	if userNotificationNeedsInternalSquads(event) {
+		enrichUsersNotificationInternalSquads(ctx, repo, foundUUIDs, dataByUUID)
+	}
+
+	skipTelegram := len(records) >= 500
+	for _, record := range records {
 		meta := map[string]any{"bulk": true}
 		if skipTelegram {
 			meta["skipTelegramNotification"] = true
 		}
-		if record, ok := records[userUUID]; ok {
-			emitUserNotification(ctx, repo, cfg, event, record, meta)
-			continue
-		}
 		notifications.Emit(ctx, cfg, notifications.Event{
 			Scope: notifications.ScopeUser,
 			Event: event,
-			Data:  map[string]any{"uuid": userUUID},
+			Data:  dataByUUID[record.UUID],
 			Meta:  meta,
 		})
 	}
 }
 
-func emitBulkSummaryNotification(ctx context.Context, cfg *config.BackendConfig, event string, affectedRows int64) {
-	if affectedRows <= 0 {
+func emitUsersNotificationFromRecords(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, event string, userUUIDs []string, records map[string]userRecord) {
+	clean := dedupeStrings(userUUIDs)
+	if len(clean) == 0 || len(records) == 0 {
 		return
 	}
-	notifications.Emit(ctx, cfg, notifications.Event{
-		Scope: notifications.ScopeUser,
-		Event: event,
-		Data: map[string]any{
-			"affectedRows": affectedRows,
-		},
-		Meta: map[string]any{
-			"bulk":                     true,
-			"skipTelegramNotification": affectedRows >= 500,
-		},
-	})
+
+	foundUUIDs := make([]string, 0, len(records))
+	dataByUUID := make(map[string]map[string]any, len(records))
+	for _, userUUID := range clean {
+		if record, ok := records[userUUID]; ok {
+			foundUUIDs = append(foundUUIDs, record.UUID)
+			dataByUUID[record.UUID] = userRecordNotificationData(ctx, repo, cfg, record)
+		}
+	}
+
+	if len(foundUUIDs) == 0 {
+		return
+	}
+
+	if userNotificationNeedsInternalSquads(event) {
+		enrichUsersNotificationInternalSquads(ctx, repo, foundUUIDs, dataByUUID)
+	}
+
+	skipTelegram := len(foundUUIDs) >= 500
+	for _, userUUID := range foundUUIDs {
+		meta := map[string]any{"bulk": true}
+		if skipTelegram {
+			meta["skipTelegramNotification"] = true
+		}
+		notifications.Emit(ctx, cfg, notifications.Event{
+			Scope: notifications.ScopeUser,
+			Event: event,
+			Data:  dataByUUID[userUUID],
+			Meta:  meta,
+		})
+	}
 }
 
-func userRecordNotificationData(record userRecord) map[string]any {
+func userRecordNotificationData(ctx context.Context, repo *UserRepository, cfg *config.BackendConfig, record userRecord) map[string]any {
+	subBase := ""
+	if repo != nil {
+		subBase = resolveUsersSubscriptionBaseFromNode(ctx, repo.db)
+	}
+	if subBase == "" {
+		subBase = "https://localhost/"
+	}
+	subscriptionURL := strings.TrimRight(subBase, "/") + "/" + record.ShortUUID
+
 	return map[string]any{
+		"id":                     record.TID,
 		"tId":                    record.TID,
 		"uuid":                   record.UUID,
 		"shortUuid":              record.ShortUUID,
@@ -137,6 +204,8 @@ func userRecordNotificationData(record userRecord) map[string]any {
 		"lastTrafficResetAt":     optionalTimeString(record.LastTrafficResetAt),
 		"createdAt":              record.CreatedAt.UTC().Format(time.RFC3339),
 		"updatedAt":              record.UpdatedAt.UTC().Format(time.RFC3339),
+		"subscriptionUrl":        subscriptionURL,
+		"activeInternalSquads":   []map[string]any{},
 		"userTraffic": map[string]any{
 			"usedTrafficBytes":         record.UsedTrafficBytes,
 			"lifetimeUsedTrafficBytes": record.LifetimeUsedTrafficBytes,

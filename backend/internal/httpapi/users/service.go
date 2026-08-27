@@ -53,7 +53,7 @@ func (s *UserService) DisableUser(ctx context.Context, userUUID string) error {
 }
 
 func (s *UserService) ResetUserTraffic(ctx context.Context, userUUID string) error {
-	affected, nodeUUIDs, err := s.repo.resetUsersTrafficByUUIDs(ctx, []string{userUUID})
+	affected, nodeUUIDs, reactivatedUUIDs, err := s.repo.resetUsersTrafficByUUIDs(ctx, []string{userUUID})
 	if err != nil {
 		return err
 	}
@@ -62,8 +62,8 @@ func (s *UserService) ResetUserTraffic(ctx context.Context, userUUID string) err
 	}
 	if record, loadErr := s.repo.getUserRecordByUUID(ctx, userUUID); loadErr == nil {
 		emitUserNotification(ctx, s.repo, s.cfg, notifications.EventUserTrafficReset, record, nil)
-		if strings.EqualFold(record.Status, "ACTIVE") && affected > 0 {
-			emitUserNotification(ctx, s.repo, s.cfg, notifications.EventUserEnabled, record, map[string]any{"reason": "traffic_reset"})
+		if len(reactivatedUUIDs) > 0 && affected > 0 {
+			emitUserNotification(ctx, s.repo, s.cfg, notifications.EventUserEnabled, record, nil)
 		}
 	}
 	return nil
@@ -278,31 +278,40 @@ func (s *UserService) BulkDeleteUsersByStatus(ctx context.Context, status string
 	if len(internalSquadNodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, internalSquadNodeUUIDs...)
 	}
-	emitBulkSummaryNotification(ctx, s.cfg, notifications.EventUserDeleted, affectedRows)
 	return affectedRows, nil
 }
 
 func (s *UserService) BulkResetUsersTraffic(ctx context.Context, uuids []string) (int64, error) {
-	affectedRows, nodeUUIDs, err := s.repo.resetUsersTrafficByUUIDs(ctx, uuids)
+	cleanUUIDs := dedupeStrings(uuids)
+	affectedRows, nodeUUIDs, reactivatedUUIDs, err := s.repo.resetUsersTrafficByUUIDs(ctx, cleanUUIDs)
 	if err != nil {
 		return 0, err
 	}
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
-	emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserTrafficReset, uuids)
+	emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserTrafficReset, cleanUUIDs)
+	if len(reactivatedUUIDs) > 0 {
+		emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserEnabled, reactivatedUUIDs)
+	}
 	return affectedRows, nil
 }
 
 func (s *UserService) BulkAllResetUsersTraffic(ctx context.Context) (int64, error) {
-	affectedRows, nodeUUIDs, err := s.repo.resetAllUsersTraffic(ctx)
+	affectedRows, nodeUUIDs, reactivatedUUIDs, err := s.repo.resetAllUsersTraffic(ctx)
 	if err != nil {
 		return 0, err
 	}
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
-	emitBulkSummaryNotification(ctx, s.cfg, notifications.EventUserTrafficReset, affectedRows)
+	if len(reactivatedUUIDs) >= 10000 {
+		if s.cfg != nil && s.cfg.Logger != nil {
+			s.cfg.Logger.Info("More than 10,000 users reactivated after resetAllUserTraffic, skipping webhook/telegram events", "count", len(reactivatedUUIDs))
+		}
+	} else if len(reactivatedUUIDs) > 0 {
+		emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserEnabled, reactivatedUUIDs)
+	}
 	return affectedRows, nil
 }
 
@@ -329,7 +338,6 @@ func (s *UserService) BulkExtendUsersExpirationDate(ctx context.Context, uuids [
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
-	emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserModified, uuids)
 	return affectedRows, nil
 }
 
@@ -341,7 +349,6 @@ func (s *UserService) BulkAllExtendUsersExpirationDate(ctx context.Context, exte
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(true, nodeUUIDs...)
 	}
-	emitBulkSummaryNotification(ctx, s.cfg, notifications.EventUserModified, affectedRows)
 	return affectedRows, nil
 }
 
@@ -378,7 +385,6 @@ func (s *UserService) BulkUpdateUsersSquads(ctx context.Context, uuids []string,
 		if len(nodeUUIDs) > 0 {
 			monitor.RequestNodeDeploy(true, nodeUUIDs...)
 		}
-		emitUsersByUUIDsNotification(ctx, s.repo, s.cfg, notifications.EventUserModified, cleanUserUUIDs)
 	}
 	return affectedRows, nil
 }
@@ -406,7 +412,6 @@ func (s *UserService) BulkAllUpdateUsers(ctx context.Context, req bulkAllUpdateU
 
 	if affectedRows > 0 {
 		monitor.RequestNodeDeploy(true)
-		emitBulkSummaryNotification(ctx, s.cfg, notifications.EventUserModified, affectedRows)
 	}
 	return affectedRows, nil
 }

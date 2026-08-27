@@ -92,10 +92,43 @@ func scanNodeUUIDRows(rows *sql.Rows) ([]string, error) {
 	return dedupeStrings(nodeUUIDs), nil
 }
 
-func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs []string) (int64, []string, error) {
+func (r *UserRepository) queryLimitedUserUUIDsTx(ctx context.Context, tx *sql.Tx, userUUIDs []string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT uuid::text FROM users WHERE status = 'LIMITED' AND uuid = ANY($1)`, dedupeStrings(userUUIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanStringRows(rows)
+}
+
+func (r *UserRepository) queryAllLimitedUserUUIDsTx(ctx context.Context, tx *sql.Tx) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT uuid::text FROM users WHERE status = 'LIMITED'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanStringRows(rows)
+}
+
+func scanStringRows(rows *sql.Rows) ([]string, error) {
+	items := make([]string, 0)
+	for rows.Next() {
+		var item string
+		if err := rows.Scan(&item); err != nil {
+			return nil, err
+		}
+		items = append(items, strings.TrimSpace(item))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return dedupeStrings(items), nil
+}
+
+func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs []string) (int64, []string, []string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -103,7 +136,12 @@ func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs
 
 	nodeUUIDs, nodeTargetsErr := r.queryLimitedUserNodeUUIDsTx(ctx, tx, userUUIDs)
 	if nodeTargetsErr != nil {
-		return 0, nil, nodeTargetsErr
+		return 0, nil, nil, nodeTargetsErr
+	}
+
+	reactivatedUUIDs, reactivatedErr := r.queryLimitedUserUUIDsTx(ctx, tx, userUUIDs)
+	if reactivatedErr != nil {
+		return 0, nil, nil, reactivatedErr
 	}
 
 	result, err := tx.ExecContext(ctx, `
@@ -115,7 +153,7 @@ func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs
 		WHERE uuid = ANY($1)
 	`, dedupeStrings(userUUIDs))
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	affectedRows, _ := result.RowsAffected()
 
@@ -124,20 +162,20 @@ func (r *UserRepository) resetUsersTrafficByUUIDs(ctx context.Context, userUUIDs
 		SET used_traffic_bytes = 0
 		WHERE id IN (SELECT id FROM users WHERE uuid = ANY($1))
 	`, dedupeStrings(userUUIDs)); err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
-	return affectedRows, nodeUUIDs, nil
+	return affectedRows, nodeUUIDs, reactivatedUUIDs, nil
 }
 
-func (r *UserRepository) resetAllUsersTraffic(ctx context.Context) (int64, []string, error) {
+func (r *UserRepository) resetAllUsersTraffic(ctx context.Context) (int64, []string, []string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -145,7 +183,12 @@ func (r *UserRepository) resetAllUsersTraffic(ctx context.Context) (int64, []str
 
 	nodeUUIDs, nodeTargetsErr := r.queryAllLimitedUserNodeUUIDsTx(ctx, tx)
 	if nodeTargetsErr != nil {
-		return 0, nil, nodeTargetsErr
+		return 0, nil, nil, nodeTargetsErr
+	}
+
+	reactivatedUUIDs, reactivatedErr := r.queryAllLimitedUserUUIDsTx(ctx, tx)
+	if reactivatedErr != nil {
+		return 0, nil, nil, reactivatedErr
 	}
 
 	result, err := tx.ExecContext(ctx, `
@@ -156,19 +199,19 @@ func (r *UserRepository) resetAllUsersTraffic(ctx context.Context) (int64, []str
 			updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	affectedRows, _ := result.RowsAffected()
 
 	if _, err := tx.ExecContext(ctx, `UPDATE user_traffic SET used_traffic_bytes = 0`); err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
-	return affectedRows, nodeUUIDs, nil
+	return affectedRows, nodeUUIDs, reactivatedUUIDs, nil
 }
 
 func (r *UserRepository) extendUsersExpirationByUUIDs(ctx context.Context, userUUIDs []string, extendDays int) (int64, []string, error) {

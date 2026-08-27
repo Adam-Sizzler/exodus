@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -205,5 +206,64 @@ func TestUserStatusChangedNotification(t *testing.T) {
 				t.Fatalf("userStatusChangedNotification(%q, %q) = %q, want %q", tc.prev, tc.next, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestUserNotificationDataFields(t *testing.T) {
+	now := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
+	record := userRecord{
+		TID:                      42,
+		UUID:                     "u-1234",
+		ShortUUID:                "short-1234",
+		Username:                 "test_user",
+		Status:                   "ACTIVE",
+		TrafficLimitBytes:        1024 * 1024 * 1024,
+		TrafficLimitStrategy:     "MONTH",
+		ExpireAt:                 now.Add(24 * time.Hour),
+		CreatedAt:                now,
+		UpdatedAt:                now,
+		UsedTrafficBytes:         500,
+		LifetimeUsedTrafficBytes: 1500,
+	}
+
+	data := userRecordNotificationData(context.Background(), nil, nil, record)
+
+	if data["id"] != int64(42) {
+		t.Errorf("expected id = 42, got %v", data["id"])
+	}
+	if data["uuid"] != "u-1234" {
+		t.Errorf("expected uuid = u-1234, got %v", data["uuid"])
+	}
+	if data["shortUuid"] != "short-1234" {
+		t.Errorf("expected shortUuid = short-1234, got %v", data["shortUuid"])
+	}
+	if data["subscriptionUrl"] != "https://localhost/short-1234" {
+		t.Errorf("expected subscriptionUrl = https://localhost/short-1234, got %v", data["subscriptionUrl"])
+	}
+	squads, ok := data["activeInternalSquads"].([]map[string]any)
+	if !ok || len(squads) != 0 {
+		t.Errorf("expected empty []map[string]any for activeInternalSquads, got %v", data["activeInternalSquads"])
+	}
+	traffic, ok := data["userTraffic"].(map[string]any)
+	if !ok || traffic["usedTrafficBytes"] != int64(500) {
+		t.Errorf("expected usedTrafficBytes = 500, got %v", traffic)
+	}
+}
+
+func TestUserNotificationNeedsInternalSquads(t *testing.T) {
+	if !userNotificationNeedsInternalSquads("user.created") {
+		t.Error("expected user.created to need internal squads")
+	}
+	if !userNotificationNeedsInternalSquads("user.modified") {
+		t.Error("expected user.modified to need internal squads")
+	}
+	if !userNotificationNeedsInternalSquads("user.revoked") {
+		t.Error("expected user.revoked to need internal squads")
+	}
+	if userNotificationNeedsInternalSquads("user.deleted") {
+		t.Error("expected user.deleted to not need internal squads")
+	}
+	if userNotificationNeedsInternalSquads("user.enabled") {
+		t.Error("expected user.enabled to not need internal squads")
 	}
 }
