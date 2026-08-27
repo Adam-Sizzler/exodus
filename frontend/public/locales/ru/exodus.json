@@ -25,7 +25,6 @@
     "tools": "Инструменты",
     "srh-inspector": "Инспектор SRH",
     "response-rules": "Правила ответов",
-    "exodus-settings": "Настройки Exodus",
     "node-plugins": "Плагины",
     "tb-reports": "Torrent Blocker Reports",
     "sessions-explorer": "Обозреватель сессий",
@@ -437,7 +436,6 @@
     "connection-overrides": "Переопределения соединений",
     "xray-json-and-raw": "Xray Json & Raw",
     "hide-host": "Скрыть хост",
-    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "Скрыть хост от пользователей, Exodus отправит этот хост только для RAW-формата подписки",
     "apps-specific": "Настройки для приложений",
     "single-domain": "Один домен",
     "default-mode-for-one-domain": "Режим по умолчанию для одного домена",
@@ -540,7 +538,6 @@
       "system": "Система",
       "bandwidth": "Трафик",
       "short-stats": "Краткая статистика",
-      "exodus-usage": "Exodus Usage",
       "process-details": "Детали по процессам",
       "runtime": "Runtime",
       "exodus-usage": "Exodus Usage"
@@ -1421,7 +1418,6 @@
       "enable-node": "Включить ноды",
       "disable-node": "Выключить ноду",
       "config-profile-or-inbounds-is-missing": "Профиль или инбаунд не выбран",
-      "exodus-node-version": "Версия модуля @exodus/node",
       "singbox-core-version": "Версия ядра Singbox",
       "xray-core-version": "Версия ядра Xray",
       "exodus-node-version": "Версия модуля @exodus/node"
@@ -1617,7 +1613,6 @@
   },
   "create-node-step-1-connection": {
     "copy-the": "Скопируйте",
-    "content-for-the-exodus-node-below": "содержимое для Exodus node ниже.",
     "learn-more": "Дополнительная информация.",
     "domain-or-ip": "Домен или IP",
     "additional-options": "Дополнительные параметры",
@@ -1625,7 +1620,6 @@
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Установка mTLS соединения...",
-    "exodus-will-try-to-reconnect-shortly": "Exodus скоро попробует переподключиться...",
     "no-errros-so-far": "Пока никаких ошибок нет",
     "last-error-message": "Последнее сообщение об ошибке",
     "singbox-core-is-up-and-running": "Ядро Singbox запущено и работает!",
@@ -1767,7 +1761,6 @@
   },
   "branding-settings-card": {
     "widget": {
-      "customize-your-exodus-instance": "Кастомизировать вашу панель Exodus",
       "branding-settings": "Настройки кастомизации",
       "the-title-that-will-be-displayed-on-login-page": "Заголовок, отображаемый на странице входа",
       "brand-name": "Название бренда",

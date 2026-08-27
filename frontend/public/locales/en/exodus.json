@@ -237,7 +237,6 @@
     "connection-overrides": "Connection overrides",
     "xray-json-and-raw": "Xray Json & Raw",
     "hide-host": "Hide Host",
-    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "Hide host from users, Exodus will send host only for RAW Subscription responses.",
     "apps-specific": "Apps specific",
     "single-domain": "Single domain",
     "default-mode-for-one-domain": "Default mode for one domain",
@@ -369,7 +368,6 @@
   },
   "branding-settings-card": {
     "widget": {
-      "customize-your-exodus-instance": "Customize your Exodus instance",
       "branding-settings": "Branding Settings",
       "the-title-that-will-be-displayed-on-login-page": "The title that will be displayed on login page",
       "brand-name": "Brand Name",
@@ -681,7 +679,6 @@
     "tools": "Tools",
     "srh-inspector": "SRH Inspector",
     "response-rules": "Response Rules",
-    "exodus-settings": "Exodus Settings",
     "node-plugins": "Plugins",
     "tb-reports": "Torrent Blocker Reports",
     "sessions-explorer": "Sessions Explorer",
@@ -748,7 +745,6 @@
   },
   "create-node-step-1-connection": {
     "copy-the": "Copy the",
-    "content-for-the-exodus-node-below": "content for the Exodus Node below.",
     "learn-more": "Learn more.",
     "domain-or-ip": "Domain or IP",
     "additional-options": "Additional options",
@@ -756,7 +752,6 @@
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "Establishing mTLS connection...",
-    "exodus-will-try-to-reconnect-shortly": "Exodus will try to reconnect shortly...",
     "no-errros-so-far": "No errros so far",
     "last-error-message": "Last error message",
     "singbox-core-is-up-and-running": "Singbox Core is up and running!",
@@ -1103,7 +1098,6 @@
       "system": "System",
       "bandwidth": "Bandwidth",
       "short-stats": "Home",
-      "exodus-usage": "Exodus Usage",
       "process-details": "Process Details",
       "runtime": "Runtime",
       "exodus-usage": "Exodus Usage"
@@ -1500,7 +1494,6 @@
       "enable-node": "Enable Node",
       "disable-node": "Disable Node",
       "config-profile-or-inbounds-is-missing": "Config profile or inbounds is missing",
-      "exodus-node-version": "Node version, @exodus/node",
       "singbox-core-version": "Singbox Core Version",
       "xray-core-version": "Xray Core Version",
       "exodus-node-version": "Node version, @exodus/node"
