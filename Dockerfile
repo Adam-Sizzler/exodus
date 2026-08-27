@@ -33,7 +33,7 @@ LABEL org.opencontainers.image.title="Exodus Subscription Page" \
       org.opencontainers.image.source="https://github.com/adam-sizzler/exodus-subscription" \
       org.opencontainers.image.vendor="Exodus" \
       org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.documentation="https://docs.exodus.dev"
+      org.opencontainers.image.documentation="https://docs.ex"
 
 RUN apk add --no-cache ca-certificates && mkdir -p /opt/app/ruleset
 

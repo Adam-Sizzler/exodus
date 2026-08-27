@@ -19,7 +19,7 @@ func GetStartMessage(version string, cfg config.Config) string {
 		"Exodus Subscription Page "+version,
 		[][]string{
 			{
-				"Docs → https://docs.exodus.dev",
+				"Docs → https://docs.ex",
 				"Community → https://t.me/exodus",
 			},
 			{

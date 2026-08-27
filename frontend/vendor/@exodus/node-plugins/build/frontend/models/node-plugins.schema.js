@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodePluginSchema = exports.HaproxyAuthPluginSchema = exports.EgressFilterPluginSchema = exports.IngressFilterPluginSchema = exports.SharedListSchema = void 0;
 const zod_1 = require("zod");
-const DOCS_LINK = `\n\n[📖 Documentation](https://docs.exodus.dev/docs/learn/node-plugins)`;
+const DOCS_LINK = `\n\n[📖 Documentation](https://docs.ex/docs/learn/node-plugins)`;
 const IpCidrOrExtSchema = zod_1.z
     .union([
     zod_1.z.union([zod_1.z.cidrv4(), zod_1.z.cidrv6()]),

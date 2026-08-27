@@ -15,7 +15,7 @@ func TestGetStartMessageMatchesExodusStyle(t *testing.T) {
 	if strings.Contains(message, "│ Docs") {
 		t.Fatalf("startup table must be single-column, got: %s", message)
 	}
-	if !strings.Contains(message, "Docs → https://docs.exodus.dev") {
+	if !strings.Contains(message, "Docs → https://docs.ex") {
 		t.Fatalf("missing docs row: %s", message)
 	}
 	if !strings.Contains(message, "Community → https://t.me/exodus") {

@@ -17,7 +17,7 @@ exports.PasskeySettingsSchema = zod_1.default.object({
         }
         return false;
     }, {
-        message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.exodus.dev"',
+        message: 'Must be a valid fully qualified domain name (FQDN), e.g. "docs.ex"',
     })),
     origin: zod_1.default.nullable(zod_1.default.string().refine((value) => {
         if (/^http:\/\/localhost:\d+$/.test(value)) {
@@ -28,6 +28,6 @@ exports.PasskeySettingsSchema = zod_1.default.object({
         }
         return false;
     }, {
-        message: 'Must be a valid plain URL, e.g. "https://docs.exodus.dev".',
+        message: 'Must be a valid plain URL, e.g. "https://docs.ex".',
     })),
 });

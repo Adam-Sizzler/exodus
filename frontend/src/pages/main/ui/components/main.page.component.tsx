@@ -45,7 +45,7 @@ export const MainPageComponent = ({ isMobile, platform }: IMainPageComponentProp
     let hasCustomLogo = !!config.brandingSettings.logoUrl
 
     if (hasCustomLogo) {
-        if (config.brandingSettings.logoUrl.includes('docs.rw')) {
+        if (config.brandingSettings.logoUrl.includes('docs.ex')) {
             hasCustomLogo = false
         }
     }
