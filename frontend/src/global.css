@@ -1,6 +1,13 @@
 html,
-body {
+body,
+#root,
+.root {
     min-height: 100vh;
+    background-color: var(--mantine-color-dark-8, #0d1117);
+}
+
+html,
+body {
     --custom-safe-area-top: env(safe-area-inset-top, 0px);
 
     .mrt-table-head-sort-button {

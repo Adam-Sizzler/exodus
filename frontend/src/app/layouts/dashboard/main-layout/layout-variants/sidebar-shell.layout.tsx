@@ -92,7 +92,9 @@ export const SidebarShellLayout = (props: IProps) => {
             </AppShell.Navbar>
 
             <LayoutMain
-                pb="var(--mantine-spacing-md)"
+                pb="calc(var(--mantine-spacing-md) + env(safe-area-inset-bottom, 0px))"
+                pl="max(var(--mantine-spacing-md), env(safe-area-inset-left, 0px))"
+                pr="max(var(--mantine-spacing-md), env(safe-area-inset-right, 0px))"
                 pt="calc(var(--app-shell-header-height) + 10px)"
             />
         </AppShell>

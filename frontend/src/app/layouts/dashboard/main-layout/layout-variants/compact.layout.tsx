@@ -52,8 +52,9 @@ export const CompactLayout = (props: IProps) => {
             </AppShell.Header>
 
             <LayoutMain
-                pl={isHiResDesktop ? '10vw' : undefined}
-                pr={isHiResDesktop ? '10vw' : undefined}
+                pb="calc(var(--mantine-spacing-md) + env(safe-area-inset-bottom, 0px))"
+                pl={isHiResDesktop ? '10vw' : 'max(var(--mantine-spacing-xl), env(safe-area-inset-left, 0px))'}
+                pr={isHiResDesktop ? '10vw' : 'max(var(--mantine-spacing-xl), env(safe-area-inset-right, 0px))'}
                 pt="calc(var(--app-shell-header-height) + var(--mantine-spacing-md))"
             />
         </AppShell>
