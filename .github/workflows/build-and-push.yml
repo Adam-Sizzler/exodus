@@ -80,35 +80,16 @@ jobs:
 
       - name: Prepare build metadata
         id: meta
-        shell: bash
         run: |
-          set -euo pipefail
-
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
           else
             VERSION="${GITHUB_REF_NAME}"
           fi
-
-          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-            REAL_BRANCH="$(git branch -r --contains "${GITHUB_SHA}" 2>/dev/null | grep -v 'HEAD' | head -n 1 | sed 's/.*origin\///' | tr -d '[:space:]')"
-            if [ -n "${REAL_BRANCH}" ]; then
-              BRANCH="${REAL_BRANCH}"
-            else
-              BRANCH="${GITHUB_REF_NAME}"
-            fi
-          else
-            BRANCH="${GITHUB_REF_NAME}"
-          fi
-
-          VERSION="$(printf '%s' "${VERSION}" | tr -d '[:space:]')"
-          BUILD_TIME="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          FRONTEND_COMMIT="$(git rev-parse HEAD)"
-
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
-          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
-          echo "frontend_commit=${FRONTEND_COMMIT}" >> $GITHUB_OUTPUT
+          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          echo "branch=main" >> $GITHUB_OUTPUT
+          echo "frontend_commit=${GITHUB_SHA}" >> $GITHUB_OUTPUT
 
       - name: Build and push by digest
         id: build
