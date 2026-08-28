@@ -1,9 +1,8 @@
 .sidebarWrapper {
     z-index: 200;
-    margin-left: max(0.75rem, env(safe-area-inset-left, 0px));
-    margin-right: max(0.75rem, env(safe-area-inset-right, 0px));
-    margin-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
-    margin-top: max(0.75rem, env(safe-area-inset-top, 0px));
+    margin-left: 0.75rem;
+    margin-bottom: 0.75rem;
+    margin-top: 0.75rem;
     height: calc(
         100dvh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
     );
@@ -57,8 +56,6 @@
 
 .header {
     background-color: var(--mantine-color-dark-7);
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
 
     @supports (padding: env(safe-area-inset-top)) {
         top: 0;
