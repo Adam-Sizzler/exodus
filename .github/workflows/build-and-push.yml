@@ -190,57 +190,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 100
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
 
-      - name: Get tag version
-        id: tag
-        shell: bash
+      - name: Prepare release tag & changelog
+        id: release_meta
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
             TAG="${{ inputs.version }}"
           else
             TAG="${GITHUB_REF_NAME}"
           fi
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        id: changelog
-        shell: bash
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          git fetch --tags --depth=100 || true
+          git fetch --tags --force || true
           PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | grep -v "^${TAG}$" | head -n 1 || true)
+          echo "Current tag: ${TAG}"
           echo "Previous tag: ${PREV_TAG}"
           if [ -n "$PREV_TAG" ]; then
-            RAW_CHANGELOG=$(npx -y changelogen@latest --from "$PREV_TAG" --to "$TAG" 2>/dev/null || npx -y changelogen@latest --from "$PREV_TAG" 2>/dev/null || echo "")
+            CHANGELOG=$(npx -y changelogen@latest --from="$PREV_TAG" --to="$TAG" | sed '/^\[log\]/d')
           else
-            RAW_CHANGELOG=$(npx -y changelogen@latest 2>/dev/null || echo "")
+            CHANGELOG=$(npx -y changelogen@latest | sed '/^\[log\]/d')
           fi
-          CLEAN_CHANGELOG=$(echo "$RAW_CHANGELOG" | grep -v '^[[:space:]]*\[log\][[:space:]]*$' | sed '/^\[.*\]/d')
-          DELIMITER=$(openssl rand -hex 8)
-          echo "CHANGELOG<<${DELIMITER}" >> $GITHUB_ENV
-          echo "${CLEAN_CHANGELOG}" >> $GITHUB_ENV
-          echo "${DELIMITER}" >> $GITHUB_ENV
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN_GH_DEPLOY }}
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.tag }}
           generate_release_notes: false
           append_body: false
           make_latest: true
           draft: false
           prerelease: false
           body: |
-            🚀 Exodus ${{ steps.tag.outputs.tag }}
+            🚀 Exodus ${{ steps.release_meta.outputs.tag }}
 
             ${{ env.CHANGELOG }}
 
@@ -248,7 +240,7 @@ jobs:
             - `${{ env.GHCR_IMAGE }}:latest`
 
             Docker images:
-            - `${{ env.GHCR_IMAGE }}:${{ steps.tag.outputs.tag }}`
+            - `${{ env.GHCR_IMAGE }}:${{ steps.release_meta.outputs.tag }}`
 
   send-finish-tg-msg:
     name: Send Telegram message (Finish)
