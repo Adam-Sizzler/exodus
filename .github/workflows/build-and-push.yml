@@ -211,9 +211,9 @@ jobs:
           echo "Current tag: ${TAG}"
           echo "Previous tag: ${PREV_TAG}"
           if [ -n "$PREV_TAG" ]; then
-            CHANGELOG=$(npx -y changelogen@latest --from="$PREV_TAG" --to="$TAG" | sed '/^\[log\]/d')
+            CHANGELOG=$(npx -y changelogen@latest --no-contributors --from="$PREV_TAG" --to="$TAG" | sed '/^\[log\]/d')
           else
-            CHANGELOG=$(npx -y changelogen@latest | sed '/^\[log\]/d')
+            CHANGELOG=$(npx -y changelogen@latest --no-contributors | sed '/^\[log\]/d')
           fi
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           echo "$CHANGELOG" >> $GITHUB_ENV
