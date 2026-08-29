@@ -43,11 +43,13 @@ type NftEgressFilterPayload struct {
 }
 
 type nftExecutorCommand struct {
-	Command string `json:"command"`
-	IPs     []struct {
-		IP      string `json:"ip"`
-		Timeout int    `json:"timeout"`
-	} `json:"ips"`
+	Command string          `json:"command"`
+	IPs     json.RawMessage `json:"ips"`
+}
+
+type BlockedIPEntry struct {
+	IP      string `json:"ip"`
+	Timeout int    `json:"timeout"`
 }
 
 type nftIPElement struct {
@@ -137,6 +139,49 @@ func applyNftablesModule(modules DeployModulesPayload, asnService *AsnLmdbServic
 	return nil
 }
 
+func parseExecutorIPs(raw json.RawMessage) ([]BlockedIPEntry, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+
+	// Try parsing as array of objects [{ip, timeout}]
+	var objEntries []BlockedIPEntry
+	if err := json.Unmarshal(raw, &objEntries); err == nil && len(objEntries) > 0 && objEntries[0].IP != "" {
+		return objEntries, nil
+	}
+
+	// Try parsing as array of strings ["1.2.3.4"]
+	var strEntries []string
+	if err := json.Unmarshal(raw, &strEntries); err == nil {
+		res := make([]BlockedIPEntry, len(strEntries))
+		for i, s := range strEntries {
+			res[i] = BlockedIPEntry{IP: s}
+		}
+		return res, nil
+	}
+
+	// Try generic array
+	var genericEntries []any
+	if err := json.Unmarshal(raw, &genericEntries); err != nil {
+		return nil, err
+	}
+	var res []BlockedIPEntry
+	for _, item := range genericEntries {
+		switch v := item.(type) {
+		case string:
+			res = append(res, BlockedIPEntry{IP: v})
+		case map[string]any:
+			ipStr, _ := v["ip"].(string)
+			timeout := 0
+			if t, ok := v["timeout"].(float64); ok {
+				timeout = int(t)
+			}
+			res = append(res, BlockedIPEntry{IP: ipStr, Timeout: timeout})
+		}
+	}
+	return res, nil
+}
+
 func ExecuteNodePluginCommand(raw json.RawMessage) (bool, error) {
 	var command nftExecutorCommand
 	if err := json.Unmarshal(raw, &command); err != nil {
@@ -147,22 +192,27 @@ func ExecuteNodePluginCommand(raw json.RawMessage) (bool, error) {
 	case "recreateTables":
 		return executeNftCommand(recreateNftablesTables)
 	case "blockIps":
+		ips, err := parseExecutorIPs(command.IPs)
+		if err != nil {
+			return false, fmt.Errorf("invalid blockIps payload: %w", err)
+		}
 		return executeNftCommand(func() error {
-			return blockNftIPs(command.IPs)
+			return blockNftIPs(ips)
 		})
 	case "unblockIps":
+		ips, err := parseExecutorIPs(command.IPs)
+		if err != nil {
+			return false, fmt.Errorf("invalid unblockIps payload: %w", err)
+		}
 		return executeNftCommand(func() error {
-			return unblockNftIPs(command.IPs)
+			return unblockNftIPs(ips)
 		})
 	default:
 		return false, fmt.Errorf("unsupported node plugin executor command: %s", command.Command)
 	}
 }
 
-func blockNftIPs(items []struct {
-	IP      string `json:"ip"`
-	Timeout int    `json:"timeout"`
-}) error {
+func blockNftIPs(items []BlockedIPEntry) error {
 	for _, item := range items {
 		ipStr := strings.TrimSpace(item.IP)
 		if ipStr == "" {
@@ -196,10 +246,7 @@ func blockNftIPs(items []struct {
 	return nil
 }
 
-func unblockNftIPs(items []struct {
-	IP      string `json:"ip"`
-	Timeout int    `json:"timeout"`
-}) error {
+func unblockNftIPs(items []BlockedIPEntry) error {
 	for _, item := range items {
 		ipStr := strings.TrimSpace(item.IP)
 		if ipStr == "" {
