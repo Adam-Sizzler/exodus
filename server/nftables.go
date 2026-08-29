@@ -178,7 +178,11 @@ func blockNftIPs(items []struct {
 					continue
 				}
 				setName := ipSetNameForSpec(nftIngressIPSet, spec)
-				set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
+				set := &nftables.Set{
+					Table:      &nftables.Table{Family: spec.Family, Name: spec.Name},
+					Name:       setName,
+					HasTimeout: true,
+				}
 				elements := nftSetElementsForIP(ipElem, item.Timeout)
 				if err := conn.SetAddElements(set, elements); err != nil {
 					return fmt.Errorf("add IP to set %s/%s: %w", spec.Name, setName, err)
@@ -211,7 +215,11 @@ func unblockNftIPs(items []struct {
 					continue
 				}
 				setName := ipSetNameForSpec(nftIngressIPSet, spec)
-				set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
+				set := &nftables.Set{
+					Table:      &nftables.Table{Family: spec.Family, Name: spec.Name},
+					Name:       setName,
+					HasTimeout: true,
+				}
 				elements := nftSetElementsForIP(ipElem, 0)
 				if err := conn.SetDeleteElements(set, elements); err != nil && !isENOENT(err) {
 					return fmt.Errorf("delete IP from set %s/%s: %w", spec.Name, setName, err)
@@ -418,14 +426,18 @@ func addNftAddrDropRule(conn *nftables.Conn, table *nftables.Table, chain *nftab
 
 func addNftPortDropRule(conn *nftables.Conn, table *nftables.Table, chain *nftables.Chain, setName string, proto byte) {
 	exprs := []expr.Any{
-		&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
-		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{proto}},
 		&expr.Payload{
 			OperationType: expr.PayloadLoad,
 			DestRegister:  1,
 			Base:          expr.PayloadBaseTransportHeader,
 			Offset:        2,
 			Len:           2,
+		},
+		&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 2},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 2,
+			Data:     []byte{proto},
 		},
 		&expr.Lookup{SourceRegister: 1, SetName: setName},
 	}
@@ -452,7 +464,11 @@ func syncNftIPSet(baseSetName string, rawIPs []string, timeoutSeconds int) error
 	return withNftConn(func(conn *nftables.Conn) error {
 		for _, spec := range nftTableSpecs {
 			setName := ipSetNameForSpec(baseSetName, spec)
-			set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
+			set := &nftables.Set{
+				Table:      &nftables.Table{Family: spec.Family, Name: spec.Name},
+				Name:       setName,
+				HasTimeout: true,
+			}
 			elements := make([]nftables.SetElement, 0, len(ips))
 			for _, ip := range ips {
 				if ip.IsIPv6 != (spec.Family == nftables.TableFamilyIPv6) {
@@ -505,7 +521,7 @@ func withNftConn(fn func(*nftables.Conn) error) error {
 	if err := fn(conn); err != nil {
 		return err
 	}
-	if err := conn.Flush(); err != nil {
+	if err := conn.Flush(); err != nil && !isEEXIST(err) {
 		return fmt.Errorf("flush nftables transaction: %w", err)
 	}
 	return nil
@@ -707,4 +723,11 @@ func isNftablesUnavailableError(err error) bool {
 
 func isENOENT(err error) bool {
 	return errors.Is(err, syscall.ENOENT) || strings.Contains(strings.ToLower(err.Error()), "no such file")
+}
+
+func isEEXIST(err error) bool {
+	return errors.Is(err, syscall.EEXIST) ||
+		errors.Is(err, os.ErrExist) ||
+		strings.Contains(strings.ToLower(err.Error()), "file exists") ||
+		strings.Contains(strings.ToLower(err.Error()), "already exists")
 }
