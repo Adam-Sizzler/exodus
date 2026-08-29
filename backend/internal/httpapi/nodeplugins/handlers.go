@@ -272,6 +272,8 @@ func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 	}
 
 	switch strings.Trim(action, "/") {
+	case "executor":
+		handleExecutor(w, r, db, cfg)
 	case "reorder":
 		var req reorderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
