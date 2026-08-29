@@ -135,6 +135,9 @@ func (nm *NodeMonitor) retryFailedNodes() {
 			failedNodes[name] = uuid
 		}
 	}
+	if err := rows.Err(); err != nil {
+		nm.cfg.Logger.Debug("Error iterating disconnected nodes", "error", err)
+	}
 	if len(failedNodes) == 0 {
 		return
 	}

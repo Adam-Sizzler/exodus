@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/iancoleman/orderedmap"
@@ -43,10 +44,18 @@ func (nm *NodeMonitor) loadNodePluginRuntimeConfig(ctx context.Context, nodeUUID
 	return pluginConfig, nil
 }
 
-func (nm *NodeMonitor) loadSharedIPLists(ctx context.Context) map[string][]string {
-	result := make(map[string][]string)
+type resolvedSharedLists struct {
+	IPLists  map[string][]string
+	ASNLists map[string][]int
+}
+
+func (nm *NodeMonitor) loadSharedLists(ctx context.Context) resolvedSharedLists {
+	res := resolvedSharedLists{
+		IPLists:  make(map[string][]string),
+		ASNLists: make(map[string][]int),
+	}
 	if nm.db == nil {
-		return result
+		return res
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -54,7 +63,7 @@ func (nm *NodeMonitor) loadSharedIPLists(ctx context.Context) map[string][]strin
 
 	rows, err := nm.db.QueryContext(ctx, `SELECT name, config::text FROM shared_lists`)
 	if err != nil {
-		return result
+		return res
 	}
 	defer rows.Close()
 
@@ -67,50 +76,92 @@ func (nm *NodeMonitor) loadSharedIPLists(ctx context.Context) map[string][]strin
 		if !rawConfig.Valid || strings.TrimSpace(rawConfig.String) == "" {
 			continue
 		}
-		var parsed struct {
-			Type  string   `json:"type"`
-			Items []string `json:"items"`
-		}
-		if err := json.Unmarshal([]byte(rawConfig.String), &parsed); err != nil {
-			continue
-		}
-		if strings.TrimSpace(parsed.Type) != "ipList" {
-			continue
-		}
 		cleanName := strings.TrimSpace(name)
 		if cleanName == "" {
 			continue
 		}
 		trimmedName := strings.TrimPrefix(cleanName, "ext:")
 		extName := "ext:" + trimmedName
-		items := append([]string(nil), parsed.Items...)
-		result[cleanName] = items
-		result[trimmedName] = items
-		result[extName] = items
+
+		var genericParsed struct {
+			Type  string          `json:"type"`
+			Items json.RawMessage `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(rawConfig.String), &genericParsed); err != nil {
+			continue
+		}
+
+		switch strings.TrimSpace(genericParsed.Type) {
+		case "ipList":
+			var items []string
+			if err := json.Unmarshal(genericParsed.Items, &items); err == nil {
+				res.IPLists[cleanName] = items
+				res.IPLists[trimmedName] = items
+				res.IPLists[extName] = items
+			}
+		case "asList":
+			var rawItems []any
+			if err := json.Unmarshal(genericParsed.Items, &rawItems); err == nil {
+				var asnItems []int
+				for _, elem := range rawItems {
+					switch v := elem.(type) {
+					case float64:
+						if int(v) > 0 {
+							asnItems = append(asnItems, int(v))
+						}
+					case int:
+						if v > 0 {
+							asnItems = append(asnItems, v)
+						}
+					case string:
+						s := strings.TrimPrefix(strings.TrimSpace(strings.ToUpper(v)), "AS")
+						if n, err := strconv.Atoi(s); err == nil && n > 0 {
+							asnItems = append(asnItems, n)
+						}
+					}
+				}
+				res.ASNLists[cleanName] = asnItems
+				res.ASNLists[trimmedName] = asnItems
+				res.ASNLists[extName] = asnItems
+			}
+		}
 	}
-	return result
+	_ = rows.Err()
+	return res
 }
 
-func resolvePluginIPRefs(raw []string, sharedLists map[string][]string) []string {
-	result := make([]string, 0, len(raw))
-	for _, item := range raw {
+func resolvePluginFilters(rawIPs []string, rawASNs []int, sharedLists resolvedSharedLists) ([]string, []int) {
+	var ips []string
+	var asns []int
+
+	asns = append(asns, rawASNs...)
+
+	for _, item := range rawIPs {
 		value := strings.TrimSpace(item)
 		if value == "" {
 			continue
 		}
-		if strings.HasPrefix(value, "ext:") {
-			if ips, ok := sharedLists[value]; ok {
-				result = append(result, ips...)
+		// Check if it's an ext: reference to an ASN list
+		if asnList, ok := sharedLists.ASNLists[value]; ok {
+			asns = append(asns, asnList...)
+			continue
+		}
+		// Check if it's an ext: reference to an IP list
+		if ipList, ok := sharedLists.IPLists[value]; ok {
+			ips = append(ips, ipList...)
+			continue
+		}
+		// Check if it's an explicit ASN notation (e.g. "AS12345")
+		if strings.HasPrefix(strings.ToUpper(value), "AS") && len(value) > 2 {
+			if n, err := strconv.Atoi(value[2:]); err == nil && n > 0 {
+				asns = append(asns, n)
+				continue
 			}
-			continue
 		}
-		if ips, ok := sharedLists[value]; ok {
-			result = append(result, ips...)
-			continue
-		}
-		result = append(result, value)
+		ips = append(ips, value)
 	}
-	return result
+
+	return normalizeStringSlice(ips), normalizeASNSlice(asns)
 }
 
 func normalizeStringSlice(raw []string) []string {
@@ -126,6 +177,22 @@ func normalizeStringSlice(raw []string) []string {
 		}
 		seen[value] = struct{}{}
 		result = append(result, value)
+	}
+	return result
+}
+
+func normalizeASNSlice(raw []int) []int {
+	seen := make(map[int]struct{}, len(raw))
+	result := make([]int, 0, len(raw))
+	for _, asn := range raw {
+		if asn <= 0 {
+			continue
+		}
+		if _, ok := seen[asn]; ok {
+			continue
+		}
+		seen[asn] = struct{}{}
+		result = append(result, asn)
 	}
 	return result
 }

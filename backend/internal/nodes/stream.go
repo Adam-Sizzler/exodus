@@ -213,6 +213,7 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 						firstConnectedByID[userID] = hasFirstConnected
 					}
 				}
+				_ = rows.Err()
 				rows.Close()
 
 				usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))

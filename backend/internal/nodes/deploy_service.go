@@ -75,7 +75,7 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 
 	// Node-independent data: identical for every target in this deploy cycle,
 	// so it's loaded once instead of once per node (was a per-target N+1).
-	sharedLists := nm.loadSharedIPLists(nm.globalCtx)
+	sharedLists := nm.loadSharedLists(nm.globalCtx)
 
 	for _, target := range targets {
 		start := time.Now()
@@ -98,15 +98,21 @@ func (nm *NodeMonitor) deployToConnectedNodes(restart bool, forceRestart bool, r
 			nm.cfg.Logger.Warn("Failed to load node plugin settings for deploy payload", "node", target.name, "node_uuid", target.uuid, "error", modulesErr)
 		}
 		haproxyInboundTags := normalizeHaproxyInboundTags(pluginConfig.HaproxyAuth.InboundTags)
+
+		ingressIPs, ingressASNs := resolvePluginFilters(pluginConfig.IngressFilter.BlockedIPs, pluginConfig.IngressFilter.BlockedASNs, sharedLists)
+		egressIPs, egressASNs := resolvePluginFilters(pluginConfig.EgressFilter.BlockedIPs, pluginConfig.EgressFilter.BlockedASNs, sharedLists)
+
 		modules := &deployModulesTaskBlock{
 			IngressFilter: deployIngressFilterBlock{
-				Enabled:    pluginConfig.IngressFilter.Enabled,
-				BlockedIPs: normalizeStringSlice(resolvePluginIPRefs(pluginConfig.IngressFilter.BlockedIPs, sharedLists)),
+				Enabled:     pluginConfig.IngressFilter.Enabled,
+				BlockedIPs:  ingressIPs,
+				BlockedASNs: ingressASNs,
 			},
 			EgressFilter: deployEgressFilterBlock{
 				Enabled:      pluginConfig.EgressFilter.Enabled,
-				BlockedIPs:   normalizeStringSlice(resolvePluginIPRefs(pluginConfig.EgressFilter.BlockedIPs, sharedLists)),
+				BlockedIPs:   egressIPs,
 				BlockedPorts: normalizePortSlice(pluginConfig.EgressFilter.BlockedPorts),
+				BlockedASNs:  egressASNs,
 			},
 		}
 		if pluginConfig.PreStart.Enabled {

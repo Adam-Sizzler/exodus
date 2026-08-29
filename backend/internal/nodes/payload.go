@@ -44,25 +44,29 @@ type deployHaproxyUserItem struct {
 }
 
 type deployIngressFilterBlock struct {
-	Enabled    bool     `json:"enabled"`
-	BlockedIPs []string `json:"blocked_ips,omitempty"`
+	Enabled     bool     `json:"enabled"`
+	BlockedIPs  []string `json:"blocked_ips,omitempty"`
+	BlockedASNs []int    `json:"blocked_asns,omitempty"`
 }
 
 type deployEgressFilterBlock struct {
 	Enabled      bool     `json:"enabled"`
 	BlockedIPs   []string `json:"blocked_ips,omitempty"`
 	BlockedPorts []int    `json:"blocked_ports,omitempty"`
+	BlockedASNs  []int    `json:"blocked_asns,omitempty"`
 }
 
 type activeNodePluginRuntimeConfig struct {
 	IngressFilter struct {
-		Enabled    bool     `json:"enabled"`
-		BlockedIPs []string `json:"blockedIps"`
+		Enabled     bool     `json:"enabled"`
+		BlockedIPs  []string `json:"blockedIps"`
+		BlockedASNs []int    `json:"blockedAsns,omitempty"`
 	} `json:"ingressFilter"`
 	EgressFilter struct {
 		Enabled      bool     `json:"enabled"`
 		BlockedIPs   []string `json:"blockedIps"`
 		BlockedPorts []int    `json:"blockedPorts"`
+		BlockedASNs  []int    `json:"blockedAsns,omitempty"`
 	} `json:"egressFilter"`
 	HaproxyAuth struct {
 		Enabled     bool     `json:"enabled"`
