@@ -4,6 +4,7 @@ FROM golang:1.25.12-alpine AS builder
 RUN apk update && apk add --no-cache git ca-certificates tzdata gcc musl-dev sqlite-dev
 
 ARG VERSION=2.7.4
+ARG TARGETARCH
 
 WORKDIR /build
 
@@ -23,9 +24,10 @@ RUN set -eu; \
     if [ -z "${version}" ]; then \
         version="unknown"; \
     fi; \
+    ARCH="${TARGETARCH:-amd64}"; \
     CGO_ENABLED=1 \
     GOOS=linux \
-    GOARCH=amd64 \
+    GOARCH="${ARCH}" \
     go build \
         -trimpath \
         -buildvcs=true \
@@ -37,20 +39,33 @@ RUN set -eu; \
 FROM alpine:3.23 AS singbox
 
 ARG SINGBOX_VERSION=v1.13.13
-ARG ASN_LMDB_URL=https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz
+ARG TARGETARCH
 
-RUN apk update && apk add --no-cache ca-certificates curl \
-    && curl -fL "https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}/sing-box-linux-amd64" \
-        -o /usr/local/bin/sing-box \
-    && chmod +x /usr/local/bin/sing-box \
+RUN apk update && apk add --no-cache curl \
+    && case "${TARGETARCH}" in \
+        arm64) ARCH='arm64' ;; \
+        amd64|*) ARCH='amd64' ;; \
+    esac \
+    && BINARY="sing-box-linux-${ARCH}" \
+    && BASE="https://github.com/Adam-Sizzler/sing-box-v2ray-api/releases/download/${SINGBOX_VERSION}" \
+    && curl -fsSL -o "/tmp/sing-box" "${BASE}/${BINARY}" \
+    && install -m 755 /tmp/sing-box /usr/local/bin/sing-box \
+    && rm -rf /tmp/*
+
+FROM alpine:3.23 AS asn
+
+ARG ASN_LMDB_URL=https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes.lmdb.zst
+
+RUN apk update && apk add --no-cache zstd curl \
     && mkdir -p /usr/local/share/asn \
-    && curl -fL "${ASN_LMDB_URL}" -o /tmp/asn-prefixes-lmdb.tar.gz \
-    && tar -xzf /tmp/asn-prefixes-lmdb.tar.gz -C /usr/local/share/asn \
-    && rm -f /tmp/asn-prefixes-lmdb.tar.gz
+    && curl -fsSL -o /tmp/asn-prefixes.lmdb.zst "${ASN_LMDB_URL}" \
+    && zstd -d /tmp/asn-prefixes.lmdb.zst -o /usr/local/share/asn/asn-prefixes.lmdb \
+    && chmod 644 /usr/local/share/asn/asn-prefixes.lmdb \
+    && rm -rf /tmp/*
 
 FROM alpine:3.23
 
-ARG S6_OVERLAY_VERSION=3.2.0.2
+ARG S6_OVERLAY_VERSION=3.2.3.2
 
 LABEL org.opencontainers.image.title="Exodus Node" \
       org.opencontainers.image.description="Exodus Node with built-in Sing-box Core" \
@@ -74,7 +89,7 @@ WORKDIR /opt/app
 
 COPY --from=builder /build/exodus-node-app /opt/app/exodus-node
 COPY --from=singbox /usr/local/bin/sing-box /usr/local/bin/sing-box
-COPY --from=singbox /usr/local/share/asn /usr/local/share/asn
+COPY --from=asn /usr/local/share/asn /usr/local/share/asn
 
 COPY deploy/s6-overlay/etc/s6-overlay /etc/s6-overlay
 

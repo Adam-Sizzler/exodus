@@ -4,58 +4,6 @@
 
 Это не старый HTTP `v2ray-stat` API. Управление пользователями внутри ядра отключено: пользователи и конфиги собираются на стороне панели, а нода применяет готовый sing-box JSON.
 
-## Что Делает Нода
-
-- поднимает gRPC сервер на `NODE_GRPC_ADDRESS:NODE_GRPC_PORT`;
-- поддерживает два режима подключения: `gRPC + mTLS` через `SECRET_KEY` или `gRPC + TLS + token` через nginx/reverse proxy и `NODE_GRPC_TOKEN`;
-- подключается к sing-box `experimental.v2ray_api` на `127.0.0.1:10085`;
-- стримит inbound/outbound/user traffic stats в панель;
-- добавляет/обновляет `experimental.v2ray_api` в полученном sing-box config;
-- пишет config в `/opt/app/singbox/config.json`;
-- управляет жизненным циклом sing-box через супервизор `s6-overlay` (`s6-svc`);
-- обновляет `/opt/app/haproxy/data/users.csv` и reload users через HAProxy runtime socket;
-- предоставляет утилиты `slogs` (полный живой лог) и `serrors` (фильтр ошибок и предупреждений).
-
-## Структура
-
-```text
-main.go                    точка входа
-config/                    env config, SECRET_KEY payload, token auth
-grpcserver/                gRPC HTTP2 сервер, mTLS/token interceptors
-server/                    NodeService handlers, deploy, stream, HAProxy
-api/                       facade над sing-box stats API
-sdk/                       sing-box v2ray_api gRPC client
-proto/                     Exodus node gRPC contract
-deploy/                    s6-overlay сервисы и конфигурация
-Dockerfile                 multi-stage image: Go node + custom sing-box
-```
-
-## Runtime Переменные
-
-Для `gRPC + mTLS`:
-
-```env
-SECRET_KEY=<base64-json-payload-from-panel>
-```
-
-Payload должен содержать:
-
-```json
-{
-  "caCertPem": "-----BEGIN CERTIFICATE-----\\n...",
-  "nodeCertPem": "-----BEGIN CERTIFICATE-----\\n...",
-  "nodeKeyPem": "-----BEGIN PRIVATE KEY-----\\n...",
-  "jwtPublicKey": "-----BEGIN PUBLIC KEY-----\\n..."
-}
-```
-
-Для `gRPC + TLS + token` за nginx/reverse proxy:
-
-```env
-NODE_GRPC_TOKEN=<grpc-token-from-panel>
-```
-
-В token-режиме TLS завершается на nginx, а сама нода слушает h2c внутри приватной сети или на localhost.
 
 Основные настройки:
 
@@ -100,7 +48,7 @@ go run . --version
 Панель использует:
 
 - `GetApiStats` - разовый сбор stats из sing-box;
-- `StreamNodeData` - streaming stats с дефолтным интервалом 20 секунд;
+- `StreamNodeData` - streaming stats с дефолтным интервалом 15 секунд;
 - `SubmitTask(operation=deploy_config)` - применить sing-box config;
 
 Операции управления пользователями (`AddUsers`, `DeleteUsers`, `SetUserEnabled`, `ListUsers`) намеренно возвращают `Unimplemented`, потому что нода работает в stats/deploy режиме.

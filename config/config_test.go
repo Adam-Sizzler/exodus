@@ -127,3 +127,54 @@ func TestValidateBasePath(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadNodeConfigEnvFlags(t *testing.T) {
+	t.Setenv("SECRET_KEY", "")
+	t.Setenv("NODE_GRPC_TOKEN", "1234567890abcdef")
+	t.Setenv("SNI_VERIFICATION", "true")
+	t.Setenv("NFTABLES_LOGGING", "false")
+	t.Setenv("NFTABLES_ACCEPT_REPLY_TRAFFIC", "true")
+
+	cfg, err := LoadNodeConfig()
+	if err != nil {
+		t.Fatalf("LoadNodeConfig() error = %v", err)
+	}
+
+	if !cfg.Backend.SNIVerification {
+		t.Errorf("SNIVerification = false, want true")
+	}
+	if cfg.Backend.NftablesLogging {
+		t.Errorf("NftablesLogging = true, want false")
+	}
+	if !cfg.Backend.NftablesAcceptReplyTraffic {
+		t.Errorf("NftablesAcceptReplyTraffic = false, want true")
+	}
+}
+
+func TestParseBoolEnvDefault(t *testing.T) {
+	t.Setenv("TEST_BOOL_TRUE", "true")
+	t.Setenv("TEST_BOOL_FALSE", "false")
+	t.Setenv("TEST_BOOL_ONE", "1")
+	t.Setenv("TEST_BOOL_ZERO", "0")
+	t.Setenv("TEST_BOOL_EMPTY", "")
+
+	if !parseBoolEnvDefault("TEST_BOOL_TRUE", false) {
+		t.Errorf("expected true")
+	}
+	if parseBoolEnvDefault("TEST_BOOL_FALSE", true) {
+		t.Errorf("expected false")
+	}
+	if !parseBoolEnvDefault("TEST_BOOL_ONE", false) {
+		t.Errorf("expected true")
+	}
+	if parseBoolEnvDefault("TEST_BOOL_ZERO", true) {
+		t.Errorf("expected false")
+	}
+	if !parseBoolEnvDefault("TEST_BOOL_EMPTY", true) {
+		t.Errorf("expected default true")
+	}
+	if parseBoolEnvDefault("NON_EXISTING_ENV", false) {
+		t.Errorf("expected default false")
+	}
+}
+

@@ -23,12 +23,15 @@ type LogConfig struct {
 }
 
 type BackendConfig struct {
-	GrpcAddress      string
-	GrpcPort         int
-	GrpcPath         string
-	GRPCToken        string
-	RequireGRPCToken bool
-	MTLSConfig       *MTLSConfig
+	GrpcAddress               string
+	GrpcPort                  int
+	GrpcPath                  string
+	GRPCToken                 string
+	RequireGRPCToken          bool
+	MTLSConfig                *MTLSConfig
+	SNIVerification           bool
+	NftablesLogging           bool
+	NftablesAcceptReplyTraffic bool
 }
 
 type ExodusConfig = BackendConfig
@@ -57,9 +60,12 @@ var defaultConfig = NodeConfig{
 		LogLevel: DefaultNodeLogLevel,
 	},
 	Backend: BackendConfig{
-		GrpcAddress: DefaultNodeGRPCAddress,
-		GrpcPort:    DefaultNodeGRPCPort,
-		GrpcPath:    DefaultNodeGRPCPath,
+		GrpcAddress:                DefaultNodeGRPCAddress,
+		GrpcPort:                   DefaultNodeGRPCPort,
+		GrpcPath:                   DefaultNodeGRPCPath,
+		SNIVerification:            false,
+		NftablesLogging:            true,
+		NftablesAcceptReplyTraffic: false,
 	},
 	CoreAPIGRPCPort: FixedCoreAPIGRPCPort,
 }
@@ -92,6 +98,10 @@ func LoadNodeConfig() (NodeConfig, error) {
 	if value := strings.TrimSpace(os.Getenv("NODE_GRPC_TOKEN")); value != "" {
 		cfg.Backend.GRPCToken = value
 	}
+
+	cfg.Backend.SNIVerification = parseBoolEnvDefault("SNI_VERIFICATION", false)
+	cfg.Backend.NftablesLogging = parseBoolEnvDefault("NFTABLES_LOGGING", true)
+	cfg.Backend.NftablesAcceptReplyTraffic = parseBoolEnvDefault("NFTABLES_ACCEPT_REPLY_TRAFFIC", false)
 
 	nodePayload, report, err := ParseNodePayloadFromSecret()
 	if err == nil {
@@ -126,8 +136,26 @@ func LoadNodeConfig() (NodeConfig, error) {
 		"path", cfg.Backend.GrpcPath,
 		"mtls_enabled", cfg.Backend.MTLSConfig != nil,
 		"token_required", cfg.Backend.RequireGRPCToken,
+		"sni_verification", cfg.Backend.SNIVerification,
+		"nftables_logging", cfg.Backend.NftablesLogging,
+		"nftables_accept_reply_traffic", cfg.Backend.NftablesAcceptReplyTraffic,
 	)
 	return cfg, nil
+}
+
+func parseBoolEnvDefault(key string, defaultVal bool) bool {
+	val := strings.TrimSpace(os.Getenv(key))
+	if val == "" {
+		return defaultVal
+	}
+	val = strings.ToLower(val)
+	if val == "true" || val == "1" || val == "yes" || val == "t" || val == "on" || val == "enabled" {
+		return true
+	}
+	if val == "false" || val == "0" || val == "no" || val == "f" || val == "off" || val == "disabled" {
+		return false
+	}
+	return defaultVal
 }
 
 func (cfg *NodeConfig) LoggerFor(context string) *Logger {

@@ -86,6 +86,22 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 			ClientCAs:    caCertPool,
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 		}
+		if cfg.Backend.SNIVerification {
+			expectedSNI := ""
+			if cfg.SecretKeyReport != nil {
+				expectedSNI = cfg.SecretKeyReport.SNI
+			}
+			log.Info("Strict SNI verification enabled for mTLS", "expected_sni", expectedSNI)
+			tlsConfig.GetConfigForClient = func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+				if expectedSNI != "" && !strings.EqualFold(strings.TrimSpace(hello.ServerName), expectedSNI) {
+					log.Warn("Rejected mTLS connection: invalid SNI", "received_sni", hello.ServerName, "expected_sni", expectedSNI)
+					return nil, fmt.Errorf("tls: invalid server name %q, expected %q", hello.ServerName, expectedSNI)
+				}
+				return nil, nil
+			}
+		} else {
+			log.Debug("mTLS SNI verification disabled (standard mTLS mode)")
+		}
 		log.Debug("mTLS enabled for gRPC server")
 	} else {
 		if cfg.Backend.GrpcAddress != "127.0.0.1" && cfg.Backend.GrpcAddress != "localhost" {

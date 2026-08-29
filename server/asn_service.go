@@ -22,13 +22,14 @@ import (
 	"exodus-node/config"
 
 	"github.com/Adam-Sizzler/lmdb-go/lmdb"
+	"github.com/klauspost/compress/zstd"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
 const (
 	DefaultAsnLmdbPath   = "/usr/local/share/asn/asn-prefixes.lmdb"
 	FallbackAsnLmdbPath  = "/var/lib/exodus-node/asn/asn-prefixes.lmdb"
-	DefaultAsnReleaseURL = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes-lmdb.tar.gz"
+	DefaultAsnReleaseURL = "https://github.com/Adam-Sizzler/lmdb-go/releases/download/latest/asn-prefixes.lmdb.zst"
 )
 
 // AsnPrefixes represents the IPv4 and IPv6 subnets associated with an ASN.
@@ -311,13 +312,23 @@ func (s *AsnLmdbService) CheckAndUpdateDataset(urlStr string) error {
 	}
 
 	targetDir := s.dbPath
-	if strings.HasSuffix(targetDir, "asn-prefixes.lmdb") {
+	if stat, err := os.Stat(targetDir); err == nil && !stat.IsDir() {
+		targetDir = filepath.Dir(targetDir)
+	} else if strings.HasSuffix(targetDir, "asn-prefixes.lmdb") {
 		targetDir = filepath.Dir(targetDir)
 	}
-	lmdbDir := filepath.Join(targetDir, "asn-prefixes.lmdb")
-	localDataFile := filepath.Join(lmdbDir, "data.mdb")
-	if _, err := os.Stat(localDataFile); err != nil {
-		localDataFile = filepath.Join(targetDir, "data.mdb")
+
+	localDataFile := s.dbPath
+	if stat, err := os.Stat(localDataFile); err == nil && stat.IsDir() {
+		if _, dataErr := os.Stat(filepath.Join(localDataFile, "data.mdb")); dataErr == nil {
+			localDataFile = filepath.Join(localDataFile, "data.mdb")
+		}
+	} else if _, err := os.Stat(localDataFile); err != nil {
+		if _, altErr := os.Stat(filepath.Join(targetDir, "asn-prefixes.lmdb")); altErr == nil {
+			localDataFile = filepath.Join(targetDir, "asn-prefixes.lmdb")
+		} else if _, dataErr := os.Stat(filepath.Join(targetDir, "data.mdb")); dataErr == nil {
+			localDataFile = filepath.Join(targetDir, "data.mdb")
+		}
 	}
 
 	localHash, _ := computeFileSha256(localDataFile)
@@ -344,39 +355,54 @@ func (s *AsnLmdbService) CheckAndUpdateDataset(urlStr string) error {
 		return fmt.Errorf("read response body: %w", err)
 	}
 
-	// Unpack in memory to check data.mdb hash
-	gr, err := gzip.NewReader(bytes.NewReader(archiveBytes))
-	if err != nil {
-		return fmt.Errorf("read gzip stream: %w", err)
-	}
-	defer gr.Close()
-
-	tr := tar.NewReader(gr)
 	var remoteDataBytes []byte
 	filesToExtract := make(map[string][]byte)
 
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
+	if strings.HasSuffix(urlStr, ".zst") {
+		decoder, err := zstd.NewReader(bytes.NewReader(archiveBytes))
 		if err != nil {
-			return fmt.Errorf("read tar entry: %w", err)
+			return fmt.Errorf("create zstd reader: %w", err)
 		}
-		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
-			content, err := io.ReadAll(tr)
-			if err != nil {
-				return fmt.Errorf("read tar file %s: %w", header.Name, err)
+		defer decoder.Close()
+
+		decompressed, err := io.ReadAll(decoder)
+		if err != nil {
+			return fmt.Errorf("decompress zstd stream: %w", err)
+		}
+		remoteDataBytes = decompressed
+		filesToExtract["asn-prefixes.lmdb"] = decompressed
+	} else {
+		// Unpack in memory to check data.mdb hash
+		gr, err := gzip.NewReader(bytes.NewReader(archiveBytes))
+		if err != nil {
+			return fmt.Errorf("read gzip stream: %w", err)
+		}
+		defer gr.Close()
+
+		tr := tar.NewReader(gr)
+		for {
+			header, err := tr.Next()
+			if err == io.EOF {
+				break
 			}
-			filesToExtract[header.Name] = content
-			if filepath.Base(header.Name) == "data.mdb" {
-				remoteDataBytes = content
+			if err != nil {
+				return fmt.Errorf("read tar entry: %w", err)
+			}
+			if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
+				content, err := io.ReadAll(tr)
+				if err != nil {
+					return fmt.Errorf("read tar file %s: %w", header.Name, err)
+				}
+				filesToExtract[header.Name] = content
+				if filepath.Base(header.Name) == "data.mdb" || strings.HasSuffix(header.Name, ".lmdb") {
+					remoteDataBytes = content
+				}
 			}
 		}
 	}
 
 	if len(remoteDataBytes) == 0 {
-		return fmt.Errorf("remote archive does not contain data.mdb")
+		return fmt.Errorf("remote archive does not contain valid LMDB data")
 	}
 
 	remoteHashSum := sha256.Sum256(remoteDataBytes)
@@ -408,14 +434,17 @@ func (s *AsnLmdbService) CheckAndUpdateDataset(urlStr string) error {
 		s.logger.Info(fmt.Sprintf("New ASN dataset detected (remote: %s..., local: %s...), updating database...", remotePreview, localPreview))
 	}
 
-	_ = os.MkdirAll(lmdbDir, 0755)
+	lmdbDir := filepath.Join(targetDir, "asn-prefixes.lmdb")
 	_ = os.MkdirAll(targetDir, 0755)
 
 	for name, content := range filesToExtract {
-		targetPath := filepath.Join(targetDir, name)
-		if strings.HasPrefix(name, "asn-prefixes.lmdb/") {
+		var targetPath string
+		if name == "asn-prefixes.lmdb" {
+			targetPath = filepath.Join(targetDir, name)
+		} else if strings.HasPrefix(name, "asn-prefixes.lmdb/") {
 			targetPath = filepath.Join(targetDir, name)
 		} else {
+			_ = os.MkdirAll(lmdbDir, 0755)
 			targetPath = filepath.Join(lmdbDir, filepath.Base(name))
 		}
 		_ = os.MkdirAll(filepath.Dir(targetPath), 0755)

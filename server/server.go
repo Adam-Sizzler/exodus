@@ -38,6 +38,8 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 
 	asnService := NewAsnLmdbService(cfg)
 
+	ConfigureNftables(cfg.Backend.NftablesLogging, cfg.Backend.NftablesAcceptReplyTraffic)
+
 	nodeServer := &NodeServer{
 		Cfg:        cfg,
 		apiService: apiService,

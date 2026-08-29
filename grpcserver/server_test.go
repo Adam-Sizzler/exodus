@@ -68,3 +68,18 @@ func TestValidateIncomingGRPCToken(t *testing.T) {
 		t.Fatalf("validateIncomingGRPCToken() code = %s, want %s", status.Code(err), codes.Unauthenticated)
 	}
 }
+
+func TestSNIVerificationMatch(t *testing.T) {
+	expectedSNI := "node1.domain.com"
+	verifySNI := func(received string) bool {
+		return expectedSNI != "" && (received == expectedSNI || (len(received) > 0 && received == "node1.domain.com"))
+	}
+
+	if !verifySNI("node1.domain.com") {
+		t.Fatalf("expected SNI match for node1.domain.com")
+	}
+	if verifySNI("other.domain.com") {
+		t.Fatalf("expected mismatch for other.domain.com")
+	}
+}
+

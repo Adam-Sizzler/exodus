@@ -215,6 +215,17 @@ func ensureNftablesTables() error {
 	return nil
 }
 
+var (
+	nftablesLogging            = true
+	nftablesAcceptReplyTraffic = false
+)
+
+// ConfigureNftables updates global nftables settings for logging and reply traffic.
+func ConfigureNftables(logging bool, acceptReplyTraffic bool) {
+	nftablesLogging = logging
+	nftablesAcceptReplyTraffic = acceptReplyTraffic
+}
+
 func addNftTableLayout(conn *nftables.Conn, spec nftTableSpec) error {
 	table := conn.AddTable(&nftables.Table{Family: spec.Family, Name: spec.Name})
 	policy := nftables.ChainPolicyAccept
@@ -266,6 +277,11 @@ func addNftTableLayout(conn *nftables.Conn, spec nftTableSpec) error {
 		return fmt.Errorf("add nftables set %s/%s: %w", spec.Name, spec.EgressPortSet, err)
 	}
 
+	if nftablesAcceptReplyTraffic {
+		addNftConntrackAcceptRule(conn, table, chains["input"])
+		addNftConntrackAcceptRule(conn, table, chains["forward"])
+	}
+
 	addNftAddrDropRule(conn, table, chains["input"], spec, true, spec.IngressSet)
 	addNftAddrDropRule(conn, table, chains["forward"], spec, true, spec.IngressSet)
 	addNftAddrDropRule(conn, table, chains["forward"], spec, false, spec.EgressSet)
@@ -278,45 +294,84 @@ func addNftTableLayout(conn *nftables.Conn, spec nftTableSpec) error {
 	return nil
 }
 
+func addNftConntrackAcceptRule(conn *nftables.Conn, table *nftables.Table, chain *nftables.Chain) {
+	conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Ct{Key: expr.CtKeySTATE, Register: 1},
+			&expr.Bitwise{
+				SourceRegister: 1,
+				DestRegister:   1,
+				Len:            4,
+				Mask:           []byte{0, 0, 0, 6},
+				Xor:            []byte{0, 0, 0, 0},
+			},
+			&expr.Cmp{
+				Op:       expr.CmpOpNeq,
+				Register: 1,
+				Data:     []byte{0, 0, 0, 0},
+			},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+}
+
 func addNftAddrDropRule(conn *nftables.Conn, table *nftables.Table, chain *nftables.Chain, spec nftTableSpec, source bool, setName string) {
 	offset := spec.DstAddrOffset
 	if source {
 		offset = spec.SrcAddrOffset
 	}
+	exprs := []expr.Any{
+		&expr.Payload{
+			OperationType: expr.PayloadLoad,
+			DestRegister:  1,
+			Base:          expr.PayloadBaseNetworkHeader,
+			Offset:        offset,
+			Len:           spec.AddrLen,
+		},
+		&expr.Lookup{SourceRegister: 1, SetName: setName},
+	}
+	if nftablesLogging {
+		exprs = append(exprs, &expr.Log{
+			Key:  0x01,
+			Data: []byte("[exodus-drop] "),
+		})
+	}
+	exprs = append(exprs, &expr.Verdict{Kind: expr.VerdictDrop})
+
 	conn.AddRule(&nftables.Rule{
 		Table: table,
 		Chain: chain,
-		Exprs: []expr.Any{
-			&expr.Payload{
-				OperationType: expr.PayloadLoad,
-				DestRegister:  1,
-				Base:          expr.PayloadBaseNetworkHeader,
-				Offset:        offset,
-				Len:           spec.AddrLen,
-			},
-			&expr.Lookup{SourceRegister: 1, SetName: setName},
-			&expr.Verdict{Kind: expr.VerdictDrop},
-		},
+		Exprs: exprs,
 	})
 }
 
 func addNftPortDropRule(conn *nftables.Conn, table *nftables.Table, chain *nftables.Chain, setName string, proto byte) {
+	exprs := []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{proto}},
+		&expr.Payload{
+			OperationType: expr.PayloadLoad,
+			DestRegister:  1,
+			Base:          expr.PayloadBaseTransportHeader,
+			Offset:        2,
+			Len:           2,
+		},
+		&expr.Lookup{SourceRegister: 1, SetName: setName},
+	}
+	if nftablesLogging {
+		exprs = append(exprs, &expr.Log{
+			Key:  0x01,
+			Data: []byte("[exodus-drop] "),
+		})
+	}
+	exprs = append(exprs, &expr.Verdict{Kind: expr.VerdictDrop})
+
 	conn.AddRule(&nftables.Rule{
 		Table: table,
 		Chain: chain,
-		Exprs: []expr.Any{
-			&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
-			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{proto}},
-			&expr.Payload{
-				OperationType: expr.PayloadLoad,
-				DestRegister:  1,
-				Base:          expr.PayloadBaseTransportHeader,
-				Offset:        2,
-				Len:           2,
-			},
-			&expr.Lookup{SourceRegister: 1, SetName: setName},
-			&expr.Verdict{Kind: expr.VerdictDrop},
-		},
+		Exprs: exprs,
 	})
 }
 
