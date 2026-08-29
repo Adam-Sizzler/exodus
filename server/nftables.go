@@ -96,9 +96,6 @@ var nftTableSpecs = []nftTableSpec{
 }
 
 func applyNftablesModule(modules DeployModulesPayload, asnService *AsnLmdbService) error {
-	if !modules.IngressFilter.Enabled && !modules.EgressFilter.Enabled {
-		return nil
-	}
 	if !hasCapNetAdmin() {
 		return nil
 	}
@@ -215,11 +212,8 @@ func unblockNftIPs(items []struct {
 				}
 				setName := ipSetNameForSpec(nftIngressIPSet, spec)
 				set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
-				element := nftables.SetElement{Key: ipElem.Key}
-				if len(ipElem.KeyEnd) > 0 {
-					element.KeyEnd = ipElem.KeyEnd
-				}
-				if err := conn.SetDeleteElements(set, []nftables.SetElement{element}); err != nil && !isENOENT(err) {
+				elements := nftSetElementsForIP(ipElem, 0)
+				if err := conn.SetDeleteElements(set, elements); err != nil && !isENOENT(err) {
 					return fmt.Errorf("delete IP from set %s/%s: %w", spec.Name, setName, err)
 				}
 			}
