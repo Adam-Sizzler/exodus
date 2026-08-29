@@ -149,11 +149,86 @@ func ExecuteNodePluginCommand(raw json.RawMessage) (bool, error) {
 	switch strings.TrimSpace(command.Command) {
 	case "recreateTables":
 		return executeNftCommand(recreateNftablesTables)
-	case "blockIps", "unblockIps":
-		return false, nil
+	case "blockIps":
+		return executeNftCommand(func() error {
+			return blockNftIPs(command.IPs)
+		})
+	case "unblockIps":
+		return executeNftCommand(func() error {
+			return unblockNftIPs(command.IPs)
+		})
 	default:
 		return false, fmt.Errorf("unsupported node plugin executor command: %s", command.Command)
 	}
+}
+
+func blockNftIPs(items []struct {
+	IP      string `json:"ip"`
+	Timeout int    `json:"timeout"`
+}) error {
+	for _, item := range items {
+		ipStr := strings.TrimSpace(item.IP)
+		if ipStr == "" {
+			continue
+		}
+		ipElem, err := normalizeNftIP(ipStr)
+		if err != nil {
+			return err
+		}
+		if err := withNftConn(func(conn *nftables.Conn) error {
+			for _, spec := range nftTableSpecs {
+				if ipElem.IsIPv6 != (spec.Family == nftables.TableFamilyIPv6) {
+					continue
+				}
+				setName := ipSetNameForSpec(nftIngressIPSet, spec)
+				set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
+				elements := nftSetElementsForIP(ipElem, item.Timeout)
+				if err := conn.SetAddElements(set, elements); err != nil {
+					return fmt.Errorf("add IP to set %s/%s: %w", spec.Name, setName, err)
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func unblockNftIPs(items []struct {
+	IP      string `json:"ip"`
+	Timeout int    `json:"timeout"`
+}) error {
+	for _, item := range items {
+		ipStr := strings.TrimSpace(item.IP)
+		if ipStr == "" {
+			continue
+		}
+		ipElem, err := normalizeNftIP(ipStr)
+		if err != nil {
+			return err
+		}
+		if err := withNftConn(func(conn *nftables.Conn) error {
+			for _, spec := range nftTableSpecs {
+				if ipElem.IsIPv6 != (spec.Family == nftables.TableFamilyIPv6) {
+					continue
+				}
+				setName := ipSetNameForSpec(nftIngressIPSet, spec)
+				set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: setName}
+				element := nftables.SetElement{Key: ipElem.Key}
+				if len(ipElem.KeyEnd) > 0 {
+					element.KeyEnd = ipElem.KeyEnd
+				}
+				if err := conn.SetDeleteElements(set, []nftables.SetElement{element}); err != nil && !isENOENT(err) {
+					return fmt.Errorf("delete IP from set %s/%s: %w", spec.Name, setName, err)
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func executeNftCommand(fn func() error) (bool, error) {
@@ -389,7 +464,7 @@ func syncNftIPSet(baseSetName string, rawIPs []string, timeoutSeconds int) error
 				if ip.IsIPv6 != (spec.Family == nftables.TableFamilyIPv6) {
 					continue
 				}
-				elements = append(elements, nftSetElementForIP(ip, timeoutSeconds))
+				elements = append(elements, nftSetElementsForIP(ip, timeoutSeconds)...)
 			}
 			if len(elements) == 0 {
 				continue
@@ -442,15 +517,29 @@ func withNftConn(fn func(*nftables.Conn) error) error {
 	return nil
 }
 
-func nftSetElementForIP(ip nftIPElement, timeoutSeconds int) nftables.SetElement {
-	element := nftables.SetElement{Key: ip.Key}
-	if len(ip.KeyEnd) > 0 {
-		element.KeyEnd = ip.KeyEnd
-	}
+func nftSetElementsForIP(ip nftIPElement, timeoutSeconds int) []nftables.SetElement {
+	var timeout time.Duration
 	if timeoutSeconds > 0 {
-		element.Timeout = time.Duration(timeoutSeconds) * time.Second
+		timeout = time.Duration(timeoutSeconds) * time.Second
 	}
-	return element
+	if len(ip.KeyEnd) > 0 {
+		return []nftables.SetElement{
+			{
+				Key:     ip.Key,
+				Timeout: timeout,
+			},
+			{
+				Key:         ip.KeyEnd,
+				IntervalEnd: true,
+			},
+		}
+	}
+	return []nftables.SetElement{
+		{
+			Key:     ip.Key,
+			Timeout: timeout,
+		},
+	}
 }
 
 func ipSetNameForSpec(baseSetName string, spec nftTableSpec) string {
@@ -488,30 +577,27 @@ func normalizeNftIP(rawIP string) (nftIPElement, error) {
 	if value == "" {
 		return nftIPElement{}, fmt.Errorf("empty IP address")
 	}
-	if prefix, err := netip.ParsePrefix(value); err == nil {
-		prefix = prefix.Masked()
-		start, end := prefixRange(prefix)
-		ip := nftIPElement{
-			Value:     prefix.String(),
-			IsIPv6:    prefix.Addr().Is6(),
-			Key:       addrBytes(start),
-			IsNetwork: prefix.Bits() != addressBits(prefix.Addr()),
-		}
-		if ip.IsNetwork {
-			ip.KeyEnd = addrBytes(end)
-		}
-		return ip, nil
-	}
 
-	addr, err := netip.ParseAddr(value)
-	if err != nil {
+	var prefix netip.Prefix
+	if p, err := netip.ParsePrefix(value); err == nil {
+		prefix = p.Masked()
+	} else if addr, err := netip.ParseAddr(value); err == nil {
+		prefix = netip.PrefixFrom(addr, addressBits(addr))
+	} else {
 		return nftIPElement{}, fmt.Errorf("invalid IP address or CIDR range %q", rawIP)
 	}
-	return nftIPElement{
-		Value:  addr.String(),
-		IsIPv6: addr.Is6(),
-		Key:    addrBytes(addr),
-	}, nil
+
+	start, end := prefixRange(prefix)
+	ip := nftIPElement{
+		Value:     prefix.String(),
+		IsIPv6:    prefix.Addr().Is6(),
+		Key:       addrBytes(start),
+		IsNetwork: prefix.Bits() != addressBits(prefix.Addr()),
+	}
+	if end.Next().IsValid() {
+		ip.KeyEnd = addrBytes(end.Next())
+	}
+	return ip, nil
 }
 
 func normalizeNftPorts(rawPorts []int) ([]int, error) {
