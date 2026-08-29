@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -533,6 +534,13 @@ func syncNftIPSet(baseSetName string, rawIPs []string, timeoutSeconds int) error
 			if len(elements) == 0 {
 				continue
 			}
+			sort.Slice(elements, func(i, j int) bool {
+				cmp := bytes.Compare(elements[i].Key, elements[j].Key)
+				if cmp != 0 {
+					return cmp < 0
+				}
+				return !elements[i].IntervalEnd && elements[j].IntervalEnd
+			})
 			if err := conn.SetAddElements(set, elements); err != nil {
 				return fmt.Errorf("add IP elements to nft set %s/%s: %w", spec.Name, setName, err)
 			}
@@ -629,50 +637,93 @@ func ipSetNameForSpec(baseSetName string, spec nftTableSpec) string {
 	}
 }
 
-func normalizeNftIPs(rawIPs []string) ([]nftIPElement, error) {
-	seen := make(map[string]struct{}, len(rawIPs))
-	ips := make([]nftIPElement, 0, len(rawIPs))
-	for _, rawIP := range rawIPs {
-		ip, err := normalizeNftIP(rawIP)
-		if err != nil {
-			return nil, err
+type ipRange struct {
+	start netip.Addr
+	end   netip.Addr
+	isV6  bool
+}
+
+func mergeIPRanges(ranges []ipRange) []ipRange {
+	if len(ranges) <= 1 {
+		return ranges
+	}
+	sort.Slice(ranges, func(i, j int) bool {
+		cmp := ranges[i].start.Compare(ranges[j].start)
+		if cmp != 0 {
+			return cmp < 0
 		}
-		if _, ok := seen[ip.Value]; ok {
+		return ranges[i].end.Compare(ranges[j].end) > 0
+	})
+	merged := make([]ipRange, 0, len(ranges))
+	curr := ranges[0]
+	for i := 1; i < len(ranges); i++ {
+		next := ranges[i]
+		if curr.isV6 != next.isV6 {
+			merged = append(merged, curr)
+			curr = next
 			continue
 		}
-		seen[ip.Value] = struct{}{}
-		ips = append(ips, ip)
+		if curr.end.Compare(next.start) >= 0 || (curr.end.Next().IsValid() && curr.end.Next() == next.start) {
+			if curr.end.Compare(next.end) < 0 {
+				curr.end = next.end
+			}
+		} else {
+			merged = append(merged, curr)
+			curr = next
+		}
 	}
-	sort.Slice(ips, func(i, j int) bool { return ips[i].Value < ips[j].Value })
+	merged = append(merged, curr)
+	return merged
+}
+
+func normalizeNftIPs(rawIPs []string) ([]nftIPElement, error) {
+	var rawRanges []ipRange
+	for _, rawIP := range rawIPs {
+		value := strings.TrimSpace(rawIP)
+		if value == "" {
+			continue
+		}
+		var prefix netip.Prefix
+		if p, err := netip.ParsePrefix(value); err == nil {
+			prefix = p.Masked()
+		} else if addr, err := netip.ParseAddr(value); err == nil {
+			prefix = netip.PrefixFrom(addr, addressBits(addr))
+		} else {
+			return nil, fmt.Errorf("invalid IP address or CIDR range %q", rawIP)
+		}
+		start, end := prefixRange(prefix)
+		rawRanges = append(rawRanges, ipRange{
+			start: start,
+			end:   end,
+			isV6:  start.Is6(),
+		})
+	}
+
+	merged := mergeIPRanges(rawRanges)
+	ips := make([]nftIPElement, 0, len(merged))
+	for _, r := range merged {
+		elem := nftIPElement{
+			Value:  r.start.String(),
+			IsIPv6: r.isV6,
+			Key:    addrBytes(r.start),
+		}
+		if r.end.Next().IsValid() {
+			elem.KeyEnd = addrBytes(r.end.Next())
+		}
+		ips = append(ips, elem)
+	}
 	return ips, nil
 }
 
 func normalizeNftIP(rawIP string) (nftIPElement, error) {
-	value := strings.TrimSpace(rawIP)
-	if value == "" {
+	elems, err := normalizeNftIPs([]string{rawIP})
+	if err != nil {
+		return nftIPElement{}, err
+	}
+	if len(elems) == 0 {
 		return nftIPElement{}, fmt.Errorf("empty IP address")
 	}
-
-	var prefix netip.Prefix
-	if p, err := netip.ParsePrefix(value); err == nil {
-		prefix = p.Masked()
-	} else if addr, err := netip.ParseAddr(value); err == nil {
-		prefix = netip.PrefixFrom(addr, addressBits(addr))
-	} else {
-		return nftIPElement{}, fmt.Errorf("invalid IP address or CIDR range %q", rawIP)
-	}
-
-	start, end := prefixRange(prefix)
-	ip := nftIPElement{
-		Value:     prefix.String(),
-		IsIPv6:    prefix.Addr().Is6(),
-		Key:       addrBytes(start),
-		IsNetwork: prefix.Bits() != addressBits(prefix.Addr()),
-	}
-	if end.Next().IsValid() {
-		ip.KeyEnd = addrBytes(end.Next())
-	}
-	return ip, nil
+	return elems[0], nil
 }
 
 func normalizeNftPorts(rawPorts []int) ([]int, error) {

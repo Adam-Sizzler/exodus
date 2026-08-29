@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -229,22 +230,56 @@ func (s *AsnLmdbService) GetByASN(asn int) (*AsnPrefixes, error) {
 			return openErr
 		}
 
-		// Keys in LMDB may be encoded as ordered-binary double numbers or raw uint32
+		asnStr := strconv.Itoa(asn)
+		buf32LE := make([]byte, 4)
+		binary.LittleEndian.PutUint32(buf32LE, uint32(asn))
+		buf32BE := make([]byte, 4)
+		binary.BigEndian.PutUint32(buf32BE, uint32(asn))
+		buf64LE := make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf64LE, uint64(asn))
+		buf64BE := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf64BE, uint64(asn))
+		bufFloat64 := make([]byte, 8)
+		binary.BigEndian.PutUint64(bufFloat64, math.Float64bits(float64(asn)))
+
 		keyCandidates := [][]byte{
 			encodeOrderedBinaryNumberKey(uint32(asn)),
-			uint32ToBytes(uint32(asn)),
+			[]byte(asnStr),
+			buf32BE,
+			buf32LE,
+			buf64BE,
+			buf64LE,
+			bufFloat64,
 		}
 
 		for _, keyBytes := range keyCandidates {
 			valBytes, err := txn.Get(dbi, keyBytes)
 			if err == nil && len(valBytes) > 0 {
-				if unmarshalErr := msgpack.Unmarshal(valBytes, &entry); unmarshalErr == nil {
+				var target AsnPrefixes
+				if unmarshalErr := msgpack.Unmarshal(valBytes, &target); unmarshalErr == nil && (len(target.IPv4) > 0 || len(target.IPv6) > 0) {
+					entry = target
 					found = true
 					return nil
 				}
-				if unmarshalErr := json.Unmarshal(valBytes, &entry); unmarshalErr == nil {
+				if unmarshalErr := json.Unmarshal(valBytes, &target); unmarshalErr == nil && (len(target.IPv4) > 0 || len(target.IPv6) > 0) {
+					entry = target
 					found = true
 					return nil
+				}
+				var genericMap map[string]any
+				if unmarshalErr := json.Unmarshal(valBytes, &genericMap); unmarshalErr == nil {
+					entry = parseGenericAsnMap(genericMap)
+					if len(entry.IPv4) > 0 || len(entry.IPv6) > 0 {
+						found = true
+						return nil
+					}
+				}
+				if unmarshalErr := msgpack.Unmarshal(valBytes, &genericMap); unmarshalErr == nil {
+					entry = parseGenericAsnMap(genericMap)
+					if len(entry.IPv4) > 0 || len(entry.IPv6) > 0 {
+						found = true
+						return nil
+					}
 				}
 			}
 		}
@@ -259,6 +294,25 @@ func (s *AsnLmdbService) GetByASN(asn int) (*AsnPrefixes, error) {
 		return nil, nil
 	}
 	return &entry, nil
+}
+
+func parseGenericAsnMap(m map[string]any) AsnPrefixes {
+	var res AsnPrefixes
+	if v4Raw, ok := m["ipv4"].([]any); ok {
+		for _, item := range v4Raw {
+			if s, ok := item.(string); ok && s != "" {
+				res.IPv4 = append(res.IPv4, s)
+			}
+		}
+	}
+	if v6Raw, ok := m["ipv6"].([]any); ok {
+		for _, item := range v6Raw {
+			if s, ok := item.(string); ok && s != "" {
+				res.IPv6 = append(res.IPv6, s)
+			}
+		}
+	}
+	return res
 }
 
 // ResolvePrefixes returns IPv4 and IPv6 prefixes for a given ASN.
