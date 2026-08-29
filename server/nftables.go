@@ -346,10 +346,11 @@ func addNftTableLayout(conn *nftables.Conn, spec nftTableSpec) error {
 		}
 	}
 	if err := conn.AddSet(&nftables.Set{
-		Table:    table,
-		Name:     spec.EgressPortSet,
-		KeyType:  nftables.TypeInetService,
-		Interval: true,
+		Table:     table,
+		Name:      spec.EgressPortSet,
+		KeyType:   nftables.TypeInetService,
+		Interval:  true,
+		AutoMerge: true,
 	}, nil); err != nil {
 		return fmt.Errorf("add nftables set %s/%s: %w", spec.Name, spec.EgressPortSet, err)
 	}
@@ -494,10 +495,21 @@ func syncNftPortSet(baseSetName string, rawPorts []int) error {
 	}
 	return withNftConn(func(conn *nftables.Conn) error {
 		for _, spec := range nftTableSpecs {
-			set := &nftables.Set{Table: &nftables.Table{Family: spec.Family, Name: spec.Name}, Name: ipSetNameForSpec(baseSetName, spec)}
-			elements := make([]nftables.SetElement, 0, len(ports))
+			setName := ipSetNameForSpec(baseSetName, spec)
+			set := &nftables.Set{
+				Table:     &nftables.Table{Family: spec.Family, Name: spec.Name},
+				Name:      setName,
+				Interval:  true,
+				AutoMerge: true,
+			}
+			elements := make([]nftables.SetElement, 0, len(ports)*2)
 			for _, port := range ports {
-				elements = append(elements, nftables.SetElement{Key: uint16Key(uint16(port))})
+				start := uint16(port)
+				end := uint32(start) + 1
+				elements = append(elements,
+					nftables.SetElement{Key: uint16Key(start)},
+					nftables.SetElement{Key: uint16Key(uint16(end)), IntervalEnd: true},
+				)
 			}
 			if len(elements) == 0 {
 				continue
