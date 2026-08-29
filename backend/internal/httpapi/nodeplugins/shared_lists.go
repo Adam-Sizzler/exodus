@@ -119,6 +119,10 @@ func handleGetAllSharedLists(w http.ResponseWriter, r *http.Request, db *sql.DB,
 			UpdatedAt:  updatedAt,
 		})
 	}
+	if err := rows.Err(); err != nil {
+		shared.SendAPIError(w, shared.ErrGetAllSharedListsFailed.WithCause(err), cfg)
+		return
+	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{

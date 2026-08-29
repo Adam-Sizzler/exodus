@@ -378,6 +378,9 @@ func syncPlugin(ctx context.Context, db *sql.DB, pluginUUID string) error {
 			nodeUUIDs = append(nodeUUIDs, nodeUUID)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
 	if len(nodeUUIDs) > 0 {
 		monitor.RequestNodeDeploy(false, nodeUUIDs...)
