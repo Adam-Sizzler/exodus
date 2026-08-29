@@ -304,7 +304,10 @@ func executeNftCommand(fn func() error) (bool, error) {
 	return true, nil
 }
 
-func recreateNftablesTables() error {
+func DeleteNftablesTables() error {
+	if !hasCapNetAdmin() {
+		return nil
+	}
 	for _, spec := range nftTableSpecs {
 		conn, err := nftables.New()
 		if err != nil {
@@ -312,8 +315,22 @@ func recreateNftablesTables() error {
 		}
 		conn.DelTable(&nftables.Table{Family: spec.Family, Name: spec.Name})
 		if err := conn.Flush(); err != nil && !isENOENT(err) {
-			return fmt.Errorf("delete old nftables table %s: %w", spec.Name, err)
+			if isNftablesUnavailableError(err) {
+				return nil
+			}
+			return fmt.Errorf("delete nftables table %s: %w", spec.Name, err)
 		}
+	}
+	return nil
+}
+
+func RecreateNftablesTables() error {
+	return recreateNftablesTables()
+}
+
+func recreateNftablesTables() error {
+	if err := DeleteNftablesTables(); err != nil {
+		return err
 	}
 
 	conn, err := nftables.New()

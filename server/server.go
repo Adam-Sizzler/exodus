@@ -40,6 +40,12 @@ func NewNodeServer(cfg *config.NodeConfig) (*NodeServer, error) {
 
 	ConfigureNftables(cfg.Backend.NftablesLogging, cfg.Backend.NftablesAcceptReplyTraffic)
 
+	if hasCapNetAdmin() {
+		if err := RecreateNftablesTables(); err != nil && !isNftablesUnavailableError(err) {
+			cfg.LoggerFor("NftService").Warn("Failed to initialize nftables tables on startup", "error", err)
+		}
+	}
+
 	nodeServer := &NodeServer{
 		Cfg:        cfg,
 		apiService: apiService,
@@ -59,6 +65,7 @@ func (s *NodeServer) Close() error {
 	if s == nil {
 		return nil
 	}
+	_ = DeleteNftablesTables()
 	if s.asnService != nil {
 		_ = s.asnService.Close()
 	}
