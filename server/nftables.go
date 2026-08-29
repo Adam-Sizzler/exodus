@@ -231,6 +231,8 @@ func blockNftIPs(items []BlockedIPEntry) error {
 				set := &nftables.Set{
 					Table:      &nftables.Table{Family: spec.Family, Name: spec.Name},
 					Name:       setName,
+					Interval:   true,
+					AutoMerge:  true,
 					HasTimeout: true,
 				}
 				elements := nftSetElementsForIP(ipElem, item.Timeout)
@@ -265,6 +267,8 @@ func unblockNftIPs(items []BlockedIPEntry) error {
 				set := &nftables.Set{
 					Table:      &nftables.Table{Family: spec.Family, Name: spec.Name},
 					Name:       setName,
+					Interval:   true,
+					AutoMerge:  true,
 					HasTimeout: true,
 				}
 				elements := nftSetElementsForIP(ipElem, 0)
@@ -515,6 +519,8 @@ func syncNftIPSet(baseSetName string, rawIPs []string, timeoutSeconds int) error
 			set := &nftables.Set{
 				Table:      &nftables.Table{Family: spec.Family, Name: spec.Name},
 				Name:       setName,
+				Interval:   true,
+				AutoMerge:  true,
 				HasTimeout: true,
 			}
 			elements := make([]nftables.SetElement, 0, len(ips))
