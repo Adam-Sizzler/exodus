@@ -162,24 +162,21 @@ export function CodeEditor(props: Props) {
                     })}
                 </div>
             )}
-            <Box
-                className={clsx(styles.editorWrapper, footer && styles.editorGroup)}
-                {...wrapperProps}
-            >
-                <Editor
-                    defaultLanguage={defaultLanguage}
-                    language={language}
-                    loading={<LoaderModalShared />}
-                    onMount={handleMount}
-                    options={mergedOptions}
-                    theme={MONACO_THEME_NAME}
-                    wrapperProps={{
-                        className: clsx(footer && styles.editorAttached, wrapperProps?.className)
-                    }}
-                    {...rest}
-                />
-                {footer && <div className={styles.footer}>{footer}</div>}
-            </Box>
+            <Editor
+                defaultLanguage={defaultLanguage}
+                language={language}
+                loading={<LoaderModalShared mih="100%" />}
+                onMount={handleMount}
+                options={mergedOptions}
+                theme={MONACO_THEME_NAME}
+                wrapperProps={{
+                    ...wrapperProps,
+                    className: clsx(styles.editorWrapper, wrapperProps?.className)
+                }}
+                {...rest}
+            />
+
+            {footer}
         </div>
     )
 }
