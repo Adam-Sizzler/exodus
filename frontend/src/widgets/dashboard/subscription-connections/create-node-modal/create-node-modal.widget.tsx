@@ -1,9 +1,8 @@
 import { em, Group, Modal, Progress, Stack, Transition } from '@mantine/core'
-import { zodResolver } from 'mantine-form-zod-resolver'
+import { schemaResolver, useForm } from '@mantine/form'
 import { useTranslation } from 'react-i18next'
 import { useMediaQuery } from '@mantine/hooks'
 import { useEffect, useState } from 'react'
-import { useForm } from '@mantine/form'
 import { TbCpu } from 'react-icons/tb'
 
 import { useSubscriptionConnectionsStoreActions, useSubscriptionConnectionsStoreCreateModalIsOpen } from '@entities/dashboard/subscription-connections'
@@ -44,7 +43,7 @@ export const CreateNodeModalWidget = () => {
     const form = useForm<CreateSubscriptionConnectionRequest>({
         name: 'create-node-form',
         mode: 'uncontrolled',
-        validate: zodResolver(createSubscriptionConnectionSchema)
+        validate: schemaResolver(createSubscriptionConnectionSchema)
     })
 
     const handleClose = () => {

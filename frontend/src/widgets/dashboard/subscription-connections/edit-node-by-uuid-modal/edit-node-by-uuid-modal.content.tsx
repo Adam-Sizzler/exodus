@@ -1,6 +1,5 @@
-import { zodResolver } from 'mantine-form-zod-resolver'
 import { useEffect } from 'react'
-import { useForm } from '@mantine/form'
+import { schemaResolver, useForm } from '@mantine/form'
 import { motion } from 'motion/react'
 
 import {
@@ -44,7 +43,7 @@ export const EditNodeByUuidModalContent = (props: IProps) => {
     const form = useForm<EditSubscriptionConnectionForm>({
         name: 'edit-subscription-connection-form',
         mode: 'uncontrolled',
-        validate: zodResolver(updateSubscriptionConnectionFormSchema)
+        validate: schemaResolver(updateSubscriptionConnectionFormSchema)
     })
 
     const { data: pubKey } = useGetSubscriptionConnectionsPubKey({
