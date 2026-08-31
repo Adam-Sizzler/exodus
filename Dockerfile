@@ -1,5 +1,5 @@
 # Multistage build for exodus panel (frontend + backend)
-FROM node:22-alpine AS panel-ui
+FROM node:24-alpine AS panel-ui
 WORKDIR /ui
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
