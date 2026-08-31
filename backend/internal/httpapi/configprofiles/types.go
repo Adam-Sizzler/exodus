@@ -38,6 +38,7 @@ type ConfigProfile struct {
 	UUID         string                 `json:"uuid"`
 	ViewPosition int                    `json:"viewPosition"`
 	Name         string                 `json:"name"`
+	Tags         []string               `json:"tags"`
 	Config       json.RawMessage        `json:"config"`
 	Inbounds     []ConfigProfileInbound `json:"inbounds"`
 	Nodes        []ConfigProfileNode    `json:"nodes"`
@@ -49,6 +50,7 @@ type configProfileRecord struct {
 	UUID         string
 	ViewPosition int
 	Name         string
+	Tags         []string
 	Config       json.RawMessage
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -56,12 +58,14 @@ type configProfileRecord struct {
 
 type createConfigProfileRequest struct {
 	Name   string          `json:"name"`
+	Tags   []string        `json:"tags,omitempty"`
 	Config json.RawMessage `json:"config"`
 }
 
 type updateConfigProfileRequest struct {
 	UUID   string           `json:"uuid"`
 	Name   *string          `json:"name,omitempty"`
+	Tags   []string         `json:"tags,omitempty"`
 	Config *json.RawMessage `json:"config,omitempty"`
 }
 

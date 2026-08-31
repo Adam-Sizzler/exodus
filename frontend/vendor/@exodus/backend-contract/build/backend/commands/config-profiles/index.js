@@ -23,3 +23,4 @@ __exportStar(require("./get-config-profile-by-uuid.command"), exports);
 __exportStar(require("./get-config-profiles.command"), exports);
 __exportStar(require("./get-inbounds-by-profile-uuid.command"), exports);
 __exportStar(require("./update-config-profile.command"), exports);
+__exportStar(require("./tags"), exports);

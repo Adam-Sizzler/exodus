@@ -32,8 +32,8 @@
     "http-stats": "HTTP 状态",
     "subscription-connections": "节点",
     "srs-lists": "SRS Lists",
-    "exodus-settings": "Exodus 设置",
-    "quick-open": "Quick open"
+    "quick-open": "快捷方式",
+    "quick-launcher": "开始菜单"
   },
   "common": {
     "delete": "删除",
@@ -89,7 +89,118 @@
     "shared-lists": "共享列表",
     "try-again": "再试一次",
     "interface": "接口",
-    "ip-address": "IP 地址"
+    "ip-address": "IP 地址",
+    "action": {
+      "actions": "操作",
+      "add": "添加",
+      "add-users": "添加用户",
+      "bulk-actions": "批量操作",
+      "bulk-edit": "批量编辑",
+      "cancel": "取消",
+      "change": "更改",
+      "clear": "清除",
+      "clear-selection": "清除选择",
+      "clone": "克隆",
+      "close": "关闭",
+      "confirm-action": "确认操作",
+      "continue": "继续",
+      "copy": "复制",
+      "copy-link": "复制链接",
+      "copy-uuid": "复制 UUID",
+      "create": "创建",
+      "delete": "删除",
+      "disable": "禁用",
+      "documentation": "文档",
+      "download": "下载",
+      "edit": "编辑",
+      "enable": "启用",
+      "load-from-github": "从 GitHub 加载",
+      "more-actions": "更多操作",
+      "next": "下一步",
+      "open": "打开",
+      "paste": "粘贴",
+      "paste-default": "粘贴默认值",
+      "refresh": "刷新",
+      "remove": "删除",
+      "remove-users": "删除用户",
+      "rename": "重命名",
+      "reset": "重置",
+      "reset-traffic": "重置流量",
+      "save": "保存",
+      "search": "搜索",
+      "select": "选择",
+      "select-all": "全选",
+      "try-again": "重试",
+      "update": "更新",
+      "view": "查看"
+    },
+    "field": {
+      "active-sessions": "活跃会话",
+      "address": "地址",
+      "all": "全部",
+      "billing-node": "计费节点",
+      "color": "颜色",
+      "created-at": "创建时间",
+      "creation": "创建",
+      "description": "备注",
+      "first-connected-at": "首次连接时间",
+      "inbounds": "入站",
+      "inbounds-hosts": "入站 & 主机",
+      "interface": "接口",
+      "internal-squads": "内部分组",
+      "ip-address": "IP 地址",
+      "ip-addresses": "IP 地址",
+      "logo-url": "Logo 网址链接",
+      "name": "名称",
+      "os-version": "操作系统版本",
+      "password": "密码",
+      "platform": "平台",
+      "port": "端口",
+      "request-at": "请求时间",
+      "shared-lists": "共享列表",
+      "status": "状态",
+      "subscription-request-history": "订阅请求历史",
+      "subscription-url": "订阅 URL",
+      "svg-icon": "SVG 图标",
+      "system": "系统",
+      "tag": "标签",
+      "tags": "标签",
+      "untagged": "无标签",
+      "today": "今天",
+      "total": "总计",
+      "total-traffic": "流量总计",
+      "updated-at": "更新时间",
+      "usage-stats": "流量使用统计",
+      "user-agent": "User Agent",
+      "user-status": "用户状态",
+      "username": "用户名"
+    },
+    "message": {
+      "click-to-see-all": "点击查看全部",
+      "configured": "已配置",
+      "confirm-action-description": "您确定要执行此操作吗？此操作不能撤消。",
+      "copied": "已复制",
+      "error": "错误",
+      "event-sent": "发送事件",
+      "invalid-json": "无效的 JSON",
+      "last-error-message": "最后的错误消息",
+      "loading": "正在加载",
+      "no-config-profiles-available": "暂无可用配置文件",
+      "no-data-available": "无可用数据",
+      "no-data-available-for-the-selected-period": "所选时段无可用数据",
+      "no-inbound-selected": "未选择入站配置",
+      "no-profile-selected": "未选择配置文件",
+      "no-profiles-or-inbounds-found": "未找到配置文件或入站配置",
+      "not-set": "未设置",
+      "nothing-found": "未找到",
+      "operation-completed": "操作已完成",
+      "overdue": "已过期",
+      "processing": "处理中",
+      "search-profiles-or-inbounds": "搜索配置文件或入站配置……",
+      "selected": "已选 {{count}} 项",
+      "success": "成功",
+      "warning": "警告"
+    }
   },
   "bandwidth-metrics": {
     "current-year": "今年",
@@ -131,7 +242,7 @@
       "failed-to-save-invalid-json": "保存失败，无效的 JSON。",
       "error": "错误",
       "save-anyway": "仍然保存",
-      "save-anyway-description": "您确定要保存无效的 Singbox 配置吗？ 此操作\n                                    可能导致意外行为。请仅在您清楚自己在做什么的情况下继续。",
+      "save-anyway-description": "您确定要保存无效的 Sing-box 配置吗？ 此操作可能导致意外问题。请您清楚自己在做什么。",
       "load-from-github": "从 GitHub 加载",
       "tools": "工具",
       "copy-all-content": "复制全部内容",
@@ -176,7 +287,7 @@
     "never": "从不",
     "online-at": "最后在线时间",
     "last-ua": "最后订阅用UA",
-    "lifetime-used": "累计用量",
+    "lifetime-used": "累计使用量",
     "sub-link-revoked-at": "订阅链接撤销于",
     "created-at": "创建于",
     "internal-squads": "内部分组",
@@ -205,9 +316,9 @@
       "restart-all-nodes": "重启所有节点",
       "search-nodes": "搜索节点",
       "force-restart": "强制重启",
-      "force-restart-description": "将保证所有节点将完全重启 Singbox 核心。",
+      "force-restart-description": "将保证所有节点完全重启 Sing-box 核心。",
       "graceful-restart": "平滑重启",
-      "graceful-restart-description-1": "将向所有节点发送请求以重启 Singbox。 但如果节点哈希与当前的哈希相同，则请求可能无法实现。 这是默认的选项。",
+      "graceful-restart-description-1": "重启所有节点上的 Sing-box。 但如果节点哈希与当前的哈希相同，则请求可能无法实现。 这是默认的选项。",
       "force": "强制执行",
       "graceful": "平滑的"
     }
@@ -323,7 +434,7 @@
   "create-user-modal": {
     "widget": {
       "user-description": "用户描述",
-      "expiry-date": "过期日期",
+      "expiry-date": "到期时间",
       "pick-value": "选择值",
       "traffic-reset-strategy": "流量重置策略",
       "traffic-reset-strategy-description": "用户流量使用统计应多久重置一次",
@@ -341,7 +452,7 @@
       "hwid-device-limit": "HWID 设备限制",
       "expire-at-description": "用户的订阅服务将于该时间结束。",
       "internal-squads": "内部分组",
-      "internal-squads-description": "指定用户所属内部分组。",
+      "internal-squads-description": "指定用户将加入的内部分组。",
       "data-limit": "流量限制",
       "data-limit-description": "输入流量限制 GB（0 表示无限制）"
     }
@@ -373,9 +484,9 @@
       "management": "管理",
       "danger-zone": "危险操作区",
       "information": "信息",
-      "detailed-info": "详细信息",
+      "detailed-info": "用户详细信息",
       "subscription": "订阅",
-      "accessible-nodes": "可访问节点",
+      "accessible-nodes": "授权访问节点",
       "qr-code": "二维码"
     }
   },
@@ -411,7 +522,7 @@
     "fill-with-sample-xhttp-extra-params": "填充示例 XHTTP 额外选项",
     "clone": "克隆",
     "address-description-line-1": "地址必须是连接目标的 IP 地址或域名。",
-    "address-description-line-2": "在大多数情况下，它应指向已连接的节点之一。",
+    "address-description-line-2": "在大多数情况下，它应指向某一个在线节点。",
     "port-description-line-1": "连接端口。",
     "port-description-line-2": "在大多数情况下，必须与所选入站的端口匹配。",
     "sni-description-line-1": "SNI 代表服务器名称。",
@@ -442,27 +553,27 @@
     "wildcard-domain": "通配符域名",
     "wildcard-domain-description": "子域的通配符模式。Exodus将以 * 替换为随机生成的字符串。",
     "override-sni-from-address": "从地址覆盖SNI地址",
-    "override-sni-from-address-description": "此选项用指定的地址字段值替换SNI值。这对于多域配置或通配符域配置特别有用。",
+    "override-sni-from-address-description": "此选项用指定的地址字段值替换SNI值。这对于多域名配置或通配符域配置特别有用。",
     "legacy-options": "传统选项",
     "shuffled-hosts-hover-card": "随机排序的主机将放置在列表的顶端。",
     "vless-route-description": "从 1 到 65535，0 或留空以禁用",
     "misc-settings": "杂项设置",
-    "shuffle-host": "随机主机",
+    "shuffle-host": "随机排序主机",
     "mihomo-specific": "Mihomo 特定设置",
     "enable-x25519mlkem768": "启用 x25519mlkem768 ",
     "pick-nodes-which-resolved-from-this-host-only-visual-assignment": "从主机中选择解析的节点。仅可视化。",
     "nodes": "节点",
-    "select-a-xray-json-template": "选择一个 Xray JSON 模板",
-    "xray-json-template": "Xray JSON 模板",
+    "select-a-xray-json-template": "选择一个 Sing-box JSON 模板",
+    "xray-json-template": "Sing-box JSON 模板",
     "override-the-xray-json-template": "覆盖将用于此主机的 Xray JSON 模板。",
-    "vital-parameters": "关键参数",
+    "vital-parameters": "主要参数",
     "exclude-this-host-from-specific-internal-squads": "从指定的内部小队排除此主机",
-    "excluded-internal-squads": "排除的内部分组",
+    "excluded-internal-squads": "被排除的内部分组",
     "keep-sni-blank": "保持SNI 为空",
     "keep-sni-blank-description": "在某些情况下，SNI必须留空。使用此选项强制一个空的SNI。 请注意，此选项具有最高优先级，因此即使SNI已经设置，它也会被应用。",
     "select-one-or-more-subscription-types-description": "选择一个或多个订阅类型，从该订阅类型中排除主机。",
     "exclude-from-subscription-type": "从订阅类型中排除",
-    "hidden-host-description": "默认情况下，Exodus 将不会在订阅中包含隐藏主机。隐藏主机可以在 Mihomo 和 Xray-Json Advant, Raw 中使用",
+    "hidden-host-description": "默认情况下，Exodus 将不会在订阅中包含隐藏主机。隐藏主机可以在 Mihomo 和 Sing-box-Json Advant, Raw 中使用。",
     "server-description-1": "在支持的客户端中，协议名称(例如无)将被此处指定的描述所取代。",
     "server-description-2": "并非所有客户端应用程序都支持此功能。欲了解更多详情，请参阅下面列出的应用程序的文档。",
     "supported-clients": "支持的客户端",
@@ -483,8 +594,36 @@
     "replaces-user-credential": "生成配置时替换用户的协议凭据。",
     "selector-nodes-first": "节点置于选择器开头",
     "selector-nodes-first-description": "用于 Sing-box 和 Mihomo 的 select 组。开启后：该节点放在模板项（如 auto）之前。关闭后：放在其后。",
-    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "隐藏用户的主机。Exodus 将仅发送RAW 订阅。",
-    "mapper": "映射"
+    "mapper": "映射",
+    "group-security": "安全",
+    "group-transport": "传输",
+    "group-subscription": "订阅",
+    "group-client": "特定客户端",
+    "group-advanced": "高级设置",
+    "internal-squads-mode-exclude": "排除",
+    "internal-squads-mode-allow-only": "仅允许",
+    "allowed-internal-squads": "已授权的内部分组",
+    "allow-this-host-only-for-specific-internal-squads": "仅在选定的内部分组显示此主机",
+    "group-assignment": "分配",
+    "access-mode": "接入方式",
+    "override-type": "覆盖类型",
+    "sni": "SNI",
+    "alpn": "ALPN",
+    "vless-route-id": "Vless 路由 ID",
+    "mux-params": "MUX",
+    "sockopt-params": "SockOpt",
+    "final-mask-params": "最终伪装层",
+    "pinned-peer-cert-sha256": "证书固定",
+    "verify-peer-cert-by-name": "通过名称验证证书固定",
+    "mihomo-x25519": "Mihomo X25519",
+    "mihomo-ip-version": "Mihomo IP 版本",
+    "no-options-title": "未配置其他内容",
+    "no-options-description": "这个 Host 使用上面指定的入站和基础配置，可以添加选项来改变它的生成方式，或者指定哪些用户可以使用它",
+    "no-bulk-options-title": "无更改队列",
+    "no-bulk-options-description": "您添加的每个选项都适用于所有选定的主机。留空则清除所有主机的字段。",
+    "bulk-option-will-be-cleared": "将清除所有选中的主机。",
+    "leave-field-untouched": "未触及此字段",
+    "options": "设置"
   },
   "base-node-form": {
     "country": "国家",
@@ -515,15 +654,14 @@
     "page": {
       "online-stats": "在线统计",
       "system": "系统",
-      "bandwidth": "带宽",
+      "bandwidth": "流量使用情况",
       "short-stats": "简要统计",
       "exodus-usage": "Exodus 使用情况",
       "process-details": "进程详情",
-      "runtime": "Runtime",
-      "exodus-usage": "Exodus 使用情况"
+      "runtime": "Runtime"
     },
     "runtime-info": {
-      "title": "运行时指标指南",
+      "title": "运行时指标",
       "subtitle": "运行时卡片上每个数值的实际含义",
       "intro": "每张卡片都展示了一个 <highlight>Exodus 进程</highlight> 的实时状态快照。可通过本说明了解每项指标的含义，以及在什么情况下需要关注或排查问题。",
       "instance-types-title": "进程类型",
@@ -563,8 +701,8 @@
       "60-days": "60 天",
       "90-days": "90 天",
       "180-days": "180 天",
-      "total-traffic": "总流量",
-      "total-traffic-placeholder": "总流量: {{totalTraffic}}",
+      "total-traffic": "总计使用流量",
+      "total-traffic-placeholder": "总计使用流量: {{totalTraffic}}",
       "top-nodes": "活跃节点",
       "filter-nodes": "筛选节点",
       "previous-day": "前一天",
@@ -643,7 +781,7 @@
       "validation-error": "验证错误",
       "main-settings": "主要设置",
       "you-must-add-at-least-one-remark-with-text": "您必须至少添加一个带有文本的备注",
-      "user-status-remarks-description": "如果用户已过期、受限或禁用，以下值将显示在订阅页面中。",
+      "user-status-remarks-description": "如果用户已过期、受限或禁用，以下信息将显示在订阅页面中。",
       "user-status-remarks-description-line-2": "您可以为每种状态添加多个备注。",
       "user-status-remarks-description-line-3": "因为过期、受限和禁用的用户无法连接到服务器，他们将在客户端中看到这些备注，而不是收到空的订阅。",
       "update-settings": "更新设置",
@@ -745,16 +883,16 @@
     "actions": {
       "tab": {
         "feature": {
-          "revoke-subscription": "撤销订阅",
+          "revoke-subscription": "重置订阅",
           "revoke": "撤销",
           "reset-traffic": "重置流量",
           "reset": "重置",
           "perform-action-on-users": "对 {{usersCount}} 位选定用户执行操作",
           "resets-the-traffic-usage-to-zero-for-all-selected-users": "将所有选定用户的流量使用重置为0",
           "revokes-subscription-for-all-selected-users": "撤销所有选定用户的订阅",
-          "specify-internal-squads-that-will-be-assigned-to-the-user": "指定将分配给用户的内部小组",
+          "specify-internal-squads-that-will-be-assigned-to-the-user": "指定用户的内部分组",
           "internal-squads": "内部分组",
-          "extend-expiration-date": "延长日期",
+          "extend-expiration-date": "延长到期日期",
           "enter-the-number-of-days-to-extend-the-expiration-date": "输入延长到期日的天数",
           "extend-days": "延长天数",
           "extend": "延长",
@@ -845,7 +983,7 @@
   },
   "detailed-user-info-drawer": {
     "widget": {
-      "detailed-user-info": "详细用户信息",
+      "detailed-user-info": "用户详细信息",
       "loading-user-info": "正在加载用户信息...",
       "user-information": "用户信息",
       "uuid": "UUID",
@@ -854,18 +992,18 @@
       "email": "邮箱",
       "telegram-id": "Telegram ID",
       "description": "描述",
-      "traffic-information": "流量信息",
+      "traffic-information": "流量使用信息",
       "used-traffic": "已用流量",
       "lifetime-used-traffic": "累计已用流量",
       "traffic-limit": "流量限制",
       "traffic-limit-strategy": "流量限制策略",
-      "last-traffic-reset": "上次流量重置",
+      "last-traffic-reset": "上次流量重置日期",
       "subscription-information": "订阅信息",
       "subscription-url": "订阅 URL",
-      "expires-at": "过期时间",
+      "expires-at": "到期时间",
       "last-opened-at": "最后打开时间",
       "last-user-agent": "最后用户代理",
-      "revoked-at": "撤销于",
+      "revoked-at": "重置时间",
       "connection-information": "连接信息",
       "trojan-password": "Trojan 密码",
       "ss-password": "SS 密码",
@@ -887,7 +1025,7 @@
       "show-custom-remark-description-line-2": "如果禁用此设置，过期、受限和禁用用户将收到实际为空的主机列表。",
       "additional-response-headers": "响应头",
       "headers-that-will-be-sent-with-subscription-content": "将与订阅内容一起发送的响应头。",
-      "randomize-hosts": "随机化主机",
+      "randomize-hosts": "随机排序主机",
       "randomize-hosts-description": "在订阅内容中随机排序主机",
       "additional-options": "附加选项",
       "configure-additional-subscription-options": "配置附加订阅选项",
@@ -953,12 +1091,12 @@
   "internal-squads-usage-drawer": {
     "info": {
       "title": "如何计算使用量",
-      "summary": "返回所选时间范围内，总流量达到或超过指定阈值的内部组成员，并列出每位成员的</b>总流量</b>",
+      "summary": "返回所选时间范围内，总流量达到或超过指定阈值的内部组成员，并列出每位成员的<b>总流量</b>",
       "nodes-title": "哪些节点被计算",
       "nodes-intro": "一个分组没有直接绑定到节点 — 链接是通过输入而产生的：",
-      "nodes-step-1": "已包含内部分组中的所有入站配置",
+      "nodes-step-1": "该内部分组中的所有入站均已被使用。",
       "nodes-step-2": "对于每个嵌入符，它所属的配置配置文件已被解析。",
-      "nodes-step-3": "仅当节点使用了该配置文件且其状态为</b>启用</b>，并且该节点上的对应入站（Inbound）也已启用时，该节点才会被计入统计",
+      "nodes-step-3": "仅当节点使用了该配置文件且其状态为<b>启用</b>，并且该节点上的对应入站（Inbound）也已启用时，该节点才会被计入统计",
       "nodes-outro": "因此，仅统计小组成员<hl>当前实际能够连接</hl>的节点。如果该小组在任何节点上都没有可用的入站，则返回的列表为空。",
       "traffic-title": "流量计算方式",
       "traffic-granularity": "统计数据按<b>天</b>存储：一条记录 = 用户 + 节点 + 日期。节点数据大约每 <hl>2 分钟</hl> 刷新一次到数据库，因此当天的数据接近实时，最多可能延迟几分钟。",
@@ -1036,7 +1174,7 @@
   "internal-squads-grid": {
     "widget": {
       "no-internal-squads": "暂无内部分组",
-      "create-your-first-internal-squad-to-get-started": "创建你的第一个内部分组以开始使用",
+      "create-your-first-internal-squad-to-get-started": "创建第一个内部分组，开始使用",
       "delete-squad": "删除分组",
       "inbounds": "入站连接",
       "users": "用户",
@@ -1055,7 +1193,7 @@
       "download": "下载",
       "quick-view": "快速查看",
       "edit-xray-config": "编辑 Singbox 配置",
-      "xray-config": "Singbox",
+      "xray-config": "Sing-box 配置",
       "edit-singbox-config": "Singbox"
     }
   },
@@ -1226,7 +1364,7 @@
   },
   "internal-squads-list": {
     "widget": {
-      "search-internal-squads": "搜索内部分组...",
+      "search-internal-squads": "搜索内部分组……",
       "no-squads-found": "未找到分组"
     }
   },
@@ -1377,14 +1515,14 @@
       "you-can-customize-singbox-config-after-creation": "创建后可以自定义 Singbox 配置。",
       "profile-name": "配置文件名称",
       "enter-profile-name": "输入配置文件名称",
-      "you-can-customize-xray-config-after-creation": "创建后可以自定义 XRay 配置。"
+      "you-can-customize-xray-config-after-creation": "创建后，您可以自定义 Sing-box 配置。"
     }
   },
   "restart-node-button": {
     "feature": {
       "restart": "重新启动",
-      "restart-description-line-1": "确保节点完全重启 Singbox 核心。建议选中。",
-      "restart-description-line-2": "将向所有节点发送请求以重启 Singbox。 但如果节点哈希与当前的哈希相同，则请求可能无法实现。 这是默认的选项。"
+      "restart-description-line-1": "确保节点完全重启Xra核心。建议选中。",
+      "restart-description-line-2": "重启所有节点上的 Sing-box。 但如果节点哈希与当前的哈希相同，则请求可能无法实现。 这是默认的选项。"
     }
   },
   "node-details-card": {
@@ -1398,9 +1536,8 @@
       "disable-node": "禁用节点",
       "config-profile-or-inbounds-is-missing": "缺少配置文件或者入站配置",
       "exodus-node-version": "节点版本，@exodus/节点",
-      "singbox-core-version": "Singbox 核心版本",
-      "xray-core-version": "Xray 核心版本",
-      "exodus-node-version": "节点版本，@exodus/节点"
+      "singbox-core-version": "Sing-box 核心版本",
+      "xray-core-version": "Xray 核心版本"
     }
   },
   "config-profiles": {
@@ -1446,7 +1583,7 @@
     "card": {
       "stats": "统计信息",
       "traffic-refill-in-days": "流量重置(天)：",
-      "represents-the-uptime-of-the-singbox-core": "表示Singbox 核心的运行时间",
+      "represents-the-uptime-of-the-singbox-core": "表示Sing-box 核心的运行时间",
       "represents-the-uptime-of-the-subscription-node-container": "表示订阅节点容器的运行时间",
       "represents-the-uptime-of-the-xray-core": "表示Xray 核心的运行时间"
     }
@@ -1460,7 +1597,7 @@
   "host-tags-input": {
     "tag-can-only-contain-uppercase-letters-numbers-underscores-and-colons": "标签只能包含大写字母、数字、下划线和冒号",
     "tag-must-be-less-than-32-characters": "标签必须小于 32 个字符",
-    "tags-are-not-visible-to-end-users-tag-will-be-sent-with-raw-subscription-only": "标签对最终用户不可见。标签将只能与 RAW 订阅一起发送。",
+    "tags-are-not-visible-to-end-users-tag-will-be-sent-with-raw-subscription-only": "标签对最终用户不可见。标签将只能与 Raw 订阅一起发送。",
     "clear-value": "清除"
   },
   "rename-modal": {
@@ -1471,7 +1608,7 @@
   "internal-squad-accessible-nodes": {
     "modal": {
       "widget": {
-        "internal-squad-accessible-nodes": "内置分组可访问节点"
+        "internal-squad-accessible-nodes": "内置分组授权访问节点"
       }
     }
   },
@@ -1513,7 +1650,7 @@
       "platforms": "平台",
       "total-unique-devices": "唯一设备总数",
       "total-hwid-devices": "HWID 设备总数",
-      "avg-devices-per-user": "每个用户平均设备数",
+      "avg-devices-per-user": "平均每个用户设备数",
       "platform-distribution": "平台分布",
       "app-distribution": "应用分布",
       "no-platform-data": "无平台数据",
@@ -1548,7 +1685,7 @@
   },
   "get-node-linked-hosts": {
     "feature": {
-      "linked-hosts": "链接的主机"
+      "linked-hosts": "关联主机"
     }
   },
   "snippets": {
@@ -1560,11 +1697,11 @@
         "fetching-snippets": "正在获取代码块...",
         "no-snippets-yet": "尚无代码块",
         "more-items": "更多项目...",
-        "create-snippet": "创建代码块",
-        "snippet-name": "代码块名称",
+        "create-snippet": "创建片段",
+        "snippet-name": "片段名称",
         "enter-snippet-name-cannot-be-changed-later": "输入代码块名称 (稍后不能更改)",
         "snippet-is-valid": "代码块有效",
-        "edit-snippet": "编辑代码块",
+        "edit-snippet": "编辑片段",
         "snippets": "代码块",
         "new-snippet": "新建代码块",
         "snippets-help-line-1": "它们用于预定义您的一些配置。",
@@ -1596,17 +1733,16 @@
     "content-for-the-exodus-node-below": "以下是 Exodus 节点的内容。",
     "learn-more": "了解更多。",
     "domain-or-ip": "域名或IP",
-    "additional-options": "附加参数",
-    "content-for-the-exodus-node-below": "以下是 Exodus 节点的内容。"
+    "additional-options": "附加参数"
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "正在建立mTLS连接...",
     "exodus-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接...",
     "no-errros-so-far": "到目前为止没有错误",
     "last-error-message": "最后一个错误消息",
-    "singbox-core-is-up-and-running": "Singbox 核心正在运行！",
+    "singbox-core-is-up-and-running": "Sing-box 核心正在运行！",
     "xray-core-is-up-and-running": "Xray 核心正在运行！",
-    "exodus-will-try-to-reconnect-shortly": "Exodus 将很快尝试重新连接..."
+    "no-errors-so-far": "到目前为止没有错误"
   },
   "external-squad-card": {
     "widget": {
@@ -1630,7 +1766,7 @@
         "subscription-templates-description-line-2": "请注意，《响应规则》有更高的优先级别。",
         "select-a-template": "选择一个模板",
         "default-template-in-use": "正在使用默认模板...",
-        "edit-external-squad": "编辑额外分组",
+        "edit-external-squad": "编辑外部分组",
         "templates": "模板",
         "settings": "设置",
         "remarks": "备注"
@@ -1645,7 +1781,7 @@
   "external-squads-grid": {
     "widget": {
       "no-external-squads": "暂无外部分组",
-      "no-external-squads-line-1": "额外分组允许您为特定用户组自定义设置。",
+      "no-external-squads-line-1": "外部分组允许您为特定用户组自定义设置。",
       "no-external-squads-line-2": "你可以覆盖每个分组的默认订阅模板和其他设置。",
       "no-external-squads-line-3": "创建一个分组并指定用户应用自定义配置。"
     }
@@ -1725,7 +1861,7 @@
       },
       "keycloakDomain": {
         "label": "Keycloak 域",
-        "description": "无协议头的 Keycloak 服务器域 (例如keycloak.docs.exodus)"
+        "description": "无协议头的 Keycloak 服务器域 (例如keycloak.docs.ex)"
       }
     }
   },
@@ -1748,14 +1884,13 @@
       "the-title-that-will-be-displayed-on-login-page": "登录页面显示的标题",
       "brand-name": "品牌名称",
       "logo-url": "Logo 网址链接",
-      "the-url-to-your-brand-logo-image": "您品牌徽标图片的 URL。接受普通http(s) URL或base64数据URL(data:image/svg+xml;base64...)",
+      "the-url-to-your-brand-logo-image": "您品牌徽标图片的 URL。接受普通http(s) URL或base64数据URL(data:image/svg+xml;base64...)。",
       "colored-title-format": "彩色标题格式",
       "colored-title-description": "您可以使用 {color}文字 语法为单个单词着色。支持十六进制颜色 (#RRGGBB) 和 MantineUI 颜色名称。",
       "example-hex-colors": "十六进制颜色示例",
       "example-mantine-colors": "MantineUI颜色示例",
       "example-mixed": "混合颜色示例",
-      "color-format-note": "💡 颜色仅适用于标记后面的单词。没有标记，文本将为白色。",
-      "customize-your-exodus-instance": "自定义您的 Exodus 实例"
+      "color-format-note": "💡 颜色仅适用于标记后面的单词。没有标记，文本将为白色。"
     }
   },
   "visual-settings-card": {
@@ -1771,7 +1906,7 @@
       "api-tokens-description": "管理您的 API Token用于程序访问。",
       "api-tokens": "API Tokens",
       "no-api-tokens-found": "未找到 API Tokens",
-      "token-name": "API Tokens 名称",
+      "token-name": "Tokens 名称",
       "create-api-token": "创建新 API 密钥",
       "full-access": "完全访问权限",
       "col-scopes": "范围",
@@ -1786,7 +1921,7 @@
   "external-squads-hosts": {
     "tab": {
       "widget": {
-        "host-overrides": "主机替换",
+        "host-overrides": "主机覆写",
         "override-host-settings-for-this-external-squad": "覆盖此外部分组的主机设置."
       }
     }
@@ -1799,7 +1934,7 @@
   },
   "help-action-icon": {
     "shared": {
-      "help-article": "帮助文章"
+      "help-article": "帮助"
     }
   },
   "internal-squad-card": {
@@ -1837,7 +1972,7 @@
       "fallback-device-limit-description": "输入可以通过订阅同时使用的最大设备数量",
       "fallback-device-limit": "回退设备限制",
       "max-devices-announce-description": "输入用户达到设备同时最大使用数量时将显示的消息",
-      "max-devices-announce": "最多设备公告",
+      "max-devices-announce": "最多设备通知",
       "max-200-characters": "最多为200字符",
       "documentation": "文档"
     }
@@ -1854,7 +1989,7 @@
   "external-squads-custom-remarks": {
     "widget": {
       "override-remarks-description": "覆盖此外部分组的用户状态注释。禁用时，将使用全局订阅设置。",
-      "enable-override": "启用覆盖"
+      "enable-override": "启用覆写"
     }
   },
   "subscription-user-remarks-card": {
@@ -1885,7 +2020,7 @@
     "cpu-model": "CPU 型号",
     "singbox-v": "Singbox V.",
     "ip-addresses": "IP 地址",
-    "xray-v": "Xray V."
+    "xray-v": "Singbox V."
   },
   "subpage-config-visual-editor": {
     "widget": {
@@ -2075,7 +2210,8 @@
       "revoke": "撤销",
       "passwords-only": "仅密码",
       "passwords-only-decription": "只重新生成连接密码，订阅URL保持相同",
-      "full-revoke-description": "重新生成订阅的 URL 和连接密码"
+      "full-revoke-description": "重新生成订阅的 URL 和连接密码",
+      "passwords-only-description": "只重新生成连接密码，订阅URL保持相同"
     }
   },
   "nodes-quick-stats": {
@@ -2125,7 +2261,7 @@
   },
   "node-plugin-card": {
     "widget": {
-      "active-on-nodes": "已在节点上激活"
+      "active-on-nodes": "已在节点上启用"
     }
   },
   "adtive-on-nodes": {
@@ -2162,7 +2298,9 @@
       "no-connected-nodes-available": "无可用的已连接节点。",
       "deselect-all": "取消全选",
       "select-all": "全选",
-      "execute": "启动"
+      "execute": "启动",
+      "block-ips-description": "每行一个条目。超时为 0 = 块直到重启一直有效。",
+      "unblock-ips-description": "每行一个 IP 地址。"
     }
   },
   "torrent-blocker-stats": {
@@ -2204,7 +2342,7 @@
   },
   "user-torrent-blocker-report-item": {
     "processed-at": "处理时间",
-    "unblocked-at": "解除阻止在"
+    "unblocked-at": "解除阻止时间"
   },
   "get-user-torrent-blocker-reports": {
     "feature": {
@@ -2269,9 +2407,9 @@
   },
   "prime-modal": {
     "shared": {
-      "description": "支持项目并成为核心成员——更贴近团队、产品路线以及实际工作",
+      "description": "支持项目并成为核心成员——更贴近团队、产品路线以及实际工作。",
       "priority-support-title": "优先支持",
-      "priority-support-description": "跳过排队——你的问题将优先得到团队的直接解答",
+      "priority-support-description": "跳过排队——你的问题将优先得到团队的直接解答。",
       "private-community-title": "私密社群",
       "private-community-description": "仅限 Prime 会员参与的专属社群",
       "shape-the-roadmap-title": "参与路线规划",
@@ -2484,7 +2622,109 @@
   },
   "quick-open": {
     "page": {
-      "description": "Open any entity by its identifier, or copy a direct link to share"
+      "description": "输入ID用来打开UI，或方便分享直达连接"
     }
+  },
+  "bulk-user-actions-modal": {
+    "widget": {
+      "user-deletion-description": "删除所有特定状态的用户。如果您删除状态为“活跃”的用户，应重启所有节点以使更改生效。",
+      "select-status": "按状态删除"
+    }
+  },
+  "user-identity-creation-card": {
+    "user-identity": "用户身份"
+  },
+  "experimental-settings-card": {
+    "widget": {
+      "experimental-features": "实验性功能",
+      "description": "仍在开发中的功能。它们可以随时改变或消失。",
+      "legacy-layout-style": "传统布局样式"
+    }
+  },
+  "active-on-nodes": {
+    "modal": {
+      "shared": {
+        "this-plugin-is-not-active-on-any-nodes": "该插件未在任何节点上启用。"
+      }
+    }
+  },
+  "node-ssh": {
+    "title": "SSH 终端",
+    "key-imported": "您的密钥",
+    "key-description-imported": "签名使用您导入的密钥；它永远不会离开您的浏览器。请确保它的公钥在服务器上的授权密钥中。",
+    "key-use-own": "使用自己的密钥",
+    "key-generate-new": "生成一个新密钥",
+    "key-import": "导入密钥",
+    "key-import-title": "使用您自己的密钥",
+    "key-import-label": "私钥",
+    "key-import-description": "保留在此浏览器中，用于加密密码库。不支持密码保护密钥。",
+    "key-error": {
+      "encrypted": "此密钥受密码保护。删除密码短语，或导入一个不带密码的副本。",
+      "malformed": "无法读取密钥。请复制整个文件，包括BEGIN和END行。",
+      "unsupported-algo": "仅支持Ed25519和RSA密钥。",
+      "unsupported-format": "这看起来不像一个私钥文件。"
+    },
+    "vault-setup-title": "设置密码库",
+    "vault-unlock-title": "解锁密码库",
+    "seed-warning": "将这12字恢复密钥记下并妥善保存。 他们是恢复您的 SSH 密钥的唯一途径——注意：面板无法再次查看，也无法恢复关键字。",
+    "create-vault": "创建密码库",
+    "unlock": "解锁",
+    "unlock-description": "输入创建密码库时保存的12字恢复密钥。",
+    "seed-invalid": "这不是一个有效的 12 个单词的恢复密钥",
+    "seed-mismatch": "此恢复密语与此浏览器中存储的密码库不匹配",
+    "key-title": "安装公钥",
+    "key-description": "已为此节点生成专用密钥，永远不会离开您的浏览器。将下面的行添加到服务器上授权的密钥，然后连接。",
+    "authorized-keys": "授权密钥条目",
+    "host": "主机",
+    "host-hint": "留空则使用节点地址",
+    "connect": "连接",
+    "hostkey-new-title": "未定义的快捷键",
+    "hostkey-new-description": "这是您第一次从这个浏览器连接到这个主机。在信任它之前验证指纹。",
+    "hostkey-changed-title": "主机密钥已更改",
+    "hostkey-changed-description": "主机密钥与您以前信任的不匹配。 这可能意味着服务器已经重新安装——或者有人正在拦截连接。",
+    "fingerprint": "指纹",
+    "known-fingerprint": "之前信任的",
+    "trust-and-connect": "信任并连接",
+    "abort": "中止",
+    "disconnected": "会话已关闭",
+    "passcode-required-description": "此浏览器还没有密码，因此您不必每次输入恢复短语。",
+    "passcode-save": "保存密码",
+    "passcode-title": "为此浏览器设置密码",
+    "passcode-description": "重新加载后解锁此浏览器上的密码库。",
+    "passcode-length": "{{length}} 字符，其中至少有一个字母。",
+    "passcode-needs-letter": "至少添加一个字母。",
+    "passcode-unlock-description": "输入您为此浏览器设置的密码。",
+    "passcode-wrong": "密码错误",
+    "passcode-attempts": "剩余尝试次数: {{count}}",
+    "passcode-exhausted": "密码错误次数过多，密码被锁定，使用恢复短语解锁并设置新恢复短语。",
+    "use-phrase": "忘记了您的密码？",
+    "use-passcode": "返回到密码",
+    "connection-settings": "设置",
+    "resize": "调整窗口大小",
+    "retry": "重试",
+    "ticket-failed": "面板拒绝建立会话。",
+    "vault-manage": "管理密码库",
+    "export": "导出密码库",
+    "export-locked": "先解锁密码库 — — 备份只能从进入密码库后进行。",
+    "export-description": "使用您的节点密钥和地址保存加密文件。 没有恢复短语，它中的任何东西都无法读取，因此它可以安全地留在任何地方。",
+    "import": "导入密码库",
+    "import-description": "从备份文件还原密钥。请输入备份中创建的恢复短语。",
+    "import-select": "选择备份文件",
+    "import-ready": "从 {{date}} 恢复",
+    "create-new-instead": "创建新密码库",
+    "reset-really": "是的，删除所有密钥",
+    "import-invalid": "此文件不是密码库备份",
+    "import-mismatch": "恢复短语不能用于这个备份",
+    "reset": "重置密码库",
+    "reset-description": "删除密码库和其中的所有 SSH 密钥。 节点会拒绝旧的密钥，所以您必须在每个密钥上安装新的公钥。面板访问不受影响。",
+    "lost-everything": "忘记密码和恢复短语？",
+    "snippets-title": "片段",
+    "snippets-empty": "目前还没有片段",
+    "snippet-command": "命令",
+    "snippet-add": "添加片段",
+    "snippet-edit": "编辑片段",
+    "connections-title": "已保存的连接",
+    "connections-empty": "尚无保存的连接",
+    "connections-current": "当前设置"
   }
 }

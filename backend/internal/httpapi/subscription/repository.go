@@ -63,10 +63,10 @@ type cachedNamedTemplate struct {
 }
 
 const (
-	subSettingsCacheTTL = 1 * time.Hour
+	subSettingsCacheTTL    = 1 * time.Hour
 	squadOverridesCacheTTL = 1 * time.Hour
-	subNodeBaseTTL      = 30 * time.Second
-	subTemplateCacheTTL = 5 * time.Minute
+	subNodeBaseTTL         = 30 * time.Second
+	subTemplateCacheTTL    = 5 * time.Minute
 )
 
 func init() {
@@ -270,6 +270,9 @@ func loadExternalSquadOverrides(ctx context.Context, dbConn *sql.DB, squadUUID s
 			overrides.Templates[strings.ToUpper(templateType)] = templateName
 			log.Debug("Loaded template override", "type", templateType, "name", templateName)
 		}
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Warn("Error iterating external squad templates", "error", rowsErr)
+		}
 	} else {
 		log.Warn("Failed to load external squad templates", "error", err)
 	}
@@ -435,7 +438,11 @@ func getHostsForUser(ctx context.Context, dbConn *sql.DB, user SubscriptionUser)
 }
 
 func getHostsForUserWithOptions(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, withDisabled, withHidden bool) ([]SubscriptionHost, error) {
-	whereClause := "ism.user_id = $1 AND ihe.host_uuid IS NULL"
+	whereClause := `ism.user_id = $1 AND (
+		(COALESCE(h.internal_squads_mode, 'EXCLUDE') = 'ALLOW_ONLY' AND ishl.host_uuid IS NOT NULL)
+		OR
+		(COALESCE(h.internal_squads_mode, 'EXCLUDE') != 'ALLOW_ONLY' AND ishl.host_uuid IS NULL)
+	)`
 	if !withDisabled {
 		whereClause += " AND NOT COALESCE(h.is_disabled, false)"
 	}
@@ -457,8 +464,8 @@ func getHostsForUserWithOptions(ctx context.Context, dbConn *sql.DB, user Subscr
 		JOIN internal_squad_inbounds isi ON ism.internal_squad_uuid = isi.internal_squad_uuid
 		JOIN config_profile_inbounds cpi ON isi.inbound_uuid = cpi.uuid
 		JOIN hosts h ON h.config_profile_inbound_uuid = cpi.uuid
-		LEFT JOIN internal_squad_host_exclusions ihe
-			ON ihe.host_uuid = h.uuid AND ihe.squad_uuid = ism.internal_squad_uuid
+		LEFT JOIN internal_squad_host_links ishl
+			ON ishl.host_uuid = h.uuid AND ishl.squad_uuid = ism.internal_squad_uuid
 		WHERE %s
 		ORDER BY h.view_position ASC, h.remark ASC
 	`, whereClause)
@@ -802,15 +809,26 @@ func enqueueOrUpsertHwidUserDevice(ctx context.Context, dbConn *sql.DB, userID i
 	return upsertHwidUserDevice(ctx, dbConn, userID, hwid)
 }
 
-func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID string, userID int64, userAgent, requestIP string) {
+func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID string, userID int64, userAgent, requestIP, responseType, ruleName string) {
+	if responseType == "" {
+		responseType = "UNKNOWN"
+	}
+	var ruleVal *string
+	if strings.TrimSpace(ruleName) != "" {
+		trimmed := strings.TrimSpace(ruleName)
+		ruleVal = &trimmed
+	}
+
 	updateQueued, updateErr := jobqueue.EnqueueUpdateUserSubscription(ctx, jobqueue.UpdateUserSubscriptionPayload{
 		UserUUID:  userUUID,
 		UserAgent: userAgent,
 	})
 	recordQueued, recordErr := jobqueue.EnqueueAddSubscriptionRequestRecord(ctx, jobqueue.AddSubscriptionRequestRecordPayload{
-		UserID:    userID,
-		RequestIP: requestIP,
-		UserAgent: userAgent,
+		UserID:          userID,
+		RequestIP:       requestIP,
+		UserAgent:       userAgent,
+		SRRResponseType: responseType,
+		SRRRuleName:     ruleVal,
 	})
 	if updateErr == nil && recordErr == nil && updateQueued && recordQueued {
 		return
@@ -821,9 +839,9 @@ func updateSubscriptionRequest(ctx context.Context, dbConn *sql.DB, userUUID str
 		defer cancel()
 
 		_, _ = dbConn.ExecContext(jobCtx, `
-			INSERT INTO user_subscription_request_history (user_id, srr_response_type, request_ip, user_agent)
-			VALUES ($1, 'UNKNOWN', $2, $3)
-		`, userID, requestIP, userAgent)
+			INSERT INTO user_subscription_request_history (user_id, srr_response_type, srr_rule_name, request_ip, user_agent)
+			VALUES ($1, $2, $3, $4, $5)
+		`, userID, responseType, ruleVal, requestIP, userAgent)
 
 		_, _ = dbConn.ExecContext(jobCtx, `
 			DELETE FROM user_subscription_request_history

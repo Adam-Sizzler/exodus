@@ -9,5 +9,6 @@ exports.NodePluginSchema = zod_1.default.object({
     uuid: zod_1.default.uuid(),
     viewPosition: zod_1.default.number().int(),
     name: zod_1.default.string(),
+    tags: zod_1.default.array(zod_1.default.string()).default([]),
     pluginConfig: zod_1.default.nullable(zod_1.default.unknown()),
 });

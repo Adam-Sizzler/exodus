@@ -40,3 +40,4 @@ __exportStar(require("./subscription-template"), exports);
 __exportStar(require("./subscriptions"), exports);
 __exportStar(require("./system"), exports);
 __exportStar(require("./users"), exports);
+__exportStar(require("./node-ssh"), exports);

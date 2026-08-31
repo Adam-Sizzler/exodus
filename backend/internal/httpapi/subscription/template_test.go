@@ -112,13 +112,13 @@ func TestAllTemplateVariables(t *testing.T) {
 func TestResolveHostRemarksConnectionKeys(t *testing.T) {
 	desc := "1www"
 	now := time.Now()
-	expireAt := now.Add(217 * 24 * time.Hour + 2 * time.Hour)
+	expireAt := now.Add(217*24*time.Hour + 2*time.Hour)
 
 	user := SubscriptionUser{
 		Username:          "switzerland_user",
 		ShortUUID:         "swz123",
-		TrafficLimitBytes: 1024 * 1024 * 1024 * 1024,      // 1024 GiB
-		UsedTrafficBytes:  400001000000,                  // ~372.53 GiB
+		TrafficLimitBytes: 1024 * 1024 * 1024 * 1024, // 1024 GiB
+		UsedTrafficBytes:  400001000000,              // ~372.53 GiB
 		ExpireAt:          expireAt,
 		Description:       &desc,
 	}

@@ -21,6 +21,7 @@ type InternalSquad struct {
 	UUID         string    `json:"uuid"`
 	ViewPosition int       `json:"view_position"`
 	Name         string    `json:"name"`
+	Tags         []string  `json:"tags"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -45,6 +46,7 @@ type InternalSquadAPI struct {
 	UUID         string                    `json:"uuid"`
 	ViewPosition int                       `json:"viewPosition"`
 	Name         string                    `json:"name"`
+	Tags         []string                  `json:"tags"`
 	Info         InternalSquadInfo         `json:"info"`
 	Inbounds     []InternalSquadInboundAPI `json:"inbounds"`
 	CreatedAt    time.Time                 `json:"createdAt"`
@@ -62,8 +64,9 @@ type InternalSquadAccessibleNode struct {
 
 // InternalSquadCreateRequest represents a request to create a new internal squad.
 type InternalSquadCreateRequest struct {
-	ViewPosition int    `json:"viewPosition"`
-	Name         string `json:"name"`
+	ViewPosition int      `json:"viewPosition"`
+	Name         string   `json:"name"`
+	Tags         []string `json:"tags,omitempty"`
 }
 
 // Validate validates the InternalSquadCreateRequest fields.
@@ -79,6 +82,7 @@ type InternalSquadUpdateRequest struct {
 	UUID         string   `json:"uuid,omitempty"`
 	ViewPosition *int     `json:"viewPosition,omitempty"`
 	Name         *string  `json:"name,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
 	Inbounds     []string `json:"inbounds,omitempty"`
 }
 
@@ -153,6 +157,7 @@ type reorderSquadItem struct {
 
 type reorderSquadsRequest struct {
 	Squads []reorderSquadItem `json:"squads"`
+	Items  []reorderSquadItem `json:"items"`
 }
 
 // InternalSquadInbound represents a binding between a squad and an inbound.

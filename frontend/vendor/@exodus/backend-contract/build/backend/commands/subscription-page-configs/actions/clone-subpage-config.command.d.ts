@@ -11,6 +11,7 @@ export declare namespace CloneSubpageConfigCommand {
             uuid: z.ZodUUID;
             viewPosition: z.ZodNumber;
             name: z.ZodString;
+            tags: z.ZodDefault<z.ZodArray<z.ZodString>>;
             config: z.ZodUnknown;
         }, z.core.$strip>;
     }, z.core.$strip>;

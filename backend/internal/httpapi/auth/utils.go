@@ -187,6 +187,13 @@ func CurrentAuthPrincipal(ctx context.Context) (*AuthPrincipal, bool) {
 	return principal, true
 }
 
+func WithAuthPrincipal(ctx context.Context, principal *AuthPrincipal) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, authPrincipalContextKey, principal)
+}
+
 // --- API Scopes ----------------------------------------------------------
 func requireAPITokenScope(principal *AuthPrincipal, r *http.Request, cfg *config.BackendConfig) bool {
 	if principal == nil {

@@ -160,6 +160,10 @@ func ApplyMigrations(ctx context.Context, dbConn *sql.DB, cfg *config.BackendCon
 		}
 		legacyMigrations = append(legacyMigrations, appliedName)
 	}
+	if err := appliedRows.Err(); err != nil {
+		_ = appliedRows.Close()
+		return fmt.Errorf("iterate applied migrations: %w", err)
+	}
 	if err := appliedRows.Close(); err != nil {
 		return fmt.Errorf("close applied migrations cursor: %w", err)
 	}

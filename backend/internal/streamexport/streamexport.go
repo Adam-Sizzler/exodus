@@ -14,7 +14,7 @@ const (
 	StreamKeyUserUsage            = "ioraw:export:user_usage"
 	StreamKeySubscriptionRequests = "ioraw:export:subscription_requests"
 
-	UserUsageStreamMessageVersion            = "1"
+	UserUsageStreamMessageVersion           = "1"
 	SubscriptionRequestStreamMessageVersion = "1"
 )
 

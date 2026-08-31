@@ -9,7 +9,7 @@ exports.SharedListNameSchema = zod_1.default
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(255, 'Name must be less than 255 characters')
-    .regex(/^[A-Za-z0-9_-]+$/, 'Name can only contain letters, numbers, underscores and dashes. The "ext:" prefix is added automatically');
+    .regex(/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/, 'Name can only contain letters, numbers, underscores, dashes and slashes. The "ext:" prefix is added automatically');
 exports.SharedListsSchema = zod_1.default.object({
     name: exports.SharedListNameSchema,
     config: zod_1.default.record(zod_1.default.string(), zod_1.default.unknown()),

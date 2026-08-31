@@ -32,7 +32,8 @@
     "http-stats": "HTTP Stats",
     "subscription-connections": "نودها",
     "srs-lists": "SRS Lists",
-    "quick-open": "Quick open"
+    "quick-open": "Quick open",
+    "quick-launcher": "Launcher"
   },
   "common": {
     "delete": "حذف",
@@ -88,7 +89,118 @@
     "shared-lists": "Shared lists",
     "try-again": "Try again",
     "interface": "Interface",
-    "ip-address": "IP address"
+    "ip-address": "IP address",
+    "action": {
+      "actions": "Actions",
+      "add": "افزودن",
+      "add-users": "افزودن کاربران",
+      "bulk-actions": "Bulk actions",
+      "bulk-edit": "Bulk edit",
+      "cancel": "لغو",
+      "change": "تغییر دادن",
+      "clear": "پاک کردن",
+      "clear-selection": "لغو انتخاب",
+      "clone": "همانندسازی",
+      "close": "بستن",
+      "confirm-action": "تأیید اقدام",
+      "continue": "ادامه",
+      "copy": "کپی",
+      "copy-link": "Copy link",
+      "copy-uuid": "کپی UUID",
+      "create": "ایجاد",
+      "delete": "حذف",
+      "disable": "غیرفعالسازی",
+      "documentation": "مستندات",
+      "download": "دانلود",
+      "edit": "ویرایش",
+      "enable": "فعالسازی",
+      "load-from-github": "بارگذاری از گیت‌هاب",
+      "more-actions": "عملیات بیشتر",
+      "next": "بعدی",
+      "open": "Open",
+      "paste": "Paste",
+      "paste-default": "Paste default",
+      "refresh": "تازه‌سازی",
+      "remove": "حذف کردن",
+      "remove-users": "پاک کردن کاربران",
+      "rename": "تغییر نام",
+      "reset": "بازنشانی",
+      "reset-traffic": "بازنشانی ترافیک",
+      "save": "ذخیره",
+      "search": "جستجو",
+      "select": "انتخاب",
+      "select-all": "انتخاب همه",
+      "try-again": "Try again",
+      "update": "به‌روزرسانی",
+      "view": "View"
+    },
+    "field": {
+      "active-sessions": "Active sessions",
+      "address": "آدرس",
+      "all": "همه",
+      "billing-node": "نود صورتحساب",
+      "color": "Color",
+      "created-at": "ساخته شده در",
+      "creation": "Creation",
+      "description": "توضیحات",
+      "first-connected-at": "اولین اتصال",
+      "inbounds": "اینباندها",
+      "inbounds-hosts": "Inbounds & hosts",
+      "interface": "Interface",
+      "internal-squads": "اسکوادهای داخلی",
+      "ip-address": "IP address",
+      "ip-addresses": "IP addresses",
+      "logo-url": "آدرس URL لوگو",
+      "name": "اسم",
+      "os-version": "نسخه سیستم‌عامل",
+      "password": "گذرواژه",
+      "platform": "پلتفرم",
+      "port": "پورت",
+      "request-at": "درخواست شده در",
+      "shared-lists": "Shared lists",
+      "status": "وضعیت",
+      "subscription-request-history": "تاریخچه درخواست اشتراک",
+      "subscription-url": "لینک اشتراک",
+      "svg-icon": "آیکون SVG",
+      "system": "سیستم",
+      "tag": "برچسب",
+      "tags": "Tags",
+      "untagged": "Untagged",
+      "today": "امروز",
+      "total": "مجموع",
+      "total-traffic": "مصرف کل ترافیک",
+      "updated-at": "به‌روزرسانی شده در",
+      "usage-stats": "Usage stats",
+      "user-agent": "عامل کاربر",
+      "user-status": "وضعیت کاربر",
+      "username": "نام کاربر"
+    },
+    "message": {
+      "click-to-see-all": "برای دیدن همه کلیک کنید",
+      "configured": "Configured",
+      "confirm-action-description": "آیا از انجام دادن این عملیات مطمئن هستید؟ این کار غیرقابل بازگشت است.",
+      "copied": "کپی شد",
+      "error": "خطا",
+      "event-sent": "رویداد ارسال شد",
+      "invalid-json": "JSON نامعتبر",
+      "last-error-message": "آخرین پیام خطا",
+      "loading": "در حال بارگذاری",
+      "no-config-profiles-available": "هیچ پروفایل پیکربندی‌ای موجود نیست",
+      "no-data-available": "داده‌ای در دسترس نیست",
+      "no-data-available-for-the-selected-period": "داده‌ای برای دوره انتخاب‌شده در دسترس نیست",
+      "no-inbound-selected": "هیچ اینباندی انتخاب نشده است",
+      "no-profile-selected": "هیچ پروفایلی انتخاب نشده",
+      "no-profiles-or-inbounds-found": "هیچ پروفایل یا اینباندی یافت نشد",
+      "not-set": "تنظیم نشده",
+      "nothing-found": "چیزی یافت نشد",
+      "operation-completed": "Operation completed",
+      "overdue": "Overdue",
+      "processing": "Processing",
+      "search-profiles-or-inbounds": "جستجوی پروفایل یا اینباند...",
+      "selected": "Selected: {{count}}",
+      "success": "با موفقیت انجام شد",
+      "warning": "هشدار"
+    }
   },
   "bandwidth-metrics": {
     "current-year": "امسال",
@@ -182,7 +294,7 @@
     "first-connected-at": "اولین اتصال",
     "sub-last-opened-at": "آخرین دریافت اشتراک",
     "tag": "برچسب",
-    "used-traffic": "Used Traffic (%)"
+    "used-traffic": "Used traffic (%)"
   },
   "header-buttons": {
     "feature": {}
@@ -204,9 +316,9 @@
       "restart-all-nodes": "ریستارت کردن تمامی نودها",
       "search-nodes": "جست‌وجوی نودها",
       "force-restart": "ری‌استارت اجباری",
-      "force-restart-description": "با این روش همه نودها هسته Singbox را به صورت اجباری ری‌استارت خواهند کرد",
+      "force-restart-description": "با این روش همه نودها هسته Sing-box را به صورت اجباری ری‌استارت خواهند کرد",
       "graceful-restart": "راه‌اندازی مجدد آرام",
-      "graceful-restart-description-1": "با این روش درخواست ری‌استارت هسته Singbox به همه نودها ارسال خواهد شد اما درصورت یکسان بودن هش نود با هش فعلی ممکن است درخواست اجرا نشود. این، حالت پیشفرض ری‌استارت است",
+      "graceful-restart-description-1": "با این روش درخواست ری‌استارت هسته به همه نودها ارسال خواهد شد اما درصورت یکسان بودن هش نود با هش فعلی ممکن است درخواست اجرا نشود. این، حالت پیشفرض ری‌استارت است",
       "force": "اجباری",
       "graceful": "آرام"
     }
@@ -460,8 +572,8 @@
     "keep-sni-blank": "SNI خالی بماند",
     "keep-sni-blank-description": "در برخی موارد باید SNI خالی بماند. از این گزینه برای خالی گذاشتن SNI استفاده کنید. توجه داشته باشید که این گزینه بالاترین اولویت را دارد، بنابراین حتی اگر SNI از قبل تنظیم شده باشد، اعمال خواهد شد.",
     "select-one-or-more-subscription-types-description": "Select one or more subscription types to exclude host from that subscription type.",
-    "exclude-from-subscription-type": "Exclude from Subscription Type",
-    "hidden-host-description": "By default, Exodus will not include hidden hosts in the subscription. Hidden host can be used with Mihomo and Xray-Json Advanced, Raw.",
+    "exclude-from-subscription-type": "Exclude from subscription type",
+    "hidden-host-description": "By default, Exodus will not include hidden hosts in the subscription. Hidden hosts can be used with Mihomo, Sing-box-Json Advanced, and Raw.",
     "server-description-1": "In supported clients, the protocol name (e.g. vless) will be replaced with the description specified here.",
     "server-description-2": "Not all client applications support this feature. For more details, refer to the documentation of the apps listed below.",
     "supported-clients": "Supported clients",
@@ -482,8 +594,36 @@
     "replaces-user-credential": "Replaces the user's protocol credential when generating configs.",
     "selector-nodes-first": "نود در ابتدای Selector",
     "selector-nodes-first-description": "برای گروه‌های select در Sing-box و Mihomo. روشن: این نود قبل از موارد قالب مثل auto قرار می‌گیرد. خاموش: بعد از آن‌ها.",
-    "hide-host-from-users-exodus-will-send-host-only-for-raw-subscription-responses": "مخفی کردن هاست از کاربران، Exodus این هاست را فقط برای درخواست‌های اشتراک خام ارسال خواهد کرد",
-    "mapper": "Mapper"
+    "mapper": "Mapper",
+    "group-security": "Security",
+    "group-transport": "Transport",
+    "group-subscription": "اشتراک",
+    "group-client": "Client-specific",
+    "group-advanced": "پیشرفته",
+    "internal-squads-mode-exclude": "Exclude",
+    "internal-squads-mode-allow-only": "Allow only",
+    "allowed-internal-squads": "Allowed internal squads",
+    "allow-this-host-only-for-specific-internal-squads": "Show this host only to the selected internal squads",
+    "group-assignment": "Assignment",
+    "access-mode": "Access mode",
+    "override-type": "Override type",
+    "sni": "SNI",
+    "alpn": "ALPN",
+    "vless-route-id": "Vless route ID",
+    "mux-params": "MUX",
+    "sockopt-params": "SockOpt",
+    "final-mask-params": "Final mask",
+    "pinned-peer-cert-sha256": "Pinned peer certificate",
+    "verify-peer-cert-by-name": "Verify peer certificate by name",
+    "mihomo-x25519": "Mihomo X25519",
+    "mihomo-ip-version": "Mihomo IP version",
+    "no-options-title": "Nothing else configured",
+    "no-options-description": "This host runs on its inbound and the essentials above. Add an option to change how it is generated, or who it reaches.",
+    "no-bulk-options-title": "No changes queued",
+    "no-bulk-options-description": "Every option you add is applied to all selected hosts. Leave one empty to clear that field on all of them.",
+    "bulk-option-will-be-cleared": "Will be cleared on all selected hosts.",
+    "leave-field-untouched": "Leave this field untouched",
+    "options": "Options"
   },
   "base-node-form": {
     "country": "کشور",
@@ -518,27 +658,26 @@
       "short-stats": "آمار مختصر",
       "exodus-usage": "مصرف منابع Exodus",
       "process-details": "مشخصات Process",
-      "runtime": "Runtime",
-      "exodus-usage": "مصرف منابع Exodus"
+      "runtime": "Runtime"
     },
     "runtime-info": {
-      "title": "Runtime Metrics Guide",
+      "title": "Runtime metrics guide",
       "subtitle": "What every number on a runtime card actually means",
       "intro": "Each card shows a live snapshot of a single <highlight>Exodus process</highlight>. Use this guide to understand what each metric measures and when to worry about it.",
-      "instance-types-title": "Process Types",
+      "instance-types-title": "Process types",
       "instance-types-description": "Exodus is split into several specialized processes. Each one has its own job, its own memory, and its own event loop.",
-      "api-description": "Handles every HTTP requests from the dashboard, and subscription endpoints. This is the <highlight>main user-facing process</highlight> — virtually every panel and subscription request is served here.",
+      "api-description": "Handles every HTTP request from the dashboard and subscription endpoints. This is the <highlight>main user-facing process</highlight> — virtually every panel and subscription request is served here.",
       "scheduler-description": "A <highlight>cron-driven dispatcher</highlight>. It does not run any work itself — at the scheduled moment it simply pushes a job into the queue for the <highlight>Processor</highlight> to pick up.",
       "processor-description": "The actual <highlight>worker</highlight>. It consumes queued jobs and runs the heavy lifting: <highlight>node health checks</highlight>, <highlight>traffic aggregation</highlight> per user and per node, and other long-running tasks that must not block the API.",
       "memory-description": "Where the process holds its working data. All values are reported by Node.js in real time.",
-      "heap-description": "Memory used by JavaScript objects, managed by <highlight>V8</highlight> — Node.js' engine. Shown as <highlight>used / total</highlight>. A high ratio is <highlight>expected and healthy</highlight> — V8 holds onto memory until it really needs more, so something like <highlight>100 / 120 MB</highlight> is normal, not a warning.",
+      "heap-description": "Memory used by JavaScript objects, managed by <highlight>V8</highlight> — the Node.js engine. Shown as <highlight>used / total</highlight>. A high ratio is <highlight>expected and healthy</highlight> — V8 holds onto memory until it really needs more, so something like <highlight>100 / 120 MB</highlight> is normal, not a warning.",
       "rss-description": "<highlight>Resident Set Size</highlight> — the total physical memory the OS has given to the process, including the heap, native code, and shared libraries. The best single signal of <highlight>how much RAM this process is actually using</highlight>.",
       "external-description": "Memory held outside V8 by native C++ objects bound to JavaScript — typical sources are <highlight>open sockets</highlight>, <highlight>streams</highlight>, and Buffer-backed payloads.",
       "array-buffers-description": "Memory specifically allocated for <highlight>ArrayBuffer</highlight> and <highlight>Buffer</highlight> instances (raw binary data). It is counted as a subset of <highlight>External</highlight>.",
       "event-loop-description": "Health of the single-threaded loop that drives all asynchronous work in Node.js. If the loop is blocked, the whole process stalls.",
       "delay-description": "Average time between consecutive event loop ticks. A healthy value sits close to <highlight>0–2 ms</highlight>. Higher numbers mean the loop is being blocked by long synchronous work.",
       "p99-description": "<highlight>99th percentile</highlight> of event loop delay over the measurement window. Reveals worst-case latency that the average alone hides — useful for spotting occasional spikes.",
-      "active-handles-description": "Long-lived resources keeping the loop alive: <highlight>open sockets</highlight>, <highlight>timers</highlight>, <highlight>file descriptors</highlight>. Steady-state is normal; <highlight>unbounded growth</highlight> is a strong leak signal.",
+      "active-handles-description": "Long-lived resources keeping the loop alive: <highlight>open sockets</highlight>, <highlight>timers</highlight>, <highlight>file descriptors</highlight>. A steady state is normal; <highlight>unbounded growth</highlight> is a strong leak signal.",
       "threads-description": "OS threads used by the Go process."
     }
   },
@@ -823,11 +962,11 @@
   "active-sessions-drawer": {
     "widget": {
       "requirements": "پیش‌نیازها",
-      "warning-activity": "An IP address will be shown when <highlight>Singbox-Core</highlight> considers the <highlight>connection still open</highlight>. This may result in some displayed IP addresses that are no longer actually connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
+      "warning-activity": "An IP address will be shown when <highlight>Singbox Core</highlight> considers the <highlight>connection still open</highlight>. As a result, some of the IP addresses shown may no longer be connected. Use the <highlight>clock</highlight> icon to track the last activity of a given IP.",
       "warning-version": "نود Exodus نسخه <highlight>{{version}}</highlight> یا بالاتر",
       "warning-docker": "مقادیر زیر را به <highlight>docker-compose.yml</highlight> نود (در /opt/exodus-node) اضافه کنید",
       "warning-patience": "دریافت اطلاعات ممکن است زمانبر باشد، این پنجره را نبندید!",
-      "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> operations to gRPC API of <highlight>Singbox-Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
+      "warning-n-plus-one": "<highlight>Please note</highlight>: this request performs <highlight>N+1</highlight> calls to the gRPC API of <highlight>Singbox Core</highlight> due to the lack of bulk data retrieval methods. <highlight>N</highlight> is the number of users currently online on the given node.",
       "get-data": "دریافت اطلاعات",
       "fetching": "درحال دریافت نشست‌های فعال ...",
       "progress": "{{completed}} تا از {{total}} نود تکمیل شده",
@@ -906,8 +1045,8 @@
       "average-bps": "میانگین BPS",
       "active-nodes": "نودهای فعال",
       "current-hour": "ساعت کنونی",
-      "download-speed": "Download Speed",
-      "upload-speed": "Upload Speed",
+      "download-speed": "Download speed",
+      "upload-speed": "Upload speed",
       "download-total": "Download Total",
       "ram-usage": "RAM Usage",
       "for-all-nodes": "For all nodes"
@@ -954,7 +1093,7 @@
       "title": "How usage is calculated",
       "summary": "Returns internal squad members who spent at least the given threshold over the selected period, with the <b>total volume</b> for each of them.",
       "nodes-title": "Which nodes are counted",
-      "nodes-intro": "A squad isn't tied to nodes directly – the link is derived through inbounds:",
+      "nodes-intro": "A squad isn't tied to nodes directly — the link is derived through inbounds:",
       "nodes-step-1": "All inbounds that belong to the internal squad are taken.",
       "nodes-step-2": "For each inbound, the config profiles it belongs to are resolved.",
       "nodes-step-3": "A node is counted when it has such a profile set as <b>active</b> and that inbound is enabled on the node itself.",
@@ -964,9 +1103,9 @@
       "traffic-sum": "For each member, all of their daily per-node records are summed over the period from the start of <code>start</code> to the end of <code>end</code> (both dates inclusive, UTC).",
       "traffic-threshold": "Only users whose total is <b>≥ minTotalBytes</b> make it into the response. Volume is returned in <hl>raw bytes</hl>, without rounding.",
       "caveats-title": "What to keep in mind",
-      "caveats-per-node": "Traffic is counted <b>per whole node</b>, not per inbound. If a node is shared across squads (its active profile also serves other inbounds), the user's total includes all their traffic on that node – including what they poured through other squads' inbounds. It's an <hl>upper bound</hl>, not exact per-squad attribution.",
+      "caveats-per-node": "Traffic is counted <b>per whole node</b>, not per inbound. If a node is shared across squads (its active profile also serves other inbounds), the user's total includes all their traffic on that node — including what they poured through other squads' inbounds. It's an <hl>upper bound</hl>, not exact per-squad attribution.",
       "caveats-membership": "Squad membership and the node set are taken <b>at request time</b>, not historically. A user who left the squad disappears from the response (even though they used traffic); a recently joined one shows all their traffic for the period, including days before joining. The same goes for a change of a node's active profile.",
-      "caveats-sorting": "The list is sorted by <b>user ID</b>, not by volume. Since traffic changes in real time, data may drift between pages – to hunt down abusers set a <code>minTotalBytes</code> threshold instead of reading everyone."
+      "caveats-sorting": "The list is sorted by <b>user ID</b>, not by volume. Since traffic changes in real time, data may drift between pages — to hunt down abusers, set a <code>minTotalBytes</code> threshold instead of reading everyone."
     }
   },
   "get-hwid-user-devices": {
@@ -1054,7 +1193,7 @@
       "download": "دانلود",
       "quick-view": "نمای سریع",
       "edit-xray-config": "ویرایش پیکربندی Singbox",
-      "xray-config": "Singbox",
+      "xray-config": "Sing-box کانفیگ",
       "edit-singbox-config": "Singbox"
     }
   },
@@ -1376,14 +1515,14 @@
       "you-can-customize-singbox-config-after-creation": "کانفیگ Singbox را می‌توانید بعد از ایجاد شخصی‌سازی کنید",
       "profile-name": "نام پروفایل",
       "enter-profile-name": "نام پروفایل را وارد کنید",
-      "you-can-customize-xray-config-after-creation": "کانفیگ Xray را می‌توانید بعد از ایجاد شخصی‌سازی کنید"
+      "you-can-customize-xray-config-after-creation": "کانفیگ Sing-box را می‌توانید بعد از ایجاد شخصی‌سازی کنید"
     }
   },
   "restart-node-button": {
     "feature": {
       "restart": "راه‌اندازی مجدد",
-      "restart-description-line-1": "ensures that the node completely restarts the Singbox core. It is recommended option.",
-      "restart-description-line-2": "will send a request to this node to restart Singbox, but request can be unfulfilled if the node hash is the same as the current one."
+      "restart-description-line-1": "Ensures that the node completely restarts Singbox Core. This is the recommended option.",
+      "restart-description-line-2": "Sends a request to this node to restart Sing-box, but the request may go unfulfilled if the node hash matches the current one."
     }
   },
   "node-details-card": {
@@ -1397,9 +1536,8 @@
       "disable-node": "غیرفعالسازی نود",
       "config-profile-or-inbounds-is-missing": "پروفایل پیکربندی یا اینباند وجود ندارد",
       "exodus-node-version": "نسخه نود، @exodus/node",
-      "singbox-core-version": "نسخه هسته Singbox",
-      "xray-core-version": "نسخه هسته Xray",
-      "exodus-node-version": "نسخه نود، @exodus/node"
+      "singbox-core-version": "نسخه هسته Sing-box",
+      "xray-core-version": "نسخه هسته Xray"
     }
   },
   "config-profiles": {
@@ -1429,7 +1567,7 @@
   },
   "node-system-card": {
     "widget": {
-      "system-info": "System Info",
+      "system-info": "System info",
       "memory": "Memory",
       "used": "Used",
       "free": "Free",
@@ -1445,7 +1583,7 @@
     "card": {
       "stats": "آمار",
       "traffic-refill-in-days": "شارژ ترافیک در (روز):",
-      "represents-the-uptime-of-the-singbox-core": "نشان‌دهنده آپتایم هسته Singbox",
+      "represents-the-uptime-of-the-singbox-core": "نشان‌دهنده آپتایم هسته Sing-box",
       "represents-the-uptime-of-the-subscription-node-container": "نشان‌دهنده زمان کارکرد کانتینر نود اشتراک",
       "represents-the-uptime-of-the-xray-core": "نشان‌دهنده آپتایم هسته Xray"
     }
@@ -1524,8 +1662,8 @@
     "user-agent": "عامل کاربر",
     "request-at": "درخواست شده در",
     "user-uuid": "UUID کاربر",
-    "response-type": "Response Type",
-    "rule-name": "Rule Name"
+    "response-type": "Response type",
+    "rule-name": "Rule name"
   },
   "srh-inspector-table": {
     "widget": {
@@ -1595,17 +1733,16 @@
     "content-for-the-exodus-node-below": "زیر را برای نود کپی کنید.",
     "learn-more": "اطلاعات بیشتر.",
     "domain-or-ip": "دامنه یا آیپی",
-    "additional-options": "Additional options",
-    "content-for-the-exodus-node-below": "زیر را برای نود کپی کنید."
+    "additional-options": "تنظیمات بیشتر"
   },
   "create-node-step-3-status": {
     "establishing-mtls-connection": "درحال برقراری اتصال mTLS",
     "exodus-will-try-to-reconnect-shortly": "به زودی Exodus برای اتصال مجدد تلاش خواهد کرد",
     "no-errros-so-far": "تا کنون خطایی وجود نداشته است",
     "last-error-message": "آخرین پیام خطا",
-    "singbox-core-is-up-and-running": "هسته Singbox درحال اجرا می‌باشد!",
+    "singbox-core-is-up-and-running": "هسته Sing-box درحال اجرا می‌باشد!",
     "xray-core-is-up-and-running": "هسته Xray درحال اجرا می‌باشد!",
-    "exodus-will-try-to-reconnect-shortly": "به زودی Exodus برای اتصال مجدد تلاش خواهد کرد"
+    "no-errors-so-far": "تا کنون خطایی وجود نداشته است"
   },
   "external-squad-card": {
     "widget": {
@@ -1724,7 +1861,7 @@
       },
       "keycloakDomain": {
         "label": "دامنه Keycloak",
-        "description": "دامنه سرور Keycloak بدون پروتکل (مثلا keycloak.docs.exodus)"
+        "description": "دامنه سرور Keycloak بدون پروتکل (مثلا keycloak.docs.ex)"
       }
     }
   },
@@ -1747,14 +1884,13 @@
       "the-title-that-will-be-displayed-on-login-page": "عنوانی که در صفحه ورود نشان داده خواهد شد",
       "brand-name": "اسم برند",
       "logo-url": "آدرس URL لوگو",
-      "the-url-to-your-brand-logo-image": "The URL to your brand logo image. Accepts a regular http(s) URL or a base64 data URL (data:image/svg+xml;base64,...)",
+      "the-url-to-your-brand-logo-image": "The URL to your brand logo image. Accepts a regular http(s) URL or a base64 data URL (data:image/svg+xml;base64,...).",
       "colored-title-format": "فرمت عنوان رنگی",
       "colored-title-description": "می‌توانید کلمه‌ها را به صورت تکی به کمک نوشتار \"{color}کلمه\" رنگ‌آمیزی کنید. این ویژگی از رنگ‌های HEX (#RRGGBB) و اسم رنگ‌های MantineUI پشتیبانی می‌کند.",
       "example-hex-colors": "مثال با رنگ‌های HEX",
       "example-mantine-colors": "مثال با رنگ‌های MantineUI",
       "example-mixed": "مثال با رنگ‌های مختلط",
-      "color-format-note": "💡 رنگ مشخص شده فقط برای کلمه‌ای که به نشانگر رنگ چسبیده اعمال می‌شود. بدون نشانگر، متن سفیدرنگ خواهد بود.",
-      "customize-your-exodus-instance": "پنل Exodus خود را شخصی‌سازی کنید"
+      "color-format-note": "💡 رنگ مشخص شده فقط برای کلمه‌ای که به نشانگر رنگ چسبیده اعمال می‌شود. بدون نشانگر، متن سفیدرنگ خواهد بود."
     }
   },
   "visual-settings-card": {
@@ -1771,7 +1907,7 @@
       "api-tokens": "توکن‌های API",
       "no-api-tokens-found": "هیچ توکن API یافت نشد",
       "token-name": "نام توکن",
-      "create-api-token": "Create API Token",
+      "create-api-token": "Create API token",
       "full-access": "Full access",
       "col-scopes": "Scopes",
       "col-created": "Created",
@@ -1884,7 +2020,7 @@
     "cpu-model": "مدل پردازنده",
     "singbox-v": "نسخه هسته Singbox",
     "ip-addresses": "IP addresses",
-    "xray-v": "نسخه هسته Xray"
+    "xray-v": "نسخه هسته Sing-box"
   },
   "subpage-config-visual-editor": {
     "widget": {
@@ -2074,7 +2210,8 @@
       "revoke": "لغو اشتراک",
       "passwords-only": "فقط رمز عبور",
       "passwords-only-decription": "فقط رمزهای اتصال را بازتولید می‌کند و لینک اشتراک تغییر نمی‌کند",
-      "full-revoke-description": "آدرس لینک اشتراک و رمزهای اتصال را بازتولید می‌کند"
+      "full-revoke-description": "آدرس لینک اشتراک و رمزهای اتصال را بازتولید می‌کند",
+      "passwords-only-description": "فقط رمزهای اتصال را بازتولید می‌کند و لینک اشتراک تغییر نمی‌کند"
     }
   },
   "nodes-quick-stats": {
@@ -2105,7 +2242,7 @@
   "traffic-limits-card": {
     "traffic-and-limits": "محدودیت ترافیک",
     "traffic-limit-description": "0 means unlimited",
-    "traffic-limit": "Traffic limit"
+    "traffic-limit": "محدودیت ترافیک"
   },
   "node-plugin-editor-page": {
     "component": {
@@ -2115,7 +2252,7 @@
   "node-vitals": {
     "card": {
       "plugin": "Plugin",
-      "review-documentation-for-more-information": "Review documentation for more information.",
+      "review-documentation-for-more-information": "Review the documentation for more information.",
       "nothing-found": "Nothing found...",
       "select-plugin": "Select plugin",
       "proxy-url": "Proxy URL",
@@ -2124,7 +2261,7 @@
   },
   "node-plugin-card": {
     "widget": {
-      "active-on-nodes": "Active on Nodes"
+      "active-on-nodes": "فعال روی نودها"
     }
   },
   "adtive-on-nodes": {
@@ -2151,7 +2288,7 @@
       "unblock-ips": "Unblock IPs",
       "executor-description": "IP blocks are temporary — they persist only until the node or its core restarts. Blocks may also be reset if the plugin configuration changes.",
       "recreate-nftables-rules-on-selected-nodes": "Recreate nftables rules on selected nodes",
-      "recreate-tables": "Recreate Tables",
+      "recreate-tables": "Recreate tables",
       "block-ips-decription": "One entry per line. Timeout 0 = block until restart.",
       "unblock-ips-decription": "One IP address per line.",
       "ips-to-block": "IPs to block",
@@ -2161,17 +2298,19 @@
       "no-connected-nodes-available": "No connected nodes available.",
       "deselect-all": "Deselect all",
       "select-all": "Select all",
-      "execute": "Execute"
+      "execute": "Execute",
+      "block-ips-description": "One entry per line. Timeout 0 = block until restart.",
+      "unblock-ips-description": "One IP address per line."
     }
   },
   "torrent-blocker-stats": {
     "widget": {
-      "total-reports": "Total Reports",
-      "distinct-nodes": "Distinct Nodes",
-      "distinct-users": "Distinct Users",
-      "last-24-hours": "Last 24 Hours",
+      "total-reports": "Total reports",
+      "distinct-nodes": "Distinct nodes",
+      "distinct-users": "Distinct users",
+      "last-24-hours": "Last 24 hours",
       "by-report-count": "By report count",
-      "top-users": "Top Users"
+      "top-users": "کاربران برتر"
     }
   },
   "torrent-blocker-reports-table": {
@@ -2183,7 +2322,7 @@
   "node-active-session": {
     "item": {
       "widget": {
-        "view-user": "View User"
+        "view-user": "View user"
       }
     }
   },
@@ -2196,18 +2335,18 @@
   },
   "nodes-datatable": {
     "widget": {
-      "column-width": "Column Width",
-      "column-order": "Column Order",
-      "column-toggle": "Column Toggle"
+      "column-width": "Column width",
+      "column-order": "Column order",
+      "column-toggle": "Column toggle"
     }
   },
   "user-torrent-blocker-report-item": {
-    "processed-at": "Processed At",
-    "unblocked-at": "Unblocked At"
+    "processed-at": "Processed at",
+    "unblocked-at": "Unblocked at"
   },
   "get-user-torrent-blocker-reports": {
     "feature": {
-      "blocker-reports": "Blocker Reports"
+      "blocker-reports": "Torrent Blocker reports"
     }
   },
   "user-torrent-blocker-reports": {
@@ -2236,8 +2375,8 @@
       "all-nodes-failed-to-return-session-data": "All nodes failed to return session data.",
       "total-ips": "Total IPs",
       "unique-ips": "Unique IPs",
-      "nodes-explored": "Nodes Explored",
-      "total-users": "Total Users",
+      "nodes-explored": "Nodes explored",
+      "total-users": "کل کاربران",
       "no-active-sessions-found-on-any-node": "No active sessions found on any node.",
       "restart-scan": "Restart scan",
       "clear-results": "Clear results",
@@ -2250,7 +2389,7 @@
       "billing-nodes": "Billing nodes",
       "upcoming": "Upcoming",
       "per-month": "Per month",
-      "total-spent": "Total spent",
+      "total-spent": "کل هزینه شده",
       "overdue": "Overdue",
       "no-upcoming": "No upcoming"
     }
@@ -2263,21 +2402,21 @@
   "mobile-infra-billing": {
     "widget": {
       "history": "History",
-      "providers": "Providers"
+      "providers": "ارائه‌دهنده‌ها"
     }
   },
   "prime-modal": {
     "shared": {
-      "description": "Back the project and become part of its inner circle - closer to the team, the roadmap, and the work itself.",
-      "priority-support-title": "Priority Support",
-      "priority-support-description": "Skip the queue - your questions are answered first, directly by the team.",
-      "private-community-title": "Private Community",
+      "description": "Back the project and become part of its inner circle — closer to the team, the roadmap, and the work itself.",
+      "priority-support-title": "Priority support",
+      "priority-support-description": "Skip the queue — your questions are answered first, directly by the team.",
+      "private-community-title": "Private community",
       "private-community-description": "A closed circle of Prime members.",
-      "shape-the-roadmap-title": "Shape the Roadmap",
+      "shape-the-roadmap-title": "Shape the roadmap",
       "shape-the-roadmap-description": "Vote on what gets built next and help steer where the project goes.",
-      "direct-developer-access-title": "Direct Developer Access",
-      "direct-developer-access-description": "A direct line to the developer - no tickets, no middlemen.",
-      "join-button": "Join Exodus Prime"
+      "direct-developer-access-title": "Direct developer access",
+      "direct-developer-access-description": "A direct line to the developer — no tickets, no middlemen.",
+      "join-button": "Join RW Prime"
     }
   },
   "hosts-datatable": {
@@ -2290,9 +2429,9 @@
     "hide-all": "Hide all"
   },
   "use-hosts-table-widget": {
-    "disabled": "Disabled",
-    "enabled": "Enabled",
-    "hidden": "Hidden"
+    "disabled": "غیرفعال",
+    "enabled": "فعال",
+    "hidden": "مخفی"
   },
   "node-tracking-and-billing": {
     "card": {
@@ -2301,10 +2440,10 @@
   },
   "node-consumption": {
     "card": {
-      "node-consumption-multiplier-1": "Applies selected multiplier to Node traffic (1.0 = normal, 0.5 = half, 2.0 = double).",
+      "node-consumption-multiplier-1": "Applies the selected multiplier to node traffic (1.0 = normal, 0.5 = half, 2.0 = double).",
       "node-consumption-multiplier-2": "Mainly used for accurate display of usage limits when traffic tracking is enabled. The node consumption multiplier does not affect detailed statistics display (on graphs).",
-      "node-consumption-multiplier": "Node Consumption Multiplier",
-      "user-consumption-multiplier": "User Consumption Multiplier"
+      "node-consumption-multiplier": "Node consumption multiplier",
+      "user-consumption-multiplier": "User consumption multiplier"
     }
   },
   "keypair-generator": {
@@ -2314,16 +2453,16 @@
   },
   "bulk-all-users-actions": {
     "modal": {
-      "perform-actions-on-all-users": "Perform actions on all users"
+      "perform-actions-on-all-users": "انجام اقدامات برای همه کاربران"
     }
   },
   "backend-tools-card": {
     "widget": {
-      "queue-viewer": "Queue Viewer",
+      "queue-viewer": "Queue viewer",
       "queue-viewer-description": "Monitor and manage background job queues.",
       "scalar-description": "Modern interactive API reference.",
       "swagger-description": "Classic OpenAPI documentation explorer.",
-      "backend-tools-description": "Access to Queue Viewer, Scalar or Swagger.",
+      "backend-tools-description": "Access to Queue Viewer, Scalar, or Swagger.",
       "login": "Login",
       "backend-tools": "Backend tools"
     }
@@ -2337,10 +2476,10 @@
   },
   "http-stats-table": {
     "widget": {
-      "total-requests": "Total Requests",
-      "tracked-routes": "Tracked Routes",
-      "peak-requests": "Peak Requests",
-      "avg-route": "Avg / Route"
+      "total-requests": "Total requests",
+      "tracked-routes": "Tracked routes",
+      "peak-requests": "Peak requests",
+      "avg-route": "Avg / route"
     }
   },
   "get-node-inbounds-hosts": {
@@ -2424,20 +2563,20 @@
     "no-ips-yet": "No IP addresses yet"
   },
   "node-ip-statuses": {
-    "inbound": "Inbound",
+    "inbound": "اینباند",
     "outbound": "Outbound",
-    "management": "Management",
+    "management": "مدیریت",
     "transit": "Transit",
     "monitoring": "Monitoring",
     "reserve": "Reserve",
     "blocked": "Blocked",
     "flagged": "Flagged",
     "deprecated": "Deprecated",
-    "unknown": "Unknown"
+    "unknown": "نامعلوم"
   },
   "node-integrations": {
     "modal": {
-      "title": "Node Integrations",
+      "title": "Node integrations",
       "delete-description": "The integration will be removed from all nodes and affected nodes will be restarted."
     },
     "editor": {
@@ -2474,7 +2613,7 @@
     "ip-description": "Pick one of the node IPs or type any address",
     "interface-description": "Pick one of the node interfaces or type any name",
     "run": "Run check",
-    "running": "Running GeoCheck",
+    "running": "Running geoCheck",
     "running-description": "The node is probing its connectivity, this usually takes up to a minute.",
     "failed-description": "The node could not complete the GeoCheck.",
     "view-image": "Report",
@@ -2485,5 +2624,107 @@
     "page": {
       "description": "Open any entity by its identifier, or copy a direct link to share"
     }
+  },
+  "bulk-user-actions-modal": {
+    "widget": {
+      "user-deletion-description": "حذف تمامی کاربران با وضعیت انتخاب شده. اگر کاربران با وضعیت \"فعال یا Active\" را حذف می‌کنید، باید تمامی نودها را برای اعمال تغییرات مجدداً راه‌اندازی کنید.",
+      "select-status": "حذف کردن بر اساس وضعیت"
+    }
+  },
+  "user-identity-creation-card": {
+    "user-identity": "هویت کاربر"
+  },
+  "experimental-settings-card": {
+    "widget": {
+      "experimental-features": "Experimental features",
+      "description": "Features that are still in development. They can change or disappear at any time.",
+      "legacy-layout-style": "Legacy layout style"
+    }
+  },
+  "active-on-nodes": {
+    "modal": {
+      "shared": {
+        "this-plugin-is-not-active-on-any-nodes": "This plugin is not active on any nodes."
+      }
+    }
+  },
+  "node-ssh": {
+    "title": "SSH terminal",
+    "key-imported": "your key",
+    "key-description-imported": "Signing uses the key you imported; it never leaves your browser. Make sure its public half is in authorized_keys on the server.",
+    "key-use-own": "Use my own key",
+    "key-generate-new": "Generate a new key",
+    "key-import": "Import key",
+    "key-import-title": "Use your own key",
+    "key-import-label": "کلید خصوصی (Private Key)",
+    "key-import-description": "Stays in this browser, encrypted in the vault. Passphrase-protected keys are not supported.",
+    "key-error": {
+      "encrypted": "This key is passphrase-protected. Remove the passphrase, or import a copy without one.",
+      "malformed": "The key could not be read. Copy the whole file, including the BEGIN and END lines.",
+      "unsupported-algo": "Only Ed25519 and RSA keys are supported.",
+      "unsupported-format": "That does not look like a private key file."
+    },
+    "vault-setup-title": "Set up the key vault",
+    "vault-unlock-title": "Unlock the key vault",
+    "seed-warning": "Write these 12 words down and keep them offline. They are the only way to restore your SSH keys — the panel never sees them and cannot recover them for you.",
+    "create-vault": "Create vault",
+    "unlock": "Unlock",
+    "unlock-description": "Enter the 12 words you saved when the vault was created.",
+    "seed-invalid": "This is not a valid 12-word recovery phrase",
+    "seed-mismatch": "This phrase does not match the vault stored in this browser",
+    "key-title": "Install the public key",
+    "key-description": "A dedicated key was generated for this node and never leaves your browser. Add the line below to authorized_keys on the server, then connect.",
+    "authorized-keys": "authorized_keys entry",
+    "host": "هاست",
+    "host-hint": "Leave empty to use the node address",
+    "connect": "Connect",
+    "hostkey-new-title": "Unknown host key",
+    "hostkey-new-description": "This is the first time you connect to this host from this browser. Verify the fingerprint out of band before trusting it.",
+    "hostkey-changed-title": "Host key changed",
+    "hostkey-changed-description": "The host key does not match the one you trusted earlier. This can mean the server was reinstalled — or that someone is intercepting the connection.",
+    "fingerprint": "اثر انگشت",
+    "known-fingerprint": "Previously trusted",
+    "trust-and-connect": "Trust and connect",
+    "abort": "Abort",
+    "disconnected": "Session closed",
+    "passcode-required-description": "The vault cannot be used in this browser until you set a passcode. It also saves you from typing the recovery phrase every time.",
+    "passcode-save": "Save passcode",
+    "passcode-title": "Set a passcode for this browser",
+    "passcode-description": "Unlocks the vault on this browser after a reload.",
+    "passcode-length": "{{length}} characters, at least one of them a letter.",
+    "passcode-needs-letter": "Add at least one letter.",
+    "passcode-unlock-description": "Enter the passcode you set for this browser.",
+    "passcode-wrong": "Wrong passcode",
+    "passcode-attempts": "Attempts left: {{count}}",
+    "passcode-exhausted": "Too many wrong attempts, the passcode was turned off. Unlock with your recovery phrase and set a new one.",
+    "use-phrase": "Forgot your passcode?",
+    "use-passcode": "Back to passcode",
+    "connection-settings": "تنظیمات اشتراک",
+    "resize": "Resize window",
+    "retry": "Retry",
+    "ticket-failed": "The panel refused to open a session.",
+    "vault-manage": "Manage vault",
+    "export": "Export vault",
+    "export-locked": "Unlock the vault first — a backup can only be made from an open vault.",
+    "export-description": "Saves an encrypted file with your node keys and addresses. Nothing in it is readable without the recovery phrase, so it is safe to keep anywhere.",
+    "import": "Import vault",
+    "import-description": "Restores keys from a backup file. Enter the recovery phrase that the backup was created with.",
+    "import-select": "Choose backup file",
+    "import-ready": "Backup from {{date}}",
+    "create-new-instead": "Create a new vault instead",
+    "reset-really": "Yes, delete every key",
+    "import-invalid": "This file is not a vault backup",
+    "import-mismatch": "The recovery phrase does not open this backup",
+    "reset": "Reset vault",
+    "reset-description": "Deletes the vault and every SSH key in it. The private keys are gone for good, so the public keys already installed on your nodes become useless and you will have to install a new one on each. Panel access is not affected.",
+    "lost-everything": "Lost both the passcode and the phrase?",
+    "snippets-title": "قطعه کدها",
+    "snippets-empty": "No snippets yet",
+    "snippet-command": "Command",
+    "snippet-add": "Add snippet",
+    "snippet-edit": "ویرایش قطعه کد",
+    "connections-title": "Saved connections",
+    "connections-empty": "No saved connections yet",
+    "connections-current": "Current"
   }
 }

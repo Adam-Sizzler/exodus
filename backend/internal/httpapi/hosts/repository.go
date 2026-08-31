@@ -31,7 +31,7 @@ func (r *HostRepository) getHosts(ctx context.Context) ([]hostRecord, error) {
 			xray_json_template_uuid, keep_sni_blank,
 			tags, is_hidden, override_sni_from_address,
 			config_profile_uuid, config_profile_inbound_uuid,
-			exclude_from_subscription_types
+			exclude_from_subscription_types, internal_squads_mode
 		FROM hosts
 		ORDER BY view_position ASC
 	`)
@@ -66,7 +66,7 @@ func (r *HostRepository) getHostByUUID(ctx context.Context, hostUUID string) (ho
 			xray_json_template_uuid, keep_sni_blank,
 			tags, is_hidden, override_sni_from_address,
 			config_profile_uuid, config_profile_inbound_uuid,
-			exclude_from_subscription_types
+			exclude_from_subscription_types, internal_squads_mode
 		FROM hosts
 		WHERE uuid = $1
 	`, hostUUID)
@@ -78,7 +78,7 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 	var viewPosition sql.NullInt64
 	var path, sni, host, alpn, fingerprint, securityLayer sql.NullString
 	var serverDescription, pinnedPeerCertSha256, verifyPeerCertByName, mihomoIPVersion sql.NullString
-	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID sql.NullString
+	var xrayJSONTemplateUUID, configProfileUUID, configProfileInboundUUID, internalSquadsMode sql.NullString
 	var vlessRouteID sql.NullInt64
 	var isDisabled, shuffleHost, mihomoX25519, keepSNIBlank, isHidden, overrideSNIFromAddress sql.NullBool
 	var xhttpExtraParams, muxParams, mapper, sockoptParams, finalMask []byte
@@ -117,6 +117,7 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		&configProfileUUID,
 		&configProfileInboundUUID,
 		&excludeTypes,
+		&internalSquadsMode,
 	)
 	if err != nil {
 		return rec, err
@@ -197,6 +198,12 @@ func scanHostRecord(scanner shared.RowScanner) (hostRecord, error) {
 		rec.ConfigProfileInboundUUID = &configProfileInboundUUID.String
 	}
 
+	if internalSquadsMode.Valid && internalSquadsMode.String != "" {
+		rec.InternalSquadsMode = internalSquadsMode.String
+	} else {
+		rec.InternalSquadsMode = "EXCLUDE"
+	}
+
 	rec.Tags = ensureStringSlice(tags.Slice())
 	rec.ExcludeTypes = ensureStringSlice(excludeTypes.Slice())
 
@@ -228,7 +235,7 @@ func (r *HostRepository) getHostNodes(ctx context.Context, hostUUIDs []string) (
 	return result, rows.Err()
 }
 
-func (r *HostRepository) getHostExcludedSquads(ctx context.Context, hostUUIDs []string) (map[string][]string, error) {
+func (r *HostRepository) getHostInternalSquads(ctx context.Context, hostUUIDs []string) (map[string][]string, error) {
 	result := make(map[string][]string, len(hostUUIDs))
 	for _, id := range hostUUIDs {
 		result[id] = []string{}
@@ -237,7 +244,7 @@ func (r *HostRepository) getHostExcludedSquads(ctx context.Context, hostUUIDs []
 		return result, nil
 	}
 
-	rows, err := r.db.QueryContext(ctx, `SELECT host_uuid, squad_uuid FROM internal_squad_host_exclusions WHERE host_uuid = ANY($1)`, hostUUIDs)
+	rows, err := r.db.QueryContext(ctx, `SELECT host_uuid, squad_uuid FROM internal_squad_host_links WHERE host_uuid = ANY($1)`, hostUUIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -302,13 +309,12 @@ func (r *HostRepository) replaceHostNodesTx(ctx context.Context, tx *sql.Tx, hos
 	return nil
 }
 
-// replaceHostsExcludedSquadsTx is the batched counterpart of
-// replaceHostExcludedSquadsTx — see replaceHostsNodesTx for why.
-func (r *HostRepository) replaceHostsExcludedSquadsTx(ctx context.Context, tx *sql.Tx, hostUUIDs []string, squadUUIDs []string) error {
+// replaceHostsInternalSquadsTx is the batched counterpart of replaceHostInternalSquadsTx.
+func (r *HostRepository) replaceHostsInternalSquadsTx(ctx context.Context, tx *sql.Tx, hostUUIDs []string, squadUUIDs []string) error {
 	if len(hostUUIDs) == 0 {
 		return nil
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_host_exclusions WHERE host_uuid = ANY($1)`, hostUUIDs); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_host_links WHERE host_uuid = ANY($1)`, hostUUIDs); err != nil {
 		return err
 	}
 
@@ -327,14 +333,14 @@ func (r *HostRepository) replaceHostsExcludedSquadsTx(ctx context.Context, tx *s
 	}
 
 	_, err := tx.ExecContext(ctx, `
-		INSERT INTO internal_squad_host_exclusions (host_uuid, squad_uuid)
+		INSERT INTO internal_squad_host_links (host_uuid, squad_uuid)
 		SELECT unnest($1::uuid[]), unnest($2::uuid[])
 	`, hostArg, squadArg)
 	return err
 }
 
-func (r *HostRepository) replaceHostExcludedSquadsTx(ctx context.Context, tx *sql.Tx, hostUUID string, squadUUIDs []string) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_host_exclusions WHERE host_uuid = $1`, hostUUID); err != nil {
+func (r *HostRepository) replaceHostInternalSquadsTx(ctx context.Context, tx *sql.Tx, hostUUID string, squadUUIDs []string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_host_links WHERE host_uuid = $1`, hostUUID); err != nil {
 		return err
 	}
 	if len(squadUUIDs) == 0 {
@@ -342,7 +348,7 @@ func (r *HostRepository) replaceHostExcludedSquadsTx(ctx context.Context, tx *sq
 	}
 
 	for _, squadUUID := range uniqueNonEmptyStrings(squadUUIDs) {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO internal_squad_host_exclusions (host_uuid, squad_uuid) VALUES ($1, $2)`, hostUUID, squadUUID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO internal_squad_host_links (host_uuid, squad_uuid) VALUES ($1, $2)`, hostUUID, squadUUID); err != nil {
 			return err
 		}
 	}
@@ -421,6 +427,15 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 		mapperBytes = []byte("{}")
 	}
 
+	mode := "EXCLUDE"
+	squads := req.ExcludedInternalSquads
+	if req.InternalSquads != nil {
+		if strings.ToUpper(strings.TrimSpace(req.InternalSquads.Mode)) == "ALLOW_ONLY" {
+			mode = "ALLOW_ONLY"
+		}
+		squads = req.InternalSquads.Squads
+	}
+
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO hosts (
 			uuid, remark, address, port,
@@ -432,7 +447,8 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 			shuffle_host, mihomo_x25519, mihomo_ip_version,
 			xray_json_template_uuid, keep_sni_blank,
 			exclude_from_subscription_types, tags, is_hidden,
-			override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid
+			override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid,
+			internal_squads_mode
 		) VALUES (
 			$1, $2, $3, $4,
 			$5, $6, $7, $8, $9, $10,
@@ -442,7 +458,8 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 			$21, $22, $23,
 			$24, $25,
 			$26, $27, $28,
-			$29, $30, $31
+			$29, $30, $31,
+			$32
 		)
 	`,
 		hostUUID,
@@ -476,6 +493,7 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 		coalesceBool(req.OverrideSNIFromAddress, false),
 		normalizeOptionalStringAllowEmpty(req.Inbound.ConfigProfileUUID),
 		normalizeOptionalStringAllowEmpty(req.Inbound.ConfigProfileInboundUUID),
+		mode,
 	)
 	if err != nil {
 		return err
@@ -484,14 +502,14 @@ func (r *HostRepository) createHost(ctx context.Context, hostUUID string, req Ho
 	if err := r.replaceHostNodesTx(ctx, tx, hostUUID, req.Nodes); err != nil {
 		return err
 	}
-	if err := r.replaceHostExcludedSquadsTx(ctx, tx, hostUUID, req.ExcludedInternalSquads); err != nil {
+	if err := r.replaceHostInternalSquadsTx(ctx, tx, hostUUID, squads); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func (r *HostRepository) updateHost(ctx context.Context, hostUUID string, clauses []string, args []any, nodes []string, excludedInternalSquads []string) error {
+func (r *HostRepository) updateHost(ctx context.Context, hostUUID string, clauses []string, args []any, nodes []string, squads []string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -521,8 +539,8 @@ func (r *HostRepository) updateHost(ctx context.Context, hostUUID string, clause
 			return err
 		}
 	}
-	if excludedInternalSquads != nil {
-		if err := r.replaceHostExcludedSquadsTx(ctx, tx, hostUUID, excludedInternalSquads); err != nil {
+	if squads != nil {
+		if err := r.replaceHostInternalSquadsTx(ctx, tx, hostUUID, squads); err != nil {
 			return err
 		}
 	}
@@ -607,7 +625,7 @@ func (r *HostRepository) bulkSetPort(ctx context.Context, uuids []string, port i
 	return err
 }
 
-func (r *HostRepository) bulkUpdateHosts(ctx context.Context, uuids []string, clauses []string, args []any, nodes []string, excludedInternalSquads []string) error {
+func (r *HostRepository) bulkUpdateHosts(ctx context.Context, uuids []string, clauses []string, args []any, nodes []string, squads []string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -629,8 +647,8 @@ func (r *HostRepository) bulkUpdateHosts(ctx context.Context, uuids []string, cl
 			return err
 		}
 	}
-	if excludedInternalSquads != nil {
-		if err := r.replaceHostsExcludedSquadsTx(ctx, tx, uuids, excludedInternalSquads); err != nil {
+	if squads != nil {
+		if err := r.replaceHostsInternalSquadsTx(ctx, tx, uuids, squads); err != nil {
 			return err
 		}
 	}

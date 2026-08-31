@@ -24,6 +24,7 @@ import (
 	"exodus/internal/httpapi/nodeintegrations"
 	"exodus/internal/httpapi/nodeplugins"
 	"exodus/internal/httpapi/nodes"
+	"exodus/internal/httpapi/nodessh"
 	"exodus/internal/httpapi/panelsettings"
 	"exodus/internal/httpapi/passkeys"
 	"exodus/internal/httpapi/squads"
@@ -97,6 +98,8 @@ func isPublicPath(path string, cfg *config.BackendConfig) bool {
 		path == "/api/auth/oauth2/callback",
 		path == "/api/auth/passkey/authentication/options",
 		path == "/api/auth/passkey/authentication/verify",
+		path == "/api/node-ssh/ws",
+		strings.HasPrefix(path, "/api/node-ssh/ws"),
 		path == "/api/sub",
 		strings.HasPrefix(path, "/api/sub/"),
 		path == "/api/subscriptions/subpage-config",
@@ -110,6 +113,7 @@ func isPublicPath(path string, cfg *config.BackendConfig) bool {
 }
 
 func RegisterPublicRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *config.BackendConfig) {
+	mux.HandleFunc("/api/node-ssh/ws", nodessh.NodeSSHWSHandler(db, cfg))
 	mux.HandleFunc("/api/auth/bootstrap", auth.AuthBootstrapHandler(db, cfg))
 	mux.HandleFunc("/api/auth/setup", auth.AuthSetupHandler(db, cfg))
 	mux.HandleFunc("/api/auth/status", auth.AuthStatusHandler(db, cfg))
@@ -169,11 +173,19 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/nodes/bulk-actions/", nodes.NodesBulkActionsHandler(db, cfg))
 	mux.HandleFunc("/api/nodes/tags", nodes.NodesTagsHandler(db, cfg))
 	mux.HandleFunc("/api/nodes-with-config", squads.NodesWithConfigHandler(db, cfg))
+	mux.HandleFunc("/api/node-plugins/tags", nodeplugins.NodePluginsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/node-plugins", nodeplugins.Handler(db, cfg))
 	mux.HandleFunc("/api/node-plugins/", nodeplugins.Handler(db, cfg))
 	mux.HandleFunc("/api/node-integrations", nodeintegrations.Handler(db, cfg))
 	mux.HandleFunc("/api/node-integrations/", nodeintegrations.Handler(db, cfg))
 	mux.HandleFunc("/api/connections/", connections.Handler(db, cfg))
+	mux.HandleFunc("/api/node-ssh/", nodessh.NodeSSHDispatcherHandler(db, cfg))
+	mux.HandleFunc("/api/node-ssh", nodessh.NodeSSHDispatcherHandler(db, cfg))
+	mux.HandleFunc("/api/node-ssh/tickets/", nodessh.NodeSSHTicketHandler(db, cfg))
+	mux.HandleFunc("/api/node-ssh/tickets", nodessh.NodeSSHTicketHandler(db, cfg))
+	mux.HandleFunc("/api/node-ssh/vault/evaluate", nodessh.NodeSSHVaultEvaluateHandler(db, cfg))
+	mux.HandleFunc("/api/node-ssh/ws", nodessh.NodeSSHWSHandler(db, cfg))
+
 	mux.HandleFunc("/api/metadata/user/", auth.RequireAdminRole(metadata.UserHandler(db, cfg)))
 	mux.HandleFunc("/api/metadata/node/", auth.RequireAdminRole(metadata.NodeHandler(db, cfg)))
 
@@ -209,6 +221,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/bandwidth-stats/users/", bandwidthstats.UsersHandler(db, cfg))
 	mux.HandleFunc("/api/bandwidth-stats/internal-squads/", squads.BandwidthStatsInternalSquadsHandler(db, cfg))
 
+	mux.HandleFunc("/api/config-profiles/tags", configprofiles.ConfigProfilesTagsHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles", configprofiles.ConfigProfilesHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles/", configprofiles.ConfigProfileByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles/actions/", configprofiles.ConfigProfilesActionsHandler(db, cfg))
@@ -218,6 +231,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/snippets/", configprofiles.ConfigProfileSnippetsHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles-with-inbounds", squads.ConfigProfilesWithInboundsHandler(db, cfg))
 
+	mux.HandleFunc("/api/internal-squads/tags", squads.InternalSquadsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/internal-squads", squads.InternalSquadsHandler(db, cfg))
 	mux.HandleFunc("/api/internal-squads/", squads.InternalSquadByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/internal-squads/actions/reorder", squads.InternalSquadsReorderHandler(db, cfg))
@@ -230,6 +244,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/inbound-assignments", squads.InboundAssignmentsHandler(db, cfg))
 	mux.HandleFunc("/api/inbounds-with-profiles", squads.InboundsWithProfilesHandler(db, cfg))
 
+	mux.HandleFunc("/api/external-squads/tags", externalsquads.ExternalSquadsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads", externalsquads.ExternalSquadsHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads/", externalsquads.ExternalSquadByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads/actions/reorder", externalsquads.ExternalSquadsReorderHandler(db, cfg))
@@ -257,6 +272,8 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/infra-billing/history", infrabilling.BillingHistoryHandler(db, cfg))
 	mux.HandleFunc("/api/infra-billing/history/", infrabilling.BillingHistoryHandler(db, cfg))
 
+	mux.HandleFunc("/api/subscription-template/tags", subscriptiontemplate.SubscriptionTemplateTagsHandler(db, cfg))
+	mux.HandleFunc("/api/subscription-templates/tags", subscriptiontemplate.SubscriptionTemplateTagsHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates", subscriptiontemplate.SubscriptionTemplatesHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates/", subscriptiontemplate.SubscriptionTemplateByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates/actions/", subscriptiontemplate.SubscriptionTemplatesActionsHandler(db, cfg))
@@ -265,6 +282,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/subscriptions", subscription.SubscriptionsHandler(db, backgroundDB, cfg))
 	mux.HandleFunc("/api/subscriptions/", subscription.SubscriptionByUUIDHandler(db, backgroundDB, cfg))
 
+	mux.HandleFunc("/api/subscription-page-configs/tags", subscriptionpageconfigs.SubscriptionPageConfigsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-page-configs", subscriptionpageconfigs.SubscriptionPageConfigsHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-page-configs/", subscriptionpageconfigs.SubscriptionPageConfigByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-page-configs/actions/", subscriptionpageconfigs.SubscriptionPageConfigsActionsHandler(db, cfg))

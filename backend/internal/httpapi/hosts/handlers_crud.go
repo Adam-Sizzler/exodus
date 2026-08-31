@@ -28,7 +28,7 @@ func handleGetHosts(w http.ResponseWriter, r *http.Request, service *HostService
 		return
 	}
 
-	excludedMap, err := service.repo.getHostExcludedSquads(r.Context(), uuids)
+	internalSquadsMap, err := service.repo.getHostInternalSquads(r.Context(), uuids)
 	if err != nil {
 		shared.SendAPIError(w, shared.ErrGetAllHostsFailed.WithCause(err), service.cfg)
 		return
@@ -36,7 +36,7 @@ func handleGetHosts(w http.ResponseWriter, r *http.Request, service *HostService
 
 	response := make([]HostAPI, 0, len(records))
 	for _, rec := range records {
-		response = append(response, mapHostRecordToAPI(rec, nodesMap[rec.UUID], excludedMap[rec.UUID]))
+		response = append(response, mapHostRecordToAPI(rec, nodesMap[rec.UUID], internalSquadsMap[rec.UUID]))
 	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": response})
@@ -58,13 +58,13 @@ func handleGetHost(w http.ResponseWriter, r *http.Request, service *HostService,
 		shared.SendAPIError(w, shared.ErrGetOneHostFailed.WithCause(err), service.cfg)
 		return
 	}
-	excludedMap, err := service.repo.getHostExcludedSquads(r.Context(), []string{hostUUID})
+	internalSquadsMap, err := service.repo.getHostInternalSquads(r.Context(), []string{hostUUID})
 	if err != nil {
 		shared.SendAPIError(w, shared.ErrGetOneHostFailed.WithCause(err), service.cfg)
 		return
 	}
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": mapHostRecordToAPI(rec, nodesMap[rec.UUID], excludedMap[rec.UUID])})
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": mapHostRecordToAPI(rec, nodesMap[rec.UUID], internalSquadsMap[rec.UUID])})
 }
 
 func handleCreateHost(w http.ResponseWriter, r *http.Request, service *HostService) {
@@ -95,7 +95,11 @@ func handleCreateHost(w http.ResponseWriter, r *http.Request, service *HostServi
 		return
 	}
 
-	result := mapHostRecordToAPI(created, req.Nodes, req.ExcludedInternalSquads)
+	squads := req.ExcludedInternalSquads
+	if req.InternalSquads != nil {
+		squads = req.InternalSquads.Squads
+	}
+	result := mapHostRecordToAPI(created, req.Nodes, squads)
 	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": result})
 }
 
@@ -134,9 +138,9 @@ func handleUpdateHost(w http.ResponseWriter, r *http.Request, service *HostServi
 	}
 
 	nodesMap, _ := service.repo.getHostNodes(r.Context(), []string{req.UUID})
-	excludedMap, _ := service.repo.getHostExcludedSquads(r.Context(), []string{req.UUID})
+	internalSquadsMap, _ := service.repo.getHostInternalSquads(r.Context(), []string{req.UUID})
 
-	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": mapHostRecordToAPI(updated, nodesMap[req.UUID], excludedMap[req.UUID])})
+	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": mapHostRecordToAPI(updated, nodesMap[req.UUID], internalSquadsMap[req.UUID])})
 }
 
 func handleDeleteHost(w http.ResponseWriter, r *http.Request, service *HostService, hostUUID string) {

@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -265,5 +266,25 @@ func TestUserNotificationNeedsInternalSquads(t *testing.T) {
 	}
 	if userNotificationNeedsInternalSquads("user.enabled") {
 		t.Error("expected user.enabled to not need internal squads")
+	}
+}
+
+func TestCustomShortUUIDPattern(t *testing.T) {
+	pattern := "user-####-****"
+	generated := generateCustomShortUUID(pattern)
+	if len(generated) != len(pattern) {
+		t.Fatalf("expected length %d, got %d (%s)", len(pattern), len(generated), generated)
+	}
+	if !strings.HasPrefix(generated, "user-") {
+		t.Fatalf("expected prefix user-, got %s", generated)
+	}
+	parts := strings.Split(generated, "-")
+	if len(parts) != 3 {
+		t.Fatalf("expected 3 parts separated by -, got %v", parts)
+	}
+	for _, ch := range parts[1] {
+		if ch < '0' || ch > '9' {
+			t.Fatalf("expected digits in part 1, got %s", parts[1])
+		}
 	}
 }

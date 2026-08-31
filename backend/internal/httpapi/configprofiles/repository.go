@@ -21,7 +21,7 @@ func NewConfigProfileRepository(db *sql.DB) *ConfigProfileRepository {
 
 func (r *ConfigProfileRepository) getAllConfigProfileRecords(ctx context.Context) ([]configProfileRecord, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT uuid, view_position, name, config, created_at, updated_at
+		SELECT uuid, view_position, name, tags, config, created_at, updated_at
 		FROM config_profiles
 		ORDER BY view_position ASC, name ASC
 	`)
@@ -46,7 +46,7 @@ func (r *ConfigProfileRepository) getAllConfigProfileRecords(ctx context.Context
 
 func (r *ConfigProfileRepository) getConfigProfileRecordByUUID(ctx context.Context, profileUUID string) (configProfileRecord, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT uuid, view_position, name, config, created_at, updated_at
+		SELECT uuid, view_position, name, tags, config, created_at, updated_at
 		FROM config_profiles
 		WHERE uuid = $1
 	`, profileUUID)
@@ -61,11 +61,16 @@ func (r *ConfigProfileRepository) scanConfigProfileRecord(scanner shared.RowScan
 	var record configProfileRecord
 	var viewPosition sql.NullInt64
 	var configRaw []byte
-	if err := scanner.Scan(&record.UUID, &viewPosition, &record.Name, &configRaw, &record.CreatedAt, &record.UpdatedAt); err != nil {
+	var tags exodusdb.StringArray
+	if err := scanner.Scan(&record.UUID, &viewPosition, &record.Name, &tags, &configRaw, &record.CreatedAt, &record.UpdatedAt); err != nil {
 		return record, err
 	}
 	if viewPosition.Valid {
 		record.ViewPosition = int(viewPosition.Int64)
+	}
+	record.Tags = tags.Slice()
+	if record.Tags == nil {
+		record.Tags = []string{}
 	}
 	record.Config = json.RawMessage(configRaw)
 	return record, nil
@@ -182,11 +187,12 @@ func (r *ConfigProfileRepository) getConfigProfileNodesMap(ctx context.Context, 
 }
 
 func (r *ConfigProfileRepository) createConfigProfile(ctx context.Context, profileUUID string, req createConfigProfileRequest) error {
+	tags := shared.SanitizeTags(req.Tags)
 	return exodusdb.WithRetryTx(ctx, r.db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO config_profiles (uuid, name, config, created_at, updated_at)
-			VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		`, profileUUID, strings.TrimSpace(req.Name), req.Config); err != nil {
+			INSERT INTO config_profiles (uuid, name, tags, config, created_at, updated_at)
+			VALUES ($1, $2, $3::text[], $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`, profileUUID, strings.TrimSpace(req.Name), shared.PostgresTextArrayLiteral(tags), req.Config); err != nil {
 			return err
 		}
 
@@ -195,6 +201,51 @@ func (r *ConfigProfileRepository) createConfigProfile(ctx context.Context, profi
 		}
 		return nil
 	})
+}
+
+func (r *ConfigProfileRepository) getAllTags(ctx context.Context) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM config_profiles
+		WHERE tags IS NOT NULL AND cardinality(tags) > 0
+		ORDER BY tag ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		if trimmed := strings.TrimSpace(tag); trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags, rows.Err()
+}
+
+func (r *ConfigProfileRepository) setTags(ctx context.Context, profileUUID string, tags []string) error {
+	sanitized := shared.SanitizeTags(tags)
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE config_profiles
+		SET tags = $1::text[], updated_at = CURRENT_TIMESTAMP
+		WHERE uuid = $2
+	`, shared.PostgresTextArrayLiteral(sanitized), profileUUID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errConfigProfileNotFound
+	}
+	return nil
 }
 
 func (r *ConfigProfileRepository) updateConfigProfile(ctx context.Context, profileUUID string, clauses []string, args []any, updateConfig *json.RawMessage) error {

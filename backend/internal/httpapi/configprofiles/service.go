@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"exodus/internal/config"
+	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
 
 	"github.com/google/uuid"
@@ -47,6 +48,10 @@ func (s *ConfigProfileService) UpdateConfigProfile(ctx context.Context, req upda
 	if req.Name != nil {
 		add("name", strings.TrimSpace(*req.Name))
 	}
+	if req.Tags != nil {
+		sanitized := shared.SanitizeTags(req.Tags)
+		add("tags", shared.PostgresTextArrayLiteral(sanitized))
+	}
 	if req.Config != nil {
 		add("config", *req.Config)
 	}
@@ -58,6 +63,17 @@ func (s *ConfigProfileService) UpdateConfigProfile(ctx context.Context, req upda
 
 	monitor.RequestNodeDeploy(true)
 	return s.repo.getConfigProfileRecordByUUID(ctx, req.UUID)
+}
+
+func (s *ConfigProfileService) GetTags(ctx context.Context) ([]string, error) {
+	return s.repo.getAllTags(ctx)
+}
+
+func (s *ConfigProfileService) SetTags(ctx context.Context, profileUUID string, tags []string) ([]string, error) {
+	if err := s.repo.setTags(ctx, profileUUID, tags); err != nil {
+		return nil, err
+	}
+	return shared.SanitizeTags(tags), nil
 }
 
 func (s *ConfigProfileService) DeleteConfigProfile(ctx context.Context, profileUUID string) error {

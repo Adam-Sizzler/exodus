@@ -22,3 +22,4 @@ __exportStar(require("./get-internal-squad-accessible-nodes.command"), exports);
 __exportStar(require("./get-internal-squad.command"), exports);
 __exportStar(require("./get-internal-squads.command"), exports);
 __exportStar(require("./update-internal-squad.command"), exports);
+__exportStar(require("./tags"), exports);

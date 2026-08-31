@@ -223,4 +223,3 @@ func handlePatchSubscriptionSettingsEXODUS(w http.ResponseWriter, r *http.Reques
 
 // OnSettingsUpdated is invoked whenever subscription settings are modified.
 var OnSettingsUpdated func()
-

@@ -20,3 +20,4 @@ __exportStar(require("./delete-subscription-template.command"), exports);
 __exportStar(require("./get-template.command"), exports);
 __exportStar(require("./get-templates.command"), exports);
 __exportStar(require("./update-template.command"), exports);
+__exportStar(require("./tags"), exports);

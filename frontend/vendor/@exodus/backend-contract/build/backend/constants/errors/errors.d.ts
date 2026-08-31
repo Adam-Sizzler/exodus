@@ -1214,5 +1214,110 @@ export declare const ERRORS: {
         readonly message: "Get stats digest error";
         readonly httpCode: 500;
     };
+    readonly SYNC_SNIPPET_ERROR: {
+        readonly code: "A237";
+        readonly message: "Sync snippet error";
+        readonly httpCode: 500;
+    };
+    readonly NODE_INTEGRATION_NOT_FOUND: {
+        readonly code: "A238";
+        readonly message: "Node integration not found";
+        readonly httpCode: 404;
+    };
+    readonly GET_ALL_NODE_INTEGRATIONS_ERROR: {
+        readonly code: "A239";
+        readonly message: "Get all node integrations error";
+        readonly httpCode: 500;
+    };
+    readonly GET_NODE_INTEGRATION_BY_UUID_ERROR: {
+        readonly code: "A240";
+        readonly message: "Get node integration by UUID error";
+        readonly httpCode: 500;
+    };
+    readonly CREATE_NODE_INTEGRATION_ERROR: {
+        readonly code: "A241";
+        readonly message: "Create node integration error";
+        readonly httpCode: 500;
+    };
+    readonly UPDATE_NODE_INTEGRATION_ERROR: {
+        readonly code: "A242";
+        readonly message: "Update node integration error";
+        readonly httpCode: 500;
+    };
+    readonly DELETE_NODE_INTEGRATION_ERROR: {
+        readonly code: "A243";
+        readonly message: "Delete node integration error";
+        readonly httpCode: 500;
+    };
+    readonly NODE_INTEGRATION_NAME_ALREADY_EXISTS: {
+        readonly code: "A244";
+        readonly message: "Node integration name already exists";
+        readonly httpCode: 400;
+    };
+    readonly SHARED_LIST_NOT_FOUND: {
+        readonly code: "A245";
+        readonly message: "Shared list not found";
+        readonly httpCode: 404;
+    };
+    readonly SHARED_LIST_NAME_ALREADY_EXISTS: {
+        readonly code: "A246";
+        readonly message: "Shared list name already exists";
+        readonly httpCode: 400;
+    };
+    readonly GET_ALL_SHARED_LISTS_ERROR: {
+        readonly code: "A247";
+        readonly message: "Get all shared lists error";
+        readonly httpCode: 500;
+    };
+    readonly GET_SHARED_LIST_BY_NAME_ERROR: {
+        readonly code: "A248";
+        readonly message: "Get shared list by name error";
+        readonly httpCode: 500;
+    };
+    readonly CREATE_SHARED_LIST_ERROR: {
+        readonly code: "A249";
+        readonly message: "Create shared list error";
+        readonly httpCode: 500;
+    };
+    readonly UPDATE_SHARED_LIST_ERROR: {
+        readonly code: "A250";
+        readonly message: "Update shared list error";
+        readonly httpCode: 500;
+    };
+    readonly DELETE_SHARED_LIST_ERROR: {
+        readonly code: "A251";
+        readonly message: "Delete shared list error";
+        readonly httpCode: 500;
+    };
+    readonly INVALID_SHARED_LIST_CONFIG: {
+        readonly code: "A252";
+        readonly message: "Invalid shared list config";
+        readonly httpCode: 400;
+        readonly withMessage: (message: string) => {
+            code: string;
+            message: string;
+            httpCode: number;
+        };
+    };
+    readonly EVALUATE_VAULT_ERROR: {
+        readonly code: "A255";
+        readonly message: "Vault evaluation refused";
+        readonly httpCode: 429;
+    };
+    readonly CREATE_SSH_TICKET_ERROR: {
+        readonly code: "A254";
+        readonly message: "Create SSH ticket error";
+        readonly httpCode: 500;
+    };
+    readonly GET_ENTITY_TAGS_ERROR: {
+        readonly code: "A256";
+        readonly message: "Get tags error";
+        readonly httpCode: 500;
+    };
+    readonly SET_ENTITY_TAGS_ERROR: {
+        readonly code: "A257";
+        readonly message: "Set tags error";
+        readonly httpCode: 500;
+    };
 };
 //# sourceMappingURL=errors.d.ts.map

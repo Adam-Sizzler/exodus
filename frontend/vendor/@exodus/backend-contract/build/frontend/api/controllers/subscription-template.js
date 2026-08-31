@@ -12,4 +12,8 @@ exports.SUBSCRIPTION_TEMPLATE_ROUTES = {
     ACTIONS: {
         REORDER: `${ACTIONS_ROUTE}/reorder`,
     },
+    TAGS: {
+        GET: 'tags', // get
+        SET: 'tags', // patch
+    },
 };

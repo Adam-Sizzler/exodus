@@ -91,6 +91,108 @@ func ApplyHostMapperToMap(target map[string]interface{}, operations []HostMapper
 	}
 }
 
+// ShareLink represents a raw share link structure before serialization.
+type ShareLink struct {
+	Scheme   string            // "vless", "trojan", "ss", "hysteria2", "tuic", "vmess", "anytls"
+	Password string            // user credentials: UUID or password
+	Address  string            // host address
+	Port     int               // host port
+	Method   string            // for shadowsocks
+	Params   map[string]string // query params
+	Remark   string            // descriptive text / remark
+}
+
+// ApplyBase64Mapper applies base64 mapper operations to a ShareLink and its query params.
+func ApplyBase64Mapper(link *ShareLink, operations []HostMapperOperation, host SubscriptionHost) {
+	if link == nil || len(operations) == 0 {
+		return
+	}
+	if link.Params == nil {
+		link.Params = make(map[string]string)
+	}
+
+	for _, op := range operations {
+		to := strings.TrimSpace(op.To)
+		if to == "" {
+			continue
+		}
+
+		if strings.HasPrefix(to, "$link.") {
+			target := strings.TrimPrefix(to, "$link.")
+			switch target {
+			case "password":
+				switch op.Op {
+				case "set":
+					link.Password = fmt.Sprintf("%v", op.Value)
+				case "copy":
+					if val, ok := resolveSourceValue(op.From, host); ok {
+						link.Password = fmt.Sprintf("%v", val)
+					}
+				case "unset":
+					link.Password = ""
+				}
+			case "address":
+				switch op.Op {
+				case "set":
+					link.Address = fmt.Sprintf("%v", op.Value)
+				case "copy":
+					if val, ok := resolveSourceValue(op.From, host); ok {
+						link.Address = fmt.Sprintf("%v", val)
+					}
+				}
+			case "port":
+				switch op.Op {
+				case "set":
+					if p, err := strconv.Atoi(fmt.Sprintf("%v", op.Value)); err == nil && p > 0 && p <= 65535 {
+						link.Port = p
+					}
+				case "copy":
+					if val, ok := resolveSourceValue(op.From, host); ok {
+						if p, err := strconv.Atoi(fmt.Sprintf("%v", val)); err == nil && p > 0 && p <= 65535 {
+							link.Port = p
+						}
+					}
+				}
+			case "remark":
+				switch op.Op {
+				case "set":
+					link.Remark = fmt.Sprintf("%v", op.Value)
+				case "copy":
+					if val, ok := resolveSourceValue(op.From, host); ok {
+						link.Remark = fmt.Sprintf("%v", val)
+					}
+				case "unset":
+					link.Remark = ""
+				}
+			case "method":
+				switch op.Op {
+				case "set":
+					link.Method = fmt.Sprintf("%v", op.Value)
+				case "copy":
+					if val, ok := resolveSourceValue(op.From, host); ok {
+						link.Method = fmt.Sprintf("%v", val)
+					}
+				case "unset":
+					link.Method = ""
+				}
+			}
+			continue
+		}
+
+		// Query params operation
+		switch op.Op {
+		case "set":
+			link.Params[to] = fmt.Sprintf("%v", op.Value)
+		case "unset":
+			delete(link.Params, to)
+		case "copy":
+			if val, ok := resolveSourceValue(op.From, host); ok {
+				link.Params[to] = fmt.Sprintf("%v", val)
+			}
+		}
+	}
+}
+
 // ApplyHostMapperToBase64Query applies operations to query params (flat string map).
 func ApplyHostMapperToBase64Query(target map[string]string, operations []HostMapperOperation, host SubscriptionHost) {
 	if target == nil || len(operations) == 0 {
@@ -99,7 +201,7 @@ func ApplyHostMapperToBase64Query(target map[string]string, operations []HostMap
 
 	for _, op := range operations {
 		key := strings.TrimSpace(op.To)
-		if key == "" {
+		if key == "" || strings.HasPrefix(key, "$link.") {
 			continue
 		}
 

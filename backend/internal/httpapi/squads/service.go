@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"exodus/internal/config"
+	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
 
 	"github.com/google/uuid"
@@ -58,6 +59,10 @@ func (s *SquadService) UpdateSquad(ctx context.Context, req InternalSquadUpdateR
 	if req.ViewPosition != nil {
 		add("view_position", *req.ViewPosition)
 	}
+	if req.Tags != nil {
+		sanitized := shared.SanitizeTags(req.Tags)
+		add("tags", shared.PostgresTextArrayLiteral(sanitized))
+	}
 
 	err := s.repo.updateSquad(ctx, req.UUID, clauses, args, req.Inbounds)
 	if err != nil {
@@ -74,6 +79,17 @@ func (s *SquadService) UpdateSquad(ctx context.Context, req InternalSquadUpdateR
 	membersCount, _ := s.repo.getSquadMembersCount(ctx, req.UUID)
 	inbounds, _ := s.repo.getSquadInbounds(ctx, req.UUID)
 	return buildInternalSquadResponse(squad, membersCount, inbounds), nil
+}
+
+func (s *SquadService) GetTags(ctx context.Context) ([]string, error) {
+	return s.repo.getAllTags(ctx)
+}
+
+func (s *SquadService) SetTags(ctx context.Context, squadUUID string, tags []string) ([]string, error) {
+	if err := s.repo.setTags(ctx, squadUUID, tags); err != nil {
+		return nil, err
+	}
+	return shared.SanitizeTags(tags), nil
 }
 
 func (s *SquadService) DeleteSquad(ctx context.Context, squadUUID string) (string, error) {

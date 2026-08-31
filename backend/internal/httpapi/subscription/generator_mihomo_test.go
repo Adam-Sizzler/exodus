@@ -617,4 +617,3 @@ func TestXrayVlessRealityLinkAndOutbound(t *testing.T) {
 		}
 	}
 }
-

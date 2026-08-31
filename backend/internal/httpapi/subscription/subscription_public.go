@@ -297,8 +297,8 @@ func (s *RenderService) CheckHwidDeviceLimit(ctx context.Context, user Subscript
 	return checkHwidDeviceLimit(ctx, s.db, user, hwid, settings)
 }
 
-func (s *RenderService) UpdateSubscriptionRequest(ctx context.Context, userUUID string, userID int64, userAgent, requestIP string) {
-	updateSubscriptionRequest(ctx, s.backgroundDB, userUUID, userID, userAgent, requestIP)
+func (s *RenderService) UpdateSubscriptionRequest(ctx context.Context, userUUID string, userID int64, userAgent, requestIP, responseType, ruleName string) {
+	updateSubscriptionRequest(ctx, s.backgroundDB, userUUID, userID, userAgent, requestIP, responseType, ruleName)
 }
 
 func (s *RenderService) GetSubscriptionTemplate(ctx context.Context, templateType string) ([]byte, error) {

@@ -24,7 +24,7 @@ export declare namespace UpdateHostCommand {
             readonly H3_H2_COMBINED: "h3,h2";
         }>>>;
         fingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        isDisabled: z.ZodDefault<z.ZodBoolean>;
+        isDisabled: z.ZodOptional<z.ZodBoolean>;
         securityLayer: z.ZodOptional<z.ZodEnum<{
             readonly DEFAULT: "DEFAULT";
             readonly TLS: "TLS";
@@ -53,7 +53,6 @@ export declare namespace UpdateHostCommand {
         }>>>;
         nodes: z.ZodOptional<z.ZodArray<z.ZodUUID>>;
         xrayJsonTemplateUuid: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
-        excludedInternalSquads: z.ZodOptional<z.ZodArray<z.ZodUUID>>;
         excludeFromSubscriptionTypes: z.ZodOptional<z.ZodArray<z.ZodEnum<{
             readonly XRAY_JSON: "XRAY_JSON";
             readonly XRAY_BASE64: "XRAY_BASE64";
@@ -112,6 +111,13 @@ export declare namespace UpdateHostCommand {
                 to: z.ZodString;
             }, z.core.$strip>], "op">>>;
         }, z.core.$strip>>;
+        internalSquads: z.ZodOptional<z.ZodObject<{
+            mode: z.ZodEnum<{
+                readonly EXCLUDE: "EXCLUDE";
+                readonly ALLOW_ONLY: "ALLOW_ONLY";
+            }>;
+            squads: z.ZodArray<z.ZodUUID>;
+        }, z.core.$strip>>;
     }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
@@ -165,7 +171,13 @@ export declare namespace UpdateHostCommand {
             }>>;
             nodes: z.ZodArray<z.ZodUUID>;
             xrayJsonTemplateUuid: z.ZodNullable<z.ZodUUID>;
-            excludedInternalSquads: z.ZodArray<z.ZodUUID>;
+            internalSquads: z.ZodObject<{
+                mode: z.ZodEnum<{
+                    readonly EXCLUDE: "EXCLUDE";
+                    readonly ALLOW_ONLY: "ALLOW_ONLY";
+                }>;
+                squads: z.ZodArray<z.ZodUUID>;
+            }, z.core.$strip>;
             excludeFromSubscriptionTypes: z.ZodArray<z.ZodEnum<{
                 readonly XRAY_JSON: "XRAY_JSON";
                 readonly XRAY_BASE64: "XRAY_BASE64";

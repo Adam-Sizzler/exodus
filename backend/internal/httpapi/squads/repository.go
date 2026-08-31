@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"exodus/internal/db"
+	"exodus/internal/httpapi/shared"
 )
 
 type SquadRepository struct {
@@ -21,7 +22,7 @@ func NewSquadRepository(db *sql.DB) *SquadRepository {
 
 func (r *SquadRepository) getSquads(ctx context.Context) ([]InternalSquad, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT uuid, view_position, name, created_at, updated_at
+		SELECT uuid, view_position, name, tags, created_at, updated_at
 		FROM internal_squads
 		ORDER BY view_position ASC, name ASC
 	`)
@@ -46,7 +47,7 @@ func (r *SquadRepository) getSquads(ctx context.Context) ([]InternalSquad, error
 
 func (r *SquadRepository) getSquadByUUID(ctx context.Context, squadUUID string) (InternalSquad, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT uuid, view_position, name, created_at, updated_at
+		SELECT uuid, view_position, name, tags, created_at, updated_at
 		FROM internal_squads WHERE uuid = $1
 	`, squadUUID)
 	return scanInternalSquad(row)
@@ -320,12 +321,58 @@ func (r *SquadRepository) getInboundAssignments(ctx context.Context, nodeUUID st
 }
 
 func (r *SquadRepository) createSquad(ctx context.Context, squadUUID string, req InternalSquadCreateRequest) error {
+	tags := shared.SanitizeTags(req.Tags)
 	query := `
 		INSERT INTO internal_squads (
-			uuid, view_position, name, created_at, updated_at
-		) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-	_, err := r.db.ExecContext(ctx, query, squadUUID, req.ViewPosition, req.Name)
+			uuid, view_position, name, tags, created_at, updated_at
+		) VALUES ($1, $2, $3, $4::text[], CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+	_, err := r.db.ExecContext(ctx, query, squadUUID, req.ViewPosition, req.Name, shared.PostgresTextArrayLiteral(tags))
 	return err
+}
+
+func (r *SquadRepository) getAllTags(ctx context.Context) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM internal_squads
+		WHERE tags IS NOT NULL AND cardinality(tags) > 0
+		ORDER BY tag ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		if trimmed := strings.TrimSpace(tag); trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags, rows.Err()
+}
+
+func (r *SquadRepository) setTags(ctx context.Context, squadUUID string, tags []string) error {
+	sanitized := shared.SanitizeTags(tags)
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE internal_squads
+		SET tags = $1::text[], updated_at = CURRENT_TIMESTAMP
+		WHERE uuid = $2
+	`, shared.PostgresTextArrayLiteral(sanitized), squadUUID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errInternalSquadNotFound
+	}
+	return nil
 }
 
 func (r *SquadRepository) updateSquad(ctx context.Context, squadUUID string, clauses []string, args []any, inboundUUIDs []string) error {

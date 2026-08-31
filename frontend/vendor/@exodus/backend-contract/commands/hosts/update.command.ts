@@ -8,7 +8,7 @@ import {
     SUBSCRIPTION_TEMPLATE_TYPE,
     MIHOMO_IP_VERSION,
 } from '../../constants';
-import { HostMapperSchema, HostsSchema } from '../../models';
+import { HostInternalSquadsSchema, HostMapperSchema, HostsSchema } from '../../models';
 import { HostResponseSchema } from './host.response';
 
 export namespace UpdateHostCommand {
@@ -39,7 +39,7 @@ export namespace UpdateHostCommand {
         host: z.string().nullish(),
         alpn: z.enum(ALPN).nullish(),
         fingerprint: z.string().nullish(),
-        isDisabled: z.boolean().default(false),
+        isDisabled: z.optional(z.boolean()),
         securityLayer: z.optional(z.enum(SECURITY_LAYERS)),
         xhttpExtraParams: z.unknown().nullish(),
         muxParams: z.unknown().nullish(),
@@ -70,13 +70,11 @@ export namespace UpdateHostCommand {
         mihomoIpVersion: z.enum(MIHOMO_IP_VERSION).nullish(),
         nodes: z.optional(z.array(z.uuid())),
         xrayJsonTemplateUuid: z.uuid().nullish(),
-        excludedInternalSquads: z
-            .optional(z.array(z.uuid()))
-            .describe('Optional. Internal squads from which the host will be excluded.'),
         excludeFromSubscriptionTypes: z
             .optional(z.array(z.enum(SUBSCRIPTION_TEMPLATE_TYPE)))
             .describe('Optional. Subscription types from which the host will be excluded from.'),
         mapper: HostMapperSchema.optional(),
+        internalSquads: HostInternalSquadsSchema.optional(),
     });
 
     export const ResponseSchema = HostResponseSchema;

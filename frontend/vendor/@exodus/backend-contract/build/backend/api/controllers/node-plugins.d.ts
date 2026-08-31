@@ -18,13 +18,17 @@ export declare const NODE_PLUGINS_ROUTES: {
     };
     readonly SHARED_LISTS: {
         readonly GET_ALL: "shared-lists";
-        readonly GET: (name: string) => string;
+        readonly GET: "shared-lists/by-name";
         readonly CREATE: "shared-lists";
         readonly UPDATE: "shared-lists";
-        readonly DELETE: (name: string) => string;
+        readonly DELETE: "shared-lists";
         readonly ACTIONS: {
             readonly SYNC: "shared-lists/actions/sync";
         };
+    };
+    readonly TAGS: {
+        readonly GET: "tags";
+        readonly SET: "tags";
     };
 };
 //# sourceMappingURL=node-plugins.d.ts.map

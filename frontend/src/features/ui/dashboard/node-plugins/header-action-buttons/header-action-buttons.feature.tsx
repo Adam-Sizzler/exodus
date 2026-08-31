@@ -28,7 +28,7 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
             <UniversalSpotlightActionIconShared />
 
             <ActionIconGroup>
-                <Tooltip label={t('common.shared-lists')} withArrow>
+                <Tooltip label={t('common.field.shared-lists')} withArrow>
                     <ActionIcon
                         color="indigo"
                         onClick={() => showModal('sharedLists_sharedListsModal')}
@@ -54,7 +54,7 @@ export const NodePluginsHeaderActionButtonsFeature = () => {
             </ActionIconGroup>
 
             <ActionIconGroup>
-                <Tooltip label={t('common.refresh')} withArrow>
+                <Tooltip label={t('common.action.refresh')} withArrow>
                     <ActionIcon
                         loading={isFetching}
                         onClick={handleUpdate}

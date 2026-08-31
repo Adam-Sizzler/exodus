@@ -47,7 +47,7 @@ export const SaveTemplateModal = (props: IProps) => {
 
             <Stack gap="xs">
                 <Text fw={500} size="sm">
-                    {t('common.color')}
+                    {t('common.field.color')}
                 </Text>
                 <Group gap="xs">
                     {TEMPLATE_COLORS.map((colorSelected) => (
@@ -71,8 +71,9 @@ export const SaveTemplateModal = (props: IProps) => {
                 fullWidth
                 leftSection={<TbDeviceFloppy size={16} />}
                 onClick={handleSave}
+                variant="soft"
             >
-                {t('common.save')}
+                {t('common.action.save')}
             </Button>
         </Stack>
     )

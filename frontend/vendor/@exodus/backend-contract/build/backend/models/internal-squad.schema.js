@@ -7,6 +7,7 @@ exports.InternalSquadSchema = zod_1.z.object({
     uuid: zod_1.z.uuid(),
     viewPosition: zod_1.z.int(),
     name: zod_1.z.string(),
+    tags: zod_1.z.array(zod_1.z.string()).default([]),
     info: zod_1.z.object({
         membersCount: zod_1.z.number(),
         inboundsCount: zod_1.z.number(),

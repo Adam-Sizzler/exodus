@@ -143,6 +143,33 @@ func ConfigProfilesActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.Ha
 	}
 }
 
+// ConfigProfilesTagsHandler godoc
+// @Summary      Manage config profile tags
+// @Description  Get unique config profile tags or set tags for a config profile
+// @Tags         Config Profiles Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /config-profiles/tags [get]
+// @Router       /config-profiles/tags [patch]
+func ConfigProfilesTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewConfigProfileRepository(db)
+	service := NewConfigProfileService(repo, cfg)
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetConfigProfileTags(w, r, service)
+		case http.MethodPatch:
+			handleSetConfigProfileTags(w, r, service)
+		default:
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
+	}
+}
+
 // ConfigProfilesInboundsHandler godoc
 // @Summary      List all config profile inbounds
 // @Description  Get all inbounds across configuration profiles

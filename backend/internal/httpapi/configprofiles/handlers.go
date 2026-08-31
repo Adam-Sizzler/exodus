@@ -254,10 +254,16 @@ func buildConfigProfileResponses(ctx context.Context, service *ConfigProfileServ
 			nodes = make([]ConfigProfileNode, 0)
 		}
 
+		tags := record.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+
 		response = append(response, ConfigProfile{
 			UUID:         record.UUID,
 			ViewPosition: record.ViewPosition,
 			Name:         record.Name,
+			Tags:         tags,
 			Config:       record.Config,
 			Inbounds:     inbounds,
 			Nodes:        nodes,
@@ -266,6 +272,44 @@ func buildConfigProfileResponses(ctx context.Context, service *ConfigProfileServ
 		})
 	}
 	return response, nil
+}
+
+func handleGetConfigProfileTags(w http.ResponseWriter, r *http.Request, service *ConfigProfileService) {
+	tags, err := service.GetTags(r.Context())
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetConfigProfilesFailed.WithCause(err), service.cfg)
+		return
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"tags": tags,
+		},
+	})
+}
+
+func handleSetConfigProfileTags(w http.ResponseWriter, r *http.Request, service *ConfigProfileService) {
+	var req shared.SetEntityTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		return
+	}
+	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, service.cfg)
+		return
+	}
+
+	tags, err := service.SetTags(r.Context(), req.UUID, req.Tags)
+	if err != nil {
+		handleConfigProfileWriteError(w, err, service.cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"uuid": req.UUID,
+			"tags": tags,
+		},
+	})
 }
 
 func handleGetConfigProfileSnippets(w http.ResponseWriter, r *http.Request, service *ConfigProfileService) {

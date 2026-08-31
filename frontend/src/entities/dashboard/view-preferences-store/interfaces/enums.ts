@@ -8,7 +8,3 @@ export enum HOSTS_VIEW_MODE {
     TABLE = 'table'
 }
 
-export enum LAYOUT_STYLE {
-    COMPACT = 'compact',
-    SIDEBAR = 'sidebar'
-}

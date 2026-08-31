@@ -56,4 +56,3 @@ func parseUsersTableQuery(r *http.Request) (usersTableQuery, error) {
 
 	return query, nil
 }
-

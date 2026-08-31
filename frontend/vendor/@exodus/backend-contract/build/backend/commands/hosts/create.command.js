@@ -48,13 +48,11 @@ var CreateHostCommand;
         mihomoIpVersion: zod_1.z.enum(constants_1.MIHOMO_IP_VERSION).nullish(),
         nodes: zod_1.z.optional(zod_1.z.array(zod_1.z.uuid())),
         xrayJsonTemplateUuid: zod_1.z.uuid().nullish(),
-        excludedInternalSquads: zod_1.z
-            .optional(zod_1.z.array(zod_1.z.uuid()))
-            .describe('Optional. Internal squads from which the host will be excluded.'),
         excludeFromSubscriptionTypes: zod_1.z
             .optional(zod_1.z.array(zod_1.z.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)))
             .describe('Optional. Subscription types from which the host will be excluded from.'),
         mapper: models_1.HostMapperSchema.optional(),
+        internalSquads: models_1.HostInternalSquadsSchema.optional(),
     });
     CreateHostCommand.ResponseSchema = host_response_1.HostResponseSchema;
 })(CreateHostCommand || (exports.CreateHostCommand = CreateHostCommand = {}));

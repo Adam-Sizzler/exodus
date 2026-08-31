@@ -16,6 +16,7 @@ type ExternalSquadAPI struct {
 	UUID                  string                  `json:"uuid"`
 	ViewPosition          int                     `json:"viewPosition"`
 	Name                  string                  `json:"name"`
+	Tags                  []string                `json:"tags"`
 	Info                  ExternalSquadInfo       `json:"info"`
 	Templates             []ExternalSquadTemplate `json:"templates"`
 	SubscriptionSettings  map[string]any          `json:"subscriptionSettings"`
@@ -41,6 +42,7 @@ type ExternalSquadTemplate struct {
 type CreateExternalSquadRequest struct {
 	Name                  string            `json:"name"`
 	ViewPosition          *int              `json:"viewPosition,omitempty"`
+	Tags                  []string          `json:"tags,omitempty"`
 	SubscriptionSettings  map[string]any    `json:"subscriptionSettings,omitempty"`
 	HostOverrides         map[string]any    `json:"hostOverrides,omitempty"`
 	ResponseHeadersAdd    map[string]string `json:"responseHeadersAdd,omitempty"`
@@ -54,6 +56,7 @@ type UpdateExternalSquadRequest struct {
 	UUID                  string                   `json:"uuid"`
 	Name                  *string                  `json:"name,omitempty"`
 	ViewPosition          *int                     `json:"viewPosition,omitempty"`
+	Tags                  []string                 `json:"tags,omitempty"`
 	Templates             *[]ExternalSquadTemplate `json:"templates,omitempty"`
 	SubscriptionSettings  json.RawMessage          `json:"subscriptionSettings,omitempty"`
 	HostOverrides         json.RawMessage          `json:"hostOverrides,omitempty"`
@@ -119,10 +122,15 @@ func (r *BulkUsersRequest) Validate() error {
 }
 
 func convertExternalSquadToAPI(rec ExternalSquadRecord) (ExternalSquadAPI, error) {
+	tags := rec.Tags
+	if tags == nil {
+		tags = []string{}
+	}
 	api := ExternalSquadAPI{
 		UUID:                  rec.UUID,
 		ViewPosition:          rec.ViewPosition,
 		Name:                  rec.Name,
+		Tags:                  tags,
 		Info:                  ExternalSquadInfo{MembersCount: 0},
 		Templates:             make([]ExternalSquadTemplate, 0),
 		ResponseHeadersAdd:    make(map[string]string),

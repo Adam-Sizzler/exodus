@@ -37,6 +37,8 @@ type BackendAppConfig struct {
 	TrustedProxies    []string
 	AppPort           int
 	ShortUUIDLength   int
+	ShortUUIDStrategy string
+	ShortUUIDPattern  string
 	trustedProxyNets  []*net.IPNet
 }
 
@@ -167,6 +169,8 @@ var defaultConfig = BackendConfig{
 		TrustedProxies:    []string{},
 		AppPort:           3000,
 		ShortUUIDLength:   16,
+		ShortUUIDStrategy: "nanoid",
+		ShortUUIDPattern:  "",
 		trustedProxyNets:  nil,
 	},
 	JWT: JWTConfig{
@@ -306,6 +310,12 @@ func applyEnvOverrides(cfg *BackendConfig) {
 		} else if cfg.Logger != nil {
 			cfg.Logger.Warn("Invalid SHORT_UUID_LENGTH value (must be 16-64), ignoring", "value", value)
 		}
+	}
+	if value := envFirst("SHORT_UUID_STRATEGY"); value != "" {
+		cfg.Backend.ShortUUIDStrategy = strings.ToLower(strings.TrimSpace(value))
+	}
+	if value := envFirst("SHORT_UUID_PATTERN"); value != "" {
+		cfg.Backend.ShortUUIDPattern = strings.TrimSpace(value)
 	}
 	if value := envFirst("APP_PATH"); value != "" {
 		cfg.Backend.BasePath = value

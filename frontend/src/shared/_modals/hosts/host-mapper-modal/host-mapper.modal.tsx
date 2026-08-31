@@ -3,14 +3,8 @@ import type { editor } from 'monaco-editor'
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { MonacoSetupHostMapperEditorFeature } from '@features/dashboard/config-profiles/monaco-setup'
 import { Box, Button, Group, Modal, Paper } from '@mantine/core'
-import { UseFormReturnType } from '@mantine/form'
 import { Monaco, useMonaco } from '@monaco-editor/react'
-import {
-    CreateHostCommand,
-    HostMapperSchema,
-    UpdateHostCommand,
-    UpdateManyHostsCommand
-} from '@exodus/backend-contract'
+import { HostMapperSchema } from '@exodus/backend-contract'
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,20 +14,19 @@ import { useNiceMantineModal } from '@shared/_modals/use-nice-modal'
 import { COMPACT_MONACO_OPTIONS } from '@shared/constants/monaco-theme'
 import { usePseudoFullscreen } from '@shared/hooks'
 import { CodeEditor, editorClasses, EditorFooter, EditorStatusBar } from '@shared/ui/code-editor'
+import { THostForm } from '@shared/ui/forms/hosts/base-host-form/host-form.types'
 import { fullscreenClasses, FullscreenToggleButton } from '@shared/ui/fullscreen-toggle-button'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { forceMonacoRetokenize } from '@shared/utils/monaco/force-retokenize'
+import { formatFirstErrorMarker } from '@shared/utils/monaco/markers'
+import { setupSuggestWidget } from '@shared/utils/setup-monaco/setup-suggest-monaco'
 
 import classes from './HostMapperModal.module.css'
 
 const EMPTY_MAPPER = JSON.stringify({ xrayJson: [], mihomo: [], base64: [], singbox: [] }, null, 2)
 
 interface IProps {
-    form: UseFormReturnType<
-        | CreateHostCommand.RequestBody
-        | UpdateHostCommand.RequestBody
-        | UpdateManyHostsCommand.RequestBody
-    >
+    form: THostForm
     rawInbound?: unknown
 }
 
@@ -52,21 +45,12 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
 
     const [error, setError] = useState<null | string>(null)
 
-    const getFormMapperValue = () => {
-        const currentMapper = form.getValues().mapper
-        if (!currentMapper || typeof currentMapper !== 'object') {
-            return EMPTY_MAPPER
-        }
-        const hasEntries = Object.values(currentMapper).some(
-            (arr) => Array.isArray(arr) && arr.length > 0
-        )
-        if (!hasEntries) {
-            return EMPTY_MAPPER
-        }
-        return JSON.stringify(currentMapper, null, 2)
-    }
+    const currentMapper = form.getValues().mapper
 
-    const initialValue = getFormMapperValue()
+    const initialValue =
+        currentMapper && Object.keys(currentMapper).length > 0
+            ? JSON.stringify(currentMapper, null, 2)
+            : EMPTY_MAPPER
 
     useEffect(() => {
         if (!monaco) return
@@ -74,25 +58,13 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
         MonacoSetupHostMapperEditorFeature.setup(rawInbound)
     }, [monaco, rawInbound])
 
-    useEffect(() => {
-        if (modal.visible) {
-            const nextVal = getFormMapperValue()
-            if (editorRef.current && editorRef.current.getValue() !== nextVal) {
-                editorRef.current.setValue(nextVal)
-            }
-            setError(null)
-        }
-    }, [modal.visible])
-
     const handleSave = () => {
         if (!editorRef.current) return
 
         const currentValue = editorRef.current.getValue().trim()
 
-        if (currentValue === '' || currentValue === '{}' || currentValue === EMPTY_MAPPER) {
-            form.setFieldValue('mapper', { xrayJson: [], mihomo: [], base64: [], singbox: [] })
-            form.setDirty({ mapper: true })
-            form.setTouched({ mapper: true })
+        if (currentValue === '') {
+            form.setFieldValue('mapper', {})
             hide()
             return
         }
@@ -102,7 +74,7 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
         try {
             parsed = JSON.parse(currentValue)
         } catch {
-            setError(t('base-host-form.invalid-json'))
+            setError(t('common.message.invalid-json'))
             return
         }
 
@@ -115,8 +87,6 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
         }
 
         form.setFieldValue('mapper', result.data)
-        form.setDirty({ mapper: true })
-        form.setTouched({ mapper: true })
         hide()
     }
 
@@ -140,15 +110,11 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
                     className={clsx(
                         classes.editorWrapper,
                         editorClasses.editorAttached,
+                        error && classes.editorWrapperError,
                         isFullscreen && fullscreenClasses.fill
                     )}
                     p={0}
                     pos="relative"
-                    style={{
-                        border: error
-                            ? '1px solid var(--mantine-color-red-5)'
-                            : '1px solid var(--mantine-color-dark-4)'
-                    }}
                     withBorder
                 >
                     <CodeEditor
@@ -157,32 +123,13 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
                         defaultLanguage="json"
                         value={initialValue}
                         onChange={() => setError(null)}
+                        onValidate={(markers) => setError(formatFirstErrorMarker(markers))}
                         onMount={(editor, monaco) => {
                             editorRef.current = editor
                             monacoRef.current = monaco
 
-                            const initial = getFormMapperValue()
-                            editor.setValue(initial)
-
                             forceMonacoRetokenize(editor)
-
-                            const contribution = editor.getContribution(
-                                'editor.contrib.suggestController'
-                                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                            ) as any
-
-                            if (contribution && contribution.widget) {
-                                const suggestWidget = contribution.widget.value
-                                if (suggestWidget?._setDetailsVisible) {
-                                    suggestWidget._setDetailsVisible(true)
-                                }
-                                if (suggestWidget?._persistedSize) {
-                                    suggestWidget._persistedSize.store({
-                                        width: 300,
-                                        height: 300
-                                    })
-                                }
-                            }
+                            setupSuggestWidget(editor)
                         }}
                         options={COMPACT_MONACO_OPTIONS}
                         path="host-mapper://*"
@@ -190,20 +137,16 @@ export const HostMapperModal = NiceModal.create((props: IProps) => {
                 </Paper>
 
                 <EditorFooter className={clsx(error && classes.footerError)}>
-                    <FullscreenToggleButton
-                        floating={false}
-                        isFullscreen={isFullscreen}
-                        onToggle={toggleFullscreen}
-                        size={36}
-                    />
-
-                    <Group gap="sm">
+                    <Group gap="sm" ml="auto">
                         <Button onClick={handleSave} variant="soft">
-                            {t('common.save')}
+                            {t('common.action.save')}
                         </Button>
-                        <Button onClick={hide} variant="subtle">
-                            {t('common.cancel')}
-                        </Button>
+                        <FullscreenToggleButton
+                            floating={false}
+                            isFullscreen={isFullscreen}
+                            onToggle={toggleFullscreen}
+                            size={36}
+                        />
                     </Group>
                 </EditorFooter>
             </Box>

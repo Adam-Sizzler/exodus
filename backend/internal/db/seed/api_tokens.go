@@ -34,6 +34,9 @@ func ensureValidAPITokens(ctx context.Context, tx *sql.Tx, cfg *config.BackendCo
 		}
 		tokens = append(tokens, item)
 	}
+	if rowsErr := rows.Err(); rowsErr != nil && cfg != nil && cfg.Logger != nil {
+		cfg.Logger.Warn("Error iterating API tokens", "error", rowsErr)
+	}
 
 	for _, token := range tokens {
 		tokenUUID := strings.TrimSpace(token.uuid)

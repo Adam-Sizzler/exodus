@@ -1,9 +1,9 @@
 import { z } from 'zod';
 export declare namespace GetSharedListCommand {
-    const url: (name: string) => string;
-    const TSQ_url: string;
+    const url: "/api/node-plugins/shared-lists/by-name";
+    const TSQ_url: "/api/node-plugins/shared-lists/by-name";
     const endpointDetails: import("../../../constants").EndpointDetails;
-    const RequestParamSchema: z.ZodObject<{
+    const RequestQuerySchema: z.ZodObject<{
         name: z.ZodString;
     }, z.core.$strip>;
     const ResponseSchema: z.ZodObject<{
@@ -12,7 +12,7 @@ export declare namespace GetSharedListCommand {
             config: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         }, z.core.$strip>;
     }, z.core.$strip>;
-    type RequestParam = z.infer<typeof RequestParamSchema>;
+    type RequestQuery = z.infer<typeof RequestQuerySchema>;
     type Response = z.infer<typeof ResponseSchema>;
 }
 //# sourceMappingURL=get-shared-list.command.d.ts.map

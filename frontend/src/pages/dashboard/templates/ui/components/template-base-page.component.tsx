@@ -32,7 +32,7 @@ export const TemplateBasePageComponent = (props: Props) => {
                 initial={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
             >
-                <TemplatesGridWidget templates={templates} templateTitle={title} type={type} />
+                <TemplatesGridWidget templateTitle={title} templates={templates} type={type} />
             </motion.div>
 
             <TemplatesSpotlightWidget templates={templates} />

@@ -5,7 +5,6 @@ import { HiServer } from 'react-icons/hi'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 
-import { MultiSelectNodesFeature } from '@features/dashboard/subscription-connections/multi-select-nodes/multi-select-nodes.feature'
 import { LinkedHostsDrawer } from '@widgets/dashboard/subscription-connections/linked-hosts-drawer/linked-hosts-drawer.widget'
 import { NodesHeaderActionButtonsFeature } from '@features/ui/dashboard/subscription-connections/nodes-header-action-buttons'
 import { NodesDataTableWidget } from '@widgets/dashboard/subscription-connections/nodes-datatable/nodes-datatable.widget'
@@ -67,11 +66,6 @@ export default function NodesPageComponent(props: IProps) {
             <EditNodeByUuidModalWidget key="edit-node-by-uuid-modal" />
             <CreateNodeModalWidget key="create-node-widget" />
             <LinkedHostsDrawer key="linked-hosts-drawer" />
-
-            <MultiSelectNodesFeature
-                selectedRecords={selectedRecords}
-                setSelectedRecords={setSelectedRecords}
-            />
         </Page>
     )
 }

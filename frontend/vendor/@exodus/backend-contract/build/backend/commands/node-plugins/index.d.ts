@@ -6,4 +6,5 @@ export * from './get-node-plugin.command';
 export * from './get-node-plugins.command';
 export * from './shared-lists';
 export * from './update-node-plugin.command';
+export * from './tags';
 //# sourceMappingURL=index.d.ts.map

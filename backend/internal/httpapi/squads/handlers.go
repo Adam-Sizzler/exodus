@@ -203,7 +203,10 @@ func handleReorderInternalSquads(w http.ResponseWriter, r *http.Request, service
 		return
 	}
 	if len(req.Squads) == 0 {
-		shared.SendError(w, http.StatusBadRequest, "squads cannot be empty", nil, service.cfg)
+		req.Squads = req.Items
+	}
+	if len(req.Squads) == 0 {
+		shared.SendError(w, http.StatusBadRequest, "items cannot be empty", nil, service.cfg)
 		return
 	}
 	for _, item := range req.Squads {
@@ -480,4 +483,46 @@ func SquadDetailsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 			"squad": squad,
 		})
 	}
+}
+
+func handleGetInternalSquadTags(w http.ResponseWriter, r *http.Request, service *SquadService) {
+	tags, err := service.GetTags(r.Context())
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetInternalSquadsFailed.WithCause(err), service.cfg)
+		return
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"tags": tags,
+		},
+	})
+}
+
+func handleSetInternalSquadTags(w http.ResponseWriter, r *http.Request, service *SquadService) {
+	var req shared.SetEntityTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		return
+	}
+	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, service.cfg)
+		return
+	}
+
+	tags, err := service.SetTags(r.Context(), req.UUID, req.Tags)
+	if err != nil {
+		if errors.Is(err, errInternalSquadNotFound) {
+			shared.SendAPIError(w, shared.ErrInternalSquadNotFound, service.cfg)
+			return
+		}
+		shared.SendAPIError(w, shared.ErrUpdateInternalSquadFailed.WithCause(err), service.cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"uuid": req.UUID,
+			"tags": tags,
+		},
+	})
 }

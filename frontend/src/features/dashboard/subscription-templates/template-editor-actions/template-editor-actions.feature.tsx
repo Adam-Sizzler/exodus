@@ -83,7 +83,7 @@ export function TemplateEditorActionsFeature(props: Props) {
                     notifications.show({
                         color: 'red',
                         message: error instanceof Error ? error.message : 'Unknown error',
-                        title: t('config-editor-actions.feature.error')
+                        title: t('common.message.error')
                     })
                 }
             }
@@ -159,8 +159,9 @@ export function TemplateEditorActionsFeature(props: Props) {
                 leftSection={<PiFloppyDisk size={16} />}
                 loading={isUpdating}
                 onClick={handleSave}
+                variant="soft"
             >
-                {t('common.save')}
+                {t('common.action.save')}
             </Button>
 
             <Group gap={0} wrap="nowrap">
@@ -194,7 +195,7 @@ export function TemplateEditorActionsFeature(props: Props) {
                             leftSection={<TbSelectAll size={14} />}
                             onClick={handleSelectAll}
                         >
-                            {t('config-editor-actions.feature.select-all')}
+                            {t('common.action.select-all')}
                         </Menu.Item>
 
                         <Menu.Item leftSection={<TbCut size={14} />} onClick={handleCut}>
@@ -214,7 +215,7 @@ export function TemplateEditorActionsFeature(props: Props) {
                             leftSection={<TbDownload size={14} />}
                             onClick={openDownloadModal}
                         >
-                            {t('config-editor-actions.feature.load-from-github')}
+                            {t('common.action.load-from-github')}
                         </Menu.Item>
                     </Menu.Dropdown>
                 </Menu>

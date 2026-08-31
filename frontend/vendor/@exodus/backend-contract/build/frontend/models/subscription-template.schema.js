@@ -10,6 +10,7 @@ exports.SubscriptionTemplateSchema = zod_1.default.object({
     uuid: zod_1.default.uuid(),
     viewPosition: zod_1.default.number().int(),
     name: zod_1.default.string(),
+    tags: zod_1.default.array(zod_1.default.string()).default([]),
     templateType: zod_1.default.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE),
     templateJson: zod_1.default.nullable(zod_1.default.unknown()),
     encodedTemplateYaml: zod_1.default.nullable(zod_1.default.string()),

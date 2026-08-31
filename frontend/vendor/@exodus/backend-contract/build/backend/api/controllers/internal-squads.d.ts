@@ -15,5 +15,9 @@ export declare const INTERNAL_SQUADS_ROUTES: {
     readonly ACTIONS: {
         readonly REORDER: "actions/reorder";
     };
+    readonly TAGS: {
+        readonly GET: "tags";
+        readonly SET: "tags";
+    };
 };
 //# sourceMappingURL=internal-squads.d.ts.map

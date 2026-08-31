@@ -6,18 +6,16 @@ import { useIsMobile } from '@shared/hooks'
 import { SettingsCardShared } from '@shared/ui/settings-card'
 
 import {
-    LAYOUT_STYLE,
-    useLayoutStyle,
-    useToggleLayoutStyleAction
+    useExperimentalFeature,
+    useViewPreferencesStoreActions
 } from '@entities/dashboard/view-preferences-store'
 
 export const VisualSettingsCardWidget = () => {
     const { t } = useTranslation()
-
     const isMobile = useIsMobile()
 
-    const layoutStyle = useLayoutStyle()
-    const toggleLayoutStyle = useToggleLayoutStyleAction()
+    const isLegacyLayoutStyle = useExperimentalFeature('legacyLayoutStyle')
+    const { setExperimentalFeature } = useViewPreferencesStoreActions()
 
     if (isMobile) {
         return null
@@ -46,7 +44,7 @@ export const VisualSettingsCardWidget = () => {
                                         <span>{t('visual-settings-card.widget.compact')}</span>
                                     </Group>
                                 ),
-                                value: LAYOUT_STYLE.COMPACT
+                                value: 'compact'
                             },
                             {
                                 label: (
@@ -55,12 +53,14 @@ export const VisualSettingsCardWidget = () => {
                                         <span>{t('visual-settings-card.widget.sidebar')}</span>
                                     </Group>
                                 ),
-                                value: LAYOUT_STYLE.SIDEBAR
+                                value: 'sidebar'
                             }
                         ]}
                         fullWidth
-                        onChange={() => toggleLayoutStyle()}
-                        value={layoutStyle}
+                        onChange={(value) =>
+                            setExperimentalFeature('legacyLayoutStyle', value === 'sidebar')
+                        }
+                        value={isLegacyLayoutStyle ? 'sidebar' : 'compact'}
                     />
                 </Stack>
             </SettingsCardShared.Content>

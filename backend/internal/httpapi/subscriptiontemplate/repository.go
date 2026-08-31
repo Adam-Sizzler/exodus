@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"exodus/internal/db"
 	"exodus/internal/httpapi/shared"
 	"exodus/internal/util"
 )
@@ -22,6 +23,7 @@ type SubscriptionTemplate struct {
 	UUID               string          `json:"uuid"`
 	ViewPosition       int             `json:"viewPosition"`
 	Name               string          `json:"name"`
+	Tags               []string        `json:"tags"`
 	TemplateType       string          `json:"templateType"`
 	TemplateJSON       json.RawMessage `json:"templateJson"`
 	EncodedTemplateYML *string         `json:"encodedTemplateYaml"`
@@ -33,13 +35,15 @@ type subscriptionTemplatesListResponse struct {
 }
 
 type subscriptionTemplateCreateRequest struct {
-	Name         string `json:"name"`
-	TemplateType string `json:"templateType"`
+	Name         string   `json:"name"`
+	Tags         []string `json:"tags,omitempty"`
+	TemplateType string   `json:"templateType"`
 }
 
 type subscriptionTemplateUpdateRequest struct {
 	UUID               string           `json:"uuid"`
 	Name               *string          `json:"name,omitempty"`
+	Tags               []string         `json:"tags,omitempty"`
 	TemplateJSON       *json.RawMessage `json:"templateJson,omitempty"`
 	EncodedTemplateYML *string          `json:"encodedTemplateYaml,omitempty"`
 }
@@ -57,6 +61,7 @@ type subscriptionTemplateRecord struct {
 	UUID         string
 	ViewPosition int
 	Name         string
+	Tags         []string
 	TemplateType string
 	TemplateYAML *string
 	TemplateJSON json.RawMessage
@@ -65,8 +70,14 @@ type subscriptionTemplateRecord struct {
 func scanSubscriptionTemplateRecord(scanner shared.RowScanner, dest *subscriptionTemplateRecord) error {
 	var templateYAML sql.NullString
 	var templateJSONBytes []byte
-	if err := scanner.Scan(&dest.UUID, &dest.ViewPosition, &dest.Name, &dest.TemplateType, &templateYAML, &templateJSONBytes); err != nil {
+	var tags db.StringArray
+	if err := scanner.Scan(&dest.UUID, &dest.ViewPosition, &dest.Name, &tags, &dest.TemplateType, &templateYAML, &templateJSONBytes); err != nil {
 		return err
+	}
+
+	dest.Tags = tags.Slice()
+	if dest.Tags == nil {
+		dest.Tags = []string{}
 	}
 
 	if templateYAML.Valid {
@@ -94,10 +105,16 @@ func mapSubscriptionTemplateRecord(rec subscriptionTemplateRecord, includeConten
 		}
 	}
 
+	tags := rec.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
 	return SubscriptionTemplate{
 		UUID:               rec.UUID,
 		ViewPosition:       rec.ViewPosition,
 		Name:               rec.Name,
+		Tags:               tags,
 		TemplateType:       rec.TemplateType,
 		TemplateJSON:       templateJSON,
 		EncodedTemplateYML: encodedYAML,

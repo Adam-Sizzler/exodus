@@ -18,3 +18,4 @@ __exportStar(require("./alpn"), exports);
 __exportStar(require("./fingerprints"), exports);
 __exportStar(require("./mihomo-ip-version"), exports);
 __exportStar(require("./security-layers"), exports);
+__exportStar(require("./internal-squads-mode"), exports);

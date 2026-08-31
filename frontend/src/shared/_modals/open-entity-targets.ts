@@ -3,11 +3,11 @@ import type { ParseKeys } from 'i18next'
 import type { ComponentType } from 'react'
 
 import { HiServer } from 'react-icons/hi'
-import { PiArrowsInCardinalFill, PiUsers } from 'react-icons/pi'
+import { PiArrowsInCardinalFill, PiListChecks, PiUsers } from 'react-icons/pi'
 import { TbCirclesRelation, TbPackage, TbWebhook } from 'react-icons/tb'
 
 import { OPEN_ENTITY, ROUTES } from '@shared/constants'
-import { XrayLogo } from '@shared/ui/logos'
+import { SingboxLogo } from '@shared/ui/logos'
 import { isValidUuid } from '@shared/utils/misc'
 
 import { showModal } from './show-modal'
@@ -45,6 +45,16 @@ export const OPEN_ENTITY_TARGETS: Record<string, TOpenEntityTarget> = {
         open: (id) => showModal('users_viewUserModal', { userId: Number(id) }),
         validate: (id) => /^\d+$/.test(id)
     },
+    [OPEN_ENTITY.HOST]: {
+        Icon: PiListChecks,
+        idPlaceholder: '00000000-0000-0000-0000-000000000000',
+        titleKey: 'constants.hosts',
+        kind: 'modal',
+        modalId: 'hosts_editHostDrawer',
+        fallback: ROUTES.DASHBOARD.MANAGEMENT.HOSTS,
+        open: (id) => showModal('hosts_editHostDrawer', { hostUuid: id }),
+        validate: isValidUuid
+    },
     [OPEN_ENTITY.NODE]: {
         Icon: HiServer,
         idPlaceholder: '00000000-0000-0000-0000-000000000000',
@@ -56,7 +66,7 @@ export const OPEN_ENTITY_TARGETS: Record<string, TOpenEntityTarget> = {
         validate: isValidUuid
     },
     [OPEN_ENTITY.CONFIG_PROFILE]: {
-        Icon: XrayLogo,
+        Icon: SingboxLogo,
         idPlaceholder: '00000000-0000-0000-0000-000000000000',
         titleKey: 'constants.config-profiles',
         kind: 'route',

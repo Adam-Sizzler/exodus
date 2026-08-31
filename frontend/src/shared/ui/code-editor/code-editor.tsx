@@ -6,12 +6,12 @@ import Editor, { EditorProps, OnMount } from '@monaco-editor/react'
 import clsx from 'clsx'
 import { parse } from 'jsonc-parser'
 import { Fragment, ReactNode, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 
 import { BASE_MONACO_OPTIONS, MONACO_THEME_NAME } from '@shared/constants/monaco-theme'
 import { describeJsonPath } from '@shared/utils/monaco/json-path'
 import { RepairResult, repairJsonInEditor } from '@shared/utils/monaco/repair-json'
 
+import { LoaderModalShared } from '../loader-modal/loader-model.shared'
 import styles from './CodeEditor.module.css'
 
 const REPAIR_ACTION_ID = 'exodus.repairJson'
@@ -41,8 +41,6 @@ export function CodeEditor(props: Props) {
         wrapperProps,
         ...rest
     } = props
-
-    const { t } = useTranslation()
 
     const [jsonPath, setJsonPath] = useState<string[]>([])
     const documentTextRef = useRef('')
@@ -100,66 +98,89 @@ export function CodeEditor(props: Props) {
 
                     notifications.show({
                         color: RESULT_COLORS[result].color,
-                        message: RESULT_COLORS[result].message,
-                        title: REPAIR_LABEL
+                        message: RESULT_COLORS[result].message
                     })
                 }
             })
         }
 
-        if (showJsonPath) {
-            syncDocumentSnapshot(instance)
-            updateJsonPath(instance)
+        syncDocumentSnapshot(instance)
+        if (showJsonPath) updateJsonPath(instance)
 
-            instance.onDidScrollChange(() => updateJsonPath(instance))
-            instance.onDidChangeModelContent(() => {
-                syncDocumentSnapshot(instance)
-                updateJsonPath(instance)
-            })
-        }
+        const changeDisposable = instance.onDidChangeModelContent(() => {
+            syncDocumentSnapshot(instance)
+            if (showJsonPath) updateJsonPath(instance)
+        })
+
+        const scrollDisposable = instance.onDidScrollChange(() => {
+            if (showJsonPath) updateJsonPath(instance)
+        })
 
         onMount?.(instance, monaco)
+
+        return () => {
+            changeDisposable.dispose()
+            scrollDisposable.dispose()
+        }
+    }
+
+    const mergedOptions: editor.IStandaloneEditorConstructionOptions = {
+        ...BASE_MONACO_OPTIONS,
+        ...options
     }
 
     return (
-        <Box className={styles.root}>
+        <div className={styles.root}>
             {showJsonPath && (
-                <Box className={styles.pathBar}>
-                    <Text c="dimmed" ff="monospace" size="xs" truncate="end">
-                        {jsonPath.map((segment, index) => (
-                            <Fragment key={`${index}-${segment}`}>
-                                {index > 0 && <span className={styles.pathSeparator}> › </span>}
-                                <span
-                                    className={
-                                        index === jsonPath.length - 1
-                                            ? styles.pathSegmentActive
-                                            : undefined
-                                    }
+                <div className={styles.pathBar}>
+                    <Text c="dimmed" component="span" size="xs">
+                        $
+                    </Text>
+                    {jsonPath.map((segment, index) => {
+                        const isLast = index === jsonPath.length - 1
+
+                        return (
+                            <Fragment key={index}>
+                                <Text
+                                    className={styles.pathSeparator}
+                                    component="span"
+                                    mx={4}
+                                    size="xs"
+                                >
+                                    .
+                                </Text>
+                                <Text
+                                    className={clsx(isLast && styles.pathSegmentActive)}
+                                    component="span"
+                                    fw={isLast ? 600 : 400}
+                                    size="xs"
                                 >
                                     {segment}
-                                </span>
+                                </Text>
                             </Fragment>
-                        ))}
-                    </Text>
-                </Box>
+                        )
+                    })}
+                </div>
             )}
-
-            <Editor
-                defaultLanguage={defaultLanguage}
-                language={language}
-                loading={t('config-editor.widget.loading-editor')}
-                onMount={handleMount}
-                theme={MONACO_THEME_NAME}
-                {...rest}
-                options={{ ...BASE_MONACO_OPTIONS, ...options }}
-                wrapperProps={{
-                    ...wrapperProps,
-                    className: clsx(styles.editorWrapper, wrapperProps?.className)
-                }}
-            />
-
-            {footer}
-        </Box>
+            <Box
+                className={clsx(styles.editorWrapper, footer && styles.editorGroup)}
+                {...wrapperProps}
+            >
+                <Editor
+                    defaultLanguage={defaultLanguage}
+                    language={language}
+                    loading={<LoaderModalShared />}
+                    onMount={handleMount}
+                    options={mergedOptions}
+                    theme={MONACO_THEME_NAME}
+                    wrapperProps={{
+                        className: clsx(footer && styles.editorAttached, wrapperProps?.className)
+                    }}
+                    {...rest}
+                />
+                {footer && <div className={styles.footer}>{footer}</div>}
+            </Box>
+        </div>
     )
 }
 

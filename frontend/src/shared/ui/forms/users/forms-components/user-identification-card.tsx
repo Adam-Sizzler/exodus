@@ -38,8 +38,7 @@ import {
 } from 'react-icons/tb'
 
 import { showModal } from '@shared/_modals/show-modal'
-import { useGetUserMetadata } from '@shared/api/hooks'
-import { useGetSubscriptionConnections } from '@shared/api/hooks/subscription-connections/subscription-connections.query.hooks'
+import { useGetNodes, useGetUserMetadata } from '@shared/api/hooks'
 import { CopyableCodeBlock } from '@shared/ui/copyable-code-block'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -81,11 +80,10 @@ export const UserIdentificationCard = memo((props: IProps) => {
     const { data: metadata, isLoading: isMetadataLoading } = useGetUserMetadata({
         route: { userId: user.id }
     })
-
-    const { data: subNodes } = useGetSubscriptionConnections()
+    const { data: nodes } = useGetNodes()
 
     const subscriptionPageLinks = buildSubscriptionLinksFromNodes(
-        (subNodes ?? []).filter((node) => !node.isDisabled),
+        (nodes ?? []).filter((node) => !node.isDisabled),
         user.shortUuid,
         user.subscriptionUrl
     )
@@ -282,7 +280,7 @@ export const UserIdentificationCard = memo((props: IProps) => {
                         <Divider opacity={0.3} orientation="vertical" />
 
                         <Group gap={5} justify="center">
-                            <Tooltip label={t('common.usage-stats')}>
+                            <Tooltip label={t('common.field.usage-stats')}>
                                 <ActionIcon
                                     color="indigo"
                                     onClick={() => {
@@ -477,49 +475,60 @@ export const UserIdentificationCard = memo((props: IProps) => {
                 </SectionCard.Section>
 
                 <SectionCard.Section>
-                    {subscriptionPageLinks.length > 0 && (
-                        <Group gap={4} justify="flex-start" mb="xs">
+                    {subscriptionPageLinks.length > 1 ? (
+                        <Stack gap="xs">
                             <Text fw={500} fz="sm">
-                                {t('view-user-modal.widget.subscription-url')}
+                                {t('common.field.subscription-url')}
                             </Text>
-                            <HoverCard shadow="md" width={280} withArrow>
-                                <HoverCard.Target>
-                                    <ActionIcon color="gray" mb={2} size="xs" variant="subtle">
-                                        <HiQuestionMarkCircle size={16} />
-                                    </ActionIcon>
-                                </HoverCard.Target>
-                                <HoverCard.Dropdown>
-                                    <Stack gap="sm">
-                                        <Text fw={600} size="sm">
-                                            {t('view-user-modal.widget.subscription-url')}
-                                        </Text>
-                                        <Text c="dimmed" size="sm">
-                                            {t(
-                                                'view-user-modal.widget.subscription-url-description-line-1'
-                                            )}{' '}
-                                            <Code bg="gray.1" c="dark.4" fw={700}>
-                                                SUB_PUBLIC_DOMAIN/API_PATH
-                                            </Code>
-                                            <br />
-                                            {t(
-                                                'view-user-modal.widget.subscription-url-description-line-2'
-                                            )}
-                                        </Text>
-                                    </Stack>
-                                </HoverCard.Dropdown>
-                            </HoverCard>
-                        </Group>
+                            {subscriptionPageLinks.map((link) => (
+                                <CopyableFieldShared
+                                    key={link.url}
+                                    label={link.nodeName}
+                                    leftSection={<PiLinkDuotone size="16px" />}
+                                    value={link.url}
+                                />
+                            ))}
+                        </Stack>
+                    ) : (
+                        <CopyableFieldShared
+                            label={
+                                <Group gap={4} justify="flex-start">
+                                    <Text fw={500} fz="sm">
+                                        {t('common.field.subscription-url')}
+                                    </Text>
+                                    <HoverCard shadow="md" width={280} withArrow>
+                                        <HoverCard.Target>
+                                            <ActionIcon color="gray" mb={2} size="xs" variant="subtle">
+                                                <HiQuestionMarkCircle size={16} />
+                                            </ActionIcon>
+                                        </HoverCard.Target>
+                                        <HoverCard.Dropdown>
+                                            <Stack gap="sm">
+                                                <Text fw={600} size="sm">
+                                                    {t('common.field.subscription-url')}
+                                                </Text>
+                                                <Text c="dimmed" size="sm">
+                                                    {t(
+                                                        'view-user-modal.widget.subscription-url-description-line-1'
+                                                    )}{' '}
+                                                    <Code bg="gray.1" c="dark.4" fw={700}>
+                                                        SUB_PUBLIC_DOMAIN
+                                                    </Code>
+                                                    <br />
+                                                    {t(
+                                                        'view-user-modal.widget.subscription-url-description-line-2'
+                                                    )}
+                                                </Text>
+                                                <CopyableCodeBlock value="docker compose down && docker compose up -d" />
+                                            </Stack>
+                                        </HoverCard.Dropdown>
+                                    </HoverCard>
+                                </Group>
+                            }
+                            leftSection={<PiLinkDuotone size="16px" />}
+                            value={user.subscriptionUrl}
+                        />
                     )}
-
-                    <Stack gap="xs">
-                        {subscriptionPageLinks.map((link) => (
-                            <CopyableFieldShared
-                                key={link.url}
-                                leftSection={<PiLinkDuotone size="16px" />}
-                                value={link.url}
-                            />
-                        ))}
-                    </Stack>
                 </SectionCard.Section>
             </SectionCard.Root>
         </MotionWrapper>

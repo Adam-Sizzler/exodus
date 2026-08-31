@@ -11,6 +11,7 @@ export declare namespace GetNodePluginCommand {
             uuid: z.ZodUUID;
             viewPosition: z.ZodNumber;
             name: z.ZodString;
+            tags: z.ZodDefault<z.ZodArray<z.ZodString>>;
             pluginConfig: z.ZodUnknown;
         }, z.core.$strip>;
     }, z.core.$strip>;

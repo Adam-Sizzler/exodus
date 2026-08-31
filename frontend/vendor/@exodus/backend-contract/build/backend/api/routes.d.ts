@@ -151,6 +151,10 @@ export declare const REST_API: {
         readonly ACTIONS: {
             readonly REORDER: "/api/subscription-templates/actions/reorder";
         };
+        readonly TAGS: {
+            readonly GET: "/api/subscription-templates/tags";
+            readonly SET: "/api/subscription-templates/tags";
+        };
     };
     readonly SUBSCRIPTION_SETTINGS: {
         readonly GET: "/api/subscription-settings/";
@@ -190,6 +194,10 @@ export declare const REST_API: {
         readonly ACTIONS: {
             readonly REORDER: "/api/config-profiles/actions/reorder";
         };
+        readonly TAGS: {
+            readonly GET: "/api/config-profiles/tags";
+            readonly SET: "/api/config-profiles/tags";
+        };
     };
     readonly INTERNAL_SQUADS: {
         readonly GET: "/api/internal-squads/";
@@ -206,6 +214,10 @@ export declare const REST_API: {
         };
         readonly ACTIONS: {
             readonly REORDER: "/api/internal-squads/actions/reorder";
+        };
+        readonly TAGS: {
+            readonly GET: "/api/internal-squads/tags";
+            readonly SET: "/api/internal-squads/tags";
         };
     };
     readonly INFRA_BILLING: {
@@ -248,6 +260,10 @@ export declare const REST_API: {
         readonly ACTIONS: {
             readonly REORDER: "/api/external-squads/actions/reorder";
         };
+        readonly TAGS: {
+            readonly GET: "/api/external-squads/tags";
+            readonly SET: "/api/external-squads/tags";
+        };
     };
     readonly EXODUS_SETTINGS: {
         readonly GET: "/api/exodus-settings/";
@@ -263,6 +279,10 @@ export declare const REST_API: {
             readonly REORDER: "/api/subscription-page-configs/actions/reorder";
             readonly CLONE: "/api/subscription-page-configs/actions/clone";
         };
+        readonly TAGS: {
+            readonly GET: "/api/subscription-page-configs/tags";
+            readonly SET: "/api/subscription-page-configs/tags";
+        };
     };
     readonly NODE_INTEGRATIONS: {
         readonly GET: (uuid: string) => string;
@@ -270,6 +290,10 @@ export declare const REST_API: {
         readonly UPDATE: "/api/node-integrations/";
         readonly DELETE: (uuid: string) => string;
         readonly CREATE: "/api/node-integrations/";
+    };
+    readonly NODE_SSH: {
+        readonly CREATE_TICKET: (uuid: string) => string;
+        readonly EVALUATE_VAULT: "/api/node-ssh/vault/evaluate";
     };
     readonly NODE_PLUGINS: {
         readonly GET: (uuid: string) => string;
@@ -285,10 +309,10 @@ export declare const REST_API: {
         readonly EXECUTOR: "/api/node-plugins/executor";
         readonly SHARED_LISTS: {
             readonly GET_ALL: "/api/node-plugins/shared-lists";
-            readonly GET: (name: string) => string;
+            readonly GET: "/api/node-plugins/shared-lists/by-name";
             readonly CREATE: "/api/node-plugins/shared-lists";
             readonly UPDATE: "/api/node-plugins/shared-lists";
-            readonly DELETE: (name: string) => string;
+            readonly DELETE: "/api/node-plugins/shared-lists";
             readonly ACTIONS: {
                 readonly SYNC: "/api/node-plugins/shared-lists/actions/sync";
             };
@@ -297,6 +321,10 @@ export declare const REST_API: {
             readonly GET_REPORTS: "/api/node-plugins/torrent-blocker";
             readonly GET_REPORTS_STATS: "/api/node-plugins/torrent-blocker/stats";
             readonly TRUNCATE_REPORTS: "/api/node-plugins/torrent-blocker/truncate";
+        };
+        readonly TAGS: {
+            readonly GET: "/api/node-plugins/tags";
+            readonly SET: "/api/node-plugins/tags";
         };
     };
     readonly BANDWIDTH_STATS: {

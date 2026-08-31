@@ -114,6 +114,9 @@ func handleReorderNodes(w http.ResponseWriter, r *http.Request, service *NodeSer
 		return
 	}
 	if len(req.Nodes) == 0 {
+		req.Nodes = req.Items
+	}
+	if len(req.Nodes) == 0 {
 		shared.SendAPIError(w, shared.ErrNodesListCannotBeEmpty, service.cfg)
 		return
 	}

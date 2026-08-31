@@ -15,4 +15,8 @@ exports.CONFIG_PROFILES_ROUTES = {
     ACTIONS: {
         REORDER: `${ACTIONS_ROUTE}/reorder`,
     },
+    TAGS: {
+        GET: 'tags', // get
+        SET: 'tags', // patch
+    },
 };

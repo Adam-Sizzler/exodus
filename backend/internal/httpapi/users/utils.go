@@ -250,11 +250,56 @@ func coalesceShortUUID(value *string, cfg *config.BackendConfig) string {
 	if value != nil && strings.TrimSpace(*value) != "" {
 		return strings.TrimSpace(*value)
 	}
+	if cfg != nil {
+		if cfg.Backend.ShortUUIDPattern != "" {
+			return generateCustomShortUUID(cfg.Backend.ShortUUIDPattern)
+		}
+		if cfg.Backend.ShortUUIDStrategy == "uuid" {
+			return uuid.NewString()
+		}
+	}
 	length := 16
 	if cfg != nil && cfg.Backend.ShortUUIDLength >= 16 {
 		length = cfg.Backend.ShortUUIDLength
 	}
 	return generateSubscriptionShortUUID(length)
+}
+
+func generateCustomShortUUID(pattern string) string {
+	const (
+		digits       = "0123456789"
+		lowerLetters = "abcdefghijklmnopqrstuvwxyz"
+		upperLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		alphanumeric = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		hexDigits    = "0123456789abcdef"
+	)
+
+	var sb strings.Builder
+	for _, ch := range pattern {
+		switch ch {
+		case '#', 'd':
+			sb.WriteByte(randomCharFrom(digits))
+		case '*', 'x':
+			sb.WriteByte(randomCharFrom(alphanumeric))
+		case 'a':
+			sb.WriteByte(randomCharFrom(lowerLetters))
+		case 'A':
+			sb.WriteByte(randomCharFrom(upperLetters))
+		case 'h', 'H':
+			sb.WriteByte(randomCharFrom(hexDigits))
+		default:
+			sb.WriteRune(ch)
+		}
+	}
+	return sb.String()
+}
+
+func randomCharFrom(charset string) byte {
+	var b [1]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return charset[0]
+	}
+	return charset[int(b[0])%len(charset)]
 }
 
 func generateRandomString(length int) string {

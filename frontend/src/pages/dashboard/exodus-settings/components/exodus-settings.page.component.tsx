@@ -4,7 +4,7 @@ import { ApiTokensCardWidget } from '@widgets/exodus-settings/api-tokens-card/ap
 import { AuthentificationSettingsCardWidget } from '@widgets/exodus-settings/authentification-settings-card/authentification-settings-card.widget'
 import { BackendToolsCardWidget } from '@widgets/exodus-settings/backend-tools-card/backend-tools-card.widget'
 import { BrandingSettingsCardWidget } from '@widgets/exodus-settings/branding-settings-card/branding-settings-card.widget'
-import { VisualSettingsCardWidget } from '@widgets/exodus-settings/visual-settings-card/visual-settings-card.widget'
+import { ExperimentalSettingsCardWidget } from '@widgets/exodus-settings/experimental-settings-card/experimental-settings-card.widget'
 import { useTranslation } from 'react-i18next'
 import Masonry from 'react-layout-masonry'
 
@@ -44,11 +44,11 @@ export const ExodusSettingsPageComponent = (props: IProps) => {
                         passwordSettings={exodusSettings.passwordSettings}
                     />
                     <ApiTokensCardWidget apiTokensData={apiTokensData} />
-                    <VisualSettingsCardWidget />
                     <BackendToolsCardWidget />
                     <BrandingSettingsCardWidget
                         brandingSettings={exodusSettings.brandingSettings}
                     />
+                    <ExperimentalSettingsCardWidget />
                 </Masonry>
             </Container>
         </Page>

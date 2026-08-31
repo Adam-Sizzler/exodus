@@ -11,5 +11,9 @@ export declare const CONFIG_PROFILES_ROUTES: {
     readonly ACTIONS: {
         readonly REORDER: "actions/reorder";
     };
+    readonly TAGS: {
+        readonly GET: "tags";
+        readonly SET: "tags";
+    };
 };
 //# sourceMappingURL=config-profiles.d.ts.map

@@ -25,6 +25,7 @@ import {
     useGetSubscriptionConnections,
     useReorderSubscriptionConnections
 } from '@shared/api/hooks'
+import { TbServer } from 'react-icons/tb'
 import { EmptyPageLayout } from '@shared/ui/layouts/empty-page'
 import { sToMs } from '@shared/utils/time-utils'
 import { queryClient } from '@shared/api'
@@ -169,7 +170,7 @@ export const NodesTableWidget = memo((props: IProps) => {
     }
 
     if (nodes.length === 0) {
-        return <EmptyPageLayout />
+        return <EmptyPageLayout icon={<TbServer size={32} />} />
     }
 
     return (

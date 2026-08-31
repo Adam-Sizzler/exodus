@@ -137,8 +137,9 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.UseCompressor("gzip")))
 	conn, err := grpc.NewClient(targetAddr, opts...)
 	if err != nil {
-		nm.cfg.Logger.Error("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", err)
-		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Connection failed: %v", err))
+		friendlyErr := formatNodeConnectionError(err)
+		nm.cfg.Logger.Error("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", friendlyErr)
+		nm.updateConnectionStatus(state.nodeName, false, false, friendlyErr)
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
@@ -149,9 +150,10 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 
 	stream, err := client.StreamNodeData(state.ctx)
 	if err != nil {
-		nm.cfg.Logger.Error("Failed to create stream", "node", state.nodeName, "error", err)
+		friendlyErr := formatNodeConnectionError(err)
+		nm.cfg.Logger.Error("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", friendlyErr)
 		conn.Close()
-		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Stream failed: %v", err))
+		nm.updateConnectionStatus(state.nodeName, false, false, friendlyErr)
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
@@ -165,9 +167,10 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 			},
 		},
 	}); err != nil {
-		nm.cfg.Logger.Warn("Failed to send config", "node", state.nodeName, "error", err)
+		friendlyErr := formatNodeConnectionError(err)
+		nm.cfg.Logger.Warn("Failed to initialize node stream", "node", state.nodeName, "address", targetAddr, "error", friendlyErr)
 		conn.Close()
-		nm.updateConnectionStatus(state.nodeName, false, false, fmt.Sprintf("Config failed: %v", err))
+		nm.updateConnectionStatus(state.nodeName, false, false, friendlyErr)
 		state.mutex.Lock()
 		state.isConnecting = false
 		state.mutex.Unlock()
@@ -210,4 +213,27 @@ func normalizeNodePath(value string) string {
 		return ""
 	}
 	return "/" + strings.Trim(trimmed, "/")
+}
+
+func formatNodeConnectionError(err error) string {
+	if err == nil {
+		return ""
+	}
+	errStr := err.Error()
+	if strings.Contains(errStr, "authentication handshake failed: EOF") || strings.Contains(errStr, "transport: authentication handshake failed") {
+		return "remote host closed connection (host unreachable or node agent not running)"
+	}
+	if strings.Contains(errStr, "connection refused") {
+		return "connection refused (node agent is not running on target port)"
+	}
+	if strings.Contains(errStr, "i/o timeout") || strings.Contains(errStr, "context deadline exceeded") {
+		return "connection timed out (host unreachable)"
+	}
+	if strings.Contains(errStr, "no such host") || strings.Contains(errStr, "lookup") {
+		return "DNS resolution failed (host does not exist)"
+	}
+	if strings.Contains(errStr, "certificate") || strings.Contains(errStr, "tls:") {
+		return fmt.Sprintf("TLS verification failed: %v", err)
+	}
+	return errStr
 }

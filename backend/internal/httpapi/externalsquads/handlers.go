@@ -261,13 +261,14 @@ func handleGetExternalSquadByUUID(w http.ResponseWriter, r *http.Request, db *sq
 	_ = db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users WHERE external_squad_uuid = $1`, api.UUID).Scan(&api.Info.MembersCount)
 	rows, err := db.QueryContext(r.Context(), `SELECT template_uuid, template_type FROM external_squads_templates WHERE external_squad_uuid = $1`, api.UUID)
 	if err == nil {
+		defer rows.Close()
 		for rows.Next() {
 			var t ExternalSquadTemplate
 			if err := rows.Scan(&t.TemplateUUID, &t.TemplateType); err == nil {
 				api.Templates = append(api.Templates, t)
 			}
 		}
-		rows.Close()
+		_ = rows.Err()
 	}
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": api})
@@ -327,16 +328,19 @@ func handleCreateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 		return
 	}
 
+	tags := shared.SanitizeTags(req.Tags)
+
 	_, err = tx.ExecContext(r.Context(), `
 		INSERT INTO external_squads (
-			uuid, view_position, name,
+			uuid, view_position, name, tags,
 			subscription_settings, host_overrides, response_headers_add, response_headers_remove,
 			hwid_settings, custom_remarks, subpage_config_uuid
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		) VALUES ($1, $2, $3, $4::text[], $5, $6, $7, $8, $9, $10, $11)
 	`,
 		squadUUID,
 		coalesceInt(req.ViewPosition, 0),
 		strings.TrimSpace(req.Name),
+		shared.PostgresTextArrayLiteral(tags),
 		subSettings,
 		hostOverrides,
 		respHeadersAdd,
@@ -407,6 +411,10 @@ func handleUpdateExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 	}
 	if req.ViewPosition != nil {
 		add("view_position", *req.ViewPosition)
+	}
+	if req.Tags != nil {
+		sanitized := shared.SanitizeTags(req.Tags)
+		add("tags", shared.PostgresTextArrayLiteral(sanitized))
 	}
 
 	if req.SubscriptionSettings != nil {
@@ -544,7 +552,6 @@ func handleDeleteExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.D
 // OnSquadUpdated is invoked whenever external squad overrides are modified.
 var OnSquadUpdated func(uuid string)
 
-
 func handleBulkAddUsersToExternalSquad(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, squadUUID string) {
 	var req BulkUsersRequest
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -670,4 +677,71 @@ func handleBulkRemoveUsersFromExternalSquad(w http.ResponseWriter, r *http.Reque
 	cfg.Logger.Info("Users removed from external squad", "squad_uuid", squadUUID, "affected_rows", affected)
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// ExternalSquadsTagsHandler godoc
+// @Summary      Manage external squad tags
+// @Description  Get unique external squad tags or set tags for an external squad
+// @Tags         External Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /external-squads/tags [get]
+// @Router       /external-squads/tags [patch]
+func ExternalSquadsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetExternalSquadTags(w, r, db, cfg)
+		case http.MethodPatch:
+			handleSetExternalSquadTags(w, r, db, cfg)
+		default:
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
+	}
+}
+
+func handleGetExternalSquadTags(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	tags, err := getAllTags(r.Context(), db)
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetExternalSquadsFailed.WithCause(err), cfg)
+		return
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"tags": tags,
+		},
+	})
+}
+
+func handleSetExternalSquadTags(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	var req shared.SetEntityTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+		return
+	}
+
+	if err := setTags(r.Context(), db, req.UUID, req.Tags); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			shared.SendAPIError(w, shared.ErrExternalSquadNotFound, cfg)
+			return
+		}
+		shared.SendAPIError(w, shared.ErrUpdateExternalSquadFailed.WithCause(err), cfg)
+		return
+	}
+
+	sanitized := shared.SanitizeTags(req.Tags)
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"uuid": req.UUID,
+			"tags": sanitized,
+		},
+	})
 }

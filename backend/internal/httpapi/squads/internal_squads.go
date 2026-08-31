@@ -47,6 +47,33 @@ func InternalSquadsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFu
 	}
 }
 
+// InternalSquadsTagsHandler godoc
+// @Summary      Manage internal squad tags
+// @Description  Get unique internal squad tags or set tags for an internal squad
+// @Tags         Internal Squads Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /internal-squads/tags [get]
+// @Router       /internal-squads/tags [patch]
+func InternalSquadsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	repo := NewSquadRepository(db)
+	service := NewSquadService(repo, cfg)
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetInternalSquadTags(w, r, service)
+		case http.MethodPatch:
+			handleSetInternalSquadTags(w, r, service)
+		default:
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
+	}
+}
+
 // InternalSquadsReorderHandler godoc
 // @Summary      Reorder internal squads
 // @Description  Update view position of internal squads

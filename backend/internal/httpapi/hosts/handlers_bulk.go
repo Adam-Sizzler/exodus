@@ -60,6 +60,9 @@ func handleReorderHosts(w http.ResponseWriter, r *http.Request, service *HostSer
 		return
 	}
 	if len(req.Hosts) == 0 {
+		req.Hosts = req.Items
+	}
+	if len(req.Hosts) == 0 {
 		shared.SendError(w, http.StatusBadRequest, "hosts cannot be empty", nil, service.cfg)
 		return
 	}

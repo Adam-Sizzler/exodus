@@ -1,5 +1,5 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
-import { Box, Center, DataList, Drawer, Group, Stack } from '@mantine/core'
+import { DataList, Drawer, Group, Stack } from '@mantine/core'
 import { UserStatusBadge } from '@widgets/dashboard/users/user-status-badge'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,10 +10,11 @@ import {
     PiTagDuotone,
     PiUserDuotone
 } from 'react-icons/pi'
+import { TbServerCog } from 'react-icons/tb'
 
 import { useNiceMantineModal } from '@shared/_modals/use-nice-modal'
-import { useGetUserById } from '@shared/api/hooks'
-import { useGetSubscriptionConnections } from '@shared/api/hooks/subscription-connections/subscription-connections.query.hooks'
+import { UserAccessibleNodesTree } from '@shared/_modals/users/user-accessible-nodes-modal/user-accessible-nodes.tree'
+import { useGetNodes, useGetUserAccessibleNodes, useGetUserById } from '@shared/api/hooks'
 import { CopyableDataListItem } from '@shared/ui/copyable-field/copyable-data-list-item'
 import { LoaderModalShared } from '@shared/ui/loader-modal'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -42,11 +43,16 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
             userId: userId
         }
     })
-    const { data: subNodes } = useGetSubscriptionConnections()
+    const { data: accessibleNodesData } = useGetUserAccessibleNodes({
+        route: {
+            userId: userId
+        }
+    })
+    const { data: nodes } = useGetNodes()
 
     const subscriptionPageLinks = user
         ? buildSubscriptionLinksFromNodes(
-              (subNodes ?? []).filter((node) => !node.isDisabled),
+              (nodes ?? []).filter((node) => !node.isDisabled),
               user.shortUuid,
               user.subscriptionUrl
           )
@@ -67,15 +73,7 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                 />
             }
         >
-            {isUserLoading && (
-                <Center h="100%" mt="md" py="xl" ta="center">
-                    <Box>
-                        <LoaderModalShared
-                            text={t('detailed-user-info-drawer.widget.loading-user-info')}
-                        />
-                    </Box>
-                </Center>
-            )}
+            {isUserLoading && <LoaderModalShared mih="80vh" />}
 
             {!isUserLoading && user && (
                 <Stack gap="md">
@@ -109,7 +107,7 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                                     value={user.shortUuid}
                                 />
                                 <CopyableDataListItem
-                                    label={t('detailed-user-info-drawer.widget.username')}
+                                    label={t('common.field.username')}
                                     value={user.username}
                                 />
                                 <CopyableDataListItem
@@ -122,11 +120,11 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                                     value={user.telegramId}
                                 />
                                 <CopyableDataListItem
-                                    label={t('detailed-user-info-drawer.widget.description')}
+                                    label={t('common.field.description')}
                                     value={user.description}
                                 />
                                 <CopyableDataListItem
-                                    label={t('detailed-user-info-drawer.widget.tag')}
+                                    label={t('common.field.tag')}
                                     value={user.tag}
                                 />
                             </DataList>
@@ -190,20 +188,22 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                         </SectionCard.Section>
                         <SectionCard.Section>
                             <DataList withDivider orientation="vertical">
-                                {subscriptionPageLinks.map((link, index) => (
+                                {subscriptionPageLinks.length > 1 ? (
+                                    subscriptionPageLinks.map((link) => (
+                                        <CopyableDataListItem
+                                            key={link.url}
+                                            label={`${t('common.field.subscription-url')} (${link.nodeName})`}
+                                            monospace
+                                            value={link.url}
+                                        />
+                                    ))
+                                ) : (
                                     <CopyableDataListItem
-                                        key={link.url}
-                                        label={
-                                            index === 0
-                                                ? t(
-                                                      'detailed-user-info-drawer.widget.subscription-url'
-                                                  )
-                                                : link.nodeName
-                                        }
+                                        label={t('common.field.subscription-url')}
                                         monospace
-                                        value={link.url}
+                                        value={user.subscriptionUrl}
                                     />
-                                ))}
+                                )}
                                 <CopyableDataListItem
                                     label={t('detailed-user-info-drawer.widget.expires-at')}
                                     value={formatTimeUtil({
@@ -271,7 +271,7 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                                     value={user.anytlsPassword}
                                 />
                                 <CopyableDataListItem
-                                    label={t('detailed-user-info-drawer.widget.first-connected-at')}
+                                    label={t('common.field.first-connected-at')}
                                     value={formatTimeUtil({
                                         time: user.userTraffic.firstConnectedAt,
                                         template: 'TIME_FIRST_DATETIME',
@@ -323,6 +323,23 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                             </SectionCard.Section>
                         </SectionCard.Root>
                     )}
+
+                    {accessibleNodesData?.activeNodes && accessibleNodesData.activeNodes.length > 0 && (
+                        <SectionCard.Root>
+                            <SectionCard.Section>
+                                <BaseOverlayHeader
+                                    iconColor="cyan"
+                                    IconComponent={TbServerCog}
+                                    iconVariant="soft"
+                                    title={t('user-accessible-nodes.modal.widget.user-accessible-nodes')}
+                                />
+                            </SectionCard.Section>
+                            <SectionCard.Section>
+                                <UserAccessibleNodesTree activeNodes={accessibleNodesData.activeNodes} />
+                            </SectionCard.Section>
+                        </SectionCard.Root>
+                    )}
+
                     <SectionCard.Root>
                         <SectionCard.Section>
                             <BaseOverlayHeader
@@ -335,7 +352,7 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                         <SectionCard.Section>
                             <DataList withDivider orientation="vertical">
                                 <CopyableDataListItem
-                                    label={t('detailed-user-info-drawer.widget.created-at')}
+                                    label={t('common.field.created-at')}
                                     value={formatTimeUtil({
                                         time: user.createdAt,
                                         template: 'TIME_FIRST_DATETIME',
@@ -343,7 +360,7 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
                                     })}
                                 />
                                 <CopyableDataListItem
-                                    label={t('detailed-user-info-drawer.widget.updated-at')}
+                                    label={t('common.field.updated-at')}
                                     value={formatTimeUtil({
                                         time: user.updatedAt,
                                         template: 'TIME_FIRST_DATETIME',

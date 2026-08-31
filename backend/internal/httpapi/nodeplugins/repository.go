@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"exodus/internal/db"
+	"exodus/internal/httpapi/shared"
 	monitor "exodus/internal/nodes"
 	"exodus/internal/util"
 
@@ -21,6 +23,7 @@ type responseEnvelope[T any] struct {
 type nodePlugin struct {
 	UUID         string          `json:"uuid"`
 	Name         string          `json:"name"`
+	Tags         []string        `json:"tags"`
 	PluginConfig json.RawMessage `json:"pluginConfig"`
 	ViewPosition int             `json:"viewPosition"`
 	CreatedAt    time.Time       `json:"createdAt"`
@@ -34,12 +37,14 @@ type listPayload struct {
 
 type createRequest struct {
 	Name         string          `json:"name"`
+	Tags         []string        `json:"tags,omitempty"`
 	PluginConfig json.RawMessage `json:"pluginConfig,omitempty"`
 }
 
 type updateRequest struct {
 	UUID         *string          `json:"uuid,omitempty"`
 	Name         *string          `json:"name,omitempty"`
+	Tags         []string         `json:"tags,omitempty"`
 	PluginConfig *json.RawMessage `json:"pluginConfig,omitempty"`
 	ViewPosition *int             `json:"viewPosition,omitempty"`
 }
@@ -176,7 +181,7 @@ func normalizeHaproxyInboundTags(raw []string) []string {
 
 func loadPlugins(ctx context.Context, db *sql.DB) ([]nodePlugin, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
+		SELECT uuid::text, name, tags, plugin_config::text, view_position, created_at, updated_at
 		FROM node_plugin
 		ORDER BY view_position ASC, created_at ASC
 	`)
@@ -202,7 +207,7 @@ func loadPlugins(ctx context.Context, db *sql.DB) ([]nodePlugin, error) {
 func loadPluginByUUID(ctx context.Context, db *sql.DB, pluginUUID string) (nodePlugin, error) {
 	var plugin nodePlugin
 	row := db.QueryRowContext(ctx, `
-		SELECT uuid::text, name, plugin_config::text, view_position, created_at, updated_at
+		SELECT uuid::text, name, tags, plugin_config::text, view_position, created_at, updated_at
 		FROM node_plugin
 		WHERE uuid::text = $1
 	`, pluginUUID)
@@ -210,18 +215,19 @@ func loadPluginByUUID(ctx context.Context, db *sql.DB, pluginUUID string) (nodeP
 	return plugin, err
 }
 
-func createPlugin(ctx context.Context, db *sql.DB, name string, configJSON json.RawMessage) (nodePlugin, error) {
+func createPlugin(ctx context.Context, db *sql.DB, name string, tags []string, configJSON json.RawMessage) (nodePlugin, error) {
+	sanitized := shared.SanitizeTags(tags)
 	var plugin nodePlugin
 	row := db.QueryRowContext(ctx, `
-		INSERT INTO node_plugin (name, plugin_config)
-		VALUES ($1, $2::jsonb)
-		RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-	`, name, string(configJSON))
+		INSERT INTO node_plugin (name, tags, plugin_config)
+		VALUES ($1, $2::text[], $3::jsonb)
+		RETURNING uuid::text, name, tags, plugin_config::text, view_position, created_at, updated_at
+	`, name, shared.PostgresTextArrayLiteral(sanitized), string(configJSON))
 	err := scanPluginRow(row, &plugin)
 	return plugin, err
 }
 
-func updatePlugin(ctx context.Context, db *sql.DB, pluginUUID string, name *string, configJSON *json.RawMessage, viewPosition *int) (nodePlugin, error) {
+func updatePlugin(ctx context.Context, db *sql.DB, pluginUUID string, name *string, tags []string, configJSON *json.RawMessage, viewPosition *int) (nodePlugin, error) {
 	current, err := loadPluginByUUID(ctx, db, pluginUUID)
 	if err != nil {
 		return nodePlugin{}, err
@@ -229,6 +235,10 @@ func updatePlugin(ctx context.Context, db *sql.DB, pluginUUID string, name *stri
 	nextName := current.Name
 	if name != nil {
 		nextName = *name
+	}
+	nextTags := current.Tags
+	if tags != nil {
+		nextTags = shared.SanitizeTags(tags)
 	}
 	nextConfig := current.PluginConfig
 	if configJSON != nil {
@@ -242,10 +252,10 @@ func updatePlugin(ctx context.Context, db *sql.DB, pluginUUID string, name *stri
 	var plugin nodePlugin
 	row := db.QueryRowContext(ctx, `
 		UPDATE node_plugin
-		SET name = $1, plugin_config = $2::jsonb, view_position = $3, updated_at = CURRENT_TIMESTAMP
-		WHERE uuid::text = $4
-		RETURNING uuid::text, name, plugin_config::text, view_position, created_at, updated_at
-	`, nextName, string(nextConfig), nextPosition, pluginUUID)
+		SET name = $1, tags = $2::text[], plugin_config = $3::jsonb, view_position = $4, updated_at = CURRENT_TIMESTAMP
+		WHERE uuid::text = $5
+		RETURNING uuid::text, name, tags, plugin_config::text, view_position, created_at, updated_at
+	`, nextName, shared.PostgresTextArrayLiteral(nextTags), string(nextConfig), nextPosition, pluginUUID)
 	err = scanPluginRow(row, &plugin)
 	return plugin, err
 }
@@ -315,7 +325,52 @@ func clonePlugin(ctx context.Context, db *sql.DB, req cloneRequest) (nodePlugin,
 	} else {
 		name = fmt.Sprintf("%s copy %s", source.Name, time.Now().UTC().Format("20060102150405"))
 	}
-	return createPlugin(ctx, db, name, source.PluginConfig)
+	return createPlugin(ctx, db, name, source.Tags, source.PluginConfig)
+}
+
+func getAllTags(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM node_plugin
+		WHERE tags IS NOT NULL AND cardinality(tags) > 0
+		ORDER BY tag ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		if trimmed := strings.TrimSpace(tag); trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags, rows.Err()
+}
+
+func setTags(ctx context.Context, db *sql.DB, pluginUUID string, tags []string) error {
+	sanitized := shared.SanitizeTags(tags)
+	result, err := db.ExecContext(ctx, `
+		UPDATE node_plugin
+		SET tags = $1::text[], updated_at = CURRENT_TIMESTAMP
+		WHERE uuid::text = $2
+	`, shared.PostgresTextArrayLiteral(sanitized), pluginUUID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func ensureNodesExist(ctx context.Context, db *sql.DB, nodeUUIDs []string) error {
@@ -345,15 +400,21 @@ func scanPlugin(rows *sql.Rows) (nodePlugin, error) {
 
 func scanPluginRow(scanner pluginScanner, plugin *nodePlugin) error {
 	var rawConfig string
+	var tags db.StringArray
 	if err := scanner.Scan(
 		&plugin.UUID,
 		&plugin.Name,
+		&tags,
 		&rawConfig,
 		&plugin.ViewPosition,
 		&plugin.CreatedAt,
 		&plugin.UpdatedAt,
 	); err != nil {
 		return err
+	}
+	plugin.Tags = tags.Slice()
+	if plugin.Tags == nil {
+		plugin.Tags = []string{}
 	}
 	plugin.PluginConfig = json.RawMessage(rawConfig)
 	return nil

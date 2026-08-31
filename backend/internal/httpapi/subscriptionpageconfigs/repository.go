@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"exodus/internal/config"
+	"exodus/internal/db"
+	"exodus/internal/httpapi/shared"
 	"exodus/internal/notifications"
 	"exodus/internal/util"
 )
@@ -27,6 +29,7 @@ type SubscriptionPageConfig struct {
 	UUID         string          `json:"uuid"`
 	ViewPosition int             `json:"viewPosition"`
 	Name         string          `json:"name"`
+	Tags         []string        `json:"tags"`
 	Config       json.RawMessage `json:"config"`
 	CreatedAt    time.Time       `json:"createdAt"`
 	UpdatedAt    time.Time       `json:"updatedAt"`
@@ -38,12 +41,14 @@ type subscriptionPageConfigsListResponse struct {
 }
 
 type subpageConfigCreateRequest struct {
-	Name string `json:"name"`
+	Name string   `json:"name"`
+	Tags []string `json:"tags,omitempty"`
 }
 
 type subpageConfigUpdateRequest struct {
 	UUID   string           `json:"uuid"`
 	Name   *string          `json:"name,omitempty"`
+	Tags   []string         `json:"tags,omitempty"`
 	Config *json.RawMessage `json:"config,omitempty"`
 }
 
@@ -60,41 +65,46 @@ type subpageConfigCloneRequest struct {
 	CloneFromUUID string `json:"cloneFromUuid"`
 }
 
-func fetchSubscriptionPageConfig(ctx context.Context, db *sql.DB, uuidStr string, withConfig bool) (SubscriptionPageConfig, error) {
+func fetchSubscriptionPageConfig(ctx context.Context, dbConn *sql.DB, uuidStr string, withConfig bool) (SubscriptionPageConfig, error) {
 	var cfgItem SubscriptionPageConfig
 	query := `
-		SELECT uuid, view_position, name, created_at, updated_at
+		SELECT uuid, view_position, name, tags, created_at, updated_at
 		FROM subscription_page_config
 		WHERE uuid = $1
 		LIMIT 1
 	`
 	if withConfig {
 		query = `
-			SELECT uuid, view_position, name, config, created_at, updated_at
+			SELECT uuid, view_position, name, tags, config, created_at, updated_at
 			FROM subscription_page_config
 			WHERE uuid = $1
 			LIMIT 1
 		`
 	}
 
-	row := db.QueryRowContext(ctx, query, uuidStr)
+	row := dbConn.QueryRowContext(ctx, query, uuidStr)
 	var viewPosition sql.NullInt64
 	var configStr sql.NullString
+	var tags db.StringArray
 	if withConfig {
-		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
+		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &tags, &configStr, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
 			return cfgItem, err
 		}
 		if configStr.Valid {
 			cfgItem.Config = json.RawMessage(configStr.String)
 		}
 	} else {
-		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
+		if err := row.Scan(&cfgItem.UUID, &viewPosition, &cfgItem.Name, &tags, &cfgItem.CreatedAt, &cfgItem.UpdatedAt); err != nil {
 			return cfgItem, err
 		}
 	}
 
 	if viewPosition.Valid {
 		cfgItem.ViewPosition = int(viewPosition.Int64)
+	}
+	cfgItem.Tags = tags.Slice()
+	if cfgItem.Tags == nil {
+		cfgItem.Tags = []string{}
 	}
 	return cfgItem, nil
 }
@@ -189,4 +199,49 @@ func randomSuffix(n int) string {
 
 func isUniqueNameError(err error) bool {
 	return util.IsUniqueViolation(err)
+}
+
+func getAllTags(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM subscription_page_config
+		WHERE tags IS NOT NULL AND cardinality(tags) > 0
+		ORDER BY tag ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		if trimmed := strings.TrimSpace(tag); trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags, rows.Err()
+}
+
+func setTags(ctx context.Context, db *sql.DB, configUUID string, tags []string) error {
+	sanitized := shared.SanitizeTags(tags)
+	result, err := db.ExecContext(ctx, `
+		UPDATE subscription_page_config
+		SET tags = $1::text[], updated_at = CURRENT_TIMESTAMP
+		WHERE uuid = $2
+	`, shared.PostgresTextArrayLiteral(sanitized), configUUID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

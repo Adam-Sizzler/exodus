@@ -6,6 +6,7 @@ import axios from 'axios'
 import consola from 'consola/browser'
 
 import { logoutEvents } from '../emitters/emit-logout'
+import { withBasePath } from '../constants/base-path'
 
 let authorizationToken = ''
 
@@ -36,6 +37,9 @@ export const instance = axios.create({
 
 instance.interceptors.request.use((config) => {
     config.headers.set('Authorization', `Bearer ${authorizationToken}`)
+    if (config.url && config.url.startsWith('/')) {
+        config.url = withBasePath(config.url)
+    }
     return config
 })
 
@@ -44,6 +48,7 @@ export const setAuthorizationToken = (token: string) => {
 }
 
 export const hasAuthorizationToken = () => authorizationToken !== ''
+export const getAuthorizationToken = () => authorizationToken
 
 instance.interceptors.response.use(
     (response) => {

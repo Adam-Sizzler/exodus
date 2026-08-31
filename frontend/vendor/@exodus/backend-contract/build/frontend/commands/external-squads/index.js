@@ -21,3 +21,4 @@ __exportStar(require("./delete-external-squad.command"), exports);
 __exportStar(require("./get-external-squad-by-uuid.command"), exports);
 __exportStar(require("./get-external-squads.command"), exports);
 __exportStar(require("./update-external-squad.command"), exports);
+__exportStar(require("./tags"), exports);

@@ -7,6 +7,7 @@ exports.ConfigProfileSchema = zod_1.z.object({
     uuid: zod_1.z.uuid(),
     viewPosition: zod_1.z.int(),
     name: zod_1.z.string(),
+    tags: zod_1.z.array(zod_1.z.string()).default([]),
     config: zod_1.z.unknown(),
     inbounds: zod_1.z.array(config_profile_inbounds_schema_1.ConfigProfileInboundsSchema),
     nodes: zod_1.z.array(zod_1.z.object({

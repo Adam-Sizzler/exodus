@@ -21,7 +21,7 @@ export declare namespace UpdateManyHostsCommand {
         remark: z.ZodOptional<z.ZodOptional<z.ZodString>>;
         address: z.ZodOptional<z.ZodOptional<z.ZodString>>;
         fingerprint: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
-        isDisabled: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
+        isDisabled: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
         securityLayer: z.ZodOptional<z.ZodOptional<z.ZodEnum<{
             readonly DEFAULT: "DEFAULT";
             readonly TLS: "TLS";
@@ -52,7 +52,13 @@ export declare namespace UpdateManyHostsCommand {
             readonly IPV6_PREFER: "ipv6-prefer";
         }>>>>;
         xrayJsonTemplateUuid: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodUUID>>>;
-        excludedInternalSquads: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodUUID>>>;
+        internalSquads: z.ZodOptional<z.ZodOptional<z.ZodObject<{
+            mode: z.ZodEnum<{
+                readonly EXCLUDE: "EXCLUDE";
+                readonly ALLOW_ONLY: "ALLOW_ONLY";
+            }>;
+            squads: z.ZodArray<z.ZodUUID>;
+        }, z.core.$strip>>>;
         excludeFromSubscriptionTypes: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodEnum<{
             readonly XRAY_JSON: "XRAY_JSON";
             readonly XRAY_BASE64: "XRAY_BASE64";

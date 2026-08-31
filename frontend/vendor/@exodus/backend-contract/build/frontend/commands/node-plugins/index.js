@@ -22,3 +22,4 @@ __exportStar(require("./get-node-plugin.command"), exports);
 __exportStar(require("./get-node-plugins.command"), exports);
 __exportStar(require("./shared-lists"), exports);
 __exportStar(require("./update-node-plugin.command"), exports);
+__exportStar(require("./tags"), exports);

@@ -1,11 +1,11 @@
 import { z } from 'zod';
 export declare namespace DeleteSharedListCommand {
-    const url: (name: string) => string;
-    const TSQ_url: string;
+    const url: "/api/node-plugins/shared-lists";
+    const TSQ_url: "/api/node-plugins/shared-lists";
     const endpointDetails: import("../../../constants").EndpointDetails;
-    const RequestParamSchema: z.ZodObject<{
+    const RequestBodySchema: z.ZodObject<{
         name: z.ZodString;
     }, z.core.$strip>;
-    type RequestParam = z.infer<typeof RequestParamSchema>;
+    type RequestBody = z.infer<typeof RequestBodySchema>;
 }
 //# sourceMappingURL=delete-shared-list.command.d.ts.map

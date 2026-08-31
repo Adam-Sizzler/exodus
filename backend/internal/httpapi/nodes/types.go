@@ -231,6 +231,7 @@ type reorderNodeItem struct {
 
 type reorderNodesRequest struct {
 	Nodes []reorderNodeItem `json:"nodes"`
+	Items []reorderNodeItem `json:"items"`
 }
 
 type restartAllNodesRequest struct {

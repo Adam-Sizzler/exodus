@@ -6,6 +6,7 @@ export const InternalSquadSchema = z.object({
     uuid: z.uuid(),
     viewPosition: z.int(),
     name: z.string(),
+    tags: z.array(z.string()).default([]),
 
     info: z.object({
         membersCount: z.number(),

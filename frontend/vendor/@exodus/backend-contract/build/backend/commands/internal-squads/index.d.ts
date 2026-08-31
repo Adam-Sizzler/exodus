@@ -6,4 +6,5 @@ export * from './get-internal-squad-accessible-nodes.command';
 export * from './get-internal-squad.command';
 export * from './get-internal-squads.command';
 export * from './update-internal-squad.command';
+export * from './tags';
 //# sourceMappingURL=index.d.ts.map

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HostsSchema = void 0;
+exports.HostInternalSquadsSchema = exports.HostsSchema = void 0;
 const zod_1 = require("zod");
 const constants_1 = require("../constants");
 const hosts_1 = require("../constants/hosts");
@@ -39,7 +39,19 @@ exports.HostsSchema = zod_1.z.object({
     mihomoIpVersion: zod_1.z.enum(hosts_1.MIHOMO_IP_VERSION).nullable(),
     nodes: zod_1.z.array(zod_1.z.uuid()),
     xrayJsonTemplateUuid: zod_1.z.uuid().nullable(),
-    excludedInternalSquads: zod_1.z.array(zod_1.z.uuid()),
+    internalSquads: zod_1.z.object({
+        mode: zod_1.z.enum(hosts_1.INTERNAL_SQUADS_MODE),
+        squads: zod_1.z.array(zod_1.z.uuid()),
+    }),
     excludeFromSubscriptionTypes: zod_1.z.array(zod_1.z.enum(constants_1.SUBSCRIPTION_TEMPLATE_TYPE)),
     mapper: host_mapper_1.HostMapperSchema.nullish().transform((val) => val ?? { xrayJson: [], mihomo: [], base64: [], singbox: [] }),
+});
+exports.HostInternalSquadsSchema = zod_1.z
+    .object({
+    mode: zod_1.z.enum(hosts_1.INTERNAL_SQUADS_MODE),
+    squads: zod_1.z.array(zod_1.z.uuid()),
+})
+    .refine((v) => v.mode !== hosts_1.INTERNAL_SQUADS_MODE.ALLOW_ONLY || v.squads.length > 0, {
+    error: 'At least one internal squad is required in ALLOW_ONLY mode',
+    path: ['squads'],
 });

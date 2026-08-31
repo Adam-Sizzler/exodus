@@ -189,11 +189,7 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 		var headers map[string]string
 		if err := json.Unmarshal([]byte(s.CustomResponseHeaders), &headers); err == nil {
 			if title, ok := headers["profile-title"]; ok && title != "" {
-				cleanTitle := title
-				if strings.HasPrefix(cleanTitle, "exEncodeBase64:") {
-					cleanTitle = strings.TrimPrefix(cleanTitle, "exEncodeBase64:")
-				}
-				s.ProfileTitle = cleanTitle
+				s.ProfileTitle = strings.TrimPrefix(title, "exEncodeBase64:")
 			}
 			if link, ok := headers["support-url"]; ok && link != "" {
 				s.SupportLink = link
@@ -204,11 +200,7 @@ func ScanSubscriptionSettings(scanner shared.RowScanner) (SubscriptionSettings, 
 				}
 			}
 			if ann, ok := headers["announce"]; ok {
-				cleanAnn := ann
-				if strings.HasPrefix(cleanAnn, "exEncodeBase64:") {
-					cleanAnn = strings.TrimPrefix(cleanAnn, "exEncodeBase64:")
-				}
-				s.HappAnnounce = cleanAnn
+				s.HappAnnounce = strings.TrimPrefix(ann, "exEncodeBase64:")
 			}
 			if rout, ok := headers["routing"]; ok {
 				s.HappRouting = rout

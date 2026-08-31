@@ -2,8 +2,11 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { Drawer } from '@mantine/core'
 import { useForm, schemaResolver } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { CreateHostCommand, SECURITY_LAYERS } from '@exodus/backend-contract'
-import { useState } from 'react'
+import {
+    CreateHostCommand,
+    INTERNAL_SQUADS_MODE,
+    SECURITY_LAYERS
+} from '@exodus/backend-contract'
 import { useTranslation } from 'react-i18next'
 import { PiListChecks } from 'react-icons/pi'
 
@@ -29,15 +32,7 @@ export const CreateHostDrawer = NiceModal.create(() => {
     const modal = useModal()
     const { modalProps, hide } = useNiceMantineModal({
         modal,
-        drawer: true,
-        onClose() {
-            queryClient.refetchQueries({
-                queryKey: QueryKeys.hosts.getAllTags.queryKey
-            })
-            queryClient.refetchQueries({
-                queryKey: QueryKeys.hosts.getAllHosts.queryKey
-            })
-        }
+        drawer: true
     })
 
     const { data: configProfiles } = useGetConfigProfiles()
@@ -45,8 +40,6 @@ export const CreateHostDrawer = NiceModal.create(() => {
     const { data: internalSquads } = useGetInternalSquads()
     const { data: templates } = useGetSubscriptionTemplates()
     const { data: hostTags } = useGetHostTags()
-
-    const [advancedOpened, setAdvancedOpened] = useState(false)
 
     const form = useForm<CreateHostCommand.RequestBody>({
         mode: 'uncontrolled',
@@ -60,6 +53,7 @@ export const CreateHostDrawer = NiceModal.create(() => {
         validate: schemaResolver(CreateHostCommand.RequestBodySchema),
 
         initialValues: {
+            isDisabled: true,
             securityLayer: SECURITY_LAYERS.DEFAULT,
             port: 0,
             remark: '',
@@ -68,7 +62,10 @@ export const CreateHostDrawer = NiceModal.create(() => {
                 configProfileUuid: '',
                 configProfileInboundUuid: ''
             },
-            mapper: { xrayJson: [], mihomo: [], base64: [], singbox: [] }
+            internalSquads: {
+                mode: INTERNAL_SQUADS_MODE.EXCLUDE,
+                squads: []
+            }
         }
     })
 
@@ -76,6 +73,14 @@ export const CreateHostDrawer = NiceModal.create(() => {
         mutationFns: {
             onSuccess: async () => {
                 hide()
+
+                await queryClient.refetchQueries({
+                    queryKey: QueryKeys.hosts.getAllTags.queryKey
+                })
+
+                await queryClient.refetchQueries({
+                    queryKey: QueryKeys.hosts.getAllHosts.queryKey
+                })
             }
         }
     })
@@ -83,7 +88,7 @@ export const CreateHostDrawer = NiceModal.create(() => {
     const handleSubmit = form.onSubmit(async (values) => {
         if (!values.inbound.configProfileInboundUuid || !values.inbound.configProfileUuid) {
             notifications.show({
-                title: t('create-host-modal.widget.error'),
+                title: t('common.message.error'),
                 message: t('create-host-modal.widget.please-select-the-config-profile-and-inbound'),
                 color: 'red'
             })
@@ -91,20 +96,13 @@ export const CreateHostDrawer = NiceModal.create(() => {
             return null
         }
 
-        const mapperPayload =
-            values.mapper && typeof values.mapper === 'object' && Object.keys(values.mapper).length > 0
-                ? values.mapper
-                : { xrayJson: [], mihomo: [], base64: [], singbox: [] }
-
         createHost({
             variables: {
                 ...values,
-                isDisabled: !values.isDisabled,
                 sockoptParams: parseJsonField(values.sockoptParams),
                 muxParams: parseJsonField(values.muxParams),
                 xhttpExtraParams: parseJsonField(values.xhttpExtraParams),
                 finalMask: parseJsonField(values.finalMask),
-                mapper: mapperPayload,
                 inbound: {
                     configProfileInboundUuid: values.inbound.configProfileInboundUuid,
                     configProfileUuid: values.inbound.configProfileUuid
@@ -137,7 +135,7 @@ export const CreateHostDrawer = NiceModal.create(() => {
             {...modalProps}
             padding="lg"
             position="right"
-            size="lg"
+            size="700px"
             title={
                 <BaseOverlayHeader
                     iconColor="teal"
@@ -151,7 +149,6 @@ export const CreateHostDrawer = NiceModal.create(() => {
                 <LoadingScreen />
             ) : (
                 <BaseHostForm
-                    advancedOpened={advancedOpened}
                     configProfiles={configProfiles.configProfiles}
                     form={form}
                     handleSubmit={handleSubmit}
@@ -159,7 +156,6 @@ export const CreateHostDrawer = NiceModal.create(() => {
                     internalSquads={internalSquads.internalSquads}
                     isSubmitting={isCreateHostPending}
                     nodes={nodes}
-                    setAdvancedOpened={setAdvancedOpened}
                     subscriptionTemplates={templates.templates}
                 />
             )}

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -133,6 +134,35 @@ func effectiveNaiveUsername(user SubscriptionUser) string {
 	return firstNonEmpty(user.Username, user.ShortUUID, user.UUID)
 }
 
+func mapValuesToQueryParams(params *url.Values) map[string]string {
+	m := make(map[string]string)
+	if params == nil {
+		return m
+	}
+	for k, v := range *params {
+		if len(v) > 0 {
+			m[k] = v[0]
+		}
+	}
+	return m
+}
+
+func encodeQueryParams(params map[string]string) string {
+	if len(params) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	v := url.Values{}
+	for _, k := range keys {
+		v.Set(k, params[k])
+	}
+	return v.Encode()
+}
+
 func buildVlessLink(host SubscriptionHost, user SubscriptionUser) string {
 	credential := effectiveProtocolCredential(host, user)
 	if credential == "" {
@@ -145,7 +175,25 @@ func buildVlessLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("vless://%s@%s:%d?%s#%s", credential, host.Address, host.Port, params.Encode(), encodeRemark(remark))
+
+	link := ShareLink{
+		Scheme:   "vless",
+		Password: credential,
+		Address:  host.Address,
+		Port:     host.Port,
+		Params:   mapValuesToQueryParams(&params),
+		Remark:   remark,
+	}
+
+	if len(host.Mapper.Base64) > 0 {
+		ApplyBase64Mapper(&link, host.Mapper.Base64, host)
+	}
+
+	q := encodeQueryParams(link.Params)
+	if q != "" {
+		return fmt.Sprintf("vless://%s@%s:%d?%s#%s", link.Password, link.Address, link.Port, q, encodeRemark(link.Remark))
+	}
+	return fmt.Sprintf("vless://%s@%s:%d#%s", link.Password, link.Address, link.Port, encodeRemark(link.Remark))
 }
 
 func buildTrojanLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -159,7 +207,25 @@ func buildTrojanLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("trojan://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, params.Encode(), encodeRemark(remark))
+
+	link := ShareLink{
+		Scheme:   "trojan",
+		Password: credential,
+		Address:  host.Address,
+		Port:     host.Port,
+		Params:   mapValuesToQueryParams(&params),
+		Remark:   remark,
+	}
+
+	if len(host.Mapper.Base64) > 0 {
+		ApplyBase64Mapper(&link, host.Mapper.Base64, host)
+	}
+
+	q := encodeQueryParams(link.Params)
+	if q != "" {
+		return fmt.Sprintf("trojan://%s@%s:%d?%s#%s", url.QueryEscape(link.Password), link.Address, link.Port, q, encodeRemark(link.Remark))
+	}
+	return fmt.Sprintf("trojan://%s@%s:%d#%s", url.QueryEscape(link.Password), link.Address, link.Port, encodeRemark(link.Remark))
 }
 
 func buildShadowsocksLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -171,13 +237,28 @@ func buildShadowsocksLink(host SubscriptionHost, user SubscriptionUser) string {
 	if credential == "" {
 		return ""
 	}
-	creds := fmt.Sprintf("%s:%s", method, credential)
-	encoded := base64.RawURLEncoding.EncodeToString([]byte(creds))
 	remark := host.Remark
 	if remark == "" {
 		remark = host.Address
 	}
-	return fmt.Sprintf("ss://%s@%s:%d#%s", encoded, host.Address, host.Port, encodeRemark(remark))
+
+	link := ShareLink{
+		Scheme:   "ss",
+		Password: credential,
+		Address:  host.Address,
+		Port:     host.Port,
+		Method:   method,
+		Params:   make(map[string]string),
+		Remark:   remark,
+	}
+
+	if len(host.Mapper.Base64) > 0 {
+		ApplyBase64Mapper(&link, host.Mapper.Base64, host)
+	}
+
+	creds := fmt.Sprintf("%s:%s", link.Method, link.Password)
+	encoded := base64.RawURLEncoding.EncodeToString([]byte(creds))
+	return fmt.Sprintf("ss://%s@%s:%d#%s", encoded, link.Address, link.Port, encodeRemark(link.Remark))
 }
 
 func buildHysteria2Link(host SubscriptionHost, user SubscriptionUser) string {
@@ -203,11 +284,25 @@ func buildHysteria2Link(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	query := params.Encode()
-	if query != "" {
-		return fmt.Sprintf("hysteria2://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, query, encodeRemark(remark))
+
+	link := ShareLink{
+		Scheme:   "hysteria2",
+		Password: credential,
+		Address:  host.Address,
+		Port:     host.Port,
+		Params:   mapValuesToQueryParams(&params),
+		Remark:   remark,
 	}
-	return fmt.Sprintf("hysteria2://%s@%s:%d#%s", url.QueryEscape(credential), host.Address, host.Port, encodeRemark(remark))
+
+	if len(host.Mapper.Base64) > 0 {
+		ApplyBase64Mapper(&link, host.Mapper.Base64, host)
+	}
+
+	query := encodeQueryParams(link.Params)
+	if query != "" {
+		return fmt.Sprintf("hysteria2://%s@%s:%d?%s#%s", url.QueryEscape(link.Password), link.Address, link.Port, query, encodeRemark(link.Remark))
+	}
+	return fmt.Sprintf("hysteria2://%s@%s:%d#%s", url.QueryEscape(link.Password), link.Address, link.Port, encodeRemark(link.Remark))
 }
 
 func buildAnytlsLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -221,11 +316,25 @@ func buildAnytlsLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	query := params.Encode()
-	if query != "" {
-		return fmt.Sprintf("anytls://%s@%s:%d?%s#%s", url.QueryEscape(credential), host.Address, host.Port, query, encodeRemark(remark))
+
+	link := ShareLink{
+		Scheme:   "anytls",
+		Password: credential,
+		Address:  host.Address,
+		Port:     host.Port,
+		Params:   mapValuesToQueryParams(&params),
+		Remark:   remark,
 	}
-	return fmt.Sprintf("anytls://%s@%s:%d#%s", url.QueryEscape(credential), host.Address, host.Port, encodeRemark(remark))
+
+	if len(host.Mapper.Base64) > 0 {
+		ApplyBase64Mapper(&link, host.Mapper.Base64, host)
+	}
+
+	query := encodeQueryParams(link.Params)
+	if query != "" {
+		return fmt.Sprintf("anytls://%s@%s:%d?%s#%s", url.QueryEscape(link.Password), link.Address, link.Port, query, encodeRemark(link.Remark))
+	}
+	return fmt.Sprintf("anytls://%s@%s:%d#%s", url.QueryEscape(link.Password), link.Address, link.Port, encodeRemark(link.Remark))
 }
 
 func buildTuicLink(host SubscriptionHost, user SubscriptionUser) string {
@@ -252,11 +361,25 @@ func buildTuicLink(host SubscriptionHost, user SubscriptionUser) string {
 	if remark == "" {
 		remark = host.Address
 	}
-	query := params.Encode()
-	if query != "" {
-		return fmt.Sprintf("tuic://%s:%s@%s:%d?%s#%s", uuidStr, credential, host.Address, host.Port, query, encodeRemark(remark))
+
+	link := ShareLink{
+		Scheme:   "tuic",
+		Password: credential,
+		Address:  host.Address,
+		Port:     host.Port,
+		Params:   mapValuesToQueryParams(&params),
+		Remark:   remark,
 	}
-	return fmt.Sprintf("tuic://%s:%s@%s:%d#%s", uuidStr, credential, host.Address, host.Port, encodeRemark(remark))
+
+	if len(host.Mapper.Base64) > 0 {
+		ApplyBase64Mapper(&link, host.Mapper.Base64, host)
+	}
+
+	query := encodeQueryParams(link.Params)
+	if query != "" {
+		return fmt.Sprintf("tuic://%s:%s@%s:%d?%s#%s", uuidStr, link.Password, link.Address, link.Port, query, encodeRemark(link.Remark))
+	}
+	return fmt.Sprintf("tuic://%s:%s@%s:%d#%s", uuidStr, link.Password, link.Address, link.Port, encodeRemark(link.Remark))
 }
 
 func buildVmessLink(_ SubscriptionHost, _ SubscriptionUser) string {
@@ -344,19 +467,6 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 	hostHeader := firstNonEmpty(derefString(host.Host), defaults.hostHeader)
 	if hostHeader != "" {
 		params.Set("host", hostHeader)
-	}
-	if len(host.Mapper.Base64) > 0 {
-		m := make(map[string]string)
-		for k, v := range *params {
-			if len(v) > 0 {
-				m[k] = v[0]
-			}
-		}
-		ApplyHostMapperToBase64Query(m, host.Mapper.Base64, host)
-		*params = url.Values{}
-		for k, v := range m {
-			params.Set(k, v)
-		}
 	}
 }
 

@@ -82,7 +82,12 @@ func (s *HostService) UpdateHost(ctx context.Context, req HostUpdateRequestAPI) 
 	oldNodesMap, _ := s.repo.getHostNodes(ctx, []string{req.UUID})
 	oldNodes := oldNodesMap[req.UUID]
 
-	err = s.repo.updateHost(ctx, req.UUID, clauses, args, req.Nodes, req.ExcludedInternalSquads)
+	squads := req.ExcludedInternalSquads
+	if req.InternalSquads != nil {
+		squads = req.InternalSquads.Squads
+	}
+
+	err = s.repo.updateHost(ctx, req.UUID, clauses, args, req.Nodes, squads)
 	if err != nil {
 		return hostRecord{}, err
 	}
@@ -247,7 +252,12 @@ func (s *HostService) BulkUpdateHosts(ctx context.Context, req HostBulkUpdateReq
 		deploys = append(deploys, req.Nodes...)
 	}
 
-	err = s.repo.bulkUpdateHosts(ctx, req.Uuids, clauses, args, req.Nodes, req.ExcludedInternalSquads)
+	squads := req.ExcludedInternalSquads
+	if req.InternalSquads != nil {
+		squads = req.InternalSquads.Squads
+	}
+
+	err = s.repo.bulkUpdateHosts(ctx, req.Uuids, clauses, args, req.Nodes, squads)
 	if err != nil {
 		return err
 	}

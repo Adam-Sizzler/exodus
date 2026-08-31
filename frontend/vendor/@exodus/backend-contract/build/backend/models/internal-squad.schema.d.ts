@@ -3,6 +3,7 @@ export declare const InternalSquadSchema: z.ZodObject<{
     uuid: z.ZodUUID;
     viewPosition: z.ZodInt;
     name: z.ZodString;
+    tags: z.ZodDefault<z.ZodArray<z.ZodString>>;
     info: z.ZodObject<{
         membersCount: z.ZodNumber;
         inboundsCount: z.ZodNumber;

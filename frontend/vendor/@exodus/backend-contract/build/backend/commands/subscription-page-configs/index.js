@@ -20,3 +20,4 @@ __exportStar(require("./delete-subpage-config.command"), exports);
 __exportStar(require("./get-subpage-config.command"), exports);
 __exportStar(require("./get-subpage-configs.command"), exports);
 __exportStar(require("./update-subpage-config.command"), exports);
+__exportStar(require("./tags"), exports);

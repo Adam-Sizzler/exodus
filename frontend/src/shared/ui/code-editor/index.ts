@@ -1,3 +1,3 @@
-export { CodeEditor, editorClasses } from './code-editor'
-export { EditorFooter } from './editor-footer'
-export { EditorStatusBar } from './editor-status-bar'
+export * from './code-editor'
+export * from './editor-footer'
+export * from './editor-status-bar'

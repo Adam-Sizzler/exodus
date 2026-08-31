@@ -7,4 +7,5 @@ export * from './get-config-profile-by-uuid.command';
 export * from './get-config-profiles.command';
 export * from './get-inbounds-by-profile-uuid.command';
 export * from './update-config-profile.command';
+export * from './tags';
 //# sourceMappingURL=index.d.ts.map

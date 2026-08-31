@@ -1,12 +1,14 @@
 import { Badge, Center, Group, Stack, Text, ThemeIcon } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { GetNodesCommand, GetNodePluginsCommand } from '@exodus/backend-contract'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     TbAlertTriangle,
     TbLogin,
     TbLogout,
     TbPackage,
+    TbPlugConnectedX,
     TbShieldLock
 } from 'react-icons/tb'
 
@@ -17,9 +19,15 @@ import {
     useReorderNodePlugins
 } from '@shared/api/hooks'
 import { queryClient } from '@shared/api/query-client'
+import { filterByTag, TagFilterBar } from '@shared/ui'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import { SectionCard } from '@shared/ui/section-card'
 import { VirtualizedDndGrid } from '@shared/ui/virtualized-dnd-grid'
+
+import {
+    useSectionActiveTag,
+    useViewPreferencesStoreActions
+} from '@entities/dashboard/view-preferences-store'
 
 import { ActivePluginsOnNodesModalShared } from '../active-on-nodes-modal/adtive-on-nodes.modal.shared'
 import { NodePluginCardWidget } from '../node-plugin-card/node-plugin-card.widget'
@@ -32,6 +40,10 @@ interface IProps {
 export function NodePluginsGridWidget(props: IProps) {
     const { t } = useTranslation()
     const { nodes, plugins } = props
+
+    const activeTag = useSectionActiveTag('nodePlugins')
+    const { setSectionActiveTag } = useViewPreferencesStoreActions()
+    const visibleItems = useMemo(() => filterByTag(plugins ?? [], activeTag), [plugins, activeTag])
 
     const { mutate: deleteNodePlugin } = useDeleteNodePlugin({
         mutationFns: {
@@ -65,11 +77,11 @@ export function NodePluginsGridWidget(props: IProps) {
 
     const handleDeleteNodePlugin = (nodePluginUuid: string) => {
         modals.openConfirmModal({
-            title: t('common.confirm-action'),
-            children: t('common.confirm-action-description'),
+            title: t('common.action.confirm-action'),
+            children: t('common.message.confirm-action-description'),
             labels: {
-                confirm: t('common.delete'),
-                cancel: t('common.cancel')
+                confirm: t('common.action.delete'),
+                cancel: t('common.action.cancel')
             },
             cancelProps: { variant: 'subtle' },
             confirmProps: { color: 'red', variant: 'soft' },
@@ -133,7 +145,7 @@ export function NodePluginsGridWidget(props: IProps) {
                         subtitle={t(
                             'node-plugins-grid.widget.node-plugins-are-an-advanced-feature-please-review-the-documentation-before-use'
                         )}
-                        title={t('node-plugins-grid.widget.warning')}
+                        title={t('common.message.warning')}
                         titleOrder={4}
                     />
                 </SectionCard.Section>
@@ -151,7 +163,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                 </Text>
                                 <Text c="dimmed" maw={400} size="sm" ta="center">
                                     {t(
-                                        'node-plugins-grid.widget.create-a-plugin-to-enable-per-node-capabilities-this-build-supports-ingress-filter-egress-filter-shared-lists-and-haproxy-auth'
+                                        'node-plugins-grid.widget.create-a-plugin-to-extend-node-capabilities-with'
                                     )}
                                 </Text>
                             </Stack>
@@ -164,7 +176,7 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    {t('node-plugins-grid.widget.ingress-filter')}
+                                    Ingress Filter
                                 </Badge>
                                 <Badge
                                     color="orange"
@@ -173,16 +185,25 @@ export function NodePluginsGridWidget(props: IProps) {
                                     size="lg"
                                     variant="light"
                                 >
-                                    {t('node-plugins-grid.widget.egress-filter')}
+                                    Egress Filter
                                 </Badge>
                                 <Badge
                                     color="grape"
+                                    leftSection={<TbPlugConnectedX size={16} />}
+                                    radius="md"
+                                    size="lg"
+                                    variant="light"
+                                >
+                                    Connection Drop
+                                </Badge>
+                                <Badge
+                                    color="blue"
                                     leftSection={<TbShieldLock size={16} />}
                                     radius="md"
                                     size="lg"
                                     variant="light"
                                 >
-                                    {t('node-plugins-grid.widget.haproxy-auth')}
+                                    HAProxy Auth
                                 </Badge>
                             </Group>
                         </Stack>
@@ -194,8 +215,15 @@ export function NodePluginsGridWidget(props: IProps) {
 
     return (
         <VirtualizedDndGrid
-            enableDnd={true}
-            items={plugins}
+            enableDnd={activeTag === null}
+            header={
+                <TagFilterBar
+                    activeTag={activeTag}
+                    items={plugins}
+                    onChange={(tag) => setSectionActiveTag('nodePlugins', tag)}
+                />
+            }
+            items={visibleItems}
             key={`node-plugins-grid-widget`}
             onReorder={handleReorder}
             renderDragOverlay={(nodePlugin) => (
@@ -209,6 +237,7 @@ export function NodePluginsGridWidget(props: IProps) {
             )}
             renderItem={(nodePlugin) => (
                 <NodePluginCardWidget
+                    disableReordering={activeTag !== null}
                     handleCloneNodePlugin={handleCloneNodePlugin}
                     handleDeleteNodePlugin={handleDeleteNodePlugin}
                     handleShowActiveNodes={handleShowActiveNodes}

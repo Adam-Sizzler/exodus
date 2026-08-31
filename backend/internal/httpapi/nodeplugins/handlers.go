@@ -97,7 +97,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 		return
 	}
 
-	plugin, err := createPlugin(r.Context(), db, name, configJSON)
+	plugin, err := createPlugin(r.Context(), db, name, req.Tags, configJSON)
 	if err != nil {
 		cfg.Logger.Error("Failed to create node plugin", "error", err)
 		shared.SendAPIError(w, shared.ErrCreateNodePluginFailed.WithCause(err), cfg)
@@ -186,7 +186,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 		configJSON = &normalized
 	}
 
-	plugin, err := updatePlugin(r.Context(), db, pluginUUID, name, configJSON, req.ViewPosition)
+	plugin, err := updatePlugin(r.Context(), db, pluginUUID, name, req.Tags, configJSON, req.ViewPosition)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
@@ -343,4 +343,71 @@ func handleAction(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *confi
 	default:
 		shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
 	}
+}
+
+// NodePluginsTagsHandler godoc
+// @Summary      Manage node plugin tags
+// @Description  Get unique node plugin tags or set tags for a node plugin
+// @Tags         Node Plugins Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /node-plugins/tags [get]
+// @Router       /node-plugins/tags [patch]
+func NodePluginsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetNodePluginTags(w, r, db, cfg)
+		case http.MethodPatch:
+			handleSetNodePluginTags(w, r, db, cfg)
+		default:
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
+	}
+}
+
+func handleGetNodePluginTags(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	tags, err := getAllTags(r.Context(), db)
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetNodePluginsFailed.WithCause(err), cfg)
+		return
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"tags": tags,
+		},
+	})
+}
+
+func handleSetNodePluginTags(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	var req shared.SetEntityTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+		return
+	}
+
+	if err := setTags(r.Context(), db, req.UUID, req.Tags); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			shared.SendAPIError(w, shared.ErrNodePluginNotFound, cfg)
+			return
+		}
+		shared.SendAPIError(w, shared.ErrUpdateNodePluginFailed.WithCause(err), cfg)
+		return
+	}
+
+	sanitized := shared.SanitizeTags(req.Tags)
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"uuid": req.UUID,
+			"tags": sanitized,
+		},
+	})
 }

@@ -54,3 +54,5 @@ __exportStar(require("./users.schema"), exports);
 __exportStar(require("./webhook"), exports);
 __exportStar(require("./xray-json-advanced"), exports);
 __exportStar(require("./path-params.schema"), exports);
+__exportStar(require("./tags.schema"), exports);
+__exportStar(require("./ssh-terminal.schema"), exports);

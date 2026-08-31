@@ -142,7 +142,7 @@ export const useMobileMenuSections = (): MenuItem[] => {
                 {
                     name: t('constants.subscription-connections'),
                     href: ROUTES.DASHBOARD.MANAGEMENT.SUBSCRIPTION_CONNECTIONS,
-                    icon: PiCpu,
+                    icon: HiServer,
                     id: 'subscription-connections'
                 },
                 {

@@ -24,4 +24,5 @@ export * from './subscription-template';
 export * from './subscriptions';
 export * from './system';
 export * from './users';
+export * from './node-ssh';
 //# sourceMappingURL=index.d.ts.map

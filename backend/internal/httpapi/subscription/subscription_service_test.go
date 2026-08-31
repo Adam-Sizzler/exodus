@@ -684,7 +684,7 @@ func TestExtractHwidHeadersRequiresHwid(t *testing.T) {
 
 func TestExtractHwidHeadersRejectsInvalidFormat(t *testing.T) {
 	invalidCases := []string{
-		"short",                     // < 10 chars
+		"short",                        // < 10 chars
 		"invalid_char_with_underscore", // underscore is not allowed
 		"invalid!@#$%",
 		"this-hwid-is-way-too-long-exceeding-the-maximum-sixty-four-characters-limit-allowed-by-regex",
@@ -1031,14 +1031,14 @@ func TestCreateFallbackRemarkHostsWithRawJSON(t *testing.T) {
 
 func TestBuildResponseHeadersWithCustomResponseHeaders(t *testing.T) {
 	user := SubscriptionUser{
-		UUID:             "11111111-2222-3333-4444-555555555555",
-		TID:              42,
-		Username:         "alice",
-		ShortUUID:        "alice-short",
-		Status:           "ACTIVE",
-		UsedTrafficBytes: 1024 * 1024 * 100,      // 100MB
+		UUID:              "11111111-2222-3333-4444-555555555555",
+		TID:               42,
+		Username:          "alice",
+		ShortUUID:         "alice-short",
+		Status:            "ACTIVE",
+		UsedTrafficBytes:  1024 * 1024 * 100,      // 100MB
 		TrafficLimitBytes: 1024 * 1024 * 1024 * 5, // 5GB
-		ExpireAt:         time.Now().Add(48 * time.Hour),
+		ExpireAt:          time.Now().Add(48 * time.Hour),
 	}
 
 	settings := SubscriptionSettingsParsed{
@@ -1102,5 +1102,3 @@ func TestBuildResponseHeadersWithCustomResponseHeaders(t *testing.T) {
 		t.Errorf("unexpected subscription-userinfo: %s", headers["subscription-userinfo"])
 	}
 }
-
-

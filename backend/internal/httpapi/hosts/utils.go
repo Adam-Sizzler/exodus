@@ -366,6 +366,13 @@ func buildHostUpdateClauses(fields hostUpdateFields) ([]string, []any, error) {
 	if fields.ExcludeFromSubscription != nil {
 		add("exclude_from_subscription_types", fields.ExcludeFromSubscription)
 	}
+	if fields.InternalSquads != nil {
+		mode := strings.ToUpper(strings.TrimSpace(fields.InternalSquads.Mode))
+		if mode != "ALLOW_ONLY" {
+			mode = "EXCLUDE"
+		}
+		add("internal_squads_mode", mode)
+	}
 
 	return clauses, args, nil
 }

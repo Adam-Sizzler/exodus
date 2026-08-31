@@ -19,6 +19,7 @@ export declare namespace CreateSubscriptionTemplateCommand {
             uuid: z.ZodUUID;
             viewPosition: z.ZodNumber;
             name: z.ZodString;
+            tags: z.ZodDefault<z.ZodArray<z.ZodString>>;
             templateType: z.ZodEnum<{
                 readonly XRAY_JSON: "XRAY_JSON";
                 readonly XRAY_BASE64: "XRAY_BASE64";

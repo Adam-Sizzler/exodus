@@ -216,21 +216,28 @@ func (s *RenderService) RenderUserSubscription(
 		resolveHostRemarks(hosts, user, settings, subscriptionURL)
 	}
 
-	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP)
-
 	reqType := strings.ToUpper(strings.TrimSpace(requestedType))
+	var matchedRuleName string
 	if reqType == "" {
 		h := http.Header{}
 		if userAgent != "" {
 			h.Set("User-Agent", userAgent)
 		}
 		if settings.ResponseRules != nil {
-			reqType = matchResponseRules(settings.ResponseRules, h)
+			matchRes := subscriptionresponserules.MatchRulesDetailed(settings.ResponseRules, h, "", func(s string) string { return s }, defaultResponseType)
+			if matchRes.Matched {
+				reqType = matchRes.ResponseType
+				if matchRes.MatchedRule != nil {
+					matchedRuleName = matchRes.MatchedRule.Name
+				}
+			}
 		}
 	}
 	if reqType == "" {
 		reqType = defaultResponseType
 	}
+
+	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP, reqType, matchedRuleName)
 
 	if s.cfg != nil && s.cfg.Logger != nil {
 		s.cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Debug(

@@ -34,6 +34,8 @@ export * from './node-integrations/node-integrations.query.hooks'
 
 export * from './node-plugins/node-plugins.mutation.hooks'
 export * from './node-plugins/node-plugins.query.hooks'
+export * from './node-ssh/evaluate-vault'
+export * from './node-ssh/node-ssh.mutation.hooks'
 
 export * from './nodes/nodes.mutation.hooks'
 export * from './nodes/nodes.query.hooks'
@@ -55,9 +57,9 @@ export * from './subscription-request-history/subscription-request-history.query
 export * from './subscription-settings/subscription-settings.mutation.hooks'
 export * from './subscription-settings/subscription-settings.query.hooks'
 
+
 export * from './subscription-connections/subscription-connections.mutation.hooks'
 export * from './subscription-connections/subscription-connections.query.hooks'
-
 export * from './subscription-template/subscription-template.mutation.hooks'
 export * from './subscription-template/subscription-template.query.hooks'
 

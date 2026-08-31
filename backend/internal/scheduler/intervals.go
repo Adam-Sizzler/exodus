@@ -36,17 +36,17 @@ const (
 
 // Standard cron expressions for scheduled calendar jobs.
 const (
-	CronReviewNodesInterval                        = "0 * * * *"   // every hour
-	CronResetNodeTrafficDay1AM                     = "0 1 * * *"   // every day at 01:00
-	CronResetUserTrafficDaily                      = "5 0 * * *"   // every day at 00:05
-	CronResetUserTrafficMonthlyRolling             = "10 0 * * *"  // every day at 00:10
-	CronResetUserTrafficWeekly                     = "15 0 * * 1"  // every Monday at 00:15
-	CronResetUserTrafficMonthly                    = "20 0 1 * *"  // 1st of month at 00:20
-	CronExpireNotifications                        = "* * * * *"   // every minute
-	CronBandwidthUsageNotifications                = "*/5 * * * *" // every 5 minutes
-	CronNotConnectedUsersNotifications             = "*/10 * * * *"// every 10 minutes
-	CronServiceCleanOldUsageRecords                = "30 0 * * 1"  // every Monday at 00:30
-	CronServiceVacuumTables                        = "45 0 * * 1"  // every Monday at 00:45
-	CronCRMInfraBillingNodesNotifications          = "0 17 * * *"  // every day at 17:00
-	CronSRSListsAvailabilityCheck                  = "0 */12 * * *"// every 12 hours
+	CronReviewNodesInterval               = "0 * * * *"    // every hour
+	CronResetNodeTrafficDay1AM            = "0 1 * * *"    // every day at 01:00
+	CronResetUserTrafficDaily             = "5 0 * * *"    // every day at 00:05
+	CronResetUserTrafficMonthlyRolling    = "10 0 * * *"   // every day at 00:10
+	CronResetUserTrafficWeekly            = "15 0 * * 1"   // every Monday at 00:15
+	CronResetUserTrafficMonthly           = "20 0 1 * *"   // 1st of month at 00:20
+	CronExpireNotifications               = "* * * * *"    // every minute
+	CronBandwidthUsageNotifications       = "*/5 * * * *"  // every 5 minutes
+	CronNotConnectedUsersNotifications    = "*/10 * * * *" // every 10 minutes
+	CronServiceCleanOldUsageRecords       = "30 0 * * 1"   // every Monday at 00:30
+	CronServiceVacuumTables               = "45 0 * * 1"   // every Monday at 00:45
+	CronCRMInfraBillingNodesNotifications = "0 17 * * *"   // every day at 17:00
+	CronSRSListsAvailabilityCheck         = "0 */12 * * *" // every 12 hours
 )

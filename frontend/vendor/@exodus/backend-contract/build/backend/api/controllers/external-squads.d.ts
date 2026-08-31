@@ -12,5 +12,9 @@ export declare const EXTERNAL_SQUADS_ROUTES: {
     readonly ACTIONS: {
         readonly REORDER: "actions/reorder";
     };
+    readonly TAGS: {
+        readonly GET: "tags";
+        readonly SET: "tags";
+    };
 };
 //# sourceMappingURL=external-squads.d.ts.map

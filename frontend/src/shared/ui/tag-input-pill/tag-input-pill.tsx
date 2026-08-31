@@ -17,7 +17,6 @@ export function TagInputPill(props: IProps) {
                         onMouseDown={(event) => {
                             event.preventDefault()
                             event.stopPropagation()
-                            onRemove()
                         }}
                         radius="xl"
                         size={18}

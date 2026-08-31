@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 
+	"exodus/internal/db"
 	"exodus/internal/httpapi/shared"
 )
 
@@ -13,6 +15,7 @@ type ExternalSquadRecord struct {
 	UUID                  string          `json:"uuid"`
 	ViewPosition          int             `json:"view_position"`
 	Name                  string          `json:"name"`
+	Tags                  []string        `json:"tags"`
 	SubscriptionSettings  json.RawMessage `json:"subscription_settings,omitempty"`
 	HostOverrides         json.RawMessage `json:"host_overrides,omitempty"`
 	ResponseHeadersAdd    json.RawMessage `json:"response_headers_add,omitempty"`
@@ -24,9 +27,9 @@ type ExternalSquadRecord struct {
 	UpdatedAt             time.Time       `json:"updated_at"`
 }
 
-func getExternalSquads(ctx context.Context, db *sql.DB) ([]ExternalSquadRecord, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT uuid, view_position, name,
+func getExternalSquads(ctx context.Context, dbConn *sql.DB) ([]ExternalSquadRecord, error) {
+	rows, err := dbConn.QueryContext(ctx, `
+		SELECT uuid, view_position, name, tags,
 			subscription_settings, host_overrides, response_headers_add,
 			array_to_json(COALESCE(response_headers_remove, ARRAY[]::text[]))::text AS response_headers_remove,
 			hwid_settings, custom_remarks, subpage_config_uuid,
@@ -113,9 +116,9 @@ func getExternalSquadsTemplates(ctx context.Context, db *sql.DB, squadUUIDs []st
 	return result, rows.Err()
 }
 
-func getExternalSquadByUUID(ctx context.Context, db *sql.DB, squadUUID string) (ExternalSquadRecord, error) {
-	row := db.QueryRowContext(ctx, `
-		SELECT uuid, view_position, name,
+func getExternalSquadByUUID(ctx context.Context, dbConn *sql.DB, squadUUID string) (ExternalSquadRecord, error) {
+	row := dbConn.QueryRowContext(ctx, `
+		SELECT uuid, view_position, name, tags,
 			subscription_settings, host_overrides, response_headers_add,
 			array_to_json(COALESCE(response_headers_remove, ARRAY[]::text[]))::text AS response_headers_remove,
 			hwid_settings, custom_remarks, subpage_config_uuid,
@@ -127,8 +130,54 @@ func getExternalSquadByUUID(ctx context.Context, db *sql.DB, squadUUID string) (
 	return scanExternalSquad(row)
 }
 
+func getAllTags(ctx context.Context, dbConn *sql.DB) ([]string, error) {
+	rows, err := dbConn.QueryContext(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM external_squads
+		WHERE tags IS NOT NULL AND cardinality(tags) > 0
+		ORDER BY tag ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		if trimmed := strings.TrimSpace(tag); trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags, rows.Err()
+}
+
+func setTags(ctx context.Context, dbConn *sql.DB, squadUUID string, tags []string) error {
+	sanitized := shared.SanitizeTags(tags)
+	result, err := dbConn.ExecContext(ctx, `
+		UPDATE external_squads
+		SET tags = $1::text[], updated_at = CURRENT_TIMESTAMP
+		WHERE uuid = $2
+	`, shared.PostgresTextArrayLiteral(sanitized), squadUUID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func scanExternalSquad(scanner shared.RowScanner) (ExternalSquadRecord, error) {
 	var rec ExternalSquadRecord
+	var tags db.StringArray
 	var subSettings, hostOverrides, respHeadersAdd, respHeadersRemove, hwidSettings, customRemarks sql.NullString
 	var subpageConfigUUID sql.NullString
 
@@ -136,6 +185,7 @@ func scanExternalSquad(scanner shared.RowScanner) (ExternalSquadRecord, error) {
 		&rec.UUID,
 		&rec.ViewPosition,
 		&rec.Name,
+		&tags,
 		&subSettings,
 		&hostOverrides,
 		&respHeadersAdd,
@@ -148,6 +198,11 @@ func scanExternalSquad(scanner shared.RowScanner) (ExternalSquadRecord, error) {
 	)
 	if err != nil {
 		return rec, err
+	}
+
+	rec.Tags = tags.Slice()
+	if rec.Tags == nil {
+		rec.Tags = []string{}
 	}
 
 	rec.SubscriptionSettings = parseJSONRaw(subSettings)

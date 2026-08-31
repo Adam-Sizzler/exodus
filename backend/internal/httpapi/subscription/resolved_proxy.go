@@ -381,6 +381,7 @@ func buildRawSubscriptionResponse(
 					activeSquads = append(activeSquads, sq)
 				}
 			}
+			_ = rows.Err()
 		}
 	}
 

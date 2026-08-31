@@ -39,6 +39,11 @@ export declare const CONTROLLERS_INFO: {
         readonly description: "";
         readonly resource: "node-plugins";
     };
+    readonly NODE_SSH: {
+        readonly tag: "Node SSH Controller";
+        readonly description: "";
+        readonly resource: "node-ssh";
+    };
     readonly BANDWIDTH_STATS: {
         readonly tag: "Bandwidth Stats Controller";
         readonly description: "";

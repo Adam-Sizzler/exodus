@@ -38,4 +38,6 @@ export * from './users.schema';
 export * from './webhook';
 export * from './xray-json-advanced';
 export * from './path-params.schema';
+export * from './tags.schema';
+export * from './ssh-terminal.schema';
 //# sourceMappingURL=index.d.ts.map

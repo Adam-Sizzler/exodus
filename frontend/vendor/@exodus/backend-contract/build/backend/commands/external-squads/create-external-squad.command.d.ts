@@ -11,6 +11,7 @@ export declare namespace CreateExternalSquadCommand {
             uuid: z.ZodUUID;
             viewPosition: z.ZodInt;
             name: z.ZodString;
+            tags: z.ZodDefault<z.ZodArray<z.ZodString>>;
             info: z.ZodObject<{
                 membersCount: z.ZodNumber;
             }, z.core.$strip>;

@@ -13,6 +13,7 @@ export declare namespace UpdateConfigProfileCommand {
             uuid: z.ZodUUID;
             viewPosition: z.ZodInt;
             name: z.ZodString;
+            tags: z.ZodDefault<z.ZodArray<z.ZodString>>;
             config: z.ZodUnknown;
             inbounds: z.ZodArray<z.ZodObject<{
                 uuid: z.ZodUUID;

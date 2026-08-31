@@ -24,12 +24,16 @@ exports.NODE_PLUGINS_ROUTES = {
     },
     SHARED_LISTS: {
         GET_ALL: `${SHARED_LISTS_ROUTE}`, // get
-        GET: (name) => `${SHARED_LISTS_ROUTE}/${name}`, // get
+        GET: `${SHARED_LISTS_ROUTE}/by-name`, // get
         CREATE: `${SHARED_LISTS_ROUTE}`, // post
         UPDATE: `${SHARED_LISTS_ROUTE}`, // patch
-        DELETE: (name) => `${SHARED_LISTS_ROUTE}/${name}`, // delete
+        DELETE: `${SHARED_LISTS_ROUTE}`, // delete
         ACTIONS: {
             SYNC: `${SHARED_LISTS_ROUTE}/${ACTIONS_ROUTE}/sync`, // post
         },
+    },
+    TAGS: {
+        GET: 'tags', // get
+        SET: 'tags', // patch
     },
 };

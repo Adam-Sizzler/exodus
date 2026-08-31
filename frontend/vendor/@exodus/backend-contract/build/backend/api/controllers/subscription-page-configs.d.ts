@@ -9,5 +9,9 @@ export declare const SUBSCRIPTION_PAGE_CONFIGS_ROUTES: {
         readonly REORDER: "actions/reorder";
         readonly CLONE: "actions/clone";
     };
+    readonly TAGS: {
+        readonly GET: "tags";
+        readonly SET: "tags";
+    };
 };
 //# sourceMappingURL=subscription-page-configs.d.ts.map
