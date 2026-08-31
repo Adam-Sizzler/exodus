@@ -1,21 +1,15 @@
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers'
+import { move } from '@dnd-kit/helpers'
 import {
-    closestCenter,
-    DndContext,
+    DragDropProvider,
     DragEndEvent,
+    DragOverEvent,
     DragOverlay,
-    DragStartEvent,
-    KeyboardSensor,
-    MouseSensor,
-    TouchSensor,
-    UniqueIdentifier,
-    useSensor,
-    useSensors
-} from '@dnd-kit/core'
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+    DragStartEvent
+} from '@dnd-kit/react'
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useListState, useMediaQuery } from '@mantine/hooks'
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { Box, Container, em, Stack } from '@mantine/core'
 
 import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-store'
@@ -45,6 +39,8 @@ export const NodesTableWidget = memo((props: IProps) => {
     const listRef = useRef<HTMLDivElement | null>(null)
     const parentOffsetRef = useRef(0)
     const prevStateRef = useRef(state)
+    const isDraggingRef = useRef(false)
+    const dragSnapshotRef = useRef<typeof state | null>(null)
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
     useGetSubscriptionConnections({
@@ -70,26 +66,8 @@ export const NodesTableWidget = memo((props: IProps) => {
         estimateSize: () => (isMobile ? 169 : 64),
         overscan: 7,
         scrollMargin: parentOffsetRef.current,
-        getItemKey: (index) => state[index].uuid
+        getItemKey: (index) => state[index]?.uuid ?? index
     })
-
-    const dataIds = useRef<UniqueIdentifier[]>([])
-    dataIds.current = state.map((node) => node.uuid)
-
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: {
-                distance: 5
-            }
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 250,
-                tolerance: 5
-            }
-        }),
-        useSensor(KeyboardSensor, {})
-    )
 
     useEffect(() => {
         ;(async () => {
@@ -103,7 +81,7 @@ export const NodesTableWidget = memo((props: IProps) => {
             }))
 
             const hasOrderChanged = prevStateRef.current?.some(
-                (node, index) => node.uuid !== state[index].uuid
+                (node, index) => node.uuid !== state[index]?.uuid
             )
 
             if (hasOrderChanged) {
@@ -126,40 +104,49 @@ export const NodesTableWidget = memo((props: IProps) => {
     const handleDragStart = useCallback(
         (event: DragStartEvent) => {
             setIsPollingEnabled(false)
-            const draggedItem = state.find((item) => item.uuid === event.active.id)
+            isDraggingRef.current = true
+            dragSnapshotRef.current = state
+            const draggedItem = state.find((item) => item.uuid === event.operation.source?.id)
             setDraggedNode(draggedItem || null)
         },
         [state]
     )
 
+    const handleDragOver = useCallback(
+        (event: DragOverEvent) => {
+            handlers.setState((prev) => {
+                const ids = prev.map((node) => node.uuid)
+                const newIds = move(ids, event)
+                if (newIds === ids) return prev
+
+                const nodesByUuid = new Map(prev.map((node) => [node.uuid, node]))
+                return newIds.map((uuid) => nodesByUuid.get(uuid)!)
+            })
+        },
+        [handlers]
+    )
+
     const handleDragEnd = useCallback(
         (event: DragEndEvent) => {
-            const { active, over } = event
+            isDraggingRef.current = false
+            setIsPollingEnabled(true)
+            setDraggedNode(null)
 
-            if (!over || active.id === over.id) {
-                setIsPollingEnabled(true)
-                setDraggedNode(null)
+            const snapshot = dragSnapshotRef.current
+            dragSnapshotRef.current = null
+
+            if (event.canceled) {
+                if (snapshot) {
+                    prevStateRef.current = snapshot
+                    handlers.setState(snapshot)
+                }
                 return
             }
 
-            const oldIndex = dataIds.current.indexOf(active.id)
-            const newIndex = dataIds.current.indexOf(over.id)
-
-            if (oldIndex !== -1 && newIndex !== -1) {
-                const newState = arrayMove(state, oldIndex, newIndex)
-                handlers.setState(newState)
-            }
-
-            setIsPollingEnabled(true)
-            setDraggedNode(null)
+            handlers.setState((prev) => [...prev])
         },
-        [state, handlers]
+        [handlers]
     )
-
-    const handleDragCancel = useCallback(() => {
-        setIsPollingEnabled(true)
-        setDraggedNode(null)
-    }, [])
 
     const handleViewNode = (nodeUuid: string) => {
         openModalWithData(MODALS.EDIT_NODE_BY_UUID_MODAL, { nodeUuid })
@@ -175,13 +162,11 @@ export const NodesTableWidget = memo((props: IProps) => {
 
     return (
         <>
-            <DndContext
-                collisionDetection={closestCenter}
-                modifiers={[restrictToVerticalAxis]}
-                onDragCancel={handleDragCancel}
+            <DragDropProvider
+                modifiers={[RestrictToVerticalAxis]}
                 onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
                 onDragStart={handleDragStart}
-                sensors={sensors}
             >
                 <div ref={listRef}>
                     <div
@@ -191,46 +176,42 @@ export const NodesTableWidget = memo((props: IProps) => {
                             position: 'relative'
                         }}
                     >
-                        <SortableContext
-                            items={dataIds.current}
-                            strategy={verticalListSortingStrategy}
-                        >
-                            <Container fluid>
-                                <Stack gap={0}>
-                                    {virtualizer.getVirtualItems().map((virtualItem) => {
-                                        const item = state[virtualItem.index]
-                                        if (!item) return null
+                        <Container fluid>
+                            <Stack gap={0}>
+                                {virtualizer.getVirtualItems().map((virtualItem) => {
+                                    const item = state[virtualItem.index]
+                                    if (!item) return null
 
-                                        return (
-                                            <Box
-                                                data-index={virtualItem.index}
-                                                key={item.uuid}
-                                                style={{
-                                                    position: 'absolute',
-                                                    marginLeft: isMobile ? '0px' : '16px',
-                                                    marginRight: isMobile ? '0px' : '16px',
-                                                    top: 0,
-                                                    left: 0,
-                                                    right: 0,
-                                                    transform: `translateY(${
-                                                        virtualItem.start -
-                                                        virtualizer.options.scrollMargin
-                                                    }px)`
-                                                }}
-                                            >
-                                                <div className={styles.nodeFadeIn}>
-                                                    <NodeCardWidget
-                                                        handleViewNode={handleViewNode}
-                                                        isMobile={isMobile}
-                                                        node={item}
-                                                    />
-                                                </div>
-                                            </Box>
-                                        )
-                                    })}
-                                </Stack>
-                            </Container>
-                        </SortableContext>
+                                    return (
+                                        <Box
+                                            data-index={virtualItem.index}
+                                            key={item.uuid}
+                                            style={{
+                                                position: 'absolute',
+                                                marginLeft: isMobile ? '0px' : '16px',
+                                                marginRight: isMobile ? '0px' : '16px',
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                transform: `translateY(${
+                                                    virtualItem.start -
+                                                    virtualizer.options.scrollMargin
+                                                }px)`
+                                            }}
+                                        >
+                                            <div className={styles.nodeFadeIn}>
+                                                <NodeCardWidget
+                                                    handleViewNode={handleViewNode}
+                                                    index={virtualItem.index}
+                                                    isMobile={isMobile}
+                                                    node={item}
+                                                />
+                                            </div>
+                                        </Box>
+                                    )
+                                })}
+                            </Stack>
+                        </Container>
                     </div>
                 </div>
                 <DragOverlay>
@@ -238,6 +219,7 @@ export const NodesTableWidget = memo((props: IProps) => {
                         <Container fluid pl={0} pr={0}>
                             <NodeCardWidget
                                 handleViewNode={handleViewNode}
+                                index={0}
                                 isDragOverlay
                                 isMobile={isMobile}
                                 node={draggedNode}
@@ -245,7 +227,7 @@ export const NodesTableWidget = memo((props: IProps) => {
                         </Container>
                     )}
                 </DragOverlay>
-            </DndContext>
+            </DragDropProvider>
             {nodes && nodes.length > 0 && <NodesSpotlightSearchWidget nodes={nodes} />}
         </>
     )

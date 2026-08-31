@@ -2,11 +2,11 @@ import { PiDotsSixVertical, PiGlobeSimple } from 'react-icons/pi'
 import { Avatar, Badge, Box, Flex, Grid, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import ReactCountryFlag from 'react-country-flag'
-import { useSortable } from '@dnd-kit/sortable'
+import { OptimisticSortingPlugin } from '@dnd-kit/dom/sortable'
+import { useSortable } from '@dnd-kit/react/sortable'
 import { useTranslation } from 'react-i18next'
 import { useClipboard } from '@mantine/hooks'
 import { CSSProperties, memo } from 'react'
-import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 
 import { getSingboxUptimeUtil } from '@shared/utils/time-utils'
@@ -48,17 +48,21 @@ const getNodeColors = (node: IProps['node']) => {
 
 export const NodeCardWidget = memo((props: IProps) => {
     const { t } = useTranslation()
-    const { handleViewNode, node, isDragOverlay = false, isMobile } = props
+    const { handleViewNode, node, index = 0, isDragOverlay = false, isMobile } = props
 
     const clipboard = useClipboard({ timeout: 500 })
 
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-        id: node.uuid
+    const sortable = useSortable({
+        id: node.uuid,
+        index,
+        disabled: isDragOverlay,
+        plugins: (defaults) => defaults.filter((plugin) => plugin !== OptimisticSortingPlugin)
     })
 
+    const isDragging = !isDragOverlay && sortable.isDragging
+    const { ref, handleRef } = sortable
+
     const style: CSSProperties = {
-        transform: CSS.Transform.toString(transform),
-        transition,
         opacity: isDragging ? 0 : 1,
         zIndex: isDragging ? 1000 : 'auto'
     }
@@ -84,7 +88,7 @@ export const NodeCardWidget = memo((props: IProps) => {
             })}
             data-dnd-overlay={isDragOverlay}
             onClick={() => handleViewNode(node.uuid)}
-            ref={isDragOverlay ? undefined : setNodeRef}
+            ref={isDragOverlay ? undefined : ref}
             style={{
                 ...style,
                 background: `linear-gradient(
@@ -97,8 +101,7 @@ export const NodeCardWidget = memo((props: IProps) => {
             }}
         >
             <Box
-                {...(isDragOverlay ? {} : attributes)}
-                {...(isDragOverlay ? {} : listeners)}
+                ref={isDragOverlay ? undefined : handleRef}
                 className={clsx(classes.dragHandle, {
                     [classes.dragHandleActive]: isDragging
                 })}

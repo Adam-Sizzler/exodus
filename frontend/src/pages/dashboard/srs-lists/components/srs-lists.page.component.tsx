@@ -1,17 +1,14 @@
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers'
+import { move } from '@dnd-kit/helpers'
 import {
-    closestCenter,
-    DndContext,
+    DragDropProvider,
     DragEndEvent,
+    DragOverEvent,
     DragOverlay,
-    DragStartEvent,
-    KeyboardSensor,
-    MouseSensor,
-    TouchSensor,
-    UniqueIdentifier,
-    useSensor,
-    useSensors
-} from '@dnd-kit/core'
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+    DragStartEvent
+} from '@dnd-kit/react'
+import { OptimisticSortingPlugin } from '@dnd-kit/dom/sortable'
+import { useSortable } from '@dnd-kit/react/sortable'
 import {
     PiEmpty,
     PiInfo,
@@ -22,7 +19,6 @@ import {
     PiTag,
     PiWarningCircle
 } from 'react-icons/pi'
-import { CSS } from '@dnd-kit/utilities'
 import {
     Accordion,
     ActionIcon,
@@ -52,10 +48,8 @@ import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { modals } from '@mantine/modals'
 import { useTranslation } from 'react-i18next'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TbPlus, TbRefresh, TbTagStarred } from 'react-icons/tb'
-import { useSortable } from '@dnd-kit/sortable'
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { HiFilter } from 'react-icons/hi'
 import { RiDraggable } from 'react-icons/ri'
 import { motion } from 'framer-motion'
@@ -133,6 +127,7 @@ function SRSSyncIcon(props: { size?: number }) {
 
 function SRSListCard(props: {
     highlightedUuid: null | string
+    index?: number
     isDragOverlay?: boolean
     isSelected: boolean
     item: SRSList
@@ -144,6 +139,7 @@ function SRSListCard(props: {
 }) {
     const {
         item,
+        index = 0,
         isSelected,
         onSelect,
         onEdit,
@@ -164,10 +160,15 @@ function SRSListCard(props: {
         (!!selectedNameUuid && item.uuid !== selectedNameUuid) ||
         (!!selectedURLUuid && item.uuid !== selectedURLUuid)
 
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    const sortable = useSortable({
         id: item.uuid,
-        disabled: isDragOverlay || isFiltered
+        index,
+        disabled: isDragOverlay || isFiltered,
+        plugins: (defaults) => defaults.filter((plugin) => plugin !== OptimisticSortingPlugin)
     })
+
+    const isDragging = !isDragOverlay && sortable.isDragging
+    const { ref, handleRef } = sortable
 
     const stateColor = !item.isEnabled ? 'gray' : item.isAvailable ? 'teal' : 'red'
     const stateIcon = !item.isEnabled ? (
@@ -177,6 +178,12 @@ function SRSListCard(props: {
     ) : (
         <PiWarningCircle size={18} style={{ color: 'var(--mantine-color-red-3)' }} />
     )
+
+    const style: CSSProperties = {
+        opacity: isDragging ? 0 : 1,
+        zIndex: isDragging ? 1000 : 'auto',
+        position: 'relative'
+    }
 
     return (
         <Box
@@ -190,21 +197,14 @@ function SRSListCard(props: {
                 [classes.itemUnavailable]: item.isEnabled && !item.isAvailable
             })}
             data-dnd-overlay={isDragOverlay}
-            ref={isDragOverlay ? undefined : setNodeRef}
-            style={{
-                transform: CSS.Transform.toString(transform),
-                transition,
-                opacity: isDragging ? 0 : 1,
-                zIndex: isDragging ? 1000 : 'auto',
-                position: 'relative'
-            }}
+            ref={isDragOverlay ? undefined : ref}
+            style={style}
         >
             <Group gap="md" w="100%" wrap="nowrap">
                 <Group gap="xs" wrap="nowrap">
                     <Checkbox checked={isSelected} onChange={onSelect} size="md" />
                     <Box
-                        {...(isDragOverlay ? {} : attributes)}
-                        {...(isDragOverlay ? {} : listeners)}
+                        ref={isDragOverlay ? undefined : handleRef}
                         className={classes.dragHandle}
                     >
                         <RiDraggable color="white" size="24px" />
@@ -322,11 +322,11 @@ export function SRSListsPageComponent(props: Props) {
         estimateSize: () => 68,
         overscan: 5,
         scrollMargin: listRef.current?.offsetTop ?? 0,
-        getItemKey: (index) => state[index].uuid
+        getItemKey: (index) => state[index]?.uuid ?? index
     })
 
-    const dataIds = useRef<UniqueIdentifier[]>([])
-    dataIds.current = state.map((item) => item.uuid)
+    const isDraggingRef = useRef(false)
+    const dragSnapshotRef = useRef<null | typeof state>(null)
 
     const { mutate: createSRSLists, isPending: isCreating } = useCreateSRSLists({
         mutationFns: {
@@ -411,12 +411,6 @@ export function SRSListsPageComponent(props: Props) {
         return undefined
     }, [highlightedUuid])
 
-    const sensors = useSensors(
-        useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-        useSensor(KeyboardSensor, {})
-    )
-
     const selectedCount = selected.length
 
     const selectedSet = useMemo(() => new Set(selected), [selected])
@@ -499,37 +493,54 @@ export function SRSListsPageComponent(props: Props) {
 
     const handleDragStart = useCallback(
         (event: DragStartEvent) => {
-            const found = state.find((item) => item.uuid === event.active.id)
+            isDraggingRef.current = true
+            dragSnapshotRef.current = state
+            const found = state.find((item) => item.uuid === event.operation.source?.id)
             setDraggedItem(found || null)
         },
         [state]
     )
 
+    const handleDragOver = useCallback(
+        (event: DragOverEvent) => {
+            setState((prev) => {
+                const ids = prev.map((item) => item.uuid)
+                const newIds = move(ids, event)
+                if (newIds === ids) return prev
+
+                const itemsByUuid = new Map(prev.map((item) => [item.uuid, item]))
+                return newIds.map((uuid) => itemsByUuid.get(uuid)!)
+            })
+        },
+        []
+    )
+
     const handleDragEnd = useCallback(
         (event: DragEndEvent) => {
-            const { active, over } = event
+            isDraggingRef.current = false
+            setDraggedItem(null)
 
-            if (!over || active.id === over.id) {
-                setDraggedItem(null)
+            const snapshot = dragSnapshotRef.current
+            dragSnapshotRef.current = null
+
+            if (event.canceled) {
+                if (snapshot) setState(snapshot)
                 return
             }
 
-            const oldIndex = dataIds.current.indexOf(active.id)
-            const newIndex = dataIds.current.indexOf(over.id)
-
-            if (oldIndex !== -1 && newIndex !== -1) {
-                const next = arrayMove(state, oldIndex, newIndex)
-                setState(next)
-                reorderSRSLists({
-                    variables: {
-                        items: next.map((item, index) => ({ uuid: item.uuid, viewPosition: index }))
-                    }
-                })
-            }
-
-            setDraggedItem(null)
+            setState((prev) => {
+                const hasOrderChanged = snapshot?.some((item, index) => item.uuid !== prev[index]?.uuid)
+                if (hasOrderChanged) {
+                    reorderSRSLists({
+                        variables: {
+                            items: prev.map((item, index) => ({ uuid: item.uuid, viewPosition: index }))
+                        }
+                    })
+                }
+                return [...prev]
+            })
         },
-        [state, reorderSRSLists]
+        [reorderSRSLists]
     )
 
     const deleteSelected = () => {
@@ -749,12 +760,11 @@ export function SRSListsPageComponent(props: Props) {
                 )}
 
                 {state.length > 0 && (
-                    <DndContext
-                        collisionDetection={closestCenter}
-                        modifiers={[restrictToVerticalAxis]}
+                    <DragDropProvider
+                        modifiers={[RestrictToVerticalAxis]}
                         onDragEnd={handleDragEnd}
+                        onDragOver={handleDragOver}
                         onDragStart={handleDragStart}
-                        sensors={sensors}
                     >
                         <div ref={listRef}>
                             <div
@@ -764,57 +774,53 @@ export function SRSListsPageComponent(props: Props) {
                                     position: 'relative'
                                 }}
                             >
-                                <SortableContext
-                                    items={dataIds.current}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    <Container fluid>
-                                        <Stack gap={0}>
-                                            {virtualizer.getVirtualItems().map((virtualItem) => {
-                                                const item = state[virtualItem.index]
-                                                if (!item) return null
+                                <Container fluid>
+                                    <Stack gap={0}>
+                                        {virtualizer.getVirtualItems().map((virtualItem) => {
+                                            const item = state[virtualItem.index]
+                                            if (!item) return null
 
-                                                return (
-                                                    <Box
-                                                        data-index={virtualItem.index}
-                                                        key={item.uuid}
-                                                        style={{
-                                                            position: 'absolute',
-                                                            marginLeft: isMobile ? '0px' : '16px',
-                                                            marginRight: isMobile ? '0px' : '16px',
-                                                            top: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            transform: `translateY(${virtualItem.start - virtualizer.options.scrollMargin}px)`
-                                                        }}
+                                            return (
+                                                <Box
+                                                    data-index={virtualItem.index}
+                                                    key={item.uuid}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        marginLeft: isMobile ? '0px' : '16px',
+                                                        marginRight: isMobile ? '0px' : '16px',
+                                                        top: 0,
+                                                        left: 0,
+                                                        right: 0,
+                                                        transform: `translateY(${virtualItem.start - virtualizer.options.scrollMargin}px)`
+                                                    }}
+                                                >
+                                                    <motion.div
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        initial={{ opacity: 0 }}
+                                                        transition={{ duration: 0.1 }}
                                                     >
-                                                        <motion.div
-                                                            animate={{ opacity: 1 }}
-                                                            exit={{ opacity: 0 }}
-                                                            initial={{ opacity: 0 }}
-                                                            transition={{ duration: 0.1 }}
-                                                        >
-                                                            <SRSListCard
-                                                                highlightedUuid={highlightedUuid}
-                                                                isSelected={selectedSet.has(
-                                                                    item.uuid
-                                                                )}
-                                                                item={item}
-                                                                onEdit={openEditModal}
-                                                                onSelect={() =>
-                                                                    toggleSelect(item.uuid)
-                                                                }
-                                                                selectedNameUuid={selectedNameUuid}
-                                                                selectedTag={selectedTag}
-                                                                selectedURLUuid={selectedURLUuid}
-                                                            />
-                                                        </motion.div>
-                                                    </Box>
-                                                )
-                                            })}
-                                        </Stack>
-                                    </Container>
-                                </SortableContext>
+                                                        <SRSListCard
+                                                            highlightedUuid={highlightedUuid}
+                                                            index={virtualItem.index}
+                                                            isSelected={selectedSet.has(
+                                                                item.uuid
+                                                            )}
+                                                            item={item}
+                                                            onEdit={openEditModal}
+                                                            onSelect={() =>
+                                                                toggleSelect(item.uuid)
+                                                            }
+                                                            selectedNameUuid={selectedNameUuid}
+                                                            selectedTag={selectedTag}
+                                                            selectedURLUuid={selectedURLUuid}
+                                                        />
+                                                    </motion.div>
+                                                </Box>
+                                            )
+                                        })}
+                                    </Stack>
+                                </Container>
                             </div>
                         </div>
 
@@ -823,6 +829,7 @@ export function SRSListsPageComponent(props: Props) {
                                 <Container fluid pl={0} pr={0}>
                                     <SRSListCard
                                         highlightedUuid={highlightedUuid}
+                                        index={0}
                                         isDragOverlay
                                         isSelected={selectedSet.has(draggedItem.uuid)}
                                         item={draggedItem}
@@ -835,7 +842,7 @@ export function SRSListsPageComponent(props: Props) {
                                 </Container>
                             )}
                         </DragOverlay>
-                    </DndContext>
+                    </DragDropProvider>
                 )}
             </Stack>
 
