@@ -42,11 +42,18 @@ var (
 func storeTicket(ticket, adminUUID, nodeUUID, clientIP string, ttl time.Duration) {
 	ticketLock.Lock()
 	defer ticketLock.Unlock()
+	now := time.Now()
+	// Inline sweep of expired tickets to prevent map accumulation
+	for k, v := range ticketMap {
+		if now.After(v.ExpiresAt) {
+			delete(ticketMap, k)
+		}
+	}
 	ticketMap[ticket] = TicketInfo{
 		AdminUUID: adminUUID,
 		NodeUUID:  nodeUUID,
 		ClientIP:  clientIP,
-		ExpiresAt: time.Now().Add(ttl),
+		ExpiresAt: now.Add(ttl),
 	}
 }
 
@@ -237,6 +244,12 @@ func (l *vaultRateLimiter) allow(ctx context.Context, adminUUID string, cfg *con
 	defer l.mu.Unlock()
 	now := time.Now()
 	cutoff := now.Add(-vaultRateLimitWindow)
+	// Sweep inactive admins
+	for k, att := range l.attempts {
+		if len(att) > 0 && att[len(att)-1].Before(cutoff) {
+			delete(l.attempts, k)
+		}
+	}
 	existing := l.attempts[adminUUID]
 	kept := existing[:0]
 	for _, t := range existing {
