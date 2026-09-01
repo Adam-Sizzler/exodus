@@ -28,7 +28,12 @@ import (
 
 // ─── Session limiter (#5) ───────────────────────────────────────────────────
 
-const maxConcurrentSessions = 20
+const (
+	maxConcurrentSessions = 20
+	// Match upstream Remnawave: ping every 25 s, kill after 30 min idle.
+	wsPingInterval = 25 * time.Second
+	wsIdleTimeout  = 30 * time.Minute
+)
 
 var activeSessions atomic.Int32
 
@@ -67,32 +72,33 @@ type SshServerMsg struct {
 // ─── Session hub ─────────────────────────────────────────────────────────────
 
 type sessionHub struct {
-	ws        *websocket.Conn
-	ctx       context.Context
-	cancel    context.CancelFunc
-	reqMu     sync.Mutex
-	nextID    int32
-	identCh   map[int]chan []string
-	signCh    map[int]chan string
-	hostCh    map[int]chan bool
-	errCh     map[int]chan string
-	resizeCh  chan [2]int
-	openCh    chan SshClientMsg
-	stdinPipe io.WriteCloser
-	pipeMu    sync.Mutex
-	log       *logger.Logger
+	ws           *websocket.Conn
+	ctx          context.Context
+	cancel       context.CancelFunc
+	reqMu        sync.Mutex
+	nextID       int32
+	lastActivity atomic.Int64 // unix seconds, touched on every inbound WS message
+	identCh      map[int]chan []string
+	signCh       map[int]chan string
+	hostCh       map[int]chan bool
+	errCh        map[int]chan string
+	resizeCh     chan [2]int
+	openCh       chan SshClientMsg
+	stdinPipe    io.WriteCloser
+	pipeMu       sync.Mutex
+	log          *logger.Logger
 }
 
 func newSessionHub(parentCtx context.Context, ws *websocket.Conn, log *logger.Logger) *sessionHub {
 	ctx, cancel := context.WithCancel(parentCtx)
-	return &sessionHub{
-		ws:       ws,
-		ctx:      ctx,
-		cancel:   cancel,
-		identCh:  make(map[int]chan []string),
-		signCh:   make(map[int]chan string),
-		hostCh:   make(map[int]chan bool),
-		errCh:    make(map[int]chan string),
+	h := &sessionHub{
+		ws:      ws,
+		ctx:     ctx,
+		cancel:  cancel,
+		identCh: make(map[int]chan []string),
+		signCh:  make(map[int]chan string),
+		hostCh:  make(map[int]chan bool),
+		errCh:   make(map[int]chan string),
 		// resizeCh is intentionally size-1: the consumer reads the latest resize
 		// and the producer uses a non-blocking send that overwrites on full,
 		// so only the most-recent dimensions are ever applied (no stale intermediates).
@@ -100,10 +106,18 @@ func newSessionHub(parentCtx context.Context, ws *websocket.Conn, log *logger.Lo
 		openCh:   make(chan SshClientMsg, 1),
 		log:      log,
 	}
+	h.lastActivity.Store(time.Now().Unix())
+	return h
 }
 
 func (h *sessionHub) getNextID() int {
 	return int(atomic.AddInt32(&h.nextID, 1))
+}
+
+// touchActivity records the current time as the last activity timestamp.
+// Called on every inbound WS message to drive the idle-timeout check.
+func (h *sessionHub) touchActivity() {
+	h.lastActivity.Store(time.Now().Unix())
 }
 
 func (h *sessionHub) sendJSON(v any) error {
@@ -269,13 +283,52 @@ func NodeSSHWSHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			}
 			return
 		}
+		// Matches upstream's explicit payload cap so large pastes into the
+		// terminal aren't silently truncated by a smaller library default.
+		conn.SetReadLimit(1 << 20)
 		defer conn.Close(websocket.StatusNormalClosure, "session closed")
 
 		hub := newSessionHub(r.Context(), conn, log)
 		defer hub.cancel()
 
+		// ── Keepalive + idle-timeout goroutine ───────────────────────────────
+		// Matches upstream: ping every 25 s, close after 30 min idle.
+		// coder/websocket requires Ping to run concurrently with an active Read
+		// call — the reader loop below satisfies that requirement.
+		go func() {
+			ticker := time.NewTicker(wsPingInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					idle := time.Since(time.Unix(hub.lastActivity.Load(), 0))
+					if idle >= wsIdleTimeout {
+						if log != nil {
+							log.Warn("SSH WebSocket idle timeout — closing",
+								"idle", idle.Round(time.Second))
+						}
+						_ = conn.Close(websocket.StatusGoingAway, "idle timeout")
+						hub.cancel()
+						return
+					}
+					pingCtx, pingCancel := context.WithTimeout(hub.ctx, 5*time.Second)
+					pingErr := conn.Ping(pingCtx)
+					pingCancel()
+					if pingErr != nil {
+						if log != nil {
+							log.Debug("SSH WebSocket ping failed — closing", "error", pingErr)
+						}
+						hub.cancel()
+						return
+					}
+				case <-hub.ctx.Done():
+					return
+				}
+			}
+		}()
+
 		// Run SSH session in separate goroutine
-		go runSshSession(hub, db, cfg, ticketInfo)
+		go runSshSession(hub, db, ticketInfo)
 
 		// Main reader loop
 		for {
@@ -286,6 +339,8 @@ func NodeSSHWSHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 				}
 				break
 			}
+			// Touch on every inbound frame — drives idle timeout.
+			hub.touchActivity()
 
 			if msgType == websocket.MessageBinary {
 				hub.writeStdin(data)
@@ -343,7 +398,7 @@ func NodeSSHWSHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 // ─── SSH session runner ──────────────────────────────────────────────────────
 
-func runSshSession(hub *sessionHub, db *sql.DB, cfg *config.BackendConfig, ticketInfo TicketInfo) {
+func runSshSession(hub *sessionHub, db *sql.DB, ticketInfo TicketInfo) {
 	var openMsg SshClientMsg
 	select {
 	case openMsg = <-hub.openCh:
@@ -412,9 +467,14 @@ func runSshSession(hub *sessionHub, db *sql.DB, cfg *config.BackendConfig, ticke
 		hub.log.Debug("SSH Open requested", "host", targetHost, "port", targetPort, "username", targetUsername, "cols", cols, "rows", rows)
 	}
 
-	// #2: Fetch node address and enforce it as the only allowed SSH target (SSRF protection)
-	var nodeAddress string
-	err := db.QueryRowContext(hub.ctx, `SELECT address FROM nodes WHERE uuid = $1`, ticketInfo.NodeUUID).Scan(&nodeAddress)
+	// #2: Fetch node address + configured IPs and enforce them as the only
+	// allowed SSH targets (SSRF protection). Only checking `address` here
+	// would reject legitimate connections to a node's secondary IPs, which
+	// the terminal's own connection-setup screen offers via autocomplete.
+	var nodeName, nodeAddress string
+	var nodeIPsRaw []byte
+	err := db.QueryRowContext(hub.ctx, `SELECT name, address, ips FROM nodes WHERE uuid = $1`, ticketInfo.NodeUUID).
+		Scan(&nodeName, &nodeAddress, &nodeIPsRaw)
 	if err != nil {
 		if hub.log != nil {
 			hub.log.Error("Node not found in database", "error", err, "nodeUuid", ticketInfo.NodeUUID)
@@ -424,13 +484,34 @@ func runSshSession(hub *sessionHub, db *sql.DB, cfg *config.BackendConfig, ticke
 		return
 	}
 
-	// #2: Resolve both addresses to IPs and compare to prevent SSRF
-	if !hostsMatch(targetHost, nodeAddress) {
-		if hub.log != nil {
-			hub.log.Warn("SSH target rejected: host does not match node address",
-				"targetHost", targetHost, "nodeAddress", nodeAddress)
+	allowedHosts := []string{nodeAddress}
+	if len(nodeIPsRaw) > 0 {
+		var ipEntries []struct {
+			IP string `json:"ip"`
 		}
-		hub.sendError("SSH target not allowed: host must match node address")
+		if jsonErr := json.Unmarshal(nodeIPsRaw, &ipEntries); jsonErr == nil {
+			for _, entry := range ipEntries {
+				if ip := strings.TrimSpace(entry.IP); ip != "" {
+					allowedHosts = append(allowedHosts, ip)
+				}
+			}
+		}
+	}
+
+	// #2: Resolve target and each allowed host to IPs and compare to prevent SSRF
+	targetAllowed := false
+	for _, allowedHost := range allowedHosts {
+		if hostsMatch(targetHost, allowedHost) {
+			targetAllowed = true
+			break
+		}
+	}
+	if !targetAllowed {
+		if hub.log != nil {
+			hub.log.Warn("SSH target rejected: host does not match node address or ips",
+				"targetHost", targetHost, "nodeUuid", ticketInfo.NodeUUID)
+		}
+		hub.sendError("SSH target not allowed: host must belong to this node")
 		hub.cancel()
 		return
 	}
@@ -600,7 +681,15 @@ func runSshSession(hub *sessionHub, db *sql.DB, cfg *config.BackendConfig, ticke
 	}
 
 	if hub.log != nil {
-		hub.log.Debug("SSH shell ready, sending ready message...")
+		// Audit trail: log at Info so this survives in production where
+		// Debug is typically disabled — otherwise there is no record of
+		// who opened an SSH session to which node.
+		hub.log.Info("SSH session opened",
+			"adminUuid", ticketInfo.AdminUUID,
+			"node", nodeName,
+			"nodeUuid", ticketInfo.NodeUUID,
+			"target", fmt.Sprintf("%s@%s:%d", targetUsername, targetHost, targetPort),
+		)
 	}
 	_ = hub.sendJSON(SshServerMsg{T: "ready"})
 
@@ -671,29 +760,28 @@ func runSshSession(hub *sessionHub, db *sql.DB, cfg *config.BackendConfig, ticke
 // allowedHost. Comparison is first by literal string (case-insensitive), then
 // by IP intersection via DNS lookup with a hard 5-second timeout to prevent
 // goroutine stalls on slow resolvers.
+// hostsMatch reports whether targetHost identifies the same node address as
+// allowedHost, using literal comparison only — never DNS resolution.
+//
+// Upstream Remnawave's equivalent check is a plain
+// `allowedHosts.includes(host)` with no lookups at all. Resolving either
+// side via DNS (as this function used to) lets the check pass today against
+// a domain the caller controls and points at the node, then the actual
+// ssh.Dial — which re-resolves independently, moments later — can be
+// redirected elsewhere by simply repointing that domain's DNS in between
+// (DNS rebinding / TOCTOU). So: domain names for node.address are not
+// resolved here — nodes are expected to be identified by their configured
+// IP literal(s), matching upstream's model exactly.
 func hostsMatch(targetHost, allowedHost string) bool {
-	if strings.EqualFold(targetHost, allowedHost) {
+	if strings.EqualFold(strings.TrimSpace(targetHost), strings.TrimSpace(allowedHost)) {
 		return true
 	}
-	// DNS lookup with timeout to avoid hanging goroutines.
-	resolver := &net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	targetIPs, err1 := resolver.LookupHost(ctx, targetHost)
-	allowedIPs, err2 := resolver.LookupHost(ctx, allowedHost)
-	if err1 != nil || err2 != nil {
+	targetIP := middleware.CanonicalIP(targetHost)
+	allowedIP := middleware.CanonicalIP(allowedHost)
+	if targetIP == "" || allowedIP == "" {
 		return false
 	}
-	targetSet := make(map[string]struct{}, len(targetIPs))
-	for _, ip := range targetIPs {
-		targetSet[ip] = struct{}{}
-	}
-	for _, ip := range allowedIPs {
-		if _, ok := targetSet[ip]; ok {
-			return true
-		}
-	}
-	return false
+	return targetIP == allowedIP
 }
 
 // ─── Browser SSH agent signer ────────────────────────────────────────────────
