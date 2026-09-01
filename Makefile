@@ -7,8 +7,8 @@
         backend-build backend-test backend-lint \
         frontend-build frontend-typecheck frontend-lint frontend-format \
         contract-build contract-sync \
-        release-patch release-minor release-major release-tag \
-        docker-build docker-up docker-down docker-restart docker-logs
+        release \
+        deploy logs
 
 # Colors
 CYAN  := $(shell printf '\033[36m')
@@ -22,44 +22,40 @@ help:
 	@echo "$(CYAN)Exodus Project Automation$(RESET)"
 	@echo ""
 	@echo "  $(YELLOW)API & Specs:$(RESET)"
-	@echo "    $(GREEN)make openapi$(RESET)          - Generate OpenAPI/Swagger docs via swag"
+	@echo "    $(GREEN)make openapi$(RESET)                 - Generate OpenAPI/Swagger docs (go generate ./...)"
 	@echo ""
 	@echo "  $(YELLOW)Backend (Go):$(RESET)"
-	@echo "    $(GREEN)make backend-build$(RESET)    - Build backend Go binary"
-	@echo "    $(GREEN)make backend-test$(RESET)     - Run all backend Go tests"
-	@echo "    $(GREEN)make backend-lint$(RESET)     - Run go vet static analysis"
+	@echo "    $(GREEN)make backend-build$(RESET)           - Build backend Go binary"
+	@echo "    $(GREEN)make backend-test$(RESET)            - Run backend Go tests"
+	@echo "    $(GREEN)make backend-lint$(RESET)            - Run go vet static analysis"
 	@echo ""
 	@echo "  $(YELLOW)Frontend (React/Vite):$(RESET)"
-	@echo "    $(GREEN)make frontend-build$(RESET)   - Build frontend production bundle (dist/)"
-	@echo "    $(GREEN)make frontend-typecheck$(RESET)- Run TypeScript typecheck without emit"
-	@echo "    $(GREEN)make frontend-lint$(RESET)    - Run oxfmt and oxlint checks"
-	@echo "    $(GREEN)make frontend-format$(RESET)  - Auto-format frontend code with oxfmt"
+	@echo "    $(GREEN)make frontend-build$(RESET)          - Build frontend production bundle (dist/)"
+	@echo "    $(GREEN)make frontend-typecheck$(RESET)      - Run TypeScript typecheck"
+	@echo "    $(GREEN)make frontend-lint$(RESET)           - Run oxfmt and oxlint checks"
+	@echo "    $(GREEN)make frontend-format$(RESET)         - Auto-format frontend code with oxfmt"
 	@echo ""
 	@echo "  $(YELLOW)Contracts:$(RESET)"
-	@echo "    $(GREEN)make contract-build$(RESET)   - Build vendor/@exodus/backend-contract"
-	@echo "    $(GREEN)make contract-sync$(RESET)    - Sync vendor lockfiles & deduplicate Zod 4"
+	@echo "    $(GREEN)make contract-build$(RESET)          - Build vendor/@exodus/backend-contract"
+	@echo "    $(GREEN)make contract-sync$(RESET)           - Sync vendor lockfiles & deduplicate Zod 4"
 	@echo ""
-	@echo "  $(YELLOW)Releases & Tags:$(RESET)"
-	@echo "    $(GREEN)make release-patch$(RESET)    - Bump patch tag (e.g. v26.9.1 -> v26.9.2) & push"
-	@echo "    $(GREEN)make release-minor$(RESET)    - Bump minor tag (e.g. v26.9.1 -> v26.10.0) & push"
-	@echo "    $(GREEN)make release-major$(RESET)    - Bump major tag (e.g. v26.9.1 -> v27.0.0) & push"
-	@echo "    $(GREEN)make release-tag TAG=vX.Y.Z$(RESET) - Create and push specific custom tag"
+	@echo "  $(YELLOW)Releases & GitHub Actions:$(RESET)"
+	@echo "    $(GREEN)make release$(RESET)                 - Create & push release tag for today (vYY.M.D)"
+	@echo "    $(GREEN)make release TAG=v26.9.1.1$(RESET)   - Create & push specific release tag"
 	@echo ""
-	@echo "  $(YELLOW)Docker:$(RESET)"
-	@echo "    $(GREEN)make docker-build$(RESET)     - Build local Docker image with cache bust"
-	@echo "    $(GREEN)make docker-up$(RESET)        - Start Docker Compose services"
-	@echo "    $(GREEN)make docker-down$(RESET)      - Stop Docker Compose services"
-	@echo "    $(GREEN)make docker-restart$(RESET)   - Restart exodus panel container"
-	@echo "    $(GREEN)make docker-logs$(RESET)      - Follow live logs of exodus container"
+	@echo "  $(YELLOW)Local Deployment:$(RESET)"
+	@echo "    $(GREEN)make deploy$(RESET)                  - Build with current branch/date & recreate exodus container"
+	@echo "    $(GREEN)make deploy TAG=v26.9.1.1$(RESET)    - Deploy locally with specific version tag"
+	@echo "    $(GREEN)make logs$(RESET)                    - Follow live logs of exodus container"
 	@echo ""
 
 # ------------------------------------------------------------------------------
-# OpenAPI / Swagger Generation
+# OpenAPI / Swagger Generation (via go generate)
 # ------------------------------------------------------------------------------
 openapi:
-	@echo "$(CYAN)Generating OpenAPI / Swagger documentation...$(RESET)"
-	@cd backend && swag init --generalInfo main.go --dir . --output internal/httpapi/panelsettings/docs --outputTypes json,yaml --parseDependency --parseInternal
-	@echo "$(GREEN)Swagger JSON & YAML generated at backend/internal/httpapi/panelsettings/docs/$(RESET)"
+	@echo "$(CYAN)Generating OpenAPI / Swagger documentation via go generate...$(RESET)"
+	@cd backend && go generate ./...
+	@echo "$(GREEN)Swagger JSON & YAML generated successfully at backend/internal/httpapi/panelsettings/docs/$(RESET)"
 
 swagger: openapi
 
@@ -121,64 +117,59 @@ contract-sync:
 # ------------------------------------------------------------------------------
 # Release & Tag Automation
 # ------------------------------------------------------------------------------
-release-patch:
+release:
 	@git fetch --tags --force 2>/dev/null || true
-	@LATEST=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v26.9.1") && \
-	CLEAN=$${LATEST#v} && \
-	IFS="." read -r MAJOR MINOR PATCH <<< "$$CLEAN" && \
-	NEXT_TAG="v$${MAJOR}.$${MINOR}.$$((PATCH + 1))" && \
-	echo "$(CYAN)Current tag: $$LATEST -> New patch tag: $$NEXT_TAG$(RESET)" && \
-	git tag "$$NEXT_TAG" -m "Release $$NEXT_TAG" && \
-	git push origin "$$NEXT_TAG" && \
-	echo "$(GREEN)Successfully created and pushed $$NEXT_TAG! GitHub Actions release started.$(RESET)"
-
-release-minor:
-	@git fetch --tags --force 2>/dev/null || true
-	@LATEST=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v26.9.1") && \
-	CLEAN=$${LATEST#v} && \
-	IFS="." read -r MAJOR MINOR PATCH <<< "$$CLEAN" && \
-	NEXT_TAG="v$${MAJOR}.$$((MINOR + 1)).0" && \
-	echo "$(CYAN)Current tag: $$LATEST -> New minor tag: $$NEXT_TAG$(RESET)" && \
-	git tag "$$NEXT_TAG" -m "Release $$NEXT_TAG" && \
-	git push origin "$$NEXT_TAG" && \
-	echo "$(GREEN)Successfully created and pushed $$NEXT_TAG! GitHub Actions release started.$(RESET)"
-
-release-major:
-	@git fetch --tags --force 2>/dev/null || true
-	@LATEST=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v26.9.1") && \
-	CLEAN=$${LATEST#v} && \
-	IFS="." read -r MAJOR MINOR PATCH <<< "$$CLEAN" && \
-	NEXT_TAG="v$$((MAJOR + 1)).0.0" && \
-	echo "$(CYAN)Current tag: $$LATEST -> New major tag: $$NEXT_TAG$(RESET)" && \
-	git tag "$$NEXT_TAG" -m "Release $$NEXT_TAG" && \
-	git push origin "$$NEXT_TAG" && \
-	echo "$(GREEN)Successfully created and pushed $$NEXT_TAG! GitHub Actions release started.$(RESET)"
-
-release-tag:
-	@if [ -z "$(TAG)" ]; then \
-		echo "$(YELLOW)Error: Please specify TAG=vX.Y.Z (e.g. make release-tag TAG=v26.9.2)$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(CYAN)Creating and pushing tag $(TAG)...$(RESET)"
-	@git tag "$(TAG)" -m "Release $(TAG)"
-	@git push origin "$(TAG)"
-	@echo "$(GREEN)Successfully pushed $(TAG)! GitHub Actions release started.$(RESET)"
+	@TARGET_TAG=$$(if [ -n "$(TAG)" ]; then \
+		echo "$(TAG)"; \
+	elif [ -n "$(v)" ]; then \
+		echo "$(v)"; \
+	elif [ -n "$(VERSION)" ]; then \
+		echo "$(VERSION)"; \
+	else \
+		TODAY="v$$(date +%y).$$(date +%-m).$$(date +%-d)"; \
+		if git rev-parse "$$TODAY" >/dev/null 2>&1; then \
+			I=1; \
+			while git rev-parse "$$TODAY.$$I" >/dev/null 2>&1; do \
+				I=$$((I + 1)); \
+			done; \
+			echo "$$TODAY.$$I"; \
+		else \
+			echo "$$TODAY"; \
+		fi; \
+	fi) && \
+	echo "$(CYAN)Creating and pushing release tag: $$TARGET_TAG...$(RESET)" && \
+	git tag "$$TARGET_TAG" -m "Release $$TARGET_TAG" && \
+	git push origin "$$TARGET_TAG" && \
+	echo "$(GREEN)Successfully pushed $$TARGET_TAG! GitHub Actions Release workflow started.$(RESET)"
 
 # ------------------------------------------------------------------------------
-# Docker Compose Helpers
+# Local Docker Deployment
 # ------------------------------------------------------------------------------
-docker-build:
-	@echo "$(CYAN)Building Exodus Docker image...$(RESET)"
-	@docker compose build --build-arg BUILD_BUST=$$(date +%s) exodus
+deploy:
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "dev") && \
+	COMMIT=$$(git rev-parse HEAD 2>/dev/null || echo "unknown") && \
+	VERSION=$$(if [ -n "$(TAG)" ]; then \
+		echo "$(TAG)"; \
+	elif [ -n "$(v)" ]; then \
+		echo "$(v)"; \
+	elif [ -n "$(VERSION)" ]; then \
+		echo "$(VERSION)"; \
+	else \
+		echo "v$$(date +%y).$$(date +%-m).$$(date +%-d)"; \
+	fi) && \
+	BUILD_TIME=$$(date -u +'%Y-%m-%dT%H:%M:%SZ') && \
+	echo "$(CYAN)Building & deploying Exodus locally (Version: $$VERSION, Branch: $$BRANCH, Commit: $${COMMIT:0:8})...$(RESET)" && \
+	docker compose build \
+		--build-arg BUILD_BUST=$$(date +%s) \
+		--build-arg BRANCH=$$BRANCH \
+		--build-arg __EX_METADATA_GIT_BRANCH=$$BRANCH \
+		--build-arg __EX_METADATA_VERSION=$$VERSION \
+		--build-arg __EX_METADATA_GIT_BACKEND_COMMIT=$$COMMIT \
+		--build-arg __EX_METADATA_GIT_FRONTEND_COMMIT=$$COMMIT \
+		--build-arg __EX_METADATA_BUILD_TIME=$$BUILD_TIME \
+		exodus && \
+	docker compose up -d --no-deps --force-recreate exodus && \
+	echo "$(GREEN)Exodus container deployed successfully!$(RESET)"
 
-docker-up:
-	@docker compose up -d
-
-docker-down:
-	@docker compose down
-
-docker-restart:
-	@docker compose restart exodus
-
-docker-logs:
+logs:
 	@docker compose logs -f exodus

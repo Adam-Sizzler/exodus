@@ -1,0 +1,118 @@
+name: Build & Push Dev Docker Image
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+  REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/exodus
+  GHCR_IMAGE: ghcr.io/adam-sizzler/exodus
+  IMAGE_TAG: dev
+
+jobs:
+  send-tg-msg:
+    name: Send Telegram message (Start)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Send Telegram message
+        uses: proDreams/actions-telegram-notifier@main
+        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          status: info
+          notify_fields: 'repository,branch,commit,workflow'
+          title: 'Exodus dev build started.'
+
+  build-dev-image:
+    name: Build linux/amd64 (Dev)
+    needs: [send-tg-msg]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.TOKEN_GH_DEPLOY }}
+
+      - name: Prepare build metadata
+        id: meta
+        run: |
+          echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
+          echo "version=dev-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.GHCR_IMAGE }}:${{ env.IMAGE_TAG }}
+          build-args: |
+            BRANCH=dev
+            __EX_METADATA_GIT_BRANCH=dev
+            __EX_METADATA_BUILD_TIME=${{ steps.meta.outputs.build_time }}
+            __EX_METADATA_BUILD_NUMBER=${{ github.run_number }}
+            __EX_METADATA_VERSION=${{ steps.meta.outputs.version }}
+            __EX_METADATA_GIT_BACKEND_COMMIT=${{ github.sha }}
+            __EX_METADATA_GIT_FRONTEND_COMMIT=${{ github.sha }}
+
+  send-finish-tg-msg:
+    name: Send Telegram message (Finish)
+    needs: [build-dev-image]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Send Telegram message
+        uses: proDreams/actions-telegram-notifier@main
+        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          status: success
+          notify_fields: 'repository,branch,commit'
+          title: 'Exodus dev build finished.'
+
+  notify-on-error:
+    runs-on: ubuntu-latest
+    needs: [build-dev-image]
+    if: failure()
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Send error notification
+        uses: proDreams/actions-telegram-notifier@main
+        if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        with:
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          status: failure
+          notify_fields: 'repository,branch,commit,workflow'
+          title: 'Exodus dev build failed.'
