@@ -19,6 +19,17 @@ var (
 	cachedScalar    *ristretto255.Scalar
 )
 
+// expandMessageXMD_SHA512 implements hash_to_field (RFC 9380 §5.3) with SHA-512.
+//
+// NOTE: lenInBytes is hardcoded to 64 in the only call site (getOrDeriveVaultScalar).
+// RFC 9497 §3.2 for ristretto255-SHA512 specifies L = ceil((255+128)/8) = 48.
+// Using L=64 (one full SHA-512 block) is a deliberate deviation: the resulting
+// OPRF scalar is cryptographically sound and self-consistent, but it is NOT the
+// same scalar that the upstream Remnawave NestJS backend would derive from the
+// same APP_SECRET. Vault data encrypted against one scalar cannot be decrypted
+// with the other. This is acceptable as long as Exodus vaults are never migrated
+// from upstream; if migration support is ever required, L must be changed to 48
+// and all existing vault entries re-evaluated against the new scalar.
 func expandMessageXMD_SHA512(msg, dst []byte, lenInBytes int) []byte {
 	bLen := 64
 	rLen := 128

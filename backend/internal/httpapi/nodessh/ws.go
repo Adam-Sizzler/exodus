@@ -33,6 +33,10 @@ const (
 	// Match upstream Remnawave: ping every 25 s, kill after 30 min idle.
 	wsPingInterval = 25 * time.Second
 	wsIdleTimeout  = 30 * time.Minute
+	// Backpressure limits — match upstream WS_HIGH_WATER_BYTES / MAX_BUFFERED_BYTES.
+	// When outBuffered exceeds wsOutBufMax the session is terminated so the SSH
+	// channel is not starved and the goroutine does not leak indefinitely.
+	wsOutBufMax = 65536 // 64 KB
 )
 
 var activeSessions atomic.Int32
@@ -78,6 +82,7 @@ type sessionHub struct {
 	reqMu        sync.Mutex
 	nextID       int32
 	lastActivity atomic.Int64 // unix seconds, touched on every inbound WS message
+	outBuffered  atomic.Int64 // bytes currently queued for WS send (backpressure)
 	identCh      map[int]chan []string
 	signCh       map[int]chan string
 	hostCh       map[int]chan bool
@@ -705,29 +710,54 @@ func runSshSession(hub *sessionHub, db *sql.DB, ticketInfo TicketInfo) {
 		}
 	}()
 
-	// Pipe SSH stdout to WebSocket binary messages
+	// Pipe SSH stdout to WebSocket binary messages.
+	// Backpressure: track outgoing bytes; terminate if client falls too far behind
+	// (matches upstream MAX_BUFFERED_BYTES = 65536 terminate-on-overflow behaviour).
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, err := stdoutPipe.Read(buf)
+			n, readErr := stdoutPipe.Read(buf)
 			if n > 0 {
-				_ = hub.sendBinary(buf[:n])
+				if hub.outBuffered.Load() > wsOutBufMax {
+					if hub.log != nil {
+						hub.log.Warn("SSH stdout buffer overflow — client too slow, terminating session")
+					}
+					hub.cancel()
+					break
+				}
+				hub.outBuffered.Add(int64(n))
+				sendErr := hub.sendBinary(buf[:n])
+				hub.outBuffered.Add(-int64(n))
+				if sendErr != nil {
+					hub.cancel()
+					break
+				}
 			}
-			if err != nil {
+			if readErr != nil {
 				break
 			}
 		}
 	}()
 
-	// Pipe SSH stderr to WebSocket binary messages
+	// Pipe SSH stderr to WebSocket binary messages (same backpressure logic).
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, err := stderrPipe.Read(buf)
+			n, readErr := stderrPipe.Read(buf)
 			if n > 0 {
-				_ = hub.sendBinary(buf[:n])
+				if hub.outBuffered.Load() > wsOutBufMax {
+					hub.cancel()
+					break
+				}
+				hub.outBuffered.Add(int64(n))
+				sendErr := hub.sendBinary(buf[:n])
+				hub.outBuffered.Add(-int64(n))
+				if sendErr != nil {
+					hub.cancel()
+					break
+				}
 			}
-			if err != nil {
+			if readErr != nil {
 				break
 			}
 		}

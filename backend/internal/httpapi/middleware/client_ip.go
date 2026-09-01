@@ -95,6 +95,19 @@ func parseIPCandidate(value, source string) (clientIPCandidate, bool) {
 		return clientIPCandidate{}, false
 	}
 
+	ip, ok := normalizeIPLiteral(trimmed)
+	if !ok {
+		return clientIPCandidate{}, false
+	}
+	return clientIPCandidate{value: ip.String(), ip: ip, source: source}, true
+}
+
+// normalizeIPLiteral strips an optional port, brackets, IPv6 zone suffix,
+// and IPv4-mapped ::ffff: prefix from an IP literal and returns its
+// canonical net.IP (IPv4 forms are folded to 4-byte form via To4()). It
+// performs no DNS resolution: a hostname or other non-IP input returns
+// ok=false.
+func normalizeIPLiteral(trimmed string) (net.IP, bool) {
 	if host, _, err := net.SplitHostPort(trimmed); err == nil {
 		trimmed = host
 	}
@@ -105,13 +118,30 @@ func parseIPCandidate(value, source string) (clientIPCandidate, bool) {
 	if zone := strings.LastIndex(trimmed, "%"); zone > -1 {
 		trimmed = trimmed[:zone]
 	}
-	if ip := net.ParseIP(trimmed); ip != nil {
-		if ip4 := ip.To4(); ip4 != nil {
-			ip = ip4
-		}
-		return clientIPCandidate{value: ip.String(), ip: ip, source: source}, true
+	ip := net.ParseIP(trimmed)
+	if ip == nil {
+		return nil, false
 	}
-	return clientIPCandidate{}, false
+	if ip4 := ip.To4(); ip4 != nil {
+		ip = ip4
+	}
+	return ip, true
+}
+
+// CanonicalIP returns the canonical string form of an IP literal — handling
+// an IPv4-mapped ::ffff: prefix, an IPv6 zone suffix, and an optional
+// port/brackets — the same way client-IP resolution in this file does.
+// Returns "" if the input is not a literal IP address; it never resolves
+// DNS. Exported so other packages that need to compare two "is this the
+// same address" values (e.g. node-ssh host validation) share one
+// normalization implementation instead of re-deriving their own or, worse,
+// falling back to a DNS lookup to decide the comparison.
+func CanonicalIP(raw string) string {
+	ip, ok := normalizeIPLiteral(strings.TrimSpace(raw))
+	if !ok {
+		return ""
+	}
+	return ip.String()
 }
 
 func selectClientIPCandidate(candidates []clientIPCandidate) clientIPCandidate {
