@@ -625,18 +625,40 @@ func runSshSession(hub *sessionHub, db *sql.DB, ticketInfo TicketInfo) {
 		hub.cancel()
 		return
 	}
-	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
 		if hub.log != nil {
 			hub.log.Error("SSH session creation failed", "error", err)
 		}
+		_ = client.Close()
 		hub.sendError(fmt.Sprintf("SSH session creation failed: %v", err))
 		hub.cancel()
 		return
 	}
-	defer session.Close()
+
+	// Active cleanup: when hub.ctx is cancelled (client disconnects, WS closes,
+	// timeout, or fatal error), immediately close session and client. This unblocks
+	// session.Wait(), stdoutPipe.Read(), and stderrPipe.Read(), allowing all session
+	// goroutines and internal crypto/ssh transport loops to terminate cleanly without leaks.
+	closeOnce := sync.Once{}
+	cleanupSSH := func() {
+		closeOnce.Do(func() {
+			hub.setStdinPipe(nil)
+			if session != nil {
+				_ = session.Close()
+			}
+			if client != nil {
+				_ = client.Close()
+			}
+		})
+	}
+	defer cleanupSSH()
+
+	go func() {
+		<-hub.ctx.Done()
+		cleanupSSH()
+	}()
 
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          1,
@@ -782,6 +804,7 @@ func runSshSession(hub *sessionHub, db *sql.DB, ticketInfo TicketInfo) {
 		hub.log.Debug("SSH session ended", "exitCode", exitCode, "signal", exitSignal)
 	}
 	_ = hub.sendJSON(SshServerMsg{T: "exit", Code: &exitCode, Signal: exitSignal})
+	hub.cancel()
 }
 
 // ─── SSRF host comparison helper (#2) ───────────────────────────────────────

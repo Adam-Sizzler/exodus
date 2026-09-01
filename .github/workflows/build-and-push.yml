@@ -88,7 +88,12 @@ jobs:
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-          echo "branch=main" >> $GITHUB_OUTPUT
+          git fetch --all || true
+          BRANCH=$(git branch -r --contains "${GITHUB_SHA}" | sed 's#origin/##' | tr -d ' ' | grep -v 'HEAD' | head -n 1 || true)
+          if [ -z "$BRANCH" ]; then
+            BRANCH="dev"
+          fi
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
           echo "frontend_commit=${GITHUB_SHA}" >> $GITHUB_OUTPUT
 
       - name: Build and push by digest
