@@ -1877,6 +1877,57 @@ paths:
       summary: Manage config profile snippets
       tags:
       - Snippets Controller
+  /config-profiles/tags:
+    get:
+      consumes:
+      - application/json
+      description: Get unique config profile tags or set tags for a config profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage config profile tags
+      tags:
+      - Config Profiles Controller
+    patch:
+      consumes:
+      - application/json
+      description: Get unique config profile tags or set tags for a config profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage config profile tags
+      tags:
+      - Config Profiles Controller
   /exodus-settings:
     get:
       consumes:
@@ -2154,6 +2205,57 @@ paths:
       security:
       - BearerAuth: []
       summary: Reorder external squads
+      tags:
+      - External Squads Controller
+  /external-squads/tags:
+    get:
+      consumes:
+      - application/json
+      description: Get unique external squad tags or set tags for an external squad
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage external squad tags
+      tags:
+      - External Squads Controller
+    patch:
+      consumes:
+      - application/json
+      description: Get unique external squad tags or set tags for an external squad
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage external squad tags
       tags:
       - External Squads Controller
   /health:
@@ -3769,6 +3871,57 @@ paths:
       summary: Reorder internal squads
       tags:
       - Internal Squads Controller
+  /internal-squads/tags:
+    get:
+      consumes:
+      - application/json
+      description: Get unique internal squad tags or set tags for an internal squad
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage internal squad tags
+      tags:
+      - Internal Squads Controller
+    patch:
+      consumes:
+      - application/json
+      description: Get unique internal squad tags or set tags for an internal squad
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage internal squad tags
+      tags:
+      - Internal Squads Controller
   /keygen:
     get:
       description: Generate node TLS certificates, public keys, and gRPC auth tokens
@@ -4218,6 +4371,57 @@ paths:
       security:
       - BearerAuth: []
       summary: Manage node plugins
+      tags:
+      - Node Plugins Controller
+  /node-plugins/tags:
+    get:
+      consumes:
+      - application/json
+      description: Get unique node plugin tags or set tags for a node plugin
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage node plugin tags
+      tags:
+      - Node Plugins Controller
+    patch:
+      consumes:
+      - application/json
+      description: Get unique node plugin tags or set tags for a node plugin
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage node plugin tags
       tags:
       - Node Plugins Controller
   /nodes:
@@ -6287,6 +6491,59 @@ paths:
       summary: Subscription page config actions
       tags:
       - Subscription Page Configs Controller
+  /subscription-page-configs/tags:
+    get:
+      consumes:
+      - application/json
+      description: Get unique subscription page config tags or set tags for a subscription
+        page config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage subscription page config tags
+      tags:
+      - Subscription Page Configs Controller
+    patch:
+      consumes:
+      - application/json
+      description: Get unique subscription page config tags or set tags for a subscription
+        page config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage subscription page config tags
+      tags:
+      - Subscription Page Configs Controller
   /subscription-request-history:
     get:
       description: Get paginated global subscription request history
@@ -6620,6 +6877,59 @@ paths:
       security:
       - BearerAuth: []
       summary: Subscription template actions
+      tags:
+      - Subscription Template Controller
+  /subscription-templates/tags:
+    get:
+      consumes:
+      - application/json
+      description: Get unique subscription template tags or set tags for a subscription
+        template
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage subscription template tags
+      tags:
+      - Subscription Template Controller
+    patch:
+      consumes:
+      - application/json
+      description: Get unique subscription template tags or set tags for a subscription
+        template
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Manage subscription template tags
       tags:
       - Subscription Template Controller
   /subscriptions:

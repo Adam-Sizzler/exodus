@@ -118,25 +118,11 @@ contract-sync:
 # Release & Tag Automation
 # ------------------------------------------------------------------------------
 release:
-	@git fetch --tags --force 2>/dev/null || true
-	@TARGET_TAG=$$(if [ -n "$(TAG)" ]; then \
-		echo "$(TAG)"; \
-	elif [ -n "$(v)" ]; then \
-		echo "$(v)"; \
-	elif [ -n "$(VERSION)" ]; then \
-		echo "$(VERSION)"; \
-	else \
-		TODAY="v$$(date +%y).$$(date +%-m).$$(date +%-d)"; \
-		if git rev-parse "$$TODAY" >/dev/null 2>&1; then \
-			I=1; \
-			while git rev-parse "$$TODAY.$$I" >/dev/null 2>&1; do \
-				I=$$((I + 1)); \
-			done; \
-			echo "$$TODAY.$$I"; \
-		else \
-			echo "$$TODAY"; \
-		fi; \
-	fi) && \
+	@if [ -z "$(TAG)" ] && [ -z "$(v)" ]; then \
+		echo "$(YELLOW)Error: Please specify TAG=vX.Y.Z (e.g. make release TAG=v26.9.2)$(RESET)"; \
+		exit 1; \
+	fi
+	@TARGET_TAG=$$(if [ -n "$(TAG)" ]; then echo "$(TAG)"; else echo "$(v)"; fi) && \
 	echo "$(CYAN)Creating and pushing release tag: $$TARGET_TAG...$(RESET)" && \
 	git tag "$$TARGET_TAG" -m "Release $$TARGET_TAG" && \
 	git push origin "$$TARGET_TAG" && \
