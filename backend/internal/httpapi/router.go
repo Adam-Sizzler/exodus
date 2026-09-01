@@ -184,7 +184,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/node-ssh/tickets/", nodessh.NodeSSHTicketHandler(db, cfg))
 	mux.HandleFunc("/api/node-ssh/tickets", nodessh.NodeSSHTicketHandler(db, cfg))
 	mux.HandleFunc("/api/node-ssh/vault/evaluate", nodessh.NodeSSHVaultEvaluateHandler(db, cfg))
-	mux.HandleFunc("/api/node-ssh/ws", nodessh.NodeSSHWSHandler(db, cfg))
+	// /api/node-ssh/ws is registered in the public mux (isPublicPath) — no duplicate here (#12)
 
 	mux.HandleFunc("/api/metadata/user/", auth.RequireAdminRole(metadata.UserHandler(db, cfg)))
 	mux.HandleFunc("/api/metadata/node/", auth.RequireAdminRole(metadata.NodeHandler(db, cfg)))

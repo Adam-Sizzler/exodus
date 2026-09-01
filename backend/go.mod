@@ -5,6 +5,7 @@ go 1.25.9
 toolchain go1.25.12
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/go-webauthn/webauthn v0.17.2
 	github.com/google/uuid v1.6.0
 	github.com/gtank/ristretto255 v0.2.0
@@ -24,7 +25,6 @@ require (
 	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
-	nhooyr.io/websocket v1.8.17
 )
 
 require (

@@ -1,22 +1,19 @@
 package nodessh
 
+// CreateSshTicketResponse is returned by NodeSSHTicketHandler on success.
 type CreateSshTicketResponse struct {
-Ticket           string `json:"ticket"`
-Path             string `json:"path"`
-ExpiresInSeconds int    `json:"expiresInSeconds"`
+	Ticket           string `json:"ticket"`
+	Path             string `json:"path"`
+	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
 
+// EvaluateVaultRequestBody is the request body for NodeSSHVaultEvaluateHandler.
 type EvaluateVaultRequestBody struct {
-Blinded string `json:"blinded"`
+	Blinded string `json:"blinded"`
 }
 
+// EvaluateVaultResponse is returned by NodeSSHVaultEvaluateHandler on success.
 type EvaluateVaultResponse struct {
-Evaluated string `json:"evaluated"`
+	Evaluated string `json:"evaluated"`
 }
-
-type WSMessage struct {
-Type string `json:"type"`
-Cols int    `json:"cols,omitempty"`
-Rows int    `json:"rows,omitempty"`
-Data string `json:"data,omitempty"`
-}
+// WSMessage was an intermediate type from an earlier port revision — removed (#14).
