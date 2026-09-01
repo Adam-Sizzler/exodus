@@ -25,7 +25,7 @@ var (
 // RFC 9497 §3.2 for ristretto255-SHA512 specifies L = ceil((255+128)/8) = 48.
 // Using L=64 (one full SHA-512 block) is a deliberate deviation: the resulting
 // OPRF scalar is cryptographically sound and self-consistent, but it is NOT the
-// same scalar that the upstream Remnawave NestJS backend would derive from the
+// same scalar that the upstream NestJS backend would derive from the
 // same APP_SECRET. Vault data encrypted against one scalar cannot be decrypted
 // with the other. This is acceptable as long as Exodus vaults are never migrated
 // from upstream; if migration support is ever required, L must be changed to 48

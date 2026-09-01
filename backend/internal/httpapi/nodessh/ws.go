@@ -30,7 +30,7 @@ import (
 
 const (
 	maxConcurrentSessions = 20
-	// Match upstream Remnawave: ping every 25 s, kill after 30 min idle.
+	// Match upstream behavior: ping every 25 s, kill after 30 min idle.
 	wsPingInterval = 25 * time.Second
 	wsIdleTimeout  = 30 * time.Minute
 	// Backpressure limits — match upstream WS_HIGH_WATER_BYTES / MAX_BUFFERED_BYTES.
@@ -786,18 +786,13 @@ func runSshSession(hub *sessionHub, db *sql.DB, ticketInfo TicketInfo) {
 
 // ─── SSRF host comparison helper (#2) ───────────────────────────────────────
 
-// hostsMatch returns true if targetHost resolves to the same address as
-// allowedHost. Comparison is first by literal string (case-insensitive), then
-// by IP intersection via DNS lookup with a hard 5-second timeout to prevent
-// goroutine stalls on slow resolvers.
 // hostsMatch reports whether targetHost identifies the same node address as
 // allowedHost, using literal comparison only — never DNS resolution.
 //
-// Upstream Remnawave's equivalent check is a plain
-// `allowedHosts.includes(host)` with no lookups at all. Resolving either
-// side via DNS (as this function used to) lets the check pass today against
-// a domain the caller controls and points at the node, then the actual
-// ssh.Dial — which re-resolves independently, moments later — can be
+// The upstream equivalent check is a plain `allowedHosts.includes(host)`
+// with no lookups at all. Resolving either side via DNS lets the check pass
+// today against a domain the caller controls and points at the node, then the
+// actual ssh.Dial — which re-resolves independently, moments later — can be
 // redirected elsewhere by simply repointing that domain's DNS in between
 // (DNS rebinding / TOCTOU). So: domain names for node.address are not
 // resolved here — nodes are expected to be identified by their configured
