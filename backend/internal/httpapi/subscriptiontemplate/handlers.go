@@ -304,7 +304,7 @@ func handleUpdateSubscriptionTemplate(w http.ResponseWriter, r *http.Request, db
 
 	var template subscriptionTemplateRecord
 	row := dbConn.QueryRowContext(r.Context(), `
-		SELECT uuid, view_position, name, template_type, template_yaml, template_json
+		SELECT uuid, view_position, name, tags, template_type, template_yaml, template_json
 		FROM subscription_templates
 		WHERE uuid = $1`, req.UUID)
 	if scanErr := scanSubscriptionTemplateRecord(row, &template); scanErr != nil {
