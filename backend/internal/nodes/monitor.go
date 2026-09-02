@@ -37,6 +37,31 @@ type NodeMonitor struct {
 	usageRecorder NodeUserUsageRecorder
 	hotCache      *nodehotcache.Cache
 	statusLock    sync.Mutex
+	nodeMetaCache sync.Map
+}
+
+type nodeMetadata struct {
+	UUID                      string
+	ID                        int64
+	ConsumptionMultiplier     int64
+	NodeConsumptionMultiplier int64
+}
+
+func (nm *NodeMonitor) getNodeMetadata(nodeName string) (string, int64, int64, int64, error) {
+	if val, ok := nm.nodeMetaCache.Load(nodeName); ok {
+		meta := val.(nodeMetadata)
+		return meta.UUID, meta.ID, meta.ConsumptionMultiplier, meta.NodeConsumptionMultiplier, nil
+	}
+
+	var meta nodeMetadata
+	if err := nm.db.QueryRow(`SELECT uuid, id, consumption_multiplier, node_consumption_multiplier FROM nodes WHERE name = $1`, nodeName).Scan(
+		&meta.UUID, &meta.ID, &meta.ConsumptionMultiplier, &meta.NodeConsumptionMultiplier,
+	); err != nil {
+		return "", 0, 0, 0, err
+	}
+
+	nm.nodeMetaCache.Store(nodeName, meta)
+	return meta.UUID, meta.ID, meta.ConsumptionMultiplier, meta.NodeConsumptionMultiplier, nil
 }
 
 // NewNodeMonitor creates a new NodeMonitor.
@@ -198,6 +223,7 @@ func (nm *NodeMonitor) syncNodes() {
 			if state.nodeUUID != "" {
 				nm.removeNodeMetrics(state.nodeUUID)
 			}
+			nm.nodeMetaCache.Delete(name)
 			delete(nm.nodes, name)
 			continue
 		}
@@ -215,6 +241,7 @@ func (nm *NodeMonitor) syncNodes() {
 			if state.conn != nil {
 				state.conn.Close()
 			}
+			nm.nodeMetaCache.Delete(name)
 			delete(nm.nodes, name)
 			toStart[name] = desiredNode
 		}

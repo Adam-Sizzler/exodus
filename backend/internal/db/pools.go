@@ -19,7 +19,8 @@ type Pools struct {
 func NewPools(ctx context.Context, interactive *sql.DB, cfg *config.BackendConfig) (*Pools, error) {
 	interactive.SetMaxOpenConns(32)
 	interactive.SetMaxIdleConns(16)
-	interactive.SetConnMaxLifetime(0)
+	interactive.SetConnMaxLifetime(30 * time.Minute)
+	interactive.SetConnMaxIdleTime(5 * time.Minute)
 
 	bg, err := sql.Open("pgx", cfg.Database.URL)
 	if err != nil {
@@ -33,9 +34,10 @@ func NewPools(ctx context.Context, interactive *sql.DB, cfg *config.BackendConfi
 		return nil, fmt.Errorf("ping background pool: %w", err)
 	}
 
-	bg.SetMaxOpenConns(4)
+	bg.SetMaxOpenConns(8)
 	bg.SetMaxIdleConns(4)
-	bg.SetConnMaxLifetime(0)
+	bg.SetConnMaxLifetime(30 * time.Minute)
+	bg.SetConnMaxIdleTime(5 * time.Minute)
 
 	return &Pools{
 		Interactive: interactive,

@@ -132,14 +132,9 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	persistedNodeUUID := ""
 	firstConnectedEvents := make([]notifications.Event, 0)
 
-	var (
-		nodeUUID                  string
-		nodeID                    int64
-		consumptionMultiplier     int64
-		nodeConsumptionMultiplier int64
-	)
-	if err := nm.db.QueryRow(`SELECT uuid, id, consumption_multiplier, node_consumption_multiplier FROM nodes WHERE name = $1`, nodeName).Scan(&nodeUUID, &nodeID, &consumptionMultiplier, &nodeConsumptionMultiplier); err != nil {
-		nm.cfg.Logger.Warn("Failed to query node from DB", "node", nodeName, "error", err)
+	nodeUUID, nodeID, consumptionMultiplier, nodeConsumptionMultiplier, err := nm.getNodeMetadata(nodeName)
+	if err != nil {
+		nm.cfg.Logger.Warn("Failed to query node metadata", "node", nodeName, "error", err)
 		return
 	}
 	persistedNodeUUID = nodeUUID
@@ -181,25 +176,25 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 
 	if len(trafficDelta.UserBytesByName) > 0 {
 		usernames := make([]string, 0, len(trafficDelta.UserBytesByName))
-		usernamesLower := make([]string, 0, len(trafficDelta.UserBytesByName))
 		for username := range trafficDelta.UserBytesByName {
 			trimmed := strings.TrimSpace(username)
 			if trimmed != "" {
 				usernames = append(usernames, trimmed)
-				usernamesLower = append(usernamesLower, strings.ToLower(trimmed))
 			}
 		}
 		if len(usernames) > 0 {
+			userIDs := make(map[string]int64, len(usernames))
+			userIDsLower := make(map[string]int64, len(usernames))
+			firstConnectedByID := make(map[int64]bool, len(usernames))
+
+			// Fast-path: lookup active users by exact username via unique index
 			rows, queryErr := nm.db.Query(`
 				SELECT u.id, u.username, COALESCE(ut.first_connected_at IS NOT NULL, false)
 				FROM users u
 				LEFT JOIN user_traffic ut ON u.id = ut.id
-				WHERE u.status = 'ACTIVE' AND (u.username = ANY($1) OR lower(u.username) = ANY($2))
-			`, usernames, usernamesLower)
+				WHERE u.status = 'ACTIVE' AND u.username = ANY($1)
+			`, usernames)
 			if queryErr == nil {
-				userIDs := make(map[string]int64, len(usernames))
-				userIDsLower := make(map[string]int64, len(usernames))
-				firstConnectedByID := make(map[int64]bool, len(usernames))
 				for rows.Next() {
 					var (
 						userID            int64
@@ -215,20 +210,56 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				}
 				_ = rows.Err()
 				rows.Close()
+			}
 
-				usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
-				for username, rawBytes := range trafficDelta.UserBytesByName {
-					username = strings.TrimSpace(username)
-					userID, ok := userIDs[username]
-					if !ok {
-						userID, ok = userIDsLower[strings.ToLower(username)]
+			// Fallback: check case-insensitively only for usernames not matched by exact lookup
+			if len(userIDs) < len(usernames) {
+				missingLower := make([]string, 0, len(usernames)-len(userIDs))
+				for _, un := range usernames {
+					if _, ok := userIDs[un]; !ok {
+						missingLower = append(missingLower, strings.ToLower(un))
 					}
-					if !ok {
-						continue
+				}
+				if len(missingLower) > 0 {
+					fbRows, fbErr := nm.db.Query(`
+						SELECT u.id, u.username, COALESCE(ut.first_connected_at IS NOT NULL, false)
+						FROM users u
+						LEFT JOIN user_traffic ut ON u.id = ut.id
+						WHERE u.status = 'ACTIVE' AND lower(u.username) = ANY($1)
+					`, missingLower)
+					if fbErr == nil {
+						for fbRows.Next() {
+							var (
+								userID            int64
+								username          string
+								hasFirstConnected bool
+							)
+							if scanErr := fbRows.Scan(&userID, &username, &hasFirstConnected); scanErr == nil {
+								trimmed := strings.TrimSpace(username)
+								userIDs[trimmed] = userID
+								userIDsLower[strings.ToLower(trimmed)] = userID
+								firstConnectedByID[userID] = hasFirstConnected
+							}
+						}
+						_ = fbRows.Err()
+						fbRows.Close()
 					}
-					if nm.cfg != nil && nm.cfg.Redis.UserUsageIgnoreBelowBytes > 0 && rawBytes < nm.cfg.Redis.UserUsageIgnoreBelowBytes {
-						continue
-					}
+				}
+			}
+
+			usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
+			for username, rawBytes := range trafficDelta.UserBytesByName {
+				username = strings.TrimSpace(username)
+				userID, ok := userIDs[username]
+				if !ok {
+					userID, ok = userIDsLower[strings.ToLower(username)]
+				}
+				if !ok {
+					continue
+				}
+				if nm.cfg != nil && nm.cfg.Redis.UserUsageIgnoreBelowBytes > 0 && rawBytes < nm.cfg.Redis.UserUsageIgnoreBelowBytes {
+					continue
+				}
 
 					effectiveBytes := applyConsumptionMultiplier(rawBytes, consumptionMultiplier)
 					if effectiveBytes <= 0 {
@@ -273,7 +304,6 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				}
 			}
 		}
-	}
 
 	for _, event := range firstConnectedEvents {
 		notifications.Emit(context.Background(), nm.cfg, event)
