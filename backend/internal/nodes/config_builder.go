@@ -677,6 +677,7 @@ func (nm *NodeMonitor) expandSnippets(ctx context.Context, parsed *orderedmap.Or
 	}
 	if err := rows.Err(); err != nil {
 		nm.cfg.Logger.Warn("Failed reading config snippets rows", "err", err)
+		return
 	}
 
 	if len(arraySnippets) == 0 && len(rootSnippets) == 0 {
