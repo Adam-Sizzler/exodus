@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -308,9 +309,15 @@ func formatExtraFields(fields map[string]any) string {
 	if len(fields) == 0 {
 		return ""
 	}
-	parts := make([]string, 0, len(fields))
-	for key, value := range fields {
-		parts = append(parts, key+"="+formatFieldValue(value))
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, key+"="+formatFieldValue(fields[key]))
 	}
 	return " " + strings.Join(parts, " ")
 }

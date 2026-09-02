@@ -38,7 +38,7 @@ RUN set -eu; \
 
 FROM alpine:3.23 AS singbox
 
-ARG SINGBOX_VERSION=v1.13.13
+ARG SINGBOX_VERSION=v1.14.0
 ARG TARGETARCH
 
 RUN apk update && apk add --no-cache curl \
