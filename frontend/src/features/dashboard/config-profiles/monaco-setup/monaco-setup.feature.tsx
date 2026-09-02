@@ -259,33 +259,48 @@ export const MonacoSetupFeature = {
             // Sing-box schema uses $defs
             if (schema.$defs) {
                 if (schema.$defs.Outbound?.oneOf) {
-                    schema.$defs.Outbound.oneOf.push(snippetObjectSchema)
+                    schema.$defs.Outbound.oneOf.unshift(snippetObjectSchema)
                 }
                 if (schema.$defs.Rule?.oneOf) {
-                    schema.$defs.Rule.oneOf.push(snippetObjectSchema)
+                    schema.$defs.Rule.oneOf.unshift(snippetObjectSchema)
                 }
                 if (schema.$defs.Endpoint?.oneOf) {
-                    schema.$defs.Endpoint.oneOf.push(snippetObjectSchema)
+                    schema.$defs.Endpoint.oneOf.unshift(snippetObjectSchema)
                 }
                 if (schema.$defs.DNSRule?.oneOf) {
-                    schema.$defs.DNSRule.oneOf.push(snippetObjectSchema)
+                    schema.$defs.DNSRule.oneOf.unshift(snippetObjectSchema)
+                }
+
+                // Wrap RouteOptions rules in anyOf
+                if (schema.$defs.RouteOptions?.properties?.rules?.items) {
+                    schema.$defs.RouteOptions.properties.rules.items = {
+                        anyOf: [snippetObjectSchema, schema.$defs.RouteOptions.properties.rules.items]
+                    }
+                }
+                // Wrap DNSOptions rules in anyOf
+                if (schema.$defs.DNSOptions?.properties?.rules?.items) {
+                    schema.$defs.DNSOptions.properties.rules.items = {
+                        anyOf: [snippetObjectSchema, schema.$defs.DNSOptions.properties.rules.items]
+                    }
                 }
             }
 
             if (schema.properties?.outbounds?.items) {
-                injectProperty(schema.properties.outbounds.items, 'snippet', snippetSchema)
+                schema.properties.outbounds.items = {
+                    anyOf: [snippetObjectSchema, schema.properties.outbounds.items]
+                }
             } else if (schema.definitions?.OutboundObject) {
                 injectProperty(schema.definitions.OutboundObject, 'snippet', snippetSchema)
             }
 
-            if (schema.properties?.route?.properties?.rules?.items) {
-                injectProperty(schema.properties.route.properties.rules.items, 'snippet', snippetSchema)
-            } else if (schema.definitions?.RuleObject) {
-                injectProperty(schema.definitions.RuleObject, 'snippet', snippetSchema)
+            if (schema.properties?.endpoints?.items) {
+                schema.properties.endpoints.items = {
+                    anyOf: [snippetObjectSchema, schema.properties.endpoints.items]
+                }
             }
 
-            if (schema.properties?.endpoints?.items) {
-                injectProperty(schema.properties.endpoints.items, 'snippet', snippetSchema)
+            if (schema.definitions?.RuleObject) {
+                injectProperty(schema.definitions.RuleObject, 'snippet', snippetSchema)
             }
 
             const rootNode = schema.properties ? schema : resolveRootNode(schema)
@@ -293,6 +308,12 @@ export const MonacoSetupFeature = {
                 injectProperty(rootNode, 'snippets', rootSnippetsSchema)
             }
 
+            // Register with multiple URIs so Monaco catches both explicit $schema and implicit schemes
+            registerJsonSchema({
+                fileMatch: ['xray-config://*', 'singbox-config://*', 'config-profile://*'],
+                schema,
+                uri: 'https://sing-box.sagernet.org/schema.json'
+            })
             registerJsonSchema({
                 fileMatch: ['xray-config://*', 'singbox-config://*', 'config-profile://*'],
                 schema,
