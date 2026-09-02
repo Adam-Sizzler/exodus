@@ -97,12 +97,20 @@ export const ConfigValidationFeature = {
                 replaceSnippetsInArray(clonedCurrentValue.outbounds, snippetsMap)
             }
 
+            if (clonedCurrentValue.endpoints) {
+                replaceSnippetsInArray(clonedCurrentValue.endpoints, snippetsMap)
+            }
+
             if (clonedCurrentValue.route?.rules) {
                 replaceSnippetsInArray(clonedCurrentValue.route.rules, snippetsMap)
             }
 
             if (clonedCurrentValue.route?.rule_set) {
                 replaceSnippetsInArray(clonedCurrentValue.route.rule_set, snippetsMap)
+            }
+
+            if (clonedCurrentValue.dns?.rules) {
+                replaceSnippetsInArray(clonedCurrentValue.dns.rules, snippetsMap)
             }
 
             const validationResult = window.SingboxParseConfig(JSON.stringify(clonedCurrentValue))
