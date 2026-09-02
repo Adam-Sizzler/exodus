@@ -9,7 +9,7 @@ func (s *Scheduler) cleanOldUsageRecords(ctx context.Context) error {
 		return nil
 	}
 
-	if _, err := s.db.ExecContext(ctx, `TRUNCATE TABLE nodes_user_usage_history`); err != nil {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM nodes_user_usage_history WHERE created_at < NOW() - INTERVAL '14 days'`); err != nil {
 		return err
 	}
 	if _, err := s.db.ExecContext(ctx, `VACUUM ANALYZE nodes_user_usage_history`); err != nil {
