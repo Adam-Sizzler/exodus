@@ -1,8 +1,8 @@
 ## Snippets
 
-A snippet is a named piece of Xray or Sing-box configuration that is stored once and injected into any number of profiles by name.
+A snippet is a named piece of Sing-box configuration that is stored once and injected into any number of configuration profiles by name.
 
-When you have many profiles, every small change turns into a chore: say you have 10 profiles, and the routing section is identical in all of them. Without snippets you have to repeat the edit 10 times. With snippets you change the rule in one place, and it is picked up automatically by every profile that references it.
+When you manage multiple profiles, every small change turns into a chore: for example, you have several profiles, and all of them share the same routing rules (blocking ads, torrent traffic, bypass lists). Without snippets, you have to repeat the edits in every profile. With snippets, you change the rule in one place, and it is picked up automatically by every profile that references it.
 
 ---
 
@@ -13,15 +13,15 @@ A snippet is **always a JSON array of objects**, even if there is only one objec
 ```json
 [
   {
-    "protocol": "freedom",
-    "tag": "DIRECT"
+    "type": "direct",
+    "tag": "direct"
   }
 ]
 ```
 
 Content requirements:
 
-- it must be an array, not an object;
+- it must be an array (`[]`), not an object (`{}`);
 - the array must contain at least one item;
 - empty objects (`{}`) inside the array are not allowed.
 
@@ -29,108 +29,98 @@ Content requirements:
 
 ### Where snippets can be referenced
 
-A snippet can be injected in four places. In three of them the target is an array, and the reference looks like an object `{ "snippet": "name" }`. In the fourth one the target is the configuration root, and the reference looks like an array of names.
+In Sing-box, a snippet can be referenced in four places. In three of them the target is an array, and the reference looks like an object `{ "snippet": "snippet-name" }`. In the fourth one the target is the configuration root, and the reference is an array of names in the `snippets` field.
 
-#### outbounds[] (Xray / Sing-box)
+#### 1. outbounds[]
+
+Used to insert reusable outbound connection blocks (e.g. direct, block, socks, warp):
 
 ```json
 {
   "outbounds": [
     {
-      "snippet": "snippet-name"
+      "snippet": "my-outbounds"
     }
   ]
 }
 ```
 
-#### route.rules[] (Sing-box) / routing.rules[] (Xray)
+#### 2. route.rules[]
 
-For Sing-box:
+Used to reuse Sing-box routing rules (blocking ads, bittorrent, geosite / geoip lists):
+
 ```json
 {
   "route": {
     "rules": [
       {
-        "snippet": "snippet-name"
+        "snippet": "block-ads-and-torrents"
       }
     ]
   }
 }
 ```
 
-For Xray:
-```json
-{
-  "routing": {
-    "rules": [
-      {
-        "snippet": "snippet-name"
-      }
-    ]
-  }
-}
-```
+#### 3. endpoints[]
 
-#### endpoints[] (Sing-box) / routing.balancers[] (Xray)
+Used to insert Sing-box endpoint configurations (WireGuard, Tailscale, etc.):
 
-For Sing-box:
 ```json
 {
   "endpoints": [
     {
-      "snippet": "snippet-name"
+      "snippet": "my-endpoints"
     }
   ]
 }
 ```
 
-For Xray:
-```json
-{
-  "routing": {
-    "balancers": [
-      {
-        "snippet": "snippet-name"
-      }
-    ]
-  }
-}
-```
+#### 4. Configuration root (snippets field)
 
-#### Configuration root
-
-At the configuration root the reference is defined not by an object, but by an array of names in the `snippets` field:
+At the configuration root, snippets are referenced by an array of names in the `snippets` field:
 
 ```json
 {
-  "snippets": ["log-preset", "dns-preset"],
+  "snippets": ["dns-cloudflare", "log-preset"],
   "inbounds": [],
   "outbounds": []
 }
 ```
 
-Such a snippet must contain **root-level sections**. It is still an array of objects, the keys inside those objects are simply the names of configuration sections:
+Such a snippet must contain **root-level Sing-box sections** (e.g. `dns`, `log`, `experimental`). It is still an array of objects, where the keys are the names of Sing-box root sections:
 
 ```json
 [
   {
-    "log": {
-      "loglevel": "debug"
+    "dns": {
+      "servers": [
+        {
+          "type": "udp",
+          "tag": "dns-cloudflare",
+          "server": "1.1.1.1"
+        }
+      ]
     }
   }
 ]
 ```
 
-Sections can either be spread across separate array items or collected into a single object – the result is the same:
+Sections can either be spread across separate array items or collected into a single object:
 
 ```json
 [
   {
     "log": {
-      "loglevel": "debug"
+      "level": "info",
+      "timestamp": true
     },
     "dns": {
-      "servers": ["1.1.1.1"]
+      "servers": [
+        {
+          "type": "local",
+          "tag": "dns-local"
+        }
+      ]
     }
   }
 ]
@@ -142,63 +132,52 @@ Sections can either be spread across separate array items or collected into a si
 
 #### In arrays
 
-The object holding the reference is replaced by the entire content of the snippet. If the snippet has several items – all of them take the place of that single reference.
+The object holding the reference `{ "snippet": "name" }` is replaced by the entire content of the snippet. If the snippet has several items, all of them take the place of that single reference.
 
-Before:
-
-```json
-{
-  "outbounds": [{ "snippet": "my-outbounds" }]
-}
-```
-
-The `my-outbounds` snippet:
-
-```json
-[
-  { "protocol": "freedom", "tag": "DIRECT" },
-  { "protocol": "blackhole", "tag": "BLOCK" }
-]
-```
-
-After:
+**In the profile:**
 
 ```json
 {
   "outbounds": [
-    { "protocol": "freedom", "tag": "DIRECT" },
-    { "protocol": "blackhole", "tag": "BLOCK" }
+    { "snippet": "default-fallback-outbounds" }
   ]
 }
 ```
 
-**The object holding the reference is replaced entirely.** If you write anything else next to `snippet`, it will be lost – in the example below `tag` will not reach the final configuration:
+**The default-fallback-outbounds snippet:**
+
+```json
+[
+  { "type": "block", "tag": "blocked" },
+  { "type": "socks", "tag": "warp-fallback", "server": "127.0.0.1", "server_port": 40000 }
+]
+```
+
+**Final config deployed to the node:**
 
 ```json
 {
-  "snippet": "my-outbounds",
-  "tag": "this key will be dropped"
+  "outbounds": [
+    { "type": "block", "tag": "blocked" },
+    { "type": "socks", "tag": "warp-fallback", "server": "127.0.0.1", "server_port": 40000 }
+  ]
 }
 ```
 
-If a snippet with the given name does not exist, the item holding the reference is simply removed from the array.
+**The object holding the reference is replaced entirely.** If you write other keys next to `snippet`, they will be dropped.
+
+If a snippet with the given name does not exist in the panel, the item holding the reference is removed from the array so it does not fail the Sing-box core launch.
 
 #### At the root
 
-All snippets listed in `snippets` are collected into a single set of sections and added to the configuration root. The `snippets` field itself is removed from the final configuration.
+All snippets listed in `snippets` are combined into a single set of sections and merged into the configuration root. The `snippets` field itself is removed from the final configuration.
 
-Three rules apply here.
+Key rules:
 
-**Sections already written in the profile are not overwritten.** If the profile has its own `log`, and a snippet also brings `log` – the one written in the profile stays. This is intentional: what you wrote by hand matters more than what came from a preset.
-
-**Some sections are never injected.** These are `inbounds`, `api`, `stats`, `metrics` and `snippets` – they are managed by Exodus, and a snippet cannot replace them. If a snippet contains such sections, they are silently skipped, while the rest of its sections are applied as usual. In the snippet editor these sections are unavailable and are highlighted as an error.
-
-**Order matters.** If two snippets in the list bring the same section, the one listed later wins.
-
-If a snippet with the given name does not exist, the name is simply skipped.
+1. **Sections already written in the profile are not overwritten.** If the profile has its own `log`, and a snippet also brings `log` — the one written in the profile stays. Hand-crafted configuration always takes precedence.
+2. **System sections are never injected.** These are `inbounds`, `api`, `stats`, `metrics`, and `snippets` — they are managed by Exodus. If a snippet contains such sections, they are silently skipped.
+3. **Order matters:** if two root snippets provide the same section, the one listed later in the array wins.
 
 #### Processing order
 
-The root is processed first, then the arrays. Thanks to that, a root snippet can bring in, for example, an `outbounds` section that contains references to other snippets – those will be expanded as well.
-
-Nesting works **only one level deep**: a snippet injected from another snippet is not expanded any further. A `snippets` field inside a root snippet is ignored.
+The root is processed first, then the array elements. Because of that, a root snippet can bring in an `outbounds` section that contains references to other snippets — those will be expanded as well. Nesting is supported one level deep.

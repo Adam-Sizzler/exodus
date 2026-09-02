@@ -1,6 +1,6 @@
 ## 代码片段（Snippets）
 
-代码片段是一段带名称的 Xray 配置，只需保存一次，就可以按名称注入到任意数量的配置文件中。
+代码片段是一段带名称的 Sing-box 配置，只需保存一次，就可以按名称注入到任意数量的配置文件中。
 
 当配置文件变多时，任何细小的改动都会变成重复劳动：比如你有 10 个配置文件，它们的路由部分完全相同。没有代码片段时，同一处修改要重复 10 次。使用代码片段后，你只需在一个地方修改规则，所有引用它的配置文件都会自动获得该修改。
 
@@ -13,7 +13,7 @@
 ```json
 [
   {
-    "protocol": "freedom",
+    "type": "direct",
     "tag": "DIRECT"
   }
 ]
@@ -43,11 +43,11 @@
 }
 ```
 
-#### routing.rules\[\]
+#### route.rules\[\]
 
 ```json
 {
-  "routing": {
+  "route": {
     "rules": [
       {
         "snippet": "snippet-name"
@@ -61,7 +61,7 @@
 
 ```json
 {
-  "routing": {
+  "route": {
     "balancers": [
       {
         "snippet": "snippet-name"
@@ -130,8 +130,8 @@
 
 ```json
 [
-  { "protocol": "freedom", "tag": "DIRECT" },
-  { "protocol": "blackhole", "tag": "BLOCK" }
+  { "type": "direct", "tag": "DIRECT" },
+  { "type": "block", "tag": "BLOCK" }
 ]
 ```
 
@@ -140,8 +140,8 @@
 ```json
 {
   "outbounds": [
-    { "protocol": "freedom", "tag": "DIRECT" },
-    { "protocol": "blackhole", "tag": "BLOCK" }
+    { "type": "direct", "tag": "DIRECT" },
+    { "type": "block", "tag": "BLOCK" }
   ]
 }
 ```

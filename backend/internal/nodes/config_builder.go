@@ -723,15 +723,9 @@ func (nm *NodeMonitor) expandSnippets(ctx context.Context, parsed *orderedmap.Or
 		}
 	}
 
-	// 4. Sing-box route.rules
+	// 4. Sing-box route.rules: "route": { "rules": [ ..., { "snippet": "name" }, ... ] }
 	if routeVal, ok := parsed.Get("route"); ok {
 		expandSubFieldRules(routeVal, "rules", arraySnippets)
-	}
-
-	// 5. Xray routing.rules and routing.balancers
-	if routingVal, ok := parsed.Get("routing"); ok {
-		expandSubFieldRules(routingVal, "rules", arraySnippets)
-		expandSubFieldRules(routingVal, "balancers", arraySnippets)
 	}
 }
 
