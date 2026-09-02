@@ -433,6 +433,8 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		return nil, fmt.Errorf("invalid profile config json: %w", err)
 	}
 
+	nm.expandSnippets(ctx, parsed)
+
 	rawInboundsRaw, ok := parsed.Get("inbounds")
 	if !ok {
 		return nil, fmt.Errorf("profile config has no valid inbounds array")
@@ -627,6 +629,145 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 		}
 	default:
 		return []any{}
+	}
+	return result
+}
+
+func (nm *NodeMonitor) expandSnippets(ctx context.Context, parsed *orderedmap.OrderedMap) {
+	if parsed == nil {
+		return
+	}
+
+	rows, err := nm.db.QueryContext(ctx, `SELECT name, snippet FROM config_profile_snippets`)
+	if err != nil {
+		nm.cfg.Logger.Warn("Failed to load config snippets", "err", err)
+		return
+	}
+	defer rows.Close()
+
+	arraySnippets := make(map[string][]any)
+	rootSnippets := make(map[string]map[string]any)
+
+	for rows.Next() {
+		var name string
+		var raw json.RawMessage
+		if err := rows.Scan(&name, &raw); err != nil {
+			continue
+		}
+		var arr []any
+		if err := json.Unmarshal(raw, &arr); err == nil {
+			arraySnippets[name] = arr
+			mergedRoot := make(map[string]any)
+			for _, item := range arr {
+				if m, ok := item.(map[string]any); ok {
+					for k, v := range m {
+						mergedRoot[k] = v
+					}
+				}
+			}
+			if len(mergedRoot) > 0 {
+				rootSnippets[name] = mergedRoot
+			}
+		} else {
+			var obj map[string]any
+			if err := json.Unmarshal(raw, &obj); err == nil {
+				rootSnippets[name] = obj
+			}
+		}
+	}
+
+	if len(arraySnippets) == 0 && len(rootSnippets) == 0 {
+		return
+	}
+
+	// 1. Root snippets: "snippets": ["name1", "name2"]
+	if snippetsVal, ok := parsed.Get("snippets"); ok {
+		parsed.Delete("snippets")
+		if list, ok := snippetsVal.([]any); ok {
+			for _, item := range list {
+				name, ok := item.(string)
+				if !ok || name == "" {
+					continue
+				}
+				if rootMap, exists := rootSnippets[name]; exists {
+					for k, v := range rootMap {
+						switch strings.ToLower(k) {
+						case "inbounds", "api", "stats", "metrics":
+							continue
+						default:
+							if _, present := parsed.Get(k); !present {
+								parsed.Set(k, v)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Outbounds: "outbounds": [ ..., { "snippet": "name" }, ... ]
+	if outboundsVal, ok := parsed.Get("outbounds"); ok {
+		if outboundsArr, ok := outboundsVal.([]any); ok {
+			parsed.Set("outbounds", expandSnippetItems(outboundsArr, arraySnippets))
+		}
+	}
+
+	// 3. Endpoints: "endpoints": [ ..., { "snippet": "name" }, ... ]
+	if endpointsVal, ok := parsed.Get("endpoints"); ok {
+		if endpointsArr, ok := endpointsVal.([]any); ok {
+			parsed.Set("endpoints", expandSnippetItems(endpointsArr, arraySnippets))
+		}
+	}
+
+	// 4. Sing-box route.rules
+	if routeVal, ok := parsed.Get("route"); ok {
+		expandSubFieldRules(routeVal, "rules", arraySnippets)
+	}
+
+	// 5. Xray routing.rules and routing.balancers
+	if routingVal, ok := parsed.Get("routing"); ok {
+		expandSubFieldRules(routingVal, "rules", arraySnippets)
+		expandSubFieldRules(routingVal, "balancers", arraySnippets)
+	}
+}
+
+func expandSubFieldRules(container any, field string, arraySnippets map[string][]any) {
+	switch c := container.(type) {
+	case orderedmap.OrderedMap:
+		if val, ok := c.Get(field); ok {
+			if arr, ok := val.([]any); ok {
+				c.Set(field, expandSnippetItems(arr, arraySnippets))
+			}
+		}
+	case *orderedmap.OrderedMap:
+		if c != nil {
+			if val, ok := c.Get(field); ok {
+				if arr, ok := val.([]any); ok {
+					c.Set(field, expandSnippetItems(arr, arraySnippets))
+				}
+			}
+		}
+	case map[string]any:
+		if val, ok := c[field]; ok {
+			if arr, ok := val.([]any); ok {
+				c[field] = expandSnippetItems(arr, arraySnippets)
+			}
+		}
+	}
+}
+
+func expandSnippetItems(items []any, arraySnippets map[string][]any) []any {
+	result := make([]any, 0, len(items))
+	for _, item := range items {
+		snippetName := getFieldString(item, "snippet")
+		if snippetName != "" {
+			if expanded, ok := arraySnippets[snippetName]; ok {
+				result = append(result, expanded...)
+				continue
+			}
+			continue
+		}
+		result = append(result, item)
 	}
 	return result
 }
