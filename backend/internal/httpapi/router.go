@@ -85,7 +85,7 @@ func isPublicPath(path string, cfg *config.BackendConfig) bool {
 	if strings.HasPrefix(path, "/api/subscriptions/connection-keys/") {
 		return false
 	}
-	if strings.HasPrefix(path, "/api/backend-tools") {
+	if strings.HasPrefix(strings.ToLower(path), "/api/backend-tools") {
 		return true
 	}
 	switch {
@@ -172,7 +172,6 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/nodes/bulk-actions", nodes.NodesBulkActionsHandler(db, cfg))
 	mux.HandleFunc("/api/nodes/bulk-actions/", nodes.NodesBulkActionsHandler(db, cfg))
 	mux.HandleFunc("/api/nodes/tags", nodes.NodesTagsHandler(db, cfg))
-	mux.HandleFunc("/api/nodes-with-config", squads.NodesWithConfigHandler(db, cfg))
 	mux.HandleFunc("/api/node-plugins/tags", nodeplugins.NodePluginsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/node-plugins", nodeplugins.Handler(db, cfg))
 	mux.HandleFunc("/api/node-plugins/", nodeplugins.Handler(db, cfg))
@@ -210,10 +209,10 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/keygen", keygen.KeygenHandler(db, cfg))
 	mux.HandleFunc("/api/keygen/", keygen.KeygenHandler(db, cfg))
 
-	mux.HandleFunc("/api/passkeys/registration/options", passkeys.RegistrationOptionsHandler(db, cfg))
-	mux.HandleFunc("/api/passkeys/registration/verify", passkeys.VerifyRegistrationHandler(db, cfg))
-	mux.HandleFunc("/api/passkeys", passkeys.PasskeysHandler(db, cfg))
-	mux.HandleFunc("/api/passkeys/", passkeys.PasskeysHandler(db, cfg))
+	mux.HandleFunc("/api/passkeys/registration/options", auth.RequireAdminRole(passkeys.RegistrationOptionsHandler(db, cfg)))
+	mux.HandleFunc("/api/passkeys/registration/verify", auth.RequireAdminRole(passkeys.VerifyRegistrationHandler(db, cfg)))
+	mux.HandleFunc("/api/passkeys", auth.RequireAdminRole(passkeys.PasskeysHandler(db, cfg)))
+	mux.HandleFunc("/api/passkeys/", auth.RequireAdminRole(passkeys.PasskeysHandler(db, cfg)))
 
 	mux.HandleFunc("/api/bandwidth-stats/nodes", bandwidthstats.NodesHandler(db, cfg))
 	mux.HandleFunc("/api/bandwidth-stats/nodes/", bandwidthstats.NodesHandler(db, cfg))
@@ -226,29 +225,18 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/config-profiles/", configprofiles.ConfigProfileByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles/actions/", configprofiles.ConfigProfilesActionsHandler(db, cfg))
 	mux.HandleFunc("/api/config-profiles/inbounds", configprofiles.ConfigProfilesInboundsHandler(db, cfg))
-	mux.HandleFunc("/api/config-profiles/snippets", configprofiles.ConfigProfileSnippetsHandler(db, cfg))
 	mux.HandleFunc("/api/snippets", configprofiles.ConfigProfileSnippetsHandler(db, cfg))
 	mux.HandleFunc("/api/snippets/", configprofiles.ConfigProfileSnippetsHandler(db, cfg))
-	mux.HandleFunc("/api/config-profiles-with-inbounds", squads.ConfigProfilesWithInboundsHandler(db, cfg))
 
 	mux.HandleFunc("/api/internal-squads/tags", squads.InternalSquadsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/internal-squads", squads.InternalSquadsHandler(db, cfg))
 	mux.HandleFunc("/api/internal-squads/", squads.InternalSquadByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/internal-squads/actions/reorder", squads.InternalSquadsReorderHandler(db, cfg))
-	mux.HandleFunc("/api/internal-squads/reorder", squads.InternalSquadsReorderHandler(db, cfg))
-	mux.HandleFunc("/api/squads-summary", squads.AllSquadsSummaryHandler(db, cfg))
-	mux.HandleFunc("/api/squad-inbounds", squads.SquadInboundsHandler(db, cfg))
-	mux.HandleFunc("/api/squad-members", squads.SquadMembersHandler(db, cfg))
-	mux.HandleFunc("/api/squad-details/", squads.SquadDetailsHandler(db, cfg))
-
-	mux.HandleFunc("/api/inbound-assignments", squads.InboundAssignmentsHandler(db, cfg))
-	mux.HandleFunc("/api/inbounds-with-profiles", squads.InboundsWithProfilesHandler(db, cfg))
 
 	mux.HandleFunc("/api/external-squads/tags", externalsquads.ExternalSquadsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads", externalsquads.ExternalSquadsHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads/", externalsquads.ExternalSquadByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads/actions/reorder", externalsquads.ExternalSquadsReorderHandler(db, cfg))
-	mux.HandleFunc("/api/external-squads/reorder", externalsquads.ExternalSquadsReorderHandler(db, cfg))
 
 	mux.HandleFunc("/api/srs-lists", srslists.SRSListsHandler(db, cfg))
 	mux.HandleFunc("/api/srs-lists/", srslists.SRSListByUUIDHandler(db, cfg))
@@ -272,7 +260,6 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/infra-billing/history", infrabilling.BillingHistoryHandler(db, cfg))
 	mux.HandleFunc("/api/infra-billing/history/", infrabilling.BillingHistoryHandler(db, cfg))
 
-	mux.HandleFunc("/api/subscription-template/tags", subscriptiontemplate.SubscriptionTemplateTagsHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates/tags", subscriptiontemplate.SubscriptionTemplateTagsHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates", subscriptiontemplate.SubscriptionTemplatesHandler(db, cfg))
 	mux.HandleFunc("/api/subscription-templates/", subscriptiontemplate.SubscriptionTemplateByUUIDHandler(db, cfg))
@@ -299,7 +286,6 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/system/stats/digest", system.DigestHandler(db, cfg))
 	mux.HandleFunc("/api/system/nodes/metrics", system.NodesMetricsHandler(db, cfg))
 	mux.HandleFunc("/api/system/testers/srr-matcher", system.TestSRRMatcherHandler(cfg))
-	mux.HandleFunc("/api/system/tools/happ/encrypt", system.EncryptHappCryptoLinkHandler(cfg))
 	mux.HandleFunc("/api/system/tools/x25519/generate", system.GenerateX25519Handler(cfg))
 
 	mux.Handle("/api/", http.NotFoundHandler())

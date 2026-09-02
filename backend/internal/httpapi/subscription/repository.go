@@ -719,39 +719,50 @@ func createHwidDeviceWithAdvisoryLock(ctx context.Context, dbConn *sql.DB, userI
 		return false, fmt.Errorf("acquire hwid advisory lock: %w", err)
 	}
 
-	// Matches upstream: select up to deviceLimit existing hwids rather than an
-	// unbounded COUNT(*) — same limit check, cheaper for a large device count.
-	rows, err := tx.QueryContext(ctx, `SELECT hwid FROM hwid_user_devices WHERE user_id = $1 LIMIT $2`, userID, deviceLimit)
+	// Check if this device already exists for this user. If it does, update its
+	// metadata and allow access regardless of deviceLimit (matches upstream v3.4.2+ fix).
+	var exists bool
+	err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM hwid_user_devices WHERE hwid = $1 AND user_id = $2)`, hwid.Hwid, userID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("count hwid devices: %w", err)
-	}
-	existing := 0
-	for rows.Next() {
-		existing++
-	}
-	if closeErr := rows.Close(); closeErr != nil {
-		return false, closeErr
-	}
-	if err := rows.Err(); err != nil {
-		return false, err
-	}
-
-	if existing >= deviceLimit {
-		return false, nil
+		return false, fmt.Errorf("check hwid device exists: %w", err)
 	}
 
 	hwid.Platform = lowerStringPtr(hwid.Platform)
+
+	if exists {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE hwid_user_devices SET
+				platform = COALESCE($3, platform),
+				os_version = COALESCE($4, os_version),
+				device_model = COALESCE($5, device_model),
+				user_agent = COALESCE($6, user_agent),
+				request_ip = COALESCE($7, request_ip),
+				updated_at = now()
+			WHERE hwid = $1 AND user_id = $2
+		`, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP); err != nil {
+			return false, fmt.Errorf("update hwid device: %w", err)
+		}
+
+		if err := tx.Commit(); err != nil {
+			return false, fmt.Errorf("commit hwid device tx: %w", err)
+		}
+
+		return true, nil
+	}
+
+	// Device is new: enforce deviceLimit
+	var count int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM hwid_user_devices WHERE user_id = $1`, userID).Scan(&count); err != nil {
+		return false, fmt.Errorf("count hwid devices: %w", err)
+	}
+
+	if count >= deviceLimit {
+		return false, nil
+	}
+
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO hwid_user_devices (hwid, user_id, platform, os_version, device_model, user_agent, request_ip)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (hwid, user_id)
-		DO UPDATE SET
-			platform = COALESCE(EXCLUDED.platform, hwid_user_devices.platform),
-			os_version = COALESCE(EXCLUDED.os_version, hwid_user_devices.os_version),
-			device_model = COALESCE(EXCLUDED.device_model, hwid_user_devices.device_model),
-			user_agent = COALESCE(EXCLUDED.user_agent, hwid_user_devices.user_agent),
-			request_ip = COALESCE(EXCLUDED.request_ip, hwid_user_devices.request_ip),
-			updated_at = now()
 	`, hwid.Hwid, userID, hwid.Platform, hwid.OsVersion, hwid.DeviceModel, hwid.UserAgent, hwid.RequestIP); err != nil {
 		return false, fmt.Errorf("insert hwid device: %w", err)
 	}

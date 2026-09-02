@@ -300,55 +300,6 @@ func handleBulkRemoveManyUsersFromInternalSquad(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// InboundAssignmentsHandler godoc
-// @Summary      Manage inbound assignments
-// @Description  Get or assign inbounds to squads and nodes
-// @Tags         Internal Squads Controller
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        body  body      object  false  "Inbound assignments payload"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  shared.ErrorResponse
-// @Failure      500   {object}  shared.ErrorResponse
-// @Router       /inbound-assignments [get]
-// @Router       /inbound-assignments [post]
-func InboundAssignmentsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(db)
-	service := NewSquadService(repo, cfg)
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			handleGetInboundAssignments(w, r, service)
-		case http.MethodPost:
-			handleSetInboundAssignments(w, r, service)
-		default:
-			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
-		}
-	}
-}
-
-// ConfigProfilesWithInboundsHandler godoc
-// @Summary      Config profiles with inbounds
-// @Description  Get list of configuration profiles with embedded inbounds for squad assignment
-// @Tags         Internal Squads Controller
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200  {object}  map[string]any
-// @Failure      500  {object}  shared.ErrorResponse
-// @Router       /config-profiles-with-inbounds [get]
-func ConfigProfilesWithInboundsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
-	repo := NewSquadRepository(db)
-	service := NewSquadService(repo, cfg)
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, `{"error": "method not allowed"}`, http.StatusMethodNotAllowed)
-			return
-		}
-		handleGetConfigProfilesWithInbounds(w, r, service)
-	}
-}
-
 func handleGetInternalSquadUsage(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, squadUUID string) {
 	q := r.URL.Query()
 	limit := 250

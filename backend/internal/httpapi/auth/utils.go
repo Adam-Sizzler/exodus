@@ -475,16 +475,6 @@ func apiTokenScopeForRequest(method, requestPath string, cfg *config.BackendConf
 			specificScope = "external-squads:write"
 		}
 
-	case strings.HasPrefix(trimmed, "squad"),
-		strings.HasPrefix(trimmed, "inbound-assignments"),
-		strings.HasPrefix(trimmed, "inbounds-with-profiles"):
-		resource = "squads"
-		if isRead {
-			specificScope = "squads:read"
-		} else {
-			specificScope = "squads:write"
-		}
-
 	case strings.HasPrefix(trimmed, "infra-billing"):
 		resource = "infra-billing"
 		if isRead {

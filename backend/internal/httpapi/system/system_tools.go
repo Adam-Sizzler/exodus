@@ -2,11 +2,8 @@ package system
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"net/http"
 	"regexp"
@@ -18,27 +15,6 @@ import (
 
 	"golang.org/x/crypto/curve25519"
 )
-
-const happCryptoV4PublicKey = `
------BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA3UZ0M3L4K+WjM3vkbQnz
-ozHg/cRbEXvQ6i4A8RVN4OM3rK9kU01FdjyoIgywve8OEKsFnVwERZAQZ1Trv60B
-hmaM76QQEE+EUlIOL9EpwKWGtTL5lYC1sT9XJMNP3/CI0gP5wwQI88cY/xedpOEB
-W72EmOOShHUm/b/3m+HPmqwc4ugKj5zWV5SyiT829aFA5DxSjmIIFBAms7DafmSq
-LFTYIQL5cShDY2u+/sqyAw9yZIOoqW2TFIgIHhLPWek/ocDU7zyOrlu1E0SmcQQb
-LFqHq02fsnH6IcqTv3N5Adb/CkZDDQ6HvQVBmqbKZKf7ZdXkqsc/Zw27xhG7OfXC
-tUmWsiL7zA+KoTd3avyOh93Q9ju4UQsHthL3Gs4vECYOCS9dsXXSHEY/1ngU/hjO
-WFF8QEE/rYV6nA4PTyUvo5RsctSQL/9DJX7XNh3zngvif8LsCN2MPvx6X+zLouBX
-zgBkQ9DFfZAGLWf9TR7KVjZC/3NsuUCDoAOcpmN8pENBbeB0puiKMMWSvll36+2M
-YR1Xs0MgT8Y9TwhE2+TnnTJOhzmHi/BxiUlY/w2E0s4ax9GHAmX0wyF4zeV7kDkc
-vHuEdc0d7vDmdw0oqCqWj0Xwq86HfORu6tm1A8uRATjb4SzjTKclKuoElVAVa5Jo
-oh/uZMozC65SmDw+N5p6Su8CAwEAAQ==
------END PUBLIC KEY-----
-`
-
-type encryptHappRequest struct {
-	LinkToEncrypt string `json:"linkToEncrypt"`
-}
 
 type testSRRMatcherRequest struct {
 	ResponseRules subscriptionresponserules.Config `json:"responseRules"`
@@ -77,44 +53,6 @@ func GenerateX25519Handler(cfg *config.BackendConfig) http.HandlerFunc {
 		}
 		shared.WriteJSON(w, http.StatusOK, map[string]any{
 			"response": map[string]any{"keypairs": keypairs},
-		})
-	}
-}
-
-// EncryptHappCryptoLinkHandler godoc
-// @Summary      Encrypt Happ crypto link
-// @Description  Encrypt subscription link with Happ v4 public key
-// @Tags         System Controller
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        body  body      encryptHappRequest  true  "Link to encrypt"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  shared.ErrorResponse
-// @Failure      500   {object}  shared.ErrorResponse
-// @Router       /system/tools/happ/encrypt [post]
-func EncryptHappCryptoLinkHandler(cfg *config.BackendConfig) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		var req encryptHappRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
-			return
-		}
-		if strings.TrimSpace(req.LinkToEncrypt) == "" {
-			shared.SendError(w, http.StatusBadRequest, "linkToEncrypt is required", nil, cfg)
-			return
-		}
-		encrypted, err := encryptHappV4(req.LinkToEncrypt)
-		if err != nil {
-			shared.SendAPIError(w, shared.ErrEncryptHappCryptoLinkFailed.WithCause(err), cfg)
-			return
-		}
-		shared.WriteJSON(w, http.StatusOK, map[string]any{
-			"response": map[string]any{"encryptedLink": encrypted},
 		})
 	}
 }
@@ -172,26 +110,6 @@ func TestSRRMatcherHandler(cfg *config.BackendConfig) http.HandlerFunc {
 			},
 		})
 	}
-}
-
-func encryptHappV4(content string) (string, error) {
-	block, _ := pem.Decode([]byte(happCryptoV4PublicKey))
-	if block == nil {
-		return "", errors.New("invalid Happ public key PEM")
-	}
-	pubAny, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return "", err
-	}
-	pub, ok := pubAny.(*rsa.PublicKey)
-	if !ok {
-		return "", errors.New("Happ public key is not RSA")
-	}
-	encrypted, err := rsa.EncryptPKCS1v15(rand.Reader, pub, []byte(content))
-	if err != nil {
-		return "", err
-	}
-	return "happ://crypt4/" + base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
 func validateResponseRules(config subscriptionresponserules.Config) error {
