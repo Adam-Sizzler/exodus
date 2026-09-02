@@ -49,6 +49,9 @@ export const HelpDrawerShared = NiceModal.create((props: IProps) => {
                 return res.text()
             })
             .then((text) => {
+                if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html') || text.includes('<meta charset=')) {
+                    throw new Error(t('help-drawer.shared.failed-to-load-documentation'))
+                }
                 setContent(text)
             })
             .catch((err) => {
