@@ -41,9 +41,6 @@ func ServePanelIndex(w http.ResponseWriter, indexPath string, basePathWithSlash,
 	page := RenderPanelIndex(string(indexBytes), basePathWithSlash, basePath)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	w.Header().Set("Pragma", "no-cache")
-	w.Header().Set("Expires", "0")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(page))
 }
