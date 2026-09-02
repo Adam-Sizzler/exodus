@@ -38,7 +38,7 @@ import {
 } from 'react-icons/tb'
 
 import { showModal } from '@shared/_modals/show-modal'
-import { useGetNodes, useGetUserMetadata } from '@shared/api/hooks'
+import { useGetSubNodes, useGetUserMetadata } from '@shared/api/hooks'
 import { CopyableCodeBlock } from '@shared/ui/copyable-code-block'
 import { CopyableFieldShared } from '@shared/ui/copyable-field/copyable-field'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -80,10 +80,10 @@ export const UserIdentificationCard = memo((props: IProps) => {
     const { data: metadata, isLoading: isMetadataLoading } = useGetUserMetadata({
         route: { userId: user.id }
     })
-    const { data: nodes } = useGetNodes()
+    const { data: subNodes } = useGetSubNodes()
 
     const subscriptionPageLinks = buildSubscriptionLinksFromNodes(
-        (nodes ?? []).filter((node) => !node.isDisabled),
+        (subNodes ?? []).filter((node) => !node.isDisabled),
         user.shortUuid,
         user.subscriptionUrl
     )

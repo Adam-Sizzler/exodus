@@ -14,7 +14,7 @@ import { TbServerCog } from 'react-icons/tb'
 
 import { useNiceMantineModal } from '@shared/_modals/use-nice-modal'
 import { UserAccessibleNodesTree } from '@shared/_modals/users/user-accessible-nodes-modal/user-accessible-nodes.tree'
-import { useGetNodes, useGetUserAccessibleNodes, useGetUserById } from '@shared/api/hooks'
+import { useGetSubNodes, useGetUserAccessibleNodes, useGetUserById } from '@shared/api/hooks'
 import { CopyableDataListItem } from '@shared/ui/copyable-field/copyable-data-list-item'
 import { LoaderModalShared } from '@shared/ui/loader-modal'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
@@ -48,11 +48,11 @@ export const DetailedUserInfoDrawer = NiceModal.create((props: IProps) => {
             userId: userId
         }
     })
-    const { data: nodes } = useGetNodes()
+    const { data: subNodes } = useGetSubNodes()
 
     const subscriptionPageLinks = user
         ? buildSubscriptionLinksFromNodes(
-              (nodes ?? []).filter((node) => !node.isDisabled),
+              (subNodes ?? []).filter((node) => !node.isDisabled),
               user.shortUuid,
               user.subscriptionUrl
           )

@@ -184,6 +184,8 @@ export const useGetSubscriptionConnections = createGetQueryHook({
     errorHandler: (error) => errorHandler(error, 'Get All Subscription Connections')
 })
 
+export const useGetSubNodes = useGetSubscriptionConnections
+
 export const useGetSubscriptionConnection = createGetQueryHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.GET_ONE,
     responseSchema: getOneSubscriptionConnectionResponseSchema,
