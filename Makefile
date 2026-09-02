@@ -119,14 +119,23 @@ contract-sync:
 # ------------------------------------------------------------------------------
 release:
 	@if [ -z "$(TAG)" ] && [ -z "$(v)" ]; then \
-		echo "$(YELLOW)Error: Please specify TAG=vX.Y.Z (e.g. make release TAG=v26.9.2)$(RESET)"; \
+		echo "$(YELLOW)Error: Please specify TAG=vX.Y.Z (e.g. make release TAG=v26.9.2.1)$(RESET)"; \
 		exit 1; \
 	fi
 	@TARGET_TAG=$$(if [ -n "$(TAG)" ]; then echo "$(TAG)"; else echo "$(v)"; fi) && \
-	echo "$(CYAN)Creating and pushing release tag: $$TARGET_TAG...$(RESET)" && \
+	echo "$(CYAN)1/5 Syncing dev with origin...$(RESET)" && \
+	git checkout dev && git pull origin dev && \
+	echo "$(CYAN)2/5 Merging dev into main for release...$(RESET)" && \
+	git checkout main && git pull origin main && \
+	git merge dev -m "chore(release): merge dev into main for $$TARGET_TAG" && \
+	echo "$(CYAN)3/5 Tagging $$TARGET_TAG on main...$(RESET)" && \
 	git tag "$$TARGET_TAG" -m "Release $$TARGET_TAG" && \
+	echo "$(CYAN)4/5 Pushing main and $$TARGET_TAG to origin...$(RESET)" && \
+	git push origin main && \
 	git push origin "$$TARGET_TAG" && \
-	echo "$(GREEN)Successfully pushed $$TARGET_TAG! GitHub Actions Release workflow started.$(RESET)"
+	echo "$(CYAN)5/5 Returning to dev branch...$(RESET)" && \
+	git checkout dev && \
+	echo "$(GREEN)Successfully released $$TARGET_TAG on main! GitHub Actions Release workflow started.$(RESET)"
 
 # ------------------------------------------------------------------------------
 # Local Docker Deployment
