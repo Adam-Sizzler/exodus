@@ -100,7 +100,6 @@ jobs:
           file: Dockerfile
           platforms: ${{ matrix.platform }}
           build-args: |
-            BRANCH=main
             __EX_METADATA_GIT_BRANCH=main
             __EX_METADATA_BUILD_TIME=${{ steps.meta.outputs.build_time }}
             __EX_METADATA_BUILD_NUMBER=${{ github.run_number }}
