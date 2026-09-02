@@ -70,7 +70,6 @@ jobs:
           push: true
           tags: ${{ env.GHCR_IMAGE }}:${{ env.IMAGE_TAG }}
           build-args: |
-            BRANCH=dev
             __EX_METADATA_GIT_BRANCH=dev
             __EX_METADATA_BUILD_TIME=${{ steps.meta.outputs.build_time }}
             __EX_METADATA_BUILD_NUMBER=${{ github.run_number }}

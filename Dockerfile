@@ -4,7 +4,7 @@ WORKDIR /ui
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 ARG SINGBOX_ASSETS_URL=https://adam-sizzler.github.io/s-validator
-ARG SINGBOX_SCHEMA_URL=https://github.com/BlackDuty/sing-box-schema/releases/download/v1.13.13/schema.json
+ARG SINGBOX_SCHEMA_URL=https://sing-box.sagernet.org/schema.json
 
 COPY frontend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm install --legacy-peer-deps --no-audit --prefer-offline
