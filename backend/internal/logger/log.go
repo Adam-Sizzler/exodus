@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -568,11 +569,17 @@ func formatExtraFields(fields map[string]any) string {
 	ignored := map[string]bool{
 		"time": true, "level": true, "message": true, "role": true, "context": true, "service": true,
 	}
-	parts := make([]string, 0, len(fields))
-	for key, value := range fields {
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
 		if !ignored[key] {
-			parts = append(parts, key+"="+formatFieldValue(value))
+			keys = append(keys, key)
 		}
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, key+"="+formatFieldValue(fields[key]))
 	}
 	return strings.Join(parts, " ")
 }
