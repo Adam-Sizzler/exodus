@@ -4,7 +4,7 @@ import {
     subscriptionConnectionsQueryKeys,
     QueryKeys,
     useGetConfigProfiles,
-    useGetSubscriptionConnections,
+    useGetSubNodes,
     useGetSubscriptionConnectionsTags
 } from '@shared/api/hooks'
 import {
@@ -20,7 +20,7 @@ export function SubscriptionConnectionsPageConnector() {
 
     const isCreateModalOpen = useSubscriptionConnectionsStoreCreateModalIsOpen()
 
-    const { data: nodes, isLoading } = useGetSubscriptionConnections()
+    const { data: nodes, isLoading } = useGetSubNodes()
     const { isLoading: isConfigProfilesLoading } = useGetConfigProfiles()
     useGetSubscriptionConnectionsTags()
 

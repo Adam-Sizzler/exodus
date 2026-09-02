@@ -17,7 +17,7 @@ import { useSubscriptionConnectionsStoreActions } from '@entities/dashboard/subs
 import { NodesViewMode } from '@pages/dashboard/subscription-connections/ui/components/interfaces'
 import { BaseOverlayHeader } from '@shared/ui/overlays/base-overlay-header'
 import {
-    useGetSubscriptionConnections,
+    useGetSubNodes,
     useRestartAllSubscriptionConnections
 } from '@shared/api/hooks'
 import { ActionCardShared } from '@shared/ui'
@@ -43,7 +43,7 @@ export const NodesHeaderActionButtonsFeature = (props: IProps) => {
         refetch: refetchNodes,
         isPending,
         isRefetching
-    } = useGetSubscriptionConnections()
+    } = useGetSubNodes()
     const { mutate: restartAllNodes, isPending: isRestartAllNodesPending } =
         useRestartAllSubscriptionConnections()
 

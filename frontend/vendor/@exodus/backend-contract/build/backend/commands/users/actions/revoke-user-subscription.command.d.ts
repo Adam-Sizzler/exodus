@@ -9,7 +9,7 @@ export declare namespace RevokeUserSubscriptionCommand {
     const RequestBodySchema: z.ZodPreprocess<z.ZodObject<{
         revokeOnlyPasswords: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
         shortUuid: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>>;
+    }, z.core.$strip>, unknown>;
     const ResponseSchema: z.ZodObject<{
         response: z.ZodObject<{
             id: z.ZodNumber;

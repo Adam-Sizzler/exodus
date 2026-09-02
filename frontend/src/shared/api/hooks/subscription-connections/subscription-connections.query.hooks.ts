@@ -173,7 +173,7 @@ export const subscriptionConnectionsQueryKeys = createQueryKeys('subscriptionCon
     }
 })
 
-export const useGetSubscriptionConnections = createGetQueryHook({
+export const useGetSubNodes = createGetQueryHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.GET_ALL,
     responseSchema: getAllSubscriptionConnectionsResponseSchema,
     getQueryKey: () => subscriptionConnectionsQueryKeys.getAllNodes.queryKey,
@@ -183,8 +183,6 @@ export const useGetSubscriptionConnections = createGetQueryHook({
     },
     errorHandler: (error) => errorHandler(error, 'Get All Subscription Connections')
 })
-
-export const useGetSubNodes = useGetSubscriptionConnections
 
 export const useGetSubscriptionConnection = createGetQueryHook({
     endpoint: SUBSCRIPTION_CONNECTIONS_API.GET_ONE,

@@ -16,7 +16,7 @@ import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-st
 import {
     SubscriptionConnectionResponse,
     subscriptionConnectionsQueryKeys,
-    useGetSubscriptionConnections,
+    useGetSubNodes,
     useReorderSubscriptionConnections
 } from '@shared/api/hooks'
 import { TbServer } from 'react-icons/tb'
@@ -43,7 +43,7 @@ export const NodesTableWidget = memo((props: IProps) => {
     const dragSnapshotRef = useRef<typeof state | null>(null)
     const isMobile = useMediaQuery(`(max-width: ${em(768)})`)
 
-    useGetSubscriptionConnections({
+    useGetSubNodes({
         rQueryParams: {
             enabled: isPollingEnabled,
             refetchInterval: isPollingEnabled ? sToMs(5) : false

@@ -8,7 +8,7 @@ import { MODALS, useModalsStoreOpenWithData } from '@entities/dashboard/modal-st
 import {
     SubscriptionConnectionResponse,
     useGetConfigProfiles,
-    useGetSubscriptionConnections
+    useGetSubNodes
 } from '@shared/api/hooks'
 import { sToMs } from '@shared/utils/time-utils'
 import { LoadingScreen } from '@shared/ui'
@@ -36,7 +36,7 @@ export const NodesDataTableWidget = memo((props: IProps) => {
 
     const openModalWithData = useModalsStoreOpenWithData()
 
-    useGetSubscriptionConnections({
+    useGetSubNodes({
         rQueryParams: {
             enabled: true,
             refetchInterval: sToMs(5)
