@@ -106,6 +106,8 @@ func runRescueCLI() error {
 		return resetSuperadmin(resources, reader)
 	case "enable-password-auth":
 		return enablePasswordAuth(resources, reader)
+	case "generate-encryption-keys":
+		return generateEncryptionKeys(resources, reader)
 	case "reset-certs":
 		return resetCerts(resources, reader)
 	case "get-secret-key-for-node":
@@ -229,6 +231,11 @@ func rescueActions() []cliAction {
 			Value: "enable-password-auth",
 			Label: "Enable password authentication",
 			Hint:  "Enable password authentication",
+		},
+		{
+			Value: "generate-encryption-keys",
+			Label: "Generate keypairs",
+			Hint:  "Generate keypairs for response rules encryption",
 		},
 		{
 			Value: "reset-certs",
