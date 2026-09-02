@@ -344,73 +344,73 @@ export const MonacoSetupSnippetsFeature = {
 
             const outboundItems = schema.$defs?.Outbound
                 ? [
-                      {
-                          $ref: '#/$defs/Outbound',
-                          title: 'Outbound Object',
-                          description: 'Outbound configuration (for outbounds[])'
-                      }
-                  ]
+                    {
+                        $ref: '#/$defs/Outbound',
+                        title: 'Outbound Object',
+                        description: 'Outbound configuration (for outbounds[])'
+                    }
+                ]
                 : schema.properties?.outbounds?.items
-                  ? [
+                    ? [
                         {
                             ...schema.properties.outbounds.items,
                             title: 'Outbound Object',
                             description: 'Outbound configuration (for outbounds[])'
                         }
                     ]
-                  : schema.definitions?.OutboundObject
-                    ? [
-                          {
-                              ...schema.definitions.OutboundObject,
-                              title: 'Outbound Object',
-                              description: 'Outbound configuration (for outbounds[])'
-                          }
-                      ]
-                    : []
+                    : schema.definitions?.OutboundObject
+                        ? [
+                            {
+                                ...schema.definitions.OutboundObject,
+                                title: 'Outbound Object',
+                                description: 'Outbound configuration (for outbounds[])'
+                            }
+                        ]
+                        : []
 
             const ruleItems = schema.$defs?.Rule
                 ? [
-                      {
-                          $ref: '#/$defs/Rule',
-                          title: 'Route Rule Object',
-                          description: 'Routing rule (for route.rules[])'
-                      }
-                  ]
+                    {
+                        $ref: '#/$defs/Rule',
+                        title: 'Route Rule Object',
+                        description: 'Routing rule (for route.rules[])'
+                    }
+                ]
                 : schema.properties?.route?.properties?.rules?.items
-                  ? [
+                    ? [
                         {
                             ...schema.properties.route.properties.rules.items,
                             title: 'Route Rule Object',
                             description: 'Routing rule (for route.rules[])'
                         }
                     ]
-                  : schema.definitions?.RuleObject
-                    ? [
-                          {
-                              ...schema.definitions.RuleObject,
-                              title: 'Rule Object',
-                              description: 'Routing rule (for routing.rules[])'
-                          }
-                      ]
-                    : []
+                    : schema.definitions?.RuleObject
+                        ? [
+                            {
+                                ...schema.definitions.RuleObject,
+                                title: 'Rule Object',
+                                description: 'Routing rule (for routing.rules[])'
+                            }
+                        ]
+                        : []
 
             const endpointItems = schema.$defs?.Endpoint
                 ? [
-                      {
-                          $ref: '#/$defs/Endpoint',
-                          title: 'Endpoint Object',
-                          description: 'Endpoint configuration (for endpoints[])'
-                      }
-                  ]
+                    {
+                        $ref: '#/$defs/Endpoint',
+                        title: 'Endpoint Object',
+                        description: 'Endpoint configuration (for endpoints[])'
+                    }
+                ]
                 : schema.properties?.endpoints?.items
-                  ? [
+                    ? [
                         {
                             ...schema.properties.endpoints.items,
                             title: 'Endpoint Object',
                             description: 'Endpoint configuration (for endpoints[])'
                         }
                     ]
-                  : []
+                    : []
 
             const snippetArraySchema = {
                 $schema: 'http://json-schema.org/draft-07/schema#',
@@ -424,20 +424,20 @@ export const MonacoSetupSnippetsFeature = {
                         ...endpointItems,
                         ...(rootProperties
                             ? [
-                                  {
-                                      type: 'object',
-                                      properties: Object.fromEntries(
-                                          Object.entries(rootProperties).filter(
-                                              ([key]) => !PROTECTED_ROOT_KEYS.has(key)
-                                          )
-                                      ),
-                                      title: 'Root Object',
-                                      description:
-                                          'Root-level sections (for configs referencing this snippet in the root "snippets" array)',
-                                      markdownDescription:
-                                          'Root-level sections, merged into the **root** of every config that lists this snippet in its root `snippets` array. \n\n\n`inbounds`, `api`, `stats` and `metrics` cannot be provided by a snippet.'
-                                  }
-                              ]
+                                {
+                                    type: 'object',
+                                    properties: Object.fromEntries(
+                                        Object.entries(rootProperties).filter(
+                                            ([key]) => !PROTECTED_ROOT_KEYS.has(key)
+                                        )
+                                    ),
+                                    title: 'Root Object',
+                                    description:
+                                        'Root-level sections (for configs referencing this snippet in the root "snippets" array)',
+                                    markdownDescription:
+                                        'Root-level sections, merged into the **root** of every config that lists this snippet in its root `snippets` array. \n\n\n`inbounds`, `api`, `stats` and `metrics` cannot be provided by a snippet.'
+                                }
+                            ]
                             : [])
                     ]
                 },
@@ -479,8 +479,8 @@ export const MonacoSetupResponseRulesFeature = {
             const rules = schema.properties?.rules
             const rulesItems =
                 typeof rules === 'object' &&
-                typeof rules.items === 'object' &&
-                !Array.isArray(rules.items)
+                    typeof rules.items === 'object' &&
+                    !Array.isArray(rules.items)
                     ? rules.items
                     : undefined
 
