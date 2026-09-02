@@ -261,49 +261,49 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 					continue
 				}
 
-					effectiveBytes := applyConsumptionMultiplier(rawBytes, consumptionMultiplier)
-					if effectiveBytes <= 0 {
-						continue
-					}
-
-					usageDeltas = append(usageDeltas, userUsageDelta{
-						UserID:       userID,
-						Username:     username,
-						TotalBytes:   effectiveBytes,
-						HistoryBytes: rawBytes,
-					})
-					nm.cfg.Logger.Trace("Recorded user traffic delta", "node", nodeName, "user", username, "bytes", effectiveBytes)
-
-					if !firstConnectedByID[userID] {
-						firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
-							Scope: notifications.ScopeUser,
-							Event: notifications.EventUserFirstConnected,
-							Data: map[string]any{
-								"tId":      userID,
-								"username": username,
-								"nodeUuid": nodeUUID,
-								"nodeName": nodeName,
-							},
-						})
-						firstConnectedByID[userID] = true
-					}
+				effectiveBytes := applyConsumptionMultiplier(rawBytes, consumptionMultiplier)
+				if effectiveBytes <= 0 {
+					continue
 				}
 
-				if len(usageDeltas) > 0 {
-					bulkCtx := nm.globalCtx
-					if bulkCtx == nil {
-						bulkCtx = context.Background()
-					}
+				usageDeltas = append(usageDeltas, userUsageDelta{
+					UserID:       userID,
+					Username:     username,
+					TotalBytes:   effectiveBytes,
+					HistoryBytes: rawBytes,
+				})
+				nm.cfg.Logger.Trace("Recorded user traffic delta", "node", nodeName, "user", username, "bytes", effectiveBytes)
 
-					if execErr := bulkUpsertUserTraffic(bulkCtx, nm.db, usageDeltas, nodeUUID); execErr != nil {
-						nm.cfg.Logger.Warn("Failed to upsert user traffic", "node", nodeName, "error", execErr)
-					}
-					if recordErr := nm.recordNodeUserUsageHistory(bulkCtx, nm.db, nodeID, usageDeltas); recordErr != nil {
-						nm.cfg.Logger.Warn("Failed to record node user usage history", "node", nodeName, "error", recordErr)
-					}
+				if !firstConnectedByID[userID] {
+					firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
+						Scope: notifications.ScopeUser,
+						Event: notifications.EventUserFirstConnected,
+						Data: map[string]any{
+							"tId":      userID,
+							"username": username,
+							"nodeUuid": nodeUUID,
+							"nodeName": nodeName,
+						},
+					})
+					firstConnectedByID[userID] = true
+				}
+			}
+
+			if len(usageDeltas) > 0 {
+				bulkCtx := nm.globalCtx
+				if bulkCtx == nil {
+					bulkCtx = context.Background()
+				}
+
+				if execErr := bulkUpsertUserTraffic(bulkCtx, nm.db, usageDeltas, nodeUUID); execErr != nil {
+					nm.cfg.Logger.Warn("Failed to upsert user traffic", "node", nodeName, "error", execErr)
+				}
+				if recordErr := nm.recordNodeUserUsageHistory(bulkCtx, nm.db, nodeID, usageDeltas); recordErr != nil {
+					nm.cfg.Logger.Warn("Failed to record node user usage history", "node", nodeName, "error", recordErr)
 				}
 			}
 		}
+	}
 
 	for _, event := range firstConnectedEvents {
 		notifications.Emit(context.Background(), nm.cfg, event)
