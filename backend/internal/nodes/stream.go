@@ -175,124 +175,10 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 	}
 
 	if len(trafficDelta.UserBytesByName) > 0 {
-		var (
-			userIDs            = make(map[string]int64, len(trafficDelta.UserBytesByName))
-			userIDsLower       = make(map[string]int64)
-			firstConnectedByID = make(map[int64]bool, len(trafficDelta.UserBytesByName))
-			legacyUsernames    []string
-		)
-
-		// Step 1: Fast-path for numeric user IDs (strconv, zero DB lookup for user resolution)
-		for rawKey := range trafficDelta.UserBytesByName {
-			trimmed := strings.TrimSpace(rawKey)
-			if trimmed == "" {
-				continue
-			}
-			if parsedID, err := strconv.ParseInt(trimmed, 10, 64); err == nil && parsedID > 0 {
-				userIDs[trimmed] = parsedID
-			} else {
-				legacyUsernames = append(legacyUsernames, trimmed)
-			}
-		}
-
-		// Step 2: Fallback for legacy string usernames (if older node has not refreshed config yet)
-		if len(legacyUsernames) > 0 {
-			rows, queryErr := nm.db.Query(`
-				SELECT u.id, u.username, COALESCE(ut.first_connected_at IS NOT NULL, false)
-				FROM users u
-				LEFT JOIN user_traffic ut ON u.id = ut.id
-				WHERE u.status = 'ACTIVE' AND u.username = ANY($1)
-			`, legacyUsernames)
-			if queryErr == nil {
-				for rows.Next() {
-					var (
-						userID            int64
-						username          string
-						hasFirstConnected bool
-					)
-					if scanErr := rows.Scan(&userID, &username, &hasFirstConnected); scanErr == nil {
-						trimmed := strings.TrimSpace(username)
-						userIDs[trimmed] = userID
-						userIDsLower[strings.ToLower(trimmed)] = userID
-						firstConnectedByID[userID] = hasFirstConnected
-					}
-				}
-				_ = rows.Err()
-				rows.Close()
-			}
-
-			// Fallback: check case-insensitively only for usernames not matched by exact lookup
-			if len(userIDsLower) < len(legacyUsernames) {
-				missingLower := make([]string, 0, len(legacyUsernames)-len(userIDsLower))
-				for _, un := range legacyUsernames {
-					if _, ok := userIDs[un]; !ok {
-						missingLower = append(missingLower, strings.ToLower(un))
-					}
-				}
-				if len(missingLower) > 0 {
-					fbRows, fbErr := nm.db.Query(`
-						SELECT u.id, u.username, COALESCE(ut.first_connected_at IS NOT NULL, false)
-						FROM users u
-						LEFT JOIN user_traffic ut ON u.id = ut.id
-						WHERE u.status = 'ACTIVE' AND lower(u.username) = ANY($1)
-					`, missingLower)
-					if fbErr == nil {
-						for fbRows.Next() {
-							var (
-								userID            int64
-								username          string
-								hasFirstConnected bool
-							)
-							if scanErr := fbRows.Scan(&userID, &username, &hasFirstConnected); scanErr == nil {
-								trimmed := strings.TrimSpace(username)
-								userIDs[trimmed] = userID
-								userIDsLower[strings.ToLower(trimmed)] = userID
-								firstConnectedByID[userID] = hasFirstConnected
-							}
-						}
-						_ = fbRows.Err()
-						fbRows.Close()
-					}
-				}
-			}
-		}
-
-		// Step 3: Check firstConnected status for numeric userIDs if not already populated
-		var numericIDsWithoutFirstConnected []int64
-		for _, id := range userIDs {
-			if _, ok := firstConnectedByID[id]; !ok {
-				numericIDsWithoutFirstConnected = append(numericIDsWithoutFirstConnected, id)
-			}
-		}
-		if len(numericIDsWithoutFirstConnected) > 0 {
-			fcRows, fcErr := nm.db.Query(`
-				SELECT id, COALESCE(first_connected_at IS NOT NULL, false)
-				FROM user_traffic
-				WHERE id = ANY($1)
-			`, numericIDsWithoutFirstConnected)
-			if fcErr == nil {
-				for fcRows.Next() {
-					var (
-						id                int64
-						hasFirstConnected bool
-					)
-					if scanErr := fcRows.Scan(&id, &hasFirstConnected); scanErr == nil {
-						firstConnectedByID[id] = hasFirstConnected
-					}
-				}
-				_ = fcRows.Err()
-				fcRows.Close()
-			}
-		}
-
 		usageDeltas := make([]userUsageDelta, 0, len(trafficDelta.UserBytesByName))
-		for username, rawBytes := range trafficDelta.UserBytesByName {
-			username = strings.TrimSpace(username)
-			userID, ok := userIDs[username]
-			if !ok {
-				userID, ok = userIDsLower[strings.ToLower(username)]
-			}
-			if !ok {
+		for rawKey, rawBytes := range trafficDelta.UserBytesByName {
+			parsedID, err := strconv.ParseInt(strings.TrimSpace(rawKey), 10, 64)
+			if err != nil || parsedID <= 0 {
 				continue
 			}
 			if nm.cfg != nil && nm.cfg.Redis.UserUsageIgnoreBelowBytes > 0 && rawBytes < nm.cfg.Redis.UserUsageIgnoreBelowBytes {
@@ -305,26 +191,11 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			}
 
 			usageDeltas = append(usageDeltas, userUsageDelta{
-				UserID:       userID,
-				Username:     username,
+				UserID:       parsedID,
 				TotalBytes:   effectiveBytes,
 				HistoryBytes: rawBytes,
 			})
-			nm.cfg.Logger.Trace("Recorded user traffic delta", "node", nodeName, "user", username, "bytes", effectiveBytes)
-
-			if !firstConnectedByID[userID] {
-				firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
-					Scope: notifications.ScopeUser,
-					Event: notifications.EventUserFirstConnected,
-					Data: map[string]any{
-						"tId":      userID,
-						"username": username,
-						"nodeUuid": nodeUUID,
-						"nodeName": nodeName,
-					},
-				})
-				firstConnectedByID[userID] = true
-			}
+			nm.cfg.Logger.Trace("Recorded user traffic delta", "node", nodeName, "user", parsedID, "bytes", effectiveBytes)
 		}
 
 		if len(usageDeltas) > 0 {
@@ -333,9 +204,23 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 				bulkCtx = context.Background()
 			}
 
-			if execErr := bulkUpsertUserTraffic(bulkCtx, nm.db, usageDeltas, nodeUUID); execErr != nil {
+			firstConnectedIDs, execErr := bulkUpsertUserTraffic(bulkCtx, nm.db, usageDeltas, nodeUUID)
+			if execErr != nil {
 				nm.cfg.Logger.Warn("Failed to upsert user traffic", "node", nodeName, "error", execErr)
 			}
+			for _, id := range firstConnectedIDs {
+				firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
+					Scope: notifications.ScopeUser,
+					Event: notifications.EventUserFirstConnected,
+					Data: map[string]any{
+						"id":       id,
+						"tId":      id,
+						"nodeUuid": nodeUUID,
+						"nodeName": nodeName,
+					},
+				})
+			}
+
 			if recordErr := nm.recordNodeUserUsageHistory(bulkCtx, nm.db, nodeID, usageDeltas); recordErr != nil {
 				nm.cfg.Logger.Warn("Failed to record node user usage history", "node", nodeName, "error", recordErr)
 			}

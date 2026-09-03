@@ -18,7 +18,6 @@ type TagTrafficCounters struct {
 
 type userUsageDelta struct {
 	UserID       int64
-	Username     string
 	TotalBytes   int64
 	HistoryBytes int64
 }

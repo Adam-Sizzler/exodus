@@ -109,8 +109,9 @@ func (nm *NodeMonitor) recordNodeUserUsageHistory(ctx context.Context, db *sql.D
 	return bulkUpsertNodeUserUsageHistory(ctx, db, nodeID, usageDeltas)
 }
 
-func bulkUpsertUserTraffic(ctx context.Context, db *sql.DB, usageDeltas []userUsageDelta, nodeUUID string) error {
+func bulkUpsertUserTraffic(ctx context.Context, db *sql.DB, usageDeltas []userUsageDelta, nodeUUID string) ([]int64, error) {
 	const chunkSize = 1000
+	var firstConnectedIDs []int64
 
 	for start := 0; start < len(usageDeltas); start += chunkSize {
 		end := min(start+chunkSize, len(usageDeltas))
@@ -151,14 +152,27 @@ func bulkUpsertUserTraffic(ctx context.Context, db *sql.DB, usageDeltas []userUs
 				online_at = now(),
 				last_connected_node_uuid = EXCLUDED.last_connected_node_uuid,
 				first_connected_at = COALESCE(user_traffic.first_connected_at, now())
+			RETURNING id, (user_traffic.first_connected_at IS NULL OR user_traffic.first_connected_at = user_traffic.online_at) AS is_first_connection
 		`)
 
-		if _, err := db.ExecContext(ctx, query.String(), args...); err != nil {
-			return err
+		rows, err := db.QueryContext(ctx, query.String(), args...)
+		if err != nil {
+			return nil, err
 		}
+		for rows.Next() {
+			var (
+				id                int64
+				isFirstConnection bool
+			)
+			if scanErr := rows.Scan(&id, &isFirstConnection); scanErr == nil && isFirstConnection {
+				firstConnectedIDs = append(firstConnectedIDs, id)
+			}
+		}
+		_ = rows.Err()
+		rows.Close()
 	}
 
-	return nil
+	return firstConnectedIDs, nil
 }
 
 func bulkUpsertNodeUserUsageHistory(ctx context.Context, db *sql.DB, nodeID int64, usageDeltas []userUsageDelta) error {
