@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-func (r *UserRepository) getUserInternalSquadsTx(ctx context.Context, tx *sql.Tx, tID int64) ([]string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT internal_squad_uuid FROM internal_squad_members WHERE user_id = $1`, tID)
+func (r *UserRepository) getUserInternalSquadsTx(ctx context.Context, tx *sql.Tx, userID int64) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT internal_squad_uuid FROM internal_squad_members WHERE user_id = $1`, userID)
 	if err != nil {
 		return nil, err
 	}

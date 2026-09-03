@@ -361,8 +361,8 @@ func (r *UserRepository) getAllUserTags(ctx context.Context) ([]string, error) {
 	return tags, nil
 }
 
-func (r *UserRepository) replaceUserInternalSquadsTx(ctx context.Context, tx *sql.Tx, tID int64, squadUUIDs []string) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_members WHERE user_id = $1`, tID); err != nil {
+func (r *UserRepository) replaceUserInternalSquadsTx(ctx context.Context, tx *sql.Tx, userID int64, squadUUIDs []string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM internal_squad_members WHERE user_id = $1`, userID); err != nil {
 		return err
 	}
 	for _, squadUUID := range dedupeStrings(squadUUIDs) {
@@ -374,7 +374,7 @@ func (r *UserRepository) replaceUserInternalSquadsTx(ctx context.Context, tx *sq
 			INSERT INTO internal_squad_members (internal_squad_uuid, user_id)
 			VALUES ($1::uuid, $2)
 			ON CONFLICT (internal_squad_uuid, user_id) DO NOTHING
-		`, clean, tID); err != nil {
+		`, clean, userID); err != nil {
 			return err
 		}
 	}
@@ -443,7 +443,7 @@ func (r *UserRepository) createUser(ctx context.Context, userUUID, shortUUID str
 		_ = tx.Rollback()
 	}()
 
-	var tID int64
+	var userID int64
 	insertErr := tx.QueryRowContext(ctx, `
 		INSERT INTO users (
 			uuid, short_uuid, username, status, traffic_limit_bytes, traffic_limit_strategy,
@@ -479,7 +479,7 @@ func (r *UserRepository) createUser(ctx context.Context, userUUID, shortUUID str
 		normalizeNullableString(req.ExternalSquadUUID),
 		createdAt.UTC(),
 		createdAt.UTC(),
-	).Scan(&tID)
+	).Scan(&userID)
 	if insertErr != nil {
 		return 0, nil, mapUserWriteError(insertErr)
 	}
@@ -489,11 +489,11 @@ func (r *UserRepository) createUser(ctx context.Context, userUUID, shortUUID str
 			id, used_traffic_bytes, lifetime_used_traffic_bytes, online_at,
 			last_connected_node_uuid, first_connected_at
 		) VALUES ($1, 0, 0, NULL, NULL, NULL)
-	`, tID); err != nil {
+	`, userID); err != nil {
 		return 0, nil, err
 	}
 
-	if err := r.replaceUserInternalSquadsTx(ctx, tx, tID, req.ActiveInternalSquads); err != nil {
+	if err := r.replaceUserInternalSquadsTx(ctx, tx, userID, req.ActiveInternalSquads); err != nil {
 		return 0, nil, err
 	}
 
@@ -511,7 +511,7 @@ func (r *UserRepository) createUser(ctx context.Context, userUUID, shortUUID str
 		return 0, nil, err
 	}
 
-	return tID, internalSquadNodeUUIDs, nil
+	return userID, internalSquadNodeUUIDs, nil
 }
 
 func (r *UserRepository) updateUserRecord(ctx context.Context, targetUUID string, record userRecord, req updateUserRequest, statusToSet string, shouldSetStatus, statusDeployRequired bool) (userRecord, []string, []string, bool, error) {
@@ -665,15 +665,15 @@ func (r *UserRepository) deleteUserRecord(ctx context.Context, userUUID string) 
 		_ = tx.Rollback()
 	}()
 
-	var tID int64
-	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE uuid = $1`, userUUID).Scan(&tID); err != nil {
+	var userID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE uuid = $1`, userUUID).Scan(&userID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errUserNotFound
 		}
 		return nil, err
 	}
 
-	currentSquads, loadErr := r.getUserInternalSquadsTx(ctx, tx, tID)
+	currentSquads, loadErr := r.getUserInternalSquadsTx(ctx, tx, userID)
 	if loadErr != nil {
 		return nil, loadErr
 	}
@@ -1044,9 +1044,9 @@ func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size 
 	argIdx := 2
 
 	if telegramID != "" {
-		if tid, err := strconv.ParseInt(telegramID, 10, 64); err == nil {
+		if parsedTelegramID, err := strconv.ParseInt(telegramID, 10, 64); err == nil {
 			whereClauses = append(whereClauses, fmt.Sprintf("telegram_id = $%d", argIdx))
-			args = append(args, tid)
+			args = append(args, parsedTelegramID)
 			argIdx++
 		}
 	}
