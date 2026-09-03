@@ -353,33 +353,23 @@ func cloneRuntimeSnapshot(snapshot SubNodeRuntimeSnapshot) SubNodeRuntimeSnapsho
 	}
 
 	if snapshot.SingboxVersion != nil {
-		cloned.SingboxVersion = stringPtr(*snapshot.SingboxVersion)
+		cloned.SingboxVersion = new(*snapshot.SingboxVersion)
 	}
 	if snapshot.NodeVersion != nil {
-		cloned.NodeVersion = stringPtr(*snapshot.NodeVersion)
+		cloned.NodeVersion = new(*snapshot.NodeVersion)
 	}
 	if snapshot.CPUCount != nil {
-		cloned.CPUCount = intPtr(*snapshot.CPUCount)
+		cloned.CPUCount = new(*snapshot.CPUCount)
 	}
 	if snapshot.CPUModel != nil {
-		cloned.CPUModel = stringPtr(*snapshot.CPUModel)
+		cloned.CPUModel = new(*snapshot.CPUModel)
 	}
 	if snapshot.TotalRAM != nil {
-		cloned.TotalRAM = stringPtr(*snapshot.TotalRAM)
+		cloned.TotalRAM = new(*snapshot.TotalRAM)
 	}
 	if cloned.SingboxUptime == "" {
 		cloned.SingboxUptime = "0"
 	}
 
 	return cloned
-}
-
-func stringPtr(value string) *string {
-	v := value
-	return &v
-}
-
-func intPtr(value int) *int {
-	v := value
-	return &v
 }

@@ -3,8 +3,7 @@ package util
 import (
 	"fmt"
 	"strings"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // ParseUUID trims whitespace and validates value as an RFC 4122 UUID,

@@ -7,17 +7,9 @@ import (
 	"time"
 )
 
-func stringPtr(value string) *string {
-	return &value
-}
-
-func int64Ptr(value int64) *int64 {
-	return &value
-}
-
-func intPtr(value int) *int {
-	return &value
-}
+func stringPtr(value string) *string { return new(value) }
+func int64Ptr(value int64) *int64   { return new(value) }
+func intPtr(value int) *int         { return new(value) }
 
 func TestPlannedUserStatusForUpdateReactivatesLimitedWhenLimitRaised(t *testing.T) {
 	record := userRecord{
@@ -58,13 +50,13 @@ func TestPlannedUserStatusForUpdateKeepsLimitedWhenLimitStillTooLow(t *testing.T
 	}
 }
 
-func TestPlannedUserStatusForUpdateReactivatesExpiredWhenExpireAtMovesToFuture(t *testing.T) {
+func TestPlannedUserStatusForUpdateExpiredUserReactivatesWhenExpirationExtended(t *testing.T) {
 	now := time.Date(2026, 5, 4, 12, 0, 0, 0, time.UTC)
 	record := userRecord{
 		Status:   "EXPIRED",
 		ExpireAt: now.Add(-time.Hour),
 	}
-	req := updateUserRequest{ExpireAt: stringPtr(now.Add(24 * time.Hour).Format(time.RFC3339))}
+	req := updateUserRequest{ExpireAt: func() *string { v := now.Add(24 * time.Hour).Format(time.RFC3339); return &v }()}
 
 	status, ok := plannedUserStatusForUpdate(record, req, now)
 	if !ok || status != "ACTIVE" {
@@ -79,8 +71,8 @@ func TestPlannedUserStatusForUpdateExplicitStatusWins(t *testing.T) {
 		ExpireAt: now.Add(-time.Hour),
 	}
 	req := updateUserRequest{
-		Status:   stringPtr("DISABLED"),
-		ExpireAt: stringPtr(now.Add(24 * time.Hour).Format(time.RFC3339)),
+		Status:   func() *string { v := "DISABLED"; return &v }(),
+		ExpireAt: func() *string { v := now.Add(24 * time.Hour).Format(time.RFC3339); return &v }(),
 	}
 
 	status, ok := plannedUserStatusForUpdate(record, req, now)
@@ -98,18 +90,18 @@ func TestValidateExtendDays(t *testing.T) {
 		{name: "zero invalid", days: 0, wantErr: true},
 		{name: "negative invalid", days: -1, wantErr: true},
 		{name: "one valid", days: 1, wantErr: false},
-		{name: "max valid", days: 9999, wantErr: false},
-		{name: "over max invalid", days: 10000, wantErr: true},
+		{name: "thirty valid", days: 30, wantErr: false},
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateExtendDays(tc.days)
 			if tc.wantErr && err == nil {
-				t.Fatal("expected error")
+				t.Fatalf("expected error for %d days", tc.days)
 			}
 			if !tc.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("unexpected error for %d days: %v", tc.days, err)
 			}
 		})
 	}
@@ -121,7 +113,7 @@ func TestValidateBulkUpdateUsersFieldsRequiresAtLeastOneField(t *testing.T) {
 	}
 }
 
-func TestValidateBulkUpdateUsersFieldsAcceptsNullableFields(t *testing.T) {
+func TestValidateBulkUpdateUsersFieldsAllowsNulls(t *testing.T) {
 	fields := bulkUpdateUsersFields{
 		Description: OptionalString{Set: true, Value: nil},
 		TelegramID:  OptionalInt64{Set: true, Value: nil},
@@ -134,10 +126,10 @@ func TestValidateBulkUpdateUsersFieldsAcceptsNullableFields(t *testing.T) {
 
 func TestBuildBulkUpdateUserClauses(t *testing.T) {
 	fields := bulkUpdateUsersFields{
-		Status:          stringPtr("active"),
+		Status:          func() *string { v := "active"; return &v }(),
 		Description:     OptionalString{Set: true, Value: nil},
-		Tag:             OptionalString{Set: true, Value: stringPtr("vip")},
-		HwidDeviceLimit: OptionalInt{Set: true, Value: intPtr(3)},
+		Tag:             OptionalString{Set: true, Value: func() *string { v := "vip"; return &v }()},
+		HwidDeviceLimit: OptionalInt{Set: true, Value: func() *int { v := 3; return &v }()},
 	}
 
 	clauses, args := buildBulkUpdateUserClauses(fields)

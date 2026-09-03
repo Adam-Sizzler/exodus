@@ -336,11 +336,11 @@ func (sm *SubNodeMonitor) updateRuntimeFromStats(nodeName string, stats []*proto
 		values[subNodeRuntimeStatVersion],
 		values["node_version"],
 	)); ok {
-		runtime.NodeVersion = stringPtr(version)
+		runtime.NodeVersion = new(version)
 	}
 
 	if singboxVersion, ok := normalizeSubNodeRuntimeVersion(values["singbox_version"]); ok {
-		runtime.SingboxVersion = stringPtr(singboxVersion)
+		runtime.SingboxVersion = new(singboxVersion)
 	}
 
 	if uptime, ok := normalizeSubNodeRuntimeUptime(firstNonEmptyString(
@@ -351,15 +351,15 @@ func (sm *SubNodeMonitor) updateRuntimeFromStats(nodeName string, stats []*proto
 	}
 
 	if cpuCount, ok := parseOptionalIntValue(values[subNodeRuntimeStatCPUCount]); ok {
-		runtime.CPUCount = intPtr(cpuCount)
+		runtime.CPUCount = new(cpuCount)
 	}
 
 	if cpuModel, ok := parseOptionalStringValue(values[subNodeRuntimeStatCPUModel]); ok {
-		runtime.CPUModel = stringPtr(cpuModel)
+		runtime.CPUModel = new(cpuModel)
 	}
 
 	if totalRAM, ok := parseOptionalStringValue(values[subNodeRuntimeStatTotalRAM]); ok {
-		runtime.TotalRAM = stringPtr(totalRAM)
+		runtime.TotalRAM = new(totalRAM)
 	}
 
 	sm.runtimeByNodeName[cleanNodeName] = runtime
