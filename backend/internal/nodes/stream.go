@@ -214,7 +214,6 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 					Event: notifications.EventUserFirstConnected,
 					Data: map[string]any{
 						"id":       id,
-						"tId":      id,
 						"nodeUuid": nodeUUID,
 						"nodeName": nodeName,
 					},

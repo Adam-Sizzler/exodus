@@ -178,7 +178,6 @@ func userRecordNotificationData(ctx context.Context, repo *UserRepository, cfg *
 
 	return map[string]any{
 		"id":                     record.ID,
-		"tId":                    record.ID,
 		"uuid":                   record.UUID,
 		"shortUuid":              record.ShortUUID,
 		"username":               record.Username,

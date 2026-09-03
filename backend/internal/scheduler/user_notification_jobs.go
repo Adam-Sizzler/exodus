@@ -320,7 +320,6 @@ func (s *Scheduler) notConnectedUsers(ctx context.Context, start, end time.Time)
 func (u userNotificationRecord) notificationData() map[string]any {
 	return map[string]any{
 		"id":                     u.ID,
-		"tId":                    u.ID,
 		"uuid":                   u.UUID,
 		"username":               u.Username,
 		"shortUuid":              u.ShortUUID,
