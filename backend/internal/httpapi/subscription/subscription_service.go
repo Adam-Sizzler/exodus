@@ -378,19 +378,21 @@ func (s *RenderService) RenderUserSubscription(
 	// 7. Response headers (early headers, hwid extra, late headers)
 	responseHeaders := buildResponseHeaders(user, settings, contentType, subscriptionURL)
 
-	if matchedRuleMods != nil && len(matchedRuleMods.Headers) > 0 && !matchedRuleMods.ApplyHeadersToEnd {
-		for _, h := range matchedRuleMods.Headers {
-			responseHeaders[h.Key] = h.Value
-		}
-	}
-
 	for k, v := range hwidExtraHeaders {
 		responseHeaders[k] = v
 	}
 
-	if matchedRuleMods != nil && len(matchedRuleMods.Headers) > 0 && matchedRuleMods.ApplyHeadersToEnd {
-		for _, h := range matchedRuleMods.Headers {
-			responseHeaders[h.Key] = h.Value
+	if matchedRuleMods != nil && len(matchedRuleMods.Headers) > 0 {
+		for _, hdr := range matchedRuleMods.Headers {
+			key := strings.ToLower(strings.TrimSpace(hdr.Key))
+			if key == "" {
+				continue
+			}
+			if matchedRuleMods.ApplyHeadersToEnd {
+				responseHeaders[key] = hdr.Value
+			} else if _, exists := responseHeaders[key]; !exists {
+				responseHeaders[key] = hdr.Value
+			}
 		}
 	}
 
