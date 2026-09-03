@@ -99,7 +99,7 @@ func handleGetUsersStream(w http.ResponseWriter, r *http.Request, service *UserS
 	trafficLimitStrategy := q.Get("trafficLimitStrategy")
 	externalSquadUUID := q.Get("externalSquadUuid")
 
-	records, nextCursor, total, err := service.repo.getUsersStream(r.Context(), cursor, size, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID)
+	records, nextCursor, hasMore, err := service.repo.getUsersStream(r.Context(), cursor, size, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID)
 	if err != nil {
 		shared.SendAPIError(w, shared.ErrGetAllUsersFailed.WithCause(err), service.cfg)
 		return
@@ -114,8 +114,8 @@ func handleGetUsersStream(w http.ResponseWriter, r *http.Request, service *UserS
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"response": map[string]any{
 			"users":      response,
-			"total":      total,
 			"nextCursor": nextCursor,
+			"hasMore":    hasMore,
 		},
 	})
 }

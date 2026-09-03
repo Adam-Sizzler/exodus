@@ -1035,10 +1035,7 @@ func (r *UserRepository) getUserAccessibleNodes(ctx context.Context, userID int6
 	return activeNodes, nil
 }
 
-func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size int, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID string) ([]userRecord, int64, int64, error) {
-	var total int64
-	_ = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&total)
-
+func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size int, telegramID, email, tag, status, trafficLimitStrategy, externalSquadUUID string) ([]userRecord, *string, bool, error) {
 	whereClauses := []string{"u.id > $1"}
 	args := []any{cursor}
 	argIdx := 2
@@ -1077,7 +1074,7 @@ func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size 
 	}
 
 	whereStmt := strings.Join(whereClauses, " AND ")
-	args = append(args, size)
+	args = append(args, size+1)
 	limitIdx := argIdx
 
 	query := fmt.Sprintf(`
@@ -1099,28 +1096,32 @@ func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size 
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, 0, err
+		return nil, nil, false, err
 	}
 	defer rows.Close()
 
 	records := make([]userRecord, 0)
-	var lastID int64 = 0
 	for rows.Next() {
 		rec, scanErr := scanUserRecord(rows)
 		if scanErr != nil {
-			return nil, 0, 0, scanErr
+			return nil, nil, false, scanErr
 		}
 		records = append(records, rec)
-		lastID = rec.ID
 	}
 	if err := rows.Err(); err != nil {
-		return nil, 0, 0, err
+		return nil, nil, false, err
 	}
 
-	var nextCursor int64 = 0
-	if len(records) == size {
-		nextCursor = lastID
+	hasMore := len(records) > size
+	if hasMore {
+		records = records[:size]
 	}
 
-	return records, nextCursor, total, nil
+	var nextCursor *string
+	if hasMore && len(records) > 0 {
+		c := strconv.FormatInt(records[len(records)-1].ID, 10)
+		nextCursor = &c
+	}
+
+	return records, nextCursor, hasMore, nil
 }

@@ -87,8 +87,8 @@ type UsersListResponseEnvelope struct {
 // UsersStreamResponse wraps streaming users response.
 type UsersStreamResponse struct {
 	Users      []userAPI `json:"users"`
-	Total      int       `json:"total"`
-	NextCursor *int64    `json:"nextCursor"`
+	NextCursor *string   `json:"nextCursor"`
+	HasMore    bool      `json:"hasMore"`
 }
 
 // UsersStreamResponseEnvelope wraps UsersStreamResponse.
