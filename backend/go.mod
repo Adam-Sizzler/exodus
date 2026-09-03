@@ -1,6 +1,6 @@
 module github.com/exodus/subscription-page/backend
 
-go 1.25.9
+go 1.27.1
 
 require (
 	github.com/rs/zerolog v1.35.1
