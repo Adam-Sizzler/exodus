@@ -140,6 +140,15 @@ func (s *RenderService) RenderUserSubscription(
 		reqType = defaultResponseType
 	}
 
+	switch reqType {
+	case responseTypeBlock:
+		return nil, "", nil, ErrBlocked
+	case "STATUS_CODE_404":
+		return nil, "", nil, ErrNotFound
+	case "STATUS_CODE_451":
+		return nil, "", nil, ErrUnavailableForLegalReasons
+	}
+
 	// 1. Respond with remarks (SRR respondWithRemarks)
 	var earlyExitRemarks []string
 	if matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0 {

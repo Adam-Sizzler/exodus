@@ -177,6 +177,18 @@ func handlePublicOutlineSubscription(w http.ResponseWriter, r *http.Request, db,
 		ctx, user, r.UserAgent(), reqType, middleware.GetClientIP(r, cfg), ExtractHwidHeaders(r),
 	)
 	if err != nil {
+		if err == ErrBlocked {
+			shared.SendAPIError(w, shared.ErrForbidden, cfg)
+			return
+		}
+		if err == ErrNotFound {
+			shared.SendAPIError(w, shared.ErrNotFound, cfg)
+			return
+		}
+		if err == ErrUnavailableForLegalReasons {
+			shared.SendError(w, http.StatusUnavailableForLegalReasons, "Unavailable For Legal Reasons", nil, cfg)
+			return
+		}
 		log.Warn("Failed to render outline subscription", "short_uuid", shortUUID, "error", err)
 		shared.SendError(w, http.StatusBadRequest, err.Error(), nil, cfg)
 		return
@@ -228,6 +240,18 @@ func handlePublicSubscription(w http.ResponseWriter, r *http.Request, db, backgr
 		ctx, user, r.UserAgent(), clientType, requestIP, hwidHeaders,
 	)
 	if err != nil {
+		if err == ErrBlocked {
+			shared.SendAPIError(w, shared.ErrForbidden, cfg)
+			return
+		}
+		if err == ErrNotFound {
+			shared.SendAPIError(w, shared.ErrNotFound, cfg)
+			return
+		}
+		if err == ErrUnavailableForLegalReasons {
+			shared.SendError(w, http.StatusUnavailableForLegalReasons, "Unavailable For Legal Reasons", nil, cfg)
+			return
+		}
 		if err == ErrHwidCheckFailed {
 			shared.SendAPIError(w, shared.ErrCheckHwidDeviceLimitFailed, cfg)
 			return

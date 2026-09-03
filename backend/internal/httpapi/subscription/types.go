@@ -258,12 +258,12 @@ var (
 	// ErrUserDisabled/ErrNoHosts remain hard errors: unlike an HWID device-limit
 	// hit, upstream has no soft/200 fallback for a disabled user or a squad with
 	// no hosts and no configured custom remark for that case.
-	ErrUserDisabled = errors.New("user disabled")
-	ErrNoHosts      = errors.New("no hosts")
-	// ErrHwidCheckFailed signals a genuine backend failure (DB error) while
-	// checking the device limit - distinct from a "soft" limit-exceeded /
-	// hwid-not-supported outcome, which is not an error at all upstream.
-	ErrHwidCheckFailed = errors.New("hwid check failed")
+	ErrUserDisabled               = errors.New("user disabled")
+	ErrNoHosts                    = errors.New("no hosts")
+	ErrHwidCheckFailed            = errors.New("hwid check failed")
+	ErrBlocked                    = errors.New("subscription request blocked")
+	ErrNotFound                   = errors.New("subscription request not found")
+	ErrUnavailableForLegalReasons = errors.New("subscription unavailable for legal reasons")
 )
 
 type XrayGenerator struct {
