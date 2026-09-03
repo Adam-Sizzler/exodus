@@ -430,6 +430,7 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 	user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
 	user.Hysteria2Password = nullableSQLString(hysteria2Password)
 	user.AnytlsPassword = nullableSQLString(anytlsPassword)
+	user.ID = user.TID
 
 	return user, nil
 }
@@ -1071,6 +1072,7 @@ func getUsersWithPagination(ctx context.Context, dbConn *sql.DB, start, size int
 		user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
 		user.Hysteria2Password = nullableSQLString(hysteria2Password)
 		user.AnytlsPassword = nullableSQLString(anytlsPassword)
+		user.ID = user.TID
 
 		users = append(users, user)
 	}

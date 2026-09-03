@@ -256,7 +256,7 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 
 	usersQuery := fmt.Sprintf(`
 		SELECT
-			u.username,
+			u.id::text AS username,
 			CASE
 				WHEN bool_or(lower(cpi.type) = 'vless') THEN COALESCE(u.vless_uuid::text, '')
 				ELSE ''
@@ -281,7 +281,7 @@ func (nm *NodeMonitor) loadNodeHaproxyUsers(ctx context.Context, nodeUUID string
 		WHERE cpitn.node_uuid::text = $1
 			AND u.status = 'ACTIVE'
 			AND lower(cpi.type) IN ('vless', 'trojan', 'naive', 'anytls')%s
-		GROUP BY u.id, u.username, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
+		GROUP BY u.id, u.vless_uuid, u.trojan_password, u.naive_password, u.anytls_password
 		ORDER BY u.id ASC
 	`, tagFilterSQL)
 	rows, err := nm.db.QueryContext(ctx, usersQuery, usersArgs...)
@@ -367,11 +367,12 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 	}
 
 	usersByTag := make(map[string][]inboundUserCredentials, len(activeTags))
-	dedup := make(map[string]map[string]struct{}, len(activeTags))
+	dedup := make(map[string]map[int64]struct{}, len(activeTags))
 
 	userRows, err := nm.db.QueryContext(ctx, `
 		SELECT
 			isi.inbound_uuid,
+			u.id,
 			u.username,
 			COALESCE(u.vless_uuid::text, ''),
 			COALESCE(u.trojan_password, ''),
@@ -398,6 +399,7 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		)
 		if err := userRows.Scan(
 			&inboundUUID,
+			&user.ID,
 			&user.Username,
 			&user.VLESSUUID,
 			&user.TrojanPassword,
@@ -411,17 +413,17 @@ func (nm *NodeMonitor) buildNodeConfigForDeploy(ctx context.Context, nodeUUID st
 		}
 		binding, ok := bindingByInboundUUID[inboundUUID]
 		tag := normalizeTagValue(binding.Tag)
-		if !ok || tag == "" || strings.TrimSpace(user.Username) == "" {
+		if !ok || tag == "" || user.ID <= 0 {
 			continue
 		}
 
 		if dedup[tag] == nil {
-			dedup[tag] = make(map[string]struct{})
+			dedup[tag] = make(map[int64]struct{})
 		}
-		if _, exists := dedup[tag][user.Username]; exists {
+		if _, exists := dedup[tag][user.ID]; exists {
 			continue
 		}
-		dedup[tag][user.Username] = struct{}{}
+		dedup[tag][user.ID] = struct{}{}
 		usersByTag[tag] = append(usersByTag[tag], user)
 	}
 	if err := userRows.Err(); err != nil {
@@ -549,6 +551,13 @@ func isUnsecureInbound(inboundType string) bool {
 	}
 }
 
+func userIdentifier(user inboundUserCredentials) string {
+	if user.ID > 0 {
+		return strconv.FormatInt(user.ID, 10)
+	}
+	return user.Username
+}
+
 func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any {
 	result := make([]any, 0, len(users))
 	normalizedType := strings.ToLower(strings.TrimSpace(inboundType))
@@ -562,7 +571,7 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 	case "vless", "vmess":
 		for _, user := range users {
 			item := map[string]any{
-				"name": user.Username,
+				"name": userIdentifier(user),
 				"uuid": user.VLESSUUID,
 			}
 			if normalizedType == "vmess" {
@@ -573,56 +582,56 @@ func buildInboundUsers(inboundType string, users []inboundUserCredentials) []any
 	case "trojan":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"password": user.TrojanPassword,
 			})
 		}
 	case "shadowsocks":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"password": user.SSPassword,
 			})
 		}
 	case "naive":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"username": user.Username,
+				"username": userIdentifier(user),
 				"password": user.NaivePassword,
 			})
 		}
 	case "anytls":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"password": user.AnytlsPassword,
 			})
 		}
 	case "shadowtls":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"password": user.ShadowTLSPass,
 			})
 		}
 	case "hysteria":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"auth_str": user.Hysteria2Pass,
 			})
 		}
 	case "hysteria2":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"password": user.Hysteria2Pass,
 			})
 		}
 	case "tuic":
 		for _, user := range users {
 			result = append(result, map[string]any{
-				"name":     user.Username,
+				"name":     userIdentifier(user),
 				"uuid":     user.VLESSUUID,
 				"password": user.TrojanPassword,
 			})

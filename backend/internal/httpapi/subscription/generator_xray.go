@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -139,6 +140,12 @@ func effectiveProtocolCredential(host SubscriptionHost, user SubscriptionUser) s
 }
 
 func effectiveNaiveUsername(user SubscriptionUser) string {
+	if user.ID > 0 {
+		return strconv.FormatInt(user.ID, 10)
+	}
+	if user.TID > 0 {
+		return strconv.FormatInt(user.TID, 10)
+	}
 	return firstNonEmpty(user.Username, user.ShortUUID, user.UUID)
 }
 

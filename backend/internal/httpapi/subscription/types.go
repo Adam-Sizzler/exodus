@@ -109,6 +109,7 @@ type CustomRemarks struct {
 }
 
 type SubscriptionUser struct {
+	ID                     int64
 	TID                    int64
 	UUID                   string
 	ShortUUID              string

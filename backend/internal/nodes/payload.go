@@ -93,6 +93,7 @@ type nodeInboundBinding struct {
 }
 
 type inboundUserCredentials struct {
+	ID             int64
 	Username       string
 	VLESSUUID      string
 	TrojanPassword string
