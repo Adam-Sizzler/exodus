@@ -94,7 +94,7 @@ func TestSRRModificationsFlow(t *testing.T) {
 		}
 
 		var earlyExitRemarks []string
-		if matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0 {
+		if len(matchedRuleMods.RespondWithRemarks) > 0 {
 			if settings.Raw.IsShowCustomRemarks {
 				earlyExitRemarks = matchedRuleMods.RespondWithRemarks
 			}

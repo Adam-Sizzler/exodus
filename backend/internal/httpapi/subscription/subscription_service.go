@@ -394,6 +394,7 @@ func (s *RenderService) RenderUserSubscription(
 		}
 		outputBytes = []byte(encrypted)
 		contentType = "text/plain; charset=utf-8"
+		responseHeaders["content-type"] = contentType
 	}
 
 	return outputBytes, contentType, responseHeaders, nil
