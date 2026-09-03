@@ -177,8 +177,8 @@ func userRecordNotificationData(ctx context.Context, repo *UserRepository, cfg *
 	subscriptionURL := strings.TrimRight(subBase, "/") + "/" + record.ShortUUID
 
 	return map[string]any{
-		"id":                     record.TID,
-		"tId":                    record.TID,
+		"id":                     record.ID,
+		"tId":                    record.ID,
 		"uuid":                   record.UUID,
 		"shortUuid":              record.ShortUUID,
 		"username":               record.Username,

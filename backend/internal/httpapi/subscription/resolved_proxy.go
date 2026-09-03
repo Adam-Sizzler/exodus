@@ -430,7 +430,7 @@ func buildRawSubscriptionResponse(
 
 	return RawSubscriptionResponse{
 		User: ExtendedUserDTO{
-			ID:                     user.TID,
+			ID:                     user.ID,
 			ShortUUID:              user.ShortUUID,
 			Username:               user.Username,
 			Status:                 status,

@@ -823,7 +823,7 @@ func assertStringPtr(t *testing.T, field string, got *string, want string) {
 
 func TestBuildSubscriptionLinksAndResolvedProxies(t *testing.T) {
 	user := SubscriptionUser{
-		TID:               1,
+		ID:                1,
 		UUID:              "11111111-1111-1111-1111-111111111111",
 		ShortUUID:         "testuser",
 		Username:          "testuser",
@@ -1032,7 +1032,7 @@ func TestCreateFallbackRemarkHostsWithRawJSON(t *testing.T) {
 func TestBuildResponseHeadersWithCustomResponseHeaders(t *testing.T) {
 	user := SubscriptionUser{
 		UUID:              "11111111-2222-3333-4444-555555555555",
-		TID:               42,
+		ID:                42,
 		Username:          "alice",
 		ShortUUID:         "alice-short",
 		Status:            "ACTIVE",

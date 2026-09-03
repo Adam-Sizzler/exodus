@@ -11,7 +11,7 @@ import (
 )
 
 type userNotificationRecord struct {
-	TID                    int64
+	ID                     int64
 	UUID                   string
 	Username               string
 	ShortUUID              string
@@ -83,7 +83,7 @@ func (s *Scheduler) usersByExpireAt(ctx context.Context, start, end time.Time) (
 	for rows.Next() {
 		var user userNotificationRecord
 		if scanErr := rows.Scan(
-			&user.TID,
+			&user.ID,
 			&user.UUID,
 			&user.Username,
 			&user.ShortUUID,
@@ -216,7 +216,7 @@ func (s *Scheduler) triggerThresholdNotifications(ctx context.Context, threshold
 	for rows.Next() {
 		var user userNotificationRecord
 		if scanErr := rows.Scan(
-			&user.TID,
+			&user.ID,
 			&user.UUID,
 			&user.Username,
 			&user.ShortUUID,
@@ -299,7 +299,7 @@ func (s *Scheduler) notConnectedUsers(ctx context.Context, start, end time.Time)
 	for rows.Next() {
 		var user userNotificationRecord
 		if scanErr := rows.Scan(
-			&user.TID,
+			&user.ID,
 			&user.UUID,
 			&user.Username,
 			&user.ShortUUID,
@@ -319,7 +319,8 @@ func (s *Scheduler) notConnectedUsers(ctx context.Context, start, end time.Time)
 
 func (u userNotificationRecord) notificationData() map[string]any {
 	return map[string]any{
-		"tId":                    u.TID,
+		"id":                     u.ID,
+		"tId":                    u.ID,
 		"uuid":                   u.UUID,
 		"username":               u.Username,
 		"shortUuid":              u.ShortUUID,

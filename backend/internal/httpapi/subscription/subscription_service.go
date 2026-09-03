@@ -269,7 +269,7 @@ func (s *RenderService) RenderUserSubscription(
 			}
 		}
 	} else if hwid != nil {
-		_ = enqueueOrUpsertHwidUserDevice(ctx, s.db, user.TID, *hwid)
+		_ = enqueueOrUpsertHwidUserDevice(ctx, s.db, user.ID, *hwid)
 	}
 
 	if len(hosts) > 0 {
@@ -285,7 +285,7 @@ func (s *RenderService) RenderUserSubscription(
 		reqType = responseTypeXrayJSON
 	}
 
-	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP, reqType, matchedRuleName)
+	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.ID, userAgent, requestIP, reqType, matchedRuleName)
 
 	if s.cfg != nil && s.cfg.Logger != nil {
 		s.cfg.Logger.RoleService(logger.RoleAPI, logger.ServiceHTTP).Debug(

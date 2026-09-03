@@ -55,7 +55,7 @@ func TestAllTemplateVariables(t *testing.T) {
 	lastReset := now.Add(-24 * 2 * time.Hour)
 
 	user := SubscriptionUser{
-		TID:                  42,
+		ID:                   42,
 		Username:             "johndoe",
 		ShortUUID:            "xyz789",
 		Status:               "ACTIVE",

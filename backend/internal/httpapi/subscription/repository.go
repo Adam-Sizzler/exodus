@@ -348,7 +348,7 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 	var externalSquadUUID sql.NullString
 	var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
 	if err := row.Scan(
-		&user.TID,
+		&user.ID,
 		&user.UUID,
 		&user.ShortUUID,
 		&user.Username,
@@ -430,7 +430,6 @@ func getSubscriptionUserByField(ctx context.Context, dbConn *sql.DB, field strin
 	user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
 	user.Hysteria2Password = nullableSQLString(hysteria2Password)
 	user.AnytlsPassword = nullableSQLString(anytlsPassword)
-	user.ID = user.TID
 
 	return user, nil
 }
@@ -472,7 +471,7 @@ func getHostsForUserWithOptions(ctx context.Context, dbConn *sql.DB, user Subscr
 		ORDER BY h.view_position ASC, h.remark ASC
 	`, whereClause)
 
-	rows, err := dbConn.QueryContext(ctx, query, user.TID)
+	rows, err := dbConn.QueryContext(ctx, query, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -664,7 +663,7 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user SubscriptionUser, hwid *HwidHeaders, settings HwidSettings) (HwidCheckupResult, error) {
 	if user.HwidDeviceLimit != nil && *user.HwidDeviceLimit == 0 {
 		if hwid != nil {
-			_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.TID, *hwid)
+			_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.ID, *hwid)
 		}
 		return HwidCheckupResult{Allowed: true, LimitBypassed: true}, nil
 	}
@@ -673,9 +672,9 @@ func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user Subscription
 		return HwidCheckupResult{Allowed: false, HwidNotSupported: true}, nil
 	}
 
-	exists, err := hwidDeviceExists(ctx, dbConn, user.TID, hwid.Hwid)
+	exists, err := hwidDeviceExists(ctx, dbConn, user.ID, hwid.Hwid)
 	if err == nil && exists {
-		_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.TID, *hwid)
+		_ = enqueueOrUpsertHwidUserDevice(ctx, dbConn, user.ID, *hwid)
 		return HwidCheckupResult{Allowed: true}, nil
 	}
 
@@ -684,7 +683,7 @@ func checkHwidDeviceLimit(ctx context.Context, dbConn *sql.DB, user Subscription
 		limit = *user.HwidDeviceLimit
 	}
 
-	allowed, err := createHwidDeviceWithAdvisoryLock(ctx, dbConn, user.TID, *hwid, limit)
+	allowed, err := createHwidDeviceWithAdvisoryLock(ctx, dbConn, user.ID, *hwid, limit)
 	if err != nil {
 		return HwidCheckupResult{}, fmt.Errorf("create hwid device: %w", err)
 	}
@@ -1037,7 +1036,7 @@ func getUsersWithPagination(ctx context.Context, dbConn *sql.DB, start, size int
 		var naivePassword, shadowtlsPassword, hysteria2Password, anytlsPassword sql.NullString
 
 		if err := rows.Scan(
-			&user.TID,
+			&user.ID,
 			&user.UUID,
 			&user.ShortUUID,
 			&user.Username,
@@ -1072,7 +1071,6 @@ func getUsersWithPagination(ctx context.Context, dbConn *sql.DB, start, size int
 		user.ShadowtlsPassword = nullableSQLString(shadowtlsPassword)
 		user.Hysteria2Password = nullableSQLString(hysteria2Password)
 		user.AnytlsPassword = nullableSQLString(anytlsPassword)
-		user.ID = user.TID
 
 		users = append(users, user)
 	}
@@ -1604,7 +1602,7 @@ func resolveTemplateVariables(value string, user SubscriptionUser, settings Subs
 		case "SHORT_UUID":
 			return user.ShortUUID
 		case "ID":
-			return strconv.FormatInt(user.TID, 10)
+			return strconv.FormatInt(user.ID, 10)
 		case "TRAFFIC_USED_BYTES":
 			return strconv.FormatInt(user.UsedTrafficBytes, 10)
 		case "TRAFFIC_LEFT_BYTES":

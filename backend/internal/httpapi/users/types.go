@@ -150,7 +150,7 @@ type userAccessibleSquad struct {
 }
 
 type userRecord struct {
-	TID                      int64
+	ID                       int64
 	UUID                     string
 	ShortUUID                string
 	Username                 string

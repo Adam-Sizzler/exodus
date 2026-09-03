@@ -35,7 +35,7 @@ func TestSRRModificationsFlow(t *testing.T) {
 	}
 
 	user := SubscriptionUser{
-		TID:       1,
+		ID:        1,
 		UUID:      "user-uuid",
 		ShortUUID: "u001",
 		Username:  "testuser",

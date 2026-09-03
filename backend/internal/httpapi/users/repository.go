@@ -209,7 +209,7 @@ func scanUserRecord(scanner shared.RowScanner) (userRecord, error) {
 	)
 
 	err := scanner.Scan(
-		&record.TID,
+		&record.ID,
 		&record.UUID,
 		&record.ShortUUID,
 		&record.Username,
@@ -629,7 +629,7 @@ func (r *UserRepository) updateUserRecord(ctx context.Context, targetUUID string
 	internalSquadsChanged := false
 	internalSquadNodeUUIDs := make([]string, 0)
 	if req.ActiveInternalSquads != nil {
-		currentSquads, loadErr := r.getUserInternalSquadsTx(ctx, tx, record.TID)
+		currentSquads, loadErr := r.getUserInternalSquadsTx(ctx, tx, record.ID)
 		if loadErr != nil {
 			return userRecord{}, nil, nil, false, loadErr
 		}
@@ -640,7 +640,7 @@ func (r *UserRepository) updateUserRecord(ctx context.Context, targetUUID string
 			if nodeTargetsErr != nil {
 				return userRecord{}, nil, nil, false, nodeTargetsErr
 			}
-			if err := r.replaceUserInternalSquadsTx(ctx, tx, record.TID, requestedSquads); err != nil {
+			if err := r.replaceUserInternalSquadsTx(ctx, tx, record.ID, requestedSquads); err != nil {
 				return userRecord{}, nil, nil, false, err
 			}
 			internalSquadNodeUUIDs = nodeUUIDs
@@ -1104,14 +1104,14 @@ func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size 
 	defer rows.Close()
 
 	records := make([]userRecord, 0)
-	var lastTID int64 = 0
+	var lastID int64 = 0
 	for rows.Next() {
 		rec, scanErr := scanUserRecord(rows)
 		if scanErr != nil {
 			return nil, 0, 0, scanErr
 		}
 		records = append(records, rec)
-		lastTID = rec.TID
+		lastID = rec.ID
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, 0, err
@@ -1119,7 +1119,7 @@ func (r *UserRepository) getUsersStream(ctx context.Context, cursor int64, size 
 
 	var nextCursor int64 = 0
 	if len(records) == size {
-		nextCursor = lastTID
+		nextCursor = lastID
 	}
 
 	return records, nextCursor, total, nil

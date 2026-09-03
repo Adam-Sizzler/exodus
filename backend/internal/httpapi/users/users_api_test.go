@@ -205,7 +205,7 @@ func TestUserStatusChangedNotification(t *testing.T) {
 func TestUserNotificationDataFields(t *testing.T) {
 	now := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
 	record := userRecord{
-		TID:                      42,
+		ID:                       42,
 		UUID:                     "u-1234",
 		ShortUUID:                "short-1234",
 		Username:                 "test_user",
