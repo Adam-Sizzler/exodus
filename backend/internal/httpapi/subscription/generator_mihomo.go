@@ -22,6 +22,10 @@ import (
 )
 
 func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
+	return generateYAMLConfigExt(templateYAML, hosts, user, false)
+}
+
+func generateYAMLConfigExt(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser, isExtendedClient bool) (string, error) {
 	var root yaml.Node
 	if len(templateYAML) > 0 {
 		if err := yaml.Unmarshal(templateYAML, &root); err != nil {
@@ -34,7 +38,7 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 	proxyNames := []string{}
 	trailingSelectorProxyNames := []string{}
 	for _, host := range hosts {
-		proxy := buildMihomoProxy(host, user)
+		proxy := buildMihomoProxyExt(host, user, isExtendedClient)
 		if proxy == nil {
 			continue
 		}
@@ -119,7 +123,7 @@ func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user Subs
 			}
 			payloadNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 			for _, host := range hosts {
-				proxy := buildMihomoProxy(host, user)
+				proxy := buildMihomoProxyExt(host, user, isExtendedClient)
 				if proxy == nil {
 					continue
 				}
@@ -432,6 +436,10 @@ func extractYAMLTopLevelKey(line string) (string, bool) {
 }
 
 func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
+	return buildMihomoProxyExt(host, user, false)
+}
+
+func buildMihomoProxyExt(host SubscriptionHost, user SubscriptionUser, isExtendedClient bool) map[string]interface{} {
 	protocol := normalizedHostProtocol(host)
 	if protocol == "" {
 		return nil
@@ -651,6 +659,9 @@ func buildMihomoProxy(host SubscriptionHost, user SubscriptionUser) map[string]i
 	}
 	if len(host.Mapper.Mihomo) > 0 {
 		ApplyHostMapperToMap(proxy, host.Mapper.Mihomo, host)
+	}
+	if isExtendedClient && host.ServerDescription != nil && strings.TrimSpace(*host.ServerDescription) != "" {
+		proxy["serverDescription"] = strings.TrimSpace(*host.ServerDescription)
 	}
 	return proxy
 }

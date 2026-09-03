@@ -110,8 +110,47 @@ func (s *RenderService) RenderUserSubscription(
 	squadOverrides, _ := loadExternalSquadOverrides(ctx, s.db, ptrString(user.ExternalSquadUUID), s.cfg)
 	settings = applyExternalSquadOverrides(settings, squadOverrides)
 
+	reqType := strings.ToUpper(strings.TrimSpace(requestedType))
+	var matchedRuleName string
+	var matchedRuleMods *subscriptionresponserules.RuleModifications
+
+	h := http.Header{}
+	if userAgent != "" {
+		h.Set("User-Agent", userAgent)
+	}
+	if settings.ResponseRules != nil {
+		matchRes := subscriptionresponserules.MatchRulesDetailed(
+			settings.ResponseRules,
+			h,
+			requestedType,
+			func(s string) string { return s },
+			defaultResponseType,
+		)
+		if matchRes.Matched {
+			if reqType == "" {
+				reqType = matchRes.ResponseType
+			}
+			if matchRes.MatchedRule != nil {
+				matchedRuleName = matchRes.MatchedRule.Name
+				matchedRuleMods = matchRes.MatchedRule.ResponseModifications
+			}
+		}
+	}
+	if reqType == "" {
+		reqType = defaultResponseType
+	}
+
+	// 1. Respond with remarks (SRR respondWithRemarks)
 	var earlyExitRemarks []string
-	if settings.Raw.IsShowCustomRemarks {
+	if matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0 {
+		if settings.Raw.IsShowCustomRemarks {
+			earlyExitRemarks = matchedRuleMods.RespondWithRemarks
+		} else if len(settings.CustomRemarks.EmptyHosts) > 0 {
+			earlyExitRemarks = settings.CustomRemarks.EmptyHosts
+		} else {
+			return nil, "", nil, ErrNoHosts
+		}
+	} else if settings.Raw.IsShowCustomRemarks {
 		if user.Status == "DISABLED" {
 			earlyExitRemarks = settings.CustomRemarks.DisabledUsers
 		} else if user.Status == "EXPIRED" || (!user.ExpireAt.IsZero() && user.ExpireAt.Before(time.Now())) {
@@ -125,6 +164,7 @@ func (s *RenderService) RenderUserSubscription(
 		return nil, "", nil, ErrUserDisabled
 	}
 
+	// 2. Fetch hosts and apply excludeHostsByTags
 	var hosts []SubscriptionHost
 	if len(earlyExitRemarks) > 0 {
 		hosts = createFallbackRemarkHosts(earlyExitRemarks)
@@ -133,6 +173,31 @@ func (s *RenderService) RenderUserSubscription(
 		if err != nil {
 			return nil, "", nil, err
 		}
+
+		if matchedRuleMods != nil && len(matchedRuleMods.ExcludeHostsByTags) > 0 {
+			excludeSet := make(map[string]struct{}, len(matchedRuleMods.ExcludeHostsByTags))
+			for _, tag := range matchedRuleMods.ExcludeHostsByTags {
+				trimmed := strings.TrimSpace(tag)
+				if trimmed != "" {
+					excludeSet[trimmed] = struct{}{}
+				}
+			}
+			filtered := make([]SubscriptionHost, 0, len(userHosts))
+			for _, host := range userHosts {
+				excluded := false
+				for _, tag := range host.Tags {
+					if _, ok := excludeSet[strings.TrimSpace(tag)]; ok {
+						excluded = true
+						break
+					}
+				}
+				if !excluded {
+					filtered = append(filtered, host)
+				}
+			}
+			userHosts = filtered
+		}
+
 		if len(userHosts) == 0 {
 			if settings.Raw.IsShowCustomRemarks && len(settings.CustomRemarks.EmptyHosts) > 0 {
 				hosts = createFallbackRemarkHosts(settings.CustomRemarks.EmptyHosts)
@@ -154,20 +219,14 @@ func (s *RenderService) RenderUserSubscription(
 		})
 	}
 
-	// Resolved once, reused below both for host remarks and for response
-	// headers (profile-title/announce/custom headers), instead of hitting
-	// the DB a second time inside buildResponseHeaders.
 	subscriptionURL := resolveSubscriptionURL(ctx, s.db, user, settings)
 
-	// hwidExtraHeaders is only populated when the device-limit check below
-	// produces a "soft" outcome (limit reached / hwid not supported): unlike
-	// a hard error, upstream still returns 200 with these extra headers
-	// (and, if configured, a templated fallback body) instead of failing
-	// the request outright.
+	// 3. HWID check (supports disableHwidCheck)
 	var hwidExtraHeaders map[string]string
 	hwidSoftLimitHit := false
+	disableHwidCheck := matchedRuleMods != nil && matchedRuleMods.DisableHwidCheck
 
-	if settings.HwidSettings.Enabled {
+	if settings.HwidSettings.Enabled && !disableHwidCheck {
 		result, err := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
 		if err != nil {
 			return nil, "", nil, ErrHwidCheckFailed
@@ -191,10 +250,6 @@ func (s *RenderService) RenderUserSubscription(
 				hwidExtraHeaders["x-hwid-max-devices-reached"] = "true"
 			}
 
-			// Same custom-remarks mechanism as disabled/expired/limited/empty-hosts:
-			// swap in the matching fallback host list (or none, if not configured),
-			// which then flows through the exact same remark-templating and
-			// format-generator code below as any other host list.
 			hosts = nil
 			if settings.Raw.IsShowCustomRemarks {
 				if result.MaxDeviceReached && len(settings.CustomRemarks.HWIDMaxDevicesExceeded) > 0 {
@@ -209,32 +264,16 @@ func (s *RenderService) RenderUserSubscription(
 	}
 
 	if len(hosts) > 0 {
-		// Same template substitution used for response headers, applied
-		// once here so every generator (xray/singbox/mihomo/raw) below
-		// sees the resolved+deduplicated remark. Also covers the
-		// disabled/expired/limited/empty-hosts/hwid-limit fallback remarks.
 		resolveHostRemarks(hosts, user, settings, subscriptionURL)
 	}
 
-	reqType := strings.ToUpper(strings.TrimSpace(requestedType))
-	var matchedRuleName string
-	if reqType == "" {
-		h := http.Header{}
-		if userAgent != "" {
-			h.Set("User-Agent", userAgent)
-		}
-		if settings.ResponseRules != nil {
-			matchRes := subscriptionresponserules.MatchRulesDetailed(settings.ResponseRules, h, "", func(s string) string { return s }, defaultResponseType)
-			if matchRes.Matched {
-				reqType = matchRes.ResponseType
-				if matchRes.MatchedRule != nil {
-					matchedRuleName = matchRes.MatchedRule.Name
-				}
-			}
-		}
-	}
-	if reqType == "" {
-		reqType = defaultResponseType
+	// 4. Auto-upgrade to XRAY_JSON if serveJsonAtBaseSubscription enabled
+	ignoreServeJSON := matchedRuleMods != nil && matchedRuleMods.IgnoreServeJsonAtBaseSubscription
+	if reqType == defaultResponseType &&
+		settings.Raw.ServeJSONAtBaseSubscription &&
+		!ignoreServeJSON &&
+		isJSONSubscriptionFallbackSupported(userAgent) {
+		reqType = responseTypeXrayJSON
 	}
 
 	updateSubscriptionRequest(ctx, s.backgroundDB, user.UUID, user.TID, userAgent, requestIP, reqType, matchedRuleName)
@@ -254,23 +293,47 @@ func (s *RenderService) RenderUserSubscription(
 		)
 	}
 
+	// 5. Subscription template override
 	templateType := strings.ToLower(reqType)
-	templateContent, _ := getSubscriptionTemplate(ctx, s.db, templateType)
+	var templateContent []byte
+	templateLoaded := false
+
+	if matchedRuleMods != nil && matchedRuleMods.SubscriptionTemplate != nil && strings.TrimSpace(*matchedRuleMods.SubscriptionTemplate) != "" {
+		tplType, tplData, err := getSubscriptionTemplateByName(ctx, s.db, strings.TrimSpace(*matchedRuleMods.SubscriptionTemplate))
+		if err == nil && len(tplData) > 0 && strings.EqualFold(tplType, reqType) {
+			templateContent = tplData
+			templateLoaded = true
+		}
+	}
+	if !templateLoaded {
+		templateContent, _ = getSubscriptionTemplate(ctx, s.db, templateType)
+	}
+
+	// 6. Extended clients & generator settings
+	var additionalExtendedRegex []string
+	if matchedRuleMods != nil {
+		additionalExtendedRegex = matchedRuleMods.AdditionalExtendedClientsRegex
+	}
+	settings.IsExtendedClient = isExtendedClient(userAgent, additionalExtendedRegex)
+	if matchedRuleMods != nil && matchedRuleMods.IgnoreHostXrayJsonTemplate {
+		settings.IgnoreHostXrayJsonTemplate = true
+	}
+	settings.CustomTemplateLoader = func(uuidStr string) ([]byte, error) {
+		_, data, err := getSubscriptionTemplateByUUID(ctx, s.db, uuidStr)
+		return data, err
+	}
 
 	var outputContent string
 	var contentType string
 
 	if hwidSoftLimitHit && len(hosts) == 0 {
-		// No custom remark configured for this HWID outcome (or custom
-		// remarks disabled) - upstream still returns 200 with an empty
-		// plain-text body rather than running any format generator.
 		outputContent = ""
 		contentType = "text/plain; charset=utf-8"
 	} else {
 		switch reqType {
 		case responseTypeMihomo, responseTypeClash, responseTypeStash:
 			gen := NewMihomoGenerator(s.cfg)
-			out, err := gen.Generate([]byte(templateContent), user, hosts, settings)
+			out, err := gen.Generate(templateContent, user, hosts, settings)
 			if err != nil {
 				return nil, "", nil, err
 			}
@@ -278,7 +341,7 @@ func (s *RenderService) RenderUserSubscription(
 			contentType = "text/yaml; charset=utf-8"
 		case responseTypeSingbox:
 			gen := NewSingboxGenerator(s.cfg)
-			out, err := gen.Generate([]byte(templateContent), user, hosts, settings)
+			out, err := gen.Generate(templateContent, user, hosts, settings)
 			if err != nil {
 				return nil, "", nil, err
 			}
@@ -286,7 +349,7 @@ func (s *RenderService) RenderUserSubscription(
 			contentType = "application/json; charset=utf-8"
 		case responseTypeXrayJSON:
 			gen := NewXrayGenerator(s.cfg)
-			out, err := gen.GenerateJSON([]byte(templateContent), user, hosts, settings)
+			out, err := gen.GenerateJSON(templateContent, user, hosts, settings)
 			if err != nil {
 				return nil, "", nil, err
 			}
@@ -303,11 +366,37 @@ func (s *RenderService) RenderUserSubscription(
 		}
 	}
 
+	// 7. Response headers (early headers, hwid extra, late headers)
 	responseHeaders := buildResponseHeaders(user, settings, contentType, subscriptionURL)
+
+	if matchedRuleMods != nil && len(matchedRuleMods.Headers) > 0 && !matchedRuleMods.ApplyHeadersToEnd {
+		for _, h := range matchedRuleMods.Headers {
+			responseHeaders[h.Key] = h.Value
+		}
+	}
+
 	for k, v := range hwidExtraHeaders {
 		responseHeaders[k] = v
 	}
-	return []byte(outputContent), contentType, responseHeaders, nil
+
+	if matchedRuleMods != nil && len(matchedRuleMods.Headers) > 0 && matchedRuleMods.ApplyHeadersToEnd {
+		for _, h := range matchedRuleMods.Headers {
+			responseHeaders[h.Key] = h.Value
+		}
+	}
+
+	// 8. Encryption (age1 / age1pq1)
+	outputBytes := []byte(outputContent)
+	if matchedRuleMods != nil && matchedRuleMods.Encryption != nil {
+		encrypted, err := encryptResponseBody(outputBytes, matchedRuleMods.Encryption.Method, matchedRuleMods.Encryption.Key)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("srr response encryption failed: %w", err)
+		}
+		outputBytes = []byte(encrypted)
+		contentType = "text/plain; charset=utf-8"
+	}
+
+	return outputBytes, contentType, responseHeaders, nil
 }
 
 func (s *RenderService) buildSubscriptionInfoResponse(

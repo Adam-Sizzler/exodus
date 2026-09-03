@@ -72,6 +72,10 @@ type SubscriptionSettingsParsed struct {
 	ResponseRules         *subscriptionresponserules.Config
 	HwidSettings          HwidSettings
 	CustomRemarks         CustomRemarks
+
+	IsExtendedClient           bool
+	IgnoreHostXrayJsonTemplate bool
+	CustomTemplateLoader       func(uuid string) ([]byte, error)
 }
 
 type HwidSettings struct {
@@ -164,6 +168,7 @@ type SubscriptionHost struct {
 	KeepSNIBlank                 bool
 	ExcludeFromSubscriptionTypes []string
 	Tag                          *string
+	Tags                         []string
 	IsHidden                     bool
 	OverrideSNIFromAddress       bool
 	ConfigProfileUUID            *string
@@ -286,16 +291,23 @@ func NewSingboxGenerator(cfg *config.BackendConfig) *SingboxGenerator {
 }
 
 func (g *XrayGenerator) GenerateLinks(user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) ([]string, error) {
-	links, _ := buildSubscriptionLinks(hosts, user)
+	links, _ := buildSubscriptionLinksExt(hosts, user, settings.IsExtendedClient)
 	return links, nil
 }
 
 func (g *XrayGenerator) GenerateJSON(templateJSON []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {
-	return generateXrayJSONConfig(templateJSON, hosts, user)
+	return generateXrayJSONConfigExt(
+		templateJSON,
+		hosts,
+		user,
+		settings.IsExtendedClient,
+		settings.IgnoreHostXrayJsonTemplate,
+		settings.CustomTemplateLoader,
+	)
 }
 
 func (g *MihomoGenerator) Generate(templateYAML []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {
-	return generateYAMLConfig(templateYAML, hosts, user)
+	return generateYAMLConfigExt(templateYAML, hosts, user, settings.IsExtendedClient)
 }
 
 func (g *SingboxGenerator) Generate(templateJSON []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {

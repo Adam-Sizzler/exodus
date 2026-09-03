@@ -34,11 +34,21 @@ type Settings struct {
 }
 
 type RuleModifications struct {
-	Headers                           []RuleHeader `json:"headers,omitempty"`
-	ApplyHeadersToEnd                 bool         `json:"applyHeadersToEnd,omitempty"`
-	SubscriptionTemplate              *string      `json:"subscriptionTemplate,omitempty"`
-	IgnoreHostXrayJsonTemplate        bool         `json:"ignoreHostXrayJsonTemplate,omitempty"`
-	IgnoreServeJsonAtBaseSubscription bool         `json:"ignoreServeJsonAtBaseSubscription,omitempty"`
+	Headers                           []RuleHeader    `json:"headers,omitempty"`
+	ApplyHeadersToEnd                 bool            `json:"applyHeadersToEnd,omitempty"`
+	SubscriptionTemplate              *string         `json:"subscriptionTemplate,omitempty"`
+	IgnoreHostXrayJsonTemplate        bool            `json:"ignoreHostXrayJsonTemplate,omitempty"`
+	IgnoreServeJsonAtBaseSubscription bool            `json:"ignoreServeJsonAtBaseSubscription,omitempty"`
+	AdditionalExtendedClientsRegex    []string        `json:"additionalExtendedClientsRegex,omitempty"`
+	DisableHwidCheck                  bool            `json:"disableHwidCheck,omitempty"`
+	ExcludeHostsByTags                []string        `json:"excludeHostsByTags,omitempty"`
+	RespondWithRemarks                []string        `json:"respondWithRemarks,omitempty"`
+	Encryption                        *RuleEncryption `json:"encryption,omitempty"`
+}
+
+type RuleEncryption struct {
+	Method string `json:"method"` // "age1" | "age1pq1"
+	Key    string `json:"key"`
 }
 
 type RuleHeader struct {

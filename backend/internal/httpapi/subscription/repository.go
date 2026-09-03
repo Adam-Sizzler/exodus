@@ -44,6 +44,7 @@ var (
 	subTemplateLock      sync.RWMutex
 	subTemplateTypeCache = make(map[string]cachedTemplate)
 	subTemplateNameCache = make(map[string]cachedNamedTemplate)
+	subTemplateUUIDCache = make(map[string]cachedNamedTemplate)
 )
 
 type cachedSquadOverride struct {
@@ -612,8 +613,9 @@ func scanSubscriptionHost(scanner shared.RowScanner) (SubscriptionHost, error) {
 	if keepSNIBlank.Valid {
 		h.KeepSNIBlank = keepSNIBlank.Bool
 	}
-	if tags := hostTags.Slice(); len(tags) > 0 && strings.TrimSpace(tags[0]) != "" {
-		firstTag := strings.TrimSpace(tags[0])
+	h.Tags = hostTags.Slice()
+	if len(h.Tags) > 0 && strings.TrimSpace(h.Tags[0]) != "" {
+		firstTag := strings.TrimSpace(h.Tags[0])
 		h.Tag = &firstTag
 	}
 	if isHidden.Valid {
@@ -949,6 +951,51 @@ func getSubscriptionTemplateByName(ctx context.Context, dbConn *sql.DB, name str
 
 	subTemplateLock.Lock()
 	subTemplateNameCache[name] = cachedNamedTemplate{
+		templateType: templateType,
+		data:         templateData,
+		expiresAt:    time.Now().Add(subTemplateCacheTTL),
+	}
+	subTemplateLock.Unlock()
+
+	return templateType, templateData, nil
+}
+
+func getSubscriptionTemplateByUUID(ctx context.Context, dbConn *sql.DB, uuidStr string) (string, []byte, error) {
+	subTemplateLock.RLock()
+	if cached, ok := subTemplateUUIDCache[uuidStr]; ok && time.Now().Before(cached.expiresAt) {
+		subTemplateLock.RUnlock()
+		return cached.templateType, cached.data, nil
+	}
+	subTemplateLock.RUnlock()
+
+	row := dbConn.QueryRowContext(ctx, `
+		SELECT template_type, template_yaml, template_json
+		FROM subscription_templates
+		WHERE uuid = $1
+		LIMIT 1
+	`, uuidStr)
+
+	var templateType string
+	var templateYAML sql.NullString
+	var templateJSON sql.NullString
+	if err := row.Scan(&templateType, &templateYAML, &templateJSON); err != nil {
+		return "", nil, err
+	}
+
+	upperType := strings.ToUpper(strings.TrimSpace(templateType))
+	var templateData []byte
+	if upperType == responseTypeXrayJSON || upperType == responseTypeSingbox {
+		if templateJSON.Valid {
+			templateData = []byte(templateJSON.String)
+		}
+	} else {
+		if templateYAML.Valid {
+			templateData = []byte(templateYAML.String)
+		}
+	}
+
+	subTemplateLock.Lock()
+	subTemplateUUIDCache[uuidStr] = cachedNamedTemplate{
 		templateType: templateType,
 		data:         templateData,
 		expiresAt:    time.Now().Add(subTemplateCacheTTL),

@@ -48,12 +48,20 @@ func encodeRemark(remark string) string {
 }
 
 func buildSubscriptionLinks(hosts []SubscriptionHost, user SubscriptionUser) ([]string, map[string]string) {
+	return buildSubscriptionLinksExt(hosts, user, false)
+}
+
+func buildSubscriptionLinksExt(hosts []SubscriptionHost, user SubscriptionUser, isExtendedClient bool) ([]string, map[string]string) {
 	links := []string{}
 	ssConfLinks := map[string]string{}
 	for _, host := range hosts {
 		link, protocol := buildHostLink(host, user)
 		if link == "" {
 			continue
+		}
+		if isExtendedClient && host.ServerDescription != nil && strings.TrimSpace(*host.ServerDescription) != "" {
+			descB64 := base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(*host.ServerDescription)))
+			link = fmt.Sprintf("%s?serverDescription=%s", link, descB64)
 		}
 		links = append(links, link)
 		if protocol == "shadowsocks" || protocol == "ss" {
@@ -523,24 +531,77 @@ func parseJSONMapString(raw *string) map[string]interface{} {
 }
 
 func generateXrayJSONConfig(templateJSON []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
-	baseConfig := map[string]interface{}{}
-	if len(templateJSON) > 0 {
-		if err := json.Unmarshal(templateJSON, &baseConfig); err != nil {
-			baseConfig = map[string]interface{}{}
-		}
-	}
-	outbounds := []interface{}{}
-	if existing, ok := baseConfig["outbounds"].([]interface{}); ok {
-		outbounds = existing
-	}
+	return generateXrayJSONConfigExt(templateJSON, hosts, user, false, false, nil)
+}
+
+func generateXrayJSONConfigExt(
+	templateJSON []byte,
+	hosts []SubscriptionHost,
+	user SubscriptionUser,
+	isExtendedClient bool,
+	ignoreHostTemplate bool,
+	customTemplateLoader func(uuid string) ([]byte, error),
+) (string, error) {
+	configs := make([]map[string]interface{}, 0, len(hosts))
+
 	for _, host := range hosts {
-		outbound := buildXrayOutbound(host, user)
-		if outbound != nil {
-			outbounds = append(outbounds, outbound)
+		if host.IsHidden {
+			continue
 		}
+		excluded := false
+		for _, exc := range host.ExcludeFromSubscriptionTypes {
+			if strings.EqualFold(strings.TrimSpace(exc), responseTypeXrayJSON) {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
+			continue
+		}
+
+		effectiveTemplate := templateJSON
+		if !ignoreHostTemplate && host.XrayJSONTemplateUUID != nil && customTemplateLoader != nil {
+			if customTpl, err := customTemplateLoader(*host.XrayJSONTemplateUUID); err == nil && len(customTpl) > 0 {
+				effectiveTemplate = customTpl
+			}
+		}
+
+		hostConfig := make(map[string]interface{})
+		if len(effectiveTemplate) > 0 {
+			_ = json.Unmarshal(effectiveTemplate, &hostConfig)
+		}
+
+		outbound := buildXrayOutbound(host, user)
+		if outbound == nil {
+			continue
+		}
+
+		var existingOutbounds []interface{}
+		if existing, ok := hostConfig["outbounds"].([]interface{}); ok {
+			existingOutbounds = existing
+		}
+		hostConfig["outbounds"] = append([]interface{}{outbound}, existingOutbounds...)
+
+		remark := host.Remark
+		if remark == "" {
+			remark = host.Address
+		}
+		hostConfig["remarks"] = remark
+
+		if isExtendedClient && host.ServerDescription != nil && strings.TrimSpace(*host.ServerDescription) != "" {
+			hostConfig["meta"] = map[string]interface{}{
+				"serverDescription": strings.TrimSpace(*host.ServerDescription),
+			}
+		}
+
+		configs = append(configs, hostConfig)
 	}
-	baseConfig["outbounds"] = outbounds
-	return marshalJSONWithTemplateTopLevelOrder(templateJSON, baseConfig)
+
+	bytes, err := json.Marshal(configs)
+	if err != nil {
+		return "[]", err
+	}
+	return string(bytes), nil
 }
 
 func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]interface{} {
