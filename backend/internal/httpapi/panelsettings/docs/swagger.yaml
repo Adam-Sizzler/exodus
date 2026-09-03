@@ -296,6 +296,14 @@ definitions:
       responseType:
         type: string
     type: object
+  subscriptionresponserules.RuleEncryption:
+    properties:
+      key:
+        type: string
+      method:
+        description: '"age1" | "age1pq1"'
+        type: string
+    type: object
   subscriptionresponserules.RuleHeader:
     properties:
       key:
@@ -305,8 +313,20 @@ definitions:
     type: object
   subscriptionresponserules.RuleModifications:
     properties:
+      additionalExtendedClientsRegex:
+        items:
+          type: string
+        type: array
       applyHeadersToEnd:
         type: boolean
+      disableHwidCheck:
+        type: boolean
+      encryption:
+        $ref: '#/definitions/subscriptionresponserules.RuleEncryption'
+      excludeHostsByTags:
+        items:
+          type: string
+        type: array
       headers:
         items:
           $ref: '#/definitions/subscriptionresponserules.RuleHeader'
@@ -315,6 +335,10 @@ definitions:
         type: boolean
       ignoreServeJsonAtBaseSubscription:
         type: boolean
+      respondWithRemarks:
+        items:
+          type: string
+        type: array
       subscriptionTemplate:
         type: string
     type: object
@@ -362,11 +386,6 @@ definitions:
         type: boolean
       exportToRedisStream:
         type: boolean
-    type: object
-  system.encryptHappRequest:
-    properties:
-      linkToEncrypt:
-        type: string
     type: object
   system.testSRRMatcherRequest:
     properties:
@@ -459,10 +478,10 @@ definitions:
     type: object
   users.UsersStreamResponse:
     properties:
+      hasMore:
+        type: boolean
       nextCursor:
-        type: integer
-      total:
-        type: integer
+        type: string
       users:
         items:
           $ref: '#/definitions/users.userAPI'
@@ -1538,27 +1557,6 @@ paths:
       summary: Manage configuration profiles
       tags:
       - Config Profiles Controller
-  /config-profiles-with-inbounds:
-    get:
-      description: Get list of configuration profiles with embedded inbounds for squad
-        assignment
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Config profiles with inbounds
-      tags:
-      - Internal Squads Controller
   /config-profiles/{uuid}:
     delete:
       description: Get, delete (204) config profile, or get profile inbounds / computed
@@ -2997,69 +2995,6 @@ paths:
       summary: Get top users by HWID devices
       tags:
       - HWID User Devices Controller
-  /inbound-assignments:
-    get:
-      consumes:
-      - application/json
-      description: Get or assign inbounds to squads and nodes
-      parameters:
-      - description: Inbound assignments payload
-        in: body
-        name: body
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Manage inbound assignments
-      tags:
-      - Internal Squads Controller
-    post:
-      consumes:
-      - application/json
-      description: Get or assign inbounds to squads and nodes
-      parameters:
-      - description: Inbound assignments payload
-        in: body
-        name: body
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Manage inbound assignments
-      tags:
-      - Internal Squads Controller
   /infra-billing/history:
     get:
       consumes:
@@ -7364,39 +7299,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Test subscription response rules matcher
-      tags:
-      - System Controller
-  /system/tools/happ/encrypt:
-    post:
-      consumes:
-      - application/json
-      description: Encrypt subscription link with Happ v4 public key
-      parameters:
-      - description: Link to encrypt
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/system.encryptHappRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Encrypt Happ crypto link
       tags:
       - System Controller
   /system/tools/x25519/generate:

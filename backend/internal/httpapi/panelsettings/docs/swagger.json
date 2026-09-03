@@ -1094,38 +1094,6 @@
                 }
             }
         },
-        "/config-profiles-with-inbounds": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get list of configuration profiles with embedded inbounds for squad assignment",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Internal Squads Controller"
-                ],
-                "summary": "Config profiles with inbounds",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/config-profiles/actions/reorder": {
             "post": {
                 "security": [
@@ -3339,106 +3307,6 @@
                     },
                     "409": {
                         "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/inbound-assignments": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get or assign inbounds to squads and nodes",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Internal Squads Controller"
-                ],
-                "summary": "Manage inbound assignments",
-                "parameters": [
-                    {
-                        "description": "Inbound assignments payload",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get or assign inbounds to squads and nodes",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Internal Squads Controller"
-                ],
-                "summary": "Manage inbound assignments",
-                "parameters": [
-                    {
-                        "description": "Inbound assignments payload",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/shared.ErrorResponse"
                         }
@@ -10116,58 +9984,6 @@
                 }
             }
         },
-        "/system/tools/happ/encrypt": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Encrypt subscription link with Happ v4 public key",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "System Controller"
-                ],
-                "summary": "Encrypt Happ crypto link",
-                "parameters": [
-                    {
-                        "description": "Link to encrypt",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/system.encryptHappRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/shared.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/system/tools/x25519/generate": {
             "get": {
                 "security": [
@@ -12125,6 +11941,18 @@
                 }
             }
         },
+        "subscriptionresponserules.RuleEncryption": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "method": {
+                    "description": "\"age1\" | \"age1pq1\"",
+                    "type": "string"
+                }
+            }
+        },
         "subscriptionresponserules.RuleHeader": {
             "type": "object",
             "properties": {
@@ -12139,8 +11967,26 @@
         "subscriptionresponserules.RuleModifications": {
             "type": "object",
             "properties": {
+                "additionalExtendedClientsRegex": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "applyHeadersToEnd": {
                     "type": "boolean"
+                },
+                "disableHwidCheck": {
+                    "type": "boolean"
+                },
+                "encryption": {
+                    "$ref": "#/definitions/subscriptionresponserules.RuleEncryption"
+                },
+                "excludeHostsByTags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "headers": {
                     "type": "array",
@@ -12153,6 +11999,12 @@
                 },
                 "ignoreServeJsonAtBaseSubscription": {
                     "type": "boolean"
+                },
+                "respondWithRemarks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "subscriptionTemplate": {
                     "type": "string"
@@ -12226,14 +12078,6 @@
                 },
                 "exportToRedisStream": {
                     "type": "boolean"
-                }
-            }
-        },
-        "system.encryptHappRequest": {
-            "type": "object",
-            "properties": {
-                "linkToEncrypt": {
-                    "type": "string"
                 }
             }
         },
@@ -12380,11 +12224,11 @@
         "users.UsersStreamResponse": {
             "type": "object",
             "properties": {
-                "nextCursor": {
-                    "type": "integer"
+                "hasMore": {
+                    "type": "boolean"
                 },
-                "total": {
-                    "type": "integer"
+                "nextCursor": {
+                    "type": "string"
                 },
                 "users": {
                     "type": "array",

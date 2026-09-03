@@ -50,7 +50,7 @@
 // @tag.name Health
 // @tag.description Health check.
 //
-//go:generate swag init --generalInfo main.go --dir . --output internal/httpapi/panelsettings/docs --outputTypes json,yaml --parseDependency --parseInternal
+//go:generate swag init --generalInfo main.go --dir .,internal/httpapi --output internal/httpapi/panelsettings/docs --outputTypes json,yaml --parseInternal
 
 package main
 
