@@ -27,7 +27,7 @@ ARG BUILD_BUST=1
 RUN --mount=type=cache,target=/root/.npm --mount=type=cache,target=/ui/node_modules/.vite/cache \
     rm -rf dist && npm run cb
 
-FROM golang:1.25.12-alpine AS builder
+FROM golang:1.27.1-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -67,11 +67,12 @@ LABEL org.opencontainers.image.title="Exodus" \
       org.opencontainers.image.licenses="AGPL-3.0" \
       org.opencontainers.image.documentation="https://docs.ex"
 
-ARG BRANCH=main
+ARG BRANCH=dev
+ARG BUILD_BRANCH=${BRANCH}
 ARG __EX_METADATA_VERSION=1.0.0
 ARG __EX_METADATA_GIT_BACKEND_COMMIT=0f344f388807f5323b49024a563b3f8146d66857
 ARG __EX_METADATA_GIT_FRONTEND_COMMIT=0f344f388807f5323b49024a563b3f8146d66857
-ARG __EX_METADATA_GIT_BRANCH=main
+ARG __EX_METADATA_GIT_BRANCH=${BUILD_BRANCH}
 ARG __EX_METADATA_BUILD_TIME=2026-01-01T00:00:00Z
 ARG __EX_METADATA_BUILD_NUMBER=0
 

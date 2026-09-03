@@ -28,5 +28,9 @@
     &.dev {
         border-color: var(--mantine-color-red-4);
         color: var(--mantine-color-red-4);
+
+        svg path[fill="#8195a3"] {
+            fill: var(--mantine-color-red-4);
+        }
     }
 }
