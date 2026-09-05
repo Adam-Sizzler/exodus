@@ -141,30 +141,21 @@ release:
 # Local Docker Deployment
 # ------------------------------------------------------------------------------
 deploy:
-	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "dev") && \
-	COMMIT=$$(git rev-parse HEAD 2>/dev/null || echo "unknown") && \
-	VERSION=$$(if [ -n "$(TAG)" ]; then \
-		echo "$(TAG)"; \
-	elif [ -n "$(v)" ]; then \
-		echo "$(v)"; \
-	elif [ -n "$(VERSION)" ]; then \
-		echo "$(VERSION)"; \
-	else \
-		echo "v$$(date +%y).$$(date +%-m).$$(date +%-d)"; \
-	fi) && \
+	@NOW=$$(date +%y.%-m.%-d) && \
 	BUILD_TIME=$$(date -u +'%Y-%m-%dT%H:%M:%SZ') && \
-	echo "$(CYAN)Building & deploying Exodus locally (Version: $$VERSION, Branch: $$BRANCH, Commit: $${COMMIT:0:8})...$(RESET)" && \
+	echo "$(CYAN)Building & deploying Exodus locally (v$$NOW, dev)...$(RESET)" && \
 	docker compose build \
 		--build-arg BUILD_BUST=$$(date +%s) \
-		--build-arg BRANCH=$$BRANCH \
-		--build-arg __EX_METADATA_GIT_BRANCH=$$BRANCH \
-		--build-arg __EX_METADATA_VERSION=$$VERSION \
-		--build-arg __EX_METADATA_GIT_BACKEND_COMMIT=$$COMMIT \
-		--build-arg __EX_METADATA_GIT_FRONTEND_COMMIT=$$COMMIT \
+		--build-arg BRANCH=dev \
+		--build-arg __EX_METADATA_GIT_BRANCH=dev \
+		--build-arg __EX_METADATA_VERSION=v$$NOW \
+		--build-arg __EX_METADATA_GIT_BACKEND_COMMIT=dev \
+		--build-arg __EX_METADATA_GIT_FRONTEND_COMMIT=dev \
 		--build-arg __EX_METADATA_BUILD_TIME=$$BUILD_TIME \
 		exodus && \
 	docker compose up -d --no-deps --force-recreate exodus && \
-	echo "$(GREEN)Exodus container deployed successfully!$(RESET)"
+	echo "$(GREEN)Exodus container deployed successfully!$(RESET)" && \
+	docker compose logs -f exodus
 
 logs:
 	@docker compose logs -f exodus
