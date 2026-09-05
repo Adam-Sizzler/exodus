@@ -172,23 +172,25 @@ func TestSRRModificationsFlow(t *testing.T) {
 	})
 
 	t.Run("respondWithRemarks bypasses HWID check logic completely", func(t *testing.T) {
-		matchedRuleMods := &subscriptionresponserules.RuleModifications{
+		checkBypass := func(mods *subscriptionresponserules.RuleModifications) bool {
+			return mods != nil && len(mods.RespondWithRemarks) > 0
+		}
+
+		// When rule has RespondWithRemarks, bypass is true
+		activeMods := &subscriptionresponserules.RuleModifications{
 			RespondWithRemarks: []string{"Maintenance"},
 		}
-
-		respondedWithRuleRemarks := matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0
-		if !respondedWithRuleRemarks {
-			t.Fatal("expected respondedWithRuleRemarks to be true")
+		if !checkBypass(activeMods) {
+			t.Fatal("expected bypass to be true when RespondWithRemarks is set")
 		}
 
-		// Simulate HWID check execution gating
-		hwidCheckRan := false
-		if !respondedWithRuleRemarks {
-			hwidCheckRan = true
+		// When mods is nil or empty, bypass is false
+		if checkBypass(nil) {
+			t.Fatal("expected bypass to be false when mods is nil")
 		}
-
-		if hwidCheckRan {
-			t.Errorf("expected HWID check to be completely skipped when respondedWithRuleRemarks is true")
+		emptyMods := &subscriptionresponserules.RuleModifications{}
+		if checkBypass(emptyMods) {
+			t.Fatal("expected bypass to be false when RespondWithRemarks is empty")
 		}
 	})
 
