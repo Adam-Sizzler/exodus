@@ -103,6 +103,10 @@ func TestAllTemplateVariables(t *testing.T) {
 		{"{{LAST_TRAFFIC_RESET_AT_UNIX}}", strconv.FormatInt(lastReset.Unix(), 10)},
 		{"{{LAST_TRAFFIC_RESET_AT}}", lastReset.Format("02.01.2006")},
 		{"{{LAST_TRAFFIC_RESET_AT:format=YYYY-MM-DD}}", lastReset.Format("2006-01-02")},
+		{"{{LAST_TRAFFIC_RESET_AT:format=MMMM}}", lastReset.Format("January")},
+		{"{{LAST_TRAFFIC_RESET_AT:format=D MMMM YYYY}}", lastReset.Format("2 January 2006")},
+		{"{{LAST_TRAFFIC_RESET_AT:format=dddd, D MMM YYYY [at] HH:mm}}", lastReset.Format("Monday, 2 Jan 2006 at 15:04")},
+		{"{{LAST_TRAFFIC_RESET_AT:format=YYYY-MM-DD H:m:s A}}", lastReset.Format("2006-01-02 15:4:5 PM")},
 	}
 
 	for _, tc := range tests {

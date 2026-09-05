@@ -1493,20 +1493,53 @@ func formatTemplateTrafficBytes(bytes int64) string {
 	return util.FormatBytes(bytes)
 }
 
+var dayjsBracketRegex = regexp.MustCompile(`\[([^\]]*)\]`)
+
 func convertDayjsToGoFormat(layout string) string {
 	if layout == "" {
 		return "02.01.2006"
 	}
+
+	// Handle bracketed escape literals like [at], [UTC] in dayjs
+	var escapes []string
+	layout = dayjsBracketRegex.ReplaceAllStringFunc(layout, func(m string) string {
+		content := m[1 : len(m)-1]
+		escapes = append(escapes, content)
+		return fmt.Sprintf("\x00%d\x00", len(escapes)-1)
+	})
+
 	r := strings.NewReplacer(
 		"YYYY", "2006",
 		"YY", "06",
+		"MMMM", "January",
+		"MMM", "Jan",
 		"MM", "01",
+		"M", "1",
+		"dddd", "Monday",
+		"ddd", "Mon",
 		"DD", "02",
+		"D", "2",
 		"HH", "15",
+		"H", "15",
+		"hh", "03",
+		"h", "3",
 		"mm", "04",
+		"m", "4",
 		"ss", "05",
+		"s", "5",
+		"SSS", ".000",
+		"A", "PM",
+		"a", "pm",
+		"ZZ", "-0700",
+		"Z", "-07:00",
 	)
-	return r.Replace(layout)
+	res := r.Replace(layout)
+
+	for i, esc := range escapes {
+		res = strings.ReplaceAll(res, fmt.Sprintf("\x00%d\x00", i), esc)
+	}
+
+	return res
 }
 
 func formatTemplateDate(t *time.Time, args map[string]string) string {
