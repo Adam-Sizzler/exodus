@@ -1319,5 +1319,10 @@ export declare const ERRORS: {
         readonly message: "Set tags error";
         readonly httpCode: 500;
     };
+    readonly CLONE_HOST_ERROR: {
+        readonly code: "A258";
+        readonly message: "Clone host error";
+        readonly httpCode: 500;
+    };
 };
 //# sourceMappingURL=errors.d.ts.map

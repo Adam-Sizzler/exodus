@@ -1332,7 +1332,7 @@
     "widget": {
       "loading-computed-config-profile": "正在加载配置文件……",
       "computed-config-profile-loaded-successfully": "已成功加载配置文件",
-      "the-computed-config-profile-description": "显示所有代码块合并后的最终配置文件。",
+      "the-computed-config-profile-description": "显示所有片段合并后的最终配置文件。",
       "view-computed": "查看视图"
     }
   },
@@ -1692,18 +1692,18 @@
     "drawer": {
       "widget": {
         "invalid-json": "无效的 JSON",
-        "snippet-cannot-be-empty": "代码块不能为空",
-        "snippet-cannot-contain-empty-objects": "代码块不能包含空对象",
+        "snippet-cannot-be-empty": "片段不能为空",
+        "snippet-cannot-contain-empty-objects": "片段不能包含空对象",
         "fetching-snippets": "正在获取代码块...",
         "no-snippets-yet": "尚无代码块",
         "more-items": "更多项目...",
         "create-snippet": "创建片段",
         "snippet-name": "片段名称",
-        "enter-snippet-name-cannot-be-changed-later": "输入代码块名称 (稍后不能更改)",
-        "snippet-is-valid": "代码块有效",
+        "enter-snippet-name-cannot-be-changed-later": "输入片段名称 (稍后不能更改)",
+        "snippet-is-valid": "片段有效",
         "edit-snippet": "编辑片段",
-        "snippets": "代码块",
-        "new-snippet": "新建代码块",
+        "snippets": "片段",
+        "new-snippet": "新建片段",
         "snippets-help-line-1": "它们用于预定义您的一些配置。",
         "snippets-help-line-2": "代码块必须包含一个出站或规则对象数组，而且至少需要一个项目。",
         "snippets-help-line-3": "自动完成是可用的代码块名称。此外，您可以快速预览代码块，在编辑器的名称上悬停。",
@@ -2169,7 +2169,7 @@
   },
   "statistic-sparkline-card": {
     "widget": {
-      "peak": "峰值"
+      "peak": "最高单日使用量"
     }
   },
   "user-hwid-devices": {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"exodus/internal/config"
@@ -150,6 +151,15 @@ func (s *NodeService) CreateNode(ctx context.Context, req createNodeRequest) (no
 }
 
 func (s *NodeService) UpdateNode(ctx context.Context, req updateNodeRequest) (nodeRecord, error) {
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		req.Name = &trimmed
+	}
+	if req.Address != nil {
+		trimmed := strings.TrimSpace(*req.Address)
+		req.Address = &trimmed
+	}
+
 	var grpcAuthToken *string
 	if req.GRPCAuthToken != nil {
 		token, err := security.ResolveGRPCAuthToken(*req.GRPCAuthToken)
@@ -165,11 +175,14 @@ func (s *NodeService) UpdateNode(ctx context.Context, req updateNodeRequest) (no
 	}
 
 	monitor.RequestNodeSync()
-	monitor.RequestNodeDeploy(true, req.UUID)
 
 	node, err := s.repo.getNodeByUUID(ctx, req.UUID)
 	if err != nil {
 		return nodeRecord{}, err
+	}
+
+	if !node.IsDisabled && (req.ConfigProfile != nil || req.ProxyURL.Set || req.Port != nil || req.Address != nil || req.ActivePluginUUID.Set || req.GRPCAuthToken != nil) {
+		monitor.RequestNodeDeploy(true, req.UUID)
 	}
 
 	emitNodeNotification(ctx, s.cfg, notifications.EventNodeModified, node, nil)

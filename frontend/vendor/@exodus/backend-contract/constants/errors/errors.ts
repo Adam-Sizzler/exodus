@@ -1289,5 +1289,11 @@ export const ERRORS = {
         message: 'Set tags error',
         httpCode: 500,
     },
+    CLONE_HOST_ERROR: {
+        code: 'A258',
+        message: 'Clone host error',
+        httpCode: 500,
+    },
 } as const;
+
 
