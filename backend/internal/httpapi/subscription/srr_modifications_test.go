@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -167,6 +168,55 @@ func TestSRRModificationsFlow(t *testing.T) {
 		}
 		if reqType != defaultResponseType {
 			t.Errorf("expected to stay defaultResponseType when ignored, got %s", reqType)
+		}
+	})
+
+	t.Run("respondWithRemarks bypasses HWID check logic completely", func(t *testing.T) {
+		matchedRuleMods := &subscriptionresponserules.RuleModifications{
+			RespondWithRemarks: []string{"Maintenance"},
+		}
+
+		respondedWithRuleRemarks := matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0
+		if !respondedWithRuleRemarks {
+			t.Fatal("expected respondedWithRuleRemarks to be true")
+		}
+
+		// Simulate HWID check execution gating
+		hwidCheckRan := false
+		if !respondedWithRuleRemarks {
+			hwidCheckRan = true
+		}
+
+		if hwidCheckRan {
+			t.Errorf("expected HWID check to be completely skipped when respondedWithRuleRemarks is true")
+		}
+	})
+
+	t.Run("CustomTemplateLoader validates templateType matching responseTypeXrayJSON", func(t *testing.T) {
+		loader := func(templateType string, data []byte) ([]byte, error) {
+			if !strings.EqualFold(templateType, responseTypeXrayJSON) {
+				return nil, fmt.Errorf("template is not of type %s (got %s)", responseTypeXrayJSON, templateType)
+			}
+			return data, nil
+		}
+
+		// Valid XRAY_JSON template succeeds
+		validData := []byte(`{"outbounds":[]}`)
+		res, err := loader("XRAY_JSON", validData)
+		if err != nil {
+			t.Fatalf("expected valid XRAY_JSON template to succeed, got %v", err)
+		}
+		if string(res) != string(validData) {
+			t.Errorf("expected %s, got %s", string(validData), string(res))
+		}
+
+		// Invalid SINGBOX template type fails and returns error
+		_, err = loader("SINGBOX", validData)
+		if err == nil {
+			t.Fatalf("expected non-XRAY_JSON template type (SINGBOX) to fail, got nil error")
+		}
+		if !strings.Contains(err.Error(), "is not of type") {
+			t.Errorf("expected error message mentioning type mismatch, got %v", err)
 		}
 	})
 

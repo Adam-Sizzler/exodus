@@ -151,7 +151,15 @@ func (s *RenderService) RenderUserSubscription(
 
 	// 1. Respond with remarks (SRR respondWithRemarks)
 	var earlyExitRemarks []string
-	if matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0 {
+	// respondedWithRuleRemarks tracks whether the SRR rule itself asked for
+	// remarks (as opposed to disabled/expired/limited-status remarks below).
+	// Matches upstream: srrContext.respondWithRemarks triggers an
+	// unconditional early return in subscription.service.ts, before the
+	// HWID check ever runs — regardless of what isShowCustomRemarks ends up
+	// substituting it with. That early-return-before-HWID behavior must be
+	// preserved here too, not just the remarks-selection logic.
+	respondedWithRuleRemarks := matchedRuleMods != nil && len(matchedRuleMods.RespondWithRemarks) > 0
+	if respondedWithRuleRemarks {
 		if settings.Raw.IsShowCustomRemarks {
 			earlyExitRemarks = matchedRuleMods.RespondWithRemarks
 		} else if len(settings.CustomRemarks.EmptyHosts) > 0 {
@@ -235,41 +243,47 @@ func (s *RenderService) RenderUserSubscription(
 	hwidSoftLimitHit := false
 	disableHwidCheck := matchedRuleMods != nil && matchedRuleMods.DisableHwidCheck
 
-	if settings.HwidSettings.Enabled && !disableHwidCheck {
-		result, err := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
-		if err != nil {
-			return nil, "", nil, ErrHwidCheckFailed
-		}
-
-		if !result.Allowed {
-			hwidSoftLimitHit = true
-			hwidExtraHeaders = map[string]string{"x-hwid-limit": "true"}
-
-			if result.MaxDeviceReached && settings.HwidSettings.MaxDevicesAnnounce != nil &&
-				*settings.HwidSettings.MaxDevicesAnnounce != "" {
-				hwidExtraHeaders["announce"] = formatTemplateValue(
-					"exEncodeBase64:"+*settings.HwidSettings.MaxDevicesAnnounce,
-					user, settings, subscriptionURL,
-				)
-			}
-			if result.HwidNotSupported {
-				hwidExtraHeaders["x-hwid-not-supported"] = "true"
-			}
-			if result.MaxDeviceReached {
-				hwidExtraHeaders["x-hwid-max-devices-reached"] = "true"
+	// respondedWithRuleRemarks already means "return before this point" in
+	// upstream, so the whole HWID check (and the device-recording fallback
+	// below) is skipped for it too — not just the host/tag/override steps
+	// above.
+	if !respondedWithRuleRemarks {
+		if settings.HwidSettings.Enabled && !disableHwidCheck {
+			result, err := checkHwidDeviceLimit(ctx, s.db, user, hwid, settings.HwidSettings)
+			if err != nil {
+				return nil, "", nil, ErrHwidCheckFailed
 			}
 
-			hosts = nil
-			if settings.Raw.IsShowCustomRemarks {
-				if result.MaxDeviceReached && len(settings.CustomRemarks.HWIDMaxDevicesExceeded) > 0 {
-					hosts = createFallbackRemarkHosts(settings.CustomRemarks.HWIDMaxDevicesExceeded)
-				} else if result.HwidNotSupported && len(settings.CustomRemarks.HWIDNotSupported) > 0 {
-					hosts = createFallbackRemarkHosts(settings.CustomRemarks.HWIDNotSupported)
+			if !result.Allowed {
+				hwidSoftLimitHit = true
+				hwidExtraHeaders = map[string]string{"x-hwid-limit": "true"}
+
+				if result.MaxDeviceReached && settings.HwidSettings.MaxDevicesAnnounce != nil &&
+					*settings.HwidSettings.MaxDevicesAnnounce != "" {
+					hwidExtraHeaders["announce"] = formatTemplateValue(
+						"exEncodeBase64:"+*settings.HwidSettings.MaxDevicesAnnounce,
+						user, settings, subscriptionURL,
+					)
+				}
+				if result.HwidNotSupported {
+					hwidExtraHeaders["x-hwid-not-supported"] = "true"
+				}
+				if result.MaxDeviceReached {
+					hwidExtraHeaders["x-hwid-max-devices-reached"] = "true"
+				}
+
+				hosts = nil
+				if settings.Raw.IsShowCustomRemarks {
+					if result.MaxDeviceReached && len(settings.CustomRemarks.HWIDMaxDevicesExceeded) > 0 {
+						hosts = createFallbackRemarkHosts(settings.CustomRemarks.HWIDMaxDevicesExceeded)
+					} else if result.HwidNotSupported && len(settings.CustomRemarks.HWIDNotSupported) > 0 {
+						hosts = createFallbackRemarkHosts(settings.CustomRemarks.HWIDNotSupported)
+					}
 				}
 			}
+		} else if hwid != nil {
+			_ = enqueueOrUpsertHwidUserDevice(ctx, s.db, user.ID, *hwid)
 		}
-	} else if hwid != nil {
-		_ = enqueueOrUpsertHwidUserDevice(ctx, s.db, user.ID, *hwid)
 	}
 
 	if len(hosts) > 0 {
@@ -328,8 +342,21 @@ func (s *RenderService) RenderUserSubscription(
 		settings.IgnoreHostXrayJsonTemplate = true
 	}
 	settings.CustomTemplateLoader = func(uuidStr string) ([]byte, error) {
-		_, data, err := getSubscriptionTemplateByUUID(ctx, s.db, uuidStr)
-		return data, err
+		templateType, data, err := getSubscriptionTemplateByUUID(ctx, s.db, uuidStr)
+		if err != nil {
+			return nil, err
+		}
+		// Same defensive check as the whole-response subscriptionTemplate
+		// override (getSubscriptionTemplateWithOverride): a UUID that
+		// resolves to a template of the wrong type (e.g. a host's
+		// xrayJsonTemplateUuid pointing at a SINGBOX template — both types
+		// share the template_json column, so a type mix-up wouldn't
+		// otherwise fail to load) must not be used; the caller falls back
+		// to the default template on any error here.
+		if !strings.EqualFold(templateType, responseTypeXrayJSON) {
+			return nil, fmt.Errorf("template %s is not of type %s (got %s)", uuidStr, responseTypeXrayJSON, templateType)
+		}
+		return data, nil
 	}
 
 	var outputContent string

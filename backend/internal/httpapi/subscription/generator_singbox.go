@@ -10,11 +10,9 @@ CROSS-CUTTING RULES / НЕЯВНЫЕ ЗАВИСИМОСТИ:
 */
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -61,115 +59,6 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
 		return "", err
 	}
 	return string(data), nil
-}
-
-func marshalJSONWithTemplateTopLevelOrder(templateJSON []byte, payload map[string]interface{}) (string, error) {
-	templateOrder, err := extractTopLevelJSONKeys(templateJSON)
-	if err != nil || len(templateOrder) == 0 {
-		data, marshalErr := json.MarshalIndent(payload, "", "  ")
-		if marshalErr != nil {
-			return "", marshalErr
-		}
-		return string(data), nil
-	}
-	encodedValues := make(map[string][]byte, len(payload))
-	for key, value := range payload {
-		raw, marshalErr := json.MarshalIndent(value, "", "  ")
-		if marshalErr != nil {
-			return "", marshalErr
-		}
-		encodedValues[key] = raw
-	}
-	orderedKeys := make([]string, 0, len(payload))
-	used := make(map[string]struct{}, len(payload))
-	for _, key := range templateOrder {
-		if _, exists := encodedValues[key]; !exists {
-			continue
-		}
-		if _, exists := used[key]; exists {
-			continue
-		}
-		orderedKeys = append(orderedKeys, key)
-		used[key] = struct{}{}
-	}
-	remainingKeys := make([]string, 0)
-	for key := range encodedValues {
-		if _, exists := used[key]; !exists {
-			remainingKeys = append(remainingKeys, key)
-		}
-	}
-	sort.Strings(remainingKeys)
-	orderedKeys = append(orderedKeys, remainingKeys...)
-	if len(orderedKeys) == 0 {
-		return "{}", nil
-	}
-	var builder strings.Builder
-	builder.WriteString("{\n")
-	for i, key := range orderedKeys {
-		keyJSON, marshalErr := json.Marshal(key)
-		if marshalErr != nil {
-			return "", marshalErr
-		}
-		builder.WriteString("  ")
-		builder.Write(keyJSON)
-		builder.WriteString(": ")
-		builder.WriteString(indentTopLevelJSONValue(encodedValues[key]))
-		if i != len(orderedKeys)-1 {
-			builder.WriteString(",")
-		}
-		builder.WriteString("\n")
-	}
-	builder.WriteString("}")
-	return builder.String(), nil
-}
-
-func extractTopLevelJSONKeys(templateJSON []byte) ([]string, error) {
-	trimmed := bytes.TrimSpace(templateJSON)
-	if len(trimmed) == 0 {
-		return nil, nil
-	}
-	decoder := json.NewDecoder(bytes.NewReader(trimmed))
-	firstToken, err := decoder.Token()
-	if err != nil {
-		return nil, err
-	}
-	startDelim, ok := firstToken.(json.Delim)
-	if !ok || startDelim != '{' {
-		return nil, nil
-	}
-	keys := make([]string, 0)
-	for decoder.More() {
-		keyToken, tokenErr := decoder.Token()
-		if tokenErr != nil {
-			return nil, tokenErr
-		}
-		key, ok := keyToken.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid json object key token type")
-		}
-		keys = append(keys, key)
-		var discard json.RawMessage
-		if decodeErr := decoder.Decode(&discard); decodeErr != nil {
-			return nil, decodeErr
-		}
-	}
-	_, err = decoder.Token()
-	if err != nil {
-		return nil, err
-	}
-	return keys, nil
-}
-
-func indentTopLevelJSONValue(value []byte) string {
-	text := string(value)
-	if !strings.Contains(text, "\n") {
-		return text
-	}
-	lines := strings.Split(text, "\n")
-	for i := 1; i < len(lines); i++ {
-		lines[i] = "  " + lines[i]
-	}
-	return strings.Join(lines, "\n")
 }
 
 type singboxInboundDefaults struct {

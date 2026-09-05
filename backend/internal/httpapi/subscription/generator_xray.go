@@ -534,10 +534,6 @@ func parseJSONMapString(raw *string) map[string]interface{} {
 	return yamlParsed
 }
 
-func generateXrayJSONConfig(templateJSON []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
-	return generateXrayJSONConfigExt(templateJSON, hosts, user, false, false, nil)
-}
-
 func generateXrayJSONConfigExt(
 	templateJSON []byte,
 	hosts []SubscriptionHost,
