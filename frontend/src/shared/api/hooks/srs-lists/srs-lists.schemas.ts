@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const SRSListSchema = z.object({
     uuid: z.string().uuid(),
-    tag: z.string(),
+    tags: z.array(z.string()).default([]),
     format: z.string(),
     url: z.string().url(),
     updateInterval: z.string(),
@@ -24,12 +24,30 @@ export const GetSRSListsResponseSchema = z.object({
     })
 })
 
+export const GetSRSListsTagsResponseSchema = z.object({
+    response: z.object({
+        tags: z.array(z.string())
+    })
+})
+
+export const SetSRSListsTagsRequestSchema = z.object({
+    uuid: z.string().uuid(),
+    tags: z.array(z.string())
+})
+
+export const SetSRSListsTagsResponseSchema = z.object({
+    response: z.object({
+        uuid: z.string().uuid(),
+        tags: z.array(z.string())
+    })
+})
+
 export const CreateSRSListsRequestSchema = z.object({
     url: z.string().optional(),
     urls: z.array(z.string()).optional(),
     format: z.string().optional(),
     updateInterval: z.string().optional(),
-    tag: z.string().optional(),
+    tags: z.array(z.string()).optional(),
     path: z.string().optional(),
     isEnabled: z.boolean().optional()
 })
@@ -37,7 +55,7 @@ export const CreateSRSListsRequestSchema = z.object({
 export const UpdateSRSListRequestSchema = z.object({
     uuid: z.string().uuid(),
     url: z.string().optional(),
-    tag: z.string().optional(),
+    tags: z.array(z.string()).optional(),
     format: z.string().optional(),
     updateInterval: z.string().optional(),
     path: z.string().optional(),

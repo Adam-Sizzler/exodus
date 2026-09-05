@@ -676,7 +676,7 @@ model NodeMeta {
 
 model SrsLists {
   uuid           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tag            String    @unique @map("tag")
+  tags           String[]  @default([]) @map("tags")
   format         String    @default("binary") @map("format")
   url            String    @unique @map("url")
   updateInterval String    @default("1d") @map("update_interval")

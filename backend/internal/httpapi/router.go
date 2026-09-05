@@ -238,6 +238,7 @@ func RegisterProtectedRoutes(mux *http.ServeMux, db, backgroundDB *sql.DB, cfg *
 	mux.HandleFunc("/api/external-squads/", externalsquads.ExternalSquadByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/external-squads/actions/reorder", externalsquads.ExternalSquadsReorderHandler(db, cfg))
 
+	mux.HandleFunc("/api/srs-lists/tags", srslists.SRSListsTagsHandler(db, cfg))
 	mux.HandleFunc("/api/srs-lists", srslists.SRSListsHandler(db, cfg))
 	mux.HandleFunc("/api/srs-lists/", srslists.SRSListByUUIDHandler(db, cfg))
 	mux.HandleFunc("/api/srs-lists/actions/", srslists.SRSListsActionsHandler(db, cfg))

@@ -3,16 +3,18 @@ package srslists
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"exodus/internal/config"
+	"exodus/internal/httpapi/shared"
 	srscore "exodus/internal/srslists"
 	"exodus/internal/util"
 )
 
 type srsListAPI struct {
 	UUID           string     `json:"uuid"`
-	Tag            string     `json:"tag"`
+	Tags           []string   `json:"tags"`
 	Format         string     `json:"format"`
 	URL            string     `json:"url"`
 	UpdateInterval string     `json:"updateInterval"`
@@ -31,7 +33,7 @@ type srsListAPI struct {
 type createSRSListsRequest struct {
 	URL            string   `json:"url"`
 	URLs           []string `json:"urls"`
-	Tag            string   `json:"tag"`
+	Tags           []string `json:"tags"`
 	Format         string   `json:"format"`
 	UpdateInterval string   `json:"updateInterval"`
 	Path           string   `json:"path"`
@@ -39,13 +41,13 @@ type createSRSListsRequest struct {
 }
 
 type updateSRSListRequest struct {
-	UUID           string  `json:"uuid"`
-	URL            *string `json:"url"`
-	Tag            *string `json:"tag"`
-	Format         *string `json:"format"`
-	UpdateInterval *string `json:"updateInterval"`
-	Path           *string `json:"path"`
-	IsEnabled      *bool   `json:"isEnabled"`
+	UUID           string   `json:"uuid"`
+	URL            *string  `json:"url"`
+	Tags           []string `json:"tags"`
+	Format         *string  `json:"format"`
+	UpdateInterval *string  `json:"updateInterval"`
+	Path           *string  `json:"path"`
+	IsEnabled      *bool    `json:"isEnabled"`
 }
 
 type reorderSRSListsRequest struct {
@@ -70,6 +72,51 @@ type bulkSetIntervalRequest struct {
 
 type checkListsRequest struct {
 	UUIDs []string `json:"uuids"`
+}
+
+func getAllTags(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM srs_lists
+		ORDER BY tag ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := make([]string, 0)
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		trimmed := strings.TrimSpace(t)
+		if trimmed != "" {
+			tags = append(tags, trimmed)
+		}
+	}
+	return tags, rows.Err()
+}
+
+func setTags(ctx context.Context, db *sql.DB, srsUUID string, tags []string) error {
+	sanitized := shared.SanitizeTags(tags)
+	result, err := db.ExecContext(ctx, `
+		UPDATE srs_lists
+		SET tags = $1::text[], updated_at = CURRENT_TIMESTAMP
+		WHERE uuid::text = $2
+	`, shared.PostgresTextArrayLiteral(sanitized), srsUUID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func checkSelectedLists(ctx context.Context, db *sql.DB, cfg *config.BackendConfig, uuids []string) error {

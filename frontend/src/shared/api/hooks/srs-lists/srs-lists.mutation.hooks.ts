@@ -9,6 +9,8 @@ import {
     CreateSRSListsRequestSchema,
     GenericSRSListsMutationResponseSchema,
     ReorderSRSListsRequestSchema,
+    SetSRSListsTagsRequestSchema,
+    SetSRSListsTagsResponseSchema,
     UpdateSRSListRequestSchema
 } from './srs-lists.schemas'
 
@@ -111,4 +113,20 @@ export const useBulkSetIntervalSRSLists = createMutationHook({
     bodySchema: BulkSetIntervalSRSListsRequestSchema,
     responseSchema: GenericSRSListsMutationResponseSchema,
     requestMethod: 'post'
+})
+
+export const useSetSRSListsTags = createMutationHook({
+    endpoint: '/api/srs-lists/tags',
+    bodySchema: SetSRSListsTagsRequestSchema,
+    responseSchema: SetSRSListsTagsResponseSchema,
+    requestMethod: 'patch',
+    rMutationParams: {
+        onError: (error) => {
+            notifications.show({
+                title: 'Update tags',
+                message: error instanceof Error ? error.message : 'Request failed with unknown error.',
+                color: 'red'
+            })
+        }
+    }
 })

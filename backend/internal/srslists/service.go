@@ -14,13 +14,14 @@ import (
 	"time"
 
 	"exodus/internal/config"
+	"exodus/internal/db"
 )
 
 var fileNameAllowedRe = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
 type Item struct {
 	UUID           string
-	Tag            string
+	Tags           []string
 	Format         string
 	URL            string
 	UpdateInterval string
@@ -81,9 +82,9 @@ func DeriveTagFromFileName(fileName string) string {
 	return tag
 }
 
-func LoadAll(ctx context.Context, db *sql.DB) ([]Item, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT uuid, tag, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, last_checked_at, last_error, created_at, updated_at
+func LoadAll(ctx context.Context, sqlDB *sql.DB) ([]Item, error) {
+	rows, err := sqlDB.QueryContext(ctx, `
+		SELECT uuid, tags, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, last_checked_at, last_error, created_at, updated_at
 		FROM srs_lists
 		ORDER BY view_position ASC, created_at ASC
 	`)
@@ -98,9 +99,10 @@ func LoadAll(ctx context.Context, db *sql.DB) ([]Item, error) {
 		var checkedAt sql.NullTime
 		var lastError sql.NullString
 		var pathValue sql.NullString
+		var tags db.StringArray
 		if err := rows.Scan(
 			&item.UUID,
-			&item.Tag,
+			&tags,
 			&item.Format,
 			&item.URL,
 			&item.UpdateInterval,
@@ -115,6 +117,10 @@ func LoadAll(ctx context.Context, db *sql.DB) ([]Item, error) {
 			&item.UpdatedAt,
 		); err != nil {
 			return nil, err
+		}
+		item.Tags = tags.Slice()
+		if item.Tags == nil {
+			item.Tags = []string{}
 		}
 		if checkedAt.Valid {
 			t := checkedAt.Time
@@ -146,10 +152,7 @@ func LoadNodeSyncItems(ctx context.Context, db *sql.DB) ([]NodeSyncItem, error) 
 		if !item.IsEnabled {
 			continue
 		}
-		tag := item.Tag
-		if strings.TrimSpace(tag) == "" {
-			tag = DeriveTagFromFileName(item.FileName)
-		}
+		tag := DeriveTagFromFileName(item.FileName)
 		pathValue := ""
 		if item.Path != nil {
 			pathValue = strings.TrimSpace(*item.Path)

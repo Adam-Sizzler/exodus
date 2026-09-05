@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -165,13 +166,13 @@ func handleGetSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *
 	}
 	apiItems := make([]srsListAPI, 0, len(items))
 	for _, item := range items {
-		tag := strings.TrimSpace(item.Tag)
-		if tag == "" {
-			tag = srscore.DeriveTagFromFileName(item.FileName)
+		tags := item.Tags
+		if tags == nil {
+			tags = []string{}
 		}
 		apiItems = append(apiItems, srsListAPI{
 			UUID:           item.UUID,
-			Tag:            tag,
+			Tags:           tags,
 			Format:         item.Format,
 			URL:            item.URL,
 			UpdateInterval: item.UpdateInterval,
@@ -198,13 +199,13 @@ func handleGetSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *c
 	}
 	for _, item := range items {
 		if item.UUID == listUUID {
-			tag := strings.TrimSpace(item.Tag)
-			if tag == "" {
-				tag = srscore.DeriveTagFromFileName(item.FileName)
+			tags := item.Tags
+			if tags == nil {
+				tags = []string{}
 			}
 			shared.WriteJSON(w, http.StatusOK, map[string]any{"response": srsListAPI{
 				UUID:           item.UUID,
-				Tag:            tag,
+				Tags:           tags,
 				Format:         item.Format,
 				URL:            item.URL,
 				UpdateInterval: item.UpdateInterval,
@@ -249,7 +250,7 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 	}
 
 	type createItem struct {
-		Tag            string
+		Tags           []string
 		Format         string
 		URL            string
 		UpdateInterval string
@@ -285,9 +286,9 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 			updateInterval = "1d"
 		}
 
-		tag := strings.TrimSpace(req.Tag)
-		if len(rawURLs) > 1 || tag == "" {
-			tag = srscore.DeriveTagFromFileName(fileName)
+		itemTags := shared.SanitizeTags(req.Tags)
+		if itemTags == nil {
+			itemTags = []string{}
 		}
 
 		var pathValue *string
@@ -300,7 +301,7 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 		}
 
 		toCreate = append(toCreate, createItem{
-			Tag:            tag,
+			Tags:           itemTags,
 			Format:         itemFormat,
 			URL:            cleanURL,
 			UpdateInterval: updateInterval,
@@ -338,9 +339,9 @@ func handleCreateSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cf
 	for _, item := range toCreate {
 		currentPos++
 		if _, err := tx.ExecContext(r.Context(), `
-			INSERT INTO srs_lists (tag, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		`, item.Tag, item.Format, item.URL, item.UpdateInterval, item.Path, item.FileName, currentPos, item.IsEnabled); err != nil {
+			INSERT INTO srs_lists (tags, format, url, update_interval, path, file_name, view_position, is_enabled, is_available, created_at, updated_at)
+			VALUES ($1::text[], $2, $3, $4, $5, $6, $7, $8, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`, shared.PostgresTextArrayLiteral(item.Tags), item.Format, item.URL, item.UpdateInterval, item.Path, item.FileName, currentPos, item.IsEnabled); err != nil {
 			shared.SendAPIError(w, shared.ErrCreateSRSListFailed.WithCause(err), cfg)
 			return
 		}
@@ -404,16 +405,10 @@ func handleUpdateSRSList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 		idx += 2
 	}
 
-	if req.Tag != nil {
-		tagValue := strings.TrimSpace(*req.Tag)
-		if tagValue == "" {
-			if fileName == "" {
-				fileName = "ruleset.srs"
-			}
-			tagValue = srscore.DeriveTagFromFileName(fileName)
-		}
-		updates = append(updates, fmt.Sprintf("tag = $%d", idx))
-		args = append(args, tagValue)
+	if req.Tags != nil {
+		sanitized := shared.SanitizeTags(req.Tags)
+		updates = append(updates, fmt.Sprintf("tags = $%d", idx))
+		args = append(args, shared.PostgresTextArrayLiteral(sanitized))
 		idx++
 	}
 
@@ -669,4 +664,71 @@ func handleCheckSRSLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg
 		}
 	}
 	handleGetSRSLists(w, r, db, cfg)
+}
+
+// SRSListsTagsHandler godoc
+// @Summary      Manage SRS list tags
+// @Description  Get unique SRS list tags or set tags for an SRS list
+// @Tags         SRS Lists Controller
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  shared.ErrorResponse
+// @Failure      500  {object}  shared.ErrorResponse
+// @Router       /srs-lists/tags [get]
+// @Router       /srs-lists/tags [patch]
+func SRSListsTagsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetSRSListTags(w, r, db, cfg)
+		case http.MethodPatch:
+			handleSetSRSListTags(w, r, db, cfg)
+		default:
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		}
+	}
+}
+
+func handleGetSRSListTags(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	tags, err := getAllTags(r.Context(), db)
+	if err != nil {
+		shared.SendAPIError(w, shared.ErrGetSrsListsFailed.WithCause(err), cfg)
+		return
+	}
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"tags": tags,
+		},
+	})
+}
+
+func handleSetSRSListTags(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	var req shared.SetEntityTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, cfg)
+		return
+	}
+	if _, err := uuid.Parse(strings.TrimSpace(req.UUID)); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
+		return
+	}
+
+	sanitized := shared.SanitizeTags(req.Tags)
+	if err := setTags(r.Context(), db, req.UUID, sanitized); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			shared.SendAPIError(w, shared.ErrSrsListNotFound, cfg)
+			return
+		}
+		shared.SendAPIError(w, shared.ErrUpdateSrsListFailed.WithCause(err), cfg)
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"response": map[string]any{
+			"uuid": req.UUID,
+			"tags": sanitized,
+		},
+	})
 }

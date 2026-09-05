@@ -13,12 +13,14 @@ import {
     useGetExternalSquadsTags,
     useGetInternalSquadsTags,
     useGetNodePluginsTags,
+    useGetSRSListsTags,
     useGetSubpageConfigsTags,
     useGetSubscriptionTemplatesTags,
     useSetConfigProfilesTags,
     useSetExternalSquadsTags,
     useSetInternalSquadsTags,
     useSetNodePluginsTags,
+    useSetSRSListsTags,
     useSetSubpageConfigsTags,
     useSetSubscriptionTemplatesTags
 } from '@shared/api/hooks'
@@ -32,6 +34,7 @@ type EditTagsType =
     | 'externalSquad'
     | 'internalSquad'
     | 'nodePlugin'
+    | 'srsList'
     | 'subpageConfig'
     | 'template'
 
@@ -170,6 +173,12 @@ const BODY_BY_KIND: Record<EditTagsType, ReturnType<typeof makeBody>> = {
         useSetNodePluginsTags,
         QueryKeys.nodePlugins.getNodePlugins.queryKey,
         QueryKeys.nodePlugins.getNodePluginsTags.queryKey
+    ),
+    srsList: makeBody(
+        useGetSRSListsTags,
+        useSetSRSListsTags,
+        QueryKeys.srsLists.getSRSLists.queryKey,
+        QueryKeys.srsLists.getSRSListsTags.queryKey
     ),
     subpageConfig: makeBody(
         useGetSubpageConfigsTags,
