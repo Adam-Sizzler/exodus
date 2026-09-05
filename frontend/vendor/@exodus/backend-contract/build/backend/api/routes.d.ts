@@ -111,6 +111,7 @@ export declare const REST_API: {
         readonly DELETE: (uuid: string) => string;
         readonly ACTIONS: {
             readonly REORDER: "/api/hosts/actions/reorder";
+            readonly CLONE: "/api/hosts/actions/clone";
         };
         readonly BULK: {
             readonly ENABLE_HOSTS: "/api/hosts/bulk/enable";

@@ -9,6 +9,8 @@ import (
 
 	"exodus/internal/db"
 	"exodus/internal/httpapi/shared"
+
+	"github.com/google/uuid"
 )
 
 type HostRepository struct {
@@ -654,4 +656,121 @@ func (r *HostRepository) bulkUpdateHosts(ctx context.Context, uuids []string, cl
 	}
 
 	return tx.Commit()
+}
+
+func (r *HostRepository) cloneHost(ctx context.Context, cloneFromUUID string) (hostRecord, []string, []string, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	orig, err := r.getHostByUUID(ctx, cloneFromUUID)
+	if err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+
+	nodesMap, err := r.getHostNodes(ctx, []string{cloneFromUUID})
+	if err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+	squadsMap, err := r.getHostInternalSquads(ctx, []string{cloneFromUUID})
+	if err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+	nodes := nodesMap[cloneFromUUID]
+	squads := squadsMap[cloneFromUUID]
+
+	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET view_position = view_position + 1 WHERE view_position > $1`, orig.ViewPosition); err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+
+	cloneUUID := uuid.NewString()
+	newPosition := orig.ViewPosition + 1
+	newRemark := cloneString(orig.Remark)
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO hosts (
+			uuid, view_position, remark, address, port,
+			path, sni, host, alpn, fingerprint, security_layer,
+			xhttp_extra_params, mux_params,
+			mapper, sockopt_params, final_mask,
+			is_disabled, server_description,
+			vless_route_id, pinned_peer_cert_sha256, verify_peer_cert_by_name,
+			shuffle_host, mihomo_x25519, mihomo_ip_version,
+			xray_json_template_uuid, keep_sni_blank,
+			exclude_from_subscription_types, tags, is_hidden,
+			override_sni_from_address, config_profile_uuid, config_profile_inbound_uuid,
+			internal_squads_mode
+		) VALUES (
+			$1, $2, $3, $4, $5,
+			$6, $7, $8, $9, $10, $11,
+			$12, $13,
+			$14, $15, $16,
+			$17, $18,
+			$19, $20, $21,
+			$22, $23, $24,
+			$25, $26,
+			$27, $28, $29,
+			$30, $31, $32,
+			$33
+		)
+	`,
+		cloneUUID,
+		newPosition,
+		newRemark,
+		orig.Address,
+		orig.Port,
+		orig.Path,
+		orig.SNI,
+		orig.Host,
+		orig.ALPN,
+		orig.Fingerprint,
+		orig.SecurityLayer,
+		orig.XHTTPExtraParams,
+		orig.MuxParams,
+		orig.Mapper,
+		orig.SockoptParams,
+		orig.FinalMask,
+		true,
+		orig.ServerDescription,
+		orig.VlessRouteID,
+		orig.PinnedPeerCertSha256,
+		orig.VerifyPeerCertByName,
+		orig.ShuffleHost,
+		orig.MihomoX25519,
+		orig.MihomoIPVersion,
+		orig.XrayJSONTemplateUUID,
+		orig.KeepSNIBlank,
+		ensureStringSlice(orig.ExcludeTypes),
+		ensureStringSlice(orig.Tags),
+		orig.IsHidden,
+		orig.OverrideSNIFromAddress,
+		orig.ConfigProfileUUID,
+		orig.ConfigProfileInboundUUID,
+		orig.InternalSquadsMode,
+	)
+	if err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+
+	if err := r.replaceHostNodesTx(ctx, tx, cloneUUID, nodes); err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+	if err := r.replaceHostInternalSquadsTx(ctx, tx, cloneUUID, squads); err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `SELECT setval('hosts_view_position_seq', (SELECT COALESCE(MAX(view_position), 0) FROM hosts) + 1)`); err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return hostRecord{}, nil, nil, err
+	}
+
+	cloned, err := r.getHostByUUID(ctx, cloneUUID)
+	return cloned, nodes, squads, err
 }

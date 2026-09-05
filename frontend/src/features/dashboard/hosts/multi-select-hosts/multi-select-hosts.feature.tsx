@@ -27,12 +27,11 @@ import {
 } from 'react-icons/tb'
 
 import { showModal } from '@shared/_modals/show-modal'
-import { useBulkEnableHosts, useCreateHost, useGetHosts, useReorderHosts } from '@shared/api/hooks'
+import { useBulkEnableHosts, useCloneHost, useGetHosts } from '@shared/api/hooks'
 import {
     useBulkDeleteHosts,
     useBulkDisableHosts
 } from '@shared/api/hooks/hosts/hosts.mutation.hooks'
-import { cloneString } from '@shared/utils/misc/clone-string'
 
 import { useHostsActiveTag } from '@entities/dashboard/view-preferences-store'
 
@@ -81,8 +80,7 @@ export const MultiSelectHostsFeature = (props: IProps) => {
             }
         }
     })
-    const { mutateAsync: createHost } = useCreateHost()
-    const { mutateAsync: reorderHosts } = useReorderHosts()
+    const { mutateAsync: cloneHost } = useCloneHost()
 
     const selectAllHosts = () => {
         setSelectedHosts(hosts?.map((host) => host.uuid) || [])
@@ -165,45 +163,8 @@ export const MultiSelectHostsFeature = (props: IProps) => {
                     })
                 }
 
-                const cloneResults = await Promise.allSettled(
-                    cloneableHosts.map(async (host) => ({
-                        parentUuid: host.uuid,
-                        clone: await createHost({
-                            variables: {
-                                ...host,
-                                remark: cloneString(host.remark),
-                                isDisabled: true,
-                                inbound: {
-                                    configProfileUuid: host.inbound.configProfileUuid!,
-                                    configProfileInboundUuid: host.inbound.configProfileInboundUuid!
-                                },
-                                mapper: host.mapper ?? undefined
-                            }
-                        })
-                    }))
-                )
-
-                const cloneUuidByParent = new Map<string, string>()
-                for (const result of cloneResults) {
-                    if (result.status === 'fulfilled' && result.value.clone) {
-                        cloneUuidByParent.set(result.value.parentUuid, result.value.clone.uuid)
-                    }
-                }
-
-                if (cloneUuidByParent.size > 0) {
-                    const orderedUuids = (hosts ?? []).flatMap((host) => {
-                        const cloneUuid = cloneUuidByParent.get(host.uuid)
-                        return cloneUuid ? [host.uuid, cloneUuid] : [host.uuid]
-                    })
-
-                    await reorderHosts({
-                        variables: {
-                            hosts: orderedUuids.map((uuid, index) => ({
-                                uuid,
-                                viewPosition: index
-                            }))
-                        }
-                    })
+                for (const host of cloneableHosts) {
+                    await cloneHost({ variables: { cloneFromUuid: host.uuid } })
                 }
 
                 refetchHosts()

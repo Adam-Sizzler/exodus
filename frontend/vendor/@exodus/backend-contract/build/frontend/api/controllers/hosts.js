@@ -11,6 +11,7 @@ exports.HOSTS_ROUTES = {
     DELETE: (uuid) => `${uuid}`, // delete by UUID
     ACTIONS: {
         REORDER: `${exports.HOST_ACTIONS_ROUTE}/reorder`,
+        CLONE: `${exports.HOST_ACTIONS_ROUTE}/clone`,
     },
     BULK: {
         ENABLE_HOSTS: 'bulk/enable',

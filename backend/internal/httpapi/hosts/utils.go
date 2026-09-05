@@ -1,6 +1,7 @@
 package hosts
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -400,4 +401,26 @@ func uniqueNonEmptyStrings(slice []string) []string {
 		}
 	}
 	return res
+}
+
+func cloneString(str string) string {
+	prefix := "#_"
+	inputString := str
+	if strings.HasPrefix(str, prefix) && len(str) >= len(prefix)+3 {
+		inputString = strings.TrimSpace(str[len(prefix)+3:])
+	}
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, 3)
+	if _, err := rand.Read(b); err != nil {
+		copy(b, "cp1")
+	} else {
+		for i := range b {
+			b[i] = letters[int(b[i])%len(letters)]
+		}
+	}
+	result := fmt.Sprintf("%s%s %s", prefix, string(b), inputString)
+	if len(result) > 100 {
+		return result[:100]
+	}
+	return result
 }

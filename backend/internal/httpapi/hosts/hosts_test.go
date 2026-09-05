@@ -2,6 +2,7 @@ package hosts
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -99,4 +100,25 @@ func TestMapHostRecordToAPIEnsuresSlices(t *testing.T) {
 func rawJSON(value string) *json.RawMessage {
 	raw := json.RawMessage(value)
 	return &raw
+}
+
+func TestCloneString(t *testing.T) {
+	s1 := cloneString("My Host")
+	if !strings.HasPrefix(s1, "#_") {
+		t.Fatalf("expected #_ prefix, got %q", s1)
+	}
+	if !strings.Contains(s1, "My Host") {
+		t.Fatalf("expected 'My Host' in %q", s1)
+	}
+
+	s2 := cloneString(s1)
+	if !strings.HasPrefix(s2, "#_") {
+		t.Fatalf("expected #_ prefix, got %q", s2)
+	}
+	if !strings.Contains(s2, "My Host") {
+		t.Fatalf("expected 'My Host' in %q", s2)
+	}
+	if strings.Count(s2, "#_") != 1 {
+		t.Fatalf("expected only one #_ prefix in %q", s2)
+	}
 }

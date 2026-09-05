@@ -82,6 +82,35 @@ func handleReorderHosts(w http.ResponseWriter, r *http.Request, service *HostSer
 	shared.WriteJSON(w, http.StatusOK, map[string]any{"response": map[string]any{"isUpdated": true}})
 }
 
+type cloneHostRequest struct {
+	CloneFromUUID string `json:"cloneFromUuid"`
+}
+
+func handleCloneHost(w http.ResponseWriter, r *http.Request, service *HostService) {
+	var req cloneHostRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON", err, service.cfg)
+		return
+	}
+	if _, err := uuid.Parse(req.CloneFromUUID); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid cloneFromUuid format", nil, service.cfg)
+		return
+	}
+
+	cloned, nodes, squads, err := service.CloneHost(r.Context(), req.CloneFromUUID)
+	if err != nil {
+		if errors.Is(err, errHostNotFound) {
+			shared.SendAPIError(w, shared.ErrHostNotFound, service.cfg)
+			return
+		}
+		shared.SendAPIError(w, shared.ErrCreateHostFailed.WithCause(err), service.cfg)
+		return
+	}
+
+	result := mapHostRecordToAPI(cloned, nodes, squads)
+	shared.WriteJSON(w, http.StatusCreated, map[string]any{"response": result})
+}
+
 func handleBulkEnableHosts(w http.ResponseWriter, r *http.Request, service *HostService) {
 	var req bulkUUIDsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

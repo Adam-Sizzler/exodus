@@ -15,6 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./bulk"), exports);
+__exportStar(require("./clone.command"), exports);
 __exportStar(require("./create.command"), exports);
 __exportStar(require("./delete.command"), exports);
 __exportStar(require("./get-hosts.command"), exports);

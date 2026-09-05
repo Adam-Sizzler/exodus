@@ -75,6 +75,10 @@ func HostByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 			}
 			return
 		}
+		if uuidStr == "clone" && r.Method == http.MethodPost {
+			handleCloneHost(w, r, service)
+			return
+		}
 		if _, err := uuid.Parse(uuidStr); err != nil {
 			shared.SendError(w, http.StatusBadRequest, "invalid UUID format", nil, cfg)
 			return
@@ -93,16 +97,18 @@ func HostByUUIDHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 
 // HostsActionsHandler godoc
 // @Summary      Host actions
-// @Description  Reorder hosts
+// @Description  Reorder or clone hosts
 // @Tags         Hosts Controller
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        body  body      object  false  "Action payload"
 // @Success      200   {object}  map[string]any
+// @Success      201   {object}  map[string]any
 // @Failure      400   {object}  shared.ErrorResponse
 // @Failure      500   {object}  shared.ErrorResponse
 // @Router       /hosts/actions/reorder [post]
+// @Router       /hosts/actions/clone [post]
 func HostsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc {
 	repo := NewHostRepository(db)
 	service := NewHostService(repo, cfg)
@@ -116,6 +122,8 @@ func HostsActionsHandler(db *sql.DB, cfg *config.BackendConfig) http.HandlerFunc
 		switch path {
 		case "reorder":
 			handleReorderHosts(w, r, service)
+		case "clone":
+			handleCloneHost(w, r, service)
 		default:
 			http.NotFound(w, r)
 		}

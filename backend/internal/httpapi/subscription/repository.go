@@ -1493,6 +1493,96 @@ func formatTemplateTrafficBytes(bytes int64) string {
 	return util.FormatBytes(bytes)
 }
 
+func convertDayjsToGoFormat(layout string) string {
+	if layout == "" {
+		return "02.01.2006"
+	}
+	r := strings.NewReplacer(
+		"YYYY", "2006",
+		"YY", "06",
+		"MM", "01",
+		"DD", "02",
+		"HH", "15",
+		"mm", "04",
+		"ss", "05",
+	)
+	return r.Replace(layout)
+}
+
+func formatTemplateDate(t *time.Time, args map[string]string) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	fmtStr := args["format"]
+	layout := convertDayjsToGoFormat(fmtStr)
+	return t.Format(layout)
+}
+
+func getNextTrafficResetAt(strategy string, createdAt time.Time) *time.Time {
+	now := time.Now().UTC()
+	createdAt = createdAt.UTC()
+
+	switch strategy {
+	case "DAY":
+		startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 5, 0, 0, time.UTC)
+		if startOfDay.After(now) {
+			return &startOfDay
+		}
+		next := startOfDay.AddDate(0, 0, 1)
+		return &next
+
+	case "WEEK":
+		daysUntilMonday := (1 - int(now.Weekday()) + 7) % 7
+		startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 15, 0, 0, time.UTC)
+		next := startOfDay.AddDate(0, 0, daysUntilMonday)
+		if next.After(now) {
+			return &next
+		}
+		nextWeek := next.AddDate(0, 0, 7)
+		return &nextWeek
+
+	case "MONTH":
+		startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 20, 0, 0, time.UTC)
+		if startOfMonth.After(now) {
+			return &startOfMonth
+		}
+		nextMonth := startOfMonth.AddDate(0, 1, 0)
+		return &nextMonth
+
+	case "MONTH_ROLLING":
+		anchorDay := createdAt.Day()
+		daysInMonth := func(year int, month time.Month) int {
+			return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		}
+
+		resetAtIn := func(t time.Time) time.Time {
+			dim := daysInMonth(t.Year(), t.Month())
+			day := anchorDay
+			if day > dim {
+				day = dim
+			}
+			return time.Date(t.Year(), t.Month(), day, 0, 10, 0, 0, time.UTC)
+		}
+
+		next := resetAtIn(now)
+		var resolved time.Time
+		if next.After(now) {
+			resolved = next
+		} else {
+			resolved = resetAtIn(now.AddDate(0, 1, 0))
+		}
+
+		firstReset := resetAtIn(createdAt.AddDate(0, 1, 0))
+		if resolved.Before(firstReset) {
+			return &firstReset
+		}
+		return &resolved
+
+	default:
+		return nil
+	}
+}
+
 // resolveTemplateVariables replaces every supported {{VAR}} / {{VAR:k=v|...}}
 // placeholder in value using the user/settings context. This mirrors
 // upstream's TemplateEngine.replace() for the variable set and syntax, but
@@ -1516,6 +1606,12 @@ func resolveTemplateVariables(value string, user SubscriptionUser, settings Subs
 	lastResetUnix := int64(0)
 	if user.LastTrafficResetAt != nil && !user.LastTrafficResetAt.IsZero() {
 		lastResetUnix = user.LastTrafficResetAt.Unix()
+	}
+
+	nextResetAt := getNextTrafficResetAt(user.TrafficLimitStrategy, user.CreatedAt)
+	nextResetUnix := int64(0)
+	if nextResetAt != nil && !nextResetAt.IsZero() {
+		nextResetUnix = nextResetAt.Unix()
 	}
 
 	createdAtUnix := int64(0)
@@ -1620,6 +1716,12 @@ func resolveTemplateVariables(value string, user SubscriptionUser, settings Subs
 			return strconv.FormatInt(createdAtUnix, 10)
 		case "LAST_TRAFFIC_RESET_AT_UNIX":
 			return strconv.FormatInt(lastResetUnix, 10)
+		case "LAST_TRAFFIC_RESET_AT":
+			return formatTemplateDate(user.LastTrafficResetAt, args)
+		case "NEXT_TRAFFIC_RESET_AT_UNIX":
+			return strconv.FormatInt(nextResetUnix, 10)
+		case "NEXT_TRAFFIC_RESET_AT":
+			return formatTemplateDate(nextResetAt, args)
 		case "SS_HWID_LIMIT":
 			return strconv.Itoa(hwidLimit)
 		case "DESCRIPTION":

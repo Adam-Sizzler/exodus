@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"strconv"
 	"testing"
 	"time"
 )
@@ -99,6 +100,9 @@ func TestAllTemplateVariables(t *testing.T) {
 		{"{{LIFETIME_USED_BYTES}}", "536870912000"},
 		{"{{SS_HWID_LIMIT}}", "3"},
 		{"{{DESCRIPTION}}", "Premium user"},
+		{"{{LAST_TRAFFIC_RESET_AT_UNIX}}", strconv.FormatInt(lastReset.Unix(), 10)},
+		{"{{LAST_TRAFFIC_RESET_AT}}", lastReset.Format("02.01.2006")},
+		{"{{LAST_TRAFFIC_RESET_AT:format=YYYY-MM-DD}}", lastReset.Format("2006-01-02")},
 	}
 
 	for _, tc := range tests {
@@ -139,5 +143,39 @@ func TestResolveHostRemarksConnectionKeys(t *testing.T) {
 	expected := "🇨🇭 Switzerland 372.53 GiB/1.00 TiB | 217 дн. | 1www"
 	if hosts[0].Remark != expected {
 		t.Errorf("expected remark %q, got %q", expected, hosts[0].Remark)
+	}
+}
+
+func TestGetNextTrafficResetAt(t *testing.T) {
+	created := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	// DAY: reset at 00:05 UTC
+	dayReset := getNextTrafficResetAt("DAY", created)
+	if dayReset == nil || dayReset.Minute() != 5 || dayReset.Hour() != 0 {
+		t.Fatalf("unexpected day reset: %v", dayReset)
+	}
+
+	// WEEK: reset on Monday at 00:15 UTC
+	weekReset := getNextTrafficResetAt("WEEK", created)
+	if weekReset == nil || weekReset.Weekday() != time.Monday || weekReset.Minute() != 15 || weekReset.Hour() != 0 {
+		t.Fatalf("unexpected week reset: %v", weekReset)
+	}
+
+	// MONTH: reset on 1st of month at 00:20 UTC
+	monthReset := getNextTrafficResetAt("MONTH", created)
+	if monthReset == nil || monthReset.Day() != 1 || monthReset.Minute() != 20 || monthReset.Hour() != 0 {
+		t.Fatalf("unexpected month reset: %v", monthReset)
+	}
+
+	// MONTH_ROLLING: anchorDay is 15th, reset at 00:10 UTC
+	monthRollingReset := getNextTrafficResetAt("MONTH_ROLLING", created)
+	if monthRollingReset == nil || monthRollingReset.Day() != 15 || monthRollingReset.Minute() != 10 || monthRollingReset.Hour() != 0 {
+		t.Fatalf("unexpected month rolling reset: %v", monthRollingReset)
+	}
+
+	// NO_RESET: returns nil
+	noReset := getNextTrafficResetAt("NO_RESET", created)
+	if noReset != nil {
+		t.Fatalf("expected nil for NO_RESET, got %v", noReset)
 	}
 }

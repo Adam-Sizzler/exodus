@@ -268,3 +268,7 @@ func (s *HostService) BulkUpdateHosts(ctx context.Context, req HostBulkUpdateReq
 	}
 	return nil
 }
+
+func (s *HostService) CloneHost(ctx context.Context, cloneFromUUID string) (hostRecord, []string, []string, error) {
+	return s.repo.cloneHost(ctx, cloneFromUUID)
+}

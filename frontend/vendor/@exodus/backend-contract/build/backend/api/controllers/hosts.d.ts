@@ -8,6 +8,7 @@ export declare const HOSTS_ROUTES: {
     readonly DELETE: (uuid: string) => string;
     readonly ACTIONS: {
         readonly REORDER: "actions/reorder";
+        readonly CLONE: "actions/clone";
     };
     readonly BULK: {
         readonly ENABLE_HOSTS: "bulk/enable";
