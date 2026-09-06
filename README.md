@@ -1,11 +1,10 @@
 # Exodus Node
 
-`exodus-node` - легковесная gRPC-нода для панели Exodus. Она запускает sing-box под `s6-overlay`, отдает панели статистику через gRPC, принимает задачи деплоя конфигурации sing-box, а также обновляет runtime cache пользователей HAProxy при включенном модуле.
+`exodus-node` — легковесная gRPC-нода для панели Exodus. Она запускает sing-box под `s6-overlay`, отдаёт панели статистику через gRPC, принимает задачи деплоя конфигурации sing-box, а также управляет файлом авторизации и runtime-кэшем HAProxy при включенном модуле `haproxyAuth`.
 
-Это не старый HTTP `v2ray-stat` API. Управление пользователями внутри ядра отключено: пользователи и конфиги собираются на стороне панели, а нода применяет готовый sing-box JSON.
+Управление пользователями внутри ядра sing-box отключено: пользователи и конфигурации собираются на стороне панели, а нода применяет готовый sing-box JSON.
 
-
-Основные настройки:
+## Основные настройки
 
 ```env
 LOG_LEVEL=info
@@ -29,7 +28,7 @@ docker build \
   -t exodus-node:local .
 ```
 
-## Локальные Проверки
+## Локальные проверки и тесты
 
 ```bash
 cd /home/docker/projectSB/exodus-node
@@ -47,8 +46,31 @@ go run . --version
 
 Панель использует:
 
-- `GetApiStats` - разовый сбор stats из sing-box;
-- `StreamNodeData` - streaming stats с дефолтным интервалом 15 секунд;
-- `SubmitTask(operation=deploy_config)` - применить sing-box config;
+- `GetApiStats` — разовый сбор статистики из sing-box;
+- `StreamNodeData` — streaming stats с дефолтным интервалом 15 секунд;
+- `SubmitTask(operation=deploy_config)` — применение конфигурации sing-box и сопутствующих модулей;
 
-Операции управления пользователями (`AddUsers`, `DeleteUsers`, `SetUserEnabled`, `ListUsers`) намеренно возвращают `Unimplemented`, потому что нода работает в stats/deploy режиме.
+Операции управления пользователями (`AddUsers`, `DeleteUsers`, `SetUserEnabled`, `ListUsers`) намеренно возвращают `Unimplemented`, так как нода работает в stats/deploy режиме.
+
+---
+
+## Модуль интеграции с HAProxy
+
+Когда в плагине ноды включен модуль `haproxyAuth`, нода автоматически выполняет подготовку файла учетных записей и горячее перечитывание HAProxy:
+
+1. **Генерация `/opt/app/haproxy/data/users.csv`**:
+   - Формат строго двухколоночный: `<username>,<credential>`.
+   - Поддерживаемые протоколы:
+     - **VLESS**: `<username>,<vless_uuid>`
+     - **Trojan**: `<username>,<sha224_hash>`
+     - **AnyTLS**: `<username>,<sha256_hash>`
+     - **NaiveProxy**: `<username>,basic:<base64(username:naive_password)>`
+   - Если учетные данные не изменились по сравнению с файлом на диске, запись пропускается (идемпотентность).
+
+2. **Горячая перезагрузка (Hot Reload)**:
+   - При обнаружении изменений файла нода отправляет команду:
+     ```text
+     lua reload users\n
+     ```
+     в UNIX-сокет `/var/run/haproxy/haproxy.sock`.
+   - HAProxy моментально обновляет свой кэш в оперативной памяти без перезапуска контейнера и без сброса активных сессий клиентов.
