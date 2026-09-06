@@ -78,3 +78,19 @@ swag init --generalInfo main.go --dir . --output internal/httpapi/panelsettings/
 
 Сгенерированный `swagger.json` автоматически встраивается в бинарник через `//go:embed docs/swagger.json` и сразу отображается на `/api/backend-tools/swagger` и `/api/backend-tools/scalar`.
 
+---
+
+## Модуль HAProxy Auth в деплое нод
+
+Панель Exodus поддерживает модуль централизованной аутентификации на стороне HAProxy (`haproxyAuth`).
+
+### Как это работает:
+1. При включении `haproxyAuth` в плагине ноды бэкенд формирует блок `modules.haproxy_users`.
+2. Запрашиваются все активные пользователи (`status = 'ACTIVE'`), привязанные к инбаундам ноды протоколов `vless`, `trojan`, `naive` и `anytls`.
+3. Для каждого пользователя в полезную нагрузку передаются:
+   - `username` — идентификатор пользователя
+   - `vless_uuid` — UUID для VLESS
+   - `trojan_password` — пароль Trojan
+   - `naive_password` — пароль NaiveProxy
+   - `anytls_password` — пароль AnyTLS
+4. Нода получает этот список, формирует файл `users.csv` без устаревшего префикса `1,` и выполняет горячий reload HAProxy через UNIX-сокет.
