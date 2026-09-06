@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps
 COPY frontend/ ./
 RUN --mount=type=cache,target=/root/.npm npm run start:build
 
-FROM golang:1.25.12-alpine AS backend-build
+FROM golang:1.27.1-alpine AS backend-build
 WORKDIR /opt/app
 
 COPY backend/go.mod backend/go.sum ./backend/

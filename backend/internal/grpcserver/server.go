@@ -16,11 +16,10 @@ import (
 	"github.com/exodus/subscription-page/backend/internal/logger"
 	"github.com/exodus/subscription-page/backend/internal/proto"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	_ "google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -54,6 +53,14 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 	opts = append(opts,
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
 		grpc.ChainStreamInterceptor(streamInterceptors...),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    15 * time.Second,
+			Timeout: 5 * time.Second,
+		}),
 	)
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterNodeServiceServer(grpcServer, nodeService)
@@ -81,7 +88,11 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 		return fmt.Errorf("listen grpc: %w", err)
 	}
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+
 	httpServer := &http.Server{
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
@@ -90,17 +101,15 @@ func Start(ctx context.Context, cfg config.Config, nodeService proto.NodeService
 		if tlsErr != nil {
 			return tlsErr
 		}
-		httpServer.Handler = handler
+		protocols.SetHTTP2(true)
 		httpServer.TLSConfig = tlsCfg
-		if err := http2.ConfigureServer(httpServer, &http2.Server{}); err != nil {
-			return fmt.Errorf("configure http2: %w", err)
-		}
 		listener = tls.NewListener(listener, tlsCfg)
 		log.Info("[CONFIG] gRPC mTLS enabled")
 	} else {
-		httpServer.Handler = h2c.NewHandler(handler, &http2.Server{})
-		log.Info("[CONFIG] gRPC h2c mode enabled (for reverse proxy TLS termination)")
+		protocols.SetUnencryptedHTTP2(true)
+		log.Info("[CONFIG] gRPC unencrypted HTTP/2 mode enabled (for reverse proxy TLS termination)")
 	}
+	httpServer.Protocols = protocols
 
 	log.Info("[CONFIG] gRPC listening on " + addr)
 
@@ -135,6 +144,7 @@ func buildServerTLSConfig(material *config.MTLSConfig) (*tls.Config, error) {
 		Certificates: []tls.Certificate{cert},
 		ClientCAs:    pool,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
+		NextProtos:   []string{"h2", "http/1.1"},
 	}, nil
 }
 
