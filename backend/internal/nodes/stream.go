@@ -8,7 +8,9 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
+	"exodus/internal/jobqueue"
 	"exodus/internal/notifications"
 	"exodus/internal/proto"
 
@@ -19,7 +21,15 @@ import (
 // receiveStream receives and processes stream data.
 func (nm *NodeMonitor) receiveStream(state *nodeState) {
 	for {
-		resp, err := state.stream.Recv()
+		state.mutex.RLock()
+		stream := state.stream
+		state.mutex.RUnlock()
+		if stream == nil {
+			nm.handleDisconnect(state, "Stream unavailable")
+			return
+		}
+
+		resp, err := stream.Recv()
 		if err == io.EOF {
 			nm.cfg.Logger.Warn("Stream closed by node", "node", state.nodeName)
 			nm.handleDisconnect(state, "Stream closed")
@@ -51,6 +61,7 @@ func (nm *NodeMonitor) receiveStream(state *nodeState) {
 			return
 		}
 
+		nm.markStreamActivity(state)
 		nm.processResponse(state.nodeName, resp)
 	}
 }
@@ -62,20 +73,29 @@ func (nm *NodeMonitor) handleDisconnect(state *nodeState, reason string) {
 	state.isConnected = false
 	state.isConnecting = false
 	state.lastError = reason
+	if state.streamCancel != nil {
+		state.streamCancel()
+		state.streamCancel = nil
+	}
 	if state.stream != nil {
 		state.stream = nil
 	}
 	if state.conn != nil {
-		state.conn.Close()
+		_ = state.conn.Close()
 		state.conn = nil
 	}
+	state.lastResponseAt = time.Time{}
 	state.mutex.Unlock()
 
 	if wasConnected {
 		nm.updateConnectionStatus(state.nodeName, false, false, reason)
-		nm.cfg.Logger.Warn(fmt.Sprintf("Lost connection to Node %s (%s:%d), message: %s", state.nodeName, state.address, state.port, reason))
+		if nm != nil && nm.cfg != nil && nm.cfg.Logger != nil {
+			nm.cfg.Logger.Warn(fmt.Sprintf("Lost connection to Node %s (%s:%d), message: %s", state.nodeName, state.address, state.port, reason))
+		}
 	} else {
-		nm.cfg.Logger.Warn(fmt.Sprintf("Connection attempt failed for Node %s (%s:%d), message: %s", state.nodeName, state.address, state.port, reason))
+		if nm != nil && nm.cfg != nil && nm.cfg.Logger != nil {
+			nm.cfg.Logger.Warn(fmt.Sprintf("Connection attempt failed for Node %s (%s:%d), message: %s", state.nodeName, state.address, state.port, reason))
+		}
 	}
 }
 
@@ -208,16 +228,101 @@ func (nm *NodeMonitor) updateNodeRuntimeFromStats(nodeName string, stats []*prot
 			if execErr != nil {
 				nm.cfg.Logger.Warn("Failed to upsert user traffic", "node", nodeName, "error", execErr)
 			}
-			for _, id := range firstConnectedIDs {
-				firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
-					Scope: notifications.ScopeUser,
-					Event: notifications.EventUserFirstConnected,
-					Data: map[string]any{
-						"id":       id,
-						"nodeUuid": nodeUUID,
-						"nodeName": nodeName,
-					},
-				})
+			if len(firstConnectedIDs) > 0 {
+				var unqueuedIDs []int64
+				for _, id := range firstConnectedIDs {
+					queued, _ := jobqueue.EnqueueUserEvent(bulkCtx, jobqueue.FireUserEventPayload{
+						UserID:    id,
+						UserEvent: notifications.EventUserFirstConnected,
+						NodeUUID:  nodeUUID,
+						NodeName:  nodeName,
+					})
+					if !queued {
+						unqueuedIDs = append(unqueuedIDs, id)
+					}
+				}
+
+				if len(unqueuedIDs) > 0 {
+					userMap := make(map[int64]struct {
+						username          string
+						uuid              string
+						shortUUID         string
+						status            string
+						trafficLimitBytes int64
+						usedTrafficBytes  int64
+						expireAt          time.Time
+					}, len(unqueuedIDs))
+
+					rows, queryErr := nm.db.QueryContext(bulkCtx, `
+						SELECT u.id, u.username, u.uuid::text, u.short_uuid, u.status,
+						       u.traffic_limit_bytes, COALESCE(ut.used_traffic_bytes, 0), u.expire_at
+						FROM users u
+						LEFT JOIN user_traffic ut ON ut.id = u.id
+						WHERE u.id = ANY($1)
+					`, unqueuedIDs)
+					if queryErr != nil {
+						nm.cfg.Logger.Warn("Failed to query user details for first connected event", "error", queryErr)
+					} else {
+						for rows.Next() {
+							var (
+								uID       int64
+								uName     string
+								uUUID     string
+								shortUUID string
+								status    string
+								tLimit    int64
+								used      int64
+								expireAt  time.Time
+							)
+							if scanErr := rows.Scan(&uID, &uName, &uUUID, &shortUUID, &status, &tLimit, &used, &expireAt); scanErr == nil {
+								userMap[uID] = struct {
+									username          string
+									uuid              string
+									shortUUID         string
+									status            string
+									trafficLimitBytes int64
+									usedTrafficBytes  int64
+									expireAt          time.Time
+								}{
+									username:          uName,
+									uuid:              uUUID,
+									shortUUID:         shortUUID,
+									status:            status,
+									trafficLimitBytes: tLimit,
+									usedTrafficBytes:  used,
+									expireAt:          expireAt,
+								}
+							}
+						}
+						_ = rows.Err()
+						rows.Close()
+					}
+
+					for _, id := range unqueuedIDs {
+						data := map[string]any{
+							"id":       id,
+							"nodeUuid": nodeUUID,
+							"nodeName": nodeName,
+						}
+						if u, ok := userMap[id]; ok {
+							data["username"] = u.username
+							data["uuid"] = u.uuid
+							data["shortUuid"] = u.shortUUID
+							data["status"] = u.status
+							data["trafficLimitBytes"] = u.trafficLimitBytes
+							data["usedTrafficBytes"] = u.usedTrafficBytes
+							data["expireAt"] = u.expireAt.UTC().Format(time.RFC3339)
+							data["userTraffic"] = map[string]any{
+								"usedTrafficBytes": u.usedTrafficBytes,
+							}
+						}
+						firstConnectedEvents = append(firstConnectedEvents, notifications.Event{
+							Scope: notifications.ScopeUser,
+							Event: notifications.EventUserFirstConnected,
+							Data:  data,
+						})
+					}
+				}
 			}
 
 			if recordErr := nm.recordNodeUserUsageHistory(bulkCtx, nm.db, nodeID, usageDeltas); recordErr != nil {

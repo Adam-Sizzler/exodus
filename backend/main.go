@@ -166,6 +166,16 @@ func main() {
 	if _, err := jobqueue.StartSubscriptionQueues(ctx, &wg, pools.Background, &cfg); err != nil {
 		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("Subscription job queue disabled", "error", err)
 	}
+	if _, err := jobqueue.StartUserEventsQueue(ctx, &wg, pools.Background, &cfg, func(notifyCtx context.Context, event string, data map[string]any, meta map[string]any) {
+		notifications.Emit(notifyCtx, &cfg, notifications.Event{
+			Scope: notifications.ScopeUser,
+			Event: event,
+			Data:  data,
+			Meta:  meta,
+		})
+	}); err != nil {
+		cfg.Logger.RoleService(logger.RoleWorkers, logger.ServiceUsersQueue).Warn("User events job queue disabled", "error", err)
+	}
 
 	if redisWorker != nil {
 		redisWorker.Start(ctx, &wg)

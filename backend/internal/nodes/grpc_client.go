@@ -15,24 +15,33 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip"
 )
 
+const (
+	nodeStreamInterval      = 15 * time.Second
+	nodeStreamIdleTimeout   = 45 * time.Second
+	nodeStreamWatchInterval = 5 * time.Second
+)
+
 type nodeState struct {
-	nodeUUID      string
-	nodeName      string
-	address       string
-	port          int
-	proxyURL      string
-	apiSchema     string
-	apiPath       string
-	grpcAuthToken string
-	ctx           context.Context
-	cancel        context.CancelFunc
-	conn          *grpc.ClientConn
-	client        proto.NodeServiceClient
-	stream        proto.NodeService_StreamNodeDataClient
-	isConnected   bool
-	isConnecting  bool
-	lastError     string
-	mutex         sync.RWMutex
+	nodeUUID         string
+	nodeName         string
+	address          string
+	port             int
+	proxyURL         string
+	apiSchema        string
+	apiPath          string
+	grpcAuthToken    string
+	ctx              context.Context
+	cancel           context.CancelFunc
+	conn             *grpc.ClientConn
+	client           proto.NodeServiceClient
+	stream           proto.NodeService_StreamNodeDataClient
+	streamCancel     context.CancelFunc
+	streamGeneration uint64
+	lastResponseAt   time.Time
+	isConnected      bool
+	isConnecting     bool
+	lastError        string
+	mutex            sync.RWMutex
 }
 
 // monitorNode monitors a single node with reconnection logic.
@@ -146,10 +155,13 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 		return false
 	}
 
+	streamCtx, streamCancel := context.WithCancel(state.ctx)
+
 	client := proto.NewNodeServiceClient(conn)
 
-	stream, err := client.StreamNodeData(state.ctx)
+	stream, err := client.StreamNodeData(streamCtx)
 	if err != nil {
+		streamCancel()
 		friendlyErr := formatNodeConnectionError(err)
 		nm.cfg.Logger.Error("Failed to connect to node", "node", state.nodeName, "address", targetAddr, "error", friendlyErr)
 		conn.Close()
@@ -163,10 +175,11 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 	if err := stream.Send(&proto.NodeDataRequest{
 		Request: &proto.NodeDataRequest_Config{
 			Config: &proto.StreamConfig{
-				IntervalSeconds: 15,
+				IntervalSeconds: int32(nodeStreamInterval / time.Second),
 			},
 		},
 	}); err != nil {
+		streamCancel()
 		friendlyErr := formatNodeConnectionError(err)
 		nm.cfg.Logger.Warn("Failed to initialize node stream", "node", state.nodeName, "address", targetAddr, "error", friendlyErr)
 		conn.Close()
@@ -181,10 +194,16 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 	state.conn = conn
 	state.client = client
 	state.stream = stream
+	state.streamCancel = streamCancel
+	state.streamGeneration++
+	generation := state.streamGeneration
+	state.lastResponseAt = time.Now()
 	state.isConnected = true
 	state.isConnecting = false
 	state.lastError = ""
 	state.mutex.Unlock()
+
+	go nm.watchStreamHeartbeat(state, generation, nodeStreamIdleTimeout, nodeStreamWatchInterval)
 
 	nm.updateConnectionStatus(state.nodeName, false, true, "")
 
@@ -193,6 +212,52 @@ func (nm *NodeMonitor) connectAndStream(state *nodeState) bool {
 
 	nm.receiveStream(state)
 	return true
+}
+
+func (nm *NodeMonitor) watchStreamHeartbeat(
+	state *nodeState,
+	generation uint64,
+	idleTimeout time.Duration,
+	watchInterval time.Duration,
+) {
+	ticker := time.NewTicker(watchInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-state.ctx.Done():
+			return
+		case <-ticker.C:
+			state.mutex.RLock()
+			currentGeneration := state.streamGeneration
+			lastResponse := state.lastResponseAt
+			isConnected := state.isConnected
+			state.mutex.RUnlock()
+
+			if currentGeneration != generation || !isConnected {
+				return
+			}
+
+			if !lastResponse.IsZero() && time.Since(lastResponse) > idleTimeout {
+				if nm != nil && nm.cfg != nil {
+					nm.cfg.Logger.Warn(
+						"Node stream idle timeout exceeded, restarting stream",
+						"node", state.nodeName,
+						"idle_for", time.Since(lastResponse).String(),
+						"timeout", idleTimeout.String(),
+					)
+				}
+				nm.handleDisconnect(state, "Stream idle timeout")
+				return
+			}
+		}
+	}
+}
+
+func (nm *NodeMonitor) markStreamActivity(state *nodeState) {
+	state.mutex.Lock()
+	state.lastResponseAt = time.Now()
+	state.mutex.Unlock()
 }
 
 func normalizeNodeSchema(value string) string {

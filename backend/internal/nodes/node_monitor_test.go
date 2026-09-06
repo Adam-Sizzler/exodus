@@ -1,7 +1,9 @@
 package users
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"exodus/internal/proto"
 )
@@ -69,3 +71,55 @@ func TestNormalizeNodeConnectionFields(t *testing.T) {
 		t.Fatalf("normalizeNodePath(/) = %q", got)
 	}
 }
+
+func TestWatchStreamHeartbeat(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	state := &nodeState{
+		nodeName:         "test-node",
+		ctx:              ctx,
+		cancel:           cancel,
+		streamGeneration: 1,
+		isConnected:      true,
+		lastResponseAt:   time.Now().Add(-500 * time.Millisecond),
+	}
+
+	nm := &NodeMonitor{}
+
+	// Test markStreamActivity
+	nm.markStreamActivity(state)
+	state.mutex.RLock()
+	recentResponse := state.lastResponseAt
+	state.mutex.RUnlock()
+	if time.Since(recentResponse) > 100*time.Millisecond {
+		t.Fatalf("expected recent lastResponseAt, got %v", recentResponse)
+	}
+
+	// Now set lastResponseAt to past and verify watchdog disconnects
+	state.mutex.Lock()
+	state.lastResponseAt = time.Now().Add(-100 * time.Millisecond)
+	state.mutex.Unlock()
+
+	watchDone := make(chan struct{})
+	go func() {
+		nm.watchStreamHeartbeat(state, 1, 50*time.Millisecond, 10*time.Millisecond)
+		close(watchDone)
+	}()
+
+	select {
+	case <-watchDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("watchStreamHeartbeat timed out without triggering disconnect")
+	}
+
+	state.mutex.RLock()
+	defer state.mutex.RUnlock()
+	if state.isConnected {
+		t.Fatalf("expected isConnected = false after watchdog timeout")
+	}
+	if state.lastError != "Stream idle timeout" {
+		t.Fatalf("expected lastError = 'Stream idle timeout', got %q", state.lastError)
+	}
+}
+

@@ -9,11 +9,13 @@ import (
 	"net"
 	neturl "net/url"
 	"strings"
+	"time"
 
 	"golang.org/x/net/proxy"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -140,11 +142,26 @@ func GetDialOptions(ctx context.Context, db *sql.DB, useMTLS bool, useTLS bool, 
 	opts = append(opts, grpc.WithUnaryInterceptor(PathPrefixUnaryInterceptor(cleanPath, grpcAuthToken)))
 	opts = append(opts, grpc.WithStreamInterceptor(PathPrefixStreamInterceptor(cleanPath, grpcAuthToken)))
 
+	kacp := keepalive.ClientParameters{
+		Time:                15 * time.Second,
+		Timeout:             5 * time.Second,
+		PermitWithoutStream: true,
+	}
+	opts = append(opts, grpc.WithKeepaliveParams(kacp))
+
 	dialer, dialerErr := BuildNodeProxyDialer(rawProxyURL)
 	if dialerErr != nil {
 		return nil, fmt.Errorf("proxy config failed: %w", dialerErr)
 	} else if dialer != nil {
 		opts = append(opts, grpc.WithContextDialer(dialer))
+	} else {
+		netDialer := &net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 15 * time.Second,
+		}
+		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			return netDialer.DialContext(ctx, "tcp", addr)
+		}))
 	}
 
 	return opts, nil

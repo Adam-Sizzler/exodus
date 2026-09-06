@@ -162,7 +162,7 @@ func enqueueSubscriptionJob(ctx context.Context, jobName string, payload any, op
 	return err == nil, err
 }
 
-func updateUserSubscription(ctx context.Context, db *sql.DB, payload UpdateUserSubscriptionPayload) error {
+func updateUserSubscription(_ context.Context, _ *sql.DB, payload UpdateUserSubscriptionPayload) error {
 	if payload.UserUUID == "" {
 		return nil
 	}

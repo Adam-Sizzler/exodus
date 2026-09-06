@@ -11,6 +11,9 @@ import (
 
 // updateConnectionStatus updates node connection status in database (only on change).
 func (nm *NodeMonitor) updateConnectionStatus(nodeName string, isConnected, isConnecting bool, message string) {
+	if nm == nil || nm.db == nil {
+		return
+	}
 	message, messageDBValue := optionalStatusMessage(message)
 
 	var (
