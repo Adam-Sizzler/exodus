@@ -19,10 +19,9 @@ import (
 	"exodus-node/proto"
 	"exodus-node/server"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -65,6 +64,14 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 	opts = append(opts,
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
 		grpc.ChainStreamInterceptor(streamInterceptors...),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    15 * time.Second,
+			Timeout: 5 * time.Second,
+		}),
 	)
 
 	var tlsConfig *tls.Config
@@ -88,6 +95,7 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 			Certificates: []tls.Certificate{cert},
 			ClientCAs:    caCertPool,
 			ClientAuth:   tls.RequireAndVerifyClientCert,
+			NextProtos:   []string{"h2", "http/1.1"},
 		}
 		if cfg.Backend.SNIVerification {
 			expectedSNI := ""
@@ -155,20 +163,22 @@ func StartGRPCServer(cfg *config.NodeConfig, nodeServer *server.NodeServer) erro
 
 	log.Debug("Starting gRPC server", "address", addr)
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+
 	httpServer := &http.Server{
+		Handler:           mainHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
 	if tlsConfig != nil {
-		httpServer.Handler = mainHandler
+		protocols.SetHTTP2(true)
 		httpServer.TLSConfig = tlsConfig
-		if err := http2.ConfigureServer(httpServer, &http2.Server{}); err != nil {
-			return fmt.Errorf("configure http2 server: %w", err)
-		}
 		listener = tls.NewListener(listener, tlsConfig)
 	} else {
-		httpServer.Handler = h2c.NewHandler(mainHandler, &http2.Server{})
+		protocols.SetUnencryptedHTTP2(true)
 	}
+	httpServer.Protocols = protocols
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
