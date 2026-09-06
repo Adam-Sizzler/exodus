@@ -204,7 +204,7 @@ Blocks outbound connections from the node to target IP addresses or destination 
  
 ## HAProxy Auth Module
  
-Generates and maintains a CSV user credentials file (`/app/haproxy/data/users.csv`) inside the node container for fast Lua-based authentication in HAProxy.
+Generates and maintains a CSV user credentials file (`/opt/app/haproxy/data/users.csv`) inside the node container for fast Lua-based authentication in HAProxy with zero-downtime socket reload.
  
 ```json
 "haproxyAuth": {
@@ -213,10 +213,10 @@ Generates and maintains a CSV user credentials file (`/app/haproxy/data/users.cs
 }
 ```
  
-- Specify `["*"]` in `inboundTags` to include all supported inbounds on the node, or list specific inbound tags (e.g. `["vless-inbound", "trojan-inbound"]`).
-- Automatically updates `/app/haproxy/data/users.csv` on the node.
-- Format: `1,username,credential`.
-- Maintains `VLESS UUID` and SHA-224 hash for `Trojan credentials`.
+- Specify `["*"]` in `inboundTags` to include all supported inbounds on the node, or list specific inbound tags (e.g. `["vless-inbound", "trojan-inbound", "naive-inbound"]`).
+- Automatically updates `/opt/app/haproxy/data/users.csv` on the node.
+- Format: `username,credential` (without legacy 1/0 prefix).
+- Supports: `VLESS UUID`, SHA-224 hash for `Trojan credentials`, SHA-256 hash for `AnyTLS credentials`, and `basic:<base64(user:pass)>` for `NaiveProxy`.
  
 ---
  

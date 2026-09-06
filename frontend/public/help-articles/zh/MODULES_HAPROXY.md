@@ -1,43 +1,53 @@
-## 模块：HAPROXY
-
-简要说明：该模块会在节点部署时生成并维护 HAProxy Lua auth 使用的凭据表。
-
-### 模块做什么
-
-- 创建并更新**一个**用户文件。
-- 写入当前节点的所有用户，不绑定到某个特定 inbound。
-- 为每个用户写入 `VLESS UUID`。
-- 为每个用户写入 `Trojan credential`，格式为 56 个字符的 SHA-224 hash。
-- 将启用状态设置为 `1`。
-
-### 文件路径
-
-- 模块逻辑中的相对路径：`haproxy/data/users.csv`
-- 节点容器内的绝对路径：`/app/haproxy/data/users.csv`
-
-### 行格式
-
-`1,username,credential`
-
-### 示例
-
+## Module: HAPROXY
+ 
+In short: this module builds and maintains the credentials table used by HAProxy Lua auth during node deploy with hot reload via runtime socket.
+ 
+### What this module does
+ 
+- Creates and updates **one** user credentials file `users.csv`.
+- Includes active users of the current node.
+- Writes each user's `VLESS UUID`.
+- Writes each user's `Trojan credential` as a SHA-224 hash (56 characters hex).
+- Writes each user's `AnyTLS credential` as a SHA-256 hash (64 characters hex).
+- Writes each user's `NaiveProxy credential` in the format `basic:<base64(username:password)>`.
+- Triggers `lua reload users` through HAProxy's UNIX socket for zero-downtime in-memory reload without container restart.
+ 
+### File path
+ 
+- Relative path in module logic: `haproxy/data/users.csv`
+- Absolute path inside the node container: `/opt/app/haproxy/data/users.csv`
+- Path inside HAProxy container: `/etc/haproxy/data/users.csv`
+ 
+### Row format
+ 
+Strict 2-column format without legacy 1/0 prefixes:
+ 
+`<username>,<credential>`
+ 
+### Example
+ 
 ```text
-1,pablo_escobar,90cdd126-819d-5f2f-a1dd-4cbf085182b9
-1,alvarez,9f37a85cafb66ab9c36f866e5c787b2e42a997716c02337f532a259c
-1,guest,8f49d237686bee189aaedaba1ad434c5580356d8e8b5a3d702bd0228
+pablo_escobar,90cdd126-819d-5f2f-a1dd-4cbf085182b9
+pablo_escobar,basic:cGFibG9fZXNjb2JhcjpteXBhc3N3b3Jk
+alvarez,9f37a85cafb66ab9c36f866e5c787b2e42a997716c02337f532a259c
+guest,8f49d237686bee189aaedaba1ad434c5580356d8e8b5a3d702bd0228
 ```
-
-### 为什么需要它
-
-- `haproxy/lua/auth.lua` 会从 `/etc/haproxy/data/users.csv` 读取用户并识别协议。
-- Trojan 流量通过 credential 识别，包括 MUX 检查。
-- VLESS 流量通过二进制握手中的 UUID 识别。
-- `haproxy/lua/users_loader.lua` 会解析 CSV 并生成查找 map。
-- `trojan[sha224] -> username`
-- `vless[uuid] -> username`
-- 随后 `haproxy.cfg` 使用 `lua.identify_protocol`，并将流量路由到 `trojan` 或 `vless` backend。
-
-### 重要
-
-- 该模块不会修改 `haproxy.cfg` 或 Lua 脚本。
-- 该模块只管理 `users.csv` 文件。
+ 
+### Why it is needed
+ 
+- `haproxy/lua/auth.lua` reads users from `/etc/haproxy/data/users.csv`.
+- L4: Trojan is detected by credential hash, including MUX verification.
+- L4: VLESS is detected by binary UUID handshake.
+- L4: AnyTLS is detected by SHA-256 password hash.
+- L7: NaiveProxy is verified via `lua.auth_naive` sample fetch checking `Proxy-Authorization: Basic <token>`.
+- `haproxy/lua/users_loader.lua` parses the CSV into lookup tables:
+  - `vless[uuid] -> username`
+  - `trojan[sha224] -> username`
+  - `anytls[sha256] -> username`
+  - `naive[token] -> username`
+- HAProxy configuration routes authorized connections to corresponding backends or falls back to Nginx.
+ 
+### Important
+ 
+- The module does not modify `haproxy.cfg` or Lua scripts.
+- The module manages only `users.csv` and triggers the runtime reload command.
