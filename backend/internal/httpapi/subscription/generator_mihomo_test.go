@@ -330,7 +330,7 @@ func TestMihomoHysteria2FullGeneration(t *testing.T) {
 	}
 
 	gen := NewMihomoGenerator(nil)
-	output, err := gen.Generate(nil, user, hosts, SubscriptionSettingsParsed{})
+	output, err := gen.Generate(nil, user, hosts, SubscriptionSettingsParsed{}, responseTypeMihomo)
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}

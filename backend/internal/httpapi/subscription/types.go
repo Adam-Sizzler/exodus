@@ -306,8 +306,8 @@ func (g *XrayGenerator) GenerateJSON(templateJSON []byte, user SubscriptionUser,
 	)
 }
 
-func (g *MihomoGenerator) Generate(templateYAML []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {
-	return generateYAMLConfigExt(templateYAML, hosts, user, settings.IsExtendedClient)
+func (g *MihomoGenerator) Generate(templateYAML []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed, responseType string) (string, error) {
+	return generateYAMLConfigExt(templateYAML, hosts, user, settings.IsExtendedClient, responseType)
 }
 
 func (g *SingboxGenerator) Generate(templateJSON []byte, user SubscriptionUser, hosts []SubscriptionHost, settings SubscriptionSettingsParsed) (string, error) {

@@ -41,6 +41,9 @@ func generateSingboxConfig(templateJSON []byte, hosts []SubscriptionHost, user S
 		if host.IsHidden {
 			continue
 		}
+		if hostExcludesResponseType(host.ExcludeFromSubscriptionTypes, responseTypeSingbox) {
+			continue
+		}
 		outbound := buildSingboxOutbound(host, user)
 		if outbound == nil {
 			continue
@@ -175,6 +178,9 @@ func buildSingboxOutbound(host SubscriptionHost, user SubscriptionUser) *ordered
 				reality.Set("short_id", defaults.shortID)
 			}
 			tlsCfg.Set("reality", reality)
+		}
+		if defaults.pinnedPeerCertSha256 != "" || (host.PinnedPeerCertSha256 != nil && strings.TrimSpace(*host.PinnedPeerCertSha256) != "") {
+			tlsCfg.Set("insecure", true)
 		}
 		outbound.Set("tls", tlsCfg)
 	}
@@ -321,21 +327,7 @@ func resolveSingboxInboundDefaults(host SubscriptionHost) singboxInboundDefaults
 	}
 	defaults.flow = resolveVlessFlow(host, defaults)
 
-	if host.KeepSNIBlank {
-		defaults.sni = ""
-	} else if host.OverrideSNIFromAddress {
-		if val := derefString(host.SNI); val != "" {
-			defaults.sni = val
-		} else {
-			defaults.sni = host.Address
-		}
-	} else {
-		if nativeSNI != "" {
-			defaults.sni = nativeSNI
-		} else {
-			defaults.sni = host.Address
-		}
-	}
+	defaults.sni = resolveFinalServerName(host, nativeSNI)
 
 	return defaults
 }

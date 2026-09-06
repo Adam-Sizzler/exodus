@@ -56,6 +56,9 @@ func buildSubscriptionLinksExt(hosts []SubscriptionHost, user SubscriptionUser, 
 	links := []string{}
 	ssConfLinks := map[string]string{}
 	for _, host := range hosts {
+		if hostExcludesResponseType(host.ExcludeFromSubscriptionTypes, responseTypeXrayBase64) {
+			continue
+		}
 		link, protocol := buildHostLink(host, user)
 		if link == "" {
 			continue
@@ -279,15 +282,14 @@ func buildHysteria2Link(host SubscriptionHost, user SubscriptionUser) string {
 		return ""
 	}
 	params := url.Values{}
-	sni := ""
-	if host.SNI != nil {
-		sni = *host.SNI
-	}
-	if sni == "" && host.OverrideSNIFromAddress {
-		sni = host.Address
-	}
+	sni := resolveFinalServerName(host, "")
 	if sni != "" {
 		params.Set("sni", sni)
+	}
+	pinnedCert := derefString(host.PinnedPeerCertSha256)
+	if pinnedCert != "" {
+		params.Set("pinSHA256", pinnedCert)
+		params.Set("insecure", "1")
 	}
 	if host.ALPN != nil && *host.ALPN != "" {
 		params.Set("alpn", *host.ALPN)
@@ -424,16 +426,8 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 	if security != "" && security != "none" {
 		params.Set("security", security)
 	}
-	sni := ""
-	if host.SNI != nil && *host.SNI != "" {
-		sni = *host.SNI
-	} else if defaults.sni != "" {
-		sni = defaults.sni
-	}
-	if sni == "" && host.OverrideSNIFromAddress {
-		sni = host.Address
-	}
-	if sni != "" && !host.KeepSNIBlank {
+	sni := resolveFinalServerName(host, defaults.sni)
+	if sni != "" {
 		params.Set("sni", sni)
 	}
 	if host.ALPN != nil && *host.ALPN != "" {
@@ -462,11 +456,14 @@ func applyTransportParams(params *url.Values, host SubscriptionHost) {
 		if defaults.cipherSuites != "" {
 			params.Set("cs", defaults.cipherSuites)
 		}
-		if defaults.pinnedPeerCertSha256 != "" {
-			params.Set("pcs", defaults.pinnedPeerCertSha256)
+		pinnedCert := firstNonEmpty(derefString(host.PinnedPeerCertSha256), defaults.pinnedPeerCertSha256)
+		if pinnedCert != "" {
+			params.Set("pcs", pinnedCert)
+			params.Set("pinSHA256", pinnedCert)
 		}
-		if defaults.verifyPeerCertByName != "" {
-			params.Set("vcn", defaults.verifyPeerCertByName)
+		verifyPeer := firstNonEmpty(derefString(host.VerifyPeerCertByName), defaults.verifyPeerCertByName)
+		if verifyPeer != "" {
+			params.Set("vcn", verifyPeer)
 		}
 	}
 	if defaults.flow != "" {
@@ -534,6 +531,22 @@ func parseJSONMapString(raw *string) map[string]interface{} {
 	return yamlParsed
 }
 
+// hostExcludesResponseType reports whether host.ExcludeFromSubscriptionTypes
+// contains responseType (case-insensitive, matching upstream's
+// host.metadata.excludeFromSubscriptionTypes.includes(<TYPE>) check in each
+// of its five generators). Shared here so all four Go generators
+// (XRAY_JSON, Mihomo/Clash/Stash, Singbox, links) apply this host-level
+// "Exclude from subscription type" toggle identically, instead of each
+// re-implementing its own copy of the same loop.
+func hostExcludesResponseType(excludeTypes []string, responseType string) bool {
+	for _, exc := range excludeTypes {
+		if strings.EqualFold(strings.TrimSpace(exc), responseType) {
+			return true
+		}
+	}
+	return false
+}
+
 func generateXrayJSONConfigExt(
 	templateJSON []byte,
 	hosts []SubscriptionHost,
@@ -549,11 +562,8 @@ func generateXrayJSONConfigExt(
 			continue
 		}
 		excluded := false
-		for _, exc := range host.ExcludeFromSubscriptionTypes {
-			if strings.EqualFold(strings.TrimSpace(exc), responseTypeXrayJSON) {
-				excluded = true
-				break
-			}
+		if hostExcludesResponseType(host.ExcludeFromSubscriptionTypes, responseTypeXrayJSON) {
+			excluded = true
 		}
 		if excluded {
 			continue
@@ -632,21 +642,13 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 		"network":  network,
 		"security": security,
 	}
-	sni := ""
-	if host.SNI != nil {
-		sni = *host.SNI
-	}
-	if sni == "" && host.OverrideSNIFromAddress {
-		sni = host.Address
-	}
 	defaults := resolveSingboxInboundDefaults(host)
+	sni := resolveFinalServerName(host, defaults.sni)
 	switch security {
 	case "tls":
 		tlsSettings := map[string]interface{}{}
 		if sni != "" {
 			tlsSettings["serverName"] = sni
-		} else if defaults.sni != "" {
-			tlsSettings["serverName"] = defaults.sni
 		}
 		if host.ALPN != nil && *host.ALPN != "" {
 			tlsSettings["alpn"] = strings.Split(*host.ALPN, ",")
@@ -660,19 +662,19 @@ func buildXrayOutbound(host SubscriptionHost, user SubscriptionUser) map[string]
 		if defaults.cipherSuites != "" {
 			tlsSettings["cipherSuites"] = defaults.cipherSuites
 		}
-		if defaults.pinnedPeerCertSha256 != "" {
-			tlsSettings["pinnedPeerCertificateChainSha256"] = []string{defaults.pinnedPeerCertSha256}
+		pinnedCert := firstNonEmpty(derefString(host.PinnedPeerCertSha256), defaults.pinnedPeerCertSha256)
+		if pinnedCert != "" {
+			tlsSettings["pinnedPeerCertificateChainSha256"] = []string{pinnedCert}
 		}
-		if defaults.verifyPeerCertByName != "" {
-			tlsSettings["verifyPeerCertByName"] = defaults.verifyPeerCertByName
+		verifyPeer := firstNonEmpty(derefString(host.VerifyPeerCertByName), defaults.verifyPeerCertByName)
+		if verifyPeer != "" {
+			tlsSettings["verifyPeerCertByName"] = verifyPeer
 		}
 		streamSettings["tlsSettings"] = tlsSettings
 	case "reality":
 		realitySettings := map[string]interface{}{}
 		if sni != "" {
 			realitySettings["serverName"] = sni
-		} else if defaults.sni != "" {
-			realitySettings["serverName"] = defaults.sni
 		}
 		fp := firstNonEmpty(derefString(host.Fingerprint), defaults.fingerprint)
 		if fp != "" {

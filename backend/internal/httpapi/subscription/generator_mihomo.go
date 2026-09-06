@@ -22,10 +22,21 @@ import (
 )
 
 func generateYAMLConfig(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser) (string, error) {
-	return generateYAMLConfigExt(templateYAML, hosts, user, false)
+	return generateYAMLConfigExt(templateYAML, hosts, user, false, responseTypeMihomo)
 }
 
-func generateYAMLConfigExt(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser, isExtendedClient bool) (string, error) {
+func generateYAMLConfigExt(templateYAML []byte, hosts []SubscriptionHost, user SubscriptionUser, isExtendedClient bool, responseType string) (string, error) {
+	// Matches upstream's dispatch to mihomoGeneratorService: STASH passes
+	// includeHidden=true (hidden hosts ARE included) and isExtendedClient
+	// forced to false; MIHOMO passes includeHidden=false (hidden hosts are
+	// skipped) and respects the real isExtendedClient. CLASH has no
+	// isHidden concept upstream (separate generator there), so it behaves
+	// like MIHOMO here for isHidden purposes (skip hidden) since this
+	// merged Go generator doesn't have a third, CLASH-only variant.
+	isStash := strings.EqualFold(responseType, responseTypeStash)
+	if isStash {
+		isExtendedClient = false
+	}
 	var root yaml.Node
 	if len(templateYAML) > 0 {
 		if err := yaml.Unmarshal(templateYAML, &root); err != nil {
@@ -34,10 +45,42 @@ func generateYAMLConfigExt(templateYAML []byte, hosts []SubscriptionHost, user S
 	}
 	topLevelSpacing := extractYAMLTopLevelSpacing(templateYAML)
 	config := ensureYAMLDocumentMappingNode(&root)
+
+	includeHidden := isStash
+	if !includeHidden {
+		exodusRoot := yamlMappingNode(config, "exodus")
+		if exodusRoot != nil {
+			if v, ok := yamlMappingBool(exodusRoot, "include-hidden-hosts"); ok && v {
+				includeHidden = true
+			} else if v, ok := yamlMappingBool(exodusRoot, "includeHiddenHosts"); ok && v {
+				includeHidden = true
+			}
+		}
+	}
+
 	proxiesNode := ensureYAMLMappingSequenceValue(config, "proxies")
 	proxyNames := []string{}
 	trailingSelectorProxyNames := []string{}
 	for _, host := range hosts {
+		if !includeHidden && host.IsHidden {
+			continue
+		}
+		if hostExcludesResponseType(host.ExcludeFromSubscriptionTypes, responseType) {
+			continue
+		}
+
+		defaults := resolveSingboxInboundDefaults(host)
+		network := defaults.network
+		if host.InboundNetwork != nil && *host.InboundNetwork != "" {
+			network = *host.InboundNetwork
+		}
+		if network == "kcp" {
+			continue
+		}
+		if isStash && network == "xhttp" {
+			continue
+		}
+
 		proxy := buildMihomoProxyExt(host, user, isExtendedClient)
 		if proxy == nil {
 			continue
@@ -518,37 +561,20 @@ func buildMihomoProxyExt(host SubscriptionHost, user SubscriptionUser, isExtende
 		}
 	}
 
-	var mihomoSNI string
-	if host.KeepSNIBlank {
-		mihomoSNI = ""
-	} else if host.OverrideSNIFromAddress {
-		if host.SNI != nil && *host.SNI != "" {
-			mihomoSNI = *host.SNI
-		} else {
-			mihomoSNI = host.Address
-		}
-	} else {
-		nativeSNI := extractMihomoNativeSNI(host.InboundRaw)
-		if nativeSNI != "" {
-			mihomoSNI = nativeSNI
-		} else if host.SNI != nil && *host.SNI != "" {
-			mihomoSNI = *host.SNI
-		} else {
-			mihomoSNI = host.Address
-		}
-	}
+	mihomoSNI := resolveFinalServerName(host, extractMihomoNativeSNI(host.InboundRaw))
 
 	defaults := resolveSingboxInboundDefaults(host)
 	if protocol == "vless" && defaults.flow != "" {
 		proxy["flow"] = defaults.flow
 	}
 
+	if host.PinnedPeerCertSha256 != nil && strings.TrimSpace(*host.PinnedPeerCertSha256) != "" && protocol != "shadowsocks" {
+		proxy["skip-cert-verify"] = true
+	}
+
 	if isHysteria2 {
 		if mihomoSNI != "" {
 			proxy["sni"] = mihomoSNI
-		}
-		if host.PinnedPeerCertSha256 != nil && *host.PinnedPeerCertSha256 != "" {
-			proxy["skip-cert-verify"] = true
 		}
 		if host.Fingerprint != nil && *host.Fingerprint != "" {
 			proxy["client-fingerprint"] = *host.Fingerprint
@@ -564,14 +590,10 @@ func buildMihomoProxyExt(host SubscriptionHost, user SubscriptionUser, isExtende
 			if protocol == "trojan" {
 				if mihomoSNI != "" {
 					proxy["sni"] = mihomoSNI
-				} else if defaults.sni != "" {
-					proxy["sni"] = defaults.sni
 				}
 			} else {
 				if mihomoSNI != "" {
 					proxy["servername"] = mihomoSNI
-				} else if defaults.sni != "" {
-					proxy["servername"] = defaults.sni
 				}
 			}
 			realityOpts := map[string]interface{}{}

@@ -42,6 +42,9 @@ type ProxyEntryMetadata struct {
 }
 
 func buildResolvedProxyConfigs(hosts []SubscriptionHost, user SubscriptionUser, settings SubscriptionSettingsParsed, subscriptionURL string) []ResolvedProxyConfig {
+	if len(hosts) > 0 {
+		hosts = applyShuffle(hosts)
+	}
 	knownRemarks := make(map[string]int, len(hosts))
 	result := make([]ResolvedProxyConfig, 0, len(hosts))
 	for _, host := range hosts {
@@ -167,15 +170,10 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, fina
 			fp = *host.Fingerprint
 		}
 
+		finalSNI := resolveFinalServerName(host, defaults.sni)
 		var serverName *string
-		if defaults.sni != "" {
-			v := defaults.sni
-			serverName = &v
-		} else if host.SNI != nil && *host.SNI != "" {
-			serverName = host.SNI
-		} else if host.OverrideSNIFromAddress {
-			v := host.Address
-			serverName = &v
+		if finalSNI != "" {
+			serverName = &finalSNI
 		}
 
 		securityOptions = map[string]any{
@@ -197,12 +195,7 @@ func buildResolvedProxyConfig(host SubscriptionHost, user SubscriptionUser, fina
 			fp = *host.Fingerprint
 		}
 
-		serverName := host.Address
-		if defaults.sni != "" {
-			serverName = defaults.sni
-		} else if host.SNI != nil && *host.SNI != "" {
-			serverName = *host.SNI
-		}
+		serverName := resolveFinalServerName(host, defaults.sni)
 
 		var shortID *string
 		if defaults.shortID != "" {

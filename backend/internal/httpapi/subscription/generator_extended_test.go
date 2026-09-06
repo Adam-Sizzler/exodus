@@ -72,7 +72,7 @@ func TestExtendedClientsMihomo(t *testing.T) {
 	templateYAML := []byte("proxies: []\n")
 
 	t.Run("standard client YAML omits serverDescription", func(t *testing.T) {
-		out, err := generateYAMLConfigExt(templateYAML, []SubscriptionHost{host}, user, false)
+		out, err := generateYAMLConfigExt(templateYAML, []SubscriptionHost{host}, user, false, responseTypeMihomo)
 		if err != nil {
 			t.Fatalf("generateYAMLConfigExt failed: %v", err)
 		}
@@ -82,7 +82,7 @@ func TestExtendedClientsMihomo(t *testing.T) {
 	})
 
 	t.Run("extended client YAML includes serverDescription", func(t *testing.T) {
-		out, err := generateYAMLConfigExt(templateYAML, []SubscriptionHost{host}, user, true)
+		out, err := generateYAMLConfigExt(templateYAML, []SubscriptionHost{host}, user, true, responseTypeMihomo)
 		if err != nil {
 			t.Fatalf("generateYAMLConfigExt failed: %v", err)
 		}

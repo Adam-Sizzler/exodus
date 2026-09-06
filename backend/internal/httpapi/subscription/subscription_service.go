@@ -186,7 +186,8 @@ func (s *RenderService) RenderUserSubscription(
 	if len(earlyExitRemarks) > 0 {
 		hosts = createFallbackRemarkHosts(earlyExitRemarks)
 	} else {
-		userHosts, err := getHostsForUser(ctx, s.db, user)
+		withHidden := reqType == responseTypeXrayJSON || reqType == responseTypeMihomo || reqType == responseTypeStash
+		userHosts, err := getHostsForUserWithOptions(ctx, s.db, user, false, withHidden)
 		if err != nil {
 			return nil, "", nil, err
 		}
@@ -234,6 +235,10 @@ func (s *RenderService) RenderUserSubscription(
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[i], hosts[j] = hosts[j], hosts[i]
 		})
+	}
+
+	if len(hosts) > 0 {
+		hosts = applyShuffle(hosts)
 	}
 
 	subscriptionURL := resolveSubscriptionURL(ctx, s.db, user, settings)
@@ -367,9 +372,17 @@ func (s *RenderService) RenderUserSubscription(
 		contentType = "text/plain; charset=utf-8"
 	} else {
 		switch reqType {
-		case responseTypeMihomo, responseTypeClash, responseTypeStash:
-			gen := NewMihomoGenerator(s.cfg)
+		case responseTypeClash:
+			gen := NewClashGenerator(s.cfg)
 			out, err := gen.Generate(templateContent, user, hosts, settings)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			outputContent = out
+			contentType = "text/yaml; charset=utf-8"
+		case responseTypeMihomo, responseTypeStash:
+			gen := NewMihomoGenerator(s.cfg)
+			out, err := gen.Generate(templateContent, user, hosts, settings, reqType)
 			if err != nil {
 				return nil, "", nil, err
 			}
@@ -737,4 +750,36 @@ func parseFallbackHostFromRemark(remark string, index int) (SubscriptionHost, bo
 		MuxParams:         muxParams,
 		ServerDescription: serverDescription,
 	}, true
+}
+
+// applyShuffle separates hosts with ShuffleHost=true, shuffles them among themselves,
+// and places them at the beginning of the slice, followed by the remaining hosts in order.
+// This strictly mirrors upstream applyShuffle in resolve-proxy-config.
+func applyShuffle(hosts []SubscriptionHost) []SubscriptionHost {
+	hasShuffle := false
+	for _, h := range hosts {
+		if h.ShuffleHost {
+			hasShuffle = true
+			break
+		}
+	}
+	if !hasShuffle {
+		return hosts
+	}
+
+	shuffled := make([]SubscriptionHost, 0, len(hosts))
+	remaining := make([]SubscriptionHost, 0, len(hosts))
+	for _, h := range hosts {
+		if h.ShuffleHost {
+			shuffled = append(shuffled, h)
+		} else {
+			remaining = append(remaining, h)
+		}
+	}
+
+	rand.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+
+	return append(shuffled, remaining...)
 }
