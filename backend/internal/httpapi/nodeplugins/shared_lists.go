@@ -46,6 +46,8 @@ func handleSharedLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *
 			handleCreateSharedList(w, r, db, cfg)
 		case http.MethodPatch:
 			handleUpdateSharedList(w, r, db, cfg)
+		case http.MethodDelete:
+			handleDeleteSharedListByBody(w, r, db, cfg)
 		default:
 			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -60,6 +62,23 @@ func handleSharedLists(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
+
+	// "by-name" is a literal route segment: the contract sends the shared
+	// list's name as a query parameter (?name=...), not as a path segment.
+	if subpath == "by-name" {
+		if r.Method != http.MethodGet {
+			shared.WriteJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		name := strings.TrimSpace(r.URL.Query().Get("name"))
+		if name == "" {
+			shared.SendError(w, http.StatusBadRequest, "name is required", nil, cfg)
+			return
+		}
+		handleGetSharedListByName(w, r, db, cfg, name)
+		return
+	}
+
 
 	name := subpath
 	switch r.Method {
@@ -230,6 +249,26 @@ func handleUpdateSharedList(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		"response": item,
 	})
 }
+
+// handleDeleteSharedListByBody handles DELETE /api/node-plugins/shared-lists,
+// where the contract (DeleteSharedListCommand.RequestBodySchema) sends the
+// target list's name in a JSON body rather than as a URL path segment.
+func handleDeleteSharedListByBody(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.SendError(w, http.StatusBadRequest, "invalid JSON body", err, cfg)
+		return
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		shared.SendError(w, http.StatusBadRequest, "name is required", nil, cfg)
+		return
+	}
+	handleDeleteSharedList(w, r, db, cfg, name)
+}
+
 
 func handleDeleteSharedList(w http.ResponseWriter, r *http.Request, db *sql.DB, cfg *config.BackendConfig, name string) {
 	res, err := db.ExecContext(r.Context(), `DELETE FROM shared_lists WHERE name = $1`, name)
